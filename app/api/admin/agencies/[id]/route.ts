@@ -1,4 +1,4 @@
-import { BillingPlan, BillingUserSubscriptionStatus, UserRole } from "@prisma/client"
+import { BillingUserSubscriptionStatus, UserRole } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 
 import { serializeAdminAgency } from "@/lib/admin-contract"
@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
                   status === "active"
                     ? BillingUserSubscriptionStatus.ACTIVE
                     : BillingUserSubscriptionStatus.INACTIVE,
-                ...(status === "active" ? { plan: BillingPlan.AGENCY } : {}),
+                ...(status === "active" ? { plan: "AGENCY" } : {}),
               }
             : {}),
         },

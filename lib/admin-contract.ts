@@ -1,6 +1,5 @@
 import type {
   Agency,
-  BillingPlan,
   BillingUserSubscriptionStatus,
   Broker,
   BrokerAccountStatus,
@@ -10,6 +9,8 @@ import type {
   User,
   UserRole,
 } from "@prisma/client"
+
+type BillingPlan = "NONE" | "BROKER" | "AGENCY"
 
 export type AdminUserRecord = {
   id: string
