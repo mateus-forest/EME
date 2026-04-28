@@ -57,7 +57,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   try {
     const { id } = await context.params
     const accessible = await resolveAccessibleProperty(id, user)
-    if (accessible.error || !accessible.property) return accessible.error
+    if (accessible.error) return accessible.error
+    if (!accessible.property) {
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+    }
 
     const body = await request.json().catch(() => null)
     const data: Prisma.PropertyUpdateInput = {}
@@ -147,7 +150,10 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
   try {
     const { id } = await context.params
     const accessible = await resolveAccessibleProperty(id, user)
-    if (accessible.error || !accessible.property) return accessible.error
+    if (accessible.error) return accessible.error
+    if (!accessible.property) {
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+    }
 
     await prisma.property.delete({
       where: { id: accessible.property.id },

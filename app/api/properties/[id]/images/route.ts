@@ -106,7 +106,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { id } = await context.params
     const accessible = await resolveAccessibleProperty(id, user)
-    if (accessible.error || !accessible.property) return accessible.error
+    if (accessible.error) return accessible.error
+    if (!accessible.property) {
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+    }
 
     const formData = await request.formData().catch(() => null)
     const files = formData
@@ -173,7 +176,10 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   try {
     const { id } = await context.params
     const accessible = await resolveAccessibleProperty(id, user)
-    if (accessible.error || !accessible.property) return accessible.error
+    if (accessible.error) return accessible.error
+    if (!accessible.property) {
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+    }
 
     const imageUrl = request.nextUrl.searchParams.get("imageUrl")?.trim()
 
