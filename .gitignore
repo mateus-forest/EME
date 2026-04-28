@@ -7,11 +7,34 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 next.user-config.*
 
-# Environment variables
-.env*.local
-
-# Common ignores
+# dependencies
 node_modules
-.next/
+
+# next
+.next
+out
+
+# env
+.env
+.env.local
+.env.development
+.env.production
+.env.*
+
+# logs
+*.log
+npm-debug.log*
+
+# prisma local db files
+*.db
+*.sqlite
+
+# system
 .DS_Store
+Thumbs.db
+
+# vercel
 .vercel
+
+# editor
+.vscode/*
