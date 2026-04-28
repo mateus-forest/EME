@@ -1,0 +1,14 @@
+import { NextResponse } from "next/server"
+
+import { getPublicAgencyCatalogBySlug } from "@/lib/public-catalog"
+
+export async function GET(_: Request, context: { params: Promise<{ slug: string }> }) {
+  const { slug } = await context.params
+  const catalog = await getPublicAgencyCatalogBySlug(slug)
+
+  if (!catalog) {
+    return NextResponse.json({ error: "Catálogo não encontrado." }, { status: 404 })
+  }
+
+  return NextResponse.json({ catalog })
+}

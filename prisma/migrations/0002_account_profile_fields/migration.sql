@@ -1,0 +1,12 @@
+ALTER TABLE "User"
+ADD COLUMN "phone" TEXT,
+ADD COLUMN "photoUrl" TEXT;
+
+ALTER TABLE "Broker"
+ADD COLUMN "creci" TEXT,
+ADD COLUMN "description" TEXT;
+
+ALTER TABLE "Agency"
+ADD COLUMN "phone" TEXT,
+ADD COLUMN "cnpj" TEXT,
+ADD COLUMN "logoUrl" TEXT;

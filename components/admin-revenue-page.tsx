@@ -1,0 +1,21 @@
+"use client"
+
+import { Wallet } from "lucide-react"
+
+import { AdminPageShell } from "@/components/admin-page-shell"
+
+export function AdminRevenuePage() {
+  return (
+    <AdminPageShell title="Receita" subtitle="Visão financeira da plataforma">
+      <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] p-8 text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+          <Wallet className="size-6" />
+        </div>
+        <h3 className="mt-4 text-2xl font-semibold text-white">Sem receita real consolidada</h3>
+        <p className="mt-3 text-sm leading-7 text-white/55">
+          A visão financeira agora aguarda cobranças reais e assinaturas reais, sem fallback numérico na interface.
+        </p>
+      </section>
+    </AdminPageShell>
+  )
+}

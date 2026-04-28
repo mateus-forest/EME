@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  BROKER
+  AGENCY
+  ADMIN
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  COMMERCIAL
+}
+
+enum CatalogOwnerType {
+  BROKER
+  AGENCY
+}
+
+enum SubscriptionOwnerType {
+  BROKER
+  AGENCY
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum BillingPlan {
+  NONE
+  BROKER
+  AGENCY
+}
+
+enum BillingUserSubscriptionStatus {
+  INACTIVE
+  ACTIVE
+}
+
+enum BrokerAccountStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  NEGOTIATING
+  WON
+  LOST
+  ARCHIVED
+}
+
+model User {
+  id                   String                        @id @default(cuid())
+  name                 String
+  email                String                        @unique
+  passwordHash         String
+  role                 UserRole
+  phone                String?
+  photoUrl             String?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  plan                 BillingPlan                   @default(NONE)
+  subscriptionStatus   BillingUserSubscriptionStatus @default(INACTIVE)
+  createdAt            DateTime                      @default(now())
+  broker               Broker?
+  ownedAgency          Agency?                       @relation("AgencyOwner")
+  notifications        Notification[]
+  leads                Lead[]
+}
+
+model Broker {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  agencyId    String?
+  phone       String
+  catalogSlug String     @unique
+  status      BrokerAccountStatus @default(ACTIVE)
+  creci       String?
+  description String?
+  createdAt   DateTime   @default(now())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agency      Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  properties  Property[]
+  leads       Lead[]
+}
+
+model Agency {
+  id          String     @id @default(cuid())
+  ownerUserId String     @unique
+  name        String
+  catalogSlug String     @unique
+  phone       String?
+  cnpj        String?
+  logoUrl     String?
+  description String?
+  createdAt   DateTime   @default(now())
+  ownerUser   User       @relation("AgencyOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  brokers     Broker[]
+  properties  Property[]
+  leads       Lead[]
+}
+
+model Property {
+  id           String         @id @default(cuid())
+  title        String
+  description  String?
+  audioUrl     String?
+  price        Int
+  city         String
+  neighborhood String?
+  bedrooms     Int            @default(0)
+  bathrooms    Int            @default(0)
+  parkingSpots Int            @default(0)
+  type         PropertyType   @default(APARTMENT)
+  status       PropertyStatus @default(DRAFT)
+  published    Boolean        @default(false)
+  imageUrls    Json?
+  viewsCount   Int            @default(0)
+  leadsCount   Int            @default(0)
+  brokerId     String
+  agencyId     String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  broker       Broker         @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  agency       Agency?        @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  leads        Lead[]
+}
+
+model Catalog {
+  id        String           @id @default(cuid())
+  slug      String           @unique
+  ownerType CatalogOwnerType
+  ownerId   String
+  createdAt DateTime         @default(now())
+
+  @@index([ownerType, ownerId])
+}
+
+model Subscription {
+  id            String                @id @default(cuid())
+  ownerType     SubscriptionOwnerType
+  ownerId       String
+  status        SubscriptionStatus    @default(TRIALING)
+  nextBillingAt DateTime?
+  createdAt     DateTime              @default(now())
+
+  @@unique([ownerType, ownerId])
+  @@index([ownerType, ownerId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id         String     @id @default(cuid())
+  name       String?
+  email      String?
+  phone      String?
+  message    String?
+  source     String
+  status     LeadStatus @default(NEW)
+  propertyId String?
+  brokerId   String?
+  agencyId   String?
+  userId     String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  property   Property?  @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  broker     Broker?    @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  agency     Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+  @@index([brokerId])
+  @@index([agencyId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
