@@ -1,11 +1,10 @@
 import {
-  BillingPlan,
-  BillingUserSubscriptionStatus,
   type Broker,
   type User,
 } from "@prisma/client"
 import { NextResponse } from "next/server"
 
+import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
 import { prisma } from "@/lib/prisma"
 
@@ -42,14 +41,14 @@ export async function enforceBrokerPropertyCreation(user: AuthenticatedUser) {
   }
 
   const hasActiveBrokerPlan =
-    user.plan === BillingPlan.BROKER &&
-    user.subscriptionStatus === BillingUserSubscriptionStatus.ACTIVE
+    user.plan === BILLING_PLAN.BROKER &&
+    user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
 
   if (hasActiveBrokerPlan) {
     return null
   }
 
-  if (user.plan === BillingPlan.NONE && user.broker) {
+  if (user.plan === BILLING_PLAN.NONE && user.broker) {
     const totalProperties = await prisma.property.count({
       where: {
         brokerId: user.broker.id,
@@ -80,8 +79,8 @@ export function enforceAgencyOperationalAccess(user: User) {
   }
 
   const hasActiveAgencyPlan =
-    user.plan === BillingPlan.AGENCY &&
-    user.subscriptionStatus === BillingUserSubscriptionStatus.ACTIVE
+    user.plan === BILLING_PLAN.AGENCY &&
+    user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
 
   if (hasActiveAgencyPlan) {
     return null

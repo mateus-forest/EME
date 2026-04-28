@@ -1,18 +1,22 @@
 import {
-  BillingPlan,
-  BillingUserSubscriptionStatus,
   SubscriptionStatus,
   SubscriptionOwnerType,
   UserRole,
 } from "@prisma/client"
 import type Stripe from "stripe"
 
+import {
+  BILLING_PLAN,
+  BILLING_USER_SUBSCRIPTION_STATUS,
+  type BillingPlan,
+  type BillingUserSubscriptionStatus,
+} from "@/lib/billing-types"
 import { prisma } from "@/lib/prisma"
 
 export function getBillingPlanFromRole(role: UserRole) {
-  if (role === UserRole.BROKER) return BillingPlan.BROKER
-  if (role === UserRole.AGENCY) return BillingPlan.AGENCY
-  return BillingPlan.NONE
+  if (role === UserRole.BROKER) return BILLING_PLAN.BROKER
+  if (role === UserRole.AGENCY) return BILLING_PLAN.AGENCY
+  return BILLING_PLAN.NONE
 }
 
 export function getCheckoutPriceIdForRole(role: UserRole) {
@@ -28,8 +32,8 @@ export function getCheckoutPriceIdForRole(role: UserRole) {
 }
 
 export function getPlanLabel(plan: BillingPlan) {
-  if (plan === BillingPlan.BROKER) return "BROKER"
-  if (plan === BillingPlan.AGENCY) return "AGENCY"
+  if (plan === BILLING_PLAN.BROKER) return "BROKER"
+  if (plan === BILLING_PLAN.AGENCY) return "AGENCY"
   return "NONE"
 }
 
@@ -52,10 +56,10 @@ function mapStripeStatusToSubscriptionStatus(status: Stripe.Subscription.Status 
   return SubscriptionStatus.CANCELED
 }
 
-function mapSubscriptionStatusToUserStatus(status: SubscriptionStatus) {
+function mapSubscriptionStatusToUserStatus(status: SubscriptionStatus): BillingUserSubscriptionStatus {
   return status === SubscriptionStatus.ACTIVE
-    ? BillingUserSubscriptionStatus.ACTIVE
-    : BillingUserSubscriptionStatus.INACTIVE
+    ? BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
+    : BILLING_USER_SUBSCRIPTION_STATUS.INACTIVE
 }
 
 async function upsertOwnerSubscription(input: {
@@ -138,7 +142,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null
   const status = mapStripeStatusToSubscriptionStatus(subscription.status)
 
-  if (!userId || plan === BillingPlan.NONE) {
+  if (!userId || plan === BILLING_PLAN.NONE) {
     const user = await prisma.user.findFirst({
       where: { stripeSubscriptionId: subscription.id },
     })
@@ -166,7 +170,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
 }
 
 export function mapStripePlan(value: string | null | undefined) {
-  if (value === "BROKER") return BillingPlan.BROKER
-  if (value === "AGENCY") return BillingPlan.AGENCY
-  return BillingPlan.NONE
+  if (value === "BROKER") return BILLING_PLAN.BROKER
+  if (value === "AGENCY") return BILLING_PLAN.AGENCY
+  return BILLING_PLAN.NONE
 }

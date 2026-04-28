@@ -1,12 +1,11 @@
 import {
-  BillingPlan,
-  BillingUserSubscriptionStatus,
   SubscriptionOwnerType,
   SubscriptionStatus,
   UserRole,
 } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 
+import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { serializeAdminSubscription } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
@@ -19,7 +18,7 @@ function parseStatus(value: unknown) {
 }
 
 function planFromOwnerType(ownerType: SubscriptionOwnerType) {
-  return ownerType === SubscriptionOwnerType.AGENCY ? BillingPlan.AGENCY : BillingPlan.BROKER
+  return ownerType === SubscriptionOwnerType.AGENCY ? BILLING_PLAN.AGENCY : BILLING_PLAN.BROKER
 }
 
 async function serializeSubscriptionById(id: string, flags?: { notificationSent?: boolean; awaitingRegularization?: boolean }) {
@@ -37,11 +36,11 @@ async function serializeSubscriptionById(id: string, flags?: { notificationSent?
 
     return {
       subscription: {
-        ...serializeAdminSubscription(subscription, agency, agency?.ownerUser.plan ?? BillingPlan.NONE),
+        ...serializeAdminSubscription(subscription, agency, agency?.ownerUser.plan ?? BILLING_PLAN.NONE),
         ...flags,
       },
       ownerUserId: agency?.ownerUserId ?? null,
-      ownerPlan: agency?.ownerUser.plan ?? BillingPlan.NONE,
+      ownerPlan: agency?.ownerUser.plan ?? BILLING_PLAN.NONE,
     }
   }
 
@@ -50,7 +49,7 @@ async function serializeSubscriptionById(id: string, flags?: { notificationSent?
     include: { user: true },
   })
 
-  const serialized = serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BillingPlan.NONE)
+  const serialized = serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BILLING_PLAN.NONE)
 
   return {
     subscription: {
@@ -58,7 +57,7 @@ async function serializeSubscriptionById(id: string, flags?: { notificationSent?
       ...flags,
     },
     ownerUserId: broker?.userId ?? null,
-    ownerPlan: broker?.user.plan ?? BillingPlan.NONE,
+    ownerPlan: broker?.user.plan ?? BILLING_PLAN.NONE,
   }
 }
 
@@ -128,11 +127,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         prisma.user.update({
           where: { id: ownerUserId },
           data: {
-            plan: status === SubscriptionStatus.ACTIVE ? planFromOwnerType(updated.ownerType) : BillingPlan.NONE,
+            plan: status === SubscriptionStatus.ACTIVE ? planFromOwnerType(updated.ownerType) : BILLING_PLAN.NONE,
             subscriptionStatus:
               status === SubscriptionStatus.ACTIVE
-                ? BillingUserSubscriptionStatus.ACTIVE
-                : BillingUserSubscriptionStatus.INACTIVE,
+                ? BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
+                : BILLING_USER_SUBSCRIPTION_STATUS.INACTIVE,
           },
         }),
         prisma.notification.create({

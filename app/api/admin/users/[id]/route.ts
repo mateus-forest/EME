@@ -1,11 +1,15 @@
 import {
-  BillingPlan,
-  BillingUserSubscriptionStatus,
   BrokerAccountStatus,
   UserRole,
 } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 
+import {
+  BILLING_PLAN,
+  BILLING_USER_SUBSCRIPTION_STATUS,
+  type BillingPlan,
+  type BillingUserSubscriptionStatus,
+} from "@/lib/billing-types"
 import { serializeAdminUser } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
@@ -23,10 +27,10 @@ function parseStatus(value: unknown) {
 
 function parsePlan(value: unknown, role: UserRole) {
   if (value === undefined) return undefined
-  if (value === "Corretor") return role === UserRole.BROKER ? BillingPlan.BROKER : null
-  if (value === "Plano Imobiliária") return role === UserRole.AGENCY ? BillingPlan.AGENCY : null
-  if (value === "Sem plano") return BillingPlan.NONE
-  if (value === "Admin") return role === UserRole.ADMIN ? BillingPlan.NONE : null
+  if (value === "Corretor") return role === UserRole.BROKER ? BILLING_PLAN.BROKER : null
+  if (value === "Plano Imobiliária") return role === UserRole.AGENCY ? BILLING_PLAN.AGENCY : null
+  if (value === "Sem plano") return BILLING_PLAN.NONE
+  if (value === "Admin") return role === UserRole.ADMIN ? BILLING_PLAN.NONE : null
   return null
 }
 
@@ -122,9 +126,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (target.role === UserRole.AGENCY) {
         data.subscriptionStatus =
           payload.status === "active"
-            ? BillingUserSubscriptionStatus.ACTIVE
-            : BillingUserSubscriptionStatus.INACTIVE
-        if (payload.status === "active" && data.plan === undefined) data.plan = BillingPlan.AGENCY
+            ? BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
+            : BILLING_USER_SUBSCRIPTION_STATUS.INACTIVE
+        if (payload.status === "active" && data.plan === undefined) data.plan = BILLING_PLAN.AGENCY
       }
     }
 
@@ -230,7 +234,7 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
         return tx.user.update({
           where: { id: target.id },
           data: {
-            subscriptionStatus: BillingUserSubscriptionStatus.INACTIVE,
+            subscriptionStatus: BILLING_USER_SUBSCRIPTION_STATUS.INACTIVE,
           },
           include: userInclude,
         })

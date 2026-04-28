@@ -1,6 +1,7 @@
-import { BillingPlan, BillingUserSubscriptionStatus, SubscriptionOwnerType, UserRole } from "@prisma/client"
+import { SubscriptionOwnerType, UserRole } from "@prisma/client"
 import { NextResponse } from "next/server"
 
+import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
@@ -38,10 +39,10 @@ export async function GET() {
       },
     })
 
-    const isBrokerPlan = user.plan === BillingPlan.BROKER
+    const isBrokerPlan = user.plan === BILLING_PLAN.BROKER
     const isActive =
       isBrokerPlan &&
-      user.subscriptionStatus === BillingUserSubscriptionStatus.ACTIVE &&
+      user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE &&
       subscription?.status === "ACTIVE"
     const requiresRegularization = isBrokerPlan && !isActive
     const nextCharge = isActive

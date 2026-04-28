@@ -1,6 +1,7 @@
-import { BillingUserSubscriptionStatus, UserRole } from "@prisma/client"
+import { UserRole } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 
+import { BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { serializeAdminAgency } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
@@ -99,8 +100,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
             ? {
                 subscriptionStatus:
                   status === "active"
-                    ? BillingUserSubscriptionStatus.ACTIVE
-                    : BillingUserSubscriptionStatus.INACTIVE,
+                    ? BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
+                    : BILLING_USER_SUBSCRIPTION_STATUS.INACTIVE,
                 ...(status === "active" ? { plan: "AGENCY" } : {}),
               }
             : {}),
@@ -159,7 +160,7 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
     if (agency.brokers.length > 0 || agency.properties.length > 0) {
       const updated = await prisma.user.update({
         where: { id: agency.ownerUserId },
-        data: { subscriptionStatus: BillingUserSubscriptionStatus.INACTIVE },
+        data: { subscriptionStatus: BILLING_USER_SUBSCRIPTION_STATUS.INACTIVE },
       })
 
       const reloaded = await loadAgency(agency.id)

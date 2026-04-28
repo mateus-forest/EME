@@ -1,6 +1,7 @@
-import { BillingPlan, SubscriptionOwnerType, UserRole } from "@prisma/client"
+import { SubscriptionOwnerType, UserRole } from "@prisma/client"
 import { NextResponse } from "next/server"
 
+import { BILLING_PLAN } from "@/lib/billing-types"
 import { serializeAdminSubscription } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
@@ -59,11 +60,11 @@ export async function GET() {
       subscriptions: subscriptions.map((subscription) => {
         if (subscription.ownerType === SubscriptionOwnerType.AGENCY) {
           const agency = agencyMap.get(subscription.ownerId) ?? null
-          return serializeAdminSubscription(subscription, agency, agency?.ownerUser.plan ?? BillingPlan.NONE)
+          return serializeAdminSubscription(subscription, agency, agency?.ownerUser.plan ?? BILLING_PLAN.NONE)
         }
 
         const broker = brokerMap.get(subscription.ownerId) ?? null
-        return serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BillingPlan.NONE)
+        return serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BILLING_PLAN.NONE)
       }),
     })
   } catch (caughtError) {
