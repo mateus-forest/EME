@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 function slugify(value: string) {
   return value
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     let brokerId: string | null = null
     let agencyId: string | null = null
 
-    const user = await prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const createdUser = await tx.user.create({
         data: {
           name,

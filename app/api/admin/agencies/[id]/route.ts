@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { serializeAdminAgency } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 const agencyInclude = {
   ownerUser: true,
@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: PrismaTransaction) => {
       await tx.user.update({
         where: { id: agency.ownerUserId },
         data: {

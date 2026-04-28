@@ -4,6 +4,11 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 import { Pool } from "pg"
 
+export type PrismaTransaction = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
   pool?: Pool

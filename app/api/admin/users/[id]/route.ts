@@ -10,7 +10,7 @@ import {
 } from "@/lib/billing-types"
 import { serializeAdminUser } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 const userInclude = {
   broker: true,
@@ -130,7 +130,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: PrismaTransaction) => {
       await tx.user.update({
         where: { id: target.id },
         data,
@@ -221,7 +221,7 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
       target.role === UserRole.ADMIN
 
     if (hasCriticalRelations) {
-      const updated = await prisma.$transaction(async (tx) => {
+      const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
         if (target.broker) {
           await tx.broker.update({
             where: { id: target.broker.id },

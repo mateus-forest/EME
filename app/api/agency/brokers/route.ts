@@ -8,7 +8,7 @@ import { serializeAgencyBroker, buildAgencyBrokerHighlight } from "@/lib/agency-
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceAgencyOperationalAccess } from "@/lib/billing-enforcement"
 import { generateUniqueSlug } from "@/lib/catalog-slug"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 const brokerInclude = {
   user: true,
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const broker = await prisma.$transaction(async (tx) => {
+    const broker = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const existingUser = await tx.user.findUnique({
         where: { email: payload.email },
         include: {

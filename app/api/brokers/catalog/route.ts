@@ -4,7 +4,7 @@ import {
   NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 function serializeBrokerCatalog(user: {
   name: string
@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Descrição do catálogo deve ter no máximo 600 caracteres." }, { status: 400 })
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
       await tx.broker.update({
         where: {
           id: user.broker!.id,

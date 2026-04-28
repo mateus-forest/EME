@@ -10,7 +10,7 @@ import {
 } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 type AgencyProfileUser = Pick<User, "id" | "name" | "email" | "phone"> & {
   ownedAgency: Pick<Agency, "id" | "name" | "phone" | "cnpj" | "logoUrl"> | null
@@ -118,7 +118,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Já existe uma conta com este email." }, { status: 400 })
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const nextUser = await tx.user.update({
         where: { id: user.id },
         data: {

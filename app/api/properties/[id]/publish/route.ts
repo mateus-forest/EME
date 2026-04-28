@@ -5,7 +5,7 @@ import {
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { mapPropertyStatus, serializeProperty } from "@/lib/property-contract"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 const propertyInclude = {
   broker: {
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ error: "Informe um status de publicação válido." }, { status: 400 })
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const nextProperty = await tx.property.update({
         where: { id: property.id },
         data: {

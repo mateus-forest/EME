@@ -3,7 +3,7 @@ import { CatalogOwnerType } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import { isPrismaUnavailable } from "@/lib/auth-route"
-import { prisma } from "@/lib/prisma"
+import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return ""
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Não foi possível identificar o responsável pelo lead." }, { status: 400 })
     }
 
-    const lead = await prisma.$transaction(async (tx) => {
+    const lead = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const created = await tx.lead.create({
         data: {
           name: name || null,
