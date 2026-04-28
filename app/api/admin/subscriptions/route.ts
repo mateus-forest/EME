@@ -1,4 +1,5 @@
-import { SubscriptionOwnerType, UserRole } from "@prisma/client"
+import { SubscriptionOwnerType, UserRole } from "@/lib/prisma-enums"
+
 import { NextResponse } from "next/server"
 
 import { BILLING_PLAN } from "@/lib/billing-types"

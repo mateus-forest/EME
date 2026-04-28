@@ -1,6 +1,13 @@
-import { compare, hash } from "bcryptjs"
-import { NextRequest, NextResponse } from "next/server"
-import { UserRole, type Broker, type User } from "@prisma/client"
+import { UserRole } from "@/lib/prisma-enums"
+import {
+  compare,
+  hash } from "bcryptjs"
+import { NextRequest,
+  NextResponse } from "next/server"
+import {
+  type Broker,
+  type User,
+} from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"

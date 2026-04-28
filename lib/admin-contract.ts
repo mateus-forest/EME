@@ -1,12 +1,10 @@
+import { BrokerAccountStatus, SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
 import type {
   Agency,
   Broker,
-  BrokerAccountStatus,
   Property,
   Subscription,
-  SubscriptionStatus,
   User,
-  UserRole,
 } from "@prisma/client"
 
 import type { BillingPlan, BillingUserSubscriptionStatus } from "@/lib/billing-types"

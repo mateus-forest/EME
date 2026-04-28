@@ -1,6 +1,8 @@
-import { SignJWT, jwtVerify } from "jose"
+import { UserRole } from "@/lib/prisma-enums"
+import {
+  SignJWT,
+  jwtVerify } from "jose"
 import { NextResponse } from "next/server"
-import type { UserRole } from "@prisma/client"
 
 const encoder = new TextEncoder()
 

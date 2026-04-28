@@ -1,5 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { Prisma, UserRole } from "@prisma/client"
+import {
+  UserRole } from "@/lib/prisma-enums"
+import {
+  NextRequest,
+  NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"

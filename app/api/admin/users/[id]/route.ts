@@ -1,7 +1,5 @@
-import {
-  BrokerAccountStatus,
-  UserRole,
-} from "@prisma/client"
+import { BrokerAccountStatus, UserRole } from "@/lib/prisma-enums"
+
 import { NextRequest, NextResponse } from "next/server"
 
 import {

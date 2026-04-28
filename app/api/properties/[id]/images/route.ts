@@ -1,9 +1,13 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises"
+import { UserRole } from "@/lib/prisma-enums"
+import {
+  mkdir,
+  unlink,
+  writeFile } from "node:fs/promises"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
 
-import { NextRequest, NextResponse } from "next/server"
-import { UserRole } from "@prisma/client"
+import { NextRequest,
+  NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { serializeProperty } from "@/lib/property-contract"

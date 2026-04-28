@@ -1,4 +1,5 @@
-import { LeadStatus } from "@prisma/client"
+import { LeadStatus } from "@/lib/prisma-enums"
+
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"

@@ -1,4 +1,5 @@
-import { CatalogOwnerType, SubscriptionOwnerType, SubscriptionStatus, UserRole } from "@prisma/client"
+import { CatalogOwnerType, SubscriptionOwnerType, SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
+
 import { hash } from "bcryptjs"
 import { NextRequest, NextResponse } from "next/server"
 

@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/prisma-enums"
+import {
+  NextRequest,
+  NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
 import { getBillingPlanFromRole, getCheckoutPriceIdForRole, getPlanLabel } from "@/lib/billing"

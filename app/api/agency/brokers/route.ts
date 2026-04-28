@@ -1,6 +1,6 @@
+import { BrokerAccountStatus, CatalogOwnerType, UserRole } from "@/lib/prisma-enums"
 import { randomUUID } from "node:crypto"
 
-import { BrokerAccountStatus, CatalogOwnerType, UserRole } from "@prisma/client"
 import { hash } from "bcryptjs"
 import { NextRequest, NextResponse } from "next/server"
 

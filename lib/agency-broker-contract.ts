@@ -1,4 +1,9 @@
-import type { Broker, BrokerAccountStatus, Property, User } from "@prisma/client"
+import { BrokerAccountStatus } from "@/lib/prisma-enums"
+import type {
+  Broker,
+  Property,
+  User,
+} from "@prisma/client"
 
 import { formatCurrencyFromCents, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 

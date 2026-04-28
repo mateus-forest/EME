@@ -1,4 +1,11 @@
-import type { Agency, Broker, Lead, LeadStatus, Property, User, UserRole } from "@prisma/client"
+import { LeadStatus, UserRole } from "@/lib/prisma-enums"
+import type {
+  Agency,
+  Broker,
+  Lead,
+  Property,
+  User,
+} from "@prisma/client"
 
 const leadStatuses = ["NEW", "CONTACTED", "NEGOTIATING", "WON", "LOST", "ARCHIVED"] as const
 

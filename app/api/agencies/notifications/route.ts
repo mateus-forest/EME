@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
-import { UserRole, type Notification } from "@prisma/client"
+import { UserRole } from "@/lib/prisma-enums"
+import {
+  NextRequest,
+  NextResponse } from "next/server"
+import { type Notification } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"

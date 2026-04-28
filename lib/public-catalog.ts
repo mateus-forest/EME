@@ -1,4 +1,4 @@
-import { CatalogOwnerType, PropertyStatus } from "@prisma/client"
+import { CatalogOwnerType, PropertyStatus } from "@/lib/prisma-enums"
 
 import { getPropertyImage, getPropertyImages } from "@/lib/property-media"
 import { formatCurrencyFromCents } from "@/lib/property-contract"

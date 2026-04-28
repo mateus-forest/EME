@@ -1,8 +1,5 @@
-import {
-  SubscriptionStatus,
-  SubscriptionOwnerType,
-  UserRole,
-} from "@prisma/client"
+import { SubscriptionOwnerType, SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
+
 import type Stripe from "stripe"
 
 import {

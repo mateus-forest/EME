@@ -1,4 +1,10 @@
-import type { Agency, Broker, Property, PropertyStatus, PropertyType, User } from "@prisma/client"
+import { PropertyStatus, PropertyType } from "@/lib/prisma-enums"
+import type {
+  Agency,
+  Broker,
+  Property,
+  User,
+} from "@prisma/client"
 
 type PropertyWithRelations = Property & {
   broker: Broker & {

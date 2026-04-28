@@ -1,4 +1,5 @@
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/prisma-enums"
+
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"

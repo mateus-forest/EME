@@ -1,4 +1,5 @@
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/prisma-enums"
+
 import { NextRequest, NextResponse } from "next/server"
 
 import { BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"

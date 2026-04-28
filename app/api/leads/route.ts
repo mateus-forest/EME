@@ -1,4 +1,5 @@
-import { CatalogOwnerType } from "@prisma/client"
+import { CatalogOwnerType } from "@/lib/prisma-enums"
+
 import { NextRequest, NextResponse } from "next/server"
 
 import { isPrismaUnavailable } from "@/lib/auth-route"

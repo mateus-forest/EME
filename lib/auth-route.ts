@@ -1,4 +1,5 @@
-import { Prisma, UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/prisma-enums"
+import { Prisma } from "@prisma/client"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
