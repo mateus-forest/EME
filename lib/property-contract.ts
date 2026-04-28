@@ -1,4 +1,4 @@
-import { PropertyStatus, PropertyType, type Property, type Broker, type Agency, type User } from "@prisma/client"
+import type { Agency, Broker, Property, PropertyStatus, PropertyType, User } from "@prisma/client"
 
 type PropertyWithRelations = Property & {
   broker: Broker & {
@@ -61,38 +61,38 @@ export function parsePriceInput(value: unknown) {
   return Number(digits)
 }
 
-export function mapPropertyType(value: unknown) {
-  if (value === "Casa" || value === PropertyType.HOUSE) return PropertyType.HOUSE
-  if (value === "Comercial" || value === PropertyType.COMMERCIAL) return PropertyType.COMMERCIAL
-  if (value === "Apartamento" || value === PropertyType.APARTMENT) return PropertyType.APARTMENT
+export function mapPropertyType(value: unknown): PropertyType | null {
+  if (value === "Casa" || value === "HOUSE") return "HOUSE"
+  if (value === "Comercial" || value === "COMMERCIAL") return "COMMERCIAL"
+  if (value === "Apartamento" || value === "APARTMENT") return "APARTMENT"
   return null
 }
 
-export function mapPropertyStatus(value: unknown) {
-  if (value === "Publicado" || value === PropertyStatus.PUBLISHED) {
-    return { status: PropertyStatus.PUBLISHED, published: true }
+export function mapPropertyStatus(value: unknown): { status: PropertyStatus; published: boolean } | null {
+  if (value === "Publicado" || value === "PUBLISHED") {
+    return { status: "PUBLISHED", published: true }
   }
 
-  if (value === "Pausado" || value === PropertyStatus.PAUSED) {
-    return { status: PropertyStatus.PAUSED, published: false }
+  if (value === "Pausado" || value === "PAUSED") {
+    return { status: "PAUSED", published: false }
   }
 
-  if (value === "Rascunho" || value === PropertyStatus.DRAFT) {
-    return { status: PropertyStatus.DRAFT, published: false }
+  if (value === "Rascunho" || value === "DRAFT") {
+    return { status: "DRAFT", published: false }
   }
 
   return null
 }
 
 export function propertyTypeLabel(type: PropertyType): PropertyApiItem["type"] {
-  if (type === PropertyType.HOUSE) return "Casa"
-  if (type === PropertyType.COMMERCIAL) return "Comercial"
+  if (type === "HOUSE") return "Casa"
+  if (type === "COMMERCIAL") return "Comercial"
   return "Apartamento"
 }
 
 export function propertyStatusLabel(status: PropertyStatus): PropertyApiItem["status"] {
-  if (status === PropertyStatus.PUBLISHED) return "Publicado"
-  if (status === PropertyStatus.PAUSED) return "Pausado"
+  if (status === "PUBLISHED") return "Publicado"
+  if (status === "PAUSED") return "Pausado"
   return "Rascunho"
 }
 

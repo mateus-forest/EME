@@ -1,4 +1,6 @@
-import { LeadStatus, UserRole, type Agency, type Broker, type Lead, type Property, type User } from "@prisma/client"
+import type { Agency, Broker, Lead, LeadStatus, Property, User, UserRole } from "@prisma/client"
+
+const leadStatuses = ["NEW", "CONTACTED", "NEGOTIATING", "WON", "LOST", "ARCHIVED"] as const
 
 export const leadStatusLabels: Record<LeadStatus, string> = {
   NEW: "Novo",
@@ -36,7 +38,7 @@ type LeadWithRelations = Lead & {
 
 export function parseLeadStatus(value: unknown) {
   if (typeof value !== "string") return null
-  return Object.values(LeadStatus).includes(value as LeadStatus) ? (value as LeadStatus) : null
+  return leadStatuses.includes(value as LeadStatus) ? (value as LeadStatus) : null
 }
 
 export function serializeLead(lead: LeadWithRelations): LeadRecord {
@@ -64,9 +66,9 @@ export function canAccessLead(
   user: { role: UserRole; broker: Pick<Broker, "id"> | null; ownedAgency: Pick<Agency, "id"> | null },
   lead: Pick<Lead, "brokerId" | "agencyId">,
 ) {
-  if (user.role === UserRole.ADMIN) return true
-  if (user.role === UserRole.BROKER) return Boolean(user.broker && lead.brokerId === user.broker.id)
-  if (user.role === UserRole.AGENCY) return Boolean(user.ownedAgency && lead.agencyId === user.ownedAgency.id)
+  if (user.role === "ADMIN") return true
+  if (user.role === "BROKER") return Boolean(user.broker && lead.brokerId === user.broker.id)
+  if (user.role === "AGENCY") return Boolean(user.ownedAgency && lead.agencyId === user.ownedAgency.id)
   return false
 }
 

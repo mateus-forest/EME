@@ -1,4 +1,4 @@
-import { BrokerAccountStatus, type Broker, type Property, type User } from "@prisma/client"
+import type { Broker, BrokerAccountStatus, Property, User } from "@prisma/client"
 
 import { formatCurrencyFromCents, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 
@@ -50,8 +50,8 @@ function getInitials(name: string) {
 }
 
 function mapBrokerStatus(status: BrokerAccountStatus): AgencyBrokerApiItem["status"] {
-  if (status === BrokerAccountStatus.INACTIVE) return "Inativo"
-  if (status === BrokerAccountStatus.PENDING) return "Pendente"
+  if (status === "INACTIVE") return "Inativo"
+  if (status === "PENDING") return "Pendente"
   return "Ativo"
 }
 

@@ -1,15 +1,14 @@
-import {
+import type {
+  Agency,
   BillingPlan,
   BillingUserSubscriptionStatus,
+  Broker,
   BrokerAccountStatus,
-  SubscriptionOwnerType,
+  Property,
+  Subscription,
   SubscriptionStatus,
-  type Agency,
-  type Broker,
-  type Property,
-  type Subscription,
-  type User,
-  type UserRole,
+  User,
+  UserRole,
 } from "@prisma/client"
 
 export type AdminUserRecord = {
@@ -91,19 +90,19 @@ function formatDate(value: Date | null | undefined) {
 }
 
 function formatPlan(plan: BillingPlan, role: UserRole) {
-  if (plan === BillingPlan.BROKER) return "Corretor"
-  if (plan === BillingPlan.AGENCY) return "Plano Imobiliária"
+  if (plan === "BROKER") return "Corretor"
+  if (plan === "AGENCY") return "Plano Imobiliária"
   if (role === "ADMIN") return "Admin"
   return "Sem plano"
 }
 
 function mapUserStatus(role: UserRole, brokerStatus?: BrokerAccountStatus, billingStatus?: BillingUserSubscriptionStatus) {
   if (role === "BROKER") {
-    return brokerStatus === BrokerAccountStatus.INACTIVE ? "Inativo" : "Ativo"
+    return brokerStatus === "INACTIVE" ? "Inativo" : "Ativo"
   }
 
   if (role === "AGENCY") {
-    return billingStatus === BillingUserSubscriptionStatus.ACTIVE ? "Ativo" : "Inativo"
+    return billingStatus === "ACTIVE" ? "Ativo" : "Inativo"
   }
 
   return "Ativo"
@@ -140,7 +139,7 @@ export function serializeAdminBroker(
     creci: broker.creci ?? "-",
     email: broker.user.email,
     whatsApp: broker.phone,
-    status: broker.status === BrokerAccountStatus.INACTIVE ? "Inativo" : "Ativo",
+    status: broker.status === "INACTIVE" ? "Inativo" : "Ativo",
     type: broker.agencyId ? "Vinculado" : "Independente",
     agencyName: broker.agency?.name ?? undefined,
     activeProperties: broker.properties.filter((property) => property.status === "PUBLISHED").length,
@@ -162,8 +161,8 @@ export function serializeAdminAgency(
     owner: agency.ownerUser.name,
     email: agency.ownerUser.email,
     whatsApp: agency.phone ?? agency.ownerUser.phone ?? "-",
-    status: agency.ownerUser.subscriptionStatus === BillingUserSubscriptionStatus.ACTIVE ? "Ativa" : "Inativa",
-    activeBrokers: agency.brokers.filter((broker) => broker.status === BrokerAccountStatus.ACTIVE).length,
+    status: agency.ownerUser.subscriptionStatus === "ACTIVE" ? "Ativa" : "Inativa",
+    activeBrokers: agency.brokers.filter((broker) => broker.status === "ACTIVE").length,
     publishedProperties: agency.properties.filter((property) => property.status === "PUBLISHED").length,
     createdAt: formatDate(agency.createdAt),
     plan: formatPlan(agency.ownerUser.plan, agency.ownerUser.role),
@@ -171,17 +170,17 @@ export function serializeAdminAgency(
 }
 
 function monthlyValueForPlan(plan: BillingPlan) {
-  if (plan === BillingPlan.BROKER) return 49.9
-  if (plan === BillingPlan.AGENCY) return 109.9
+  if (plan === "BROKER") return 49.9
+  if (plan === "AGENCY") return 109.9
   return 0
 }
 
 function mapSubscriptionStatus(status: SubscriptionStatus): "Ativo" | "Cancelado" {
-  return status === SubscriptionStatus.CANCELED ? "Cancelado" : "Ativo"
+  return status === "CANCELED" ? "Cancelado" : "Ativo"
 }
 
 function mapFinancialStatus(status: SubscriptionStatus): "Em dia" | "Atraso leve" | "Inadimplente" {
-  if (status === SubscriptionStatus.PAST_DUE) return "Inadimplente"
+  if (status === "PAST_DUE") return "Inadimplente"
   return "Em dia"
 }
 
@@ -190,8 +189,8 @@ export function serializeAdminSubscription(
   owner: User | Agency | null,
   ownerPlan: BillingPlan,
 ): AdminSubscriptionRecord {
-  const ownerType = subscription.ownerType === SubscriptionOwnerType.AGENCY ? "agency" : "broker"
-  const type = subscription.ownerType === SubscriptionOwnerType.AGENCY ? "Imobiliária" : "Corretor"
+  const ownerType = subscription.ownerType === "AGENCY" ? "agency" : "broker"
+  const type = subscription.ownerType === "AGENCY" ? "Imobiliária" : "Corretor"
   const clientName =
     // @ts-ignore Prisma union narrowing for this display-only projection.
     owner && "name" in owner ? owner.name : owner && "ownerUserId" in owner ? owner.name : "Registro não encontrado"
@@ -201,14 +200,14 @@ export function serializeAdminSubscription(
     clientName,
     ownerType,
     type,
-    plan: subscription.ownerType === SubscriptionOwnerType.AGENCY ? "Plano Imobiliária" : "Corretor",
+    plan: subscription.ownerType === "AGENCY" ? "Plano Imobiliária" : "Corretor",
     status: mapSubscriptionStatus(subscription.status),
     monthlyValue: monthlyValueForPlan(ownerPlan),
     startedAt: formatDate(subscription.createdAt),
     lastPaymentAt: formatDate(subscription.createdAt),
     nextBillingAt: formatDate(subscription.nextBillingAt),
-    daysOverdue: subscription.status === SubscriptionStatus.PAST_DUE ? 7 : 0,
+    daysOverdue: subscription.status === "PAST_DUE" ? 7 : 0,
     financialStatus: mapFinancialStatus(subscription.status),
-    valueOpen: subscription.status === SubscriptionStatus.PAST_DUE ? monthlyValueForPlan(ownerPlan) : 0,
+    valueOpen: subscription.status === "PAST_DUE" ? monthlyValueForPlan(ownerPlan) : 0,
   }
 }
