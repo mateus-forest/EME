@@ -113,7 +113,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { id } = await context.params
     const accessible = await resolveAccessibleProperty(id, user)
-    if (accessible.error || !accessible.property) return accessible.error
+    if (accessible.error) return accessible.error
+    if (!accessible.property) {
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+    }
 
     const formData = await request.formData().catch(() => null)
     const audioFile = formData?.get("audio")
@@ -177,7 +180,10 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
   try {
     const { id } = await context.params
     const accessible = await resolveAccessibleProperty(id, user)
-    if (accessible.error || !accessible.property) return accessible.error
+    if (accessible.error) return accessible.error
+    if (!accessible.property) {
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+    }
 
     if (!accessible.property.audioUrl) {
       return NextResponse.json({ error: "Nenhum áudio vinculado a este imóvel." }, { status: 404 })
