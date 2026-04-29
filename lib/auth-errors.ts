@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client"
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message.toLowerCase() : ""
 }
@@ -14,14 +12,14 @@ function getErrorCode(error: unknown) {
 export function isDatabaseUnavailableError(error: unknown) {
   const message = getErrorMessage(error)
   const code = getErrorCode(error)
+  const errorName = error instanceof Error ? error.constructor.name : ""
 
   if (
     code === "ECONNREFUSED" ||
     code === "ETIMEDOUT" ||
     code === "ENOTFOUND" ||
-    error instanceof Prisma.PrismaClientInitializationError ||
-    (error instanceof Prisma.PrismaClientKnownRequestError &&
-      ["P1000", "P1001", "P1002"].includes(error.code))
+    errorName === "PrismaClientInitializationError" ||
+    (errorName === "PrismaClientKnownRequestError" && ["P1000", "P1001", "P1002"].includes(code))
   ) {
     return true
   }

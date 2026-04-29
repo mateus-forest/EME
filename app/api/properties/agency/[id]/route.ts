@@ -1,9 +1,9 @@
 import {
+  type PropertyType,
   UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
   NextResponse } from "next/server"
-import { Prisma } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
@@ -22,6 +22,24 @@ const propertyInclude = {
     },
   },
 } as const
+
+type PropertyUpdateData = {
+  title?: string
+  description?: string | null
+  city?: string
+  neighborhood?: string
+  price?: number
+  bedrooms?: number
+  bathrooms?: number
+  parkingSpots?: number
+  type?: PropertyType
+  imageUrls?: string[]
+  broker?: {
+    connect: {
+      id: string
+    }
+  }
+}
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
@@ -52,7 +70,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const body = await request.json().catch(() => null)
-    const data: Prisma.PropertyUpdateInput = {}
+    const data: PropertyUpdateData = {}
 
     if (typeof body?.title === "string") {
       const title = body.title.trim()

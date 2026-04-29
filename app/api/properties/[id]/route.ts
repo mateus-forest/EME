@@ -1,9 +1,9 @@
 import {
+  type PropertyType,
   UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
   NextResponse } from "next/server"
-import { Prisma } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
@@ -22,6 +22,19 @@ const propertyInclude = {
     },
   },
 } as const
+
+type PropertyUpdateData = {
+  title?: string
+  description?: string | null
+  city?: string
+  neighborhood?: string
+  price?: number
+  bedrooms?: number
+  bathrooms?: number
+  parkingSpots?: number
+  type?: PropertyType
+  imageUrls?: string[]
+}
 
 async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
   const property = await prisma.property.findUnique({
@@ -67,7 +80,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const body = await request.json().catch(() => null)
-    const data: Prisma.PropertyUpdateInput = {}
+    const data: PropertyUpdateData = {}
 
     if (typeof body?.title === "string") data.title = body.title.trim()
     if (typeof body?.description === "string") data.description = body.description.trim() || null
