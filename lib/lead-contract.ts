@@ -1,11 +1,7 @@
-import { LeadStatus, UserRole } from "@/lib/prisma-enums"
-import type {
-  Agency,
-  Broker,
-  Lead,
-  Property,
-  User,
-} from "@prisma/client"
+import type { Agency, Broker, Lead, Property } from "@/lib/prisma-model-types"
+import {
+  LeadStatus,
+  UserRole } from "@/lib/prisma-enums"
 
 const leadStatuses = ["NEW", "CONTACTED", "NEGOTIATING", "WON", "LOST", "ARCHIVED"] as const
 
@@ -39,7 +35,7 @@ export type LeadRecord = {
 
 type LeadWithRelations = Lead & {
   property: Pick<Property, "id" | "title"> | null
-  broker: (Pick<Broker, "id"> & { user: Pick<User, "name"> }) | null
+  broker: (Pick<Broker, "id"> & { user: { name: string } }) | null
   agency: Pick<Agency, "id" | "name"> | null
 }
 

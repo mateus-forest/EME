@@ -1,14 +1,15 @@
 import { BrokerAccountStatus } from "@/lib/prisma-enums"
-import type {
-  Broker,
-  Property,
-  User,
-} from "@prisma/client"
+import type { Broker, Property } from "@/lib/prisma-model-types"
 
 import { formatCurrencyFromCents, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 
+type BrokerContractUser = {
+  name: string
+  email: string
+}
+
 type BrokerWithRelations = Broker & {
-  user: User
+  user: BrokerContractUser
   properties: (Property & {
     _count?: {
       leads?: number

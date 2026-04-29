@@ -4,12 +4,18 @@ import {
   hash } from "bcryptjs"
 import { NextRequest,
   NextResponse } from "next/server"
-import { type User } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
-function buildAdminProfile(user: Pick<User, "id" | "name" | "email" | "phone"> | null) {
+type AdminProfileUser = {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+}
+
+function buildAdminProfile(user: AdminProfileUser | null) {
   if (!user) return null
 
   return {

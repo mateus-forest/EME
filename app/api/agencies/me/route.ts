@@ -1,18 +1,20 @@
-import { UserRole } from "@/lib/prisma-enums"
+import {
+  UserRole } from "@/lib/prisma-enums"
 import {
   compare,
   hash } from "bcryptjs"
 import { NextRequest,
   NextResponse } from "next/server"
-import {
-  type Agency,
-  type User,
-} from "@prisma/client"
+import type { Agency } from "@/lib/prisma-model-types"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
-type AgencyProfileUser = Pick<User, "id" | "name" | "email" | "phone"> & {
+type AgencyProfileUser = {
+  id: string
+  name: string
+  email: string
+  phone: string | null
   ownedAgency: Pick<Agency, "id" | "name" | "phone" | "cnpj" | "logoUrl"> | null
 }
 

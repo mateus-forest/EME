@@ -1,4 +1,4 @@
-import type { Notification } from "@prisma/client"
+import type { Notification } from "@/lib/prisma-model-types"
 
 export function serializePaymentNotification(notification: Notification) {
   return {

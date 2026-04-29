@@ -1,7 +1,5 @@
-import {
-  type Broker,
-  type User,
-} from "@prisma/client"
+import type { Broker } from "@/lib/prisma-model-types"
+
 import { NextResponse } from "next/server"
 
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
@@ -12,6 +10,11 @@ const BROKER_FREE_PROPERTY_LIMIT = 3
 
 type AuthenticatedUser = User & {
   broker: Broker | null
+}
+
+type User = {
+  plan: string
+  subscriptionStatus: string
 }
 
 export const billingMessages = {

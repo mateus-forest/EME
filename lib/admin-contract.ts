@@ -1,13 +1,21 @@
-import { BrokerAccountStatus, SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
-import type {
-  Agency,
-  Broker,
-  Property,
-  Subscription,
-  User,
-} from "@prisma/client"
+import type { Agency, Broker, Property, Subscription } from "@/lib/prisma-model-types"
+import {
+  BrokerAccountStatus,
+  SubscriptionStatus,
+  UserRole } from "@/lib/prisma-enums"
 
 import type { BillingPlan, BillingUserSubscriptionStatus } from "@/lib/billing-types"
+
+type AdminContractUser = {
+  id: string
+  name: string
+  role: UserRole
+  email: string
+  phone: string | null
+  plan: BillingPlan
+  subscriptionStatus: BillingUserSubscriptionStatus
+  createdAt: Date
+}
 
 export type AdminUserRecord = {
   id: string
@@ -106,7 +114,7 @@ function mapUserStatus(role: UserRole, brokerStatus?: BrokerAccountStatus, billi
   return "Ativo"
 }
 
-export function serializeAdminUser(user: User & { broker: Broker | null; ownedAgency: Agency | null }): AdminUserRecord {
+export function serializeAdminUser(user: AdminContractUser & { broker: Broker | null; ownedAgency: Agency | null }): AdminUserRecord {
   return {
     id: user.id,
     name: user.name,
@@ -121,7 +129,7 @@ export function serializeAdminUser(user: User & { broker: Broker | null; ownedAg
 
 export function serializeAdminBroker(
   broker: Broker & {
-    user: User
+    user: AdminContractUser
     agency: Agency | null
     properties: (Pick<Property, "status" | "leadsCount"> & {
       _count?: {
@@ -147,7 +155,7 @@ export function serializeAdminBroker(
 
 export function serializeAdminAgency(
   agency: Agency & {
-    ownerUser: User
+    ownerUser: AdminContractUser
     brokers: Pick<Broker, "status">[]
     properties: Pick<Property, "status">[]
   },
@@ -184,7 +192,7 @@ function mapFinancialStatus(status: SubscriptionStatus): "Em dia" | "Atraso leve
 
 export function serializeAdminSubscription(
   subscription: Subscription,
-  owner: User | Agency | null,
+  owner: AdminContractUser | Agency | null,
   ownerPlan: BillingPlan,
 ): AdminSubscriptionRecord {
   const ownerType = subscription.ownerType === "AGENCY" ? "agency" : "broker"

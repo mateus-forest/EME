@@ -1,18 +1,21 @@
-import { UserRole } from "@/lib/prisma-enums"
+import {
+  UserRole } from "@/lib/prisma-enums"
 import {
   compare,
   hash } from "bcryptjs"
 import { NextRequest,
   NextResponse } from "next/server"
-import {
-  type Broker,
-  type User,
-} from "@prisma/client"
+import type { Broker } from "@/lib/prisma-model-types"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
-type BrokerProfileUser = Pick<User, "id" | "name" | "email" | "phone" | "photoUrl"> & {
+type BrokerProfileUser = {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  photoUrl: string | null
   broker: Pick<Broker, "id" | "phone" | "creci" | "description"> | null
 }
 
