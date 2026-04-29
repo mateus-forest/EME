@@ -5,6 +5,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
+type NotificationRecipient = {
+  id: string
+}
+
 function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return ""
   return value.trim().slice(0, maxLength)
@@ -134,15 +138,15 @@ export async function POST(request: NextRequest) {
         if (agency?.ownerUserId) usersToNotify.add(agency.ownerUserId)
       }
 
-      const admins = await tx.user.findMany({
+      const admins: NotificationRecipient[] = await tx.user.findMany({
         where: { role: "ADMIN" },
         select: { id: true },
       })
-      admins.forEach((admin) => usersToNotify.add(admin.id))
+      admins.forEach((admin: NotificationRecipient) => usersToNotify.add(admin.id))
 
       if (usersToNotify.size > 0) {
         await tx.notification.createMany({
-          data: [...usersToNotify].map((userId) => ({
+          data: [...usersToNotify].map((userId: string) => ({
             userId,
             title: "Novo lead recebido",
             message: property

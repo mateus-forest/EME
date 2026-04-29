@@ -1,4 +1,5 @@
 import { BrokerAccountStatus, CatalogOwnerType, UserRole } from "@/lib/prisma-enums"
+import type { Broker, Property, User } from "@/lib/prisma-model-types"
 import { randomUUID } from "node:crypto"
 
 import { hash } from "bcryptjs"
@@ -22,6 +23,19 @@ const brokerInclude = {
     },
   },
 } as const
+
+type AgencyBrokerRouteItem = Broker & {
+  user: User
+  properties: (Property & {
+    _count?: {
+      leads?: number
+    }
+  })[]
+}
+
+type AdminNotificationRecipient = {
+  id: string
+}
 
 function getOrigin(request: NextRequest) {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? request.nextUrl.origin
@@ -63,7 +77,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const brokers = await prisma.broker.findMany({
+    const brokers: AgencyBrokerRouteItem[] = await prisma.broker.findMany({
       where: {
         agencyId: user.ownedAgency.id,
       },
@@ -76,7 +90,7 @@ export async function GET(request: NextRequest) {
     })
 
     const serialized = buildAgencyBrokerHighlight(
-      brokers.map((broker) => serializeAgencyBroker(broker, { origin: getOrigin(request) })),
+      brokers.map((broker: AgencyBrokerRouteItem) => serializeAgencyBroker(broker, { origin: getOrigin(request) })),
     )
 
     return NextResponse.json({ brokers: serialized })
@@ -210,14 +224,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: broker.error }, { status: 409 })
     }
 
-    const admins = await prisma.user.findMany({
+    const admins: AdminNotificationRecipient[] = await prisma.user.findMany({
       where: { role: UserRole.ADMIN },
       select: { id: true },
     })
-    const notificationUserIds = new Set([broker.broker.userId, user.id, ...admins.map((admin) => admin.id)])
+    const notificationUserIds = new Set([
+      broker.broker.userId,
+      user.id,
+      ...admins.map((admin: AdminNotificationRecipient) => admin.id),
+    ])
 
     await prisma.notification.createMany({
-      data: [...notificationUserIds].map((userId) => ({
+      data: [...notificationUserIds].map((userId: string) => ({
         userId,
         title: "Corretor vinculado à imobiliária",
         message: `${broker.broker.user.name} foi vinculado à imobiliária ${user.ownedAgency!.name}.`,

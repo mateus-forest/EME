@@ -138,7 +138,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const existingImages = getExistingImages(accessible.property)
-    const uploadedUrls = await Promise.all(files.map((file) => saveImageFile(accessible.property.id, file)))
+    const uploadedUrls = await Promise.all(files.map((file: File) => saveImageFile(accessible.property.id, file)))
     const nextImages = [...existingImages, ...uploadedUrls].slice(0, 6)
 
     const updatedProperty = await prisma.property.update({
@@ -197,7 +197,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       return NextResponse.json({ error: "Imagem não encontrada neste imóvel." }, { status: 404 })
     }
 
-    const nextImages = existingImages.filter((image) => image !== imageUrl)
+    const nextImages = existingImages.filter((image: string) => image !== imageUrl)
 
     const updatedProperty = await prisma.property.update({
       where: { id: accessible.property.id },
