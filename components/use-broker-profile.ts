@@ -106,6 +106,7 @@ export function useBrokerProfile() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         name: updates.fullName,
         email: updates.email,

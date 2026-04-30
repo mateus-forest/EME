@@ -102,7 +102,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
               <p className="text-sm text-white/50">Origem dos dados</p>
-              <p className="mt-2 text-lg font-semibold text-white">Backend real</p>
+              <p className="mt-2 text-lg font-semibold text-white">Dados da conta</p>
             </div>
           </CardContent>
         </Card>

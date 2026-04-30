@@ -85,6 +85,7 @@ export function useBrokerCatalogSettings() {
     void fetch("/api/brokers/catalog", {
       method: "PATCH",
       credentials: "include",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
       },

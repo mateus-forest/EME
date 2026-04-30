@@ -87,7 +87,7 @@ export function calculateAgencyMonthlyValue(_activeBrokers?: number) {
 export { formatCurrencyBRL, deriveInitials }
 
 export function clearAdminMockStorage() {
-  // legado removido: área admin agora nasce do backend real
+  // legado removido: área admin agora usa apenas dados persistidos.
 }
 
 export function useAdminUsers() {

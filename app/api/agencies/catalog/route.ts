@@ -22,6 +22,8 @@ function serializeAgencyCatalog(agency: {
   }
 }
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 

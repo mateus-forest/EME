@@ -21,6 +21,8 @@ const propertyInclude = {
   },
 } as const
 
+export const dynamic = "force-dynamic"
+
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 

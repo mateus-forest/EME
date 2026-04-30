@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { ArrowUpFromLine, AudioLines, ImagePlus, Sparkles, Upload } from "lucide-react"
+import { ArrowUpFromLine, AudioLines, ImagePlus, Images, Sparkles, Upload } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { requestPropertyAi } from "@/lib/property-ai-client"
@@ -27,6 +27,29 @@ const previewFallback = {
   parking: 2,
 }
 
+type BrowserSpeechRecognition = {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+}
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition
+
+type SpeechRecognitionEvent = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor
+  }
+}
+
 export function BrokerNewPropertyPage() {
   const { properties, addProperty, uploadPropertyImages, uploadPropertyAudio } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
@@ -34,6 +57,7 @@ export function BrokerNewPropertyPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [audioPreviewUrl, setAudioPreviewUrl] = useState("")
+  const [isTranscribingAudio, setIsTranscribingAudio] = useState(false)
   const [title, setTitle] = useState("")
   const [city, setCity] = useState("")
   const [neighborhood, setNeighborhood] = useState("")
@@ -58,10 +82,7 @@ export function BrokerNewPropertyPage() {
     !subscription.isUpgraded &&
     totalPropertiesCount >= subscription.propertyLimit
 
-  const previewImages = useMemo(
-    () => (images.length > 0 ? images : ["/placeholder.jpg", "/placeholder.jpg", "/placeholder.jpg"]),
-    [images],
-  )
+  const previewImages = useMemo(() => images, [images])
 
   function validateManualProperty() {
     if (!title.trim() || !city.trim() || !neighborhood.trim() || !price.trim()) {
@@ -92,6 +113,48 @@ export function BrokerNewPropertyPage() {
     setHasGenerated(false)
     setIsPublished(false)
     setPublishFeedback("")
+  }
+
+  function handleAudioDescription() {
+    const SpeechRecognition =
+      typeof window !== "undefined"
+        ? window.SpeechRecognition ?? window.webkitSpeechRecognition
+        : undefined
+
+    if (!SpeechRecognition) {
+      setPublishFeedback("TranscriÃ§Ã£o por Ã¡udio nÃ£o estÃ¡ disponÃ­vel neste navegador.")
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = "pt-BR"
+    recognition.interimResults = false
+    recognition.continuous = false
+
+    setIsTranscribingAudio(true)
+    setPublishFeedback("Ouvindo descriÃ§Ã£o do imÃ³vel...")
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? "")
+        .join(" ")
+        .trim()
+
+      if (transcript) {
+        setDescription((current) => [current.trim(), transcript].filter(Boolean).join("\n\n"))
+        setPublishFeedback("Ãudio transcrito e adicionado Ã  descriÃ§Ã£o.")
+      }
+    }
+
+    recognition.onerror = () => {
+      setPublishFeedback("NÃ£o foi possÃ­vel transcrever o Ã¡udio. Tente novamente ou digite a descriÃ§Ã£o.")
+    }
+
+    recognition.onend = () => {
+      setIsTranscribingAudio(false)
+    }
+
+    recognition.start()
   }
 
   async function handleGenerateAd() {
@@ -260,7 +323,7 @@ export function BrokerNewPropertyPage() {
                 Arraste imagens aqui ou selecione do dispositivo
               </h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-white/55">
-                Quanto melhores as fotos, melhor o resultado do anúncio gerado pela IA.
+                Descreva o imóvel com texto ou áudio. A IA pode transformar sua descrição em um anúncio profissional.
               </p>
               <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-white/75">
                 <Upload className="size-4" />
@@ -268,22 +331,94 @@ export function BrokerNewPropertyPage() {
               </div>
             </label>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {previewImages.map((image, index) => (
-                <div
-                  key={`${image}-${index}`}
-                  className="relative min-h-40 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
-                </div>
-              ))}
-            </div>
+            {previewImages.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {previewImages.map((image, index) => (
+                  <div
+                    key={`${image}-${index}`}
+                    className="relative min-h-40 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-40 flex-col items-center justify-center rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
+                <Images className="size-8 text-white/35" />
+                <p className="mt-3 text-sm font-medium text-white/75">Nenhuma foto selecionada</p>
+                <p className="mt-1 text-sm text-white/45">As imagens reais aparecerão aqui antes da publicação.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6">
+            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+              <CardHeader className="px-6 py-5">
+                <CardTitle className="text-xl text-white">Descrição do anúncio</CardTitle>
+                <p className="text-sm text-white/50">
+                  Descreva o imóvel com texto ou áudio. A IA pode transformar sua descrição em um anúncio profissional.
+                </p>
+              </CardHeader>
+              <CardContent className="grid gap-4 p-5 pt-0">
+                <Textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Fale sobre ambientes, diferenciais, lazer, localização ou qualquer detalhe relevante."
+                  className="min-h-40 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                />
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleAudioDescription}
+                    disabled={isTranscribingAudio}
+                    className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
+                  >
+                    <AudioLines className="size-4" />
+                    {isTranscribingAudio ? "Ouvindo..." : "Áudio"}
+                  </Button>
+
+                  <label className="inline-flex h-10 cursor-pointer items-center justify-start gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        handleAudioSelection(event.target.files)
+                        event.currentTarget.value = ""
+                      }}
+                    />
+                    <Upload className="size-4" />
+                    Anexar áudio
+                  </label>
+
+                  <Button
+                    onClick={handleGenerateAd}
+                    disabled={isGenerating || hasReachedLimit || isPlanBlocked}
+                    className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60"
+                  >
+                    {isGenerating ? <Spinner className="size-4 text-black" /> : <Sparkles className="size-4" />}
+                    {isGenerating ? "Gerando..." : "Gerar anúncio com IA"}
+                  </Button>
+                </div>
+
+                {audioFile ? (
+                  <div className="grid gap-3 rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/60">
+                    <p>{audioFile.name}</p>
+                    {audioPreviewUrl ? (
+                      <audio controls src={audioPreviewUrl} className="w-full">
+                        Seu navegador não suporta reprodução de áudio.
+                      </audio>
+                    ) : null}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
             <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               <CardHeader className="px-6 py-5">
                 <CardTitle className="text-xl text-white">Informações do imóvel</CardTitle>
@@ -332,73 +467,16 @@ export function BrokerNewPropertyPage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
-              <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Descrição (opcional)</CardTitle>
-                <p className="text-sm text-white/50">Se preferir, descreva o imóvel manualmente.</p>
-              </CardHeader>
-              <CardContent className="p-5 pt-0">
-                <Textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  placeholder="Fale sobre ambientes, diferenciais, lazer, localização ou qualquer detalhe relevante."
-                  className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
-                />
-              </CardContent>
-            </Card>
           </div>
 
           <div className="grid gap-6">
             <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
-              <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Áudio (opcional)</CardTitle>
-                <p className="text-sm text-white/50">Envie um áudio real para vincular ao imóvel.</p>
-              </CardHeader>
-              <CardContent className="grid gap-3 p-5 pt-0">
-                <label className="inline-flex h-11 cursor-pointer items-center justify-start gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    className="sr-only"
-                    onChange={(event) => {
-                      handleAudioSelection(event.target.files)
-                      event.currentTarget.value = ""
-                    }}
-                  />
-                  <AudioLines className="size-4" />
-                  Enviar áudio real
-                </label>
-                <div className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/60">
-                  {audioFile ? audioFile.name : "Nenhum áudio selecionado"}
-                </div>
-                {audioPreviewUrl ? (
-                  <audio controls src={audioPreviewUrl} className="w-full">
-                    Seu navegador não suporta reprodução de áudio.
-                  </audio>
-                ) : (
-                  <p className="text-sm text-white/50">Você pode publicar só com fotos ou complementar com um áudio.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               <CardContent className="p-6">
                 <p className="text-sm leading-7 text-white/60">
-                  Você pode cadastrar manualmente com os campos do formulário. A IA é opcional e serve apenas como apoio para gerar descrição.
+                  A descrição é o centro do anúncio: combine texto, áudio transcrito e IA antes de revisar o preview.
                 </p>
               </CardContent>
             </Card>
-
-            <div className="flex justify-center">
-              <Button
-                onClick={handleGenerateAd}
-                disabled={isGenerating || hasReachedLimit || isPlanBlocked}
-                className="h-12 min-w-[260px] rounded-2xl bg-[#00C853] px-6 text-base font-semibold text-black shadow-[0_18px_30px_rgba(0,200,83,0.22)] transition-all hover:bg-[#00E676] hover:shadow-[0_18px_36px_rgba(0,200,83,0.28)] disabled:opacity-60"
-              >
-                {isGenerating ? <Spinner className="size-4 text-black" /> : <Sparkles className="size-4" />}
-                {isGenerating ? "Gerando seu anúncio..." : "Gerar anúncio com IA"}
-              </Button>
-            </div>
             {publishFeedback && !hasGenerated ? (
               <p className="text-center text-sm text-[#69F0AE]">{publishFeedback}</p>
             ) : null}
@@ -423,8 +501,18 @@ export function BrokerNewPropertyPage() {
               ) : (
                 <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
                   <div className="relative min-h-72 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={previewImages[0]} alt="Preview do anúncio" className="h-full w-full object-cover" />
+                    {previewImages[0] ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={previewImages[0]} alt="Preview do anúncio" className="h-full w-full object-cover" />
+                      </>
+                    ) : (
+                      <div className="flex h-full min-h-72 flex-col items-center justify-center px-4 text-center">
+                        <Images className="size-9 text-white/35" />
+                        <p className="mt-3 text-sm font-medium text-white/75">Preview sem foto</p>
+                        <p className="mt-1 text-sm text-white/45">Selecione imagens para visualizar o anúncio.</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col justify-between gap-5 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">

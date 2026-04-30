@@ -27,6 +27,8 @@ const propertyInclude = {
   },
 } as const
 
+export const dynamic = "force-dynamic"
+
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/jpg"])
 const MAX_FILES_PER_REQUEST = 6
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024

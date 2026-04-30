@@ -33,6 +33,8 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
   }
 }
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
@@ -119,7 +121,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
-      const nextUser = await tx.user.update({
+      await tx.user.update({
         where: { id: user.id },
         data: {
           name,
@@ -143,7 +145,13 @@ export async function PATCH(request: NextRequest) {
         },
       })
 
-      return nextUser
+      return tx.user.findUnique({
+        where: { id: user.id },
+        include: {
+          broker: true,
+          ownedAgency: true,
+        },
+      })
     })
 
     return NextResponse.json({

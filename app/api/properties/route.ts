@@ -22,6 +22,8 @@ const propertyInclude = {
   },
 } as const
 
+export const dynamic = "force-dynamic"
+
 export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
         published: statusPayload.published,
         imageUrls: images,
         brokerId: user.broker.id,
-        agencyId: user.broker.agencyId ?? null,
+        agencyId: null,
       },
       include: propertyInclude,
     })

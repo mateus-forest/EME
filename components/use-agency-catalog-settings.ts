@@ -85,6 +85,7 @@ export function useAgencyCatalogSettings() {
     void fetch("/api/agencies/catalog", {
       method: "PATCH",
       credentials: "include",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
       },

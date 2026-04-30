@@ -27,6 +27,8 @@ const propertyInclude = {
   },
 } as const
 
+export const dynamic = "force-dynamic"
+
 const ALLOWED_AUDIO_TYPES = new Set([
   "audio/mpeg",
   "audio/mp3",

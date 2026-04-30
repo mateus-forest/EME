@@ -24,6 +24,8 @@ function serializeBrokerCatalog(user: {
   }
 }
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 

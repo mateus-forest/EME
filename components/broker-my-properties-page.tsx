@@ -164,7 +164,22 @@ export function BrokerMyPropertiesPage() {
   async function saveChanges() {
     if (!editingProperty) return
     try {
-      await updateProperty(editingProperty.id, editingProperty)
+      const updatedProperty = await updateProperty(editingProperty.id, editingProperty)
+      setEditingProperty({
+        id: updatedProperty.id,
+        title: updatedProperty.title,
+        city: updatedProperty.city,
+        neighborhood: updatedProperty.neighborhood,
+        price: updatedProperty.price,
+        images: [...updatedProperty.images],
+        bedrooms: updatedProperty.bedrooms,
+        bathrooms: updatedProperty.bathrooms,
+        parking: updatedProperty.parking,
+        status: updatedProperty.status,
+        type: updatedProperty.type,
+        description: updatedProperty.description,
+        audioUrl: updatedProperty.audioUrl,
+      })
       setSaveFeedback("Alterações salvas com sucesso")
     } catch (caughtError) {
       setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar as alterações.")

@@ -221,6 +221,20 @@ export function AgencyPropertiesPage() {
     try {
       const updatedProperty = await updateProperty(editingProperty.id, editingProperty)
       setSelectedProperty((current) => (current?.id === updatedProperty.id ? updatedProperty : current))
+      setEditingProperty({
+        id: updatedProperty.id,
+        title: updatedProperty.title,
+        city: updatedProperty.city,
+        neighborhood: updatedProperty.neighborhood,
+        price: updatedProperty.price,
+        images: [...updatedProperty.images],
+        bedrooms: updatedProperty.bedrooms,
+        bathrooms: updatedProperty.bathrooms,
+        parking: updatedProperty.parking,
+        type: updatedProperty.type,
+        description: updatedProperty.description,
+        audioUrl: updatedProperty.audioUrl,
+      })
       setSaveFeedback("Alterações salvas com sucesso")
     } catch (caughtError) {
       setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar as alterações.")

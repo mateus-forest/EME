@@ -362,7 +362,7 @@ export function AgencyPortal() {
             <CardContent className="grid gap-3 p-5 pt-0">
               <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4"><p className="text-sm text-white/50">Corretor com mais leads</p><p className="mt-2 text-base font-semibold text-white">{brokers[0]?.name ?? "Sem dados"}</p></div>
               <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4"><p className="text-sm text-white/50">Imóvel mais acessado</p><p className="mt-2 text-base font-semibold text-white">{properties[0]?.title ?? "Sem dados"}</p></div>
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4"><p className="text-sm text-white/50">Origem dos dados</p><p className="mt-2 text-base font-semibold text-white">Backend real</p></div>
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4"><p className="text-sm text-white/50">Origem dos dados</p><p className="mt-2 text-base font-semibold text-white">Dados da conta</p></div>
             </CardContent>
           </Card>
         </div>

@@ -155,6 +155,7 @@ export function useBrokerProperties() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         title: property.title,
         description: property.description,
@@ -188,6 +189,7 @@ export function useBrokerProperties() {
     const response = await fetch(`/api/properties/${id}/images`, {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       body: formData,
     })
 
@@ -201,6 +203,7 @@ export function useBrokerProperties() {
     const response = await fetch(`/api/properties/${id}/images?imageUrl=${encodeURIComponent(imageUrl)}`, {
       method: "DELETE",
       credentials: "include",
+      cache: "no-store",
     })
 
     const updated = await parsePropertyResponse(response)
@@ -216,6 +219,7 @@ export function useBrokerProperties() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         title: updates.title,
         description: updates.description,
@@ -245,6 +249,7 @@ export function useBrokerProperties() {
     const response = await fetch(`/api/properties/${id}`, {
       method: "DELETE",
       credentials: "include",
+      cache: "no-store",
     })
 
     const data = (await response.json().catch(() => null)) as { error?: string } | null
@@ -264,6 +269,7 @@ export function useBrokerProperties() {
     const response = await fetch(`/api/properties/${id}/audio`, {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       body: formData,
     })
 
@@ -277,6 +283,7 @@ export function useBrokerProperties() {
     const response = await fetch(`/api/properties/${id}/audio`, {
       method: "DELETE",
       credentials: "include",
+      cache: "no-store",
     })
 
     const updated = await parsePropertyResponse(response)
@@ -292,6 +299,7 @@ export function useBrokerProperties() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         status,
       }),

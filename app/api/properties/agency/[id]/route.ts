@@ -23,6 +23,8 @@ const propertyInclude = {
   },
 } as const
 
+export const dynamic = "force-dynamic"
+
 type PropertyUpdateData = {
   title?: string
   description?: string | null

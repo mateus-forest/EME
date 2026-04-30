@@ -163,8 +163,10 @@ export function useAgencyProperties() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         title: property.title,
+        description: property.description,
         price: property.price,
         city: property.location.split(",").slice(1).join(",").trim() || "São Paulo",
         neighborhood: property.location.split(",")[0]?.trim() || "Centro",
@@ -196,6 +198,7 @@ export function useAgencyProperties() {
     const response = await fetch(`/api/properties/${id}/images`, {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       body: formData,
     })
 
@@ -209,6 +212,7 @@ export function useAgencyProperties() {
     const response = await fetch(`/api/properties/${id}/images?imageUrl=${encodeURIComponent(imageUrl)}`, {
       method: "DELETE",
       credentials: "include",
+      cache: "no-store",
     })
 
     const updated = await parsePropertyResponse(response)
@@ -224,6 +228,7 @@ export function useAgencyProperties() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         title: updates.title,
         description: updates.description,
@@ -254,6 +259,7 @@ export function useAgencyProperties() {
     const response = await fetch(`/api/properties/agency/${id}`, {
       method: "DELETE",
       credentials: "include",
+      cache: "no-store",
     })
 
     const data = (await response.json().catch(() => null)) as { error?: string } | null
@@ -273,6 +279,7 @@ export function useAgencyProperties() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({ status }),
     })
 
@@ -294,6 +301,7 @@ export function useAgencyProperties() {
     const response = await fetch(`/api/properties/${id}/audio`, {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       body: formData,
     })
 
@@ -307,6 +315,7 @@ export function useAgencyProperties() {
     const response = await fetch(`/api/properties/${id}/audio`, {
       method: "DELETE",
       credentials: "include",
+      cache: "no-store",
     })
 
     const updated = await parsePropertyResponse(response)

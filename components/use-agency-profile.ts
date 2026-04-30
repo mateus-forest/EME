@@ -106,6 +106,7 @@ export function useAgencyProfile() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         companyName: updates.companyName,
         ownerName: updates.ownerName,
