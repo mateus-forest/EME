@@ -7,6 +7,7 @@ import { NextResponse } from "next/server"
 const encoder = new TextEncoder()
 
 export const AUTH_COOKIE_NAME = "eme_auth"
+const AUTH_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
 
 type AuthTokenPayload = {
   sub: string
@@ -15,7 +16,17 @@ type AuthTokenPayload = {
 }
 
 function getAuthSecret() {
-  return encoder.encode(process.env.AUTH_SECRET ?? "eme-dev-secret")
+  const secret = process.env.AUTH_SECRET?.trim()
+
+  if (secret) {
+    return encoder.encode(secret)
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET must be configured in production.")
+  }
+
+  return encoder.encode("eme-dev-secret")
 }
 
 export async function createAuthToken(payload: AuthTokenPayload) {
@@ -26,7 +37,7 @@ export async function createAuthToken(payload: AuthTokenPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(`${AUTH_TOKEN_MAX_AGE_SECONDS}s`)
     .sign(getAuthSecret())
 }
 
@@ -46,7 +57,7 @@ export function setAuthCookie(response: NextResponse, token: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: AUTH_TOKEN_MAX_AGE_SECONDS,
   })
 }
 

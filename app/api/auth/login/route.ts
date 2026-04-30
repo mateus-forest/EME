@@ -5,6 +5,8 @@ import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)

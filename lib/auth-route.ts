@@ -15,6 +15,18 @@ export function isPrismaUnavailable(error: unknown) {
   )
 }
 
+function isAuthTokenError(error: unknown) {
+  const errorName = error instanceof Error ? error.constructor.name : ""
+
+  return [
+    "JWTExpired",
+    "JWTInvalid",
+    "JWSInvalid",
+    "JWSSignatureVerificationFailed",
+    "JWTClaimValidationFailed",
+  ].includes(errorName)
+}
+
 export async function getAuthenticatedUser() {
   const cookieStore = await cookies()
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value
@@ -47,6 +59,13 @@ export async function getAuthenticatedUser() {
     console.error("[auth][route] session validation failed", {
       message: error instanceof Error ? error.message : "unknown",
     })
+
+    if (isAuthTokenError(error)) {
+    return {
+      error: NextResponse.json({ error: "NÃ£o foi possÃ­vel validar a sessÃ£o agora." }, { status: 500 }),
+      user: null,
+    }
+    }
 
     if (isPrismaUnavailable(error)) {
       return {

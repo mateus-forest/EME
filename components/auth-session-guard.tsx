@@ -20,7 +20,16 @@ export function AuthSessionGuard({
     let cancelled = false
 
     async function validateSession() {
-      const user = await fetchCurrentUser()
+      let user
+
+      try {
+        user = await fetchCurrentUser()
+      } catch (error) {
+        console.error("[auth][guard] session check failed", {
+          message: error instanceof Error ? error.message : "unknown",
+        })
+        return
+      }
 
       if (cancelled) return
 

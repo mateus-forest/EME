@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 

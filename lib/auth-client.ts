@@ -39,9 +39,15 @@ export async function fetchCurrentUser() {
     method: "GET",
     credentials: "include",
     cache: "no-store",
+  }).catch((error: unknown) => {
+    throw error instanceof Error ? error : new Error("NÃ£o foi possÃ­vel validar a sessÃ£o.")
   })
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      throw new Error("NÃ£o foi possÃ­vel validar a sessÃ£o agora.")
+    }
+
     return null
   }
 
