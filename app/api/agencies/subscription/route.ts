@@ -6,6 +6,9 @@ import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-ty
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
+const AGENCY_BASE_PRICE_CENTS = 10_990
+const ACTIVE_BROKER_PRICE_CENTS = 2_990
+
 function formatDate(date: Date | null) {
   if (!date) return "Aguardando checkout Stripe"
 
@@ -14,6 +17,13 @@ function formatDate(date: Date | null) {
     month: "2-digit",
     year: "numeric",
   }).format(date)
+}
+
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(cents / 100)
 }
 
 export async function GET() {
@@ -44,13 +54,23 @@ export async function GET() {
       user.plan === BILLING_PLAN.AGENCY &&
       user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE &&
       subscription?.status === "ACTIVE"
+    const activeBrokerCount = await prisma.broker.count({
+      where: {
+        agencyId: user.ownedAgency.id,
+        status: "ACTIVE",
+      },
+    })
+    const totalPriceCents = AGENCY_BASE_PRICE_CENTS + activeBrokerCount * ACTIVE_BROKER_PRICE_CENTS
 
     return NextResponse.json({
       subscription: {
         planName: "Plano Imobiliária",
         status: isActive ? "Ativa" : "Inativa",
-        currentPrice: "R$ 109,90 / mês",
-        brokerRule: "Gestão de corretores incluída no plano",
+        currentPrice: `${formatCurrency(totalPriceCents)} / mês`,
+        basePrice: `${formatCurrency(AGENCY_BASE_PRICE_CENTS)} / mês`,
+        brokerUnitPrice: `${formatCurrency(ACTIVE_BROKER_PRICE_CENTS)} / corretor ativo`,
+        activeBrokerCount,
+        brokerRule: `${activeBrokerCount} corretor${activeBrokerCount === 1 ? "" : "es"} ativo${activeBrokerCount === 1 ? "" : "s"} x ${formatCurrency(ACTIVE_BROKER_PRICE_CENTS)}`,
         nextCharge: isActive ? formatDate(subscription?.nextBillingAt ?? null) : "Aguardando checkout Stripe",
         isActive,
       },

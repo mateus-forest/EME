@@ -64,7 +64,8 @@ export function BrokerMyPropertiesPage() {
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
   const publishedPropertiesCount = useMemo(() => properties.filter((property) => property.status === "Publicado").length, [properties])
-  const hasReachedLimit = publishedPropertiesCount >= subscription.propertyLimit
+  const hasReachedLimit =
+    !subscription.isUpgraded && !subscription.isAgencyLinked && publishedPropertiesCount >= subscription.propertyLimit
   const normalizedSearch = search.trim().toLowerCase()
   const filteredProperties = useMemo(
     () =>

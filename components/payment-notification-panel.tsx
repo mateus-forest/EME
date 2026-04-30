@@ -6,6 +6,7 @@ import { AlertCircle, BellRing, CheckCircle2, Clock3, CreditCard, Eye, X } from 
 import type { PaymentNotification } from "@/components/use-payment-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { isFinancialNotification } from "@/lib/notification-contract"
 
 type PaymentNotificationPanelProps = {
   entityLabel: string
@@ -124,7 +125,9 @@ export function PaymentNotificationPanel({
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm uppercase tracking-[0.2em] text-white/40">{entityLabel}</p>
+                  <p className="text-sm uppercase tracking-[0.2em] text-white/40">
+                    {isFinancialNotification(primaryNotification) ? entityLabel : "Notificações"}
+                  </p>
                   <span
                     className={`rounded-full border px-2.5 py-1 text-[11px] ${statusStyles[primaryNotification.financialStatus].chip}`}
                   >
@@ -152,13 +155,15 @@ export function PaymentNotificationPanel({
                 <Eye className="size-4" />
                 Ver detalhes
               </Button>
-              <Button
-                type="button"
-                onClick={() => handleRegularize(primaryNotification.id)}
-                className="h-9 rounded-xl bg-[#00C853] px-3 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
-              >
-                Regularizar pagamento
-              </Button>
+              {isFinancialNotification(primaryNotification) && (
+                <Button
+                  type="button"
+                  onClick={() => handleRegularize(primaryNotification.id)}
+                  className="h-9 rounded-xl bg-[#00C853] px-3 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                >
+                  Regularizar pagamento
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -175,7 +180,7 @@ export function PaymentNotificationPanel({
 
       <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
         <CardHeader className="px-6 py-5">
-          <CardTitle className="text-xl text-white">Notificações financeiras</CardTitle>
+          <CardTitle className="text-xl text-white">Atividades recentes</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 p-5 pt-0">
           {orderedNotifications.map((notification) => {
@@ -217,14 +222,16 @@ export function PaymentNotificationPanel({
                     >
                       Ver detalhes
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => handleRegularize(notification.id)}
-                      className="h-8.5 rounded-xl border border-[#00C853]/20 bg-[#00C853]/10 px-3 text-xs text-[#69F0AE] hover:bg-[#00C853]/14"
-                    >
-                      Regularizar pagamento
-                    </Button>
+                    {isFinancialNotification(notification) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleRegularize(notification.id)}
+                        className="h-8.5 rounded-xl border border-[#00C853]/20 bg-[#00C853]/10 px-3 text-xs text-[#69F0AE] hover:bg-[#00C853]/14"
+                      >
+                        Regularizar pagamento
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
@@ -250,9 +257,9 @@ export function PaymentNotificationPanel({
                       )}
                     </div>
                     <p className="mt-3 leading-6">
-                      Este aviso faz parte do fluxo operacional mock de cobrança da EME. A
-                      regularização ainda será integrada ao back-end, mas o estado financeiro já pode
-                      ser acompanhado aqui.
+                      {isFinancialNotification(notification)
+                        ? "Este aviso acompanha o status de pagamento e assinatura da sua conta."
+                        : "Este aviso acompanha uma atividade operacional recente da sua conta."}
                     </p>
                   </div>
                 )}

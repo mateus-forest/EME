@@ -14,6 +14,11 @@ type BrokerPropertiesProps = {
 export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertiesProps) {
   const { subscription } = useBrokerSubscription()
   const featuredProperties = properties.slice(0, 3)
+  const planMessage = subscription.isAgencyLinked
+    ? "Suas publicações seguem as regras da imobiliária à qual você está vinculado"
+    : subscription.isUpgraded
+      ? "Seu plano Corretor está ativo para publicar imóveis"
+      : `Você pode cadastrar até ${subscription.propertyLimit} imóveis gratuitamente`
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -68,7 +73,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
               Plano atual
             </div>
             <h3 className="mt-5 text-xl font-semibold text-white">
-              Você pode cadastrar até {subscription.propertyLimit} imóveis gratuitamente
+              {planMessage}
             </h3>
             <p className="mt-3 text-sm leading-6 text-white/55">
               O upgrade libera novas publicações conforme as regras reais do plano já aplicadas no sistema.

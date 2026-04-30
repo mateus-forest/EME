@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         published: statusPayload.published,
         imageUrls: images,
         brokerId: user.broker.id,
-        agencyId: null,
+        agencyId: user.broker.agencyId ?? null,
       },
       include: propertyInclude,
     })

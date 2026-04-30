@@ -45,9 +45,12 @@ export async function GET() {
       isBrokerPlan &&
       user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE &&
       subscription?.status === "ACTIVE"
-    const requiresRegularization = isBrokerPlan && !isActive
+    const isAgencyLinked = Boolean(user.broker.agencyId)
+    const requiresRegularization = isBrokerPlan && !isActive && !isAgencyLinked
     const nextCharge = isActive
       ? formatDate(subscription?.nextBillingAt ?? null)
+      : isAgencyLinked
+        ? "Gerenciado pela imobiliária"
       : requiresRegularization
         ? "Regularização pendente"
         : "Plano gratuito ativo"
@@ -57,24 +60,32 @@ export async function GET() {
         id: 5001,
         ownerId: 101,
         ownerType: "broker",
-        tipoPlano: isBrokerPlan ? "Corretor" : "Gratuito",
-        ultimoPagamento: isActive
+        tipoPlano: isAgencyLinked ? "Equipe da imobiliária" : isBrokerPlan ? "Corretor" : "Gratuito",
+        ultimoPagamento: isAgencyLinked
+          ? "Plano gerenciado pela imobiliária"
+          : isActive
           ? "Pagamento confirmado pelo Stripe"
           : requiresRegularization
             ? "Pagamento pendente"
             : "Plano gratuito",
         proximaCobranca: nextCharge,
-        planName: isBrokerPlan ? "Corretor" : "Gratuito",
+        planName: isAgencyLinked ? "Equipe da imobiliária" : isBrokerPlan ? "Corretor" : "Gratuito",
         isUpgraded: isActive,
-        propertyLimit: isActive ? 999 : 3,
+        isAgencyLinked,
+        propertyLimit: isActive || isAgencyLinked ? 999 : 3,
+        limitLabel: isAgencyLinked
+          ? "Publicações gerenciadas pela imobiliária"
+          : isActive
+            ? "Publicações do plano Corretor"
+            : "3 imóveis gratuitos",
         billingPlan: user.plan,
         billingStatus: user.subscriptionStatus,
         requiresRegularization,
-        currentPrice: "R$ 49,90",
+        currentPrice: isAgencyLinked ? "Plano da imobiliária" : "R$ 49,90",
         previousPrice: "R$ 89,90",
         status: requiresRegularization ? "Cancelado" : "Ativo",
         nextCharge,
-        paymentMethod: isBrokerPlan ? "Stripe" : "Checkout Stripe",
+        paymentMethod: isAgencyLinked ? "Imobiliária responsável" : isBrokerPlan ? "Stripe" : "Checkout Stripe",
       },
     })
   } catch (caughtError) {

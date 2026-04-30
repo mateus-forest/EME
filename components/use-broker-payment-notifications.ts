@@ -7,6 +7,7 @@ import type {
   PaymentNotification,
   PaymentNotificationPriority,
 } from "@/components/use-payment-notifications"
+import { isFinancialNotification } from "@/lib/notification-contract"
 
 export function useBrokerPaymentNotifications() {
   const [notifications, setNotifications] = useState<PaymentNotification[]>([])
@@ -43,6 +44,11 @@ export function useBrokerPaymentNotifications() {
     [historyNotifications],
   )
 
+  const financialNotifications = useMemo(
+    () => historyNotifications.filter(isFinancialNotification),
+    [historyNotifications],
+  )
+
   const primaryNotification = useMemo(() => {
     const priorityOrder: Record<PaymentNotificationPriority, number> = {
       critica: 4,
@@ -59,7 +65,9 @@ export function useBrokerPaymentNotifications() {
   }, [visibleNotifications])
 
   const financialSummary = useMemo<FinancialSummary>(() => {
-    const referenceNotification = primaryNotification ?? historyNotifications[0]
+    const referenceNotification =
+      (primaryNotification && isFinancialNotification(primaryNotification) ? primaryNotification : null) ??
+      financialNotifications[0]
 
     if (!referenceNotification) {
       return {
@@ -79,7 +87,7 @@ export function useBrokerPaymentNotifications() {
       valueOpen: referenceNotification.valueOpen,
       contextMessage: referenceNotification.contextMessage ?? referenceNotification.message,
     }
-  }, [historyNotifications, primaryNotification])
+  }, [financialNotifications, primaryNotification])
 
   function updateNotification(id: string, updater: (notification: PaymentNotification) => PaymentNotification) {
     setNotifications((current) =>
@@ -125,18 +133,22 @@ export function useBrokerPaymentNotifications() {
     },
     requestRegularization(id: string) {
       markAsRead(id)
-      updateNotification(id, (notification) => ({
-        ...notification,
-        lida: true,
-        financialStatus: "aguardando-regularizacao",
-        priority: notification.priority === "critica" ? "alta" : notification.priority,
-        title: "Regularização em andamento",
-        message: "Pagamento aguardando compensação. Vamos atualizar sua assinatura em breve.",
-        date: "Agora mesmo",
-        currentAmount: notification.currentAmount ?? "R$ 0,00",
-        nextBillingAt: notification.nextBillingAt ?? "-",
-        contextMessage: "Pagamento aguardando compensação.",
-      }))
+      updateNotification(id, (notification) =>
+        isFinancialNotification(notification)
+          ? {
+              ...notification,
+              lida: true,
+              financialStatus: "aguardando-regularizacao",
+              priority: notification.priority === "critica" ? "alta" : notification.priority,
+              title: "Regularização em andamento",
+              message: "Pagamento aguardando compensação. Vamos atualizar sua assinatura em breve.",
+              date: "Agora mesmo",
+              currentAmount: notification.currentAmount ?? "R$ 0,00",
+              nextBillingAt: notification.nextBillingAt ?? "-",
+              contextMessage: "Pagamento aguardando compensação.",
+            }
+          : { ...notification, lida: true },
+      )
     },
   }
 }

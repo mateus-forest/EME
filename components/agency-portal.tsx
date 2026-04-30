@@ -340,7 +340,7 @@ export function AgencyPortal() {
                       </div>
                       <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/65">
                         <PencilLine className="size-4 text-[#69F0AE]" />
-                        Corretor responsável: {property.broker.name}
+                        Publicado por {property.broker.name}
                       </div>
                     </div>
                   </article>

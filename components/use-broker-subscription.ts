@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react"
 import { type DomainSubscription } from "@/lib/domain-entities"
 
 export type BrokerSubscription = DomainSubscription & {
-  planName: "Gratuito" | "Corretor"
+  planName: "Gratuito" | "Corretor" | "Equipe da imobiliária"
   ownerType: "broker"
   isUpgraded: boolean
+  isAgencyLinked: boolean
   propertyLimit: number
+  limitLabel: string
   billingPlan: "NONE" | "BROKER" | "AGENCY"
   billingStatus: "INACTIVE" | "ACTIVE"
   requiresRegularization: boolean
@@ -27,7 +29,9 @@ const defaultSubscription: BrokerSubscription = {
   proximaCobranca: "Plano gratuito ativo",
   planName: "Gratuito",
   isUpgraded: false,
+  isAgencyLinked: false,
   propertyLimit: 3,
+  limitLabel: "3 imóveis gratuitos",
   billingPlan: "NONE",
   billingStatus: "INACTIVE",
   requiresRegularization: false,

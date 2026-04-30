@@ -71,18 +71,16 @@ export function useBrokerCatalogSettings() {
     }
   }, [])
 
-  function saveSettings(updates: Partial<BrokerCatalogSettings>) {
+  async function saveSettings(updates: Partial<BrokerCatalogSettings>) {
     const nextSettings = {
       ...settings,
       ...updates,
-      slug: settings.slug,
-      displayName: settings.displayName,
     }
 
     setSettingsState(nextSettings)
     clearLegacyCatalogStorage()
 
-    void fetch("/api/brokers/catalog", {
+    const response = await fetch("/api/brokers/catalog", {
       method: "PATCH",
       credentials: "include",
       cache: "no-store",
@@ -90,19 +88,25 @@ export function useBrokerCatalogSettings() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        displayName: nextSettings.displayName,
+        slug: nextSettings.slug,
         photoUrl: nextSettings.photoUrl,
         description: nextSettings.description,
       }),
     })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { settings?: BrokerCatalogSettings } | null
 
-        if (response.ok && data?.settings) {
-          setSettingsState(data.settings)
-          notifyCatalogSettings(data.settings)
-        }
-      })
-      .catch(() => null)
+    const data = (await response.json().catch(() => null)) as
+      | { settings?: BrokerCatalogSettings; error?: string }
+      | null
+
+    if (!response.ok || !data?.settings) {
+      setSettingsState(settings)
+      throw new Error(data?.error ?? "Nao foi possivel salvar o catalogo.")
+    }
+
+    setSettingsState(data.settings)
+    notifyCatalogSettings(data.settings)
+    return data.settings
   }
 
   return { settings, saveSettings }

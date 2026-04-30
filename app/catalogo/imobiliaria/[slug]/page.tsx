@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import { AgencyPublicCatalog } from "@/components/agency-public-catalog"
 import { getPublicAgencyCatalogBySlug } from "@/lib/public-catalog"
 
+export const dynamic = "force-dynamic"
+
 export default async function AgencyPublicCatalogPage({
   params,
 }: {

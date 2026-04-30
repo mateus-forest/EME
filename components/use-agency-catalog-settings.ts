@@ -71,18 +71,16 @@ export function useAgencyCatalogSettings() {
     }
   }, [])
 
-  function saveSettings(updates: Partial<AgencyCatalogSettings>) {
+  async function saveSettings(updates: Partial<AgencyCatalogSettings>) {
     const nextSettings = {
       ...settings,
       ...updates,
-      slug: settings.slug,
-      displayName: settings.displayName,
     }
 
     setSettingsState(nextSettings)
     clearLegacyCatalogStorage()
 
-    void fetch("/api/agencies/catalog", {
+    const response = await fetch("/api/agencies/catalog", {
       method: "PATCH",
       credentials: "include",
       cache: "no-store",
@@ -90,19 +88,25 @@ export function useAgencyCatalogSettings() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        displayName: nextSettings.displayName,
+        slug: nextSettings.slug,
         logoUrl: nextSettings.logoUrl,
         description: nextSettings.description,
       }),
     })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { settings?: AgencyCatalogSettings } | null
 
-        if (response.ok && data?.settings) {
-          setSettingsState(data.settings)
-          notifyCatalogSettings(data.settings)
-        }
-      })
-      .catch(() => null)
+    const data = (await response.json().catch(() => null)) as
+      | { settings?: AgencyCatalogSettings; error?: string }
+      | null
+
+    if (!response.ok || !data?.settings) {
+      setSettingsState(settings)
+      throw new Error(data?.error ?? "Nao foi possivel salvar o catalogo.")
+    }
+
+    setSettingsState(data.settings)
+    notifyCatalogSettings(data.settings)
+    return data.settings
   }
 
   return { settings, saveSettings }

@@ -10,6 +10,7 @@ import { NotificationCenter } from "@/components/notification-center"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
+import { isFinancialNotification } from "@/lib/notification-contract"
 import { startStripeCheckout } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,11 +38,14 @@ export function BrokerPlanPage() {
   } = useBrokerPaymentNotifications()
 
   const publishedPropertiesCount = properties.filter((property) => property.status === "Publicado").length
-  const hasReachedLimit = !subscription.isUpgraded && publishedPropertiesCount >= subscription.propertyLimit
-  const propertyLimitLabel = subscription.isUpgraded
-    ? `${publishedPropertiesCount} imóveis ativos`
-    : `${publishedPropertiesCount} de ${subscription.propertyLimit} imóveis gratuitos`
-  const usageWidth = subscription.isUpgraded
+  const hasReachedLimit =
+    !subscription.isUpgraded && !subscription.isAgencyLinked && publishedPropertiesCount >= subscription.propertyLimit
+  const propertyLimitLabel = subscription.isAgencyLinked
+    ? `${publishedPropertiesCount} imóveis vinculados à equipe`
+    : subscription.isUpgraded
+      ? `${publishedPropertiesCount} imóveis ativos no plano Corretor`
+      : `${publishedPropertiesCount} de ${subscription.propertyLimit} imóveis gratuitos`
+  const usageWidth = subscription.isUpgraded || subscription.isAgencyLinked
     ? "100%"
     : `${Math.min(100, Math.round((publishedPropertiesCount / subscription.propertyLimit) * 100))}%`
 
@@ -72,9 +76,10 @@ export function BrokerPlanPage() {
   function handleRegularizeClick() {
     const openNotification = historyNotifications.find(
       (notification) =>
-        notification.financialStatus === "atraso-leve" ||
-        notification.financialStatus === "inadimplente" ||
-        notification.financialStatus === "notificacao-recebida",
+        isFinancialNotification(notification) &&
+        (notification.financialStatus === "atraso-leve" ||
+          notification.financialStatus === "inadimplente" ||
+          notification.financialStatus === "notificacao-recebida"),
     )
 
     if (openNotification) {
@@ -124,9 +129,11 @@ export function BrokerPlanPage() {
                 <div>
                   <h2 className="text-3xl font-semibold tracking-tight text-white">{subscription.planName}</h2>
                   <p className="mt-2 text-sm text-white/55">
-                    {subscription.isUpgraded
-                      ? "Seu plano pago está ativo e pronto para manter seu catálogo operando sem o limite gratuito."
-                      : "Você está no plano gratuito e pode cadastrar até 3 imóveis. Para continuar publicando além desse limite, faça upgrade do plano."}
+                    {subscription.isAgencyLinked
+                      ? "Você está vinculado a uma imobiliária. Suas publicações seguem as regras comerciais da equipe."
+                      : subscription.isUpgraded
+                        ? "Seu plano pago está ativo e pronto para manter seu catálogo operando."
+                        : "Você está no plano gratuito e pode cadastrar até 3 imóveis. Para continuar publicando além desse limite, faça upgrade do plano."}
                   </p>
                 </div>
 

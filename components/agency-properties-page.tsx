@@ -457,7 +457,7 @@ export function AgencyPropertiesPage() {
                       {property.broker.initials}
                     </div>
                     <div>
-                      <p className="text-xs text-white/40">Responsável</p>
+                      <p className="text-xs text-white/40">Publicado por</p>
                       <p className="text-sm font-medium text-white">{property.broker.name}</p>
                     </div>
                   </div>
@@ -520,7 +520,7 @@ export function AgencyPropertiesPage() {
                       {selectedProperty.broker.initials}
                     </div>
                     <div>
-                      <p className="text-sm text-white/45">Corretor responsável</p>
+                      <p className="text-sm text-white/45">Publicado por</p>
                       <p className="font-medium text-white">{selectedProperty.broker.name}</p>
                     </div>
                   </div>

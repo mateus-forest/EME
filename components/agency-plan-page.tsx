@@ -11,6 +11,7 @@ import { NotificationCenter } from "@/components/notification-center"
 import { useAgencyPaymentNotifications } from "@/components/use-agency-payment-notifications"
 import { useAgencyProfile } from "@/components/use-agency-profile"
 import { useAgencySubscription } from "@/components/use-agency-subscription"
+import { isFinancialNotification } from "@/lib/notification-contract"
 import { startStripeCheckout } from "@/lib/stripe-client"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Button } from "@/components/ui/button"
@@ -62,9 +63,10 @@ export function AgencyPlanPage() {
   function handleRegularizeClick() {
     const openNotification = historyNotifications.find(
       (notification) =>
-        notification.financialStatus === "atraso-leve" ||
-        notification.financialStatus === "inadimplente" ||
-        notification.financialStatus === "notificacao-recebida",
+        isFinancialNotification(notification) &&
+        (notification.financialStatus === "atraso-leve" ||
+          notification.financialStatus === "inadimplente" ||
+          notification.financialStatus === "notificacao-recebida"),
     )
 
     if (openNotification) {
@@ -112,7 +114,7 @@ export function AgencyPlanPage() {
                   </p>
                 </div>
                 <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/40">Valor base</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/40">Valor atual</p>
                   <p className="mt-2 text-3xl font-semibold text-white">{subscription.currentPrice}</p>
                 </div>
               </div>
@@ -142,7 +144,7 @@ export function AgencyPlanPage() {
               <InfoBlock label="Status da assinatura" value={subscription.status} />
               <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
                 <p className="text-sm text-[#69F0AE]">
-                  A gestão de corretores faz parte do plano da imobiliária e não está sendo cobrada por quantidade nesta etapa.
+                  A mensalidade considera o valor base da imobiliária mais a cobrança por corretor ativo vinculado.
                 </p>
               </div>
             </CardContent>
@@ -156,7 +158,7 @@ export function AgencyPlanPage() {
             </CardHeader>
             <CardContent className="grid gap-5 p-6 pt-0">
               <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
-                <PriceBlock label="Plano base" value={subscription.currentPrice} />
+                <PriceBlock label="Plano base" value={subscription.basePrice} />
                 <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[#69F0AE]/80">Corretores</p>
                   <p className="mt-2 text-xl font-semibold text-white">{subscription.brokerRule}</p>
@@ -165,7 +167,7 @@ export function AgencyPlanPage() {
 
               {showDetails && (
                 <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm leading-7 text-white/60">
-                  Nesta versão do produto, a página reflete apenas o plano base da imobiliária e o status real da assinatura. A quantidade de corretores não compõe um cálculo dinâmico nesta etapa.
+                  O valor atual soma o plano base da imobiliária com {subscription.activeBrokerCount} corretor{subscription.activeBrokerCount === 1 ? "" : "es"} ativo{subscription.activeBrokerCount === 1 ? "" : "s"} vinculado{subscription.activeBrokerCount === 1 ? "" : "s"}.
                 </div>
               )}
             </CardContent>
@@ -177,7 +179,7 @@ export function AgencyPlanPage() {
                 <CardTitle className="text-xl text-white">Resumo da operação</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 p-6 pt-0">
-                <SummaryItem icon={CreditCard} label="Plano base" value={subscription.currentPrice} />
+                <SummaryItem icon={CreditCard} label="Valor atual" value={subscription.currentPrice} />
                 <SummaryItem
                   icon={Users}
                   label="Regra de corretores"

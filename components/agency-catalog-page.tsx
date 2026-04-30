@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   CheckCircle2,
   Copy,
@@ -27,17 +27,24 @@ export function AgencyCatalogPage() {
   const { profile } = useAgencyProfile()
   const { settings, saveSettings } = useAgencyCatalogSettings()
   const { properties } = useAgencyProperties()
+  const [draftSettings, setDraftSettings] = useState(settings)
+  const [saveFeedback, setSaveFeedback] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
   const [previewSearch, setPreviewSearch] = useState("")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  useEffect(() => {
+    setDraftSettings(settings)
+  }, [settings])
+
   const catalogUrl = useMemo(() => {
-    if (!settings.slug) return ""
+    if (!draftSettings.slug) return ""
     const origin = typeof window === "undefined" ? "" : window.location.origin
-    return `${origin}/catalogo/imobiliaria/${settings.slug}`
-  }, [settings.slug])
-  const publicCatalogPath = useMemo(() => `/catalogo/imobiliaria/${settings.slug}`, [settings.slug])
+    return `${origin}/catalogo/imobiliaria/${draftSettings.slug}`
+  }, [draftSettings.slug])
+  const publicCatalogPath = useMemo(() => `/catalogo/imobiliaria/${draftSettings.slug}`, [draftSettings.slug])
   const whatsAppUrl = createWhatsAppUrl(
     profile.whatsApp,
     `Olá, tenho interesse no catálogo institucional ${catalogUrl || publicCatalogPath}`,
@@ -70,13 +77,28 @@ export function AgencyCatalogPage() {
   }
 
   function openCatalogLink() {
-    if (!settings.slug) return
+    if (!draftSettings.slug) return
     window.open(publicCatalogPath, "_blank", "noopener,noreferrer")
   }
 
   async function handleLogoChange(file: File | null) {
     if (!file) return
-    saveSettings({ logoUrl: await readFileAsDataUrl(file) })
+    const logoUrl = await readFileAsDataUrl(file)
+    setDraftSettings((current) => ({ ...current, logoUrl }))
+  }
+
+  async function handleSaveCatalog() {
+    try {
+      setIsSaving(true)
+      const savedSettings = await saveSettings(draftSettings)
+      setDraftSettings(savedSettings)
+      setSaveFeedback("Catálogo atualizado.")
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar o catálogo.")
+    } finally {
+      setIsSaving(false)
+      window.setTimeout(() => setSaveFeedback(""), 2200)
+    }
   }
 
   function toggleFavorite(propertyId: string) {
@@ -104,9 +126,9 @@ export function AgencyCatalogPage() {
                     onChange={(event) => handleLogoChange(event.target.files?.[0] ?? null)}
                   />
                   <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#00C853]/15 text-xl font-semibold text-[#69F0AE]">
-                    {settings.logoUrl ? (
+                    {draftSettings.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.logoUrl} alt={settings.displayName} className="h-full w-full object-cover" />
+                      <img src={draftSettings.logoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
                     ) : (
                       "EP"
                     )}
@@ -125,8 +147,10 @@ export function AgencyCatalogPage() {
                     <label className="grid gap-2">
                       <span className="text-sm font-medium text-white/70">Nome da imobiliária</span>
                       <Input
-                        value={settings.displayName}
-                        readOnly
+                        value={draftSettings.displayName}
+                        onChange={(event) =>
+                          setDraftSettings((current) => ({ ...current, displayName: event.target.value }))
+                        }
                         className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white"
                       />
                     </label>
@@ -140,19 +164,21 @@ export function AgencyCatalogPage() {
                           </div>
                           <div className="flex min-w-0 flex-1 items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3">
                             <input
-                              value={settings.slug}
-                              readOnly
+                              value={draftSettings.slug}
+                              onChange={(event) =>
+                                setDraftSettings((current) => ({ ...current, slug: sanitizeSlug(event.target.value) }))
+                              }
                               className="h-10 min-w-0 flex-1 truncate bg-transparent text-sm text-white outline-none placeholder:text-white/25"
                               placeholder="nome-da-imobiliaria"
                             />
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!settings.slug}>
+                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!draftSettings.slug}>
                             <Copy className="size-4" />
                             {copyFeedback ? "Link copiado" : "Copiar link"}
                           </Button>
-                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!settings.slug}>
+                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!draftSettings.slug}>
                             <ExternalLink className="size-4" />
                             Abrir catálogo
                           </Button>
@@ -164,11 +190,24 @@ export function AgencyCatalogPage() {
                   <label className="grid gap-2">
                     <span className="text-sm font-medium text-white/70">Descrição institucional</span>
                     <Textarea
-                      value={settings.description}
-                      onChange={(event) => saveSettings({ description: event.target.value })}
+                      value={draftSettings.description}
+                      onChange={(event) =>
+                        setDraftSettings((current) => ({ ...current, description: event.target.value }))
+                      }
                       className="min-h-24 rounded-[1rem] border-white/[0.08] bg-white/[0.04] text-white"
                     />
                   </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      onClick={handleSaveCatalog}
+                      disabled={isSaving}
+                      className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                    >
+                      {isSaving ? "Salvando..." : "Salvar alterações"}
+                    </Button>
+                    {saveFeedback && <p className="text-sm text-[#69F0AE]">{saveFeedback}</p>}
+                  </div>
                 </div>
               </div>
 
@@ -206,7 +245,7 @@ export function AgencyCatalogPage() {
               <p className="mt-2 text-sm leading-6 text-white/55">A prévia abaixo usa o slug real e mostra apenas imóveis publicados do contexto da sua imobiliária.</p>
             </div>
 
-            <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-10 rounded-full border border-white/[0.08] bg-white/[0.04] px-5 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!settings.slug}>
+            <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-10 rounded-full border border-white/[0.08] bg-white/[0.04] px-5 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!draftSettings.slug}>
               Ver como cliente
             </Button>
           </div>
@@ -215,16 +254,16 @@ export function AgencyCatalogPage() {
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#00C853]/15 text-lg font-semibold text-[#69F0AE]">
-                  {settings.logoUrl ? (
+                  {draftSettings.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={settings.logoUrl} alt={settings.displayName} className="h-full w-full object-cover" />
+                    <img src={draftSettings.logoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
                   ) : (
                     "EP"
                   )}
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-white">{settings.displayName}</p>
-                  <p className="mt-1 max-w-2xl text-sm text-white/50">{settings.description || "Catálogo público com imóveis reais publicados pela sua operação."}</p>
+                  <p className="text-lg font-semibold text-white">{draftSettings.displayName}</p>
+                  <p className="mt-1 max-w-2xl text-sm text-white/50">{draftSettings.description || "Catálogo público com imóveis reais publicados pela sua operação."}</p>
                 </div>
               </div>
 
@@ -287,7 +326,7 @@ export function AgencyCatalogPage() {
                   meta={
                     <div className="flex items-center justify-between gap-3">
                       <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/60">
-                        Corretor: {property.broker.name}
+                        Publicado por {property.broker.name}
                       </span>
                     </div>
                   }
@@ -319,4 +358,14 @@ function readFileAsDataUrl(file: File) {
     reader.onerror = () => reject(new Error("Não foi possível ler o logo selecionado."))
     reader.readAsDataURL(file)
   })
+}
+
+function sanitizeSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48)
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Bath,
   Bed,
@@ -54,6 +54,9 @@ export function BrokerCatalogPage() {
   const { profile } = useBrokerProfile()
   const { settings, saveSettings } = useBrokerCatalogSettings()
   const { properties: brokerProperties } = useBrokerProperties()
+  const [draftSettings, setDraftSettings] = useState(settings)
+  const [saveFeedback, setSaveFeedback] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
   const [search, setSearch] = useState("")
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -61,12 +64,16 @@ export function BrokerCatalogPage() {
   const [copyFeedback, setCopyFeedback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  useEffect(() => {
+    setDraftSettings(settings)
+  }, [settings])
+
   const catalogUrl = useMemo(() => {
-    if (!settings.slug) return ""
+    if (!draftSettings.slug) return ""
     const origin = typeof window === "undefined" ? "" : window.location.origin
-    return `${origin}/catalogo/${settings.slug}`
-  }, [settings.slug])
-  const catalogInternalUrl = useMemo(() => `/catalogo/${settings.slug}`, [settings.slug])
+    return `${origin}/catalogo/${draftSettings.slug}`
+  }, [draftSettings.slug])
+  const catalogInternalUrl = useMemo(() => `/catalogo/${draftSettings.slug}`, [draftSettings.slug])
   const currentImage = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0]
   const needsMore = (selectedProperty?.description.length ?? 0) > 180
   const shortDescription = selectedProperty?.description.slice(0, 180)
@@ -151,7 +158,7 @@ export function BrokerCatalogPage() {
   }
 
   function openCatalogLink() {
-    if (!settings.slug) return
+    if (!draftSettings.slug) return
     window.open(catalogInternalUrl, "_blank", "noopener,noreferrer")
   }
 
@@ -161,7 +168,22 @@ export function BrokerCatalogPage() {
 
   async function handleProfilePhotoChange(file: File | null) {
     if (!file) return
-    saveSettings({ photoUrl: await readFileAsDataUrl(file) })
+    const photoUrl = await readFileAsDataUrl(file)
+    setDraftSettings((current) => ({ ...current, photoUrl }))
+  }
+
+  async function handleSaveCatalog() {
+    try {
+      setIsSaving(true)
+      const savedSettings = await saveSettings(draftSettings)
+      setDraftSettings(savedSettings)
+      setSaveFeedback("Catálogo atualizado.")
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar o catálogo.")
+    } finally {
+      setIsSaving(false)
+      window.setTimeout(() => setSaveFeedback(""), 2200)
+    }
   }
 
   return (
@@ -183,11 +205,11 @@ export function BrokerCatalogPage() {
                     onChange={(event) => handleProfilePhotoChange(event.target.files?.[0] ?? null)}
                   />
                   <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-amber-400 text-2xl">
-                    {settings.photoUrl ? (
+                    {draftSettings.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.photoUrl} alt={settings.displayName} className="h-full w-full object-cover" />
+                      <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
                     ) : (
-                      getInitials(settings.displayName) || "MC"
+                      getInitials(draftSettings.displayName) || "MC"
                     )}
                   </div>
                   <Button
@@ -205,8 +227,10 @@ export function BrokerCatalogPage() {
                     <label className="grid gap-2">
                       <span className="text-sm font-medium text-white/70">Nome do corretor</span>
                       <Input
-                        value={settings.displayName}
-                        readOnly
+                        value={draftSettings.displayName}
+                        onChange={(event) =>
+                          setDraftSettings((current) => ({ ...current, displayName: event.target.value }))
+                        }
                         className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white"
                       />
                     </label>
@@ -220,8 +244,10 @@ export function BrokerCatalogPage() {
                           </div>
                           <div className="flex min-w-0 flex-1 items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3">
                             <input
-                              value={settings.slug}
-                              readOnly
+                              value={draftSettings.slug}
+                              onChange={(event) =>
+                                setDraftSettings((current) => ({ ...current, slug: sanitizeSlug(event.target.value) }))
+                              }
                               className="h-10 min-w-0 flex-1 truncate bg-transparent text-sm text-white outline-none placeholder:text-white/25"
                               placeholder="slug-do-corretor"
                             />
@@ -244,11 +270,24 @@ export function BrokerCatalogPage() {
                   <label className="grid gap-2">
                     <span className="text-sm font-medium text-white/70">Descrição (opcional)</span>
                     <Textarea
-                      value={settings.description}
-                      onChange={(event) => saveSettings({ description: event.target.value })}
+                      value={draftSettings.description}
+                      onChange={(event) =>
+                        setDraftSettings((current) => ({ ...current, description: event.target.value }))
+                      }
                       className="min-h-24 rounded-[1rem] border-white/[0.08] bg-white/[0.04] text-white"
                     />
                   </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      onClick={handleSaveCatalog}
+                      disabled={isSaving}
+                      className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                    >
+                      {isSaving ? "Salvando..." : "Salvar alterações"}
+                    </Button>
+                    {saveFeedback && <p className="text-sm text-[#69F0AE]">{saveFeedback}</p>}
+                  </div>
                 </div>
               </div>
 
@@ -299,15 +338,15 @@ export function BrokerCatalogPage() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-amber-400 text-xl">
-                {settings.photoUrl ? (
+                {draftSettings.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={settings.photoUrl} alt={settings.displayName} className="h-full w-full object-cover" />
+                  <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
                 ) : (
-                  getInitials(settings.displayName) || "MC"
+                  getInitials(draftSettings.displayName) || "MC"
                 )}
               </div>
               <div>
-                <p className="text-lg font-semibold text-white">{settings.displayName}</p>
+                <p className="text-lg font-semibold text-white">{draftSettings.displayName}</p>
                 <p className="text-sm text-white/50">CRECI {profile.creci}</p>
               </div>
             </div>
@@ -498,15 +537,15 @@ export function BrokerCatalogPage() {
                 <div className="mt-8 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-amber-400 text-lg">
-                      {settings.photoUrl ? (
+                      {draftSettings.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={settings.photoUrl} alt={settings.displayName} className="h-full w-full object-cover" />
+                        <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
                       ) : (
-                        getInitials(settings.displayName) || "MC"
+                        getInitials(draftSettings.displayName) || "MC"
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-white">{settings.displayName}</p>
+                      <p className="font-medium text-white">{draftSettings.displayName}</p>
                       <p className="text-sm text-white/45">CRECI {profile.creci}</p>
                     </div>
                   </div>
@@ -559,4 +598,14 @@ function readFileAsDataUrl(file: File) {
 
     reader.readAsDataURL(file)
   })
+}
+
+function sanitizeSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48)
 }

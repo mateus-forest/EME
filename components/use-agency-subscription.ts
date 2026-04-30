@@ -6,6 +6,9 @@ export type AgencySubscription = {
   planName: string
   status: "Ativa" | "Inativa"
   currentPrice: string
+  basePrice: string
+  brokerUnitPrice: string
+  activeBrokerCount: number
   brokerRule: string
   nextCharge: string
   isActive: boolean
@@ -15,7 +18,10 @@ const defaultSubscription: AgencySubscription = {
   planName: "Plano Imobiliária",
   status: "Inativa",
   currentPrice: "R$ 109,90 / mês",
-  brokerRule: "Gestão de corretores incluída no plano",
+  basePrice: "R$ 109,90 / mês",
+  brokerUnitPrice: "R$ 29,90 / corretor ativo",
+  activeBrokerCount: 0,
+  brokerRule: "0 corretores ativos x R$ 29,90",
   nextCharge: "Aguardando checkout Stripe",
   isActive: false,
 }

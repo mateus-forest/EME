@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 
 import { getPublicBrokerCatalogBySlug } from "@/lib/public-catalog"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(_: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
   const catalog = await getPublicBrokerCatalogBySlug(slug)

@@ -80,6 +80,7 @@ export function BrokerNewPropertyPage() {
     !billingBypassEnabled &&
     !isPlanBlocked &&
     !subscription.isUpgraded &&
+    !subscription.isAgencyLinked &&
     totalPropertiesCount >= subscription.propertyLimit
 
   const previewImages = useMemo(() => images, [images])
