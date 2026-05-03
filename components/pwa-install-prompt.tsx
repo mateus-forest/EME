@@ -6,7 +6,9 @@ import { Check, Download, ExternalLink, Share, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const DISMISS_STORAGE_KEY = "eme-pwa-install-dismissed-at"
-const DISMISS_DAYS = 5
+const DISMISS_SESSION_KEY = "eme-pwa-install-dismissed-session"
+const DISMISS_DAYS = 7
+let dismissedInMemory = false
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -41,7 +43,11 @@ function isStandalone() {
 }
 
 function wasRecentlyDismissed() {
+  if (dismissedInMemory) return true
+
   try {
+    if (window.sessionStorage.getItem(DISMISS_SESSION_KEY) === "true") return true
+
     const dismissedAt = window.localStorage.getItem(DISMISS_STORAGE_KEY)
     if (!dismissedAt) return false
 
@@ -78,16 +84,24 @@ export function PwaInstallPrompt() {
     const fallbackTimer = window.setTimeout(() => setIsVisible(true), 1800)
 
     function handleBeforeInstallPrompt(event: Event) {
+      if (isStandalone() || wasRecentlyDismissed()) return
+
       event.preventDefault()
       setInstallPrompt(event as BeforeInstallPromptEvent)
       setIsVisible(true)
     }
 
+    function handleAppInstalled() {
+      dismiss()
+    }
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    window.addEventListener("appinstalled", handleAppInstalled)
 
     return () => {
       window.clearTimeout(fallbackTimer)
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      window.removeEventListener("appinstalled", handleAppInstalled)
     }
   }, [])
 
@@ -121,8 +135,16 @@ export function PwaInstallPrompt() {
   }, [deviceType, installPrompt])
 
   function dismiss() {
+    dismissedInMemory = true
+
     try {
       window.localStorage.setItem(DISMISS_STORAGE_KEY, String(Date.now()))
+    } catch {
+      // Ignore storage restrictions and only close the current prompt.
+    }
+
+    try {
+      window.sessionStorage.setItem(DISMISS_SESSION_KEY, "true")
     } catch {
       // Ignore storage restrictions and only close the current prompt.
     }
@@ -137,6 +159,11 @@ export function PwaInstallPrompt() {
     }
 
     if (!installPrompt) {
+      if (deviceType === "android") {
+        dismiss()
+        return
+      }
+
       setIsManualHelpVisible(true)
       return
     }

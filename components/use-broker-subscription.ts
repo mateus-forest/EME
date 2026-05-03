@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { type DomainSubscription } from "@/lib/domain-entities"
 
 export type BrokerSubscription = DomainSubscription & {
-  planName: "Gratuito" | "Corretor" | "Equipe da imobiliária"
+  planName: "Sincronizando" | "Gratuito" | "Corretor" | "Equipe da imobiliária"
   ownerType: "broker"
   isUpgraded: boolean
   isAgencyLinked: boolean
@@ -14,6 +14,7 @@ export type BrokerSubscription = DomainSubscription & {
   billingPlan: "NONE" | "BROKER" | "AGENCY"
   billingStatus: "INACTIVE" | "ACTIVE"
   requiresRegularization: boolean
+  isProfileResolved: boolean
   currentPrice: string
   previousPrice: string
   nextCharge: string
@@ -24,10 +25,10 @@ const defaultSubscription: BrokerSubscription = {
   id: 5001,
   ownerId: 101,
   ownerType: "broker",
-  tipoPlano: "Gratuito",
-  ultimoPagamento: "Plano gratuito",
-  proximaCobranca: "Plano gratuito ativo",
-  planName: "Gratuito",
+  tipoPlano: "Sincronizando",
+  ultimoPagamento: "Sincronizando",
+  proximaCobranca: "Sincronizando",
+  planName: "Sincronizando",
   isUpgraded: false,
   isAgencyLinked: false,
   propertyLimit: 3,
@@ -35,15 +36,18 @@ const defaultSubscription: BrokerSubscription = {
   billingPlan: "NONE",
   billingStatus: "INACTIVE",
   requiresRegularization: false,
-  currentPrice: "R$ 49,90",
-  previousPrice: "R$ 89,90",
+  isProfileResolved: false,
+  currentPrice: "-",
+  previousPrice: "",
   status: "Ativo",
-  nextCharge: "Plano gratuito ativo",
-  paymentMethod: "Checkout Stripe",
+  nextCharge: "Sincronizando",
+  paymentMethod: "Sincronizando",
 }
 
+let latestBrokerSubscription: BrokerSubscription | null = null
+
 export function useBrokerSubscription() {
-  const [subscription, setSubscription] = useState<BrokerSubscription>(defaultSubscription)
+  const [subscription, setSubscription] = useState<BrokerSubscription>(latestBrokerSubscription ?? defaultSubscription)
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshSubscription = useCallback(async () => {
@@ -59,11 +63,12 @@ export function useBrokerSubscription() {
       const data = (await response.json().catch(() => null)) as { subscription?: BrokerSubscription } | null
 
       if (!response.ok || !data?.subscription) {
-        setSubscription(defaultSubscription)
         return
       }
 
-      setSubscription(data.subscription)
+      const nextSubscription = { ...data.subscription, isProfileResolved: true }
+      latestBrokerSubscription = nextSubscription
+      setSubscription(nextSubscription)
     } finally {
       setIsLoading(false)
     }
@@ -71,7 +76,6 @@ export function useBrokerSubscription() {
 
   useEffect(() => {
     refreshSubscription().catch(() => {
-      setSubscription(defaultSubscription)
       setIsLoading(false)
     })
   }, [refreshSubscription])

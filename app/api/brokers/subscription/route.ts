@@ -6,6 +6,8 @@ import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-ty
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 function formatDate(date: Date | null) {
   if (!date) return "Assinatura Stripe ativa"
 
@@ -55,7 +57,7 @@ export async function GET() {
         ? "Regularização pendente"
         : "Plano gratuito ativo"
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       subscription: {
         id: 5001,
         ownerId: 101,
@@ -81,6 +83,7 @@ export async function GET() {
         billingPlan: user.plan,
         billingStatus: user.subscriptionStatus,
         requiresRegularization,
+        isProfileResolved: true,
         currentPrice: isAgencyLinked ? "Plano da imobiliária" : "R$ 49,90",
         previousPrice: "R$ 89,90",
         status: requiresRegularization ? "Cancelado" : "Ativo",
@@ -88,6 +91,9 @@ export async function GET() {
         paymentMethod: isAgencyLinked ? "Imobiliária responsável" : isBrokerPlan ? "Stripe" : "Checkout Stripe",
       },
     })
+
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][brokers][subscription] get failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

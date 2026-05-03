@@ -75,9 +75,10 @@ export function BrokerNewPropertyPage() {
 
   const totalPropertiesCount = useMemo(() => properties.length, [properties])
   const billingBypassEnabled = isBillingBypassEnabled()
-  const isPlanBlocked = !billingBypassEnabled && subscription.requiresRegularization
+  const isPlanBlocked = !billingBypassEnabled && subscription.isProfileResolved && subscription.requiresRegularization
   const hasReachedLimit =
     !billingBypassEnabled &&
+    subscription.isProfileResolved &&
     !isPlanBlocked &&
     !subscription.isUpgraded &&
     !subscription.isAgencyLinked &&

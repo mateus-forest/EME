@@ -14,7 +14,9 @@ type BrokerPropertiesProps = {
 export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertiesProps) {
   const { subscription } = useBrokerSubscription()
   const featuredProperties = properties.slice(0, 3)
-  const planMessage = subscription.isAgencyLinked
+  const planMessage = !subscription.isProfileResolved
+    ? "Sincronizando os dados reais da sua conta"
+    : subscription.isAgencyLinked
     ? "Suas publicações seguem as regras da imobiliária à qual você está vinculado"
     : subscription.isUpgraded
       ? "Seu plano Corretor está ativo para publicar imóveis"

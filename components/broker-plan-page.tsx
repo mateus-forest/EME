@@ -39,13 +39,18 @@ export function BrokerPlanPage() {
 
   const publishedPropertiesCount = properties.filter((property) => property.status === "Publicado").length
   const hasReachedLimit =
-    !subscription.isUpgraded && !subscription.isAgencyLinked && publishedPropertiesCount >= subscription.propertyLimit
-  const propertyLimitLabel = subscription.isAgencyLinked
+    subscription.isProfileResolved &&
+    !subscription.isUpgraded &&
+    !subscription.isAgencyLinked &&
+    publishedPropertiesCount >= subscription.propertyLimit
+  const propertyLimitLabel = !subscription.isProfileResolved
+    ? `${publishedPropertiesCount} imóveis cadastrados`
+    : subscription.isAgencyLinked
     ? `${publishedPropertiesCount} imóveis vinculados à equipe`
     : subscription.isUpgraded
       ? `${publishedPropertiesCount} imóveis ativos no plano Corretor`
       : `${publishedPropertiesCount} de ${subscription.propertyLimit} imóveis gratuitos`
-  const usageWidth = subscription.isUpgraded || subscription.isAgencyLinked
+  const usageWidth = !subscription.isProfileResolved || subscription.isUpgraded || subscription.isAgencyLinked
     ? "100%"
     : `${Math.min(100, Math.round((publishedPropertiesCount / subscription.propertyLimit) * 100))}%`
 
@@ -129,7 +134,9 @@ export function BrokerPlanPage() {
                 <div>
                   <h2 className="text-3xl font-semibold tracking-tight text-white">{subscription.planName}</h2>
                   <p className="mt-2 text-sm text-white/55">
-                    {subscription.isAgencyLinked
+                    {!subscription.isProfileResolved
+                      ? "Sincronizando os dados reais da sua conta."
+                      : subscription.isAgencyLinked
                       ? "Você está vinculado a uma imobiliária. Suas publicações seguem as regras comerciais da equipe."
                       : subscription.isUpgraded
                         ? "Seu plano pago está ativo e pronto para manter seu catálogo operando."
