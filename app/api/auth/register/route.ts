@@ -37,6 +37,26 @@ async function generateUniqueSlug(baseValue: string, exists: (slug: string) => P
   }
 }
 
+async function catalogSlugExists(tx: PrismaTransaction, slug: string) {
+  const [broker, agency, catalog] = await Promise.all([
+    tx.broker.findUnique({ where: { catalogSlug: slug }, select: { id: true } }),
+    tx.agency.findUnique({ where: { catalogSlug: slug }, select: { id: true } }),
+    tx.catalog.findUnique({ where: { slug }, select: { id: true } }),
+  ])
+
+  return Boolean(broker || agency || catalog)
+}
+
+function isSlugUniqueConstraintError(error: unknown) {
+  if (!error || typeof error !== "object") return false
+
+  const code = "code" in error ? (error as { code?: unknown }).code : null
+  const meta = "meta" in error ? (error as { meta?: { target?: unknown } }).meta : null
+  const target = Array.isArray(meta?.target) ? meta.target : []
+
+  return code === "P2002" && target.some((field) => field === "slug" || field === "catalogSlug")
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
@@ -88,89 +108,108 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Não foi possível proteger a senha informada." }, { status: 500 })
     }
 
-    let brokerId: string | null = null
-    let agencyId: string | null = null
+    let registeredAccount:
+      | {
+          user: Awaited<ReturnType<PrismaTransaction["user"]["create"]>>
+          brokerId: string | null
+          agencyId: string | null
+        }
+      | null = null
 
-    const user = await prisma.$transaction(async (tx: PrismaTransaction) => {
-      const createdUser = await tx.user.create({
-        data: {
-          name,
-          email,
-          passwordHash,
-          role,
-        },
-      })
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        registeredAccount = await prisma.$transaction(async (tx: PrismaTransaction) => {
+          const createdUser = await tx.user.create({
+            data: {
+              name,
+              email,
+              passwordHash,
+              role,
+            },
+          })
 
-      if (role === UserRole.BROKER) {
-        const catalogSlug = await generateUniqueSlug(name, async (slug) => {
-          const broker = await tx.broker.findUnique({ where: { catalogSlug: slug } })
-          return Boolean(broker)
+          let brokerId: string | null = null
+          let agencyId: string | null = null
+
+          if (role === UserRole.BROKER) {
+            const catalogSlug = await generateUniqueSlug(name, (slug) => catalogSlugExists(tx, slug))
+
+            const broker = await tx.broker.create({
+              data: {
+                userId: createdUser.id,
+                phone,
+                catalogSlug,
+              },
+            })
+
+            brokerId = broker.id
+
+            await tx.catalog.create({
+              data: {
+                slug: broker.catalogSlug,
+                ownerType: CatalogOwnerType.BROKER,
+                ownerId: broker.id,
+              },
+            })
+
+            await tx.subscription.create({
+              data: {
+                ownerType: SubscriptionOwnerType.BROKER,
+                ownerId: broker.id,
+                status: SubscriptionStatus.TRIALING,
+                nextBillingAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              },
+            })
+          }
+
+          if (role === UserRole.AGENCY) {
+            const catalogSlug = await generateUniqueSlug(companyName, (slug) => catalogSlugExists(tx, slug))
+
+            const agency = await tx.agency.create({
+              data: {
+                ownerUserId: createdUser.id,
+                name: companyName!,
+                catalogSlug,
+              },
+            })
+
+            agencyId = agency.id
+
+            await tx.catalog.create({
+              data: {
+                slug: agency.catalogSlug,
+                ownerType: CatalogOwnerType.AGENCY,
+                ownerId: agency.id,
+              },
+            })
+
+            await tx.subscription.create({
+              data: {
+                ownerType: SubscriptionOwnerType.AGENCY,
+                ownerId: agency.id,
+                status: SubscriptionStatus.TRIALING,
+                nextBillingAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              },
+            })
+          }
+
+          return { user: createdUser, brokerId, agencyId }
         })
+        break
+      } catch (error) {
+        if (attempt < 3 && isSlugUniqueConstraintError(error)) {
+          continue
+        }
 
-        const broker = await tx.broker.create({
-          data: {
-            userId: createdUser.id,
-            phone,
-            catalogSlug,
-          },
-        })
-
-        brokerId = broker.id
-
-        await tx.catalog.create({
-          data: {
-            slug: broker.catalogSlug,
-            ownerType: CatalogOwnerType.BROKER,
-            ownerId: broker.id,
-          },
-        })
-
-        await tx.subscription.create({
-          data: {
-            ownerType: SubscriptionOwnerType.BROKER,
-            ownerId: broker.id,
-            status: SubscriptionStatus.TRIALING,
-            nextBillingAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          },
-        })
+        throw error
       }
+    }
 
-      if (role === UserRole.AGENCY) {
-        const catalogSlug = await generateUniqueSlug(companyName, async (slug) => {
-          const agency = await tx.agency.findUnique({ where: { catalogSlug: slug } })
-          return Boolean(agency)
-        })
+    if (!registeredAccount) {
+      return NextResponse.json({ error: "Nao foi possivel gerar um catalogo unico para esta conta." }, { status: 409 })
+    }
 
-        const agency = await tx.agency.create({
-          data: {
-            ownerUserId: createdUser.id,
-            name: companyName!,
-            catalogSlug,
-          },
-        })
-
-        agencyId = agency.id
-
-        await tx.catalog.create({
-          data: {
-            slug: agency.catalogSlug,
-            ownerType: CatalogOwnerType.AGENCY,
-            ownerId: agency.id,
-          },
-        })
-
-        await tx.subscription.create({
-          data: {
-            ownerType: SubscriptionOwnerType.AGENCY,
-            ownerId: agency.id,
-            status: SubscriptionStatus.TRIALING,
-            nextBillingAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          },
-        })
-      }
-
-      return createdUser
-    })
+    const { user, brokerId, agencyId } = registeredAccount
 
     console.info("[auth][register] user created", {
       email,
