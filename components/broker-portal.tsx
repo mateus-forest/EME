@@ -7,7 +7,6 @@ import { SlidersHorizontal } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { NotificationCenter } from "@/components/notification-center"
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { PaymentNotificationPanel } from "@/components/payment-notification-panel"
 import { BrokerProperties } from "@/components/broker-properties"
 import { BrokerStats } from "@/components/broker-stats"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
@@ -20,14 +19,10 @@ export function BrokerPortal() {
   const { properties } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
   const {
-    notifications,
     historyNotifications,
     unreadCount,
-    primaryNotification,
     markAsRead,
-    dismiss,
     archive,
-    requestRegularization,
   } = useBrokerPaymentNotifications()
   const [search, setSearch] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
@@ -126,17 +121,6 @@ export function BrokerPortal() {
           </Button>
         }
       >
-        <PaymentNotificationPanel
-          entityLabel="Financeiro do corretor"
-          dismissLabel="Fechar aviso"
-          notifications={notifications}
-          primaryNotification={primaryNotification}
-          unreadCount={unreadCount}
-          onMarkAsRead={markAsRead}
-          onDismiss={dismiss}
-          onRegularize={requestRegularization}
-        />
-
         {hasReachedLimit && (
           <div className="mb-4 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
             Você atingiu o limite gratuito de 3 imóveis. Faça upgrade para continuar publicando.

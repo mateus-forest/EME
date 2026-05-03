@@ -7,7 +7,6 @@ import { AgencyBrokerManagementModal } from "@/components/agency-broker-manageme
 import { AgencyInviteBrokerModal } from "@/components/agency-invite-broker-modal"
 import { NotificationCenter } from "@/components/notification-center"
 import { AgencyPageShell } from "@/components/agency-page-shell"
-import { PaymentNotificationPanel } from "@/components/payment-notification-panel"
 import { useAgencyPaymentNotifications } from "@/components/use-agency-payment-notifications"
 import { useAgencyBrokers } from "@/components/use-agency-brokers"
 import { useAgencyProperties } from "@/components/use-agency-properties"
@@ -20,14 +19,10 @@ export function AgencyPortal() {
   const { brokers, addBroker, updateBroker, deleteBroker } = useAgencyBrokers()
   const { properties } = useAgencyProperties()
   const {
-    notifications,
     historyNotifications,
     unreadCount,
-    primaryNotification,
     markAsRead,
-    dismiss,
     archive,
-    requestRegularization,
   } = useAgencyPaymentNotifications()
   const [selectedBroker, setSelectedBroker] = useState<(typeof brokers)[number] | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -196,17 +191,6 @@ export function AgencyPortal() {
           {feedback}
         </div>
       )}
-
-      <PaymentNotificationPanel
-        entityLabel="Financeiro da imobiliária"
-        dismissLabel="Dispensar aviso"
-        notifications={notifications}
-        primaryNotification={primaryNotification}
-        unreadCount={unreadCount}
-        onMarkAsRead={markAsRead}
-        onDismiss={dismiss}
-        onRegularize={requestRegularization}
-      />
 
       {filtersOpen && (
         <div className="mb-6 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4 text-sm text-white/65">

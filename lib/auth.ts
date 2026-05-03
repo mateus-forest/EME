@@ -1,13 +1,11 @@
 import { UserRole } from "@/lib/prisma-enums"
-import {
-  SignJWT,
-  jwtVerify } from "jose"
+import { SignJWT, jwtVerify } from "jose"
 import { NextResponse } from "next/server"
 
 const encoder = new TextEncoder()
 
 export const AUTH_COOKIE_NAME = "eme_auth"
-const AUTH_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+export const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
 type AuthTokenPayload = {
   sub: string
@@ -37,7 +35,7 @@ export async function createAuthToken(payload: AuthTokenPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setIssuedAt()
-    .setExpirationTime(`${AUTH_TOKEN_MAX_AGE_SECONDS}s`)
+    .setExpirationTime(`${AUTH_SESSION_MAX_AGE_SECONDS}s`)
     .sign(getAuthSecret())
 }
 
@@ -57,7 +55,7 @@ export function setAuthCookie(response: NextResponse, token: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: AUTH_TOKEN_MAX_AGE_SECONDS,
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
   })
 }
 

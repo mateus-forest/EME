@@ -27,13 +27,19 @@ function isAuthTokenError(error: unknown) {
   ].includes(errorName)
 }
 
+function invalidSessionResponse() {
+  const response = NextResponse.json({ error: "Sessao invalida." }, { status: 401 })
+  clearAuthCookie(response)
+  return response
+}
+
 export async function getAuthenticatedUser() {
   const cookieStore = await cookies()
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value
 
   if (!token) {
     return {
-      error: NextResponse.json({ error: "Não autenticado." }, { status: 401 }),
+      error: NextResponse.json({ error: "Nao autenticado." }, { status: 401 }),
       user: null,
     }
   }
@@ -49,9 +55,7 @@ export async function getAuthenticatedUser() {
     })
 
     if (!user) {
-      const response = NextResponse.json({ error: "Sessão inválida." }, { status: 401 })
-      clearAuthCookie(response)
-      return { error: response, user: null }
+      return { error: invalidSessionResponse(), user: null }
     }
 
     return { error: null, user }
@@ -61,31 +65,29 @@ export async function getAuthenticatedUser() {
     })
 
     if (isAuthTokenError(error)) {
-    return {
-      error: NextResponse.json({ error: "NÃ£o foi possÃ­vel validar a sessÃ£o agora." }, { status: 500 }),
-      user: null,
-    }
+      return { error: invalidSessionResponse(), user: null }
     }
 
     if (isPrismaUnavailable(error)) {
       return {
         error: NextResponse.json(
-          { error: "O serviço de autenticação está indisponível no momento. Verifique a conexão com o banco de dados." },
+          { error: "O servico de autenticacao esta indisponivel no momento. Verifique a conexao com o banco de dados." },
           { status: 503 },
         ),
         user: null,
       }
     }
 
-    const response = NextResponse.json({ error: "Sessão inválida." }, { status: 401 })
-    clearAuthCookie(response)
-    return { error: response, user: null }
+    return {
+      error: NextResponse.json({ error: "Nao foi possivel validar a sessao agora." }, { status: 500 }),
+      user: null,
+    }
   }
 }
 
 export function ensureRole(role: UserRole, allowedRoles: UserRole[]) {
   if (!allowedRoles.includes(role)) {
-    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
   }
 
   return null
