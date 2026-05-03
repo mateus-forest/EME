@@ -175,7 +175,7 @@ export function AdminSidebar() {
 
   return (
     <aside
-      className={`hidden shrink-0 md:flex transition-[width] duration-200 ease-linear ${collapsed ? "w-[var(--sidebar-width-icon)]" : "w-[var(--sidebar-width)]"}`}
+      className={`hidden shrink-0 grow-0 basis-auto md:flex transition-[width] duration-200 ease-linear ${collapsed ? "w-[var(--sidebar-width-icon)] min-w-[var(--sidebar-width-icon)] max-w-[var(--sidebar-width-icon)]" : "w-[var(--sidebar-width)] min-w-[var(--sidebar-width)] max-w-[var(--sidebar-width)]"}`}
     >
       {sidebarInner}
     </aside>

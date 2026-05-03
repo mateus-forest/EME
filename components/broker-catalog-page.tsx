@@ -25,6 +25,7 @@ import { PropertyCard } from "@/components/property-card"
 import { useBrokerCatalogSettings } from "@/components/use-broker-catalog-settings"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
+import { compressImageToDataUrl } from "@/lib/client-image"
 import { getPropertyImages } from "@/lib/property-media"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Button } from "@/components/ui/button"
@@ -168,8 +169,13 @@ export function BrokerCatalogPage() {
 
   async function handleProfilePhotoChange(file: File | null) {
     if (!file) return
-    const photoUrl = await readFileAsDataUrl(file)
-    setDraftSettings((current) => ({ ...current, photoUrl }))
+    try {
+      const photoUrl = await compressImageToDataUrl(file)
+      setDraftSettings((current) => ({ ...current, photoUrl }))
+      setSaveFeedback("")
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel preparar a foto.")
+    }
   }
 
   async function handleSaveCatalog() {
@@ -587,17 +593,6 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("")
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."))
-
-    reader.readAsDataURL(file)
-  })
 }
 
 function sanitizeSlug(value: string) {

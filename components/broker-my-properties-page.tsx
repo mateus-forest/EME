@@ -11,6 +11,7 @@ import { useBrokerProperties, type BrokerProperty as Property } from "@/componen
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { getPropertyImage } from "@/lib/property-media"
+import { formatCurrencyInput } from "@/lib/currency"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -477,7 +478,7 @@ export function BrokerMyPropertiesPage() {
                       <h3 className="text-lg font-semibold text-white">Informações</h3>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         <Field label="Título"><Input value={editingProperty.title} onChange={(event) => updateField("title", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
-                        <Field label="Preço"><Input value={editingProperty.price} onChange={(event) => updateField("price", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
+                        <Field label="Preço"><Input value={editingProperty.price} onChange={(event) => updateField("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
                         <Field label="Tipo">
                           <Select value={editingProperty.type} onValueChange={(value) => updateField("type", value as EditableProperty["type"])}>
                             <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white"><SelectValue /></SelectTrigger>

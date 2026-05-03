@@ -79,8 +79,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Nome do corretor deve ter no maximo 120 caracteres." }, { status: 400 })
     }
 
-    if (photoUrl.length > 500_000) {
-      return NextResponse.json({ error: "Foto muito grande para salvar no perfil do corretor." }, { status: 400 })
+    if (photoUrl.length > 800_000) {
+      return NextResponse.json({ error: "Foto muito grande. Use uma imagem menor ou tente enviar novamente." }, { status: 400 })
     }
 
     if (description.length > 600) {

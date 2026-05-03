@@ -79,8 +79,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Nome da imobiliaria deve ter no maximo 120 caracteres." }, { status: 400 })
     }
 
-    if (logoUrl.length > 500_000) {
-      return NextResponse.json({ error: "Logo muito grande para salvar no perfil da imobiliaria." }, { status: 400 })
+    if (logoUrl.length > 800_000) {
+      return NextResponse.json({ error: "Logo muito grande. Use uma imagem menor ou tente enviar novamente." }, { status: 400 })
     }
 
     if (description.length > 600) {

@@ -38,7 +38,7 @@ export function AdminPageShell({
       defaultOpen
       style={
         {
-          "--sidebar-width": "13.5rem",
+          "--sidebar-width": "15rem",
           "--sidebar-width-icon": "4.5rem",
         } as CSSProperties
       }

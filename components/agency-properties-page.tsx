@@ -9,6 +9,7 @@ import { useAgencyProperties, type AgencyProperty } from "@/components/use-agenc
 import { useAgencySubscription } from "@/components/use-agency-subscription"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
 import { requestPropertyAi } from "@/lib/property-ai-client"
+import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
@@ -87,7 +88,7 @@ export function AgencyPropertiesPage() {
           property.location.toLowerCase().includes(normalizedSearch) ||
           property.broker.name.toLowerCase().includes(normalizedSearch)
         : true
-      const priceValue = Number(property.price.replace(/[^\d]/g, ""))
+      const priceValue = Number(property.price.replace(/[^\d]/g, "")) / 100
       const matchesPrice =
         priceFilter === "Todas" ||
         (priceFilter === "Até R$ 1 mi" && priceValue <= 1000000) ||
@@ -606,7 +607,7 @@ export function AgencyPropertiesPage() {
                         <Input value={editingProperty.title} onChange={(event) => updateEditingField("title", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                       </Field>
                       <Field label="Preço">
-                        <Input value={editingProperty.price} onChange={(event) => updateEditingField("price", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                        <Input value={editingProperty.price} onChange={(event) => updateEditingField("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                       </Field>
                       <Field label="Tipo">
                         <Select value={editingProperty.type} onValueChange={(value) => updateEditingField("type", value as EditableAgencyProperty["type"])}>

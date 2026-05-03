@@ -17,6 +17,7 @@ import { PropertyCard } from "@/components/property-card"
 import { useAgencyCatalogSettings } from "@/components/use-agency-catalog-settings"
 import { useAgencyProfile } from "@/components/use-agency-profile"
 import { useAgencyProperties } from "@/components/use-agency-properties"
+import { compressImageToDataUrl } from "@/lib/client-image"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -83,8 +84,13 @@ export function AgencyCatalogPage() {
 
   async function handleLogoChange(file: File | null) {
     if (!file) return
-    const logoUrl = await readFileAsDataUrl(file)
-    setDraftSettings((current) => ({ ...current, logoUrl }))
+    try {
+      const logoUrl = await compressImageToDataUrl(file)
+      setDraftSettings((current) => ({ ...current, logoUrl }))
+      setSaveFeedback("")
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel preparar o logo.")
+    }
   }
 
   async function handleSaveCatalog() {
@@ -349,15 +355,6 @@ export function AgencyCatalogPage() {
       </div>
     </AgencyPageShell>
   )
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error("Não foi possível ler o logo selecionado."))
-    reader.readAsDataURL(file)
-  })
 }
 
 function sanitizeSlug(value: string) {

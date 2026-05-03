@@ -2,6 +2,7 @@ import type { Agency, Broker, Property } from "@/lib/prisma-model-types"
 import {
   PropertyStatus,
   PropertyType } from "@/lib/prisma-enums"
+import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
 
 type PropertyContractUser = {
   name: string
@@ -48,24 +49,11 @@ export type PropertyApiItem = {
 }
 
 export function formatCurrencyFromCents(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value / 100)
+  return formatCurrencyBRLFromCents(value)
 }
 
 export function parsePriceInput(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-    return Math.round(value)
-  }
-
-  if (typeof value !== "string") return null
-
-  const digits = value.replace(/\D/g, "")
-  if (!digits) return null
-  return Number(digits)
+  return parseCurrencyInputToCents(value)
 }
 
 export function mapPropertyType(value: unknown): PropertyType | null {

@@ -7,6 +7,7 @@ import { ArrowUpFromLine, AudioLines, ImagePlus, Images, Sparkles, Upload } from
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
+import { formatCurrencyInput } from "@/lib/currency"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
@@ -14,18 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-
-const previewFallback = {
-  title: "Apartamento Vista Parque com lazer completo e excelente iluminação",
-  description:
-    "Apartamento com ambientes bem distribuídos, varanda agradável e localização estratégica. Ideal para quem busca conforto, praticidade e uma apresentação pronta para gerar interesse imediato.",
-  city: "São Paulo",
-  neighborhood: "Jardins",
-  price: "R$ 1.280.000",
-  bedrooms: 3,
-  bathrooms: 2,
-  parking: 2,
-}
 
 type BrowserSpeechRecognition = {
   lang: string
@@ -85,6 +74,7 @@ export function BrokerNewPropertyPage() {
     totalPropertiesCount >= subscription.propertyLimit
 
   const previewImages = useMemo(() => images, [images])
+  const previewLocation = [neighborhood.trim(), city.trim()].filter(Boolean).join(", ")
 
   function validateManualProperty() {
     if (!title.trim() || !city.trim() || !neighborhood.trim() || !price.trim()) {
@@ -179,9 +169,9 @@ export function BrokerNewPropertyPage() {
       const generated = await requestPropertyAi({
         title,
         type: "Apartamento",
-        city: city || previewFallback.city,
-        neighborhood: neighborhood || previewFallback.neighborhood,
-        price: price || previewFallback.price,
+        city,
+        neighborhood,
+        price,
         bedrooms,
         bathrooms,
         parkingSpots: parking,
@@ -438,8 +428,8 @@ export function BrokerNewPropertyPage() {
                   <Field label="Valor">
                     <Input
                       value={price}
-                      onChange={(event) => setPrice(event.target.value)}
-                      placeholder="R$ 1.280.000"
+                      onChange={(event) => setPrice(formatCurrencyInput(event.target.value))}
+                      placeholder="R$ 500.000,00"
                       className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
                     />
                   </Field>
@@ -520,13 +510,13 @@ export function BrokerNewPropertyPage() {
                   <div className="flex flex-col justify-between gap-5 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.24em] text-[#69F0AE]">{hasGenerated ? "Anúncio gerado com IA" : "Anúncio manual"}</p>
-                      <h3 className="mt-3 text-2xl font-semibold text-white">{title || previewFallback.title}</h3>
+                      <h3 className="mt-3 text-2xl font-semibold text-white">{title || "Titulo do imovel"}</h3>
                       <p className="mt-2 text-sm text-white/55">
-                        {(neighborhood || previewFallback.neighborhood) + ", " + (city || previewFallback.city)}
+                        {previewLocation || "Cidade e bairro"}
                       </p>
-                      <p className="mt-4 text-2xl font-semibold text-white">{price || previewFallback.price}</p>
+                      <p className="mt-4 text-2xl font-semibold text-white">{price || "Valor do imovel"}</p>
                       <p className="mt-5 text-sm leading-7 text-white/65">
-                        {description || previewFallback.description}
+                        {description || "A descricao preenchida aparecera aqui."}
                       </p>
                     </div>
 
