@@ -292,6 +292,15 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("[reset-dev-db] ERRO:", error instanceof Error ? error.message : error)
+  console.error("[reset-dev-db] ERRO:", error instanceof Error ? error.message || error.name : error)
+  if (error && typeof error === "object") {
+    const details = {
+      name: error.name,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack,
+    }
+    console.error("[reset-dev-db] Detalhes:", details)
+  }
   process.exitCode = 1
 })
