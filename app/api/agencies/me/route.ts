@@ -49,7 +49,9 @@ export async function GET() {
     return NextResponse.json({ error: "Imobiliária não encontrada para esta conta." }, { status: 404 })
   }
 
-  return NextResponse.json({ profile })
+  const response = NextResponse.json({ profile })
+  response.headers.set("Cache-Control", "no-store, max-age=0")
+  return response
 }
 
 export async function PATCH(request: NextRequest) {

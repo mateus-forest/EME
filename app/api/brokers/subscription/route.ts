@@ -62,6 +62,9 @@ export async function GET() {
         id: 5001,
         ownerId: 101,
         ownerType: "broker",
+        brokerId: user.broker.id,
+        agencyId: user.broker.agencyId,
+        accountType: isAgencyLinked ? "BROKER_AGENCY_LINKED" : "BROKER_INDEPENDENT",
         tipoPlano: isAgencyLinked ? "Equipe da imobiliária" : isBrokerPlan ? "Corretor" : "Gratuito",
         ultimoPagamento: isAgencyLinked
           ? "Plano gerenciado pela imobiliária"

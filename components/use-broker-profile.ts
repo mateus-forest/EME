@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react"
 
 export type BrokerProfile = {
   id: string
+  brokerId: string
+  agencyId: string | null
+  accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | null
   fullName: string
   email: string
   creci: string
@@ -16,6 +19,9 @@ const PROFILE_UPDATED_EVENT = "eme-broker-profile-updated"
 
 const defaultProfile: BrokerProfile = {
   id: "",
+  brokerId: "",
+  agencyId: null,
+  accountType: null,
   fullName: "",
   email: "",
   creci: "",
@@ -49,6 +55,9 @@ export function useBrokerProfile() {
         | {
             profile?: {
               id: string
+              brokerId: string
+              agencyId: string | null
+              accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED"
               name: string
               email: string
               phone: string
@@ -67,6 +76,9 @@ export function useBrokerProfile() {
       setProfileState(
         normalizeProfile({
           id: data.profile.id,
+          brokerId: data.profile.brokerId,
+          agencyId: data.profile.agencyId,
+          accountType: data.profile.accountType,
           fullName: data.profile.name,
           email: data.profile.email,
           creci: data.profile.creci,
@@ -120,7 +132,21 @@ export function useBrokerProfile() {
     })
 
     const data = (await response.json().catch(() => null)) as
-      | { error?: string; profile?: { id: string; name: string; email: string; phone: string; creci: string; description: string; photoUrl: string } }
+      | {
+          error?: string
+          profile?: {
+            id: string
+            brokerId: string
+            agencyId: string | null
+            accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED"
+            name: string
+            email: string
+            phone: string
+            creci: string
+            description: string
+            photoUrl: string
+          }
+        }
       | null
 
     if (!response.ok || !data?.profile) {
@@ -129,6 +155,9 @@ export function useBrokerProfile() {
 
     const nextProfile = normalizeProfile({
       id: data.profile.id,
+      brokerId: data.profile.brokerId,
+      agencyId: data.profile.agencyId,
+      accountType: data.profile.accountType,
       fullName: data.profile.name,
       email: data.profile.email,
       whatsApp: data.profile.phone,

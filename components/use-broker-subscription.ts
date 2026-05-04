@@ -7,6 +7,9 @@ import { type DomainSubscription } from "@/lib/domain-entities"
 export type BrokerSubscription = DomainSubscription & {
   planName: "Sincronizando" | "Gratuito" | "Corretor" | "Equipe da imobiliária"
   ownerType: "broker"
+  brokerId: string | null
+  agencyId: string | null
+  accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | null
   isUpgraded: boolean
   isAgencyLinked: boolean
   propertyLimit: number
@@ -25,6 +28,9 @@ const defaultSubscription: BrokerSubscription = {
   id: 5001,
   ownerId: 101,
   ownerType: "broker",
+  brokerId: null,
+  agencyId: null,
+  accountType: null,
   tipoPlano: "Sincronizando",
   ultimoPagamento: "Sincronizando",
   proximaCobranca: "Sincronizando",
@@ -44,10 +50,8 @@ const defaultSubscription: BrokerSubscription = {
   paymentMethod: "Sincronizando",
 }
 
-let latestBrokerSubscription: BrokerSubscription | null = null
-
 export function useBrokerSubscription() {
-  const [subscription, setSubscription] = useState<BrokerSubscription>(latestBrokerSubscription ?? defaultSubscription)
+  const [subscription, setSubscription] = useState<BrokerSubscription>(defaultSubscription)
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshSubscription = useCallback(async () => {
@@ -63,11 +67,11 @@ export function useBrokerSubscription() {
       const data = (await response.json().catch(() => null)) as { subscription?: BrokerSubscription } | null
 
       if (!response.ok || !data?.subscription) {
+        setSubscription(defaultSubscription)
         return
       }
 
       const nextSubscription = { ...data.subscription, isProfileResolved: true }
-      latestBrokerSubscription = nextSubscription
       setSubscription(nextSubscription)
     } finally {
       setIsLoading(false)

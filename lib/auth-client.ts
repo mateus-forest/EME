@@ -5,6 +5,9 @@ export type AuthenticatedUser = {
   name: string
   email: string
   role: AuthRole
+  accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | "AGENCY" | "ADMIN"
+  plan: "NONE" | "BROKER" | "AGENCY"
+  subscriptionStatus: "INACTIVE" | "ACTIVE"
   brokerId: string | null
   agencyId: string | null
 }

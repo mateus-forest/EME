@@ -36,7 +36,9 @@ export async function GET() {
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
   if (forbidden) return forbidden
 
-  return NextResponse.json({ profile: buildAdminProfile(user) })
+  const response = NextResponse.json({ profile: buildAdminProfile(user) })
+  response.headers.set("Cache-Control", "no-store, max-age=0")
+  return response
 }
 
 export async function PATCH(request: NextRequest) {

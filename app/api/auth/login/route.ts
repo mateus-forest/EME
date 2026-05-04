@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { buildSessionProfile } from "@/lib/session-profile"
 
 export const dynamic = "force-dynamic"
 
@@ -76,16 +77,8 @@ export async function POST(request: NextRequest) {
       role: user.role,
     })
 
-    const response = NextResponse.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        brokerId: user.broker?.id ?? null,
-        agencyId: user.ownedAgency?.id ?? user.broker?.agencyId ?? null,
-      },
-    })
+    const response = NextResponse.json({ user: buildSessionProfile(user) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
 
     setAuthCookie(response, token)
 
