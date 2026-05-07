@@ -114,40 +114,24 @@ export function AgencyPropertiesPage() {
       return
     }
 
-    const newProperty: AgencyProperty = {
+    setSelectedProperty(null)
+    setEditingProperty({
       id: "",
-      titulo: "Novo imóvel da equipe",
-      preco: "R$ 1.150.000",
-      tipo: "Apartamento",
-      corretorId: "",
-      imobiliariaId: null,
-      title: "Novo imóvel da equipe",
-      city: "São Paulo",
-      neighborhood: "Moema",
-      location: "Moema, São Paulo",
-      price: "R$ 1.150.000",
-      bedrooms: 2,
-      bathrooms: 2,
-      parking: 1,
-      status: "Rascunho",
-      published: false,
+      title: "",
+      city: "",
+      neighborhood: "",
+      price: "",
+      images: [],
+      bedrooms: 0,
+      bathrooms: 0,
+      parking: 0,
       type: "Apartamento",
       description: "",
-      broker: { id: "", name: "Marina Costa", initials: "MC" },
-      views: 0,
-      leads: 0,
-      images: [],
-      image: "",
       audioUrl: "",
-    }
-
-    try {
-      const createdProperty = await addProperty(newProperty)
-      setSelectedProperty(createdProperty)
-      setActionFeedback("Imóvel criado com sucesso.")
-    } catch (caughtError) {
-      window.alert(caughtError instanceof Error ? caughtError.message : "Não foi possível criar o imóvel.")
-    }
+    })
+    setSaveFeedback("")
+    setAiHighlights([])
+    setIsEditModalOpen(true)
   }
 
   async function handleTogglePublish(property: AgencyProperty) {
@@ -220,6 +204,39 @@ export function AgencyPropertiesPage() {
     if (!editingProperty) return
 
     try {
+      if (!editingProperty.id) {
+        await addProperty({
+          id: "",
+          titulo: editingProperty.title,
+          preco: editingProperty.price,
+          tipo: editingProperty.type,
+          corretorId: "",
+          imobiliariaId: null,
+          title: editingProperty.title,
+          city: editingProperty.city,
+          neighborhood: editingProperty.neighborhood,
+          location: `${editingProperty.neighborhood}, ${editingProperty.city}`,
+          price: editingProperty.price,
+          bedrooms: editingProperty.bedrooms,
+          bathrooms: editingProperty.bathrooms,
+          parking: editingProperty.parking,
+          status: "Rascunho",
+          published: false,
+          type: editingProperty.type,
+          description: editingProperty.description,
+          broker: { id: "", name: "", initials: "" },
+          views: 0,
+          leads: 0,
+          images: editingProperty.images,
+          image: editingProperty.images[0] ?? "",
+          audioUrl: "",
+        })
+        setActionFeedback("Imóvel criado com sucesso.")
+        closeEditModal(false)
+        setSelectedProperty(null)
+        return
+      }
+
       const updatedProperty = await updateProperty(editingProperty.id, editingProperty)
       setSelectedProperty((current) => (current?.id === updatedProperty.id ? updatedProperty : current))
       setEditingProperty({
@@ -549,9 +566,11 @@ export function AgencyPropertiesPage() {
           {editingProperty && (
             <>
               <div className="border-b border-white/[0.08] px-6 py-5">
-                <DialogTitle className="text-xl text-white">Editar imóvel</DialogTitle>
+                <DialogTitle className="text-xl text-white">{editingProperty.id ? "Editar imóvel" : "Novo imóvel"}</DialogTitle>
                 <DialogDescription className="mt-2 text-white/50">
-                  Atualize os dados principais do imóvel sem sair da operação da imobiliária.
+                  {editingProperty.id
+                    ? "Atualize os dados principais do imóvel sem sair da operação da imobiliária."
+                    : "Preencha os dados principais para cadastrar um novo imóvel da equipe."}
                 </DialogDescription>
               </div>
 
@@ -560,7 +579,7 @@ export function AgencyPropertiesPage() {
                   <section className="grid gap-4">
                     <div className="flex items-center justify-between gap-4">
                       <h3 className="text-lg font-semibold text-white">Mídia</h3>
-                      {editingProperty && (
+                      {editingProperty.id && (
                         <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
                           <input
                             type="file"
@@ -595,7 +614,9 @@ export function AgencyPropertiesPage() {
                       </div>
                     ) : (
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/55">
-                        Nenhuma imagem enviada ainda para este imóvel.
+                        {editingProperty.id
+                          ? "Nenhuma imagem enviada ainda para este imóvel."
+                          : "Cadastre o imóvel primeiro para enviar imagens reais."}
                       </div>
                     )}
                   </section>
@@ -646,18 +667,20 @@ export function AgencyPropertiesPage() {
 
                   <section className="grid gap-4">
                     <h3 className="text-lg font-semibold text-white">Áudio real</h3>
-                    <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        className="sr-only"
-                        onChange={(event) => {
-                          void addPropertyAudio(event.target.files)
-                          event.currentTarget.value = ""
-                        }}
-                      />
-                      Enviar áudio
-                    </label>
+                    {editingProperty.id && (
+                      <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          className="sr-only"
+                          onChange={(event) => {
+                            void addPropertyAudio(event.target.files)
+                            event.currentTarget.value = ""
+                          }}
+                        />
+                        Enviar áudio
+                      </label>
+                    )}
 
                     {editingProperty.audioUrl ? (
                       <>
@@ -670,7 +693,9 @@ export function AgencyPropertiesPage() {
                       </>
                     ) : (
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4 text-sm text-white/55">
-                        Nenhum áudio enviado ainda para este imóvel.
+                        {editingProperty.id
+                          ? "Nenhum áudio enviado ainda para este imóvel."
+                          : "Cadastre o imóvel primeiro para enviar áudio real."}
                       </div>
                     )}
                   </section>
@@ -710,7 +735,7 @@ export function AgencyPropertiesPage() {
                     Cancelar
                   </Button>
                   <Button onClick={saveChanges} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
-                    Salvar alterações
+                    {editingProperty.id ? "Salvar alterações" : "Cadastrar imóvel"}
                   </Button>
                 </div>
               </DialogFooter>
