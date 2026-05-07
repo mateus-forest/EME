@@ -8,6 +8,7 @@ import {
   type BillingPlan,
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
+import { getStripeEnv } from "@/lib/env.server"
 import { prisma } from "@/lib/prisma"
 
 export function getBillingPlanFromRole(role: UserRole) {
@@ -17,12 +18,14 @@ export function getBillingPlanFromRole(role: UserRole) {
 }
 
 export function getCheckoutPriceIdForRole(role: UserRole) {
+  const stripeEnv = getStripeEnv()
+
   if (role === UserRole.BROKER) {
-    return process.env.STRIPE_PRICE_BROKER ?? process.env.STRIPE_BROKER_PRICE_ID ?? ""
+    return stripeEnv.brokerPriceId
   }
 
   if (role === UserRole.AGENCY) {
-    return process.env.STRIPE_PRICE_AGENCY ?? process.env.STRIPE_AGENCY_PRICE_ID ?? ""
+    return stripeEnv.agencyBasePriceId
   }
 
   return ""

@@ -20,7 +20,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
     ? "Suas publicações seguem as regras da imobiliária à qual você está vinculado"
     : subscription.isUpgraded
       ? "Seu plano Corretor está ativo para publicar imóveis"
-      : `Você pode cadastrar até ${subscription.propertyLimit} imóveis gratuitamente`
+      : `Você pode cadastrar até ${subscription.propertyLimit ?? 3} imóveis gratuitamente`
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -108,8 +108,8 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
               </p>
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-              <p className="text-sm text-white/50">Origem dos dados</p>
-              <p className="mt-2 text-lg font-semibold text-white">Dados da conta</p>
+              <p className="text-sm text-white/50">Resumo</p>
+              <p className="mt-2 text-lg font-semibold text-white">Conta ativa</p>
             </div>
           </CardContent>
         </Card>

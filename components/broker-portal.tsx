@@ -37,7 +37,7 @@ export function BrokerPortal() {
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
     !subscription.isAgencyLinked &&
-    publishedPropertiesCount >= subscription.propertyLimit
+    publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
 
   const featuredProperties = useMemo(
     () =>
@@ -80,7 +80,7 @@ export function BrokerPortal() {
       {
         title: "Cliques no WhatsApp",
         value: "0",
-        change: "Ainda sem fonte real conectada",
+        change: "Sem cliques registrados",
       },
       {
         title: "Leads",

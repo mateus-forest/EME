@@ -77,7 +77,7 @@ export async function GET() {
         planName: isAgencyLinked ? "Equipe da imobiliária" : isBrokerPlan ? "Corretor" : "Gratuito",
         isUpgraded: isActive,
         isAgencyLinked,
-        propertyLimit: isActive || isAgencyLinked ? 999 : 3,
+        propertyLimit: isActive || isAgencyLinked ? null : 3,
         limitLabel: isAgencyLinked
           ? "Publicações gerenciadas pela imobiliária"
           : isActive

@@ -12,7 +12,7 @@ export type BrokerSubscription = DomainSubscription & {
   accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | null
   isUpgraded: boolean
   isAgencyLinked: boolean
-  propertyLimit: number
+  propertyLimit: number | null
   limitLabel: string
   billingPlan: "NONE" | "BROKER" | "AGENCY"
   billingStatus: "INACTIVE" | "ACTIVE"

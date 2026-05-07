@@ -5,6 +5,7 @@ import {
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
 import { getBillingPlanFromRole, getCheckoutPriceIdForRole, getPlanLabel } from "@/lib/billing"
+import { getStripeEnv } from "@/lib/env.server"
 import { getStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
@@ -19,9 +20,14 @@ export async function POST(request: NextRequest) {
   const roleError = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
   if (roleError) return roleError
 
+  const stripeEnv = getStripeEnv()
+  if (!stripeEnv.enabled) {
+    return NextResponse.json({ error: "Checkout Stripe ainda não está habilitado neste ambiente." }, { status: 503 })
+  }
+
   const stripe = getStripeClient()
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe não configurado no servidor." }, { status: 500 })
+    return NextResponse.json({ error: "Stripe habilitado, mas sem chave secreta configurada no servidor." }, { status: 500 })
   }
 
   const priceId = getCheckoutPriceIdForRole(user.role)

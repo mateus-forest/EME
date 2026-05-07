@@ -69,7 +69,7 @@ export function BrokerMyPropertiesPage() {
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
     !subscription.isAgencyLinked &&
-    publishedPropertiesCount >= subscription.propertyLimit
+    publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
   const normalizedSearch = search.trim().toLowerCase()
   const filteredProperties = useMemo(
     () =>

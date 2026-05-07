@@ -70,8 +70,7 @@ export function FinancialStatusCard({
   const Icon = ui.icon
   const hasPendingIssue =
     summary.financialStatus === "atraso-leve" ||
-    summary.financialStatus === "inadimplente" ||
-    summary.financialStatus === "notificacao-recebida"
+    summary.financialStatus === "inadimplente"
 
   return (
     <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">

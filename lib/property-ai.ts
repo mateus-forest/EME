@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { getOpenAIClient } from "@/lib/openai-server"
+import { getOpenAIEnv } from "@/lib/env.server"
 
 export const propertyGenerationSchema = z.object({
   title: z.string().trim().max(120).optional().default(""),
@@ -48,11 +49,12 @@ export async function generatePropertyCopy(input: PropertyGenerationInput) {
   const client = getOpenAIClient()
 
   if (!client) {
-    throw new Error("OPENAI_API_KEY não configurada no servidor.")
+    throw new Error("OPENAI_DISABLED_OR_NOT_CONFIGURED")
   }
+  const { model } = getOpenAIEnv()
 
   const response = await client.responses.create({
-    model: "gpt-5-mini",
+    model,
     max_output_tokens: 500,
     instructions:
       "Você é um especialista em criação de anúncios imobiliários no Brasil. Gere uma descrição clara, objetiva, profissional e persuasiva com base nos dados fornecidos. Destaque os diferenciais reais do imóvel, localização e praticidade. Não invente informações que não foram fornecidas.",

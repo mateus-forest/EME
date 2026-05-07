@@ -6,6 +6,7 @@ import {
   mapStripePlan,
   syncBillingFromStripeSubscription,
 } from "@/lib/billing"
+import { getStripeEnv } from "@/lib/env.server"
 import { getStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
@@ -23,8 +24,13 @@ async function syncInvoiceSubscription(stripe: Stripe, invoice: Stripe.Invoice) 
 }
 
 export async function POST(request: NextRequest) {
+  const stripeEnv = getStripeEnv()
+  if (!stripeEnv.enabled) {
+    return NextResponse.json({ error: "Webhook Stripe ainda não está habilitado neste ambiente." }, { status: 503 })
+  }
+
   const stripe = getStripeClient()
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  const webhookSecret = stripeEnv.webhookSecret
 
   if (!stripe || !webhookSecret) {
     return NextResponse.json({ error: "Stripe webhook não configurado." }, { status: 500 })

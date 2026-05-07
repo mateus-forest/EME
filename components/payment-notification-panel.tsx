@@ -99,6 +99,15 @@ export function PaymentNotificationPanel({
     showFeedback("Aviso removido")
   }
 
+  function canRegularize(notification: PaymentNotification) {
+    return (
+      isFinancialNotification(notification) &&
+      (notification.financialStatus === "atraso-leve" ||
+        notification.financialStatus === "inadimplente" ||
+        notification.financialStatus === "vencimento-proximo")
+    )
+  }
+
   if (!primaryNotification && notifications.length === 0) {
     return null
   }
@@ -155,7 +164,7 @@ export function PaymentNotificationPanel({
                 <Eye className="size-4" />
                 Ver detalhes
               </Button>
-              {isFinancialNotification(primaryNotification) && (
+              {canRegularize(primaryNotification) && (
                 <Button
                   type="button"
                   onClick={() => handleRegularize(primaryNotification.id)}
@@ -222,7 +231,7 @@ export function PaymentNotificationPanel({
                     >
                       Ver detalhes
                     </Button>
-                    {isFinancialNotification(notification) && (
+                    {canRegularize(notification) && (
                       <Button
                         type="button"
                         variant="ghost"

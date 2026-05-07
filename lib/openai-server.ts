@@ -1,11 +1,13 @@
 import OpenAI from "openai"
 
+import { getOpenAIEnv } from "@/lib/env.server"
+
 let openaiClient: OpenAI | null = null
 
 export function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY
+  const { enabled, apiKey } = getOpenAIEnv()
 
-  if (!apiKey) {
+  if (!enabled || !apiKey) {
     return null
   }
 

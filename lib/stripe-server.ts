@@ -1,11 +1,13 @@
 import Stripe from "stripe"
 
+import { getStripeEnv } from "@/lib/env.server"
+
 let stripeClient: Stripe | null = null
 
 export function getStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY
+  const { enabled, secretKey } = getStripeEnv()
 
-  if (!secretKey) {
+  if (!enabled || !secretKey) {
     return null
   }
 

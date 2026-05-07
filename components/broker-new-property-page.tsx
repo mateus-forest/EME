@@ -71,7 +71,7 @@ export function BrokerNewPropertyPage() {
     !isPlanBlocked &&
     !subscription.isUpgraded &&
     !subscription.isAgencyLinked &&
-    totalPropertiesCount >= subscription.propertyLimit
+    totalPropertiesCount >= (subscription.propertyLimit ?? 3)
 
   const previewImages = useMemo(() => images, [images])
   const previewLocation = [neighborhood.trim(), city.trim()].filter(Boolean).join(", ")

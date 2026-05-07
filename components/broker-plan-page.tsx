@@ -42,17 +42,17 @@ export function BrokerPlanPage() {
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
     !subscription.isAgencyLinked &&
-    publishedPropertiesCount >= subscription.propertyLimit
+    publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
   const propertyLimitLabel = !subscription.isProfileResolved
     ? `${publishedPropertiesCount} imóveis cadastrados`
     : subscription.isAgencyLinked
     ? `${publishedPropertiesCount} imóveis vinculados à equipe`
     : subscription.isUpgraded
       ? `${publishedPropertiesCount} imóveis ativos no plano Corretor`
-      : `${publishedPropertiesCount} de ${subscription.propertyLimit} imóveis gratuitos`
+      : `${publishedPropertiesCount} de ${subscription.propertyLimit ?? 3} imóveis gratuitos`
   const usageWidth = !subscription.isProfileResolved || subscription.isUpgraded || subscription.isAgencyLinked
     ? "100%"
-    : `${Math.min(100, Math.round((publishedPropertiesCount / subscription.propertyLimit) * 100))}%`
+    : `${Math.min(100, Math.round((publishedPropertiesCount / (subscription.propertyLimit ?? 3)) * 100))}%`
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout")
