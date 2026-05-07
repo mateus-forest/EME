@@ -8,6 +8,7 @@ import { Plus, Search } from "lucide-react"
 import { NotificationCenter } from "@/components/notification-center"
 import { AgencySidebar } from "@/components/agency-sidebar"
 import { useAgencyPaymentNotifications } from "@/components/use-agency-payment-notifications"
+import { useAgencyProfile } from "@/components/use-agency-profile"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -41,6 +42,7 @@ export function AgencyPageShell({
 }: AgencyPageShellProps) {
   const hasSearchArea = searchPlaceholder || headerControls
   const hasPrimaryAction = Boolean(primaryActionLabel)
+  const { profile } = useAgencyProfile()
   const { historyNotifications, unreadCount, markAsRead, archive } = useAgencyPaymentNotifications()
   const resolvedNotificationCenter = useMemo(
     () =>
@@ -76,11 +78,16 @@ export function AgencyPageShell({
                 <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
                   <div className="flex items-center gap-3">
                     <SidebarTrigger className="h-8.5 w-8.5 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white md:hidden" />
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
                         Portal da imobiliária
                       </p>
                       <h1 className="text-xl font-semibold leading-none text-white">{title}</h1>
+                      {profile.companyName ? (
+                        <p className="mt-1 max-w-[16rem] truncate text-sm text-white/50 sm:max-w-[22rem]">
+                          {profile.companyName}
+                        </p>
+                      ) : null}
                       {subtitle && <p className="mt-1 text-sm text-white/50">{subtitle}</p>}
                     </div>
                   </div>

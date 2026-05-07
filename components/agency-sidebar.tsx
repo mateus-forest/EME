@@ -79,7 +79,7 @@ export function AgencySidebar() {
   }
 
   const sidebarInner = (
-    <div className="flex h-full flex-col rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(10,10,10,0.92))] shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+    <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(10,10,10,0.92))] shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-xl">
       <div className="flex items-center justify-between border-b border-white/[0.08] px-3 py-3">
         <Link
           href="/"
@@ -120,8 +120,8 @@ export function AgencySidebar() {
                   href={item.href}
                   className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-3"}`}
                 >
-                  <item.icon className="size-[18px]" />
-                  <span className={collapsed && !isMobile ? "hidden" : ""}>{item.label}</span>
+                  <item.icon className="size-[18px] shrink-0" />
+                  <span className={collapsed && !isMobile ? "hidden" : "min-w-0 truncate"}>{item.label}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -132,7 +132,7 @@ export function AgencySidebar() {
       <div className="mt-auto px-3 pb-3">
         <div className={`rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2 ${collapsed && !isMobile ? "px-1.5" : ""}`}>
           <div className={`flex items-center gap-3 ${collapsed && !isMobile ? "justify-center" : ""}`}>
-            <Avatar className={`${collapsed && !isMobile ? "size-7" : "size-10"} border border-white/10 transition-all`}>
+            <Avatar className={`${collapsed && !isMobile ? "size-7" : "size-10"} shrink-0 border border-white/10 transition-all`}>
               <AvatarImage src={profile.logoUrl} alt={profile.companyName} />
               <AvatarFallback className="bg-[#00C853]/15 font-semibold text-[#69F0AE]">
                 {initials || "EP"}
@@ -140,9 +140,8 @@ export function AgencySidebar() {
             </Avatar>
 
             {(!collapsed || isMobile) && (
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">{profile.companyName}</p>
-                <p className="truncate text-xs text-white/45">{profile.email}</p>
+              <div className="min-w-0 max-w-[8.25rem] flex-1 overflow-hidden">
+                <p className="truncate text-sm font-medium text-white">{profile.companyName || "Imobiliária"}</p>
               </div>
             )}
 
@@ -151,7 +150,7 @@ export function AgencySidebar() {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
-                className="size-9 rounded-xl text-white/55 hover:bg-white/[0.08] hover:text-white"
+                className="size-9 shrink-0 rounded-xl text-white/55 hover:bg-white/[0.08] hover:text-white"
               >
                 <LogOut className="size-4" />
                 <span className="sr-only">Logout</span>
@@ -182,7 +181,7 @@ export function AgencySidebar() {
 
   return (
     <aside
-      className={`hidden shrink-0 grow-0 basis-auto md:flex transition-[width] duration-200 ease-linear ${collapsed ? "w-[var(--sidebar-width-icon)] min-w-[var(--sidebar-width-icon)] max-w-[var(--sidebar-width-icon)]" : "w-[var(--sidebar-width)] min-w-[var(--sidebar-width)] max-w-[var(--sidebar-width)]"}`}
+      className={`hidden shrink-0 grow-0 basis-auto overflow-hidden md:flex transition-[width] duration-200 ease-linear ${collapsed ? "w-[var(--sidebar-width-icon)] min-w-[var(--sidebar-width-icon)] max-w-[var(--sidebar-width-icon)]" : "w-[var(--sidebar-width)] min-w-[var(--sidebar-width)] max-w-[var(--sidebar-width)]"}`}
     >
       {sidebarInner}
     </aside>

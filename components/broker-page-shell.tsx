@@ -8,6 +8,7 @@ import { Plus, Search } from "lucide-react"
 import { NotificationCenter } from "@/components/notification-center"
 import { BrokerSidebar } from "@/components/broker-sidebar"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
+import { useBrokerProfile } from "@/components/use-broker-profile"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -39,6 +40,7 @@ export function BrokerPageShell({
 }: BrokerPageShellProps) {
   const hasSearchArea = searchPlaceholder || headerControls
   const hasPrimaryAction = Boolean(primaryActionLabel)
+  const { profile } = useBrokerProfile()
   const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
   const resolvedNotificationCenter = useMemo(
     () =>
@@ -75,11 +77,16 @@ export function BrokerPageShell({
                   <div className="flex items-center gap-3">
                     <SidebarTrigger className="h-8.5 w-8.5 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white md:hidden" />
                     <div className="flex items-center gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
                           Portal do corretor
                         </p>
                         <h1 className="text-xl font-semibold leading-none text-white">{title}</h1>
+                        {profile.fullName ? (
+                          <p className="mt-1 max-w-[16rem] truncate text-sm text-white/50 sm:max-w-[22rem]">
+                            {profile.fullName}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
