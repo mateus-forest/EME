@@ -8,6 +8,6 @@ export default defineConfig({
     seed: "C:\\Windows\\System32\\cmd.exe /c prisma\\seed.cmd",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 })

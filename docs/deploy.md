@@ -4,13 +4,32 @@
 
 Configure na Vercel e no ambiente local:
 
-- `DATABASE_URL`: Postgres/Supabase usado pelo Prisma.
+- `DATABASE_URL`: Supabase Transaction Pooler usado pelo Prisma Client em runtime.
+- `DIRECT_URL`: conexao direta do Supabase para Prisma CLI, migrations e ferramentas.
 - `AUTH_SECRET`: segredo longo para assinar JWT de sessao.
 - `NEXT_PUBLIC_APP_URL`: URL publica do app, por exemplo `https://seu-dominio.com`.
+- `DATABASE_POOL_MAX`: limite do pool Node `pg`; use `1` na Vercel por padrao.
 
 ## Supabase
 
 O EME usa Supabase Postgres via Prisma por `DATABASE_URL`. Nao trocar a autenticacao atual por Supabase Auth sem decisao de produto.
+
+Para Vercel, use o Transaction Pooler do Supabase em `DATABASE_URL`, porta `6543`, com `pgbouncer=true`:
+
+```bash
+DATABASE_URL="postgresql://postgres.PROJECT_REF:SENHA@aws-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres:SENHA@db.PROJECT_REF.supabase.co:5432/postgres"
+DATABASE_POOL_MAX=1
+```
+
+Nao use o Session Pooler em producao serverless:
+
+```bash
+# Evitar na Vercel para runtime da aplicacao
+postgresql://postgres.PROJECT_REF:SENHA@aws-REGION.pooler.supabase.com:5432/postgres
+```
+
+O Session Pooler mantem conexoes por sessao e pode causar `max clients reached in session mode` sob concorrencia. O Transaction Pooler multiplexa conexoes por transacao e e o formato recomendado para trafego de aplicacao serverless.
 
 Storage e opcional:
 

@@ -14,10 +14,31 @@ const globalForPrisma = globalThis as unknown as {
   pool?: Pool
 }
 
+function getDatabaseUrl() {
+  const databaseUrl = process.env.DATABASE_URL?.trim()
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL precisa estar configurada para inicializar o Prisma.")
+  }
+
+  return databaseUrl
+}
+
+function getPoolMax() {
+  const configured = Number(process.env.DATABASE_POOL_MAX)
+  if (Number.isInteger(configured) && configured > 0) return configured
+
+  return process.env.VERCEL || process.env.NODE_ENV === "production" ? 1 : 5
+}
+
 const pool =
   globalForPrisma.pool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: getDatabaseUrl(),
+    max: getPoolMax(),
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    allowExitOnIdle: true,
   })
 
 export const prisma =
@@ -27,7 +48,5 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   })
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-  globalForPrisma.pool = pool
-}
+globalForPrisma.prisma = prisma
+globalForPrisma.pool = pool
