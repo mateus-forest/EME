@@ -58,9 +58,10 @@ Para ativar:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_BROKER`
-- `STRIPE_PRICE_AGENCY_BASE`
-- `STRIPE_PRICE_AGENCY_PER_BROKER`, quando a cobranca por corretor for finalizada
+- `STRIPE_PRICE_AGENCY_BASE` ou `STRIPE_PRICE_AGENCY`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, se o frontend passar a usar Stripe.js
+
+O checkout da imobiliaria usa somente o price principal da imobiliaria. A cobranca por corretor adicional deve ser configurada no proprio Stripe, no produto/preco da imobiliaria, como uso/medidor com agregacao de soma. Nao configure um item separado de checkout para corretor extra.
 
 Se `STRIPE_ENABLED=false`, checkout e webhook respondem com erro claro e nao quebram o build.
 

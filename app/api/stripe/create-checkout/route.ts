@@ -32,7 +32,13 @@ export async function POST(request: NextRequest) {
 
   const priceId = getCheckoutPriceIdForRole(user.role)
   if (!priceId) {
-    return NextResponse.json({ error: "Price ID do plano não configurado." }, { status: 500 })
+    const variableName =
+      user.role === UserRole.BROKER ? "STRIPE_PRICE_BROKER" : "STRIPE_PRICE_AGENCY_BASE ou STRIPE_PRICE_AGENCY"
+
+    return NextResponse.json(
+      { error: `Price ID principal do plano não configurado (${variableName}).` },
+      { status: 500 },
+    )
   }
 
   try {

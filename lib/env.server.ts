@@ -25,6 +25,15 @@ function requireEnv(name: string) {
   return value
 }
 
+function readFirstEnv(names: string[]) {
+  for (const name of names) {
+    const value = readEnv(name)
+    if (value) return value
+  }
+
+  return ""
+}
+
 export function getRequiredRuntimeEnv() {
   return {
     databaseUrl: requireEnv("DATABASE_URL"),
@@ -49,11 +58,10 @@ export function getStripeEnv() {
 
   return {
     enabled,
-    secretKey: enabled ? requireEnv("STRIPE_SECRET_KEY") : readEnv("STRIPE_SECRET_KEY"),
-    webhookSecret: enabled ? requireEnv("STRIPE_WEBHOOK_SECRET") : readEnv("STRIPE_WEBHOOK_SECRET"),
-    brokerPriceId: enabled ? requireEnv("STRIPE_PRICE_BROKER") : readEnv("STRIPE_PRICE_BROKER"),
-    agencyBasePriceId: enabled ? requireEnv("STRIPE_PRICE_AGENCY_BASE") : readEnv("STRIPE_PRICE_AGENCY_BASE"),
-    agencyPerBrokerPriceId: readEnv("STRIPE_PRICE_AGENCY_PER_BROKER"),
+    secretKey: readEnv("STRIPE_SECRET_KEY"),
+    webhookSecret: readEnv("STRIPE_WEBHOOK_SECRET"),
+    brokerPriceId: readEnv("STRIPE_PRICE_BROKER"),
+    agencyBasePriceId: readFirstEnv(["STRIPE_PRICE_AGENCY_BASE", "STRIPE_PRICE_AGENCY"]),
     publishableKey: readEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"),
   }
 }

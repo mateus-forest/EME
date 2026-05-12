@@ -17,11 +17,11 @@ export type AgencySubscription = {
 const defaultSubscription: AgencySubscription = {
   planName: "Plano Imobiliária",
   status: "Inativa",
-  currentPrice: "R$ 109,90 / mês",
+  currentPrice: "R$ 109,90 / mês + uso",
   basePrice: "R$ 109,90 / mês",
-  brokerUnitPrice: "R$ 29,90 / corretor ativo",
+  brokerUnitPrice: "Medidor configurado no Stripe",
   activeBrokerCount: 0,
-  brokerRule: "0 corretores ativos x R$ 29,90",
+  brokerRule: "0 corretores ativos medidos no Stripe",
   nextCharge: "Aguardando checkout Stripe",
   isActive: false,
 }

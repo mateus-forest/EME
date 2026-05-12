@@ -7,7 +7,6 @@ import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/aut
 import { prisma } from "@/lib/prisma"
 
 const AGENCY_BASE_PRICE_CENTS = 10_990
-const ACTIVE_BROKER_PRICE_CENTS = 2_990
 
 function formatDate(date: Date | null) {
   if (!date) return "Aguardando checkout Stripe"
@@ -60,17 +59,16 @@ export async function GET() {
         status: "ACTIVE",
       },
     })
-    const totalPriceCents = AGENCY_BASE_PRICE_CENTS + activeBrokerCount * ACTIVE_BROKER_PRICE_CENTS
 
     return NextResponse.json({
       subscription: {
         planName: "Plano Imobiliária",
         status: isActive ? "Ativa" : "Inativa",
-        currentPrice: `${formatCurrency(totalPriceCents)} / mês`,
+        currentPrice: `${formatCurrency(AGENCY_BASE_PRICE_CENTS)} / mês + uso`,
         basePrice: `${formatCurrency(AGENCY_BASE_PRICE_CENTS)} / mês`,
-        brokerUnitPrice: `${formatCurrency(ACTIVE_BROKER_PRICE_CENTS)} / corretor ativo`,
+        brokerUnitPrice: "Medidor configurado no Stripe",
         activeBrokerCount,
-        brokerRule: `${activeBrokerCount} corretor${activeBrokerCount === 1 ? "" : "es"} ativo${activeBrokerCount === 1 ? "" : "s"} x ${formatCurrency(ACTIVE_BROKER_PRICE_CENTS)}`,
+        brokerRule: `${activeBrokerCount} corretor${activeBrokerCount === 1 ? "" : "es"} ativo${activeBrokerCount === 1 ? "" : "s"} medido${activeBrokerCount === 1 ? "" : "s"} no Stripe`,
         nextCharge: isActive ? formatDate(subscription?.nextBillingAt ?? null) : "Aguardando checkout Stripe",
         isActive,
       },
