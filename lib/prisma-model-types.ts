@@ -35,6 +35,8 @@ export type Broker = {
   status: BrokerAccountStatus
   creci: string | null
   description: string | null
+  aiCreditsBalance: number
+  aiCreditsUsedThisMonth: number
   createdAt: Date
 }
 
@@ -116,5 +118,16 @@ export type Catalog = {
   slug: string
   ownerType: CatalogOwnerType
   ownerId: string
+  createdAt: Date
+}
+
+export type AiAssistantInteraction = {
+  id: string
+  userId: string
+  brokerId: string
+  prompt: string
+  response: string
+  actionType: string
+  creditsUsed: number
   createdAt: Date
 }

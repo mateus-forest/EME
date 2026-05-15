@@ -241,9 +241,9 @@ export function BrokerNewPropertyPage() {
       const generated = await requestPropertyAi({
         title,
         type: propertyType,
-        city,
-        neighborhood,
-        price,
+        city: city || "Não informado",
+        neighborhood: neighborhood || "Não informado",
+        price: price || "Não informado",
         bedrooms,
         bathrooms,
         parkingSpots: parking,
@@ -397,6 +397,14 @@ export function BrokerNewPropertyPage() {
               ? "A IA monta a primeira versão do anúncio e você revisa tudo antes de publicar."
               : "Cadastre cada detalhe do imóvel com calma, sem depender da geração automática."}
           </p>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setCreationMode(null)}
+            className="mt-5 h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+          >
+            Voltar
+          </Button>
         </section>
 
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
@@ -458,6 +466,7 @@ export function BrokerNewPropertyPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6">
+            {creationMode === "ai" ? (
             <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               <CardHeader className="px-6 py-5">
                 <CardTitle className="text-xl text-white">{creationMode === "ai" ? "Descrição, áudio e IA" : "Descrição do imóvel"}</CardTitle>
@@ -525,10 +534,12 @@ export function BrokerNewPropertyPage() {
                 ) : null}
               </CardContent>
             </Card>
+            ) : null}
 
+            {(creationMode === "manual" || hasGenerated) ? (
             <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Informações do imóvel</CardTitle>
+                <CardTitle className="text-xl text-white">{creationMode === "manual" ? "Dados do imóvel" : "Revisão do imóvel"}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 p-5 pt-0">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -589,6 +600,17 @@ export function BrokerNewPropertyPage() {
                   </Field>
                 </div>
 
+                {creationMode === "manual" ? (
+                  <Field label="Descrição">
+                    <Textarea
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      placeholder="Descreva os principais diferenciais do imóvel..."
+                      className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                    />
+                  </Field>
+                ) : null}
+
                 <div className="grid gap-3 sm:grid-cols-3">
                   <CounterCard label="Quartos" value={bedrooms} onChange={setBedrooms} />
                   <CounterCard label="Banheiros" value={bathrooms} onChange={setBathrooms} />
@@ -596,6 +618,7 @@ export function BrokerNewPropertyPage() {
                 </div>
               </CardContent>
             </Card>
+            ) : null}
 
           </div>
 

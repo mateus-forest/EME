@@ -84,6 +84,7 @@ model User {
   ownedAgency          Agency?                       @relation("AgencyOwner")
   notifications        Notification[]
   leads                Lead[]
+  aiAssistantInteractions AiAssistantInteraction[]
 }
 
 model Broker {
@@ -95,11 +96,14 @@ model Broker {
   status      BrokerAccountStatus @default(ACTIVE)
   creci       String?
   description String?
+  aiCreditsBalance Int      @default(10)
+  aiCreditsUsedThisMonth Int @default(0)
   createdAt   DateTime   @default(now())
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   agency      Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   properties  Property[]
   leads       Lead[]
+  aiAssistantInteractions AiAssistantInteraction[]
 }
 
 model Agency {
@@ -152,6 +156,22 @@ model Catalog {
   createdAt DateTime         @default(now())
 
   @@index([ownerType, ownerId])
+}
+
+model AiAssistantInteraction {
+  id          String   @id @default(cuid())
+  userId      String
+  brokerId    String
+  prompt      String
+  response    String
+  actionType  String
+  creditsUsed Int      @default(1)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([brokerId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Subscription {

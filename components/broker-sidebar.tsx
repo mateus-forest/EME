@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   BarChart3,
+  Bot,
   BookOpenText,
   Building2,
   ChevronLeft,
@@ -37,6 +38,7 @@ const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/corretor" },
   { label: "Meus imóveis", icon: Building2, href: "/corretor/imoveis" },
   { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
+  { label: "Corretor M", icon: Bot, href: "/corretor/corretor-m" },
   { label: "Analytics", icon: BarChart3, href: "/corretor/analytics" },
   { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
   { label: "Suporte", icon: LifeBuoy, href: "/corretor/suporte" },
