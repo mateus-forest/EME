@@ -21,6 +21,16 @@ function creditsResponse(broker: { aiCreditsBalance: number; aiCreditsUsedThisMo
   }
 }
 
+async function getBrokerCredits(brokerId: string) {
+  return prisma.broker.findUnique({
+    where: { id: brokerId },
+    select: {
+      aiCreditsBalance: true,
+      aiCreditsUsedThisMonth: true,
+    },
+  })
+}
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
@@ -35,9 +45,25 @@ export async function GET() {
     return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
   }
 
-  const response = NextResponse.json(creditsResponse(user.broker))
-  response.headers.set("Cache-Control", "no-store, max-age=0")
-  return response
+  try {
+    const brokerCredits = await getBrokerCredits(user.broker.id)
+    if (!brokerCredits) {
+      return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    }
+
+    const response = NextResponse.json(creditsResponse(brokerCredits))
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
+  } catch (caughtError) {
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json(
+        { error: "O servico do Corretor M esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { status: 503 },
+      )
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel carregar os creditos do Corretor M." }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -85,21 +111,19 @@ export async function POST(request: NextRequest) {
     })
 
     if (reserved.count === 0) {
+      const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
-        { error: "Creditos insuficientes para usar o Corretor M.", ...creditsResponse(user.broker) },
+        {
+          error: "Creditos insuficientes para usar o Corretor M.",
+          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 } }),
+        },
         { status: 402 },
       )
     }
 
     try {
       const assistantResponse = await generateBrokerAssistantResponse(input.prompt, input.actionType)
-      const updatedBroker = await prisma.broker.findUnique({
-        where: { id: user.broker.id },
-        select: {
-          aiCreditsBalance: true,
-          aiCreditsUsedThisMonth: true,
-        },
-      })
+      const updatedBroker = await getBrokerCredits(user.broker.id)
 
       if (!updatedBroker) {
         return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })

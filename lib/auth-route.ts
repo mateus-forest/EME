@@ -5,6 +5,30 @@ import { NextResponse } from "next/server"
 import { AUTH_COOKIE_NAME, clearAuthCookie, verifyAuthToken } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+export const authUserInclude = {
+  broker: {
+    select: {
+      id: true,
+      agencyId: true,
+      phone: true,
+      creci: true,
+      description: true,
+      catalogSlug: true,
+    },
+  },
+  ownedAgency: {
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      cnpj: true,
+      logoUrl: true,
+      catalogSlug: true,
+      description: true,
+    },
+  },
+} as const
+
 export function isPrismaUnavailable(error: unknown) {
   const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : null
   const errorName = error instanceof Error ? error.constructor.name : ""
@@ -55,10 +79,7 @@ export async function getAuthenticatedUser() {
     const session = await verifyAuthToken(token)
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
-      include: {
-        broker: true,
-        ownedAgency: true,
-      },
+      include: authUserInclude,
     })
 
     if (!user) {

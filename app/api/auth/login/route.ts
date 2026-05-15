@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
+import { authUserInclude } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 import { buildSessionProfile } from "@/lib/session-profile"
 
@@ -20,10 +21,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
-        broker: true,
-        ownedAgency: true,
-      },
+      include: authUserInclude,
     })
 
     if (!user) {
