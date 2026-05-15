@@ -9,6 +9,8 @@ import { useAgencyProperties, type AgencyProperty } from "@/components/use-agenc
 import { useAgencySubscription } from "@/components/use-agency-subscription"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
 import { requestPropertyAi } from "@/lib/property-ai-client"
+import { confirmPropertyXmlImport, previewPropertyXml, type XmlImportReport, type XmlImportSummary } from "@/lib/property-xml-import-client"
+import type { ParsedXmlProperty } from "@/lib/property-xml-import"
 import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -49,6 +51,7 @@ export function AgencyPropertiesPage() {
     deletePropertyImage,
     uploadPropertyAudio,
     deletePropertyAudio,
+    refreshProperties,
   } = useAgencyProperties()
   const { subscription } = useAgencySubscription()
   const [selectedProperty, setSelectedProperty] = useState<AgencyProperty | null>(null)
@@ -57,6 +60,11 @@ export function AgencyPropertiesPage() {
   const [isCreateChoiceOpen, setIsCreateChoiceOpen] = useState(false)
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null)
   const [importFeedback, setImportFeedback] = useState("")
+  const [xmlPreview, setXmlPreview] = useState<ParsedXmlProperty[]>([])
+  const [xmlSummary, setXmlSummary] = useState<XmlImportSummary | null>(null)
+  const [xmlReport, setXmlReport] = useState<XmlImportReport | null>(null)
+  const [isAnalyzingXml, setIsAnalyzingXml] = useState(false)
+  const [isImportingXml, setIsImportingXml] = useState(false)
   const [draftImageFiles, setDraftImageFiles] = useState<File[]>([])
   const [draftImagePreviews, setDraftImagePreviews] = useState<string[]>([])
   const [saveFeedback, setSaveFeedback] = useState("")
@@ -157,22 +165,59 @@ export function AgencyPropertiesPage() {
     setIsEditModalOpen(true)
   }
 
-  function handleAgencyXmlImport(files: FileList | null) {
+  async function handleAgencyXmlImport(files: FileList | null) {
     const file = files?.[0]
     if (!file) return
 
     const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
     if (!isXml) {
-      setImportFeedback("Envie um arquivo XML valido para preparar a importacao.")
+      setImportFeedback("Envie um arquivo XML valido para revisar antes de importar.")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setImportFeedback("O XML deve ter ate 5 MB nesta primeira etapa.")
+      setImportFeedback("O XML deve ter ate 5 MB.")
       return
     }
 
-    setImportFeedback("XML recebido. O processamento automatico sera liberado em uma proxima etapa.")
+    setIsAnalyzingXml(true)
+    setImportFeedback("")
+    setXmlPreview([])
+    setXmlSummary(null)
+    setXmlReport(null)
+
+    try {
+      const result = await previewPropertyXml(file)
+      setXmlPreview(result.properties)
+      setXmlSummary(result.summary)
+      setImportFeedback("XML analisado. Revise os imoveis antes de importar.")
+    } catch (caughtError) {
+      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+    } finally {
+      setIsAnalyzingXml(false)
+    }
+  }
+
+  async function handleConfirmAgencyXmlImport() {
+    const importableProperties = xmlPreview.filter((property) => property.status !== "invalid")
+    if (importableProperties.length === 0) {
+      setImportFeedback("Nenhum imovel esta pronto para importar.")
+      return
+    }
+
+    setIsImportingXml(true)
+    setImportFeedback("")
+
+    try {
+      const result = await confirmPropertyXmlImport(importableProperties)
+      setXmlReport(result.report)
+      setImportFeedback("Importacao finalizada.")
+      await refreshProperties()
+    } catch (caughtError) {
+      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel importar os imoveis.")
+    } finally {
+      setIsImportingXml(false)
+    }
   }
 
   async function handleTogglePublish(property: AgencyProperty) {
@@ -587,11 +632,17 @@ export function AgencyPropertiesPage() {
           {creationMode === "import" ? (
             <AgencyImportPanel
               feedback={importFeedback}
+              preview={xmlPreview}
+              summary={xmlSummary}
+              report={xmlReport}
+              isAnalyzing={isAnalyzingXml}
+              isImporting={isImportingXml}
               onBack={() => {
                 setCreationMode(null)
                 setImportFeedback("")
               }}
               onXmlImport={handleAgencyXmlImport}
+              onConfirmImport={handleConfirmAgencyXmlImport}
             />
           ) : (
             <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -897,12 +948,24 @@ function AgencyCreationOption({
 
 function AgencyImportPanel({
   feedback,
+  preview,
+  summary,
+  report,
+  isAnalyzing,
+  isImporting,
   onBack,
   onXmlImport,
+  onConfirmImport,
 }: {
   feedback: string
+  preview: ParsedXmlProperty[]
+  summary: XmlImportSummary | null
+  report: XmlImportReport | null
+  isAnalyzing: boolean
+  isImporting: boolean
   onBack: () => void
-  onXmlImport: (files: FileList | null) => void
+  onXmlImport: (files: FileList | null) => void | Promise<void>
+  onConfirmImport: () => void | Promise<void>
 }) {
   return (
     <div className="mt-6 grid gap-4">
@@ -911,16 +974,88 @@ function AgencyImportPanel({
       </Button>
       <div className="grid gap-4 lg:grid-cols-3">
         <label className="min-h-44 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
-          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => onXmlImport(event.target.files)} />
+          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
           <Upload className="size-8 text-[#69F0AE]" />
           <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Valide um arquivo XML de ate 5 MB para preparar a proxima etapa.</p>
+          <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imoveis para revisar antes de importar.</p>
         </label>
         <AgencyImportSoon title="Importar planilha" />
         <AgencyImportSoon title="Importar de anuncio, print ou link" />
       </div>
+      {isAnalyzing ? <p className="text-sm text-white/55">Analisando XML...</p> : null}
+      {summary ? (
+        <AgencyXmlImportPreview
+          preview={preview}
+          summary={summary}
+          report={report}
+          isImporting={isImporting}
+          onConfirmImport={onConfirmImport}
+        />
+      ) : null}
       {feedback ? <p className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
     </div>
+  )
+}
+
+function AgencyXmlImportPreview({
+  preview,
+  summary,
+  report,
+  isImporting,
+  onConfirmImport,
+}: {
+  preview: ParsedXmlProperty[]
+  summary: XmlImportSummary
+  report: XmlImportReport | null
+  isImporting: boolean
+  onConfirmImport: () => void | Promise<void>
+}) {
+  return (
+    <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Preview da importacao</h3>
+          <p className="mt-1 text-sm text-white/55">
+            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} invalidos
+          </p>
+        </div>
+        <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
+          {isImporting ? "Importando..." : "Confirmar importacao"}
+        </Button>
+      </div>
+      <div className="grid gap-3">
+        {preview.slice(0, 12).map((property, index) => (
+          <div key={`${property.title}-${index}`} className="rounded-[1rem] border border-white/[0.08] bg-black/20 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-white">{property.title || "Imovel sem titulo"}</p>
+                <p className="mt-1 text-sm text-white/50">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localizacao pendente"}</p>
+              </div>
+              <AgencyImportStatusBadge status={property.status} />
+            </div>
+            <p className="mt-2 text-sm text-white/70">{property.price || "Preco pendente"}</p>
+            {property.images.length > 0 ? <p className="mt-1 text-xs text-white/45">{property.images.length} imagem(ns) por URL</p> : null}
+            {property.issues.length > 0 ? <p className="mt-2 text-xs text-white/45">Revisar: {property.issues.join(", ")}</p> : null}
+          </div>
+        ))}
+      </div>
+      {report ? (
+        <div className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          Importados: {report.imported}. Duplicados ignorados: {report.duplicates}. Com erro: {report.errors}.
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function AgencyImportStatusBadge({ status }: { status: ParsedXmlProperty["status"] }) {
+  const label =
+    status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Invalido"
+
+  return (
+    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/70">
+      {label}
+    </span>
   )
 }
 

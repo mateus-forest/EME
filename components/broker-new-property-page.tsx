@@ -5,6 +5,8 @@ import { useMemo, useState } from "react"
 import { ArrowUpFromLine, AudioLines, FileText, ImagePlus, Images, Keyboard, Sparkles, Upload, type LucideIcon } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { confirmPropertyXmlImport, previewPropertyXml, type XmlImportReport, type XmlImportSummary } from "@/lib/property-xml-import-client"
+import type { ParsedXmlProperty } from "@/lib/property-xml-import"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
 import { formatCurrencyInput } from "@/lib/currency"
@@ -45,7 +47,7 @@ declare global {
 }
 
 export function BrokerNewPropertyPage() {
-  const { properties, addProperty, uploadPropertyImages, uploadPropertyAudio } = useBrokerProperties()
+  const { properties, addProperty, uploadPropertyImages, uploadPropertyAudio, refreshProperties } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null)
   const [images, setImages] = useState<string[]>([])
@@ -69,6 +71,11 @@ export function BrokerNewPropertyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [publishFeedback, setPublishFeedback] = useState("")
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
+  const [xmlPreview, setXmlPreview] = useState<ParsedXmlProperty[]>([])
+  const [xmlSummary, setXmlSummary] = useState<XmlImportSummary | null>(null)
+  const [xmlReport, setXmlReport] = useState<XmlImportReport | null>(null)
+  const [isAnalyzingXml, setIsAnalyzingXml] = useState(false)
+  const [isImportingXml, setIsImportingXml] = useState(false)
 
   const totalPropertiesCount = useMemo(() => properties.length, [properties])
   const billingBypassEnabled = isBillingBypassEnabled()
@@ -107,22 +114,59 @@ export function BrokerNewPropertyPage() {
     setPublishFeedback("")
   }
 
-  function handleXmlImport(files: FileList | null) {
+  async function handleXmlImport(files: FileList | null) {
     const file = files?.[0]
     if (!file) return
 
     const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
     if (!isXml) {
-      setPublishFeedback("Envie um arquivo XML valido para preparar a importacao.")
+      setPublishFeedback("Envie um arquivo XML valido para revisar antes de importar.")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setPublishFeedback("O XML deve ter ate 5 MB nesta primeira etapa.")
+      setPublishFeedback("O XML deve ter ate 5 MB.")
       return
     }
 
-    setPublishFeedback("XML recebido. O processamento automatico sera liberado em uma proxima etapa.")
+    setIsAnalyzingXml(true)
+    setPublishFeedback("")
+    setXmlPreview([])
+    setXmlSummary(null)
+    setXmlReport(null)
+
+    try {
+      const result = await previewPropertyXml(file)
+      setXmlPreview(result.properties)
+      setXmlSummary(result.summary)
+      setPublishFeedback("XML analisado. Revise os imoveis antes de importar.")
+    } catch (caughtError) {
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+    } finally {
+      setIsAnalyzingXml(false)
+    }
+  }
+
+  async function handleConfirmXmlImport() {
+    const importableProperties = xmlPreview.filter((property) => property.status !== "invalid")
+    if (importableProperties.length === 0) {
+      setPublishFeedback("Nenhum imovel esta pronto para importar.")
+      return
+    }
+
+    setIsImportingXml(true)
+    setPublishFeedback("")
+
+    try {
+      const result = await confirmPropertyXmlImport(importableProperties)
+      setXmlReport(result.report)
+      setPublishFeedback("Importacao finalizada.")
+      await refreshProperties()
+    } catch (caughtError) {
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel importar os imoveis.")
+    } finally {
+      setIsImportingXml(false)
+    }
   }
 
   function handleAudioSelection(files: FileList | null) {
@@ -326,11 +370,17 @@ export function BrokerNewPropertyPage() {
         ) : creationMode === "import" ? (
           <ImportPropertyPanel
             feedback={publishFeedback}
+            preview={xmlPreview}
+            summary={xmlSummary}
+            report={xmlReport}
+            isAnalyzing={isAnalyzingXml}
+            isImporting={isImportingXml}
             onBack={() => {
               setCreationMode(null)
               setPublishFeedback("")
             }}
             onXmlImport={handleXmlImport}
+            onConfirmImport={handleConfirmXmlImport}
           />
         ) : (
           <>
@@ -705,12 +755,24 @@ function CreationOption({
 
 function ImportPropertyPanel({
   feedback,
+  preview,
+  summary,
+  report,
+  isAnalyzing,
+  isImporting,
   onBack,
   onXmlImport,
+  onConfirmImport,
 }: {
   feedback: string
+  preview: ParsedXmlProperty[]
+  summary: XmlImportSummary | null
+  report: XmlImportReport | null
+  isAnalyzing: boolean
+  isImporting: boolean
   onBack: () => void
-  onXmlImport: (files: FileList | null) => void
+  onXmlImport: (files: FileList | null) => void | Promise<void>
+  onConfirmImport: () => void | Promise<void>
 }) {
   return (
     <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
@@ -719,7 +781,7 @@ function ImportPropertyPanel({
           <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Importar imoveis</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Escolha uma origem</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
-            Nesta fase a estrutura esta preparada e nenhuma importacao cria imoveis automaticamente sem validacao.
+            Envie um arquivo XML de imoveis para revisar antes de importar.
           </p>
         </div>
         <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
@@ -728,16 +790,87 @@ function ImportPropertyPanel({
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <label className="min-h-48 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
-          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => onXmlImport(event.target.files)} />
+          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
           <Upload className="size-8 text-[#69F0AE]" />
           <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Valide um arquivo XML de ate 5 MB para preparar a proxima etapa.</p>
+          <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imoveis para revisar antes de importar.</p>
         </label>
         <ImportComingSoon title="Importar planilha" />
         <ImportComingSoon title="Importar de anuncio, print ou link" />
       </div>
+      {isAnalyzing ? <p className="mt-5 text-sm text-white/55">Analisando XML...</p> : null}
+      {summary ? (
+        <XmlImportPreview
+          preview={preview}
+          summary={summary}
+          report={report}
+          isImporting={isImporting}
+          onConfirmImport={onConfirmImport}
+        />
+      ) : null}
       {feedback ? <p className="mt-5 rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
     </section>
+  )
+}
+
+function XmlImportPreview({
+  preview,
+  summary,
+  report,
+  isImporting,
+  onConfirmImport,
+}: {
+  preview: ParsedXmlProperty[]
+  summary: XmlImportSummary
+  report: XmlImportReport | null
+  isImporting: boolean
+  onConfirmImport: () => void | Promise<void>
+}) {
+  return (
+    <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Preview da importacao</h3>
+          <p className="mt-1 text-sm text-white/55">
+            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} invalidos
+          </p>
+        </div>
+        <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
+          {isImporting ? "Importando..." : "Confirmar importacao"}
+        </Button>
+      </div>
+      <div className="grid gap-3">
+        {preview.slice(0, 12).map((property, index) => (
+          <div key={`${property.title}-${index}`} className="rounded-[1rem] border border-white/[0.08] bg-black/20 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-white">{property.title || "Imovel sem titulo"}</p>
+                <p className="mt-1 text-sm text-white/50">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localizacao pendente"}</p>
+              </div>
+              <ImportStatusBadge status={property.status} />
+            </div>
+            <p className="mt-2 text-sm text-white/70">{property.price || "Preco pendente"}</p>
+            {property.issues.length > 0 ? <p className="mt-2 text-xs text-white/45">Revisar: {property.issues.join(", ")}</p> : null}
+          </div>
+        ))}
+      </div>
+      {report ? (
+        <div className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          Importados: {report.imported}. Duplicados ignorados: {report.duplicates}. Com erro: {report.errors}.
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function ImportStatusBadge({ status }: { status: ParsedXmlProperty["status"] }) {
+  const label =
+    status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Invalido"
+
+  return (
+    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/70">
+      {label}
+    </span>
   )
 }
 
