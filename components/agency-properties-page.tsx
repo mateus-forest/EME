@@ -57,6 +57,8 @@ export function AgencyPropertiesPage() {
   const [isCreateChoiceOpen, setIsCreateChoiceOpen] = useState(false)
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null)
   const [importFeedback, setImportFeedback] = useState("")
+  const [draftImageFiles, setDraftImageFiles] = useState<File[]>([])
+  const [draftImagePreviews, setDraftImagePreviews] = useState<string[]>([])
   const [saveFeedback, setSaveFeedback] = useState("")
   const [actionFeedback, setActionFeedback] = useState("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
@@ -113,6 +115,18 @@ export function AgencyPropertiesPage() {
     [properties],
   )
 
+  function handleOpenCreateChoice() {
+    if (isPlanBlocked) {
+      setActionFeedback("Seu plano da imobiliaria nao esta ativo para criar novos imoveis. Ative ou regularize sua assinatura para continuar.")
+      return
+    }
+
+    setSelectedProperty(null)
+    setCreationMode(null)
+    setImportFeedback("")
+    setIsCreateChoiceOpen(true)
+  }
+
   async function handleCreateProperty(mode: Exclude<CreationMode, "import"> = "manual") {
     if (isPlanBlocked) {
       setActionFeedback("Seu plano da imobiliária não está ativo para criar novos imóveis. Ative ou regularize sua assinatura para continuar.")
@@ -138,7 +152,27 @@ export function AgencyPropertiesPage() {
     })
     setSaveFeedback("")
     setAiHighlights([])
+    setDraftImageFiles([])
+    setDraftImagePreviews([])
     setIsEditModalOpen(true)
+  }
+
+  function handleAgencyXmlImport(files: FileList | null) {
+    const file = files?.[0]
+    if (!file) return
+
+    const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
+    if (!isXml) {
+      setImportFeedback("Envie um arquivo XML valido para preparar a importacao.")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setImportFeedback("O XML deve ter ate 5 MB nesta primeira etapa.")
+      return
+    }
+
+    setImportFeedback("XML recebido. O processamento automatico sera liberado em uma proxima etapa.")
   }
 
   async function handleTogglePublish(property: AgencyProperty) {
@@ -181,6 +215,8 @@ export function AgencyPropertiesPage() {
     })
     setSaveFeedback("")
     setAiHighlights([])
+    setDraftImageFiles([])
+    setDraftImagePreviews([])
     setIsEditModalOpen(true)
   }
 
@@ -199,6 +235,8 @@ export function AgencyPropertiesPage() {
         setEditingProperty(null)
         setSaveFeedback("")
         setAiHighlights([])
+        setDraftImageFiles([])
+        setDraftImagePreviews([])
       }, 150)
     }
   }
@@ -207,12 +245,26 @@ export function AgencyPropertiesPage() {
     setEditingProperty((current) => (current ? { ...current, [field]: value } : current))
   }
 
+  function addDraftPropertyPhotos(files: FileList | null) {
+    if (!files) return
+
+    const nextFiles = Array.from(files).slice(0, 8)
+    setDraftImageFiles(nextFiles)
+    setDraftImagePreviews(nextFiles.map((file) => URL.createObjectURL(file)))
+    setSaveFeedback("")
+  }
+
+  function removeDraftPropertyPhoto(imageUrl: string) {
+    setDraftImagePreviews((current) => current.filter((image) => image !== imageUrl))
+    setDraftImageFiles((current) => current.filter((_, index) => draftImagePreviews[index] !== imageUrl))
+  }
+
   async function saveChanges() {
     if (!editingProperty) return
 
     try {
       if (!editingProperty.id) {
-        await addProperty({
+        const createdProperty = await addProperty({
           id: "",
           titulo: editingProperty.title,
           preco: editingProperty.price,
@@ -234,10 +286,13 @@ export function AgencyPropertiesPage() {
           broker: { id: "", name: "", initials: "" },
           views: 0,
           leads: 0,
-          images: editingProperty.images,
-          image: editingProperty.images[0] ?? "",
+          images: [],
+          image: "",
           audioUrl: "",
         })
+        if (draftImageFiles.length > 0) {
+          await uploadPropertyImages(createdProperty.id, draftImageFiles)
+        }
         setActionFeedback("Imóvel criado com sucesso.")
         closeEditModal(false)
         setSelectedProperty(null)
@@ -337,7 +392,9 @@ export function AgencyPropertiesPage() {
         description: editingProperty.description,
       })
 
-      updateEditingField("description", generated.description)
+      if (!editingProperty.description.trim() || window.confirm("Substituir a descricao atual pela sugestao da IA?")) {
+        updateEditingField("description", generated.description)
+      }
 
       if (!editingProperty.title.trim() && generated.suggestedTitle) {
         updateEditingField("title", generated.suggestedTitle)
@@ -346,7 +403,12 @@ export function AgencyPropertiesPage() {
       setAiHighlights(generated.highlights)
       setSaveFeedback("Descrição gerada com IA")
     } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível gerar a descrição com IA.")
+      const message = caughtError instanceof Error ? caughtError.message : ""
+      setSaveFeedback(
+        message.toLowerCase().includes("ia ainda")
+          ? "A geracao com IA ainda nao esta ativada."
+          : message || "Não foi possível gerar a descrição com IA.",
+      )
     } finally {
       setIsGeneratingAi(false)
     }
@@ -360,7 +422,7 @@ export function AgencyPropertiesPage() {
       searchValue={search}
       onSearchChange={setSearch}
       primaryActionLabel="Novo imóvel"
-      primaryActionOnClick={handleCreateProperty}
+      primaryActionOnClick={handleOpenCreateChoice}
       headerControls={
         <Button type="button" variant="ghost" onClick={() => setFiltersOpen((current) => !current)} className="h-8.5 rounded-xl border border-white/10 bg-white/5 px-4 text-white/75 hover:bg-white/10 hover:text-white">
           <SlidersHorizontal className="size-4" />
@@ -445,7 +507,7 @@ export function AgencyPropertiesPage() {
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] p-8 text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <h3 className="text-2xl font-semibold text-white">Você ainda não cadastrou imóveis</h3>
           <p className="mt-3 text-sm leading-7 text-white/55">Adicione imóveis para começar a operar e alimentar seu catálogo institucional.</p>
-          <Button onClick={handleCreateProperty} className="mt-6 h-10 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+          <Button onClick={handleOpenCreateChoice} className="mt-6 h-10 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
             Adicionar primeiro imóvel
           </Button>
         </section>
@@ -515,6 +577,49 @@ export function AgencyPropertiesPage() {
           ))}
         </section>
       )}
+
+      <Dialog open={isCreateChoiceOpen} onOpenChange={setIsCreateChoiceOpen}>
+        <DialogContent showCloseButton className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-6 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-4xl">
+          <DialogTitle className="text-2xl text-white">Como voce quer criar este imovel?</DialogTitle>
+          <DialogDescription className="mt-2 text-white/55">
+            Escolha o melhor ponto de partida. Voce sempre podera revisar antes de publicar.
+          </DialogDescription>
+          {creationMode === "import" ? (
+            <AgencyImportPanel
+              feedback={importFeedback}
+              onBack={() => {
+                setCreationMode(null)
+                setImportFeedback("")
+              }}
+              onXmlImport={handleAgencyXmlImport}
+            />
+          ) : (
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              <AgencyCreationOption
+                icon={Sparkles}
+                title="Criar com IA"
+                description="Envie fotos, audio ou uma descricao e gere um anuncio automaticamente."
+                onClick={() => void handleCreateProperty("ai")}
+              />
+              <AgencyCreationOption
+                icon={Keyboard}
+                title="Criar manualmente"
+                description="Ideal para anuncios ja existentes ou preenchimento completo."
+                onClick={() => void handleCreateProperty("manual")}
+              />
+              <AgencyCreationOption
+                icon={FileText}
+                title="Importar imoveis"
+                description="Importe imoveis via XML, planilha ou anuncio existente."
+                onClick={() => {
+                  setCreationMode("import")
+                  setImportFeedback("")
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
         <DialogContent showCloseButton className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-4xl">
@@ -586,32 +691,40 @@ export function AgencyPropertiesPage() {
                   <section className="grid gap-4">
                     <div className="flex items-center justify-between gap-4">
                       <h3 className="text-lg font-semibold text-white">Mídia</h3>
-                      {editingProperty.id && (
-                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            className="sr-only"
-                            onChange={(event) => {
+                      <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={(event) => {
+                            if (editingProperty.id) {
                               void addPropertyPhotos(event.target.files)
-                              event.currentTarget.value = ""
-                            }}
-                          />
-                          Adicionar fotos
-                        </label>
-                      )}
+                            } else {
+                              addDraftPropertyPhotos(event.target.files)
+                            }
+                            event.currentTarget.value = ""
+                          }}
+                        />
+                        Adicionar fotos
+                      </label>
                     </div>
 
-                    {editingProperty && editingProperty.images.length > 0 ? (
+                    {(editingProperty.id ? editingProperty.images : draftImagePreviews).length > 0 ? (
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        {editingProperty.images.map((image, index) => (
+                        {(editingProperty.id ? editingProperty.images : draftImagePreviews).map((image, index) => (
                           <div key={`${image}-${index}`} className="group relative overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={image} alt={`Imagem ${index + 1}`} className="h-36 w-full object-cover" />
                             <button
                               type="button"
-                              onClick={() => void removePropertyPhoto(image)}
+                              onClick={() => {
+                                if (editingProperty.id) {
+                                  void removePropertyPhoto(image)
+                                } else {
+                                  removeDraftPropertyPhoto(image)
+                                }
+                              }}
                               className="absolute top-2 right-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-0 transition-opacity hover:bg-red-500/30 group-hover:opacity-100"
                             >
                               Remover
@@ -621,9 +734,7 @@ export function AgencyPropertiesPage() {
                       </div>
                     ) : (
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/55">
-                        {editingProperty.id
-                          ? "Nenhuma imagem enviada ainda para este imóvel."
-                          : "Cadastre o imóvel primeiro para enviar imagens reais."}
+                        Nenhuma imagem selecionada ainda para este imovel.
                       </div>
                     )}
                   </section>
@@ -672,6 +783,8 @@ export function AgencyPropertiesPage() {
                     <Textarea value={editingProperty.description} onChange={(event) => updateEditingField("description", event.target.value)} placeholder="Descreva os principais diferenciais do imóvel..." className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30" />
                   </section>
 
+                  {!editingProperty.id ? <AgencyDraftPreview property={editingProperty} /> : null}
+
                   <section className="grid gap-4">
                     <h3 className="text-lg font-semibold text-white">Áudio</h3>
                     {editingProperty.id && (
@@ -707,6 +820,7 @@ export function AgencyPropertiesPage() {
                     )}
                   </section>
 
+                  {(editingProperty.id || creationMode === "ai") ? (
                   <section className="grid gap-3">
                     <div className="flex items-center justify-between gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                       <div>
@@ -727,6 +841,7 @@ export function AgencyPropertiesPage() {
                       </div>
                     ) : null}
                   </section>
+                  ) : null}
 
                   {saveFeedback && (
                     <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
@@ -751,6 +866,94 @@ export function AgencyPropertiesPage() {
         </DialogContent>
       </Dialog>
     </AgencyPageShell>
+  )
+}
+
+function AgencyCreationOption({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon: LucideIcon
+  title: string
+  description: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="min-h-48 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 text-left transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]"
+    >
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+        <Icon className="size-5" />
+      </div>
+      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-white/55">{description}</p>
+    </button>
+  )
+}
+
+function AgencyImportPanel({
+  feedback,
+  onBack,
+  onXmlImport,
+}: {
+  feedback: string
+  onBack: () => void
+  onXmlImport: (files: FileList | null) => void
+}) {
+  return (
+    <div className="mt-6 grid gap-4">
+      <Button type="button" variant="ghost" onClick={onBack} className="h-10 w-fit rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+        Voltar
+      </Button>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <label className="min-h-44 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
+          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => onXmlImport(event.target.files)} />
+          <Upload className="size-8 text-[#69F0AE]" />
+          <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
+          <p className="mt-2 text-sm leading-6 text-white/55">Valide um arquivo XML de ate 5 MB para preparar a proxima etapa.</p>
+        </label>
+        <AgencyImportSoon title="Importar planilha" />
+        <AgencyImportSoon title="Importar de anuncio, print ou link" />
+      </div>
+      {feedback ? <p className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
+    </div>
+  )
+}
+
+function AgencyImportSoon({ title }: { title: string }) {
+  return (
+    <div className="min-h-44 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
+      <FileText className="size-8 text-white/40" />
+      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-white/55">Em breve.</p>
+    </div>
+  )
+}
+
+function AgencyDraftPreview({ property }: { property: EditableAgencyProperty }) {
+  const location = [property.neighborhood.trim(), property.city.trim()].filter(Boolean).join(", ")
+  const hasData = Boolean(property.title.trim() || property.price.trim() || location || property.description.trim())
+
+  return (
+    <section className="grid gap-3">
+      <h3 className="text-lg font-semibold text-white">Preview</h3>
+      {!hasData ? (
+        <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/55">
+          Preencha os dados para visualizar o anuncio.
+        </div>
+      ) : (
+        <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+          {property.title.trim() ? <p className="text-lg font-semibold text-white">{property.title}</p> : null}
+          {location ? <p className="mt-1 text-sm text-white/50">{location}</p> : null}
+          <p className="mt-3 text-xl font-semibold text-white">{property.price || "Consulte valor"}</p>
+          {property.description.trim() ? <p className="mt-3 text-sm leading-6 text-white/60">{property.description}</p> : null}
+        </div>
+      )}
+    </section>
   )
 }
 
