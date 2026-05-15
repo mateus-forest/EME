@@ -7,19 +7,19 @@ export function ProductFlow() {
     {
       icon: Camera,
       title: "Importe",
-      description: "XML, print ou link",
+      description: "Fotos, audio, XML, print ou link",
       step: 1,
     },
     {
       icon: Sparkles,
-      title: "IA organiza",
-      description: "dados e copy",
+      title: "IA cria",
+      description: "anuncio, dados e revisao",
       step: 2,
     },
     {
       icon: CheckCircle2,
       title: "Publique",
-      description: "catálogo e leads",
+      description: "catalogo e leads",
       step: 3,
     },
   ]
@@ -48,9 +48,9 @@ export function ProductFlow() {
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00C853]/20 to-[#00C853]/5 flex items-center justify-center">
                       <step.icon className="w-8 h-8 text-[#00C853]" />
                     </div>
-                    <div className="text-center">
+                    <div className="px-4 text-center">
                       <p className="text-lg font-bold text-white">{step.title}</p>
-                      <p className="text-sm text-white/50">{step.description}</p>
+                      <p className="mt-1 text-sm leading-5 text-white/50">{step.description}</p>
                     </div>
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#00C853] flex items-center justify-center font-bold text-black text-sm">
                       {step.step}
@@ -70,23 +70,23 @@ export function ProductFlow() {
         </div>
 
         <div className="text-center mt-16 space-y-2">
-          <p className="text-lg text-white/60">Sem redigitar anúncio antigo.</p>
-          <p className="text-lg text-white/60">Sem perder informação no caminho.</p>
-          <p className="text-lg text-white/60">Sem publicar sem revisar.</p>
+          <p className="text-lg text-white/60">Menos cadastro repetitivo.</p>
+          <p className="text-lg text-white/60">A IA organiza antes da publicação.</p>
+          <p className="text-lg text-white/60">Mais tempo para converter clientes.</p>
         </div>
 
         <div className="text-center mt-12 max-w-xl mx-auto space-y-6">
           <p className="text-base text-white/50 italic">
-            Você também pode criar manualmente quando quiser controle total.
+            A IA acelera a criação do anúncio, e você revisa antes de publicar.
           </p>
 
           <p className="text-sm text-white/40 leading-relaxed">
-            Use fotos, áudio, texto, XML, print ou link.<br />
-            O EME organiza os dados e prepara o anúncio para revisão.
+            Crie por foto, áudio ou texto. Importe por XML, print ou link.<br />
+            O EME transforma tudo em um anúncio organizado para o catálogo.
           </p>
 
           <p className="text-base font-medium text-[#00C853]">
-            Menos cadastro repetitivo. Mais tempo para converter clientes.
+            Importe e publique em minutos.
           </p>
         </div>
       </div>
