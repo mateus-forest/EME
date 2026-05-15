@@ -22,8 +22,11 @@ export function Footer() {
             <Link href="#produto" className="text-sm text-white/50 hover:text-white transition-colors">
               Produto
             </Link>
-            <Link href="#planos" className="text-sm text-white/50 hover:text-white transition-colors">
-              Planos
+            <Link href="#busca-inteligente" className="text-sm text-white/50 hover:text-white transition-colors">
+              Busca inteligente
+            </Link>
+            <Link href="#corretor-eme" className="text-sm text-white/50 hover:text-white transition-colors">
+              Corretor EME
             </Link>
             <Link href="mailto:suporte@eme.com" className="text-sm text-white/50 hover:text-white transition-colors">
               Contato

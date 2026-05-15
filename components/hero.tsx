@@ -17,21 +17,20 @@ export function Hero() {
       <div className="relative z-10 mx-auto max-w-5xl text-center">
         <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#00C853]/30 bg-[#00C853]/10 px-4 py-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#00C853]" />
-          <span className="text-sm font-medium text-[#00C853]">Plataforma para corretores e imobiliárias</span>
+          <span className="text-sm font-medium text-[#00C853]">Plataforma inteligente para corretores e imobiliárias</span>
         </div>
 
         <h1 className="mb-6 text-4xl leading-tight font-bold tracking-tight text-balance text-white sm:text-5xl md:text-6xl lg:text-7xl">
-          Poste um imóvel em{" "}
+          Transforme imóveis em{" "}
           <span className="bg-gradient-to-r from-[#00C853] to-[#00E676] bg-clip-text text-transparent">
-            30 segundos
+            leads com IA
           </span>
-          .<br />
-          Venda antes dos outros.
+          .
         </h1>
 
         <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-pretty text-white/60 md:text-xl">
-          Você captura. A EME cria o anúncio, publica no seu catálogo e deixa pronto para
-          vender.
+          Crie anúncios, publique catálogos inteligentes, capture leads e prepare atendimentos
+          com o Corretor EME no WhatsApp.
         </p>
 
         <Button
@@ -49,7 +48,7 @@ export function Hero() {
             </div>
             <div className="text-left">
               <p className="text-xl font-bold text-white">Catálogo</p>
-              <p className="text-sm text-white/50">imóveis publicados</p>
+              <p className="text-sm text-white/50">inteligente</p>
             </div>
           </div>
 
@@ -61,7 +60,7 @@ export function Hero() {
             </div>
             <div className="text-left">
               <p className="text-xl font-bold text-white">IA</p>
-              <p className="text-sm text-white/50">descrição assistida</p>
+              <p className="text-sm text-white/50">anúncios e busca</p>
             </div>
           </div>
 
@@ -72,8 +71,8 @@ export function Hero() {
               <Clock className="h-5 w-5 text-[#00C853]" />
             </div>
             <div className="text-left">
-              <p className="text-xl font-bold text-white">30s</p>
-              <p className="text-sm text-white/50">para publicar</p>
+              <p className="text-xl font-bold text-white">Leads</p>
+              <p className="text-sm text-white/50">antes do WhatsApp</p>
             </div>
           </div>
         </div>

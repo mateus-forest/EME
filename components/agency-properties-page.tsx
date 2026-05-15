@@ -976,14 +976,13 @@ function AgencyImportPanel({
       <Button type="button" variant="ghost" onClick={onBack} className="h-10 w-fit rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
         Voltar
       </Button>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <label className="min-h-44 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
           <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
           <Upload className="size-8 text-[#69F0AE]" />
           <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
           <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imoveis para revisar antes de importar.</p>
         </label>
-        <AgencyImportSoon title="Importar planilha" />
         <div className="min-h-44 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
           <Sparkles className="size-8 text-[#69F0AE]" />
           <h3 className="mt-5 text-lg font-semibold text-white">Importar de anuncio</h3>
@@ -1065,16 +1064,6 @@ function AgencyImportStatusBadge({ status }: { status: ParsedXmlProperty["status
     <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/70">
       {label}
     </span>
-  )
-}
-
-function AgencyImportSoon({ title }: { title: string }) {
-  return (
-    <div className="min-h-44 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
-      <FileText className="size-8 text-white/40" />
-      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-white/55">Em breve.</p>
-    </div>
   )
 }
 

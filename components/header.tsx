@@ -30,8 +30,11 @@ export function Header() {
             >
               Como funciona
             </Link>
-            <Link href="#planos" className="text-sm text-white/70 transition-colors hover:text-white">
-              Planos
+            <Link href="#busca-inteligente" className="text-sm text-white/70 transition-colors hover:text-white">
+              Busca inteligente
+            </Link>
+            <Link href="#corretor-eme" className="text-sm text-white/70 transition-colors hover:text-white">
+              Corretor EME
             </Link>
           </div>
 

@@ -4,8 +4,10 @@ import { BeliefBreak } from "@/components/belief-break"
 import { ProductFlow } from "@/components/product-flow"
 import { CatalogSection } from "@/components/catalog-section"
 import { DistributionSection } from "@/components/distribution-section"
+import { IntelligentSearchSection } from "@/components/intelligent-search-section"
+import { LeadCaptureSection } from "@/components/lead-capture-section"
+import { CorretorEmeSection } from "@/components/corretor-eme-section"
 import { ManagementSection } from "@/components/management-section"
-import { PricingSection } from "@/components/pricing-section"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
 import { FlowLine } from "@/components/flow-line"
@@ -19,9 +21,11 @@ export default function Home() {
       <BeliefBreak />
       <ProductFlow />
       <CatalogSection />
+      <IntelligentSearchSection />
       <DistributionSection />
+      <LeadCaptureSection />
+      <CorretorEmeSection />
       <ManagementSection />
-      <PricingSection />
       <CTASection />
       <Footer />
     </main>

@@ -14,9 +14,9 @@ export function CTASection() {
 
         <div className="relative z-10">
           <h2 className="mb-6 text-3xl font-bold text-balance text-white sm:text-4xl md:text-5xl">
-            Você pode continuar como está...<br />
+            Anuncie, organize e converta<br />
             <span className="bg-gradient-to-r from-[#00C853] to-[#00E676] bg-clip-text text-transparent">
-              Ou vender mais rápido
+              melhor com IA
             </span>
             .
           </h2>
