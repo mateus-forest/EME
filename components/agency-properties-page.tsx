@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo, useState, type ReactNode } from "react"
 import { Bath, Bed, Building2, Car, Eye, FileText, Keyboard, PencilLine, SlidersHorizontal, Sparkles, Upload, Users, type LucideIcon } from "lucide-react"
 
+import { AdImportPanel } from "@/components/ad-import-panel"
 import { AgencyPageShell } from "@/components/agency-page-shell"
 import { useAgencyProperties, type AgencyProperty } from "@/components/use-agency-properties"
 import { useAgencySubscription } from "@/components/use-agency-subscription"
@@ -637,6 +638,7 @@ export function AgencyPropertiesPage() {
               report={xmlReport}
               isAnalyzing={isAnalyzingXml}
               isImporting={isImportingXml}
+              onImported={refreshProperties}
               onBack={() => {
                 setCreationMode(null)
                 setImportFeedback("")
@@ -953,6 +955,7 @@ function AgencyImportPanel({
   report,
   isAnalyzing,
   isImporting,
+  onImported,
   onBack,
   onXmlImport,
   onConfirmImport,
@@ -963,6 +966,7 @@ function AgencyImportPanel({
   report: XmlImportReport | null
   isAnalyzing: boolean
   isImporting: boolean
+  onImported: () => void | Promise<void>
   onBack: () => void
   onXmlImport: (files: FileList | null) => void | Promise<void>
   onConfirmImport: () => void | Promise<void>
@@ -980,8 +984,13 @@ function AgencyImportPanel({
           <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imoveis para revisar antes de importar.</p>
         </label>
         <AgencyImportSoon title="Importar planilha" />
-        <AgencyImportSoon title="Importar de anuncio, print ou link" />
+        <div className="min-h-44 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
+          <Sparkles className="size-8 text-[#69F0AE]" />
+          <h3 className="mt-5 text-lg font-semibold text-white">Importar de anuncio</h3>
+          <p className="mt-2 text-sm leading-6 text-white/55">Cole texto, informe um link ou envie um print para extrair com IA.</p>
+        </div>
       </div>
+      <AdImportPanel onImported={onImported} />
       {isAnalyzing ? <p className="text-sm text-white/55">Analisando XML...</p> : null}
       {summary ? (
         <AgencyXmlImportPreview
