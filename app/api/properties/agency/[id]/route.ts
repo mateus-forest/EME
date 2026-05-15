@@ -180,7 +180,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       include: propertyInclude,
     })
 
-    return NextResponse.json({ property: serializeProperty(updatedProperty) })
+    const response = NextResponse.json({ property: serializeProperty(updatedProperty) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][agency][id] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -230,7 +232,9 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
       },
     })
 
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][agency][id] delete failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

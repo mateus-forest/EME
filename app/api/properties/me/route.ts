@@ -46,7 +46,9 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json({ properties: properties.map(serializeProperty) })
+    const response = NextResponse.json({ properties: properties.map(serializeProperty) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][me] list failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

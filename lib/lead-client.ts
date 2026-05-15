@@ -5,7 +5,31 @@ type PublicLeadPayload = {
   catalogSlug?: string
   catalogType?: "broker" | "agency"
   source: string
+  name?: string
+  email?: string
+  phone?: string
   message?: string
+  searchTerm?: string
+  intent?: string
+}
+
+export async function createPublicLead(payload: PublicLeadPayload) {
+  const response = await fetch("/api/leads", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  })
+
+  const data = (await response.json().catch(() => null)) as { error?: string; lead?: { id: string } } | null
+
+  if (!response.ok || !data?.lead) {
+    throw new Error(data?.error || "Não foi possível registrar seu interesse agora.")
+  }
+
+  return data.lead
 }
 
 export function recordPublicLead(payload: PublicLeadPayload) {

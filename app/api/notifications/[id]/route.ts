@@ -37,7 +37,9 @@ export async function PATCH(_request: NextRequest, { params }: { params: Promise
       },
     })
 
-    return NextResponse.json({ notification: serializePaymentNotification(updated) })
+    const response = NextResponse.json({ notification: serializePaymentNotification(updated) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][notifications][id] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -79,7 +81,9 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       },
     })
 
-    return NextResponse.json({ notification: serializePaymentNotification(updated) })
+    const response = NextResponse.json({ notification: serializePaymentNotification(updated) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][notifications][id] archive failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

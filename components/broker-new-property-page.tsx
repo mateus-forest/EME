@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { ArrowUpFromLine, AudioLines, ImagePlus, Images, Sparkles, Upload } from "lucide-react"
+import { ArrowUpFromLine, AudioLines, FileText, ImagePlus, Images, Keyboard, Sparkles, Upload, type LucideIcon } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { requestPropertyAi } from "@/lib/property-ai-client"
@@ -13,8 +13,13 @@ import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
+
+type CreationMode = "ai" | "manual" | "import"
+type PropertyType = "Apartamento" | "Casa" | "Comercial"
+type PublishStatus = "Rascunho" | "Publicado"
 
 type BrowserSpeechRecognition = {
   lang: string
@@ -42,6 +47,7 @@ declare global {
 export function BrokerNewPropertyPage() {
   const { properties, addProperty, uploadPropertyImages, uploadPropertyAudio } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
+  const [creationMode, setCreationMode] = useState<CreationMode | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [audioFile, setAudioFile] = useState<File | null>(null)
@@ -51,6 +57,8 @@ export function BrokerNewPropertyPage() {
   const [city, setCity] = useState("")
   const [neighborhood, setNeighborhood] = useState("")
   const [price, setPrice] = useState("")
+  const [propertyType, setPropertyType] = useState<PropertyType>("Apartamento")
+  const [publishStatus, setPublishStatus] = useState<PublishStatus>("Publicado")
   const [description, setDescription] = useState("")
   const [bedrooms, setBedrooms] = useState(2)
   const [bathrooms, setBathrooms] = useState(2)
@@ -75,6 +83,7 @@ export function BrokerNewPropertyPage() {
 
   const previewImages = useMemo(() => images, [images])
   const previewLocation = [neighborhood.trim(), city.trim()].filter(Boolean).join(", ")
+  const hasPreviewData = Boolean(title.trim() || price.trim() || previewLocation || description.trim() || previewImages[0])
 
   function validateManualProperty() {
     if (!title.trim() || !city.trim() || !neighborhood.trim() || !price.trim()) {
@@ -96,6 +105,24 @@ export function BrokerNewPropertyPage() {
     setHasGenerated(false)
     setIsPublished(false)
     setPublishFeedback("")
+  }
+
+  function handleXmlImport(files: FileList | null) {
+    const file = files?.[0]
+    if (!file) return
+
+    const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
+    if (!isXml) {
+      setPublishFeedback("Envie um arquivo XML valido para preparar a importacao.")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPublishFeedback("O XML deve ter ate 5 MB nesta primeira etapa.")
+      return
+    }
+
+    setPublishFeedback("XML recebido. O processamento automatico sera liberado em uma proxima etapa.")
   }
 
   function handleAudioSelection(files: FileList | null) {
@@ -168,7 +195,7 @@ export function BrokerNewPropertyPage() {
     try {
       const generated = await requestPropertyAi({
         title,
-        type: "Apartamento",
+        type: propertyType,
         city,
         neighborhood,
         price,
@@ -178,7 +205,9 @@ export function BrokerNewPropertyPage() {
         description,
       })
 
-      setDescription(generated.description)
+      if (!description.trim() || window.confirm("Substituir a descricao atual pela sugestao da IA?")) {
+        setDescription(generated.description)
+      }
 
       if (!title.trim() && generated.suggestedTitle) {
         setTitle(generated.suggestedTitle)
@@ -187,7 +216,12 @@ export function BrokerNewPropertyPage() {
       setAiHighlights(generated.highlights)
       setHasGenerated(true)
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível gerar o anúncio com IA.")
+      const message = caughtError instanceof Error ? caughtError.message : ""
+      setPublishFeedback(
+        message.toLowerCase().includes("ia ainda")
+          ? "A geracao com IA ainda nao esta ativada."
+          : message || "Não foi possível gerar o anúncio com IA.",
+      )
     } finally {
       setIsGenerating(false)
     }
@@ -215,7 +249,7 @@ export function BrokerNewPropertyPage() {
       const createdProperty = await addProperty({
         titulo: title,
         preco: price,
-        tipo: "Apartamento",
+        tipo: propertyType,
         corretorId: "",
         imobiliariaId: null,
         title,
@@ -227,10 +261,10 @@ export function BrokerNewPropertyPage() {
         bedrooms,
         bathrooms,
         parking,
-        status: "Publicado",
+        status: publishStatus,
         views: "0",
         leads: "0",
-        type: "Apartamento",
+        type: propertyType,
         description,
         audioUrl: "",
       })
@@ -244,7 +278,7 @@ export function BrokerNewPropertyPage() {
       }
 
       setIsPublished(true)
-      setPublishFeedback("Publicado com sucesso")
+      setPublishFeedback(publishStatus === "Publicado" ? "Publicado com sucesso" : "Rascunho criado com sucesso")
     } catch (caughtError) {
       setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível publicar o imóvel.")
     } finally {
@@ -287,11 +321,28 @@ export function BrokerNewPropertyPage() {
           </div>
         ) : null}
 
+        {!creationMode ? (
+          <PropertyCreationChoice onChoose={setCreationMode} />
+        ) : creationMode === "import" ? (
+          <ImportPropertyPanel
+            feedback={publishFeedback}
+            onBack={() => {
+              setCreationMode(null)
+              setPublishFeedback("")
+            }}
+            onXmlImport={handleXmlImport}
+          />
+        ) : (
+          <>
+
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] px-6 py-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
           <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imóvel</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
-            Capture, descreva e publique em segundos
+            {creationMode === "ai" ? "Use fotos, audio ou texto para acelerar o anuncio" : "Preencha os dados do imovel com controle total"}
           </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
+            Voce sempre podera revisar antes de publicar.
+          </p>
         </section>
 
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
@@ -362,6 +413,7 @@ export function BrokerNewPropertyPage() {
                   className="min-h-40 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
                 />
 
+                {creationMode === "ai" ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
                     type="button"
@@ -397,8 +449,9 @@ export function BrokerNewPropertyPage() {
                     {isGenerating ? "Gerando..." : "Gerar anúncio com IA"}
                   </Button>
                 </div>
+                ) : null}
 
-                {audioFile ? (
+                {creationMode === "ai" && audioFile ? (
                   <div className="grid gap-3 rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/60">
                     <p>{audioFile.name}</p>
                     {audioPreviewUrl ? (
@@ -432,6 +485,29 @@ export function BrokerNewPropertyPage() {
                       placeholder="R$ 500.000,00"
                       className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
                     />
+                  </Field>
+                  <Field label="Tipo">
+                    <Select value={propertyType} onValueChange={(value) => setPropertyType(value as PropertyType)}>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                        <SelectItem value="Apartamento">Apartamento</SelectItem>
+                        <SelectItem value="Casa">Casa</SelectItem>
+                        <SelectItem value="Comercial">Comercial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Status">
+                    <Select value={publishStatus} onValueChange={(value) => setPublishStatus(value as PublishStatus)}>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                        <SelectItem value="Publicado">Publicado</SelectItem>
+                        <SelectItem value="Rascunho">Rascunho</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label="Cidade">
                     <Input
@@ -490,6 +566,11 @@ export function BrokerNewPropertyPage() {
                     Organizamos as fotos e montamos uma descrição pronta para publicar.
                   </p>
                 </div>
+              ) : !hasPreviewData ? (
+                <div className="flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
+                  <Images className="size-9 text-white/35" />
+                  <p className="mt-3 text-sm font-medium text-white/75">Preencha os dados para visualizar o anuncio.</p>
+                </div>
               ) : (
                 <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
                   <div className="relative min-h-72 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
@@ -510,13 +591,13 @@ export function BrokerNewPropertyPage() {
                   <div className="flex flex-col justify-between gap-5 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.24em] text-[#69F0AE]">{hasGenerated ? "Anúncio gerado com IA" : "Anúncio manual"}</p>
-                      <h3 className="mt-3 text-2xl font-semibold text-white">{title || "Titulo do imovel"}</h3>
+                      <h3 className="mt-3 text-2xl font-semibold text-white">{title}</h3>
                       <p className="mt-2 text-sm text-white/55">
-                        {previewLocation || "Cidade e bairro"}
+                        {previewLocation}
                       </p>
-                      <p className="mt-4 text-2xl font-semibold text-white">{price || "Valor do imovel"}</p>
+                      <p className="mt-4 text-2xl font-semibold text-white">{price || "Consulte valor"}</p>
                       <p className="mt-5 text-sm leading-7 text-white/65">
-                        {description || "A descricao preenchida aparecera aqui."}
+                        {description}
                       </p>
                     </div>
 
@@ -556,9 +637,117 @@ export function BrokerNewPropertyPage() {
               )}
             </CardContent>
           </Card>
+          </>
+        )}
         
       </div>
     </BrokerPageShell>
+  )
+}
+
+function PropertyCreationChoice({ onChoose }: { onChoose: (mode: CreationMode) => void }) {
+  return (
+    <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imovel</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Como voce quer criar este imovel?</h2>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
+        Escolha o melhor ponto de partida. Voce sempre podera revisar antes de publicar.
+      </p>
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <CreationOption
+          icon={Sparkles}
+          title="Criar com IA"
+          description="Envie fotos, audio ou uma descricao e gere um anuncio automaticamente."
+          onClick={() => onChoose("ai")}
+        />
+        <CreationOption
+          icon={Keyboard}
+          title="Criar manualmente"
+          description="Ideal para anuncios ja existentes ou preenchimento completo."
+          onClick={() => onChoose("manual")}
+        />
+        <CreationOption
+          icon={FileText}
+          title="Importar imoveis"
+          description="Importe imoveis via XML, planilha ou anuncio existente."
+          onClick={() => onChoose("import")}
+        />
+      </div>
+    </section>
+  )
+}
+
+function CreationOption({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon: LucideIcon
+  title: string
+  description: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group min-h-52 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 text-left transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]"
+    >
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+        <Icon className="size-5" />
+      </div>
+      <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-white/55">{description}</p>
+    </button>
+  )
+}
+
+function ImportPropertyPanel({
+  feedback,
+  onBack,
+  onXmlImport,
+}: {
+  feedback: string
+  onBack: () => void
+  onXmlImport: (files: FileList | null) => void
+}) {
+  return (
+    <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Importar imoveis</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Escolha uma origem</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
+            Nesta fase a estrutura esta preparada e nenhuma importacao cria imoveis automaticamente sem validacao.
+          </p>
+        </div>
+        <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+          Voltar
+        </Button>
+      </div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <label className="min-h-48 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
+          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => onXmlImport(event.target.files)} />
+          <Upload className="size-8 text-[#69F0AE]" />
+          <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
+          <p className="mt-2 text-sm leading-6 text-white/55">Valide um arquivo XML de ate 5 MB para preparar a proxima etapa.</p>
+        </label>
+        <ImportComingSoon title="Importar planilha" />
+        <ImportComingSoon title="Importar de anuncio, print ou link" />
+      </div>
+      {feedback ? <p className="mt-5 rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
+    </section>
+  )
+}
+
+function ImportComingSoon({ title }: { title: string }) {
+  return (
+    <div className="min-h-48 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
+      <FileText className="size-8 text-white/40" />
+      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-white/55">Em breve.</p>
+    </div>
   )
 }
 

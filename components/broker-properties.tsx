@@ -15,7 +15,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
   const { subscription } = useBrokerSubscription()
   const featuredProperties = properties.slice(0, 3)
   const planMessage = !subscription.isProfileResolved
-    ? "Sincronizando os dados reais da sua conta"
+    ? "Sincronizando os dados da sua conta"
     : subscription.isAgencyLinked
     ? "Suas publicações seguem as regras da imobiliária à qual você está vinculado"
     : subscription.isUpgraded
@@ -62,7 +62,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
             })
           ) : (
             <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-8 text-center text-sm text-white/55 lg:col-span-2 2xl:col-span-3">
-              Nenhum imóvel real disponível para destaque.
+              Nenhum imóvel disponível para destaque.
             </div>
           )}
         </CardContent>

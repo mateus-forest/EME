@@ -8,6 +8,8 @@ import { NextRequest,
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 type AdminProfileUser = {
   id: string
   name: string
@@ -109,9 +111,11 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       profile: buildAdminProfile(updatedUser),
     })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][admin][me] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

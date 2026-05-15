@@ -4,6 +4,7 @@ import { BrokerPublicCatalog } from "@/components/broker-public-catalog"
 import { getPublicBrokerCatalogBySlug } from "@/lib/public-catalog"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 type CatalogPageProps = {
   params: Promise<{

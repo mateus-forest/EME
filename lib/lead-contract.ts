@@ -20,6 +20,9 @@ export type LeadRecord = {
   email: string
   phone: string
   message: string
+  catalogSlug: string
+  searchTerm: string
+  intent: string
   source: string
   status: LeadStatus
   statusLabel: string
@@ -51,6 +54,9 @@ export function serializeLead(lead: LeadWithRelations): LeadRecord {
     email: lead.email ?? "",
     phone: lead.phone ?? "",
     message: lead.message ?? "",
+    catalogSlug: lead.catalogSlug ?? "",
+    searchTerm: lead.searchTerm ?? "",
+    intent: lead.intent ?? "",
     source: lead.source,
     status: lead.status,
     statusLabel: leadStatusLabels[lead.status],

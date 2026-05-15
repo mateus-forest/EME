@@ -82,7 +82,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return nextProperty
     })
 
-    return NextResponse.json({ property: serializeProperty(updated) })
+    const response = NextResponse.json({ property: serializeProperty(updated) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][publish] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

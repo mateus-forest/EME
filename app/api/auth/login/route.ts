@@ -14,12 +14,6 @@ export async function POST(request: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const password = typeof body?.password === "string" ? body.password : ""
 
-    console.info("[auth][login] payload received", {
-      keys: body && typeof body === "object" ? Object.keys(body as Record<string, unknown>) : [],
-      hasEmail: Boolean(email),
-      hasPassword: Boolean(password),
-    })
-
     if (!email || !password) {
       return NextResponse.json({ error: "Email e senha são obrigatórios." }, { status: 400 })
     }
@@ -32,24 +26,11 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    console.info("[auth][login] lookup", {
-      email,
-      found: Boolean(user),
-      userId: user?.id ?? null,
-      role: user?.role ?? null,
-      hasPasswordHash: Boolean(user?.passwordHash),
-    })
-
     if (!user) {
       return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
     }
 
     if (typeof user.passwordHash !== "string" || user.passwordHash.length === 0) {
-      console.warn("[auth][login] missing password hash", {
-        email,
-        userId: user.id,
-      })
-
       return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
     }
 

@@ -151,7 +151,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       include: propertyInclude,
     })
 
-    return NextResponse.json({ property: serializeProperty(updatedProperty) }, { status: 201 })
+    const response = NextResponse.json({ property: serializeProperty(updatedProperty) }, { status: 201 })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][images] upload failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -214,7 +216,9 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       await unlink(absolutePath).catch(() => null)
     }
 
-    return NextResponse.json({ property: serializeProperty(updatedProperty) })
+    const response = NextResponse.json({ property: serializeProperty(updatedProperty) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][images] delete failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

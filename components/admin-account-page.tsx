@@ -113,7 +113,7 @@ function AccountForm() {
     <form onSubmit={handleSubmit} className="grid gap-6">
       {isLoading && (
         <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white/65">
-          Carregando dados da conta...
+          Carregando conta...
         </div>
       )}
 
@@ -176,7 +176,7 @@ function AccountForm() {
           <span className="flex size-10 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-white/70">
             <LockKeyhole className="size-4" />
           </span>
-          <p>Mantenha os dados da conta administrativa atualizados para garantir segurança e comunicação operacional.</p>
+          <p>Mantenha a conta administrativa atualizada para garantir segurança e comunicação operacional.</p>
         </div>
 
         <Button type="submit" disabled={isSaving || isLoading} className="h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">

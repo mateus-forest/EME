@@ -12,5 +12,7 @@ export async function GET(_: Request, context: { params: Promise<{ slug: string 
     return NextResponse.json({ error: "Catálogo não encontrado." }, { status: 404 })
   }
 
-  return NextResponse.json({ catalog })
+  const response = NextResponse.json({ catalog })
+  response.headers.set("Cache-Control", "no-store, max-age=0")
+  return response
 }

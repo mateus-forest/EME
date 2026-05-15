@@ -183,6 +183,9 @@ model Lead {
   email      String?
   phone      String?
   message    String?
+  catalogSlug String?
+  searchTerm String?
+  intent     String?
   source     String
   status     LeadStatus @default(NEW)
   propertyId String?

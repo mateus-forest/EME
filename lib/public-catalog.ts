@@ -8,10 +8,14 @@ export type PublicBrokerCatalogProperty = {
   id: string
   title: string
   location: string
+  city: string
+  neighborhood: string
   price: string
+  priceValue: number
   bedrooms: number
   bathrooms: number
   parking: number
+  type: string
   description: string
   images: string[]
   views: number
@@ -35,16 +39,22 @@ export type PublicAgencyCatalogProperty = {
   id: string
   title: string
   location: string
+  city: string
+  neighborhood: string
   price: string
+  priceValue: number
   bedrooms: number
   bathrooms: number
   parking: number
+  type: string
+  description: string
   status: "Publicado"
   views: number
   leads: number
   brokerId: string
   agencyId: string | null
   image: string
+  images: string[]
   broker: {
     name: string
     initials: string
@@ -72,6 +82,12 @@ function getInitials(name: string) {
 
 function locationFromProperty(city: string, neighborhood: string | null) {
   return [neighborhood, city].filter(Boolean).join(", ")
+}
+
+function propertyTypeLabel(type: string) {
+  if (type === "HOUSE") return "Casa"
+  if (type === "COMMERCIAL") return "Comercial"
+  return "Apartamento"
 }
 
 export async function getPublicBrokerCatalogBySlug(slug: string): Promise<PublicBrokerCatalogData | null> {
@@ -125,10 +141,14 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
       id: property.id,
       title: property.title,
       location: locationFromProperty(property.city, property.neighborhood),
+      city: property.city,
+      neighborhood: property.neighborhood ?? "",
       price: formatCurrencyFromCents(property.price),
+      priceValue: property.price,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
       parking: property.parkingSpots,
+      type: propertyTypeLabel(property.type),
       description: property.description ?? "",
       images: getPropertyImages(Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [], property.id),
       views: property.viewsCount,
@@ -194,16 +214,22 @@ export async function getPublicAgencyCatalogBySlug(slug: string): Promise<Public
       id: property.id,
       title: property.title,
       location: locationFromProperty(property.city, property.neighborhood),
+      city: property.city,
+      neighborhood: property.neighborhood ?? "",
       price: formatCurrencyFromCents(property.price),
+      priceValue: property.price,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
       parking: property.parkingSpots,
+      type: propertyTypeLabel(property.type),
+      description: property.description ?? "",
       status: "Publicado",
       views: property.viewsCount,
       leads: property._count.leads,
       brokerId: property.brokerId,
       agencyId: property.agencyId,
       image: getPropertyImage(Array.isArray(property.imageUrls) ? (property.imageUrls[0] as string | undefined) : undefined, property.id),
+      images: getPropertyImages(Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [], property.id),
       broker: {
         name: property.broker.user.name,
         initials: getInitials(property.broker.user.name),

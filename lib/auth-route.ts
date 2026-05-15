@@ -28,8 +28,15 @@ function isAuthTokenError(error: unknown) {
 }
 
 function invalidSessionResponse() {
-  const response = NextResponse.json({ error: "Sessao invalida." }, { status: 401 })
+  const response = NextResponse.json({ error: "Sessão inválida. Faça login novamente." }, { status: 401 })
+  response.headers.set("Cache-Control", "no-store, max-age=0")
   clearAuthCookie(response)
+  return response
+}
+
+function authErrorResponse(error: string, status: number) {
+  const response = NextResponse.json({ error }, { status })
+  response.headers.set("Cache-Control", "no-store, max-age=0")
   return response
 }
 
@@ -39,7 +46,7 @@ export async function getAuthenticatedUser() {
 
   if (!token) {
     return {
-      error: NextResponse.json({ error: "Nao autenticado." }, { status: 401 }),
+      error: authErrorResponse("Não autenticado.", 401),
       user: null,
     }
   }
@@ -70,16 +77,16 @@ export async function getAuthenticatedUser() {
 
     if (isPrismaUnavailable(error)) {
       return {
-        error: NextResponse.json(
-          { error: "O servico de autenticacao esta indisponivel no momento. Verifique a conexao com o banco de dados." },
-          { status: 503 },
+        error: authErrorResponse(
+          "O serviço de autenticação está indisponível no momento. Verifique a conexão com o banco de dados.",
+          503,
         ),
         user: null,
       }
     }
 
     return {
-      error: NextResponse.json({ error: "Nao foi possivel validar a sessao agora." }, { status: 500 }),
+      error: authErrorResponse("Não foi possível validar a sessão agora.", 500),
       user: null,
     }
   }
@@ -87,7 +94,7 @@ export async function getAuthenticatedUser() {
 
 export function ensureRole(role: UserRole, allowedRoles: UserRole[]) {
   if (!allowedRoles.includes(role)) {
-    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+    return authErrorResponse("Acesso não permitido para este perfil.", 403)
   }
 
   return null

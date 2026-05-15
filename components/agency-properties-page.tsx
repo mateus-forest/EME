@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState, type ReactNode } from "react"
-import { Bath, Bed, Building2, Car, Eye, PencilLine, SlidersHorizontal, Users } from "lucide-react"
+import { Bath, Bed, Building2, Car, Eye, FileText, Keyboard, PencilLine, SlidersHorizontal, Sparkles, Upload, Users, type LucideIcon } from "lucide-react"
 
 import { AgencyPageShell } from "@/components/agency-page-shell"
 import { useAgencyProperties, type AgencyProperty } from "@/components/use-agency-properties"
@@ -32,6 +32,8 @@ type EditableAgencyProperty = {
   audioUrl: string
 }
 
+type CreationMode = "ai" | "manual" | "import"
+
 const statusFilters = ["Todos", "Publicado", "Rascunho", "Pausado"] as const
 const typeFilters = ["Todos", "Casa", "Apartamento", "Comercial"] as const
 const priceFilters = ["Todas", "Até R$ 1 mi", "R$ 1 mi a R$ 2 mi", "Acima de R$ 2 mi"] as const
@@ -52,6 +54,9 @@ export function AgencyPropertiesPage() {
   const [selectedProperty, setSelectedProperty] = useState<AgencyProperty | null>(null)
   const [editingProperty, setEditingProperty] = useState<EditableAgencyProperty | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isCreateChoiceOpen, setIsCreateChoiceOpen] = useState(false)
+  const [creationMode, setCreationMode] = useState<CreationMode | null>(null)
+  const [importFeedback, setImportFeedback] = useState("")
   const [saveFeedback, setSaveFeedback] = useState("")
   const [actionFeedback, setActionFeedback] = useState("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
@@ -108,13 +113,15 @@ export function AgencyPropertiesPage() {
     [properties],
   )
 
-  async function handleCreateProperty() {
+  async function handleCreateProperty(mode: Exclude<CreationMode, "import"> = "manual") {
     if (isPlanBlocked) {
       setActionFeedback("Seu plano da imobiliária não está ativo para criar novos imóveis. Ative ou regularize sua assinatura para continuar.")
       return
     }
 
     setSelectedProperty(null)
+    setCreationMode(mode)
+    setIsCreateChoiceOpen(false)
     setEditingProperty({
       id: "",
       title: "",
@@ -570,7 +577,7 @@ export function AgencyPropertiesPage() {
                 <DialogDescription className="mt-2 text-white/50">
                   {editingProperty.id
                     ? "Atualize os dados principais do imóvel sem sair da operação da imobiliária."
-                    : "Preencha os dados principais para cadastrar um novo imóvel da equipe."}
+                    : "Preencha os dados principais para cadastrar um novo imóvel da imobiliária."}
                 </DialogDescription>
               </div>
 
@@ -666,7 +673,7 @@ export function AgencyPropertiesPage() {
                   </section>
 
                   <section className="grid gap-4">
-                    <h3 className="text-lg font-semibold text-white">Áudio real</h3>
+                    <h3 className="text-lg font-semibold text-white">Áudio</h3>
                     {editingProperty.id && (
                       <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
                         <input
@@ -695,7 +702,7 @@ export function AgencyPropertiesPage() {
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4 text-sm text-white/55">
                         {editingProperty.id
                           ? "Nenhum áudio enviado ainda para este imóvel."
-                          : "Cadastre o imóvel primeiro para enviar áudio real."}
+                          : "Cadastre o imóvel primeiro para enviar áudio."}
                       </div>
                     )}
                   </section>

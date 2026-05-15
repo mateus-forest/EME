@@ -158,9 +158,11 @@ export async function PATCH(request: NextRequest) {
       })
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       profile: buildAgencyProfile(updated),
     })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][agencies][me] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

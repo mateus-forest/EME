@@ -49,7 +49,9 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json({ properties: properties.map(serializeProperty) })
+    const response = NextResponse.json({ properties: properties.map(serializeProperty) })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][agency] list failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -152,7 +154,9 @@ export async function POST(request: NextRequest) {
       include: propertyInclude,
     })
 
-    return NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
+    const response = NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties][agency] create failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

@@ -24,13 +24,12 @@ export function DashboardMockPage() {
           </Link>
 
           <span className="inline-flex rounded-full border border-[#00C853]/30 bg-[#00C853]/10 px-4 py-2 text-sm font-medium text-[#00C853]">
-            Fluxo mock concluído
+            Fluxo concluído
           </span>
 
           <h1 className="mt-6 text-4xl font-bold text-white">Tudo pronto para seguir.</h1>
           <p className="mt-4 text-lg leading-relaxed text-white/60">
-            Este é um destino temporário para os fluxos de entrada e cadastro, sem autenticação
-            real por enquanto.
+            Este destino não está conectado às rotas principais do produto.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

@@ -17,9 +17,9 @@ export function AgencyAnalyticsPage() {
         <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
           <BarChart3 className="size-6" />
         </div>
-        <h3 className="mt-4 text-2xl font-semibold text-white">Analytics ainda sem dados reais</h3>
+        <h3 className="mt-4 text-2xl font-semibold text-white">Analytics ainda sem métricas</h3>
         <p className="mt-3 text-sm leading-7 text-white/55">
-          Os datasets mock foram removidos. A tela agora aguarda indicadores reais para preencher gráficos e resumos.
+          Quando houver indicadores da operação, gráficos e resumos aparecerão aqui.
         </p>
       </section>
     </AgencyPageShell>

@@ -135,7 +135,7 @@ function AccountForm() {
     <form onSubmit={handleSubmit} className="grid gap-6">
       {isLoading && (
         <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white/65">
-          Carregando dados da conta...
+          Carregando conta...
         </div>
       )}
 

@@ -48,7 +48,7 @@ export type FinancialSummary = {
 function readStoredNotifications(storageKey: string, initialNotifications: PaymentNotification[]) {
   if (typeof window === "undefined") return initialNotifications
 
-  // Legacy local notifications should not keep repopulating the UI in real-data tests.
+  // Legacy local notifications should not keep repopulating the UI.
   window.localStorage.removeItem(storageKey)
   return initialNotifications
 }

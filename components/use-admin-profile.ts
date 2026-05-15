@@ -97,6 +97,7 @@ export function useAdminProfile() {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({
         name: nextProfile.name,
         email: nextProfile.email,

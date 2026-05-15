@@ -71,16 +71,6 @@ export async function POST(request: NextRequest) {
     const phone = typeof body?.phone === "string" ? body.phone.trim() : ""
     const companyName = typeof body?.companyName === "string" ? body.companyName.trim() : ""
 
-    console.info("[auth][register] payload received", {
-      keys: body && typeof body === "object" ? Object.keys(body as Record<string, unknown>) : [],
-      role: role ?? null,
-      hasName: Boolean(name),
-      hasEmail: Boolean(email),
-      hasPassword: Boolean(password),
-      hasPhone: Boolean(phone),
-      hasCompanyName: Boolean(companyName),
-    })
-
     if (!role || !name || !email || !password) {
       return NextResponse.json({ error: "Dados obrigatórios não informados." }, { status: 400 })
     }
@@ -211,13 +201,6 @@ export async function POST(request: NextRequest) {
 
     const { user, brokerId, agencyId } = registeredAccount
 
-    console.info("[auth][register] user created", {
-      email,
-      userId: user.id,
-      role: user.role,
-      hasPasswordHash: Boolean(user.passwordHash),
-    })
-
     const token = await createAuthToken({
       sub: user.id,
       email: user.email,
@@ -234,6 +217,7 @@ export async function POST(request: NextRequest) {
         agencyId,
       },
     })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
 
     setAuthCookie(response, token)
 

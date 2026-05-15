@@ -41,7 +41,9 @@ export async function GET() {
     return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
-  return NextResponse.json(serializeBrokerCatalog(user))
+  const response = NextResponse.json(serializeBrokerCatalog(user))
+  response.headers.set("Cache-Control", "no-store, max-age=0")
+  return response
 }
 
 export async function PATCH(request: NextRequest) {
@@ -158,7 +160,9 @@ export async function PATCH(request: NextRequest) {
       })
     })
 
-    return NextResponse.json(serializeBrokerCatalog(updated))
+    const response = NextResponse.json(serializeBrokerCatalog(updated))
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][brokers][catalog] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

@@ -329,7 +329,7 @@ function AgencyEditDialog({
           <>
             <DialogHeader>
               <DialogTitle className="text-white">Editar imobiliária</DialogTitle>
-              <DialogDescription className="text-white/55">Atualize os dados da conta institucional.</DialogDescription>
+              <DialogDescription className="text-white/55">Atualize a conta institucional.</DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 sm:grid-cols-2">

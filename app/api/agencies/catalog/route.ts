@@ -39,7 +39,9 @@ export async function GET() {
     return NextResponse.json({ error: "Imobiliaria nao encontrada para esta conta." }, { status: 404 })
   }
 
-  return NextResponse.json(serializeAgencyCatalog(user.ownedAgency))
+  const response = NextResponse.json(serializeAgencyCatalog(user.ownedAgency))
+  response.headers.set("Cache-Control", "no-store, max-age=0")
+  return response
 }
 
 export async function PATCH(request: NextRequest) {
@@ -149,7 +151,9 @@ export async function PATCH(request: NextRequest) {
       return updatedAgency
     })
 
-    return NextResponse.json(serializeAgencyCatalog(agency))
+    const response = NextResponse.json(serializeAgencyCatalog(agency))
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][agencies][catalog] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

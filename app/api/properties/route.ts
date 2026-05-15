@@ -85,7 +85,9 @@ export async function POST(request: NextRequest) {
       include: propertyInclude,
     })
 
-    return NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
+    const response = NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][properties] create failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

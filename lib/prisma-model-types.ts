@@ -98,6 +98,9 @@ export type Lead = {
   email: string | null
   phone: string | null
   message: string | null
+  catalogSlug: string | null
+  searchTerm: string | null
+  intent: string | null
   source: string
   status: LeadStatus
   propertyId: string | null

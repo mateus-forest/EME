@@ -548,7 +548,7 @@ export function BrokerMyPropertiesPage() {
 
                     <section className="grid gap-3">
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                        <h3 className="text-lg font-semibold text-white">Áudio real</h3>
+                        <h3 className="text-lg font-semibold text-white">Áudio</h3>
                         <label className="mt-4 inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
                           <input
                             type="file"

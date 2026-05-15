@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     const email = cleanText(body?.email, 160).toLowerCase()
     const phone = cleanText(body?.phone, 40)
     const message = cleanText(body?.message, 800)
+    const searchTerm = cleanText(body?.searchTerm, 240)
+    const intent = cleanText(body?.intent, 160)
 
     if (!propertyId && !catalogSlug) {
       return NextResponse.json({ error: "Informe o imóvel ou catálogo de origem do lead." }, { status: 400 })
@@ -105,6 +107,9 @@ export async function POST(request: NextRequest) {
           email: email || null,
           phone: phone || null,
           message: message || (property ? `Interesse no imóvel ${property.title}` : "Interesse no catálogo"),
+          catalogSlug: catalogSlug || null,
+          searchTerm: searchTerm || null,
+          intent: intent || null,
           source,
           propertyId: property?.id ?? null,
           brokerId,
@@ -160,7 +165,9 @@ export async function POST(request: NextRequest) {
       return created
     })
 
-    return NextResponse.json({ lead: { id: lead.id } }, { status: 201 })
+    const response = NextResponse.json({ lead: { id: lead.id } }, { status: 201 })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][leads] create failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

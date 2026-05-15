@@ -75,7 +75,7 @@ export function BrokerPortal() {
       {
         title: "Visualizações",
         value: totalViews.toLocaleString("pt-BR"),
-        change: totalViews > 0 ? "Somatório real dos imóveis" : "Sem visualizações registradas",
+        change: totalViews > 0 ? "Somatório dos imóveis" : "Sem visualizações registradas",
       },
       {
         title: "Cliques no WhatsApp",
@@ -85,7 +85,7 @@ export function BrokerPortal() {
       {
         title: "Leads",
         value: totalLeads.toLocaleString("pt-BR"),
-        change: totalLeads > 0 ? "Somatório real dos imóveis" : "Sem leads registrados",
+        change: totalLeads > 0 ? "Somatório dos imóveis" : "Sem leads registrados",
       },
     ],
     [publishedPropertiesCount, totalLeads, totalViews],

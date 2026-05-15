@@ -30,6 +30,7 @@ function isPropertyAiResult(data: unknown): data is PropertyAiResult {
 export async function requestPropertyAi(payload: PropertyAiPayload) {
   const response = await fetch("/api/ai/generate-property", {
     method: "POST",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
     },

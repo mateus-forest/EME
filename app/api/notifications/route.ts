@@ -23,9 +23,11 @@ export async function GET() {
       take: 50,
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       notifications: notifications.map(serializePaymentNotification),
     })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][notifications] list failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -66,7 +68,9 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ ok: true })
+    const response = NextResponse.json({ ok: true })
+    response.headers.set("Cache-Control", "no-store, max-age=0")
+    return response
   } catch (caughtError) {
     console.error("[api][notifications] mark all failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",

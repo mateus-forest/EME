@@ -135,7 +135,7 @@ export function BrokerPlanPage() {
                   <h2 className="text-3xl font-semibold tracking-tight text-white">{subscription.planName}</h2>
                   <p className="mt-2 text-sm text-white/55">
                     {!subscription.isProfileResolved
-                      ? "Sincronizando os dados reais da sua conta."
+                      ? "Sincronizando os dados da sua conta."
                       : subscription.isAgencyLinked
                       ? "Você está vinculado a uma imobiliária. Suas publicações seguem as regras comerciais da equipe."
                       : subscription.isUpgraded
@@ -178,7 +178,9 @@ export function BrokerPlanPage() {
               <InfoBlock label="Próxima cobrança" value={financialSummary.nextBillingAt || subscription.nextCharge} />
               <InfoBlock label="Forma de pagamento" value={subscription.paymentMethod} />
               <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
-                <p className="text-sm text-[#69F0AE]">Seu catálogo já gerou 28 visualizações este mês.</p>
+                <p className="text-sm text-[#69F0AE]">
+                  Os dados financeiros são atualizados a partir da assinatura e das notificações da conta.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -226,7 +228,7 @@ export function BrokerPlanPage() {
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 <p className="text-sm leading-7 text-white/60">
-                  O upgrade agora usa checkout real do Stripe para ativar seu plano pago com segurança.
+                  O upgrade usa checkout Stripe para ativar seu plano pago com segurança.
                 </p>
                 <Button
                   type="button"

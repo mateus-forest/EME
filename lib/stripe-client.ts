@@ -2,6 +2,7 @@ export async function startStripeCheckout() {
   const response = await fetch("/api/stripe/create-checkout", {
     method: "POST",
     credentials: "include",
+    cache: "no-store",
   })
 
   const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null

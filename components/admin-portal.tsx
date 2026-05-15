@@ -12,12 +12,12 @@ export function AdminPortal() {
         <EmptyOperationalCard
           icon={DatabaseZap}
           title="Sem dados operacionais"
-          description="O banco está limpo para testes reais. Novos imóveis, assinaturas, alertas e movimentos operacionais aparecerão aqui conforme forem criados de verdade."
+          description="Novos imóveis, assinaturas, alertas e movimentos operacionais aparecerão aqui conforme forem criados."
         />
         <EmptyOperationalCard
           icon={ShieldCheck}
           title="Ambiente pronto para validação"
-          description="A área administrativa não está mais usando números, gráficos ou listas simuladas como fallback."
+          description="A área administrativa será preenchida conforme houver usuários, assinaturas e alertas registrados."
         />
       </section>
     </AdminPageShell>

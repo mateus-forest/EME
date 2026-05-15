@@ -89,7 +89,7 @@ export function AgencyPortal() {
       {
         title: "Visualizações totais",
         value: totalViews.toLocaleString("pt-BR"),
-        change: totalViews > 0 ? "Somatório real da operação" : "Sem visualizações registradas",
+        change: totalViews > 0 ? "Somatório da operação" : "Sem visualizações registradas",
         icon: Zap,
       },
       {
@@ -101,7 +101,7 @@ export function AgencyPortal() {
       {
         title: "Leads gerados",
         value: totalLeads.toLocaleString("pt-BR"),
-        change: totalLeads > 0 ? "Somatório real da operação" : "Sem leads registrados",
+        change: totalLeads > 0 ? "Somatório da operação" : "Sem leads registrados",
         icon: Zap,
       },
       {
@@ -279,7 +279,7 @@ export function AgencyPortal() {
                   ))
                 ) : (
                   <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/60">
-                    Nenhum corretor real disponível.
+                    Nenhum corretor disponível.
                   </div>
                 )}
               </CardContent>
@@ -331,7 +331,7 @@ export function AgencyPortal() {
                 ))
               ) : (
                 <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/60 md:col-span-2 2xl:col-span-3">
-                  Nenhum imóvel real encontrado.
+                  Nenhum imóvel encontrado.
                 </div>
               )}
             </CardContent>

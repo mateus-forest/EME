@@ -236,7 +236,7 @@ export function AgencyCatalogPage() {
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-white/65">
                   <RefreshCw className="size-4" />
-                  Exibindo apenas dados reais
+                  Catálogo sincronizado
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +248,7 @@ export function AgencyCatalogPage() {
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-white/40">Preview público</p>
               <h2 className="mt-2 text-2xl font-semibold text-white">Catálogo institucional</h2>
-              <p className="mt-2 text-sm leading-6 text-white/55">A prévia abaixo usa o slug real e mostra apenas imóveis publicados do contexto da sua imobiliária.</p>
+              <p className="mt-2 text-sm leading-6 text-white/55">A prévia abaixo usa seu link público e mostra os imóveis publicados da sua imobiliária.</p>
             </div>
 
             <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-10 rounded-full border border-white/[0.08] bg-white/[0.04] px-5 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!draftSettings.slug}>

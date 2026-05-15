@@ -11,9 +11,9 @@ export function AdminAnalyticsPage() {
         <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
           <BarChart3 className="size-6" />
         </div>
-        <h3 className="mt-4 text-2xl font-semibold text-white">Sem analytics reais para exibir</h3>
+        <h3 className="mt-4 text-2xl font-semibold text-white">Sem analytics para exibir</h3>
         <p className="mt-3 text-sm leading-7 text-white/55">
-          Os gráficos simulados foram removidos. Esta tela passará a mostrar somente métricas calculadas a partir de dados reais.
+          Assim que houver indicadores consolidados, eles aparecerão nesta área.
         </p>
       </section>
     </AdminPageShell>

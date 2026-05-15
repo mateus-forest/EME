@@ -15,6 +15,7 @@ export function AuthSessionGuard({
   const router = useRouter()
   const pathname = usePathname()
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [sessionError, setSessionError] = useState("")
 
   useEffect(() => {
     let cancelled = false
@@ -28,6 +29,9 @@ export function AuthSessionGuard({
         console.error("[auth][guard] session check failed", {
           message: error instanceof Error ? error.message : "unknown",
         })
+        if (!cancelled) {
+          setSessionError("Não foi possível validar sua sessão agora. Tente recarregar a página.")
+        }
         return
       }
 
@@ -45,6 +49,7 @@ export function AuthSessionGuard({
       }
 
       clearLegacyAuthState()
+      setSessionError("")
       setIsAuthorized(true)
     }
 
@@ -58,7 +63,7 @@ export function AuthSessionGuard({
   if (!isAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0B0B0B] px-6 text-center text-sm text-white/55">
-        Verificando acesso...
+        {sessionError || "Verificando acesso..."}
       </div>
     )
   }

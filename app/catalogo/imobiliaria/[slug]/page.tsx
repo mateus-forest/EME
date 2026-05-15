@@ -4,6 +4,7 @@ import { AgencyPublicCatalog } from "@/components/agency-public-catalog"
 import { getPublicAgencyCatalogBySlug } from "@/lib/public-catalog"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export default async function AgencyPublicCatalogPage({
   params,
