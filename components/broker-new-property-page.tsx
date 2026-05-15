@@ -390,17 +390,23 @@ export function BrokerNewPropertyPage() {
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] px-6 py-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
           <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imóvel</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
-            {creationMode === "ai" ? "Use fotos, audio ou texto para acelerar o anuncio" : "Preencha os dados do imovel com controle total"}
+            {creationMode === "ai" ? "Use fotos, áudio ou texto para gerar o anúncio" : "Preencha os dados do imóvel com controle total"}
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
-            Voce sempre podera revisar antes de publicar.
+            {creationMode === "ai"
+              ? "A IA monta a primeira versão do anúncio e você revisa tudo antes de publicar."
+              : "Cadastre cada detalhe do imóvel com calma, sem depender da geração automática."}
           </p>
         </section>
 
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">Fotos do imóvel</CardTitle>
-            <p className="text-sm text-white/50">Adicione fotos para gerar o anúncio. Essa etapa é obrigatória.</p>
+            <CardTitle className="text-xl text-white">{creationMode === "ai" ? "Fotos para acelerar a IA" : "Fotos do imóvel"}</CardTitle>
+            <p className="text-sm text-white/50">
+              {creationMode === "ai"
+                ? "Envie fotos reais para apoiar a criação do anúncio. Você revisa o resultado antes de publicar."
+                : "Adicione fotos reais do imóvel para compor o anúncio manual."}
+            </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-5 pt-0">
             <label className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#00C853]/28 bg-[#00C853]/[0.05] px-6 text-center transition-colors hover:bg-[#00C853]/[0.08]">
@@ -418,7 +424,9 @@ export function BrokerNewPropertyPage() {
                 Arraste imagens aqui ou selecione do dispositivo
               </h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-white/55">
-                Descreva o imóvel com texto ou áudio. A IA pode transformar sua descrição em um anúncio profissional.
+                {creationMode === "ai"
+                  ? "Use fotos, áudio ou texto para a IA montar uma primeira versão do anúncio."
+                  : "Selecione imagens reais para o cadastro tradicional do imóvel."}
               </p>
               <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-white/75">
                 <Upload className="size-4" />
@@ -452,9 +460,11 @@ export function BrokerNewPropertyPage() {
           <div className="grid gap-6">
             <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Descrição do anúncio</CardTitle>
+                <CardTitle className="text-xl text-white">{creationMode === "ai" ? "Descrição, áudio e IA" : "Descrição do imóvel"}</CardTitle>
                 <p className="text-sm text-white/50">
-                  Descreva o imóvel com texto ou áudio. A IA pode transformar sua descrição em um anúncio profissional.
+                  {creationMode === "ai"
+                    ? "Descreva ou grave os pontos principais. A IA transforma isso em um anúncio revisável."
+                    : "Escreva a descrição do imóvel diretamente, com os detalhes que deseja publicar."}
                 </p>
               </CardHeader>
               <CardContent className="grid gap-4 p-5 pt-0">
@@ -593,7 +603,9 @@ export function BrokerNewPropertyPage() {
             <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               <CardContent className="p-6">
                 <p className="text-sm leading-7 text-white/60">
-                  A descrição é o centro do anúncio: combine texto, áudio transcrito e IA antes de revisar o preview.
+                  {creationMode === "ai"
+                    ? "Fluxo rápido: envie contexto, gere com IA e ajuste os dados antes de publicar."
+                    : "Fluxo manual: preencha informações, descrição e fotos com controle total sobre o anúncio."}
                 </p>
               </CardContent>
             </Card>

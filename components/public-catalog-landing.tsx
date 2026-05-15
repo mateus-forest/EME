@@ -91,8 +91,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
     kind === "broker" ? `/catalogo/${catalog.slug || slug}` : `/catalogo/imobiliaria/${catalog.slug || slug}`
   const catalogUrl = typeof window === "undefined" ? publicPath : `${window.location.origin}${publicPath}`
   const image = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0]
-  const neighborhoods = useMemo(
-    () => Array.from(new Set(properties.map((property) => property.neighborhood).filter(Boolean))),
+  const cities = useMemo(
+    () => Array.from(new Set(properties.map((property) => property.city).filter(Boolean))),
     [properties],
   )
   const priceRange = getPriceRangeLabel(properties)
@@ -186,7 +186,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
             <div className="min-w-0">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                 <Avatar className="size-20 border border-white/10 sm:size-24">
-                  <AvatarImage src={avatarUrl} alt={catalog.displayName} />
+                  <AvatarImage src={avatarUrl} alt={catalog.displayName} className="size-full object-cover object-center" />
                   <AvatarFallback className="bg-[#00C853]/15 text-xl font-semibold text-[#69F0AE]">
                     {getInitials(catalog.displayName)}
                   </AvatarFallback>
@@ -202,8 +202,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 </div>
               </div>
 
-              <p className="mt-7 max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
-                Encontre imóveis ideais com busca inteligente.
+              <p className="mt-7 max-w-3xl text-2xl font-medium leading-snug tracking-tight text-white sm:text-4xl">
+                Encontre o imóvel ideal com busca inteligente.
               </p>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-white/62 sm:text-base">
                 {catalog.description || "Veja imóveis selecionados e fale com o responsável pelo atendimento."}
@@ -239,7 +239,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
 
             <div className="grid content-start gap-3">
               <QuickMetric icon={Home} label="Imóveis" value={String(properties.length)} />
-              <QuickMetric icon={MapPin} label="Bairros atendidos" value={neighborhoods.length ? String(neighborhoods.length) : "A consultar"} />
+              <QuickMetric icon={MapPin} label="Cidades atendidas" value={cities.length ? String(cities.length) : "A consultar"} />
               <QuickMetric icon={Building2} label="Faixa de preço" value={priceRange} />
             </div>
           </div>
