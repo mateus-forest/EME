@@ -7,6 +7,7 @@ import { SlidersHorizontal } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { NotificationCenter } from "@/components/notification-center"
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerIntelligenceDashboard } from "@/components/broker-intelligence-dashboard"
 import { BrokerProperties } from "@/components/broker-properties"
 import { BrokerStats } from "@/components/broker-stats"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
@@ -165,6 +166,9 @@ export function BrokerPortal() {
         )}
 
         <BrokerStats stats={stats} />
+        <div className="mt-6">
+          <BrokerIntelligenceDashboard properties={properties} subscription={subscription} />
+        </div>
         <BrokerProperties properties={featuredProperties} onUpgradeClick={() => router.push("/corretor/plano")} />
       </BrokerPageShell>
 

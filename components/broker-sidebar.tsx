@@ -14,6 +14,7 @@ import {
   LifeBuoy,
   LogOut,
   UserRound,
+  UsersRound,
 } from "lucide-react"
 
 import { useBrokerProfile } from "@/components/use-broker-profile"
@@ -38,6 +39,7 @@ const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/corretor" },
   { label: "Meus imóveis", icon: Building2, href: "/corretor/imoveis" },
   { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
+  { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
   { label: "Corretor M", icon: Bot, href: "/corretor/corretor-m" },
   { label: "Analytics", icon: BarChart3, href: "/corretor/analytics" },
   { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
