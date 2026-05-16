@@ -28,6 +28,7 @@ export function BrokerMPage() {
   const [actionType, setActionType] = useState<(typeof quickActions)[number]["actionType"] | "general">("general")
   const [response, setResponse] = useState("")
   const [feedback, setFeedback] = useState("")
+  const [isActive, setIsActive] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const selectedAction = useMemo(
     () => quickActions.find((action) => action.actionType === actionType),
@@ -54,6 +55,16 @@ export function BrokerMPage() {
     const normalizedPrompt = prompt.trim()
     if (!normalizedPrompt) {
       setFeedback("Digite uma mensagem para o Corretor M.")
+      return
+    }
+
+    if (!isActive) {
+      setFeedback("Ative o Corretor M para enviar comandos.")
+      return
+    }
+
+    if (credits.balance <= 0) {
+      setFeedback("Créditos insuficientes para usar o Corretor M.")
       return
     }
 
@@ -113,10 +124,25 @@ export function BrokerMPage() {
                 Use o Corretor M para criar anúncios, analisar leads, melhorar seu catálogo e receber sugestões comerciais.
               </p>
             </div>
-            <Button type="button" variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
-              <CreditCard className="size-4" />
-              Comprar créditos
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsActive((current) => !current)}
+                className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+              >
+                {isActive ? "Desativar" : "Ativar"} Corretor M
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setFeedback("Compra de créditos será liberada na etapa de billing.")}
+                className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+              >
+                <CreditCard className="size-4" />
+                Comprar créditos
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -126,6 +152,10 @@ export function BrokerMPage() {
               <CardTitle className="text-lg text-white">Créditos disponíveis</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
+              <div className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3">
+                <p className="text-sm text-[#69F0AE]">Status</p>
+                <p className="mt-1 text-xl font-semibold text-white">{isActive ? "Ativo" : "Pausado"}</p>
+              </div>
               <div>
                 <p className="text-4xl font-semibold text-white">{credits.balance}</p>
                 <p className="mt-2 text-sm text-white/50">créditos atuais</p>
@@ -199,8 +229,9 @@ export function BrokerMPage() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">WhatsApp do M</h3>
+              <p className="mt-2 text-xl font-semibold text-white">(54) 99990-2688</p>
               <p className="mt-2 text-sm leading-7 text-white/55">
-                Em breve, você poderá conversar com o Corretor M pelo WhatsApp para criar anúncios, cadastrar leads e receber sugestões.
+                Continuidade inteligente pelo WhatsApp. A integração oficial ainda não está ativa.
               </p>
             </div>
           </div>

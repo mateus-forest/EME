@@ -1,10 +1,11 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Clock3, MessageCircle, Sparkles, Trophy, UserRoundCheck, UsersRound } from "lucide-react"
+import { Clock3, Eye, MessageCircle, Sparkles, Trophy, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { useBrokerProperties } from "@/components/use-broker-properties"
+import type { LeadRecord } from "@/lib/lead-contract"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -31,14 +32,48 @@ const leadStages = [
   },
 ]
 
+function formatDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Data não disponível"
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date)
+}
+
 export function BrokerLeadsPage() {
-  const { properties } = useBrokerProperties()
-  const totalLeads = properties.reduce((sum, property) => sum + Number(property.leads || 0), 0)
-  const newLeads = totalLeads > 0 ? Math.max(1, Math.ceil(totalLeads * 0.35)) : 0
-  const inProgress = totalLeads > 0 ? Math.max(1, Math.ceil(totalLeads * 0.25)) : 0
-  const converted = totalLeads > 0 ? Math.max(0, Math.floor(totalLeads * 0.12)) : 0
-  const lost = Math.max(0, totalLeads - newLeads - inProgress - converted)
-  const values = [newLeads, inProgress, converted, lost]
+  const [leads, setLeads] = useState<LeadRecord[]>([])
+  const [feedback, setFeedback] = useState("")
+
+  useEffect(() => {
+    let ignore = false
+
+    fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[]; error?: string } | null
+        if (!response.ok) throw new Error(data?.error || "Não foi possível carregar seus leads.")
+        if (!ignore) setLeads(data?.leads ?? [])
+      })
+      .catch((error) => {
+        if (!ignore) setFeedback(error instanceof Error ? error.message : "Não foi possível carregar seus leads.")
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const values = useMemo(
+    () => [
+      leads.filter((lead) => lead.status === "NEW").length,
+      leads.filter((lead) => lead.status === "CONTACTED" || lead.status === "NEGOTIATING").length,
+      leads.filter((lead) => lead.status === "WON").length,
+      leads.filter((lead) => lead.status === "LOST").length,
+    ],
+    [leads],
+  )
 
   return (
     <BrokerPageShell title="Leads" primaryActionLabel="Novo imóvel" primaryActionHref="/corretor/novo-imovel">
@@ -52,7 +87,7 @@ export function BrokerLeadsPage() {
               </div>
               <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white">Leads organizados para vender melhor</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
-                Aqui ficam os contatos capturados pelo catálogo, imóveis e ações inteligentes do EME.
+                Aqui ficam os contatos reais capturados pelo catálogo, imóveis e ações inteligentes do EME.
               </p>
             </div>
             <Button asChild className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
@@ -81,25 +116,36 @@ export function BrokerLeadsPage() {
         </section>
 
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-white/[0.03] p-6">
-          {totalLeads > 0 ? (
+          {feedback ? (
+            <div className="rounded-[1.25rem] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {feedback}
+            </div>
+          ) : leads.length > 0 ? (
             <div className="grid gap-3">
-              {properties
-                .filter((property) => Number(property.leads || 0) > 0)
-                .slice(0, 6)
-                .map((property) => (
-                  <div key={property.id} className="flex flex-col gap-3 rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-white">{property.title}</p>
-                      <p className="mt-1 text-sm text-white/45">
-                        {property.leads} lead{Number(property.leads) === 1 ? "" : "s"} capturado{Number(property.leads) === 1 ? "" : "s"}
-                      </p>
+              {leads.map((lead) => (
+                <div key={lead.id} className="grid gap-4 rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-white">{lead.name || "Lead sem nome"}</p>
+                      <span className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-2.5 py-1 text-xs text-[#69F0AE]">
+                        {lead.statusLabel}
+                      </span>
                     </div>
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium text-[#69F0AE]">
-                      <UserRoundCheck className="size-3.5" />
-                      Pronto para atendimento
-                    </div>
+                    <p className="mt-1 text-sm text-white/45">
+                      {lead.propertyTitle || "Catálogo"} · {lead.source || "catalog"} · {formatDate(lead.createdAt)}
+                    </p>
+                    {lead.message ? <p className="mt-2 line-clamp-2 text-sm text-white/60">{lead.message}</p> : null}
                   </div>
-                ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                  >
+                    <Eye className="size-4" />
+                    Ver detalhes
+                  </Button>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="py-10 text-center">
@@ -108,7 +154,7 @@ export function BrokerLeadsPage() {
               </div>
               <h3 className="text-xl font-semibold text-white">Nenhum lead recebido ainda.</h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/55">
-                Publique imóveis no catálogo inteligente para começar a capturar interessados com contexto.
+                Compartilhe seu catálogo para começar.
               </p>
             </div>
           )}

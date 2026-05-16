@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Bot, CheckCircle2, MessageCircle, Search, Sparkles, UsersRound, Zap } from "lucide-react"
+import { Bot, CheckCircle2, Lightbulb, MessageCircle, Search, UsersRound, Zap } from "lucide-react"
 
 import type { BrokerProperty } from "@/components/use-broker-properties"
 import type { BrokerSubscription } from "@/components/use-broker-subscription"
+import type { LeadRecord } from "@/lib/lead-contract"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -21,6 +22,7 @@ type BrokerIntelligenceDashboardProps = {
 
 export function BrokerIntelligenceDashboard({ properties, subscription }: BrokerIntelligenceDashboardProps) {
   const [credits, setCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
+  const [leads, setLeads] = useState<LeadRecord[]>([])
   const [assistantEnabled, setAssistantEnabled] = useState(true)
 
   useEffect(() => {
@@ -29,9 +31,14 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
     fetch("/api/ai/broker-assistant", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as { credits?: AssistantCredits } | null
-        if (!ignore && response.ok && data?.credits) {
-          setCredits(data.credits)
-        }
+        if (!ignore && response.ok && data?.credits) setCredits(data.credits)
+      })
+      .catch(() => null)
+
+    fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[] } | null
+        if (!ignore && response.ok && data?.leads) setLeads(data.leads)
       })
       .catch(() => null)
 
@@ -40,16 +47,28 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
     }
   }, [])
 
-  const totalLeads = useMemo(
-    () => properties.reduce((sum, property) => sum + Number(property.leads || 0), 0),
-    [properties],
+  const leadMetrics = useMemo(
+    () => ({
+      received: leads.length,
+      new: leads.filter((lead) => lead.status === "NEW").length,
+      pending: leads.filter((lead) => lead.status === "NEW" || lead.status === "CONTACTED").length,
+      converted: leads.filter((lead) => lead.status === "WON").length,
+    }),
+    [leads],
   )
-  const newLeads = totalLeads > 0 ? Math.max(1, Math.ceil(totalLeads * 0.35)) : 0
-  const pendingLeads = totalLeads > 0 ? Math.max(1, Math.ceil(totalLeads * 0.2)) : 0
-  const convertedLeads = totalLeads > 0 ? Math.max(0, Math.floor(totalLeads * 0.12)) : 0
+  const searchTerms = useMemo(
+    () => Array.from(new Set(leads.map((lead) => lead.searchTerm.trim()).filter(Boolean))).slice(0, 3),
+    [leads],
+  )
+  const recentLeads = leads.slice(0, 3)
   const remainingEstimate = Math.max(0, credits.balance)
   const actionsCount = credits.usedThisMonth
   const currentPackage = subscription.isUpgraded ? "Corretor M Pro" : "Corretor M inicial"
+  const recommendedActions = [
+    properties.length === 0 ? "Publique seu primeiro imóvel no catálogo inteligente." : "",
+    leads.length === 0 ? "Compartilhe seu catálogo para começar a capturar leads." : "",
+    credits.balance === 0 ? "Adicione créditos IA para usar o Corretor M." : "",
+  ].filter(Boolean)
 
   return (
     <section className="grid gap-6">
@@ -64,7 +83,7 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
                 </div>
                 <CardTitle className="mt-4 text-2xl text-white">Corretor M</CardTitle>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">
-                  Central inteligente para criar anuncios, analisar leads, melhorar catalogo e preparar atendimentos.
+                  Central inteligente para criar anúncios, analisar leads, melhorar catálogo e preparar atendimentos.
                 </p>
               </div>
               <Button
@@ -85,7 +104,7 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
             <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4 sm:col-span-2 xl:col-span-4">
               <p className="text-xs uppercase tracking-[0.18em] text-white/40">Última interação</p>
               <p className="mt-2 text-sm text-white/68">
-                {actionsCount > 0 ? "Última ação registrada neste mês." : "O Corretor M ainda não realizou ações."}
+                {actionsCount > 0 ? "Ação registrada neste mês." : "O Corretor M ainda não realizou ações."}
               </p>
             </div>
           </CardContent>
@@ -98,23 +117,16 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
                 <MessageCircle className="size-5" />
               </div>
               <div>
-                <CardTitle className="text-xl text-white">WhatsApp conectado</CardTitle>
-                <p className="mt-1 text-sm text-[#25D366]">Status ativo</p>
+                <CardTitle className="text-xl text-white">WhatsApp do Corretor M</CardTitle>
+                <p className="mt-1 text-sm text-[#25D366]">Continuidade inteligente futura</p>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <p className="text-2xl font-semibold text-white">(54) 99990-2688</p>
             <p className="mt-3 text-sm leading-6 text-white/58">
-              O Corretor M continuará seus atendimentos pelo WhatsApp conectado.
+              Preparado para a próxima etapa. A integração oficial ainda não está ativa.
             </p>
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-5 h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.05] text-white/78 hover:bg-white/[0.08] hover:text-white"
-            >
-              Gerenciar
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -124,19 +136,27 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
           <CardHeader className="px-6 py-5">
             <CardTitle className="flex items-center gap-2 text-xl text-white">
               <UsersRound className="size-5 text-[#69F0AE]" />
-              Leads
+              Leads recentes
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
-            {totalLeads > 0 ? (
+            {leadMetrics.received > 0 ? (
               <>
-                <Metric label="Recebidos" value={String(totalLeads)} />
-                <Metric label="Novos" value={String(newLeads)} />
-                <Metric label="Aguardando resposta" value={String(pendingLeads)} />
-                <Metric label="Convertidos" value={String(convertedLeads)} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Metric label="Recebidos" value={String(leadMetrics.received)} />
+                  <Metric label="Novos" value={String(leadMetrics.new)} />
+                  <Metric label="Aguardando resposta" value={String(leadMetrics.pending)} />
+                  <Metric label="Convertidos" value={String(leadMetrics.converted)} />
+                </div>
+                {recentLeads.map((lead) => (
+                  <div key={lead.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                    <p className="text-sm font-medium text-white">{lead.name || "Lead sem nome"}</p>
+                    <p className="mt-1 text-xs text-white/45">{lead.propertyTitle || "Catálogo"} · {lead.statusLabel}</p>
+                  </div>
+                ))}
               </>
             ) : (
-              <EmptyState text="Nenhum lead recebido ainda." />
+              <EmptyState text="Nenhum lead recebido ainda. Compartilhe seu catálogo para começar." />
             )}
             <Button asChild variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white">
               <Link href="/corretor/leads">Ver leads</Link>
@@ -152,12 +172,16 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
-            {["Apartamento até 700 mil", "Casa com piscina", "Condomínio fechado"].map((query) => (
-              <div key={query} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                <p className="text-sm font-medium text-white">{query}</p>
-                <p className="mt-1 text-xs text-white/45">Busca inteligente preparada para matching no catálogo.</p>
-              </div>
-            ))}
+            {searchTerms.length > 0 ? (
+              searchTerms.map((query) => (
+                <div key={query} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                  <p className="text-sm font-medium text-white">{query}</p>
+                  <p className="mt-1 text-xs text-white/45">Termo pesquisado no catálogo.</p>
+                </div>
+              ))
+            ) : (
+              <EmptyState text="Nenhuma busca registrada ainda." />
+            )}
           </CardContent>
         </Card>
 
@@ -176,6 +200,26 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
           </CardContent>
         </Card>
       </div>
+
+      <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
+        <CardHeader className="px-6 py-5">
+          <CardTitle className="flex items-center gap-2 text-xl text-white">
+            <Lightbulb className="size-5 text-[#69F0AE]" />
+            Ações recomendadas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 p-6 pt-0">
+          {recommendedActions.length > 0 ? (
+            recommendedActions.map((action) => (
+              <div key={action} className="rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-white/65">
+                {action}
+              </div>
+            ))
+          ) : (
+            <EmptyState text="Sua operação está pronta. Continue acompanhando leads, catálogo e créditos IA." />
+          )}
+        </CardContent>
+      </Card>
     </section>
   )
 }
