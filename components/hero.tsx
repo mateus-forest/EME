@@ -17,7 +17,7 @@ export function Hero() {
       <div className="relative z-10 mx-auto max-w-5xl text-center">
         <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#00C853]/30 bg-[#00C853]/10 px-4 py-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#00C853]" />
-          <span className="text-sm font-medium text-[#00C853]">Plataforma inteligente para corretores e imobiliárias</span>
+          <span className="text-sm font-medium text-[#00C853]">Plataforma inteligente para corretores</span>
         </div>
 
         <h1 className="mb-6 text-4xl leading-tight font-bold tracking-tight text-balance text-white sm:text-5xl md:text-6xl lg:text-7xl">

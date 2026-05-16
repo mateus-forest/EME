@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { SlidersHorizontal } from "lucide-react"
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
+import { BrokerIntelligenceDashboard } from "@/components/broker-intelligence-dashboard"
 import { NotificationCenter } from "@/components/notification-center"
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { BrokerIntelligenceDashboard } from "@/components/broker-intelligence-dashboard"
 import { BrokerProperties } from "@/components/broker-properties"
 import { BrokerStats } from "@/components/broker-stats"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
@@ -71,22 +71,22 @@ export function BrokerPortal() {
       {
         title: "Imóveis ativos",
         value: String(publishedPropertiesCount),
-        change: publishedPropertiesCount > 0 ? "Baseado nos imóveis publicados" : "Nenhum imóvel publicado",
+        change: publishedPropertiesCount > 0 ? "Baseado nos imóveis publicados" : "Nenhum imóvel publicado ainda",
       },
       {
         title: "Visualizações",
         value: totalViews.toLocaleString("pt-BR"),
-        change: totalViews > 0 ? "Somatório dos imóveis" : "Sem visualizações registradas",
+        change: totalViews > 0 ? "Somatório dos imóveis" : "Aguardando tráfego do catálogo",
       },
       {
         title: "Cliques no WhatsApp",
         value: "0",
-        change: "Sem cliques registrados",
+        change: "WhatsApp central preparado",
       },
       {
         title: "Leads",
         value: totalLeads.toLocaleString("pt-BR"),
-        change: totalLeads > 0 ? "Somatório dos imóveis" : "Sem leads registrados",
+        change: totalLeads > 0 ? "Somatório dos imóveis" : "Nenhum lead recebido ainda",
       },
     ],
     [publishedPropertiesCount, totalLeads, totalViews],
@@ -125,12 +125,6 @@ export function BrokerPortal() {
           </Button>
         }
       >
-        {hasReachedLimit && (
-          <div className="mb-4 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
-            Você atingiu o limite gratuito de 3 imóveis. Faça upgrade para continuar publicando.
-          </div>
-        )}
-
         {filtersOpen && (
           <div className="mb-4 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4">
             <div className="flex flex-wrap gap-2">

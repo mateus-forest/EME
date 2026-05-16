@@ -137,7 +137,7 @@ export function PricingSection() {
                 asChild
                 className="w-full bg-[#00C853] py-6 font-semibold text-black shadow-lg shadow-[#00C853]/20 hover:bg-[#00E676]"
               >
-                <Link href="/cadastro/imobiliaria">Escalar minha operação</Link>
+                <Link href="/cadastro/corretor">Cadastrar corretores individualmente</Link>
               </Button>
             </div>
           </div>

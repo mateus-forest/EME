@@ -26,6 +26,7 @@ const benefits = [
 export function BrokerPlanPage() {
   const searchParams = useSearchParams()
   const [upgradeFeedback, setUpgradeFeedback] = useState("")
+  const [aiCredits, setAiCredits] = useState({ balance: 0, usedThisMonth: 0 })
   const { subscription, refreshSubscription } = useBrokerSubscription()
   const { properties } = useBrokerProperties()
   const {
@@ -53,6 +54,13 @@ export function BrokerPlanPage() {
   const usageWidth = !subscription.isProfileResolved || subscription.isUpgraded || subscription.isAgencyLinked
     ? "100%"
     : `${Math.min(100, Math.round((publishedPropertiesCount / (subscription.propertyLimit ?? 3)) * 100))}%`
+  const hasConfirmedPaidPlan = subscription.isUpgraded && subscription.billingStatus === "ACTIVE"
+  const planDisplayName = hasConfirmedPaidPlan ? subscription.planName : "Plano em teste"
+  const planStatus = hasConfirmedPaidPlan ? subscription.status : "Ambiente de avaliação"
+  const planPrice = hasConfirmedPaidPlan ? subscription.currentPrice : "Modo teste"
+  const planDescription = hasConfirmedPaidPlan
+    ? "Seu plano Corretor está ativo e pronto para manter sua operação rodando."
+    : "Você está usando o EME em modo de avaliação enquanto Stripe e billing são validados."
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout")
@@ -66,6 +74,26 @@ export function BrokerPlanPage() {
       setUpgradeFeedback("Checkout cancelado. Você pode tentar novamente quando quiser.")
     }
   }, [refreshSubscription, searchParams])
+
+  useEffect(() => {
+    let ignore = false
+
+    fetch("/api/ai/broker-assistant", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as
+          | { credits?: { balance: number; usedThisMonth: number } }
+          | null
+
+        if (!ignore && response.ok && data?.credits) {
+          setAiCredits(data.credits)
+        }
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   async function handleUpgradeClick() {
     try {
@@ -154,23 +182,17 @@ export function BrokerPlanPage() {
 
               <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-white">{subscription.planName}</h2>
-                  <p className="mt-2 text-sm text-white/55">
-                    {!subscription.isProfileResolved
-                      ? "Sincronizando os dados da sua conta."
-                      : subscription.isAgencyLinked
-                      ? "Você está vinculado a uma imobiliária. Suas publicações seguem as regras comerciais da equipe."
-                      : subscription.isUpgraded
-                        ? "Seu plano pago está ativo e pronto para manter seu catálogo operando."
-                        : "Você está no plano gratuito e pode cadastrar até 3 imóveis. Para continuar publicando além desse limite, faça upgrade do plano."}
-                  </p>
+                  <h2 className="text-3xl font-semibold tracking-tight text-white">{planDisplayName}</h2>
+                  <p className="mt-2 text-sm text-white/55">{planDescription}</p>
                 </div>
 
                 <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/40">Valor do upgrade</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/40">Status comercial</p>
                   <div className="mt-2 flex items-end gap-2">
-                    <span className="text-sm text-white/35 line-through">{subscription.previousPrice}</span>
-                    <p className="text-3xl font-semibold text-white">{subscription.currentPrice}</p>
+                    {hasConfirmedPaidPlan && subscription.previousPrice ? (
+                      <span className="text-sm text-white/35 line-through">{subscription.previousPrice}</span>
+                    ) : null}
+                    <p className="text-3xl font-semibold text-white">{planPrice}</p>
                   </div>
                 </div>
               </div>
@@ -178,7 +200,7 @@ export function BrokerPlanPage() {
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1.5 text-sm text-[#69F0AE]">
                   <CheckCircle2 className="size-4" />
-                  {subscription.status}
+                  {planStatus}
                 </div>
                 <Button
                   type="button"
@@ -196,7 +218,9 @@ export function BrokerPlanPage() {
               <CardTitle className="text-xl text-white">Informações da assinatura</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
-              <InfoBlock label="Status" value={subscription.status} />
+              <InfoBlock label="Status real" value={planStatus} />
+              <InfoBlock label="Créditos IA disponíveis" value={String(aiCredits.balance)} />
+              <InfoBlock label="Créditos consumidos no mês" value={String(aiCredits.usedThisMonth)} />
               <InfoBlock label="Próxima cobrança" value={financialSummary.nextBillingAt || subscription.nextCharge} />
               <InfoBlock label="Forma de pagamento" value={subscription.paymentMethod} />
               <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">

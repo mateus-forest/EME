@@ -33,18 +33,17 @@ export function BrokerFreePlanLimitModal({
       <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-xl">
         <DialogHeader className="border-b border-white/[0.08] px-6 py-5">
           <DialogTitle className="text-xl text-white">
-            Você atingiu o limite do plano gratuito
+            Você atingiu o limite do ambiente de avaliação
           </DialogTitle>
           <DialogDescription className="mt-2 text-sm leading-6 text-white/55">
-            Seu plano permite até 3 imóveis gratuitos para teste. Faça upgrade para
-            continuar publicando e manter seu catálogo ativo sem limitações.
+            O modo teste permite até 3 imóveis publicados durante a avaliação. Configure seu plano
+            para continuar publicando e manter seu catálogo ativo sem limitações.
           </DialogDescription>
         </DialogHeader>
 
         <div className="px-6 py-5">
           <div className="rounded-[1.5rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4 text-sm leading-6 text-[#69F0AE]">
-            O upgrade leva você para a área de plano, onde a integração com Stripe será
-            conectada futuramente no back-end.
+            O upgrade leva você para a área de plano, onde pacotes, Corretor M e créditos IA ficam organizados.
           </div>
         </div>
 

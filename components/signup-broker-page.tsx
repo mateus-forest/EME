@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 
@@ -65,10 +64,7 @@ export function SignupBrokerPage() {
       subtitle="Crie sua conta e comece a publicar imóveis com rapidez em poucos passos."
       footer={
         <p className="text-sm text-white/55">
-          Prefere cadastrar uma equipe?{" "}
-          <Link href="/cadastro/imobiliaria" className="font-semibold text-[#00C853] hover:text-[#00E676]">
-            Ir para imobiliária
-          </Link>
+          Para imobiliárias, cadastre os corretores individualmente enquanto a área de equipes evolui.
         </p>
       }
     >

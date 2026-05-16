@@ -1,7 +1,9 @@
 import type { ReactNode } from "react"
 
-import { AuthSessionGuard } from "@/components/auth-session-guard"
+import { AgencyPausedPage } from "@/components/agency-paused-page"
 
 export default function AgencyLayout({ children }: { children: ReactNode }) {
-  return <AuthSessionGuard allowedRole="AGENCY">{children}</AuthSessionGuard>
+  void children
+
+  return <AgencyPausedPage />
 }

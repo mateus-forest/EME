@@ -1,7 +1,6 @@
 "use client"
 
 import { PropertyCard } from "@/components/property-card"
-import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { BrokerProperty } from "@/components/use-broker-properties"
@@ -12,15 +11,7 @@ type BrokerPropertiesProps = {
 }
 
 export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertiesProps) {
-  const { subscription } = useBrokerSubscription()
   const featuredProperties = properties.slice(0, 3)
-  const planMessage = !subscription.isProfileResolved
-    ? "Sincronizando os dados da sua conta"
-    : subscription.isAgencyLinked
-    ? "Suas publicações seguem as regras da imobiliária à qual você está vinculado"
-    : subscription.isUpgraded
-      ? "Seu plano Corretor está ativo para publicar imóveis"
-      : `Você pode cadastrar até ${subscription.propertyLimit ?? 3} imóveis gratuitamente`
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -72,20 +63,20 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
         <Card className="rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_22px_50px_rgba(0,0,0,0.18)]">
           <CardContent className="p-5 sm:p-6">
             <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-[#69F0AE]">
-              Plano atual
+              Próxima ação
             </div>
             <h3 className="mt-5 text-xl font-semibold text-white">
-              {planMessage}
+              Configure seu plano quando estiver pronto para escalar.
             </h3>
             <p className="mt-3 text-sm leading-6 text-white/55">
-              O upgrade libera novas publicações conforme as regras reais do plano já aplicadas no sistema.
+              Limites, pacotes, Corretor M e créditos IA ficam organizados na tela Plano.
             </p>
             <Button
               type="button"
               onClick={onUpgradeClick}
               className="mt-6 h-11 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
             >
-              Fazer upgrade
+              Ver plano e pacotes
             </Button>
           </CardContent>
         </Card>
@@ -109,7 +100,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
               <p className="text-sm text-white/50">Resumo</p>
-              <p className="mt-2 text-lg font-semibold text-white">Conta ativa</p>
+              <p className="mt-2 text-lg font-semibold text-white">Operação pronta</p>
             </div>
           </CardContent>
         </Card>
