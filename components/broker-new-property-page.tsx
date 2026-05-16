@@ -86,7 +86,6 @@ export function BrokerNewPropertyPage() {
     subscription.isProfileResolved &&
     !isPlanBlocked &&
     !subscription.isUpgraded &&
-    !subscription.isAgencyLinked &&
     totalPropertiesCount >= (subscription.propertyLimit ?? 3)
 
   const previewImages = useMemo(() => images, [images])

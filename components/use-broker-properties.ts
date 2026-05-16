@@ -65,7 +65,7 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     preco: property.formattedPrice,
     tipo: property.type,
     corretorId: property.brokerId,
-    imobiliariaId: property.agencyId,
+    imobiliariaId: null,
     title: property.title,
     city: property.city,
     neighborhood: property.neighborhood,

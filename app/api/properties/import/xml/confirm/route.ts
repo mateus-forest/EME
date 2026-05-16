@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       if (billingBlocked) return billingBlocked
     }
 
-    const agencyId = user.role === UserRole.AGENCY ? user.ownedAgency?.id ?? null : user.broker?.agencyId ?? null
+    const agencyId = user.role === UserRole.AGENCY ? user.ownedAgency?.id ?? null : null
     const report = {
       imported: 0,
       duplicates: 0,

@@ -9,7 +9,7 @@ type SessionProfileUser = Pick<
   ownedAgency: Pick<Agency, "id" | "name" | "phone" | "cnpj" | "logoUrl" | "catalogSlug"> | null
 }
 
-export type SessionAccountType = "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | "AGENCY" | "ADMIN"
+export type SessionAccountType = "BROKER_INDEPENDENT" | "AGENCY" | "ADMIN"
 
 export type SessionProfile = {
   id: string
@@ -44,13 +44,11 @@ export type SessionProfile = {
 }
 
 export function buildSessionProfile(user: SessionProfileUser): SessionProfile {
-  const brokerAgencyId = user.broker?.agencyId ?? null
+  const brokerAgencyId = null
   const ownedAgencyId = user.ownedAgency?.id ?? null
   const accountType: SessionAccountType =
     user.role === "BROKER"
-      ? brokerAgencyId
-        ? "BROKER_AGENCY_LINKED"
-        : "BROKER_INDEPENDENT"
+      ? "BROKER_INDEPENDENT"
       : user.role === "AGENCY"
         ? "AGENCY"
         : "ADMIN"
@@ -68,11 +66,11 @@ export function buildSessionProfile(user: SessionProfileUser): SessionProfile {
     phone: user.phone ?? "",
     photoUrl: user.photoUrl ?? "",
     brokerId: user.broker?.id ?? null,
-    agencyId: user.role === "AGENCY" ? ownedAgencyId : brokerAgencyId,
+    agencyId: user.role === "AGENCY" ? ownedAgencyId : null,
     broker: user.broker
       ? {
           id: user.broker.id,
-          agencyId: brokerAgencyId,
+          agencyId: null,
           phone: user.broker.phone,
           creci: user.broker.creci ?? "",
           description: user.broker.description ?? "",

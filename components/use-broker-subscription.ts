@@ -5,11 +5,11 @@ import { useCallback, useEffect, useState } from "react"
 import { type DomainSubscription } from "@/lib/domain-entities"
 
 export type BrokerSubscription = DomainSubscription & {
-  planName: "Sincronizando" | "Gratuito" | "Corretor" | "Equipe da imobiliária"
+  planName: "Sincronizando" | "Plano em teste" | "Corretor"
   ownerType: "broker"
   brokerId: string | null
   agencyId: string | null
-  accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | null
+  accountType: "BROKER_INDEPENDENT" | null
   isUpgraded: boolean
   isAgencyLinked: boolean
   propertyLimit: number | null

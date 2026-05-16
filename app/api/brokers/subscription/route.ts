@@ -47,15 +47,12 @@ export async function GET() {
       isBrokerPlan &&
       user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE &&
       subscription?.status === "ACTIVE"
-    const isAgencyLinked = Boolean(user.broker.agencyId)
-    const requiresRegularization = isBrokerPlan && !isActive && !isAgencyLinked
+    const requiresRegularization = isBrokerPlan && !isActive
     const nextCharge = isActive
       ? formatDate(subscription?.nextBillingAt ?? null)
-      : isAgencyLinked
-        ? "Gerenciado pela imobiliária"
       : requiresRegularization
         ? "Regularização pendente"
-        : "Plano gratuito ativo"
+        : "Ambiente de avaliação"
 
     const response = NextResponse.json({
       subscription: {
@@ -63,35 +60,29 @@ export async function GET() {
         ownerId: 101,
         ownerType: "broker",
         brokerId: user.broker.id,
-        agencyId: user.broker.agencyId,
-        accountType: isAgencyLinked ? "BROKER_AGENCY_LINKED" : "BROKER_INDEPENDENT",
-        tipoPlano: isAgencyLinked ? "Equipe da imobiliária" : isBrokerPlan ? "Corretor" : "Gratuito",
-        ultimoPagamento: isAgencyLinked
-          ? "Plano gerenciado pela imobiliária"
-          : isActive
+        agencyId: null,
+        accountType: "BROKER_INDEPENDENT",
+        tipoPlano: isBrokerPlan ? "Corretor" : "Plano em teste",
+        ultimoPagamento: isActive
           ? "Pagamento confirmado pelo Stripe"
           : requiresRegularization
             ? "Pagamento pendente"
-            : "Plano gratuito",
+            : "Modo teste",
         proximaCobranca: nextCharge,
-        planName: isAgencyLinked ? "Equipe da imobiliária" : isBrokerPlan ? "Corretor" : "Gratuito",
+        planName: isBrokerPlan ? "Corretor" : "Plano em teste",
         isUpgraded: isActive,
-        isAgencyLinked,
-        propertyLimit: isActive || isAgencyLinked ? null : 3,
-        limitLabel: isAgencyLinked
-          ? "Publicações gerenciadas pela imobiliária"
-          : isActive
-            ? "Publicações do plano Corretor"
-            : "3 imóveis gratuitos",
+        isAgencyLinked: false,
+        propertyLimit: isActive ? null : 3,
+        limitLabel: isActive ? "Publicações do plano Corretor" : "3 imóveis no ambiente de avaliação",
         billingPlan: user.plan,
         billingStatus: user.subscriptionStatus,
         requiresRegularization,
         isProfileResolved: true,
-        currentPrice: isAgencyLinked ? "Plano da imobiliária" : "R$ 49,90",
+        currentPrice: isActive ? "R$ 49,90" : "Modo teste",
         previousPrice: "R$ 89,90",
-        status: requiresRegularization ? "Cancelado" : "Ativo",
+        status: requiresRegularization ? "Pendente" : isActive ? "Ativo" : "Ambiente de avaliação",
         nextCharge,
-        paymentMethod: isAgencyLinked ? "Imobiliária responsável" : isBrokerPlan ? "Stripe" : "Checkout Stripe",
+        paymentMethod: isActive ? "Stripe" : "Configurar plano",
       },
     })
 

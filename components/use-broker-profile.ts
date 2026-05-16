@@ -6,7 +6,7 @@ export type BrokerProfile = {
   id: string
   brokerId: string
   agencyId: string | null
-  accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED" | null
+  accountType: "BROKER_INDEPENDENT" | null
   fullName: string
   email: string
   creci: string
@@ -57,7 +57,7 @@ export function useBrokerProfile() {
               id: string
               brokerId: string
               agencyId: string | null
-              accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED"
+              accountType: "BROKER_INDEPENDENT"
               name: string
               email: string
               phone: string
@@ -77,8 +77,8 @@ export function useBrokerProfile() {
         normalizeProfile({
           id: data.profile.id,
           brokerId: data.profile.brokerId,
-          agencyId: data.profile.agencyId,
-          accountType: data.profile.accountType,
+          agencyId: null,
+          accountType: "BROKER_INDEPENDENT",
           fullName: data.profile.name,
           email: data.profile.email,
           creci: data.profile.creci,
@@ -138,7 +138,7 @@ export function useBrokerProfile() {
             id: string
             brokerId: string
             agencyId: string | null
-            accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY_LINKED"
+            accountType: "BROKER_INDEPENDENT"
             name: string
             email: string
             phone: string
@@ -156,8 +156,8 @@ export function useBrokerProfile() {
     const nextProfile = normalizeProfile({
       id: data.profile.id,
       brokerId: data.profile.brokerId,
-      agencyId: data.profile.agencyId,
-      accountType: data.profile.accountType,
+      agencyId: null,
+      accountType: "BROKER_INDEPENDENT",
       fullName: data.profile.name,
       email: data.profile.email,
       whatsApp: data.profile.phone,

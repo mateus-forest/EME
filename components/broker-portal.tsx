@@ -37,7 +37,6 @@ export function BrokerPortal() {
   const hasReachedLimit =
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
-    !subscription.isAgencyLinked &&
     publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
 
   const featuredProperties = useMemo(

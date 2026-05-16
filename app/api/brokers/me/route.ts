@@ -29,8 +29,8 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     phone: user.broker.phone ?? user.phone ?? "",
     photoUrl: user.photoUrl ?? "",
     brokerId: user.broker.id,
-    agencyId: user.broker.agencyId,
-    accountType: user.broker.agencyId ? "BROKER_AGENCY_LINKED" : "BROKER_INDEPENDENT",
+    agencyId: null,
+    accountType: "BROKER_INDEPENDENT",
     creci: user.broker.creci ?? "",
     description: user.broker.description ?? "",
   }
