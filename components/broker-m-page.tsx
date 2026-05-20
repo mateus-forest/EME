@@ -7,6 +7,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { useBrokerSubscription } from "@/components/use-broker-subscription"
 
 type AssistantCredits = {
   balance: number
@@ -30,6 +31,7 @@ export function BrokerMPage() {
   const [feedback, setFeedback] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const { subscription } = useBrokerSubscription()
   const selectedAction = useMemo(
     () => quickActions.find((action) => action.actionType === actionType),
     [actionType],
@@ -140,7 +142,7 @@ export function BrokerMPage() {
                 className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
               >
                 <CreditCard className="size-4" />
-                Comprar créditos
+                Solicitar mais créditos
               </Button>
             </div>
           </div>
@@ -163,6 +165,10 @@ export function BrokerMPage() {
               <div className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
                 <p className="text-sm text-white/45">Usados no mês</p>
                 <p className="mt-1 text-xl font-semibold text-white">{credits.usedThisMonth}</p>
+              </div>
+              <div className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                <p className="text-sm text-white/45">Pacote/plano atual</p>
+                <p className="mt-1 text-xl font-semibold text-white">{subscription.isUpgraded ? subscription.planName : "Modo avaliação"}</p>
               </div>
             </CardContent>
           </Card>
@@ -229,9 +235,9 @@ export function BrokerMPage() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">Assessor EME no WhatsApp</h3>
-              <p className="mt-2 text-xl font-semibold text-white">Canal oficial EME</p>
+              <p className="mt-2 text-xl font-semibold text-white">Canal em preparação</p>
               <p className="mt-2 text-sm leading-7 text-white/55">
-                Canal oficial para conversar com a IA do EME e solicitar tarefas internas. O número oficial será informado nos canais de atendimento.
+                Use o Assessor EME para pedir tarefas ao sistema, como cadastrar imóvel, procurar imóvel, cadastrar lead, gerar resumo e criar anúncio. O número oficial será exibido quando a configuração administrativa estiver disponível.
               </p>
             </div>
           </div>

@@ -54,6 +54,9 @@ export type AdminBrokerRecord = {
   agencyName?: string
   activeProperties: number
   leads: number
+  aiCreditsBalance: number
+  aiCreditsUsedThisMonth: number
+  createdAt: string
 }
 
 export type AdminSubscriptionRecord = {
@@ -150,6 +153,9 @@ export function serializeAdminBroker(
     agencyName: broker.agency?.name ?? undefined,
     activeProperties: broker.properties.filter((property) => property.status === "PUBLISHED").length,
     leads: broker.properties.reduce((sum, property) => sum + (property._count?.leads ?? property.leadsCount), 0),
+    aiCreditsBalance: broker.aiCreditsBalance,
+    aiCreditsUsedThisMonth: broker.aiCreditsUsedThisMonth,
+    createdAt: formatDate(broker.createdAt),
   }
 }
 

@@ -1,10 +1,14 @@
 "use client"
 
+import { useState } from "react"
+import type { ReactNode } from "react"
 import { Bot, CheckCircle2, Clock3, MessageCircle, ShieldCheck, UserRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 const howItWorks = [
   "O Corretor EME usa o WhatsApp do próprio corretor.",
@@ -24,6 +28,19 @@ const capabilities = [
 ]
 
 export function BrokerCorretorEmePage() {
+  const [request, setRequest] = useState({
+    whatsApp: "",
+    displayName: "",
+    status: "Integração em preparação",
+    initialMessage: "",
+    notes: "",
+  })
+  const [feedback, setFeedback] = useState("")
+
+  function handleActivationRequest() {
+    setFeedback("Solicitação preparada. A ativação real do WhatsApp será liberada em uma etapa futura.")
+  }
+
   return (
     <BrokerPageShell title="Corretor EME">
       <div className="grid gap-6">
@@ -40,13 +57,38 @@ export function BrokerCorretorEmePage() {
             </div>
             <Button
               type="button"
-              onClick={() => null}
+              onClick={handleActivationRequest}
               className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
             >
-              Quero ativar o Corretor EME
+              Solicitar ativação
             </Button>
           </div>
+          {feedback ? <p className="mt-4 text-sm text-[#69F0AE]">{feedback}</p> : null}
         </section>
+
+        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <CardHeader className="px-6 py-5">
+            <CardTitle className="text-xl text-white">Configuração desejada</CardTitle>
+            <p className="text-sm text-white/50">O Corretor EME usa o seu próprio WhatsApp para pré-atender e qualificar leads.</p>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2">
+            <Field label="Número do WhatsApp">
+              <Input value={request.whatsApp} onChange={(event) => setRequest({ ...request, whatsApp: event.target.value })} placeholder="Informe o número que deseja integrar" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Nome de exibição">
+              <Input value={request.displayName} onChange={(event) => setRequest({ ...request, displayName: event.target.value })} placeholder="Ex: Mateus Corretor" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Status da integração">
+              <Input value={request.status} readOnly className="border-white/[0.08] bg-white/[0.04] text-white" />
+            </Field>
+            <Field label="Mensagem inicial padrão">
+              <Textarea value={request.initialMessage} onChange={(event) => setRequest({ ...request, initialMessage: event.target.value })} placeholder="Mensagem de abertura para novos leads" className="min-h-24 border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Observações">
+              <Textarea value={request.notes} onChange={(event) => setRequest({ ...request, notes: event.target.value })} placeholder="Preferências de atendimento e qualificação" className="min-h-24 border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+          </CardContent>
+        </Card>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
@@ -116,6 +158,15 @@ export function BrokerCorretorEmePage() {
         </section>
       </div>
     </BrokerPageShell>
+  )
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm text-white/55">{label}</span>
+      {children}
+    </label>
   )
 }
 

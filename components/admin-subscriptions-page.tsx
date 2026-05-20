@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { AdminPageShell } from "@/components/admin-page-shell"
+import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import {
   formatCurrencyBRL,
   notifyAdminSubscription,
@@ -188,7 +189,7 @@ export function AdminSubscriptionsPage() {
       )}
 
       <section className="mt-6 grid gap-4">
-        {filteredSubscriptions.map((subscription) => (
+        {filteredSubscriptions.length > 0 ? filteredSubscriptions.map((subscription) => (
           <Card
             key={subscription.id}
             className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
@@ -242,7 +243,15 @@ export function AdminSubscriptionsPage() {
               )}
             </CardContent>
           </Card>
-        ))}
+        )) : (
+          <AdminEmptyState
+            icon={CreditCard}
+            title="Assinaturas prontas para gestão"
+            description="Ainda não há assinaturas para os filtros atuais. A área já está preparada para planos ativos, inadimplência, notificações e detalhes em modal."
+          >
+            <AdminStructureCards items={["Cards de status financeiro", "Tabela/lista de assinaturas", "Modal de detalhes e ações"]} />
+          </AdminEmptyState>
+        )}
       </section>
 
       <SubscriptionDetailsDialog
