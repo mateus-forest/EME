@@ -26,9 +26,15 @@ function getDatabaseUrl() {
 
 function getPoolMax() {
   const configured = Number(process.env.DATABASE_POOL_MAX)
+  const isServerlessProduction = Boolean(process.env.VERCEL) || process.env.NODE_ENV === "production"
+
+  if (isServerlessProduction) {
+    return 1
+  }
+
   if (Number.isInteger(configured) && configured > 0) return configured
 
-  return process.env.VERCEL || process.env.NODE_ENV === "production" ? 1 : 5
+  return 5
 }
 
 const pool =
