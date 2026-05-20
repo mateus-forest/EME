@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowUpRight, Bot, ChartColumn, CheckCircle2, Globe, Sparkles } from "lucide-react"
+import { ArrowUpRight, Bot, ChartColumn, CheckCircle2, Globe, Headphones, Home, MessageCircle, PackagePlus, Sparkles } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
@@ -14,11 +14,57 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const benefits = [
-  { label: "Anúncios ilimitados", icon: CheckCircle2 },
-  { label: "IA para criação de anúncios", icon: Sparkles },
+  { label: "3 imóveis gratuitos", icon: Home },
   { label: "Catálogo online", icon: Globe },
-  { label: "Link compartilhável", icon: ArrowUpRight },
-  { label: "Analytics de desempenho", icon: ChartColumn },
+  { label: "Leads", icon: ArrowUpRight },
+  { label: "Financeiro básico", icon: CheckCircle2 },
+  { label: "Analytics básico", icon: ChartColumn },
+  { label: "Assessor EME em modo avaliação", icon: Sparkles },
+]
+
+const extraPackages = [
+  {
+    title: "Pacote +10 imóveis",
+    price: "R$ 29,90/mês",
+    description: "Amplie o catálogo com mais dez imóveis no portal do corretor.",
+    action: "Contratar extra",
+    icon: PackagePlus,
+  },
+  {
+    title: "Pacote +30 imóveis",
+    price: "R$ 59,90/mês",
+    description: "Mais espaço para crescer a carteira sem mudar o plano base.",
+    action: "Contratar extra",
+    icon: PackagePlus,
+  },
+  {
+    title: "Pacote +100 imóveis",
+    price: "R$ 129,90/mês",
+    description: "Para corretores com carteira maior e catálogo em expansão.",
+    action: "Contratar extra",
+    icon: PackagePlus,
+  },
+  {
+    title: "Corretor EME",
+    price: "R$ 49,90/mês por número",
+    description: "WhatsApp do corretor para pré-atendimento e qualificação de leads.",
+    action: "Solicitar ativação",
+    icon: MessageCircle,
+  },
+  {
+    title: "Assessor EME",
+    price: "R$ 39,90/mês",
+    description: "Canal oficial do EME para o corretor pedir tarefas à IA.",
+    action: "Solicitar ativação",
+    icon: Bot,
+  },
+  {
+    title: "Créditos IA extra",
+    price: "R$ 19,90 / 100 ações",
+    description: "Para criar anúncios, melhorar descrições, resumir leads e executar ações inteligentes.",
+    action: "Contratar extra",
+    icon: Sparkles,
+  },
 ]
 
 export function BrokerPlanPage() {
@@ -48,12 +94,10 @@ export function BrokerPlanPage() {
     ? "100%"
     : `${Math.min(100, Math.round((publishedPropertiesCount / (subscription.propertyLimit ?? 3)) * 100))}%`
   const hasConfirmedPaidPlan = subscription.isUpgraded && subscription.billingStatus === "ACTIVE"
-  const planDisplayName = hasConfirmedPaidPlan ? subscription.planName : "Plano em teste"
+  const planDisplayName = "Plano Corretor EME"
   const planStatus = hasConfirmedPaidPlan ? subscription.status : "Ambiente de avaliação"
-  const planPrice = hasConfirmedPaidPlan ? subscription.currentPrice : "Modo teste"
-  const planDescription = hasConfirmedPaidPlan
-    ? "Seu plano Corretor está ativo e pronto para manter sua operação rodando."
-    : "Você está usando o EME em modo de avaliação enquanto Stripe e billing são validados."
+  const planPrice = "R$ 89,90/mês"
+  const planDescription = "Plano base para o corretor individual operar catálogo, leads, financeiro e analytics com apoio do Assessor EME em avaliação."
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout")
@@ -124,33 +168,33 @@ export function BrokerPlanPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
                 <Bot className="size-3.5" />
-                Pacote extra
+                Plano base
               </div>
-              <h2 className="mt-4 text-2xl font-semibold text-white">Pacote Assessor EME</h2>
+              <h2 className="mt-4 text-2xl font-semibold text-white">Plano Corretor EME — R$ 89,90/mês</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
-                IA, canal oficial do EME e creditos para criar anuncios, buscar imoveis, resumir leads e executar tarefas operacionais.
+                Inclui 3 imóveis gratuitos, catálogo online, leads, financeiro básico, analytics básico e acesso ao Assessor EME em modo avaliação.
               </p>
             </div>
             <Button
               type="button"
-              onClick={handleUpgradeClick}
+              onClick={() => setUpgradeFeedback("Suporte acionado visualmente. Integração comercial será adicionada em etapa futura.")}
               className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
             >
-              Upgrade IA
+              Falar com suporte
             </Button>
           </CardContent>
         </Card>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <section className="grid gap-6 xl:grid-cols-2">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
                 Plano atual
               </div>
 
-              <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-white">{planDisplayName}</h2>
+                  <h2 className="text-2xl font-semibold tracking-tight text-white">{planDisplayName}</h2>
                   <p className="mt-2 text-sm text-white/55">{planDescription}</p>
                 </div>
 
@@ -160,12 +204,12 @@ export function BrokerPlanPage() {
                     {hasConfirmedPaidPlan && subscription.previousPrice ? (
                       <span className="text-sm text-white/35 line-through">{subscription.previousPrice}</span>
                     ) : null}
-                    <p className="text-3xl font-semibold text-white">{planPrice}</p>
+                    <p className="text-2xl font-semibold text-white">{planPrice}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1.5 text-sm text-[#69F0AE]">
                   <CheckCircle2 className="size-4" />
                   {planStatus}
@@ -257,6 +301,54 @@ export function BrokerPlanPage() {
             </Card>
           </div>
         </section>
+
+        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <CardHeader className="px-6 py-5">
+            <CardTitle className="text-xl text-white">Pacotes extras</CardTitle>
+            <p className="text-sm text-white/50">Contrate módulos conforme sua operação crescer. Os botões estão preparados visualmente para a próxima etapa comercial.</p>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2 xl:grid-cols-3">
+            {extraPackages.map((item) => (
+              <div key={item.title} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                    <item.icon className="size-4.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-semibold text-white">{item.title}</h3>
+                    <p className="mt-1 text-sm font-medium text-[#69F0AE]">{item.price}</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-white/58">{item.description}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setUpgradeFeedback(`${item.action}: ${item.title}. Fale com suporte para concluir.`)}
+                  className="mt-5 h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
+                >
+                  {item.action}
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-6 text-white/58">
+              Corretor EME é o WhatsApp do corretor para pré-atendimento. Assessor EME é o canal oficial do EME para tarefas com IA. Créditos IA são usados em anúncios, descrições, resumos e ações inteligentes.
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setUpgradeFeedback("Suporte acionado visualmente. Integração comercial será adicionada em etapa futura.")}
+              className="h-10 shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
+            >
+              <Headphones className="size-4" />
+              Falar com suporte
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
