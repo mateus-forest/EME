@@ -43,7 +43,7 @@ export function BrokerFreePlanLimitModal({
 
         <div className="px-6 py-5">
           <div className="rounded-[1.5rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4 text-sm leading-6 text-[#69F0AE]">
-            O upgrade leva você para a área de plano, onde pacotes, Corretor M e créditos IA ficam organizados.
+            O upgrade leva você para a área de plano, onde assinatura, Assessor EME e créditos IA ficam organizados.
           </div>
         </div>
 

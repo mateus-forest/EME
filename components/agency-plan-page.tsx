@@ -107,7 +107,7 @@ export function AgencyPlanPage() {
                 <Bot className="size-3.5" />
                 Pacote empresarial
               </div>
-              <h2 className="mt-4 text-2xl font-semibold text-white">Corretor M empresarial</h2>
+              <h2 className="mt-4 text-2xl font-semibold text-white">Assessor EME empresarial</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
                 Créditos IA da equipe, WhatsApp, automações e atendimento inteligente para corretores vinculados.
               </p>

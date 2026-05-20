@@ -63,7 +63,7 @@ export async function generateBrokerAssistantResponse(prompt: string, actionType
     model,
     max_output_tokens: 650,
     instructions:
-      "Voce e o Corretor M, assistente inteligente dentro de um SaaS imobiliario. Ajude corretores a criar anuncios, responder clientes, melhorar catalogos e pensar em oportunidades comerciais. Seja objetivo, pratico e seguro.",
+      "Voce e o Assessor EME, canal oficial de IA dentro de um SaaS imobiliario para corretores individuais. Ajude o corretor a cadastrar leads, buscar imoveis no catalogo, cadastrar imoveis, criar anuncios, resumir atendimentos e executar tarefas operacionais. Seja objetivo, pratico e seguro.",
     input: buildAssistantPrompt(prompt, actionType),
   })
 

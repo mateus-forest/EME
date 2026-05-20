@@ -63,11 +63,11 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
   const recentLeads = leads.slice(0, 3)
   const remainingEstimate = Math.max(0, credits.balance)
   const actionsCount = credits.usedThisMonth
-  const currentPackage = subscription.isUpgraded ? "Corretor M Pro" : "Corretor M inicial"
+  const currentPackage = subscription.isUpgraded ? "Assessor EME Pro" : "Assessor EME inicial"
   const recommendedActions = [
     properties.length === 0 ? "Publique seu primeiro imóvel no catálogo inteligente." : "",
     leads.length === 0 ? "Compartilhe seu catálogo para começar a capturar leads." : "",
-    credits.balance === 0 ? "Adicione créditos IA para usar o Corretor M." : "",
+    credits.balance === 0 ? "Adicione créditos IA para usar o Assessor EME." : "",
   ].filter(Boolean)
 
   return (
@@ -81,9 +81,9 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
                   <Bot className="size-3.5" />
                   IA viva
                 </div>
-                <CardTitle className="mt-4 text-2xl text-white">Corretor M</CardTitle>
+                <CardTitle className="mt-4 text-2xl text-white">Assessor EME</CardTitle>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">
-                  Central inteligente para criar anúncios, analisar leads, melhorar catálogo e preparar atendimentos.
+                  Canal oficial do EME para criar anúncios, analisar leads, melhorar catálogo e pedir apoio operacional.
                 </p>
               </div>
               <Button
@@ -92,7 +92,7 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
                 onClick={() => setAssistantEnabled((current) => !current)}
                 className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 text-white/80 hover:bg-white/[0.08] hover:text-white"
               >
-                {assistantEnabled ? "Desativar" : "Ativar"} Corretor M
+                {assistantEnabled ? "Desativar" : "Ativar"} Assessor EME
               </Button>
             </div>
           </CardHeader>
@@ -104,7 +104,7 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
             <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4 sm:col-span-2 xl:col-span-4">
               <p className="text-xs uppercase tracking-[0.18em] text-white/40">Última interação</p>
               <p className="mt-2 text-sm text-white/68">
-                {actionsCount > 0 ? "Ação registrada neste mês." : "O Corretor M ainda não realizou ações."}
+                {actionsCount > 0 ? "Ação registrada neste mês." : "O Assessor EME ainda não realizou ações."}
               </p>
             </div>
           </CardContent>
@@ -117,15 +117,15 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
                 <MessageCircle className="size-5" />
               </div>
               <div>
-                <CardTitle className="text-xl text-white">WhatsApp do Corretor M</CardTitle>
-                <p className="mt-1 text-sm text-[#25D366]">Continuidade inteligente futura</p>
+                <CardTitle className="text-xl text-white">Assessor EME no WhatsApp</CardTitle>
+                <p className="mt-1 text-sm text-[#25D366]">Canal oficial do sistema</p>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6 pt-0">
-            <p className="text-2xl font-semibold text-white">(54) 99990-2688</p>
+            <p className="text-2xl font-semibold text-white">Canal oficial EME</p>
             <p className="mt-3 text-sm leading-6 text-white/58">
-              Preparado para a próxima etapa. A integração oficial ainda não está ativa.
+              Use este canal para falar com a IA do EME e solicitar tarefas operacionais. O número oficial será informado nos canais de atendimento.
             </p>
           </CardContent>
         </Card>

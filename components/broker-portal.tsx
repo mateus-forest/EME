@@ -80,7 +80,7 @@ export function BrokerPortal() {
       {
         title: "Cliques no WhatsApp",
         value: "0",
-        change: "WhatsApp central preparado",
+        change: "Leads vindos do WhatsApp do corretor",
       },
       {
         title: "Leads",

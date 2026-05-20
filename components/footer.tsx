@@ -26,7 +26,7 @@ export function Footer() {
               Busca inteligente
             </Link>
             <Link href="#corretor-eme" className="text-sm text-white/50 hover:text-white transition-colors">
-              Corretor EME
+              Canais EME
             </Link>
             <Link href="mailto:suporte@eme.com" className="text-sm text-white/50 hover:text-white transition-colors">
               Contato

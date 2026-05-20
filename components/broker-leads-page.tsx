@@ -91,7 +91,7 @@ export function BrokerLeadsPage() {
               </p>
             </div>
             <Button asChild className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
-              <Link href="/corretor/corretor-m">Analisar com Corretor M</Link>
+              <Link href="/corretor/corretor-m">Analisar com Assessor EME</Link>
             </Button>
           </div>
         </section>

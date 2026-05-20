@@ -29,8 +29,8 @@ export function Hero() {
         </h1>
 
         <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-pretty text-white/60 md:text-xl">
-          Crie anúncios, publique catálogos inteligentes, capture leads e prepare atendimentos
-          com o Corretor EME no WhatsApp.
+          Crie anúncios, publique catálogos inteligentes, capture leads e conte com o Corretor EME
+          para qualificação e o Assessor EME para tarefas operacionais.
         </p>
 
         <Button

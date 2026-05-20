@@ -34,7 +34,7 @@ export function Header() {
               Busca inteligente
             </Link>
             <Link href="#corretor-eme" className="text-sm text-white/70 transition-colors hover:text-white">
-              Corretor EME
+              Canais EME
             </Link>
           </div>
 

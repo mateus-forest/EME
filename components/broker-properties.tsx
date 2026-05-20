@@ -69,7 +69,7 @@ export function BrokerProperties({ properties, onUpgradeClick }: BrokerPropertie
               Configure seu plano quando estiver pronto para escalar.
             </h3>
             <p className="mt-3 text-sm leading-6 text-white/55">
-              Limites, pacotes, Corretor M e créditos IA ficam organizados na tela Plano.
+              Limites, assinatura, Assessor EME e créditos IA ficam organizados na tela Plano.
             </p>
             <Button
               type="button"

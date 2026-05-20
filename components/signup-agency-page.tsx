@@ -19,7 +19,7 @@ export function SignupAgencyPage() {
       <div className="rounded-2xl border border-[#00C853]/20 bg-[#00C853]/[0.06] p-5">
         <h3 className="text-xl font-semibold text-white">Use o acesso de corretor nesta fase</h3>
         <p className="mt-2 text-sm leading-relaxed text-white/60">
-          O cadastro de imobiliária está pausado temporariamente. O fluxo de corretor segue ativo com catálogo inteligente, leads, IA e Corretor M.
+          O cadastro de imobiliária está pausado temporariamente. O fluxo de corretor segue ativo com catálogo inteligente, leads, IA e Assessor EME.
         </p>
         <Button
           asChild

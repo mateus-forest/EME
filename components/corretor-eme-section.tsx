@@ -1,13 +1,38 @@
 "use client"
 
-import { Bot, CheckCheck, MessageCircle, Sparkles } from "lucide-react"
+import { Bot, CheckCheck, MessageCircle, Sparkles, UserRound } from "lucide-react"
 
 export function CorretorEmeSection() {
   const messages = [
-    { from: "Corretor", text: "Crie um anúncio para esse imóvel." },
-    { from: "EME", text: "Montei título, descrição e diferenciais. Quer revisar agora?" },
-    { from: "Corretor", text: "Cadastre esse lead e me traga imóveis até 900 mil." },
-    { from: "EME", text: "Lead salvo. Separei opções com melhor aderência ao perfil." },
+    { from: "Corretor", text: "Crie um anuncio para esse imovel." },
+    { from: "EME", text: "Montei titulo, descricao e diferenciais. Quer revisar agora?" },
+    { from: "Corretor", text: "Cadastre esse lead e me traga imoveis ate 900 mil." },
+    { from: "EME", text: "Lead salvo. Separei opcoes com melhor aderencia ao perfil." },
+  ]
+  const channels = [
+    {
+      icon: UserRound,
+      title: "Corretor EME",
+      description: "Integre seu WhatsApp para receber, pre-atender e qualificar leads automaticamente.",
+      bullets: [
+        "Atendimento inicial de leads",
+        "Qualificacao automatica",
+        "Registro no CRM",
+        "Apoio ao funil de vendas",
+      ],
+    },
+    {
+      icon: Bot,
+      title: "Assessor EME",
+      description: "Converse com a IA do EME para executar tarefas do dia a dia pelo WhatsApp oficial do sistema.",
+      bullets: [
+        "Cadastrar imoveis",
+        "Criar anuncios",
+        "Buscar imoveis no catalogo",
+        "Cadastrar e resumir leads",
+        "Pedir apoio operacional",
+      ],
+    },
   ]
 
   return (
@@ -23,8 +48,8 @@ export function CorretorEmeSection() {
                     <Bot className="h-5 w-5 text-black" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">Corretor EME</p>
-                    <p className="text-xs text-[#25D366]">continuidade inteligente</p>
+                    <p className="text-sm font-semibold text-white">Assessor EME</p>
+                    <p className="text-xs text-[#25D366]">canal oficial do sistema</p>
                   </div>
                 </div>
 
@@ -54,29 +79,56 @@ export function CorretorEmeSection() {
         </div>
 
         <div className="order-1 md:order-2">
-          <p className="mb-4 text-sm uppercase tracking-[0.28em] text-[#69F0AE]">Corretor EME</p>
+          <p className="mb-4 text-sm uppercase tracking-[0.28em] text-[#69F0AE]">Corretor EME + Assessor EME</p>
           <h2 className="mb-6 text-3xl font-bold text-balance text-white sm:text-4xl md:text-5xl">
-            Continuidade inteligente{" "}
+            Dois canais inteligentes{" "}
             <span className="bg-gradient-to-r from-[#00C853] to-[#00E676] bg-clip-text text-transparent">
-              pelo WhatsApp
+              para o corretor
             </span>
             .
           </h2>
           <p className="text-lg leading-relaxed text-white/60">
-            Um assistente preparado para ajudar o corretor a criar anúncios, importar prints,
-            organizar leads e encontrar oportunidades sem sair da rotina comercial.
+            O Corretor EME conecta o WhatsApp do corretor aos seus clientes e leads. O Assessor EME
+            funciona como o canal oficial do sistema para pedir tarefas, operar a rotina e conversar com a IA.
           </p>
 
           <div className="mt-8 grid gap-3 text-sm text-white/60">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-[#00C853]" />
-              Criação de anúncio, melhoria de copy e sugestões comerciais.
+              Assessor EME para anuncios, catalogo, leads, resumos e apoio operacional.
             </div>
             <div className="flex items-center gap-3">
               <MessageCircle className="h-5 w-5 text-[#25D366]" />
-              Posicionado como continuidade inteligente, sem prometer integração oficial agora.
+              Corretor EME para pre-atendimento e qualificacao no WhatsApp do proprio corretor.
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="mx-auto mt-16 max-w-6xl">
+        <div className="mb-8 text-center">
+          <h3 className="text-2xl font-semibold text-white sm:text-3xl">Dois canais inteligentes para o corretor</h3>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          {channels.map((channel) => (
+            <div key={channel.title} className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-6">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                  <channel.icon className="size-5" />
+                </div>
+                <h4 className="text-xl font-semibold text-white">{channel.title}</h4>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-white/60">{channel.description}</p>
+              <div className="mt-5 grid gap-3">
+                {channel.bullets.map((bullet) => (
+                  <div key={bullet} className="flex items-center gap-3 text-sm text-white/68">
+                    <CheckCheck className="size-4 text-[#69F0AE]" />
+                    {bullet}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

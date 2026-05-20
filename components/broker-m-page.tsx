@@ -47,24 +47,24 @@ export function BrokerMPage() {
         if (data?.credits) setCredits(data.credits)
       })
       .catch((caughtError) => {
-        setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o Corretor M.")
+        setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o Assessor EME.")
       })
   }, [])
 
   async function sendPrompt() {
     const normalizedPrompt = prompt.trim()
     if (!normalizedPrompt) {
-      setFeedback("Digite uma mensagem para o Corretor M.")
+      setFeedback("Digite uma mensagem para o Assessor EME.")
       return
     }
 
     if (!isActive) {
-      setFeedback("Ative o Corretor M para enviar comandos.")
+      setFeedback("Ative o Assessor EME para enviar comandos.")
       return
     }
 
     if (credits.balance <= 0) {
-      setFeedback("Créditos insuficientes para usar o Corretor M.")
+      setFeedback("Créditos insuficientes para usar o Assessor EME.")
       return
     }
 
@@ -90,14 +90,14 @@ export function BrokerMPage() {
         | null
 
       if (!result.ok) {
-        throw new Error(data?.error || "Não foi possível acionar o Corretor M.")
+        throw new Error(data?.error || "Não foi possível acionar o Assessor EME.")
       }
 
       setResponse(data?.response || "")
       if (data?.credits) setCredits(data.credits)
       setFeedback(data?.creditsUsed ? `${data.creditsUsed} crédito(s) consumido(s).` : "")
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível acionar o Corretor M.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível acionar o Assessor EME.")
     } finally {
       setIsSending(false)
     }
@@ -111,7 +111,7 @@ export function BrokerMPage() {
   }
 
   return (
-    <BrokerPageShell title="Corretor M">
+    <BrokerPageShell title="Assessor EME">
       <div className="grid gap-6">
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -121,7 +121,7 @@ export function BrokerMPage() {
               </div>
               <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white">Assistente do corretor</h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-white/55">
-                Use o Corretor M para criar anúncios, analisar leads, melhorar seu catálogo e receber sugestões comerciais.
+                Use o Assessor EME para criar anúncios, analisar leads, melhorar seu catálogo e pedir tarefas operacionais.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -131,7 +131,7 @@ export function BrokerMPage() {
                 onClick={() => setIsActive((current) => !current)}
                 className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
               >
-                {isActive ? "Desativar" : "Ativar"} Corretor M
+                {isActive ? "Desativar" : "Ativar"} Assessor EME
               </Button>
               <Button
                 type="button"
@@ -190,7 +190,7 @@ export function BrokerMPage() {
 
         <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
           <CardHeader className="px-5 py-5">
-            <CardTitle className="text-lg text-white">Fale com o Corretor M</CardTitle>
+            <CardTitle className="text-lg text-white">Fale com o Assessor EME</CardTitle>
             <p className="text-sm text-white/50">
               {selectedAction ? `Ação selecionada: ${selectedAction.label}` : "Faça um pedido livre ao assistente."}
             </p>
@@ -210,7 +210,7 @@ export function BrokerMPage() {
                 className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60"
               >
                 <Send className="size-4" />
-                {isSending ? "Enviando..." : "Enviar para o Corretor M"}
+                {isSending ? "Enviando..." : "Enviar para o Assessor EME"}
               </Button>
               {feedback ? <p className="text-sm text-[#69F0AE]">{feedback}</p> : null}
             </div>
@@ -228,10 +228,10 @@ export function BrokerMPage() {
               <MessageCircle className="size-5" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">WhatsApp do M</h3>
-              <p className="mt-2 text-xl font-semibold text-white">(54) 99990-2688</p>
+              <h3 className="text-lg font-semibold text-white">Assessor EME no WhatsApp</h3>
+              <p className="mt-2 text-xl font-semibold text-white">Canal oficial EME</p>
               <p className="mt-2 text-sm leading-7 text-white/55">
-                Continuidade inteligente pelo WhatsApp. A integração oficial ainda não está ativa.
+                Canal oficial para conversar com a IA do EME e solicitar tarefas internas. O número oficial será informado nos canais de atendimento.
               </p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export function BrokerMPage() {
           <div className="flex items-start gap-3">
             <Lightbulb className="mt-1 size-5 shrink-0 text-[#69F0AE]" />
             <p className="text-sm leading-7 text-white/55">
-              O Corretor M usa créditos por ação. A compra de créditos ficará conectada ao billing em uma etapa futura.
+              O Assessor EME usa créditos por ação. A compra de créditos ficará conectada ao billing em uma etapa futura.
             </p>
           </div>
         </section>

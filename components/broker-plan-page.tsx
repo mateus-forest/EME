@@ -5,12 +5,10 @@ import { useSearchParams } from "next/navigation"
 import { ArrowUpRight, Bot, ChartColumn, CheckCircle2, Globe, Sparkles } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { FinancialStatusCard } from "@/components/financial-status-card"
 import { NotificationCenter } from "@/components/notification-center"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
-import { isFinancialNotification } from "@/lib/notification-contract"
 import { startStripeCheckout } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,10 +30,8 @@ export function BrokerPlanPage() {
   const {
     historyNotifications,
     unreadCount,
-    financialSummary,
     markAsRead,
     archive,
-    requestRegularization,
   } = useBrokerPaymentNotifications()
 
   const publishedPropertiesCount = properties.filter((property) => property.status === "Publicado").length
@@ -103,24 +99,6 @@ export function BrokerPlanPage() {
     }
   }
 
-  function handleRegularizeClick() {
-    const openNotification = historyNotifications.find(
-      (notification) =>
-        isFinancialNotification(notification) &&
-        (notification.financialStatus === "atraso-leve" ||
-          notification.financialStatus === "inadimplente" ||
-          notification.financialStatus === "notificacao-recebida"),
-    )
-
-    if (openNotification) {
-      requestRegularization(openNotification.id)
-      setUpgradeFeedback("Redirecionamento para regularização em breve.")
-      return
-    }
-
-    setUpgradeFeedback("Seu histórico financeiro já está atualizado.")
-  }
-
   return (
     <BrokerPageShell
       title="Plano"
@@ -141,13 +119,6 @@ export function BrokerPlanPage() {
           </div>
         )}
 
-        <FinancialStatusCard
-          title="Status financeiro"
-          summary={financialSummary}
-          onRegularize={handleRegularizeClick}
-          onViewHistory={() => setUpgradeFeedback("Abra o sino no topo para rever todas as notificações.")}
-        />
-
         <Card className="rounded-[1.75rem] border-[#00C853]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardContent className="grid gap-5 p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
             <div>
@@ -155,9 +126,9 @@ export function BrokerPlanPage() {
                 <Bot className="size-3.5" />
                 Pacote extra
               </div>
-              <h2 className="mt-4 text-2xl font-semibold text-white">Pacote Corretor M</h2>
+              <h2 className="mt-4 text-2xl font-semibold text-white">Pacote Assessor EME</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
-                IA, WhatsApp, creditos e automacoes para criar anuncios, responder melhor e organizar leads com inteligencia.
+                IA, canal oficial do EME e creditos para criar anuncios, buscar imoveis, resumir leads e executar tarefas operacionais.
               </p>
             </div>
             <Button
@@ -215,14 +186,14 @@ export function BrokerPlanPage() {
               <CardTitle className="text-xl text-white">Informações da assinatura</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
-              <InfoBlock label="Status real" value={planStatus} />
+              <InfoBlock label="Plano atual" value={planDisplayName} />
+              <InfoBlock label="Modo teste/em avaliação" value={hasConfirmedPaidPlan ? "Não" : "Sim"} />
+              <InfoBlock label="Status da assinatura" value={planStatus} />
               <InfoBlock label="Créditos IA disponíveis" value={String(aiCredits.balance)} />
-              <InfoBlock label="Créditos consumidos no mês" value={String(aiCredits.usedThisMonth)} />
-              <InfoBlock label="Próxima cobrança" value={financialSummary.nextBillingAt || subscription.nextCharge} />
-              <InfoBlock label="Forma de pagamento" value={subscription.paymentMethod} />
+              <InfoBlock label="Créditos IA usados no mês" value={String(aiCredits.usedThisMonth)} />
               <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
                 <p className="text-sm text-[#69F0AE]">
-                  Os dados financeiros são atualizados a partir da assinatura e das notificações da conta.
+                  Financeiro básico para acompanhar assinatura e uso de IA. Upgrade e ativação completa entram em etapa futura.
                 </p>
               </div>
             </CardContent>
@@ -286,6 +257,26 @@ export function BrokerPlanPage() {
             </Card>
           </div>
         </section>
+
+        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <CardHeader className="px-6 py-5">
+            <CardTitle className="text-xl text-white">Histórico simples de uso</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-6 pt-0">
+            {historyNotifications.length > 0 ? (
+              historyNotifications.slice(0, 3).map((notification) => (
+                <div key={notification.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                  <p className="text-sm font-medium text-white">{notification.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-white/55">{notification.message}</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm text-white/55">Nenhum uso financeiro registrado ainda.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </BrokerPageShell>
   )

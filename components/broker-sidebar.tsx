@@ -40,7 +40,7 @@ const menuItems = [
   { label: "Meus imóveis", icon: Building2, href: "/corretor/imoveis" },
   { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
   { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
-  { label: "Corretor M", icon: Bot, href: "/corretor/corretor-m" },
+  { label: "Assessor EME", icon: Bot, href: "/corretor/corretor-m" },
   { label: "Analytics", icon: BarChart3, href: "/corretor/analytics" },
   { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
   { label: "Suporte", icon: LifeBuoy, href: "/corretor/suporte" },

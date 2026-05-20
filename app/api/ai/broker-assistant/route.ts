@@ -57,12 +57,12 @@ export async function GET() {
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico do Corretor M esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O servico do Assessor EME esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel carregar os creditos do Corretor M." }, { status: 500 })
+    return NextResponse.json({ error: "Nao foi possivel carregar os creditos do Assessor EME." }, { status: 500 })
   }
 }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!getOpenAIClient()) {
-      return NextResponse.json({ error: "O Corretor M precisa da IA ativada para responder." }, { status: 503 })
+      return NextResponse.json({ error: "O Assessor EME precisa da IA ativada para responder." }, { status: 503 })
     }
 
     const creditsUsed = getBrokerAssistantCreditCost(input.actionType)
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
         {
-          error: "Creditos insuficientes para usar o Corretor M.",
+          error: "Creditos insuficientes para usar o Assessor EME.",
           ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 } }),
         },
         { status: 402 },
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         assistantError instanceof Error && assistantError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")
 
       if (isOpenAIUnavailable) {
-        return NextResponse.json({ error: "O Corretor M precisa da IA ativada para responder." }, { status: 503 })
+        return NextResponse.json({ error: "O Assessor EME precisa da IA ativada para responder." }, { status: 503 })
       }
 
       throw assistantError
@@ -176,11 +176,11 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico do Corretor M esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O servico do Assessor EME esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel acionar o Corretor M agora." }, { status: 500 })
+    return NextResponse.json({ error: "Nao foi possivel acionar o Assessor EME agora." }, { status: 500 })
   }
 }
