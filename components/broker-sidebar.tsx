@@ -10,10 +10,12 @@ import {
   Building2,
   ChevronLeft,
   CreditCard,
+  MessageCircle,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
   UserRound,
+  WalletCards,
   UsersRound,
 } from "lucide-react"
 
@@ -40,8 +42,10 @@ const menuItems = [
   { label: "Meus imóveis", icon: Building2, href: "/corretor/imoveis" },
   { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
   { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
+  { label: "Corretor EME", icon: MessageCircle, href: "/corretor/corretor-eme" },
   { label: "Assessor EME", icon: Bot, href: "/corretor/corretor-m" },
   { label: "Analytics", icon: BarChart3, href: "/corretor/analytics" },
+  { label: "Financeiro", icon: WalletCards, href: "/corretor/financeiro" },
   { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
   { label: "Suporte", icon: LifeBuoy, href: "/corretor/suporte" },
   { label: "Conta", icon: UserRound, href: "/corretor/conta" },

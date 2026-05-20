@@ -1,0 +1,143 @@
+"use client"
+
+import { Bot, CheckCircle2, Clock3, MessageCircle, ShieldCheck, UserRound } from "lucide-react"
+
+import { BrokerPageShell } from "@/components/broker-page-shell"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+const howItWorks = [
+  "O Corretor EME usa o WhatsApp do próprio corretor.",
+  "O objetivo é atender leads recebidos pelo corretor.",
+  "A IA ajuda a identificar intenção de compra, venda ou aluguel.",
+  "A IA pode qualificar o lead e registrar no CRM.",
+  "O corretor continua no controle do atendimento.",
+]
+
+const capabilities = [
+  "Pré-atendimento de novos leads",
+  "Qualificação automática",
+  "Registro no CRM",
+  "Organização do histórico",
+  "Apoio ao funil de atendimento",
+  "Encaminhamento para atendimento humano quando necessário",
+]
+
+export function BrokerCorretorEmePage() {
+  return (
+    <BrokerPageShell title="Corretor EME">
+      <div className="grid gap-6">
+        <section className="rounded-[1.75rem] border border-[#00C853]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                <MessageCircle className="size-6" />
+              </div>
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white">Corretor EME</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/60">
+                Integre seu WhatsApp para pré-atender, qualificar e organizar leads automaticamente.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => null}
+              className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+            >
+              Quero ativar o Corretor EME
+            </Button>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="flex items-center gap-2 text-xl text-white">
+                <ShieldCheck className="size-5 text-[#69F0AE]" />
+                Como funciona
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-6 pt-0">
+              {howItWorks.map((item) => (
+                <ListItem key={item} text={item} />
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.75rem] border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="flex items-center gap-2 text-xl text-white">
+                <Clock3 className="size-5 text-[#25D366]" />
+                Status da integração
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <div className="rounded-[1.25rem] border border-[#25D366]/20 bg-[#25D366]/10 p-4">
+                <p className="text-sm text-[#25D366]">Integração em preparação</p>
+                <p className="mt-2 text-sm leading-6 text-white/58">
+                  A conexão real com WhatsApp ainda não está ativa. Esta área prepara a ativação futura sem criar webhook ou promessa de uso imediato.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-2">
+          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="flex items-center gap-2 text-xl text-white">
+                <UserRound className="size-5 text-[#69F0AE]" />
+                O que ele faz
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-6 pt-0">
+              {capabilities.map((item) => (
+                <ListItem key={item} text={item} />
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="text-xl text-white">Corretor EME ou Assessor EME?</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-6 pt-0">
+              <ChannelBlock
+                icon={MessageCircle}
+                title="Corretor EME"
+                text="WhatsApp do corretor para atender clientes e leads, fazer pré-atendimento e apoiar o funil comercial."
+              />
+              <ChannelBlock
+                icon={Bot}
+                title="Assessor EME"
+                text="Canal oficial do EME para o corretor conversar com a IA e pedir tarefas operacionais ao sistema."
+              />
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </BrokerPageShell>
+  )
+}
+
+function ListItem({ text }: { text: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#69F0AE]" />
+      <p className="text-sm leading-6 text-white/65">{text}</p>
+    </div>
+  )
+}
+
+function ChannelBlock({ icon: Icon, title, text }: { icon: typeof MessageCircle; title: string; text: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+          <Icon className="size-4.5" />
+        </div>
+        <p className="text-base font-semibold text-white">{title}</p>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-white/58">{text}</p>
+    </div>
+  )
+}

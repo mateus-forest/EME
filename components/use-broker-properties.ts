@@ -15,6 +15,7 @@ export type BrokerProperty = {
   city: string
   neighborhood: string
   location: string
+  priceValue: number
   price: string
   images: string[]
   bedrooms: number
@@ -29,7 +30,7 @@ export type BrokerProperty = {
   audioUrl: string
 }
 
-type BrokerPropertyInput = Omit<BrokerProperty, "id" | "published"> & {
+type BrokerPropertyInput = Omit<BrokerProperty, "id" | "published" | "priceValue"> & {
   id?: string
   published?: boolean
 }
@@ -38,6 +39,7 @@ type PropertyApiItem = {
   id: string
   title: string
   description: string
+  price: number
   formattedPrice: string
   city: string
   neighborhood: string
@@ -70,6 +72,7 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     city: property.city,
     neighborhood: property.neighborhood,
     location: property.location,
+    priceValue: property.price,
     price: property.formattedPrice,
     images: getPropertyImages(property.images, property.id),
     bedrooms: property.bedrooms,
