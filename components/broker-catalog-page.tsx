@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Bath,
   Bed,
+  Building2,
   Camera,
   Car,
   CheckCircle2,
@@ -75,7 +76,7 @@ export function BrokerCatalogPage() {
     return `${origin}/catalogo/${draftSettings.slug}`
   }, [draftSettings.slug])
   const catalogInternalUrl = useMemo(() => `/catalogo/${draftSettings.slug}`, [draftSettings.slug])
-  const currentImage = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0]
+  const currentImage = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? ""
   const needsMore = (selectedProperty?.description.length ?? 0) > 180
   const shortDescription = selectedProperty?.description.slice(0, 180)
   const normalizedSearch = search.trim().toLowerCase()
@@ -447,12 +448,18 @@ export function BrokerCatalogPage() {
                 </DialogDescription>
 
                 <div className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={currentImage}
-                    alt={selectedProperty.title}
-                    className="aspect-[1.15/1] w-full object-cover sm:aspect-[1.2/1]"
-                  />
+                  {currentImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentImage}
+                      alt={selectedProperty.title}
+                      className="aspect-[1.15/1] w-full object-cover sm:aspect-[1.2/1]"
+                    />
+                  ) : (
+                    <div className="aspect-[1.15/1] w-full sm:aspect-[1.2/1]">
+                      <CatalogImagePlaceholder />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
                   <div className="absolute top-4 right-4 flex items-center gap-2">
@@ -464,9 +471,11 @@ export function BrokerCatalogPage() {
                     </button>
                   </div>
 
-                  <div className="absolute right-4 bottom-4 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-sm">
-                    {currentImageIndex + 1}/{selectedProperty.images.length}
-                  </div>
+                  {selectedProperty.images.length > 0 ? (
+                    <div className="absolute right-4 bottom-4 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-sm">
+                      {currentImageIndex + 1}/{selectedProperty.images.length}
+                    </div>
+                  ) : null}
 
                   {selectedProperty.images.length > 1 && (
                     <>
@@ -603,4 +612,13 @@ function sanitizeSlug(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48)
+}
+
+function CatalogImagePlaceholder() {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
+      <Building2 className="size-9 text-white/30" />
+      <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+    </div>
+  )
 }

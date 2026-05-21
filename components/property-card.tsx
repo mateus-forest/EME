@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react"
-import { Bath, Bed, Car, MapPin } from "lucide-react"
+import { Bath, Bed, Building2, Car, MapPin } from "lucide-react"
 
 import { getPropertyImage } from "@/lib/property-media"
 import { cn } from "@/lib/utils"
@@ -83,13 +83,17 @@ export function PropertyCard({
       )}
     >
       <div className="relative aspect-video overflow-hidden bg-white/[0.03]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={currentImage}
-          alt={title}
-          className="h-full w-full object-cover"
-          onError={() => setCurrentImage(getPropertyImage(undefined, imageSeed))}
-        />
+        {currentImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={currentImage}
+            alt={title}
+            className="h-full w-full object-cover"
+            onError={() => setCurrentImage("")}
+          />
+        ) : (
+          <PropertyImagePlaceholder />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
 
         {(badges || imageActions) && (
@@ -156,6 +160,15 @@ function PropertySpec({
       <Icon className="size-4 text-[#69F0AE]" />
       <span>{value}</span>
     </span>
+  )
+}
+
+function PropertyImagePlaceholder() {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
+      <Building2 className="size-9 text-white/30" />
+      <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+    </div>
   )
 }
 

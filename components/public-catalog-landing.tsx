@@ -90,7 +90,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   const publicPath =
     kind === "broker" ? `/catalogo/${catalog.slug || slug}` : `/catalogo/imobiliaria/${catalog.slug || slug}`
   const catalogUrl = typeof window === "undefined" ? publicPath : `${window.location.origin}${publicPath}`
-  const image = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0]
+  const image = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? ""
   const cities = useMemo(
     () => Array.from(new Set(properties.map((property) => property.city).filter(Boolean))),
     [properties],
@@ -286,8 +286,12 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               >
                 <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
                   <div className="relative aspect-video overflow-hidden bg-white/[0.03]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={property.images[0]} alt={property.title} className="h-full w-full object-cover" />
+                    {property.images[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={property.images[0]} alt={property.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <CatalogImagePlaceholder />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
                     <div className="absolute left-3 top-3 rounded-full border border-[#00C853]/20 bg-black/60 px-3 py-1 text-xs text-[#69F0AE] backdrop-blur">
                       {matchLabel}
@@ -350,8 +354,14 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
                 <div className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image} alt={selectedProperty.title} className="aspect-[1.15/1] w-full object-cover sm:aspect-[1.2/1]" />
+                  {image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={image} alt={selectedProperty.title} className="aspect-[1.15/1] w-full object-cover sm:aspect-[1.2/1]" />
+                  ) : (
+                    <div className="aspect-[1.15/1] w-full sm:aspect-[1.2/1]">
+                      <CatalogImagePlaceholder />
+                    </div>
+                  )}
                   {selectedProperty.images.length > 1 ? (
                     <>
                       <button type="button" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className="absolute left-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm hover:bg-black/60">
@@ -564,6 +574,15 @@ function Feature({ icon: Icon, label }: { icon: typeof Bed; label: string }) {
     <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/72">
       <Icon className="size-4 text-[#69F0AE]" />
       <span>{label}</span>
+    </div>
+  )
+}
+
+function CatalogImagePlaceholder() {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
+      <Building2 className="size-9 text-white/30" />
+      <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
     </div>
   )
 }

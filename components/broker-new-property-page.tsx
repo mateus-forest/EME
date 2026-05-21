@@ -318,16 +318,18 @@ export function BrokerNewPropertyPage() {
       if (selectedFiles.length > 0) {
         try {
           await uploadPropertyImages(createdProperty.id, selectedFiles)
-        } catch {
-          mediaErrors.push("imagens")
+        } catch (caughtError) {
+          const message = caughtError instanceof Error ? caughtError.message : "erro desconhecido"
+          mediaErrors.push(`imagens (${message})`)
         }
       }
 
       if (audioFile) {
         try {
           await uploadPropertyAudio(createdProperty.id, audioFile)
-        } catch {
-          mediaErrors.push("áudio")
+        } catch (caughtError) {
+          const message = caughtError instanceof Error ? caughtError.message : "erro desconhecido"
+          mediaErrors.push(`áudio (${message})`)
         }
       }
 
