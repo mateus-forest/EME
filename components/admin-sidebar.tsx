@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   BarChart3,
   Bot,
-  Building2,
   Calculator,
   ChevronLeft,
   CreditCard,
@@ -42,7 +41,6 @@ import {
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
   { label: "Usuários", icon: Users, href: "/admin/usuarios" },
-  { label: "Imobiliárias", icon: Building2, href: "/admin/imobiliarias" },
   { label: "Corretores", icon: UserRound, href: "/admin/corretores" },
   { label: "Assessor EME", icon: Bot, href: "/admin/assessor-eme" },
   { label: "Corretor EME", icon: MessageCircle, href: "/admin/corretor-eme" },

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { Building2, Mail, MessageCircleMore, Search, SlidersHorizontal, UserRound, Users } from "lucide-react"
+import { CreditCard, Mail, MessageCircleMore, Search, SlidersHorizontal, Sparkles, UserRound, Users } from "lucide-react"
 
 import { AdminPageShell } from "@/components/admin-page-shell"
 import {
@@ -26,28 +26,14 @@ import { Label } from "@/components/ui/label"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 
 const statusFilters = ["Todos", "Ativo", "Inativo"] as const
-const typeFilters = ["Todos", "Independente", "Vinculado"] as const
-
 export function AdminBrokersPage() {
   const [brokers, setBrokers] = useAdminBrokers()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
-  const [typeFilter, setTypeFilter] = useState<(typeof typeFilters)[number]>("Todos")
-  const [agencyFilter, setAgencyFilter] = useState("Todas")
   const [filtersOpen, setFiltersOpen] = useState(true)
   const [selectedBroker, setSelectedBroker] = useState<AdminBrokerRecord | null>(null)
   const [editingBroker, setEditingBroker] = useState<AdminBrokerRecord | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-
-  const agencyOptions = useMemo(
-    () => [
-      "Todas",
-      ...Array.from(
-        new Set(brokers.map((broker) => broker.agencyName).filter((agencyName): agencyName is string => Boolean(agencyName))),
-      ),
-    ],
-    [brokers],
-  )
 
   const filteredBrokers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -59,19 +45,17 @@ export function AdminBrokersPage() {
         broker.email.toLowerCase().includes(normalizedSearch) ||
         broker.creci.toLowerCase().includes(normalizedSearch)
       const matchesStatus = statusFilter === "Todos" || broker.status === statusFilter
-      const matchesType = typeFilter === "Todos" || broker.type === typeFilter
-      const matchesAgency = agencyFilter === "Todas" || broker.agencyName === agencyFilter
 
-      return matchesSearch && matchesStatus && matchesType && matchesAgency
+      return matchesSearch && matchesStatus
     })
-  }, [agencyFilter, brokers, search, statusFilter, typeFilter])
+  }, [brokers, search, statusFilter])
 
   const summary = {
     total: brokers.length,
     active: brokers.filter((broker) => broker.status === "Ativo").length,
     inactive: brokers.filter((broker) => broker.status === "Inativo").length,
-    linked: brokers.filter((broker) => broker.type === "Vinculado").length,
-    independent: brokers.filter((broker) => broker.type === "Independente").length,
+    properties: brokers.reduce((sum, broker) => sum + broker.propertyCount, 0),
+    aiCredits: brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0),
   }
 
   async function handleToggleStatus(broker: AdminBrokerRecord) {
@@ -115,7 +99,13 @@ export function AdminBrokersPage() {
 
   async function handleSave(broker: AdminBrokerRecord) {
     try {
-      const updated = await updateAdminBroker(broker.id, broker)
+      const updated = await updateAdminBroker(broker.id, {
+        name: broker.name,
+        email: broker.email,
+        whatsApp: broker.whatsApp,
+        creci: broker.creci,
+        status: broker.status,
+      })
       setBrokers(brokers.map((current) => (current.id === broker.id ? updated : current)))
       setEditingBroker(null)
       setSelectedBroker(updated)
@@ -128,7 +118,7 @@ export function AdminBrokersPage() {
   return (
     <AdminPageShell
       title="Corretores"
-      subtitle="Gerencie os corretores da plataforma"
+      subtitle="Gerencie os corretores EME da plataforma"
       headerControls={
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="relative w-full max-w-[18rem] lg:max-w-[19rem] xl:max-w-[20rem]">
@@ -163,26 +153,16 @@ export function AdminBrokersPage() {
         <SummaryCard label="Total de corretores" value={String(summary.total)} icon={Users} />
         <SummaryCard label="Corretores ativos" value={String(summary.active)} icon={UserRound} />
         <SummaryCard label="Corretores inativos" value={String(summary.inactive)} icon={UserRound} />
-        <SummaryCard label="Vinculados a imobiliárias" value={String(summary.linked)} icon={Building2} />
-        <SummaryCard label="Corretores independentes" value={String(summary.independent)} icon={UserRound} />
+        <SummaryCard label="Imóveis cadastrados" value={String(summary.properties)} icon={CreditCard} />
+        <SummaryCard label="Créditos IA usados" value={String(summary.aiCredits)} icon={Sparkles} />
       </section>
 
       {filtersOpen && (
         <section className="mt-6 rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.94),rgba(14,14,14,0.9))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-1">
             <FilterGroup title="Status">
               {statusFilters.map((filter) => (
                 <FilterButton key={filter} active={statusFilter === filter} onClick={() => setStatusFilter(filter)} label={filter} />
-              ))}
-            </FilterGroup>
-            <FilterGroup title="Tipo">
-              {typeFilters.map((filter) => (
-                <FilterButton key={filter} active={typeFilter === filter} onClick={() => setTypeFilter(filter)} label={filter} />
-              ))}
-            </FilterGroup>
-            <FilterGroup title="Imobiliária vinculada">
-              {agencyOptions.map((agency) => (
-                <FilterButton key={agency} active={agencyFilter === agency} onClick={() => setAgencyFilter(agency)} label={agency} />
               ))}
             </FilterGroup>
           </div>
@@ -205,10 +185,11 @@ export function AdminBrokersPage() {
                   <th className="px-5 py-4 font-medium">Email</th>
                   <th className="px-5 py-4 font-medium">WhatsApp</th>
                   <th className="px-5 py-4 font-medium">Status</th>
-                  <th className="px-5 py-4 font-medium">Tipo</th>
-                  <th className="px-5 py-4 font-medium">Imobiliária</th>
-                  <th className="px-5 py-4 font-medium">Imóveis ativos</th>
+                  <th className="px-5 py-4 font-medium">Plano</th>
+                  <th className="px-5 py-4 font-medium">Imóveis</th>
                   <th className="px-5 py-4 font-medium">Leads</th>
+                  <th className="px-5 py-4 font-medium">Consumo IA</th>
+                  <th className="px-5 py-4 font-medium">Corretor EME</th>
                   <th className="px-5 py-4 font-medium text-right">Ações</th>
                 </tr>
               </thead>
@@ -227,10 +208,11 @@ export function AdminBrokersPage() {
                     <td className="px-5 py-4 text-sm text-white/72">{broker.email}</td>
                     <td className="px-5 py-4 text-sm text-white/72">{broker.whatsApp}</td>
                     <td className="px-5 py-4"><StatusBadge status={broker.status} /></td>
-                    <td className="px-5 py-4"><TypeBadge type={broker.type} /></td>
-                    <td className="px-5 py-4 text-sm text-white/72">{broker.agencyName ?? "-"}</td>
-                    <td className="px-5 py-4 text-sm text-white/72">{broker.activeProperties}</td>
+                    <td className="px-5 py-4 text-sm text-white/72">{broker.plan}</td>
+                    <td className="px-5 py-4 text-sm text-white/72">{broker.propertyCount}</td>
                     <td className="px-5 py-4 text-sm text-white/72">{broker.leads}</td>
+                    <td className="px-5 py-4 text-sm text-white/72">{broker.aiCreditsUsedThisMonth}</td>
+                    <td className="px-5 py-4"><IntegrationBadge status={broker.corretorEmeStatus} /></td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <ActionButton label="Ver detalhes" onClick={() => setSelectedBroker(broker)} />
@@ -273,17 +255,19 @@ function BrokerDetailsDialog({
           <>
             <DialogHeader>
               <DialogTitle className="text-white">{broker.name}</DialogTitle>
-              <DialogDescription className="text-white/55">Detalhes do corretor e vínculo institucional.</DialogDescription>
+              <DialogDescription className="text-white/55">Detalhes do corretor EME e indicadores operacionais.</DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4">
               <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 sm:grid-cols-2">
                 <DetailItem label="CRECI" value={broker.creci} />
                 <DetailItem label="Status" value={broker.status} />
-                <DetailItem label="Tipo" value={broker.type} />
-                <DetailItem label="Imobiliária" value={broker.agencyName ?? "Independente"} />
+                <DetailItem label="Plano" value={broker.plan} />
+                <DetailItem label="Imóveis cadastrados" value={String(broker.propertyCount)} />
                 <DetailItem label="Imóveis ativos" value={String(broker.activeProperties)} />
                 <DetailItem label="Leads gerados" value={String(broker.leads)} />
+                <DetailItem label="Créditos IA usados" value={String(broker.aiCreditsUsedThisMonth)} />
+                <DetailItem label="Corretor EME" value={broker.corretorEmeStatus} />
                 <DetailItem label="Email" value={broker.email} />
                 <DetailItem label="WhatsApp" value={broker.whatsApp} />
               </div>
@@ -342,7 +326,6 @@ function BrokerEditDialog({
               <Field label="CRECI" value={draft.creci} onChange={(value) => setDraft({ ...draft, creci: value })} />
               <Field label="Email" value={draft.email} onChange={(value) => setDraft({ ...draft, email: value })} />
               <Field label="WhatsApp" value={draft.whatsApp} onChange={(value) => setDraft({ ...draft, whatsApp: value })} />
-              <Field label="Imobiliária" value={draft.agencyName ?? ""} onChange={(value) => setDraft({ ...draft, agencyName: value || undefined, type: value ? "Vinculado" : "Independente" })} />
               <Field label="Leads" value={String(draft.leads)} onChange={(value) => setDraft({ ...draft, leads: Number(value.replace(/\D/g, "")) || 0 })} />
             </div>
 
@@ -404,9 +387,14 @@ function StatusBadge({ status }: { status: AdminBrokerRecord["status"] }) {
   return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{status}</span>
 }
 
-function TypeBadge({ type }: { type: AdminBrokerRecord["type"] }) {
-  const tone = type === "Vinculado" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-white/[0.08] bg-white/[0.04] text-white/70"
-  return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{type}</span>
+function IntegrationBadge({ status }: { status: AdminBrokerRecord["corretorEmeStatus"] }) {
+  const tone =
+    status === "Ativo"
+      ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]"
+      : status === "Pausado"
+        ? "border-[#ffb74d]/15 bg-[#ffb74d]/8 text-[#ffcc80]"
+        : "border-white/[0.08] bg-white/[0.04] text-white/70"
+  return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{status}</span>
 }
 
 function ActionButton({ label, danger = false, onClick }: { label: string; danger?: boolean; onClick: () => void }) {

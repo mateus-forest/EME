@@ -12,9 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 type CorretorEmeStatus = "Não configurado" | "Em preparação" | "Ativo" | "Pausado"
 
 function integrationStatus(broker: AdminBrokerRecord): CorretorEmeStatus {
-  if (!broker.whatsApp || broker.whatsApp === "-") return "Não configurado"
-  if (broker.status === "Inativo") return "Pausado"
-  return "Em preparação"
+  return broker.corretorEmeStatus
 }
 
 export function AdminCorretorEmePage() {
@@ -23,7 +21,7 @@ export function AdminCorretorEmePage() {
   const summary = useMemo(
     () => ({
       total: brokers.length,
-      configured: brokers.filter((broker) => broker.whatsApp && broker.whatsApp !== "-").length,
+      configured: brokers.filter((broker) => integrationStatus(broker) !== "Não configurado").length,
       active: brokers.filter((broker) => integrationStatus(broker) === "Ativo").length,
       preparing: brokers.filter((broker) => integrationStatus(broker) === "Em preparação").length,
     }),
@@ -56,7 +54,7 @@ export function AdminCorretorEmePage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={integrationStatus(broker)} />
                     <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/60">
-                      Atualizado em {broker.createdAt}
+                      Atualizado em {broker.corretorEmeUpdatedAt ?? broker.createdAt}
                     </span>
                     <Button type="button" variant="ghost" onClick={() => setSelectedBroker(broker)} className="h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white">
                       <Eye className="size-3.5" />
@@ -85,7 +83,7 @@ export function AdminCorretorEmePage() {
               <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                 <Info label="WhatsApp" value={selectedBroker.whatsApp || "Não configurado"} />
                 <Info label="Status da integração" value={integrationStatus(selectedBroker)} />
-                <Info label="Última atualização" value={selectedBroker.createdAt} />
+                <Info label="Última atualização" value={selectedBroker.corretorEmeUpdatedAt ?? selectedBroker.createdAt} />
                 <Info label="Observação" value="Integração real ainda não conectada." />
               </div>
             </>

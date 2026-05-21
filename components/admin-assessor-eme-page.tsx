@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import { Bot, Edit3, MessageCircle } from "lucide-react"
 
@@ -11,19 +11,87 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-type AssessorStatus = "Em preparação" | "Ativo" | "Pausado"
+type AssessorStatus = "IN_PREPARATION" | "ACTIVE" | "PAUSED"
+
+type AssessorConfig = {
+  officialNumber: string
+  displayName: string
+  status: AssessorStatus
+  internalInstructions: string
+  notes: string
+  provider: string
+  webhookStatus: string
+}
+
+const emptyConfig: AssessorConfig = {
+  officialNumber: "",
+  displayName: "",
+  status: "IN_PREPARATION",
+  internalInstructions: "",
+  notes: "",
+  provider: "",
+  webhookStatus: "NOT_CONFIGURED",
+}
+
+function statusLabel(status: string) {
+  if (status === "ACTIVE") return "Ativo"
+  if (status === "PAUSED") return "Pausado"
+  return "Em preparação"
+}
 
 export function AdminAssessorEmePage() {
   const [open, setOpen] = useState(false)
-  const [config, setConfig] = useState({
-    number: "",
-    status: "Em preparação" as AssessorStatus,
-    notes: "",
-  })
-  const hasNumber = config.number.trim().length > 0
+  const [config, setConfig] = useState<AssessorConfig>(emptyConfig)
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const hasNumber = config.officialNumber.trim().length > 0
+
+  useEffect(() => {
+    fetch("/api/admin/assessor-eme", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { config?: Partial<AssessorConfig> } | null
+        if (response.ok && data?.config) {
+          setConfig({ ...emptyConfig, ...data.config })
+        }
+      })
+      .catch(() => null)
+  }, [])
+
+  async function handleSave() {
+    try {
+      const response = await fetch("/api/admin/assessor-eme", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(config),
+      })
+      const data = (await response.json().catch(() => null)) as { config?: Partial<AssessorConfig>; error?: string } | null
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível salvar a configuração do Assessor EME.")
+      }
+
+      setConfig({ ...emptyConfig, ...data?.config })
+      setOpen(false)
+      setFeedback("Configuração do Assessor EME salva com sucesso.")
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível salvar a configuração do Assessor EME.")
+    }
+  }
 
   return (
     <AdminPageShell title="Assessor EME" subtitle="Canal oficial do EME para demandas operacionais dos corretores">
+      {feedback ? (
+        <div className="mb-6 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          {feedback}
+        </div>
+      ) : null}
+
       <div className="grid gap-6">
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
@@ -34,8 +102,12 @@ export function AdminAssessorEmePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
-              <InfoBlock label="Número oficial" value={hasNumber ? config.number : "Canal em preparação"} />
-              <InfoBlock label="Status" value={config.status} />
+              <InfoBlock label="Número oficial" value={hasNumber ? config.officialNumber : "Canal em preparação"} />
+              <InfoBlock label="Nome de exibição" value={config.displayName || "Assessor EME"} />
+              <InfoBlock label="Status" value={statusLabel(config.status)} />
+              <InfoBlock label="Provider" value={config.provider || "Não configurado"} />
+              <InfoBlock label="Webhook" value={config.webhookStatus || "NOT_CONFIGURED"} />
+              <InfoBlock label="Instruções internas" value={config.internalInstructions || "Nenhuma instrução registrada."} />
               <InfoBlock label="Observações internas" value={config.notes || "Nenhuma observação registrada."} />
               <Button
                 type="button"
@@ -79,22 +151,34 @@ export function AdminAssessorEmePage() {
           </DialogHeader>
           <div className="grid gap-4">
             <Field label="Número oficial do WhatsApp">
-              <Input value={config.number} onChange={(event) => setConfig({ ...config, number: event.target.value })} placeholder="Canal em preparação" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+              <Input value={config.officialNumber} onChange={(event) => setConfig({ ...config, officialNumber: event.target.value })} placeholder="Canal em preparação" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Nome de exibição">
+              <Input value={config.displayName} onChange={(event) => setConfig({ ...config, displayName: event.target.value })} placeholder="Assessor EME" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
             </Field>
             <Field label="Status">
               <select value={config.status} onChange={(event) => setConfig({ ...config, status: event.target.value as AssessorStatus })} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white outline-none">
-                <option className="bg-[#111]">Em preparação</option>
-                <option className="bg-[#111]">Ativo</option>
-                <option className="bg-[#111]">Pausado</option>
+                <option value="IN_PREPARATION" className="bg-[#111]">Em preparação</option>
+                <option value="ACTIVE" className="bg-[#111]">Ativo</option>
+                <option value="PAUSED" className="bg-[#111]">Pausado</option>
               </select>
             </Field>
-            <Field label="Observações/instruções internas">
-              <Textarea value={config.notes} onChange={(event) => setConfig({ ...config, notes: event.target.value })} className="min-h-28 border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            <Field label="Provider">
+              <Input value={config.provider} onChange={(event) => setConfig({ ...config, provider: event.target.value })} placeholder="Futuro provider" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Webhook status">
+              <Input value={config.webhookStatus} onChange={(event) => setConfig({ ...config, webhookStatus: event.target.value })} placeholder="NOT_CONFIGURED" className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Instruções internas">
+              <Textarea value={config.internalInstructions} onChange={(event) => setConfig({ ...config, internalInstructions: event.target.value })} className="min-h-24 border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
+            </Field>
+            <Field label="Observações">
+              <Textarea value={config.notes} onChange={(event) => setConfig({ ...config, notes: event.target.value })} className="min-h-24 border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/35" />
             </Field>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={() => setOpen(false)} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676]">
-              Salvar estrutura
+            <Button type="button" onClick={handleSave} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676]">
+              Salvar configuração
             </Button>
           </DialogFooter>
         </DialogContent>

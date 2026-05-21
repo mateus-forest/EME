@@ -1,5 +1,5 @@
 import { SubscriptionOwnerType, UserRole } from "@/lib/prisma-enums"
-import type { Agency, Broker, Subscription, User } from "@/lib/prisma-model-types"
+import type { Broker, Subscription, User } from "@/lib/prisma-model-types"
 
 import { NextResponse } from "next/server"
 
@@ -10,10 +10,6 @@ import { prisma } from "@/lib/prisma"
 
 type AdminSubscriptionBroker = Broker & {
   user: User
-}
-
-type AdminSubscriptionAgency = Agency & {
-  ownerUser: User
 }
 
 export async function GET() {
@@ -28,55 +24,34 @@ export async function GET() {
 
   try {
     const subscriptions: Subscription[] = await prisma.subscription.findMany({
+      where: {
+        ownerType: SubscriptionOwnerType.BROKER,
+      },
       orderBy: {
         createdAt: "desc",
       },
     })
 
     const brokerIds = subscriptions
-      .filter((subscription: Subscription) => subscription.ownerType === SubscriptionOwnerType.BROKER)
-      .map((subscription: Subscription) => subscription.ownerId)
-    const agencyIds = subscriptions
-      .filter((subscription: Subscription) => subscription.ownerType === SubscriptionOwnerType.AGENCY)
       .map((subscription: Subscription) => subscription.ownerId)
 
-    const [brokers, agencies]: [AdminSubscriptionBroker[], AdminSubscriptionAgency[]] = await Promise.all([
-      prisma.broker.findMany({
-        where: {
-          id: {
-            in: brokerIds,
-          },
+    const brokers: AdminSubscriptionBroker[] = await prisma.broker.findMany({
+      where: {
+        id: {
+          in: brokerIds,
         },
-        include: {
-          user: true,
-        },
-      }),
-      prisma.agency.findMany({
-        where: {
-          id: {
-            in: agencyIds,
-          },
-        },
-        include: {
-          ownerUser: true,
-        },
-      }),
-    ])
+      },
+      include: {
+        user: true,
+      },
+    })
 
     const brokerMap = new Map<string, AdminSubscriptionBroker>(
       brokers.map((broker: AdminSubscriptionBroker) => [broker.id, broker]),
     )
-    const agencyMap = new Map<string, AdminSubscriptionAgency>(
-      agencies.map((agency: AdminSubscriptionAgency) => [agency.id, agency]),
-    )
 
     return NextResponse.json({
       subscriptions: subscriptions.map((subscription: Subscription) => {
-        if (subscription.ownerType === SubscriptionOwnerType.AGENCY) {
-          const agency = agencyMap.get(subscription.ownerId) ?? null
-          return serializeAdminSubscription(subscription, agency, agency?.ownerUser.plan ?? BILLING_PLAN.NONE)
-        }
-
         const broker = brokerMap.get(subscription.ownerId) ?? null
         return serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BILLING_PLAN.NONE)
       }),

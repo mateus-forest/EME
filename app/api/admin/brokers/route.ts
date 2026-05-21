@@ -21,6 +21,12 @@ export async function GET() {
       include: {
         user: true,
         agency: true,
+        corretorEmeConfig: {
+          select: {
+            status: true,
+            updatedAt: true,
+          },
+        },
         properties: {
           select: {
             status: true,

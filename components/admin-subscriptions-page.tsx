@@ -31,14 +31,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-const typeFilters = ["Todos", "Corretor", "Imobiliária"] as const
 const statusFilters = ["Todos", "Ativo", "Cancelado"] as const
-const planFilters = ["Todos", "Corretor", "Plano Imobiliária"] as const
+const planFilters = ["Todos", "Corretor"] as const
 
 export function AdminSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useAdminSubscriptions()
   const [search, setSearch] = useState("")
-  const [typeFilter, setTypeFilter] = useState<(typeof typeFilters)[number]>("Todos")
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
   const [planFilter, setPlanFilter] = useState<(typeof planFilters)[number]>("Todos")
   const [filtersOpen, setFiltersOpen] = useState(true)
@@ -51,13 +49,12 @@ export function AdminSubscriptionsPage() {
     return subscriptions.filter((subscription) => {
       const matchesSearch =
         !normalizedSearch || subscription.clientName.toLowerCase().includes(normalizedSearch)
-      const matchesType = typeFilter === "Todos" || subscription.type === typeFilter
       const matchesStatus = statusFilter === "Todos" || subscription.status === statusFilter
       const matchesPlan = planFilter === "Todos" || subscription.plan === planFilter
 
-      return matchesSearch && matchesType && matchesStatus && matchesPlan
+      return matchesSearch && matchesStatus && matchesPlan
     })
-  }, [planFilter, search, statusFilter, subscriptions, typeFilter])
+  }, [planFilter, search, statusFilter, subscriptions])
 
   const summary = useMemo(
     () => ({
@@ -128,7 +125,7 @@ export function AdminSubscriptionsPage() {
   return (
     <AdminPageShell
       title="Assinaturas"
-      subtitle="Gerencie os planos ativos dos usuários"
+      subtitle="Gerencie os planos dos corretores"
       headerControls={
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="relative w-full max-w-[18rem] lg:max-w-[19rem] xl:max-w-[20rem]">
@@ -168,12 +165,7 @@ export function AdminSubscriptionsPage() {
 
       {filtersOpen && (
         <section className="mt-6 rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.94),rgba(14,14,14,0.9))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <FilterGroup title="Tipo">
-              {typeFilters.map((filter) => (
-                <FilterButton key={filter} active={typeFilter === filter} onClick={() => setTypeFilter(filter)} label={filter} />
-              ))}
-            </FilterGroup>
+          <div className="grid gap-4 lg:grid-cols-2">
             <FilterGroup title="Status">
               {statusFilters.map((filter) => (
                 <FilterButton key={filter} active={statusFilter === filter} onClick={() => setStatusFilter(filter)} label={filter} />
@@ -199,7 +191,6 @@ export function AdminSubscriptionsPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-lg font-semibold text-white">{subscription.clientName}</p>
-                    <TypeBadge type={subscription.type} />
                     <StatusBadge status={subscription.status} />
                     <FinancialBadge status={subscription.financialStatus} />
                     {subscription.notificationSent && <InfoBadge label="Notificação automática enviada" />}
@@ -228,19 +219,6 @@ export function AdminSubscriptionsPage() {
                   />
                 </div>
               </div>
-
-              {subscription.type === "Imobiliária" && subscription.breakdown && (
-                <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                  <p className="text-sm font-medium text-white/65">Breakdown da assinatura</p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center">
-                    <BreakdownBlock label="Base" value={formatCurrencyBRL(subscription.breakdown.base)} />
-                    <span className="hidden text-white/25 md:block">+</span>
-                    <BreakdownBlock label="Corretores ativos" value={`${subscription.breakdown.activeBrokers} x ${formatCurrencyBRL(subscription.breakdown.perBroker)}`} />
-                    <span className="hidden text-white/25 md:block">=</span>
-                    <BreakdownBlock label="Total" value={formatCurrencyBRL(subscription.breakdown.total)} highlight />
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         )) : (
@@ -292,7 +270,6 @@ function SubscriptionDetailsDialog({
             </DialogHeader>
 
             <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 sm:grid-cols-2">
-              <DetailItem label="Tipo" value={subscription.type} />
               <DetailItem label="Plano" value={subscription.plan} />
               <DetailItem label="Valor mensal" value={formatCurrencyBRL(subscription.monthlyValue)} />
               <DetailItem label="Status" value={subscription.status} />
@@ -303,15 +280,6 @@ function SubscriptionDetailsDialog({
               <DetailItem label="Dias de atraso" value={String(subscription.daysOverdue)} />
               <DetailItem label="Valor em aberto" value={formatCurrencyBRL(subscription.valueOpen ?? 0)} />
             </div>
-
-            {subscription.breakdown && (
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-white/65">Cálculo da assinatura</p>
-                <p className="mt-3 text-sm text-white/70">
-                  Base {formatCurrencyBRL(subscription.breakdown.base)} + {subscription.breakdown.activeBrokers} corretores x {formatCurrencyBRL(subscription.breakdown.perBroker)} = {formatCurrencyBRL(subscription.breakdown.total)}
-                </p>
-              </div>
-            )}
 
             <DialogFooter className="flex-wrap gap-2">
               {(subscription.financialStatus === "Atraso leve" || subscription.financialStatus === "Inadimplente") && (
@@ -368,11 +336,6 @@ function FilterButton({ active, onClick, label }: { active: boolean; onClick: ()
   )
 }
 
-function TypeBadge({ type }: { type: AdminSubscriptionRecord["type"] }) {
-  const tone = type === "Imobiliária" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-white/[0.08] bg-white/[0.04] text-white/70"
-  return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{type}</span>
-}
-
 function StatusBadge({ status }: { status: AdminSubscriptionRecord["status"] }) {
   const tone = status === "Ativo" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-[#ffb74d]/15 bg-[#ffb74d]/8 text-[#ffcc80]"
   return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{status}</span>
@@ -403,15 +366,6 @@ function ActionButton({ label, onClick }: { label: string; onClick: () => void }
     >
       {label}
     </Button>
-  )
-}
-
-function BreakdownBlock({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className={`rounded-[1.1rem] border p-4 ${highlight ? "border-[#00C853]/20 bg-[#00C853]/10" : "border-white/[0.08] bg-black/20"}`}>
-      <p className="text-xs uppercase tracking-[0.16em] text-white/40">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
-    </div>
   )
 }
 

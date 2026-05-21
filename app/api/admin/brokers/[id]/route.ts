@@ -9,6 +9,12 @@ import { prisma } from "@/lib/prisma"
 const brokerInclude = {
   user: true,
   agency: true,
+  corretorEmeConfig: {
+    select: {
+      status: true,
+      updatedAt: true,
+    },
+  },
   properties: {
     select: {
       status: true,

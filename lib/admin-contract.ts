@@ -52,10 +52,14 @@ export type AdminBrokerRecord = {
   status: "Ativo" | "Inativo"
   type: "Independente" | "Vinculado"
   agencyName?: string
+  plan: string
+  propertyCount: number
   activeProperties: number
   leads: number
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number
+  corretorEmeStatus: "Não configurado" | "Em preparação" | "Ativo" | "Pausado"
+  corretorEmeUpdatedAt?: string
   createdAt: string
 }
 
@@ -105,6 +109,14 @@ function formatPlan(plan: BillingPlan, role: UserRole) {
   return "Sem plano"
 }
 
+function formatCorretorEmeStatus(status?: string | null) {
+  if (!status) return "Não configurado"
+  if (status === "ACTIVE" || status === "Ativo") return "Ativo"
+  if (status === "PAUSED" || status === "Pausado") return "Pausado"
+  if (status === "NOT_CONFIGURED" || status === "Não configurado") return "Não configurado"
+  return "Em preparação"
+}
+
 function mapUserStatus(role: UserRole, brokerStatus?: BrokerAccountStatus, billingStatus?: BillingUserSubscriptionStatus) {
   if (role === "BROKER") {
     return brokerStatus === "INACTIVE" ? "Inativo" : "Ativo"
@@ -134,6 +146,7 @@ export function serializeAdminBroker(
   broker: Broker & {
     user: AdminContractUser
     agency: Agency | null
+    corretorEmeConfig: { status: string; updatedAt: Date } | null
     properties: (Pick<Property, "status" | "leadsCount"> & {
       _count?: {
         leads?: number
@@ -151,10 +164,14 @@ export function serializeAdminBroker(
     status: broker.status === "INACTIVE" ? "Inativo" : "Ativo",
     type: broker.agencyId ? "Vinculado" : "Independente",
     agencyName: broker.agency?.name ?? undefined,
+    plan: formatPlan(broker.user.plan, broker.user.role),
+    propertyCount: broker.properties.length,
     activeProperties: broker.properties.filter((property) => property.status === "PUBLISHED").length,
     leads: broker.properties.reduce((sum, property) => sum + (property._count?.leads ?? property.leadsCount), 0),
     aiCreditsBalance: broker.aiCreditsBalance,
     aiCreditsUsedThisMonth: broker.aiCreditsUsedThisMonth,
+    corretorEmeStatus: formatCorretorEmeStatus(broker.corretorEmeConfig?.status),
+    corretorEmeUpdatedAt: broker.corretorEmeConfig ? formatDate(broker.corretorEmeConfig.updatedAt) : undefined,
     createdAt: formatDate(broker.createdAt),
   }
 }

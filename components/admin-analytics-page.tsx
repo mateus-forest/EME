@@ -4,16 +4,16 @@ import { BarChart3, Building2, MessageCircle, Sparkles, UserRound } from "lucide
 
 import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import { AdminPageShell } from "@/components/admin-page-shell"
-import { useAdminAgencies, useAdminBrokers } from "@/components/use-admin-data"
+import { useAdminBrokers } from "@/components/use-admin-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function AdminAnalyticsPage() {
   const [brokers] = useAdminBrokers()
-  const [agencies] = useAdminAgencies()
   const totalProperties = brokers.reduce((sum, broker) => sum + broker.activeProperties, 0)
   const totalLeads = brokers.reduce((sum, broker) => sum + broker.leads, 0)
   const totalCredits = brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0)
-  const hasData = brokers.length > 0 || agencies.length > 0
+  const activeBrokers = brokers.filter((broker) => broker.status === "Ativo").length
+  const hasData = brokers.length > 0
 
   return (
     <AdminPageShell title="Analytics" subtitle="Indicadores gerais de uso e desempenho da plataforma">
@@ -31,9 +31,9 @@ export function AdminAnalyticsPage() {
               <CardTitle className="text-xl text-white">Resumo operacional</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-3">
-              <InfoBlock label="Corretores independentes" value={String(brokers.filter((broker) => broker.type === "Independente").length)} />
-              <InfoBlock label="Corretores vinculados" value={String(brokers.filter((broker) => broker.type === "Vinculado").length)} />
-              <InfoBlock label="Imobiliárias cadastradas" value={String(agencies.length)} />
+              <InfoBlock label="Corretores ativos" value={String(activeBrokers)} />
+              <InfoBlock label="Corretores em avaliação" value={String(brokers.filter((broker) => broker.plan === "Sem plano").length)} />
+              <InfoBlock label="Corretor EME em preparação" value={String(brokers.filter((broker) => broker.corretorEmeStatus === "Em preparação").length)} />
             </CardContent>
           </Card>
         ) : (
