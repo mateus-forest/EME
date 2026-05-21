@@ -163,28 +163,6 @@ export function BrokerPlanPage() {
           </div>
         )}
 
-        <Card className="rounded-[1.75rem] border-[#00C853]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-          <CardContent className="grid gap-5 p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
-                <Bot className="size-3.5" />
-                Plano base
-              </div>
-              <h2 className="mt-4 text-2xl font-semibold text-white">Plano Corretor EME — R$ 89,90/mês</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
-                Inclui 3 imóveis gratuitos, catálogo online, leads, financeiro básico, analytics básico e acesso ao Assessor EME em modo avaliação.
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={() => setUpgradeFeedback("Suporte acionado visualmente. Integração comercial será adicionada em etapa futura.")}
-              className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
-            >
-              Falar com suporte
-            </Button>
-          </CardContent>
-        </Card>
-
         <section className="grid gap-6 xl:grid-cols-2">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardContent className="p-5">
@@ -219,7 +197,7 @@ export function BrokerPlanPage() {
                   onClick={handleUpgradeClick}
                   className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
                 >
-                  Fazer upgrade
+                  Assinar plano
                 </Button>
               </div>
             </CardContent>

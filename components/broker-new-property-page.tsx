@@ -313,16 +313,30 @@ export function BrokerNewPropertyPage() {
         audioUrl: "",
       })
 
+      const mediaErrors: string[] = []
+
       if (selectedFiles.length > 0) {
-        await uploadPropertyImages(createdProperty.id, selectedFiles)
+        try {
+          await uploadPropertyImages(createdProperty.id, selectedFiles)
+        } catch {
+          mediaErrors.push("imagens")
+        }
       }
 
       if (audioFile) {
-        await uploadPropertyAudio(createdProperty.id, audioFile)
+        try {
+          await uploadPropertyAudio(createdProperty.id, audioFile)
+        } catch {
+          mediaErrors.push("áudio")
+        }
       }
 
       setIsPublished(true)
-      setPublishFeedback(publishStatus === "Publicado" ? "Publicado com sucesso" : "Rascunho criado com sucesso")
+      setPublishFeedback(
+        mediaErrors.length > 0
+          ? `${publishStatus === "Publicado" ? "Imóvel publicado" : "Rascunho criado"}, mas não foi possível anexar ${mediaErrors.join(" e ")}.`
+          : publishStatus === "Publicado" ? "Publicado com sucesso" : "Rascunho criado com sucesso",
+      )
     } catch (caughtError) {
       setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível publicar o imóvel.")
     } finally {

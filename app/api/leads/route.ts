@@ -3,7 +3,7 @@ import { CatalogOwnerType } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import { isPrismaUnavailable } from "@/lib/auth-route"
-import { prisma, type PrismaTransaction } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 
 type NotificationRecipient = {
   id: string
@@ -34,6 +34,10 @@ export async function POST(request: NextRequest) {
 
     if (!propertyId && !catalogSlug) {
       return NextResponse.json({ error: "Informe o imóvel ou catálogo de origem do lead." }, { status: 400 })
+    }
+
+    if (!name && !phone && !email) {
+      return NextResponse.json({ error: "Informe pelo menos nome, telefone ou email para registrar o lead." }, { status: 400 })
     }
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -89,80 +93,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Catálogo não encontrado." }, { status: 404 })
     }
 
-    const brokerId =
-      property?.brokerId ??
-      (catalog?.ownerType === CatalogOwnerType.BROKER ? catalog.ownerId : null)
-    const agencyId =
-      property?.agencyId ??
-      (catalog?.ownerType === CatalogOwnerType.AGENCY ? catalog.ownerId : null)
+    const brokerId = property?.brokerId ?? (catalog?.ownerType === CatalogOwnerType.BROKER ? catalog.ownerId : null)
+    const agencyId = property?.agencyId ?? (catalog?.ownerType === CatalogOwnerType.AGENCY ? catalog.ownerId : null)
 
     if (!brokerId && !agencyId) {
       return NextResponse.json({ error: "Não foi possível identificar o responsável pelo lead." }, { status: 400 })
     }
 
-    const lead = await prisma.$transaction(async (tx: PrismaTransaction) => {
-      const created = await tx.lead.create({
-        data: {
-          name: name || null,
-          email: email || null,
-          phone: phone || null,
-          message: message || (property ? `Interesse no imóvel ${property.title}` : "Interesse no catálogo"),
-          catalogSlug: catalogSlug || null,
-          searchTerm: searchTerm || null,
-          intent: intent || null,
-          source,
-          propertyId: property?.id ?? null,
-          brokerId,
-          agencyId,
-        },
+    const lead = await prisma.lead.create({
+      data: {
+        name: name || null,
+        email: email || null,
+        phone: phone || null,
+        message: message || (property ? `Interesse no imóvel ${property.title}` : "Interesse no catálogo"),
+        catalogSlug: catalogSlug || null,
+        searchTerm: searchTerm || null,
+        intent: intent || null,
+        source,
+        propertyId: property?.id ?? null,
+        brokerId,
+        agencyId,
+      },
+    })
+
+    notifyLeadRecipients({ property, brokerId, agencyId }).catch((error) => {
+      console.error("[api][leads] notification failed after lead creation", {
+        leadId: lead.id,
+        message: error instanceof Error ? error.message : "unknown",
       })
-
-      const usersToNotify = new Set<string>()
-
-      if (property?.broker.userId) {
-        usersToNotify.add(property.broker.userId)
-      }
-
-      if (property?.agency?.ownerUserId) {
-        usersToNotify.add(property.agency.ownerUserId)
-      }
-
-      if (!property && brokerId) {
-        const broker = await tx.broker.findUnique({
-          where: { id: brokerId },
-          select: { userId: true },
-        })
-        if (broker?.userId) usersToNotify.add(broker.userId)
-      }
-
-      if (!property && agencyId) {
-        const agency = await tx.agency.findUnique({
-          where: { id: agencyId },
-          select: { ownerUserId: true },
-        })
-        if (agency?.ownerUserId) usersToNotify.add(agency.ownerUserId)
-      }
-
-      const admins: NotificationRecipient[] = await tx.user.findMany({
-        where: { role: "ADMIN" },
-        select: { id: true },
-      })
-      admins.forEach((admin: NotificationRecipient) => usersToNotify.add(admin.id))
-
-      if (usersToNotify.size > 0) {
-        await tx.notification.createMany({
-          data: [...usersToNotify].map((userId: string) => ({
-            userId,
-            title: "Novo lead recebido",
-            message: property
-              ? `Novo interesse registrado no imóvel ${property.title}.`
-              : "Novo interesse registrado no catálogo público.",
-            read: false,
-          })),
-        })
-      }
-
-      return created
     })
 
     const response = NextResponse.json({ lead: { id: lead.id } }, { status: 201 })
@@ -180,6 +138,59 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao criar lead." }, { status: 500 })
+    return NextResponse.json({ error: leadErrorMessage(caughtError) }, { status: 500 })
   }
+}
+
+async function notifyLeadRecipients({
+  property,
+  brokerId,
+  agencyId,
+}: {
+  property: { title: string; broker: { userId: string }; agency: { ownerUserId: string } | null } | null
+  brokerId: string | null
+  agencyId: string | null
+}) {
+  const usersToNotify = new Set<string>()
+
+  if (property?.broker.userId) usersToNotify.add(property.broker.userId)
+  if (property?.agency?.ownerUserId) usersToNotify.add(property.agency.ownerUserId)
+
+  if (!property && brokerId) {
+    const broker = await prisma.broker.findUnique({ where: { id: brokerId }, select: { userId: true } })
+    if (broker?.userId) usersToNotify.add(broker.userId)
+  }
+
+  if (!property && agencyId) {
+    const agency = await prisma.agency.findUnique({ where: { id: agencyId }, select: { ownerUserId: true } })
+    if (agency?.ownerUserId) usersToNotify.add(agency.ownerUserId)
+  }
+
+  const admins: NotificationRecipient[] = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true },
+  })
+  admins.forEach((admin) => usersToNotify.add(admin.id))
+
+  if (usersToNotify.size === 0) return
+
+  await prisma.notification.createMany({
+    data: [...usersToNotify].map((userId) => ({
+      userId,
+      title: "Novo lead recebido",
+      message: property ? `Novo interesse registrado no imóvel ${property.title}.` : "Novo interesse registrado no catálogo público.",
+      read: false,
+    })),
+  })
+}
+
+function leadErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ""
+  const missingColumn = message.match(/column [`"]?([\w.]+)[`"]?/i)?.[1]
+
+  if (missingColumn) {
+    return `Não foi possível criar o lead. Coluna necessária ausente no banco: ${missingColumn}.`
+  }
+
+  return "Não foi possível criar o lead agora. Verifique nome, telefone e imóvel selecionado."
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useMemo, useState } from "react"
 import { ArrowUpRight, Building2, ChartColumn, CircleDollarSign, Home, MapPin, Percent, SlidersHorizontal } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -9,6 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const COMMISSION_RATE = 0.06
+const statusFilters = ["Todos", "Publicado", "Rascunho"] as const
+const calculationTypes = ["Todos os imóveis", "Apenas com valor"] as const
 
 function formatBRLFromCents(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value / 100)
@@ -28,21 +31,34 @@ function topEntries(entries: Record<string, number>) {
 
 export function BrokerFinancialPage() {
   const { properties, isLoading } = useBrokerProperties()
-  const totalProperties = properties.length
-  const activeProperties = properties.filter((property) => property.status === "Publicado").length
-  const draftProperties = properties.filter((property) => property.status !== "Publicado").length
-  const propertyValues = properties.map((property) => Math.max(0, property.priceValue || 0))
+  const [commissionPercent, setCommissionPercent] = useState(6)
+  const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
+  const [typeFilter, setTypeFilter] = useState("Todos")
+  const [calculationType, setCalculationType] = useState<(typeof calculationTypes)[number]>("Todos os imóveis")
+  const propertyTypes = useMemo(() => ["Todos", ...Array.from(new Set(properties.map((property) => property.type)))], [properties])
+  const filteredProperties = properties.filter((property) => {
+    const matchesStatus = statusFilter === "Todos" || property.status === statusFilter
+    const matchesType = typeFilter === "Todos" || property.type === typeFilter
+    const matchesCalculation = calculationType === "Todos os imóveis" || property.priceValue > 0
+
+    return matchesStatus && matchesType && matchesCalculation
+  })
+  const commissionRate = Math.max(0, commissionPercent) / 100
+  const totalProperties = filteredProperties.length
+  const activeProperties = filteredProperties.filter((property) => property.status === "Publicado").length
+  const draftProperties = filteredProperties.filter((property) => property.status !== "Publicado").length
+  const propertyValues = filteredProperties.map((property) => Math.max(0, property.priceValue || 0))
   const pricedValues = propertyValues.filter((value) => value > 0)
   const totalPortfolioValue = propertyValues.reduce((sum, value) => sum + value, 0)
   const averageTicket = totalProperties > 0 ? Math.round(totalPortfolioValue / totalProperties) : 0
-  const commissions = pricedValues.map((value) => Math.round(value * COMMISSION_RATE))
-  const totalPotentialCommission = Math.round(totalPortfolioValue * COMMISSION_RATE)
+  const commissions = pricedValues.map((value) => Math.round(value * commissionRate))
+  const totalPotentialCommission = Math.round(totalPortfolioValue * commissionRate)
   const averageCommission = totalProperties > 0 ? Math.round(totalPotentialCommission / totalProperties) : 0
   const highestCommission = commissions.length > 0 ? Math.max(...commissions) : 0
   const lowestCommission = commissions.length > 0 ? Math.min(...commissions) : 0
-  const propertiesByType = topEntries(countBy(properties.map((property) => property.type)))
-  const propertiesByCity = topEntries(countBy(properties.map((property) => property.city)))
-  const hasProperties = totalProperties > 0
+  const propertiesByType = topEntries(countBy(filteredProperties.map((property) => property.type)))
+  const propertiesByCity = topEntries(countBy(filteredProperties.map((property) => property.city)))
+  const hasProperties = properties.length > 0
 
   return (
     <BrokerPageShell title="Financeiro">
@@ -77,7 +93,7 @@ export function BrokerFinancialPage() {
                 <Percent className="size-5 text-[#69F0AE]" />
                 Comissões estimadas
               </CardTitle>
-              <p className="text-sm text-white/50">Cálculo estimado com taxa padrão de 6% sobre o valor dos imóveis.</p>
+              <p className="text-sm text-white/50">Cálculo estimado com a taxa configurada sobre a base filtrada.</p>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-2">
               <InfoBlock label="Comissão potencial total" value={formatBRLFromCents(totalPotentialCommission)} />
@@ -96,8 +112,20 @@ export function BrokerFinancialPage() {
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
               <InfoBlock label="Imóveis com valor informado" value={`${pricedValues.length} de ${totalProperties}`} />
-              <InfoBlock label="Taxa de comissão" value="6%" />
-              <InfoBlock label="Filtro atual" value="Todos os imóveis do corretor" />
+              <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <span className="text-sm text-white/50">Percentual de comissão</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={commissionPercent}
+                  onChange={(event) => setCommissionPercent(Number(event.target.value) || 0)}
+                  className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35"
+                />
+              </label>
+              <SelectBlock label="Tipo de cálculo" value={calculationType} onChange={(value) => setCalculationType(value as (typeof calculationTypes)[number])} options={calculationTypes} />
+              <SelectBlock label="Filtro por status" value={statusFilter} onChange={(value) => setStatusFilter(value as (typeof statusFilters)[number])} options={statusFilters} />
+              <SelectBlock label="Filtro por tipo" value={typeFilter} onChange={setTypeFilter} options={propertyTypes} />
             </CardContent>
           </Card>
         </section>
@@ -112,12 +140,12 @@ export function BrokerFinancialPage() {
             <CardTitle className="text-xl text-white">Histórico financeiro</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
-            {hasProperties ? (
-              properties.slice(0, 5).map((property) => (
+            {filteredProperties.length > 0 ? (
+              filteredProperties.slice(0, 5).map((property) => (
                 <div key={property.id} className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
                   <p className="truncate text-sm font-medium text-white">{property.title}</p>
                   <span className="text-sm text-white/60">{property.price}</span>
-                  <span className="text-sm text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * COMMISSION_RATE))}</span>
+                  <span className="text-sm text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
                 </div>
               ))
             ) : (
@@ -152,6 +180,35 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-white/50">{label}</p>
       <p className="mt-2 text-base font-semibold text-white">{value}</p>
     </div>
+  )
+}
+
+function SelectBlock({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: readonly string[]
+}) {
+  return (
+    <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+      <span className="text-sm text-white/50">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35"
+      >
+        {options.map((option) => (
+          <option key={option} value={option} className="bg-[#111]">
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

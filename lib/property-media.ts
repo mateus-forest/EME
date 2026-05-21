@@ -35,5 +35,5 @@ export function getPropertyImages(images: Array<string | null | undefined>, seed
 
   if (normalizedImages.length > 0) return normalizedImages
 
-  return [getFallbackPropertyImage(baseSeed)]
+  return []
 }

@@ -44,6 +44,17 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao listar leads do corretor." }, { status: 500 })
+    return NextResponse.json({ error: leadListErrorMessage(caughtError) }, { status: 500 })
   }
+}
+
+function leadListErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ""
+  const missingColumn = message.match(/column [`"]?([\w.]+)[`"]?/i)?.[1]
+
+  if (missingColumn) {
+    return `Não foi possível listar leads. Coluna necessária ausente no banco: ${missingColumn}.`
+  }
+
+  return "Não foi possível listar os leads do corretor agora."
 }
