@@ -85,6 +85,7 @@ model User {
   notifications        Notification[]
   leads                Lead[]
   aiAssistantInteractions AiAssistantInteraction[]
+  emeMessages          EmeMessage[]
 }
 
 model Broker {
@@ -105,6 +106,8 @@ model Broker {
   leads       Lead[]
   catalogEvents CatalogEvent[]
   aiAssistantInteractions AiAssistantInteraction[]
+  corretorEmeConfig BrokerEmeConfig?
+  emeMessages EmeMessage[]
 }
 
 model Agency {
@@ -149,6 +152,73 @@ model Property {
   agency       Agency?        @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   leads        Lead[]
   catalogEvents CatalogEvent[]
+  emeMessages  EmeMessage[]
+}
+
+model BrokerEmeConfig {
+  id                     String    @id @default(cuid())
+  brokerId               String    @unique
+  whatsApp               String?
+  displayName            String?
+  initialMessage         String?
+  status                 String    @default("IN_PREPARATION")
+  notes                  String?
+  provider               String?
+  phoneNumberId          String?
+  accessTokenEncrypted   String?
+  webhookVerifyToken     String?
+  webhookStatus          String    @default("NOT_CONFIGURED")
+  lastWebhookEventAt     DateTime?
+  integrationRequestedAt DateTime?
+  integrationActivatedAt DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  broker                 Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+}
+
+model AssessorEmeConfig {
+  id                 String   @id @default(cuid())
+  officialNumber     String?
+  displayName        String?
+  status             String   @default("IN_PREPARATION")
+  internalInstructions String?
+  notes              String?
+  provider           String?
+  phoneNumberId      String?
+  webhookVerifyToken String?
+  webhookStatus      String   @default("NOT_CONFIGURED")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model EmeMessage {
+  id             String    @id @default(cuid())
+  brokerId       String
+  userId         String?
+  leadId         String?
+  propertyId     String?
+  channel        String
+  direction      String
+  fromPhone      String?
+  customerName   String?
+  message        String
+  response       String?
+  detectedIntent String?
+  actionType     String?
+  actionStatus   String?
+  metadata       Json?
+  errorMessage   String?
+  creditsUsed    Int       @default(0)
+  createdAt      DateTime  @default(now())
+  broker         Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lead           Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property       Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([brokerId, channel, createdAt])
+  @@index([leadId, createdAt])
+  @@index([propertyId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model CatalogEvent {
@@ -190,12 +260,22 @@ model AiAssistantInteraction {
   response    String
   actionType  String
   creditsUsed Int      @default(1)
+  channel     String   @default("assessor_eme")
+  intent      String?
+  actionStatus String?
+  metadata    Json?
+  errorMessage String?
+  leadId      String?
+  propertyId  String?
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 
   @@index([brokerId, createdAt])
   @@index([userId, createdAt])
+  @@index([channel, createdAt])
+  @@index([leadId])
+  @@index([propertyId])
 }
 
 model Subscription {
@@ -242,6 +322,7 @@ model Lead {
   broker     Broker?    @relation(fields: [brokerId], references: [id], onDelete: SetNull)
   agency     Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  emeMessages EmeMessage[]
 
   @@index([propertyId])
   @@index([brokerId])

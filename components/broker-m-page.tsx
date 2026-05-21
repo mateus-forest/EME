@@ -38,7 +38,7 @@ export function BrokerMPage() {
   )
 
   useEffect(() => {
-    fetch("/api/ai/broker-assistant", {
+    fetch("/api/assistant/eme", {
       method: "GET",
       credentials: "include",
       cache: "no-store",
@@ -75,7 +75,7 @@ export function BrokerMPage() {
     setResponse("")
 
     try {
-      const result = await fetch("/api/ai/broker-assistant", {
+      const result = await fetch("/api/assistant/eme", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export function BrokerMPage() {
         credentials: "include",
         cache: "no-store",
         body: JSON.stringify({
-          prompt: normalizedPrompt,
+          message: normalizedPrompt,
           actionType,
         }),
       })
