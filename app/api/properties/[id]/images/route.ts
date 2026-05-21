@@ -4,7 +4,7 @@ import { NextRequest,
   NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { deletePropertyImageFile, savePropertyImage } from "@/lib/property-storage"
+import { deletePropertyStorageFile, savePropertyImage } from "@/lib/property-storage"
 import { serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
@@ -184,7 +184,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       include: propertyInclude,
     })
 
-    await deletePropertyImageFile(imageUrl)
+    await deletePropertyStorageFile(imageUrl)
 
     const response = NextResponse.json({ property: serializeProperty(updatedProperty) })
     response.headers.set("Cache-Control", "no-store, max-age=0")

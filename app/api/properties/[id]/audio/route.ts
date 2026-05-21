@@ -1,15 +1,10 @@
 import { UserRole } from "@/lib/prisma-enums"
-import {
-  mkdir,
-  unlink,
-  writeFile } from "node:fs/promises"
-import path from "node:path"
-import { randomUUID } from "node:crypto"
 
 import { NextRequest,
   NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { deletePropertyStorageFile, savePropertyAudio } from "@/lib/property-storage"
 import { serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
@@ -78,33 +73,6 @@ async function resolveAccessibleProperty(
   return { error: null, property }
 }
 
-function getAudioExtension(file: File) {
-  if (file.type === "audio/wav" || file.type === "audio/x-wav") return ".wav"
-  if (file.type === "audio/ogg") return ".ogg"
-  if (file.type === "audio/webm") return ".webm"
-  if (file.type === "audio/mp4" || file.type === "audio/x-m4a") return ".m4a"
-  return ".mp3"
-}
-
-async function saveAudioFile(propertyId: string, file: File) {
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const extension = getAudioExtension(file)
-  const fileName = `${randomUUID()}${extension}`
-  const directory = path.join(process.cwd(), "public", "uploads", "properties", propertyId, "audio")
-  const absoluteFilePath = path.join(directory, fileName)
-
-  await mkdir(directory, { recursive: true })
-  await writeFile(absoluteFilePath, buffer)
-
-  return `/uploads/properties/${propertyId}/audio/${fileName}`
-}
-
-function getLocalAudioAbsolutePath(audioUrl: string) {
-  if (!audioUrl.startsWith("/uploads/properties/")) return null
-  const relativePath = audioUrl.replace(/^\/+/, "")
-  return path.join(process.cwd(), "public", ...relativePath.split("/"))
-}
-
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
@@ -140,7 +108,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const previousAudioUrl = accessible.property.audioUrl
-    const audioUrl = await saveAudioFile(accessible.property.id, audioFile)
+    const audioUrl = await savePropertyAudio(accessible.property.id, audioFile)
 
     const updatedProperty = await prisma.property.update({
       where: { id: accessible.property.id },
@@ -149,10 +117,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     })
 
     if (previousAudioUrl) {
-      const previousPath = getLocalAudioAbsolutePath(previousAudioUrl)
-      if (previousPath) {
-        await unlink(previousPath).catch(() => null)
-      }
+      await deletePropertyStorageFile(previousAudioUrl)
     }
 
     const response = NextResponse.json({ property: serializeProperty(updatedProperty) }, { status: 201 })
@@ -170,7 +135,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao enviar áudio do imóvel." }, { status: 500 })
+    return NextResponse.json(
+      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao enviar áudio do imóvel." },
+      { status: 500 },
+    )
   }
 }
 
@@ -197,17 +165,13 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Nenhum áudio vinculado a este imóvel." }, { status: 404 })
     }
 
-    const audioPath = getLocalAudioAbsolutePath(accessible.property.audioUrl)
-
     const updatedProperty = await prisma.property.update({
       where: { id: accessible.property.id },
       data: { audioUrl: null },
       include: propertyInclude,
     })
 
-    if (audioPath) {
-      await unlink(audioPath).catch(() => null)
-    }
+    await deletePropertyStorageFile(accessible.property.audioUrl)
 
     const response = NextResponse.json({ property: serializeProperty(updatedProperty) })
     response.headers.set("Cache-Control", "no-store, max-age=0")

@@ -1,8 +1,19 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, unlink, writeFile } from "node:fs/promises"
-import path from "node:path"
 
-import { getSupabaseStorageEnv } from "@/lib/env.server"
+function readRequiredEnv(name: string) {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error("Upload indisponível: configure as variáveis do Supabase Storage.")
+  return value
+}
+
+function getStorageConfig() {
+  return {
+    supabaseUrl: readRequiredEnv("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, ""),
+    anonKey: readRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    serviceRoleKey: readRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    bucket: "properties",
+  }
+}
 
 function getImageExtension(file: File) {
   if (file.type === "image/png") return ".png"
@@ -10,81 +21,85 @@ function getImageExtension(file: File) {
   return ".jpg"
 }
 
-function getStorageBaseUrl() {
-  const env = getSupabaseStorageEnv()
-  return env.publicSupabaseUrl || env.supabaseUrl
+function getAudioExtension(file: File) {
+  if (file.type === "audio/wav" || file.type === "audio/x-wav") return ".wav"
+  if (file.type === "audio/ogg") return ".ogg"
+  if (file.type === "audio/webm") return ".webm"
+  if (file.type === "audio/mp4" || file.type === "audio/x-m4a") return ".m4a"
+  return ".mp3"
+}
+
+async function uploadPropertyFile({
+  propertyId,
+  file,
+  folder,
+  extension,
+}: {
+  propertyId: string
+  file: File
+  folder: "images" | "audio"
+  extension: string
+}) {
+  const config = getStorageConfig()
+  const objectPath = `${propertyId}/${folder}/${randomUUID()}${extension}`
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.anonKey,
+      "Content-Type": file.type || "application/octet-stream",
+      "x-upsert": "false",
+    },
+    body: Buffer.from(await file.arrayBuffer()),
+  })
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "")
+    console.error("[storage][properties] upload failed", { status: response.status, detail })
+    throw new Error("Não foi possível enviar o arquivo para o Supabase Storage.")
+  }
+
+  return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${objectPath}`
+}
+
+export function isPropertyStorageUrl(url: string) {
+  try {
+    const config = getStorageConfig()
+    return url.startsWith(`${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/`)
+  } catch {
+    return false
+  }
 }
 
 export async function savePropertyImage(propertyId: string, file: File) {
-  const env = getSupabaseStorageEnv()
-  const extension = getImageExtension(file)
-  const fileName = `${randomUUID()}${extension}`
-
-  if (env.enabled) {
-    const supabaseUrl = getStorageBaseUrl()
-
-    if (!supabaseUrl || !env.serviceRoleKey || !env.bucket) {
-      throw new Error("Supabase Storage habilitado, mas sem URL, bucket ou service role configurados.")
-    }
-
-    const objectPath = `properties/${propertyId}/${fileName}`
-    const baseUrl = supabaseUrl.replace(/\/+$/, "")
-    const response = await fetch(`${baseUrl}/storage/v1/object/${env.bucket}/${objectPath}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.serviceRoleKey}`,
-        apikey: env.serviceRoleKey,
-        "Content-Type": file.type || "application/octet-stream",
-        "x-upsert": "false",
-      },
-      body: Buffer.from(await file.arrayBuffer()),
-    })
-
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "")
-      throw new Error(detail || "Não foi possível enviar a imagem para o Supabase Storage.")
-    }
-
-    return `${baseUrl}/storage/v1/object/public/${env.bucket}/${objectPath}`
-  }
-
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
-    throw new Error("Upload de imagens indisponível: configure Supabase Storage para salvar imagens em produção.")
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const directory = path.join(process.cwd(), "public", "uploads", "properties", propertyId)
-  const absoluteFilePath = path.join(directory, fileName)
-
-  await mkdir(directory, { recursive: true })
-  await writeFile(absoluteFilePath, buffer)
-
-  return `/uploads/properties/${propertyId}/${fileName}`
+  return uploadPropertyFile({
+    propertyId,
+    file,
+    folder: "images",
+    extension: getImageExtension(file),
+  })
 }
 
-export async function deletePropertyImageFile(imageUrl: string) {
-  const env = getSupabaseStorageEnv()
+export async function savePropertyAudio(propertyId: string, file: File) {
+  return uploadPropertyFile({
+    propertyId,
+    file,
+    folder: "audio",
+    extension: getAudioExtension(file),
+  })
+}
 
-  if (env.enabled) {
-    const supabaseUrl = getStorageBaseUrl()
-    if (!supabaseUrl || !env.serviceRoleKey || !env.bucket) return
+export async function deletePropertyStorageFile(fileUrl: string) {
+  const config = getStorageConfig()
+  const publicPrefix = `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/`
+  if (!fileUrl.startsWith(publicPrefix)) return
 
-    const baseUrl = supabaseUrl.replace(/\/+$/, "")
-    const publicPrefix = `${baseUrl}/storage/v1/object/public/${env.bucket}/`
-    if (!imageUrl.startsWith(publicPrefix)) return
-
-    const objectPath = imageUrl.slice(publicPrefix.length)
-    await fetch(`${baseUrl}/storage/v1/object/${env.bucket}/${objectPath}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${env.serviceRoleKey}`,
-        apikey: env.serviceRoleKey,
-      },
-    }).catch(() => null)
-    return
-  }
-
-  if (!imageUrl.startsWith("/uploads/properties/")) return
-  const relativePath = imageUrl.replace(/^\/+/, "")
-  await unlink(path.join(process.cwd(), "public", ...relativePath.split("/"))).catch(() => null)
+  const objectPath = fileUrl.slice(publicPrefix.length)
+  await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.anonKey,
+    },
+  }).catch(() => null)
 }
