@@ -195,7 +195,7 @@ export function BrokerCatalogPage() {
 
   return (
     <BrokerPageShell title="Catálogo">
-      <div className="grid gap-6">
+      <div className="grid gap-5">
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
             <CardHeader className="px-6 py-5">

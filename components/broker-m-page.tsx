@@ -114,7 +114,7 @@ export function BrokerMPage() {
 
   return (
     <BrokerPageShell title="Assessor EME">
-      <div className="grid gap-6">
+      <div className="grid gap-5">
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>

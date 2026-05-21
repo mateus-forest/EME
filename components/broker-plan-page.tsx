@@ -156,21 +156,21 @@ export function BrokerPlanPage() {
         />
       }
     >
-      <div className="grid gap-6">
+      <div className="grid gap-5">
         {hasReachedLimit && (
           <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
             Você atingiu o limite gratuito de 3 imóveis. Faça upgrade para continuar publicando.
           </div>
         )}
 
-        <section className="grid gap-6 xl:grid-cols-2">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-            <CardContent className="p-5">
+            <CardContent className="p-4 sm:p-5">
               <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
                 Plano atual
               </div>
 
-              <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h2 className="text-2xl font-semibold tracking-tight text-white">{planDisplayName}</h2>
                   <p className="mt-2 text-sm text-white/55">{planDescription}</p>
@@ -187,7 +187,7 @@ export function BrokerPlanPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1.5 text-sm text-[#69F0AE]">
                   <CheckCircle2 className="size-4" />
                   {planStatus}

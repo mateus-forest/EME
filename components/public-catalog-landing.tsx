@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Bath,
   Bed,
@@ -99,6 +99,14 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   const avatarUrl = kind === "broker" ? (catalog as PublicBrokerCatalogData).photoUrl : (catalog as PublicAgencyCatalogData).logoUrl
   const creci = kind === "broker" ? (catalog as PublicBrokerCatalogData).creci : ""
 
+  useEffect(() => {
+    void trackCatalogEvent({
+      eventType: "catalog_view",
+      catalogSlug: catalog.slug || slug,
+      catalogType: kind,
+    })
+  }, [catalog.slug, kind, slug])
+
   function showFeedback(message: string) {
     setFeedback(message)
     window.setTimeout(() => setFeedback(""), 1800)
@@ -122,6 +130,12 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   function openProperty(property: CatalogProperty) {
     setSelectedProperty(property)
     setCurrentImageIndex(0)
+    void trackCatalogEvent({
+      eventType: "property_view",
+      catalogSlug: catalog.slug || slug,
+      catalogType: kind,
+      propertyId: property.id,
+    })
   }
 
   function openLeadModal(property: CatalogProperty) {
@@ -170,6 +184,12 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       }
 
       window.open(createWhatsAppUrl(catalog.whatsApp, whatsappMessage), "_blank", "noopener,noreferrer")
+      void trackCatalogEvent({
+        eventType: "whatsapp_click",
+        catalogSlug: catalog.slug || slug,
+        catalogType: kind,
+        propertyId: leadDraft.property.id,
+      })
       setLeadDraft(null)
     } catch (caughtError) {
       setLeadFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar seu interesse.")
@@ -218,6 +238,11 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                       return
                     }
                     window.open(createWhatsAppUrl(catalog.whatsApp, `Olá, quero saber mais sobre o catálogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
+                    void trackCatalogEvent({
+                      eventType: "whatsapp_click",
+                      catalogSlug: catalog.slug || slug,
+                      catalogType: kind,
+                    })
                   }}
                   className="h-11 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-white hover:bg-[#2fe06f]"
                 >
@@ -448,6 +473,51 @@ function normalizeProperties(catalog: PublicBrokerCatalogData | PublicAgencyCata
     leads: "leads" in property ? property.leads : property.interested,
     brokerName: "broker" in property ? property.broker.name : undefined,
   }))
+}
+
+function getVisitorKey() {
+  if (typeof window === "undefined") return ""
+
+  try {
+    const storageKey = "eme_catalog_visitor"
+    const existing = window.localStorage.getItem(storageKey)
+    if (existing) return existing
+
+    const next = crypto.randomUUID()
+    window.localStorage.setItem(storageKey, next)
+    return next
+  } catch {
+    return ""
+  }
+}
+
+async function trackCatalogEvent({
+  eventType,
+  catalogSlug,
+  catalogType,
+  propertyId,
+}: {
+  eventType: "catalog_view" | "property_view" | "whatsapp_click"
+  catalogSlug: string
+  catalogType: CatalogKind
+  propertyId?: string
+}) {
+  try {
+    await fetch("/api/catalog-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({
+        eventType,
+        catalogSlug,
+        catalogType,
+        propertyId,
+        visitorKey: getVisitorKey(),
+      }),
+    })
+  } catch {
+    // Tracking nao deve bloquear a experiencia publica do catalogo.
+  }
 }
 
 function analyzeSearch(rawSearch: string) {

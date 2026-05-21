@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { SlidersHorizontal } from "lucide-react"
 
@@ -29,6 +29,7 @@ export function BrokerPortal() {
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [activeStatusFilter, setActiveStatusFilter] = useState<"Todos" | "Publicado" | "Rascunho">("Todos")
+  const [analytics, setAnalytics] = useState<{ totalViews: number; whatsappClicks: number; leads: number } | null>(null)
   const normalizedSearch = search.trim().toLowerCase()
   const publishedPropertiesCount = useMemo(
     () => properties.filter((property) => property.status === "Publicado").length,
@@ -65,6 +66,27 @@ export function BrokerPortal() {
     () => properties.reduce((sum, property) => sum + Number(property.leads || 0), 0),
     [properties],
   )
+
+  useEffect(() => {
+    let ignore = false
+
+    fetch("/api/brokers/analytics", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { totalViews?: number; whatsappClicks?: number; leads?: number } | null
+        if (!ignore && response.ok && data) {
+          setAnalytics({
+            totalViews: data.totalViews ?? 0,
+            whatsappClicks: data.whatsappClicks ?? 0,
+            leads: data.leads ?? 0,
+          })
+        }
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [])
   const stats = useMemo(
     () => [
       {
@@ -74,21 +96,21 @@ export function BrokerPortal() {
       },
       {
         title: "Visualizações",
-        value: totalViews.toLocaleString("pt-BR"),
-        change: totalViews > 0 ? "Somatório dos imóveis" : "Aguardando tráfego do catálogo",
+        value: (analytics?.totalViews ?? totalViews).toLocaleString("pt-BR"),
+        change: (analytics?.totalViews ?? totalViews) > 0 ? "Eventos reais do catálogo" : "Aguardando tráfego do catálogo",
       },
       {
         title: "Cliques no WhatsApp",
-        value: "0",
-        change: "Leads vindos do WhatsApp do corretor",
+        value: String(analytics?.whatsappClicks ?? 0),
+        change: "Cliques reais nos botões do catálogo",
       },
       {
         title: "Leads",
-        value: totalLeads.toLocaleString("pt-BR"),
-        change: totalLeads > 0 ? "Somatório dos imóveis" : "Nenhum lead recebido ainda",
+        value: (analytics?.leads ?? totalLeads).toLocaleString("pt-BR"),
+        change: (analytics?.leads ?? totalLeads) > 0 ? "Leads reais recebidos" : "Nenhum lead recebido ainda",
       },
     ],
-    [publishedPropertiesCount, totalLeads, totalViews],
+    [analytics, publishedPropertiesCount, totalLeads, totalViews],
   )
 
   return (
@@ -159,7 +181,7 @@ export function BrokerPortal() {
         )}
 
         <BrokerStats stats={stats} />
-        <div className="mt-6">
+        <div className="mt-5">
           <BrokerIntelligenceDashboard properties={properties} subscription={subscription} />
         </div>
         <BrokerProperties properties={featuredProperties} onUpgradeClick={() => router.push("/corretor/plano")} />

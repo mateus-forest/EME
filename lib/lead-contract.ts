@@ -7,9 +7,9 @@ const leadStatuses = ["NEW", "CONTACTED", "NEGOTIATING", "WON", "LOST", "ARCHIVE
 
 export const leadStatusLabels: Record<LeadStatus, string> = {
   NEW: "Novo",
-  CONTACTED: "Contatado",
-  NEGOTIATING: "Em negociação",
-  WON: "Ganho",
+  CONTACTED: "Em atendimento",
+  NEGOTIATING: "Em atendimento",
+  WON: "Convertido",
   LOST: "Perdido",
   ARCHIVED: "Arquivado",
 }

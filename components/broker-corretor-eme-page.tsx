@@ -43,7 +43,7 @@ export function BrokerCorretorEmePage() {
 
   return (
     <BrokerPageShell title="Corretor EME">
-      <div className="grid gap-6">
+      <div className="grid gap-5">
         <section className="rounded-[1.75rem] border border-[#00C853]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>

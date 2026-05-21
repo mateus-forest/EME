@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { BarChart3, Eye, MessageCircle, MousePointerClick, SlidersHorizontal, TrendingUp, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -13,13 +14,38 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+type BrokerAnalytics = {
+  totalViews: number
+  whatsappClicks: number
+  leads: number
+  monitoredProperties: number
+  mostAccessed: Array<{ id: string; title: string; views: number; leads: number }>
+  leadOrigins: Array<{ source: string; count: number }>
+}
+
 export function BrokerAnalyticsPage() {
   const { properties, isLoading } = useBrokerProperties()
-  const totalViews = properties.reduce((sum, property) => sum + toNumber(property.views), 0)
-  const totalLeads = properties.reduce((sum, property) => sum + toNumber(property.leads), 0)
-  const whatsappClicks = 0
-  const mostAccessed = [...properties].sort((first, second) => toNumber(second.views) - toNumber(first.views)).slice(0, 5)
+  const [analytics, setAnalytics] = useState<BrokerAnalytics | null>(null)
+  const totalViews = analytics?.totalViews ?? properties.reduce((sum, property) => sum + toNumber(property.views), 0)
+  const totalLeads = analytics?.leads ?? properties.reduce((sum, property) => sum + toNumber(property.leads), 0)
+  const whatsappClicks = analytics?.whatsappClicks ?? 0
+  const mostAccessed = analytics?.mostAccessed ?? [...properties].sort((first, second) => toNumber(second.views) - toNumber(first.views)).slice(0, 5)
   const hasProperties = properties.length > 0
+
+  useEffect(() => {
+    let ignore = false
+
+    fetch("/api/brokers/analytics", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as BrokerAnalytics | null
+        if (!ignore && response.ok && data) setAnalytics(data)
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   return (
     <BrokerPageShell
@@ -28,7 +54,7 @@ export function BrokerAnalyticsPage() {
       searchValue=""
       onSearchChange={() => {}}
     >
-      <div className="grid gap-6">
+      <div className="grid gap-5">
         {!hasProperties && !isLoading ? (
           <section className="rounded-[1.75rem] border border-[#00C853]/20 bg-[#00C853]/10 p-6 text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
@@ -48,7 +74,7 @@ export function BrokerAnalyticsPage() {
           <MetricCard icon={Eye} label="Visualizações do catálogo" value={totalViews.toLocaleString("pt-BR")} />
           <MetricCard icon={MousePointerClick} label="Cliques no WhatsApp" value={String(whatsappClicks)} />
           <MetricCard icon={UsersRound} label="Leads recebidos" value={totalLeads.toLocaleString("pt-BR")} />
-          <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(properties.length)} />
+          <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -63,8 +89,8 @@ export function BrokerAnalyticsPage() {
               {mostAccessed.length > 0 ? mostAccessed.map((property) => (
                 <div key={property.id} className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
                   <p className="truncate text-sm font-medium text-white">{property.title}</p>
-                  <span className="text-sm text-white/60">{toNumber(property.views)} visualizações</span>
-                  <span className="text-sm text-[#69F0AE]">{toNumber(property.leads)} leads</span>
+                  <span className="text-sm text-white/60">{typeof property.views === "number" ? property.views : toNumber(property.views)} visualizações</span>
+                  <span className="text-sm text-[#69F0AE]">{typeof property.leads === "number" ? property.leads : toNumber(property.leads)} leads</span>
                 </div>
               )) : (
                 <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
@@ -84,7 +110,7 @@ export function BrokerAnalyticsPage() {
             <CardContent className="grid gap-3 p-6 pt-0">
               <InfoBlock label="Filtro atual" value="Todos os imóveis" />
               <InfoBlock label="Origem dos leads" value={totalLeads > 0 ? "Catálogo e imóveis publicados" : "Sem origem registrada"} />
-              <InfoBlock label="WhatsApp" value="Cliques serão exibidos quando houver registro de eventos." />
+              <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
             </CardContent>
           </Card>
         </section>
@@ -98,7 +124,7 @@ export function BrokerAnalyticsPage() {
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-3">
             <InfoBlock label="Catálogo" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} />
-            <InfoBlock label="WhatsApp" value="0 cliques registrados" />
+            <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
             <InfoBlock label="Outras origens" value="Sem dados registrados" />
           </CardContent>
         </Card>

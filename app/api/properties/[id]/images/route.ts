@@ -1,15 +1,10 @@
 import { UserRole } from "@/lib/prisma-enums"
-import {
-  mkdir,
-  unlink,
-  writeFile } from "node:fs/promises"
-import path from "node:path"
-import { randomUUID } from "node:crypto"
 
 import { NextRequest,
   NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { deletePropertyImageFile, savePropertyImage } from "@/lib/property-storage"
 import { serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
@@ -73,31 +68,6 @@ function getExistingImages(property: { imageUrls: unknown }) {
     : []
 }
 
-function getImageExtension(file: File) {
-  if (file.type === "image/png") return ".png"
-  if (file.type === "image/webp") return ".webp"
-  return ".jpg"
-}
-
-async function saveImageFile(propertyId: string, file: File) {
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const extension = getImageExtension(file)
-  const fileName = `${randomUUID()}${extension}`
-  const directory = path.join(process.cwd(), "public", "uploads", "properties", propertyId)
-  const absoluteFilePath = path.join(directory, fileName)
-
-  await mkdir(directory, { recursive: true })
-  await writeFile(absoluteFilePath, buffer)
-
-  return `/uploads/properties/${propertyId}/${fileName}`
-}
-
-function getLocalImageAbsolutePath(imageUrl: string) {
-  if (!imageUrl.startsWith("/uploads/properties/")) return null
-  const relativePath = imageUrl.replace(/^\/+/, "")
-  return path.join(process.cwd(), "public", ...relativePath.split("/"))
-}
-
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
@@ -140,7 +110,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const existingImages = getExistingImages(accessible.property)
-    const uploadedUrls = await Promise.all(files.map((file: File) => saveImageFile(accessible.property.id, file)))
+    const uploadedUrls = await Promise.all(files.map((file: File) => savePropertyImage(accessible.property.id, file)))
     const nextImages = [...existingImages, ...uploadedUrls].slice(0, 6)
 
     const updatedProperty = await prisma.property.update({
@@ -166,7 +136,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao enviar imagens do imóvel." }, { status: 500 })
+    return NextResponse.json(
+      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao enviar imagens do imóvel." },
+      { status: 500 },
+    )
   }
 }
 
@@ -211,10 +184,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       include: propertyInclude,
     })
 
-    const absolutePath = getLocalImageAbsolutePath(imageUrl)
-    if (absolutePath) {
-      await unlink(absolutePath).catch(() => null)
-    }
+    await deletePropertyImageFile(imageUrl)
 
     const response = NextResponse.json({ property: serializeProperty(updatedProperty) })
     response.headers.set("Cache-Control", "no-store, max-age=0")

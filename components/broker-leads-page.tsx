@@ -8,6 +8,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import type { LeadRecord } from "@/lib/lead-contract"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 
 const leadStages = [
   {
@@ -46,6 +47,8 @@ function formatDate(value: string) {
 export function BrokerLeadsPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([])
   const [feedback, setFeedback] = useState("")
+  const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
   useEffect(() => {
     let ignore = false
@@ -74,6 +77,33 @@ export function BrokerLeadsPage() {
     ],
     [leads],
   )
+
+  async function updateLeadStatus(lead: LeadRecord, status: LeadRecord["status"]) {
+    setIsUpdatingStatus(true)
+    setFeedback("")
+
+    try {
+      const response = await fetch(`/api/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({ status }),
+      })
+      const data = (await response.json().catch(() => null)) as { lead?: LeadRecord; error?: string } | null
+
+      if (!response.ok || !data?.lead) {
+        throw new Error(data?.error || "Não foi possível atualizar o status do lead.")
+      }
+
+      setLeads((current) => current.map((item) => (item.id === data.lead?.id ? data.lead : item)))
+      setSelectedLead(data.lead)
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do lead.")
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
 
   return (
     <BrokerPageShell title="Leads" primaryActionLabel="Novo imóvel" primaryActionHref="/corretor/novo-imovel">
@@ -139,6 +169,7 @@ export function BrokerLeadsPage() {
                   <Button
                     type="button"
                     variant="ghost"
+                    onClick={() => setSelectedLead(lead)}
                     className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
                   >
                     <Eye className="size-4" />
@@ -160,6 +191,59 @@ export function BrokerLeadsPage() {
           )}
         </section>
       </div>
+
+      <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+        <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-2xl">
+          {selectedLead ? (
+            <div className="grid gap-5">
+              <div>
+                <DialogTitle className="text-2xl text-white">{selectedLead.name || "Lead sem nome"}</DialogTitle>
+                <DialogDescription className="mt-2 text-white/55">
+                  Detalhes do lead capturado no catálogo.
+                </DialogDescription>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <LeadInfo label="Telefone" value={selectedLead.phone || "Não informado"} />
+                <LeadInfo label="Imóvel de interesse" value={selectedLead.propertyTitle || "Catálogo"} />
+                <LeadInfo label="Origem" value={selectedLead.source || "catalog"} />
+                <LeadInfo label="Data" value={formatDate(selectedLead.createdAt)} />
+                <LeadInfo label="Busca" value={selectedLead.searchTerm || "Sem busca registrada"} />
+                <LeadInfo label="Intenção" value={selectedLead.intent || "Sem intenção registrada"} />
+              </div>
+
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm text-white/50">Mensagem</p>
+                <p className="mt-2 text-sm leading-6 text-white/70">{selectedLead.message || "Sem mensagem registrada."}</p>
+              </div>
+
+              <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <span className="text-sm text-white/50">Status atual</span>
+                <select
+                  value={selectedLead.status === "NEGOTIATING" ? "CONTACTED" : selectedLead.status}
+                  disabled={isUpdatingStatus}
+                  onChange={(event) => updateLeadStatus(selectedLead, event.target.value as LeadRecord["status"])}
+                  className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35"
+                >
+                  <option value="NEW" className="bg-[#111]">Novo</option>
+                  <option value="CONTACTED" className="bg-[#111]">Em atendimento</option>
+                  <option value="WON" className="bg-[#111]">Convertido</option>
+                  <option value="LOST" className="bg-[#111]">Perdido</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </BrokerPageShell>
+  )
+}
+
+function LeadInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+      <p className="text-sm text-white/50">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+    </div>
   )
 }

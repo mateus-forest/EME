@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const COMMISSION_RATE = 0.06
 const statusFilters = ["Todos", "Publicado", "Rascunho"] as const
+const viewModes = ["Geral", "Por imóvel"] as const
 const calculationTypes = ["Todos os imóveis", "Apenas com valor"] as const
 
 function formatBRLFromCents(value: number) {
@@ -35,6 +36,7 @@ export function BrokerFinancialPage() {
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
   const [typeFilter, setTypeFilter] = useState("Todos")
   const [calculationType, setCalculationType] = useState<(typeof calculationTypes)[number]>("Todos os imóveis")
+  const [viewMode, setViewMode] = useState<(typeof viewModes)[number]>("Geral")
   const propertyTypes = useMemo(() => ["Todos", ...Array.from(new Set(properties.map((property) => property.type)))], [properties])
   const filteredProperties = properties.filter((property) => {
     const matchesStatus = statusFilter === "Todos" || property.status === statusFilter
@@ -62,7 +64,7 @@ export function BrokerFinancialPage() {
 
   return (
     <BrokerPageShell title="Financeiro">
-      <div className="grid gap-6">
+      <div className="grid gap-5">
         {!hasProperties && !isLoading ? (
           <section className="rounded-[1.75rem] border border-[#00C853]/20 bg-[#00C853]/10 p-6 text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
@@ -126,6 +128,7 @@ export function BrokerFinancialPage() {
               <SelectBlock label="Tipo de cálculo" value={calculationType} onChange={(value) => setCalculationType(value as (typeof calculationTypes)[number])} options={calculationTypes} />
               <SelectBlock label="Filtro por status" value={statusFilter} onChange={(value) => setStatusFilter(value as (typeof statusFilters)[number])} options={statusFilters} />
               <SelectBlock label="Filtro por tipo" value={typeFilter} onChange={setTypeFilter} options={propertyTypes} />
+              <SelectBlock label="Visualização" value={viewMode} onChange={(value) => setViewMode(value as (typeof viewModes)[number])} options={viewModes} />
             </CardContent>
           </Card>
         </section>
@@ -137,17 +140,38 @@ export function BrokerFinancialPage() {
 
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">Histórico financeiro</CardTitle>
+            <CardTitle className="text-xl text-white">{viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
             {filteredProperties.length > 0 ? (
-              filteredProperties.slice(0, 5).map((property) => (
-                <div key={property.id} className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
-                  <p className="truncate text-sm font-medium text-white">{property.title}</p>
-                  <span className="text-sm text-white/60">{property.price}</span>
-                  <span className="text-sm text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+              viewMode === "Por imóvel" ? (
+                <div className="overflow-hidden rounded-[1.25rem] border border-white/[0.08]">
+                  <div className="grid gap-3 border-b border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/40 md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
+                    <span>Imóvel</span>
+                    <span>Valor</span>
+                    <span>Percentual</span>
+                    <span>Comissão</span>
+                    <span>Status</span>
+                  </div>
+                  {filteredProperties.map((property) => (
+                    <div key={property.id} className="grid gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
+                      <p className="truncate font-medium text-white">{property.title}</p>
+                      <span className="text-white/60">{property.priceValue > 0 ? property.price : "Sem valor"}</span>
+                      <span className="text-white/60">{commissionPercent.toLocaleString("pt-BR")}%</span>
+                      <span className="font-semibold text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+                      <span className="text-white/60">{property.status}</span>
+                    </div>
+                  ))}
                 </div>
-              ))
+              ) : (
+                filteredProperties.slice(0, 5).map((property) => (
+                  <div key={property.id} className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
+                    <p className="truncate text-sm font-medium text-white">{property.title}</p>
+                    <span className="text-sm text-white/60">{property.price}</span>
+                    <span className="text-sm text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+                  </div>
+                ))
+              )
             ) : (
               <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
                 Nenhum imóvel cadastrado para compor histórico.

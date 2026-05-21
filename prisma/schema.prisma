@@ -103,6 +103,7 @@ model Broker {
   agency      Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   properties  Property[]
   leads       Lead[]
+  catalogEvents CatalogEvent[]
   aiAssistantInteractions AiAssistantInteraction[]
 }
 
@@ -120,6 +121,7 @@ model Agency {
   brokers     Broker[]
   properties  Property[]
   leads       Lead[]
+  catalogEvents CatalogEvent[]
 }
 
 model Property {
@@ -146,6 +148,28 @@ model Property {
   broker       Broker         @relation(fields: [brokerId], references: [id], onDelete: Cascade)
   agency       Agency?        @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   leads        Lead[]
+  catalogEvents CatalogEvent[]
+}
+
+model CatalogEvent {
+  id          String    @id @default(cuid())
+  eventType   String
+  catalogSlug String?
+  visitorKey  String?
+  propertyId  String?
+  brokerId    String?
+  agencyId    String?
+  createdAt   DateTime  @default(now())
+  property    Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  broker      Broker?   @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  agency      Agency?   @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([brokerId, createdAt])
+  @@index([agencyId, createdAt])
+  @@index([propertyId, createdAt])
+  @@index([catalogSlug, createdAt])
+  @@index([visitorKey, eventType, createdAt])
 }
 
 model Catalog {
