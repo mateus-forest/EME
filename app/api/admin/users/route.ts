@@ -18,6 +18,11 @@ export async function GET() {
 
   try {
     const users = await prisma.user.findMany({
+      where: {
+        role: {
+          in: [UserRole.BROKER, UserRole.ADMIN],
+        },
+      },
       include: {
         broker: true,
         ownedAgency: true,

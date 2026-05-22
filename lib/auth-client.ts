@@ -25,7 +25,7 @@ const LEGACY_AUTH_KEYS = [
 
 export function getDefaultRouteByRole(role: AuthRole) {
   if (role === "ADMIN") return "/admin"
-  if (role === "AGENCY") return "/imobiliaria"
+  if (role === "AGENCY") return "/"
   return "/corretor"
 }
 

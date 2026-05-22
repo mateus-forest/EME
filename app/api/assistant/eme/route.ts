@@ -32,6 +32,22 @@ async function getBrokerCredits(brokerId: string) {
   })
 }
 
+function serializeAssessorConfig(config: {
+  officialNumber: string | null
+  displayName: string | null
+  status: string
+  internalInstructions: string | null
+  webhookStatus: string
+} | null) {
+  return {
+    officialNumber: config?.officialNumber ?? "",
+    displayName: config?.displayName ?? "",
+    status: config?.status ?? "IN_PREPARATION",
+    internalInstructions: config?.internalInstructions ?? "",
+    webhookStatus: config?.webhookStatus ?? "NOT_CONFIGURED",
+  }
+}
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
@@ -48,23 +64,36 @@ export async function GET() {
 
   try {
     const brokerCredits = await getBrokerCredits(user.broker.id)
-    const history = await prisma.emeMessage.findMany({
-      where: { brokerId: user.broker.id, channel: "assessor_eme" },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        message: true,
-        response: true,
-        detectedIntent: true,
-        actionType: true,
-        actionStatus: true,
-        createdAt: true,
-      },
-    })
+    const [history, assessorConfig] = await Promise.all([
+      prisma.emeMessage.findMany({
+        where: { brokerId: user.broker.id, channel: "assessor_eme" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          message: true,
+          response: true,
+          detectedIntent: true,
+          actionType: true,
+          actionStatus: true,
+          createdAt: true,
+        },
+      }),
+      prisma.assessorEmeConfig.findFirst({
+        orderBy: { updatedAt: "desc" },
+        select: {
+          officialNumber: true,
+          displayName: true,
+          status: true,
+          internalInstructions: true,
+          webhookStatus: true,
+        },
+      }),
+    ])
 
     return NextResponse.json({
       ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 } }),
+      assessorConfig: serializeAssessorConfig(assessorConfig),
       history: history.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
     })
   } catch (caughtError) {

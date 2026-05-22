@@ -31,13 +31,6 @@ export function SignupChoicePage() {
             <Link href="/cadastro/corretor">Criar conta de corretor</Link>
           </Button>
         </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <h3 className="text-base font-semibold text-white">Para imobiliárias</h3>
-          <p className="mt-2 text-sm leading-relaxed text-white/55">
-            Cadastre seus corretores individualmente e gerencie a operação pelo fluxo do corretor enquanto a área de equipes evolui.
-          </p>
-        </div>
       </div>
     </AuthShell>
   )

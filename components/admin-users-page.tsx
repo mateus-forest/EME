@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { Building2, Mail, MessageCircleMore, Search, SlidersHorizontal, UserRound, Users } from "lucide-react"
+import { Mail, MessageCircleMore, Search, SlidersHorizontal, UserRound, Users } from "lucide-react"
 
 import { AdminPageShell } from "@/components/admin-page-shell"
 import {
@@ -24,9 +24,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 
-const typeFilters = ["Todos", "Corretor", "Imobiliária"] as const
+const typeFilters = ["Todos", "Corretor", "Admin"] as const
 const statusFilters = ["Todos", "Ativo", "Inativo"] as const
-const planFilters = ["Todos", "Corretor", "Plano Imobiliária"] as const
+const planFilters = ["Todos", "Corretor", "Sem plano", "Admin"] as const
 
 export function AdminUsersPage() {
   const [users, setUsers] = useAdminUsers()
@@ -57,8 +57,8 @@ export function AdminUsersPage() {
 
   const summary = {
     total: users.length,
-    agencies: users.filter((user) => user.type === "Imobiliária").length,
     brokers: users.filter((user) => user.type === "Corretor").length,
+    admins: users.filter((user) => user.type === "Admin").length,
     active: users.filter((user) => user.status === "Ativo").length,
     inactive: users.filter((user) => user.status === "Inativo").length,
   }
@@ -150,8 +150,8 @@ export function AdminUsersPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard label="Total de usuários" value={String(summary.total)} icon={Users} />
-        <SummaryCard label="Imobiliárias" value={String(summary.agencies)} icon={Building2} />
         <SummaryCard label="Corretores" value={String(summary.brokers)} icon={UserRound} />
+        <SummaryCard label="Admins" value={String(summary.admins)} icon={Users} />
         <SummaryCard label="Usuários ativos" value={String(summary.active)} icon={Users} />
         <SummaryCard label="Usuários inativos" value={String(summary.inactive)} icon={Users} />
       </section>
@@ -400,7 +400,7 @@ function FilterButton({ active, onClick, label }: { active: boolean; onClick: ()
 }
 
 function TypeBadge({ type }: { type: AdminUserRecord["type"] }) {
-  const tone = type === "Imobiliária" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-white/[0.08] bg-white/[0.04] text-white/70"
+  const tone = type === "Corretor" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-white/[0.08] bg-white/[0.04] text-white/70"
   return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{type}</span>
 }
 

@@ -62,11 +62,7 @@ export function SignupBrokerPage() {
     <AuthShell
       title="Cadastro de corretor"
       subtitle="Crie sua conta e comece a publicar imóveis com rapidez em poucos passos."
-      footer={
-        <p className="text-sm text-white/55">
-          Para imobiliárias, cadastre os corretores individualmente enquanto a área de equipes evolui.
-        </p>
-      }
+      footer={<p className="text-sm text-white/55">MVP focado em corretores individuais.</p>}
     >
       <form onSubmit={handleSubmit} className="grid gap-5">
         <div className="space-y-2">

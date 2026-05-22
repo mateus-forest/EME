@@ -14,6 +14,14 @@ type AssistantCredits = {
   usedThisMonth: number
 }
 
+type AssessorConfig = {
+  officialNumber: string
+  displayName: string
+  status: string
+  internalInstructions: string
+  webhookStatus: string
+}
+
 const quickActions = [
   { label: "Criar anúncio com IA", actionType: "create_ad" },
   { label: "Melhorar descrição de imóvel", actionType: "improve_description" },
@@ -31,6 +39,7 @@ export function BrokerMPage() {
   const [feedback, setFeedback] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [assessorConfig, setAssessorConfig] = useState<AssessorConfig | null>(null)
   const { subscription } = useBrokerSubscription()
   const selectedAction = useMemo(
     () => quickActions.find((action) => action.actionType === actionType),
@@ -44,9 +53,12 @@ export function BrokerMPage() {
       cache: "no-store",
     })
       .then(async (result) => {
-        const data = (await result.json().catch(() => null)) as { credits?: AssistantCredits; error?: string } | null
+        const data = (await result.json().catch(() => null)) as
+          | { credits?: AssistantCredits; assessorConfig?: AssessorConfig; error?: string }
+          | null
         if (!result.ok) throw new Error(data?.error || "Não foi possível carregar os créditos.")
         if (data?.credits) setCredits(data.credits)
+        if (data?.assessorConfig) setAssessorConfig(data.assessorConfig)
       })
       .catch((caughtError) => {
         setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o Assessor EME.")
@@ -111,6 +123,11 @@ export function BrokerMPage() {
       setPrompt(`Me ajude com: ${action.label.toLowerCase()}.`)
     }
   }
+
+  const hasOfficialAssessorNumber = Boolean(assessorConfig?.officialNumber?.trim())
+  const assessorDisplayName = assessorConfig?.displayName?.trim() || "Assessor EME"
+  const assessorStatus =
+    assessorConfig?.status === "ACTIVE" ? "Ativo" : assessorConfig?.status === "PAUSED" ? "Pausado" : "Em preparação"
 
   return (
     <BrokerPageShell title="Assessor EME">
@@ -235,10 +252,18 @@ export function BrokerMPage() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">Assessor EME no WhatsApp</h3>
-              <p className="mt-2 text-xl font-semibold text-white">Canal em preparação</p>
+              <p className="mt-2 text-xl font-semibold text-white">
+                {hasOfficialAssessorNumber ? assessorConfig?.officialNumber : "Canal em preparação"}
+              </p>
+              <p className="mt-1 text-sm text-[#69F0AE]">
+                {hasOfficialAssessorNumber ? `${assessorDisplayName} - ${assessorStatus}` : assessorStatus}
+              </p>
               <p className="mt-2 text-sm leading-7 text-white/55">
                 Use o Assessor EME para pedir tarefas ao sistema, como cadastrar imóvel, procurar imóvel, cadastrar lead, gerar resumo e criar anúncio. O número oficial será exibido quando a configuração administrativa estiver disponível.
               </p>
+              {assessorConfig?.internalInstructions ? (
+                <p className="mt-2 text-sm leading-7 text-white/45">{assessorConfig.internalInstructions}</p>
+              ) : null}
             </div>
           </div>
         </section>

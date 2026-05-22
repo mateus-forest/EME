@@ -20,7 +20,7 @@ type AdminContractUser = {
 export type AdminUserRecord = {
   id: string
   name: string
-  type: "Corretor" | "Imobiliária" | "Admin"
+  type: "Corretor" | "Admin"
   email: string
   whatsApp: string
   status: "Ativo" | "Inativo"
@@ -104,7 +104,7 @@ function formatDate(value: Date | null | undefined) {
 
 function formatPlan(plan: BillingPlan, role: UserRole) {
   if (plan === "BROKER") return "Corretor"
-  if (plan === "AGENCY") return "Plano Imobiliária"
+  if (plan === "AGENCY") return "Indisponível no MVP"
   if (role === "ADMIN") return "Admin"
   return "Sem plano"
 }
@@ -133,7 +133,7 @@ export function serializeAdminUser(user: AdminContractUser & { broker: Broker | 
   return {
     id: user.id,
     name: user.name,
-    type: user.role === "BROKER" ? "Corretor" : user.role === "AGENCY" ? "Imobiliária" : "Admin",
+    type: user.role === "BROKER" ? "Corretor" : "Admin",
     email: user.email,
     whatsApp: user.phone ?? user.broker?.phone ?? user.ownedAgency?.phone ?? "-",
     status: mapUserStatus(user.role, user.broker?.status, user.subscriptionStatus),

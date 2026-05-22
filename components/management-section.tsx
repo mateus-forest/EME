@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useState } from "react"
-import { Building2, Eye, MousePointer, Users, BarChart3 } from "lucide-react"
+import { Building2, Eye, MousePointer } from "lucide-react"
 
 export function ManagementSection() {
   const [activePreview, setActivePreview] = useState(0)
@@ -13,18 +13,7 @@ export function ManagementSection() {
     { icon: MousePointer, text: "Veja contatos do catálogo" },
   ]
 
-  const businessFeatures = [
-    { icon: Users, text: "Gerencie corretores" },
-    { icon: BarChart3, text: "Acompanhe desempenho" },
-    { icon: BarChart3, text: "Controle sua operação" },
-  ]
-
   const previews = [
-    {
-      title: "Portal da imobiliária",
-      description: "Visão da operação com imóveis, corretores e gestão centralizada da equipe.",
-      image: "/images/landing-agency-dashboard.png",
-    },
     {
       title: "Portal do corretor",
       description: "Dashboard com imóveis em destaque, métricas operacionais e atalhos de gestão do dia a dia.",
@@ -105,20 +94,6 @@ export function ManagementSection() {
               <p className="text-sm text-white/50 uppercase tracking-wider mb-4">Para corretores</p>
               <div className="space-y-4">
                 {features.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#00C853]/10 flex items-center justify-center">
-                      <feature.icon className="w-6 h-6 text-[#00C853]" />
-                    </div>
-                    <p className="text-lg text-white">{feature.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-sm text-white/50 uppercase tracking-wider mb-4">Para imobiliárias</p>
-              <div className="space-y-4">
-                {businessFeatures.map((feature, i) => (
                   <div key={i} className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-[#00C853]/10 flex items-center justify-center">
                       <feature.icon className="w-6 h-6 text-[#00C853]" />
