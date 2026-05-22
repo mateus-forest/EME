@@ -34,7 +34,8 @@ type EditableProperty = {
   bathrooms: number
   parking: number
   status: "Publicado" | "Rascunho"
-  type: "Apartamento" | "Casa" | "Comercial"
+  type: Property["type"]
+  purpose: Property["purpose"]
   description: string
   audioUrl: string
 }
@@ -55,7 +56,8 @@ export function BrokerMyPropertiesPage() {
   const { subscription } = useBrokerSubscription()
   const [search, setSearch] = useState("")
   const [statusFilters, setStatusFilters] = useState<Array<Property["status"]>>(["Publicado", "Rascunho"])
-  const [typeFilters, setTypeFilters] = useState<Array<Property["type"]>>(["Casa", "Apartamento", "Comercial"])
+  const allPropertyTypes: Array<Property["type"]> = ["Casa", "Apartamento", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]
+  const [typeFilters, setTypeFilters] = useState<Array<Property["type"]>>(allPropertyTypes)
   const [priceFilters, setPriceFilters] = useState<string[]>(["low", "mid", "high"])
   const [editingProperty, setEditingProperty] = useState<EditableProperty | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -91,12 +93,12 @@ export function BrokerMyPropertiesPage() {
   const hasProperties = filteredProperties.length > 0
   const whatsAppUrl = createWhatsAppUrl(profile.whatsApp, "Olá, tenho interesse neste imóvel")
   const hasActiveFilters =
-    normalizedSearch.length > 0 || statusFilters.length < 2 || typeFilters.length < 3 || priceFilters.length < 3
+    normalizedSearch.length > 0 || statusFilters.length < 2 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
 
   function clearFilters() {
     setSearch("")
     setStatusFilters(["Publicado", "Rascunho"])
-    setTypeFilters(["Casa", "Apartamento", "Comercial"])
+    setTypeFilters(allPropertyTypes)
     setPriceFilters(["low", "mid", "high"])
   }
 
@@ -117,6 +119,7 @@ export function BrokerMyPropertiesPage() {
       parking: property.parking,
       status: property.status,
       type: property.type,
+      purpose: property.purpose,
       description: property.description,
       audioUrl: property.audioUrl,
     })
@@ -165,6 +168,22 @@ export function BrokerMyPropertiesPage() {
     }
   }
 
+  async function makeCover(index: number) {
+    if (!editingProperty) return
+    const nextImages = [...editingProperty.images]
+    const [image] = nextImages.splice(index, 1)
+    if (!image) return
+    nextImages.unshift(image)
+    updateField("images", nextImages)
+    try {
+      const updatedProperty = await updateProperty(editingProperty.id, { images: nextImages })
+      updateField("images", updatedProperty.images)
+      setSaveFeedback("Imagem principal atualizada")
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar a imagem principal.")
+    }
+  }
+
   async function saveChanges() {
     if (!editingProperty) return
     try {
@@ -181,6 +200,7 @@ export function BrokerMyPropertiesPage() {
         parking: updatedProperty.parking,
         status: updatedProperty.status,
         type: updatedProperty.type,
+        purpose: updatedProperty.purpose,
         description: updatedProperty.description,
         audioUrl: updatedProperty.audioUrl,
       })
@@ -312,9 +332,9 @@ export function BrokerMyPropertiesPage() {
               <DropdownMenuCheckboxItem checked={statusFilters.includes("Rascunho")} onCheckedChange={() => toggleFilter("Rascunho", statusFilters, setStatusFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Rascunho</DropdownMenuCheckboxItem>
               <DropdownMenuSeparator className="bg-white/[0.08]" />
               <DropdownMenuLabel className="text-white/50">Tipo</DropdownMenuLabel>
-              <DropdownMenuCheckboxItem checked={typeFilters.includes("Casa")} onCheckedChange={() => toggleFilter("Casa", typeFilters, setTypeFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Casa</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={typeFilters.includes("Apartamento")} onCheckedChange={() => toggleFilter("Apartamento", typeFilters, setTypeFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Apartamento</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={typeFilters.includes("Comercial")} onCheckedChange={() => toggleFilter("Comercial", typeFilters, setTypeFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Comercial</DropdownMenuCheckboxItem>
+              {allPropertyTypes.map((type) => (
+                <DropdownMenuCheckboxItem key={type} checked={typeFilters.includes(type)} onCheckedChange={() => toggleFilter(type, typeFilters, setTypeFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">{type}</DropdownMenuCheckboxItem>
+              ))}
               <DropdownMenuSeparator className="bg-white/[0.08]" />
               <DropdownMenuLabel className="text-white/50">Faixa de preço</DropdownMenuLabel>
               <DropdownMenuCheckboxItem checked={priceFilters.includes("low")} onCheckedChange={() => toggleFilter("low", priceFilters, setPriceFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Até R$ 800 mil</DropdownMenuCheckboxItem>
@@ -350,14 +370,14 @@ export function BrokerMyPropertiesPage() {
         )}
 
         {hasProperties ? (
-          <section className="grid gap-4">
+        <section className="grid gap-4">
             {filteredProperties.map((property) => (
               <Card
                 key={property.id}
                 className="overflow-hidden rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)]"
               >
-                <CardContent className="grid gap-5 p-4 lg:grid-cols-[minmax(320px,42%)_minmax(0,1fr)_220px] lg:items-center">
-                  <div className="relative min-h-[220px] overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] lg:min-h-[240px]">
+                <CardContent className="grid gap-4 p-3 lg:grid-cols-[minmax(260px,34%)_minmax(0,1fr)_210px] lg:items-center">
+                  <div className="relative min-h-[160px] overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] lg:min-h-[180px]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={getPropertyImage(property.images[0], property.id)} alt={property.title} className="h-full w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -468,6 +488,9 @@ export function BrokerMyPropertiesPage() {
                               <X className="size-4" />
                               <span className="sr-only">Remover foto</span>
                             </button>
+                            <button type="button" onClick={() => void makeCover(index)} className="absolute bottom-2 left-2 rounded-full bg-black/55 px-3 py-1 text-xs text-white/80 opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100">
+                              {index === 0 ? "Capa" : "Usar capa"}
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -485,6 +508,19 @@ export function BrokerMyPropertiesPage() {
                               <SelectItem value="Apartamento">Apartamento</SelectItem>
                               <SelectItem value="Casa">Casa</SelectItem>
                               <SelectItem value="Comercial">Comercial</SelectItem>
+                              <SelectItem value="Terreno">Terreno</SelectItem>
+                              <SelectItem value="Sala comercial">Sala comercial</SelectItem>
+                              <SelectItem value="Loja">Loja</SelectItem>
+                              <SelectItem value="Cobertura">Cobertura</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field label="Finalidade">
+                          <Select value={editingProperty.purpose} onValueChange={(value) => updateField("purpose", value as EditableProperty["purpose"])}>
+                            <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white"><SelectValue /></SelectTrigger>
+                            <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                              <SelectItem value="Venda">Venda</SelectItem>
+                              <SelectItem value="Locação">Locação</SelectItem>
                             </SelectContent>
                           </Select>
                         </Field>

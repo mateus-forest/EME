@@ -5,7 +5,7 @@ import {
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
-import { mapPropertyStatus, mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
+import { mapPropertyPurpose, mapPropertyStatus, mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
 const propertyInclude = {
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     const parkingSpots =
       typeof body?.parkingSpots === "number" ? Math.max(0, Math.trunc(body.parkingSpots)) : 0
     const propertyType = mapPropertyType(body?.type)
+    const purpose = mapPropertyPurpose(body?.purpose)
     const statusPayload = mapPropertyStatus(body?.status ?? (body?.published ? "Publicado" : "Rascunho"))
     const images = Array.isArray(body?.images)
       ? body.images.filter((image: unknown): image is string => typeof image === "string").slice(0, 6)
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
         bathrooms,
         parkingSpots,
         type: propertyType,
+        purpose,
         status: statusPayload.status,
         published: statusPayload.published,
         imageUrls: images,

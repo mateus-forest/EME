@@ -64,6 +64,7 @@ export type Property = {
   bathrooms: number
   parkingSpots: number
   type: PropertyType
+  purpose: string
   status: PropertyStatus
   published: boolean
   imageUrls: unknown

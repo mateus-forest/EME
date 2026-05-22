@@ -1,6 +1,7 @@
 export type PropertyAiPayload = {
   title: string
-  type: "Apartamento" | "Casa" | "Comercial"
+  type: "Apartamento" | "Casa" | "Comercial" | "Terreno" | "Sala comercial" | "Loja" | "Cobertura"
+  purpose?: "Venda" | "Locação"
   city: string
   neighborhood: string
   price: string

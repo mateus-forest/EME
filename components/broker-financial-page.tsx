@@ -35,6 +35,7 @@ export function BrokerFinancialPage() {
   const [commissionPercent, setCommissionPercent] = useState(6)
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
   const [typeFilter, setTypeFilter] = useState("Todos")
+  const [purposeFilter, setPurposeFilter] = useState("Todos")
   const [calculationType, setCalculationType] = useState<(typeof calculationTypes)[number]>("Todos os imóveis")
   const [viewMode, setViewMode] = useState<(typeof viewModes)[number]>("Geral")
   const [configFeedback, setConfigFeedback] = useState("")
@@ -43,9 +44,10 @@ export function BrokerFinancialPage() {
   const filteredProperties = properties.filter((property) => {
     const matchesStatus = statusFilter === "Todos" || property.status === statusFilter
     const matchesType = typeFilter === "Todos" || property.type === typeFilter
+    const matchesPurpose = purposeFilter === "Todos" || property.purpose === purposeFilter
     const matchesCalculation = calculationType === "Todos os imóveis" || property.priceValue > 0
 
-    return matchesStatus && matchesType && matchesCalculation
+    return matchesStatus && matchesType && matchesPurpose && matchesCalculation
   })
   const commissionRate = Math.max(0, commissionPercent) / 100
   const totalProperties = filteredProperties.length
@@ -186,6 +188,7 @@ export function BrokerFinancialPage() {
               <SelectBlock label="Tipo de cálculo" value={calculationType} onChange={(value) => setCalculationType(value as (typeof calculationTypes)[number])} options={calculationTypes} />
               <SelectBlock label="Filtro por status" value={statusFilter} onChange={(value) => setStatusFilter(value as (typeof statusFilters)[number])} options={statusFilters} />
               <SelectBlock label="Filtro por tipo" value={typeFilter} onChange={setTypeFilter} options={propertyTypes} />
+              <SelectBlock label="Filtro por finalidade" value={purposeFilter} onChange={setPurposeFilter} options={["Todos", "Venda", "Locação"]} />
               <SelectBlock label="Visualização" value={viewMode} onChange={(value) => setViewMode(value as (typeof viewModes)[number])} options={viewModes} />
               <Button type="button" onClick={saveFinancialConfig} disabled={isSavingConfig} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60">
                 {isSavingConfig ? "Salvando..." : "Salvar configuração"}

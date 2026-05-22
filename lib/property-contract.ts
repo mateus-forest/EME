@@ -31,7 +31,8 @@ export type PropertyApiItem = {
   bedrooms: number
   bathrooms: number
   parkingSpots: number
-  type: "Apartamento" | "Casa" | "Comercial"
+  type: "Apartamento" | "Casa" | "Comercial" | "Terreno" | "Sala comercial" | "Loja" | "Cobertura"
+  purpose: "Venda" | "Locação"
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
   images: string[]
@@ -59,8 +60,17 @@ export function parsePriceInput(value: unknown) {
 export function mapPropertyType(value: unknown): PropertyType | null {
   if (value === "Casa" || value === "HOUSE") return "HOUSE"
   if (value === "Comercial" || value === "COMMERCIAL") return "COMMERCIAL"
+  if (value === "Terreno" || value === "LAND") return "LAND"
+  if (value === "Sala comercial" || value === "OFFICE") return "OFFICE"
+  if (value === "Loja" || value === "STORE") return "STORE"
+  if (value === "Cobertura" || value === "PENTHOUSE") return "PENTHOUSE"
   if (value === "Apartamento" || value === "APARTMENT") return "APARTMENT"
   return null
+}
+
+export function mapPropertyPurpose(value: unknown) {
+  if (value === "Locação" || value === "RENT" || value === "rent") return "RENT"
+  return "SALE"
 }
 
 export function mapPropertyStatus(value: unknown): { status: PropertyStatus; published: boolean } | null {
@@ -82,7 +92,16 @@ export function mapPropertyStatus(value: unknown): { status: PropertyStatus; pub
 export function propertyTypeLabel(type: PropertyType): PropertyApiItem["type"] {
   if (type === "HOUSE") return "Casa"
   if (type === "COMMERCIAL") return "Comercial"
+  if (type === "LAND") return "Terreno"
+  if (type === "OFFICE") return "Sala comercial"
+  if (type === "STORE") return "Loja"
+  if (type === "PENTHOUSE") return "Cobertura"
   return "Apartamento"
+}
+
+export function propertyPurposeLabel(purpose?: string | null): PropertyApiItem["purpose"] {
+  if (purpose === "RENT") return "Locação"
+  return "Venda"
 }
 
 export function propertyStatusLabel(status: PropertyStatus): PropertyApiItem["status"] {
@@ -121,6 +140,7 @@ export function serializeProperty(property: PropertyWithRelations): PropertyApiI
     bathrooms: property.bathrooms,
     parkingSpots: property.parkingSpots,
     type: propertyTypeLabel(property.type),
+    purpose: propertyPurposeLabel(property.purpose),
     status: propertyStatusLabel(property.status),
     published: property.published,
     images,

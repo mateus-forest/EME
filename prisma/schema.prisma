@@ -22,6 +22,10 @@ enum PropertyType {
   APARTMENT
   HOUSE
   COMMERCIAL
+  LAND
+  OFFICE
+  STORE
+  PENTHOUSE
 }
 
 enum CatalogOwnerType {
@@ -140,6 +144,7 @@ model Property {
   bathrooms    Int            @default(0)
   parkingSpots Int            @default(0)
   type         PropertyType   @default(APARTMENT)
+  purpose      String         @default("SALE")
   status       PropertyStatus @default(DRAFT)
   published    Boolean        @default(false)
   imageUrls    Json?

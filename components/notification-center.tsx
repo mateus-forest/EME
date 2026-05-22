@@ -9,6 +9,7 @@ import type {
   PaymentNotificationStatus,
 } from "@/components/use-payment-notifications"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 type NotificationCenterProps = {
@@ -46,6 +47,7 @@ export function NotificationCenter({
   onOpenDetails,
 }: NotificationCenterProps) {
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const orderedNotifications = useMemo(
     () => [...notifications].sort((first, second) => Number(first.lida) - Number(second.lida)),
@@ -70,12 +72,15 @@ export function NotificationCenter({
   function handleOpenDetails(id: string) {
     onMarkAsRead(id)
     onOpenDetails?.(id)
+    if (!onOpenDetails) setSelectedId(id)
     showFeedback("Detalhes da notificação atualizados")
   }
+  const selectedNotification = orderedNotifications.find((notification) => notification.id === selectedId) ?? null
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <>
+      <Popover>
+        <PopoverTrigger asChild>
         <Button
           type="button"
           variant="ghost"
@@ -188,7 +193,23 @@ export function NotificationCenter({
           )}
         </div>
       </PopoverContent>
-    </Popover>
+      </Popover>
+      <Dialog open={Boolean(selectedNotification)} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <DialogContent className="max-w-lg border-white/[0.08] bg-[#111111] text-white">
+          {selectedNotification ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedNotification.title}</DialogTitle>
+                <DialogDescription className="text-white/55">{selectedNotification.date}</DialogDescription>
+              </DialogHeader>
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm leading-7 text-white/70">{selectedNotification.contextMessage || selectedNotification.message}</p>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

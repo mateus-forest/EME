@@ -47,6 +47,17 @@ export function parseLeadStatus(value: unknown) {
   return leadStatuses.includes(value as LeadStatus) ? (value as LeadStatus) : null
 }
 
+export function leadSourceLabel(source: string) {
+  const normalized = source.trim().toLowerCase()
+  if (normalized === "catalog" || normalized === "catalogo" || normalized === "catálogo") return "Catálogo"
+  if (normalized === "corretor_eme") return "Corretor EME"
+  if (normalized === "assessor_eme") return "Assessor EME"
+  if (normalized === "manual") return "Manual"
+  if (normalized === "whatsapp") return "WhatsApp"
+  if (normalized === "landing") return "Landing page"
+  return source || "Não informado"
+}
+
 export function serializeLead(lead: LeadWithRelations): LeadRecord {
   return {
     id: lead.id,
@@ -57,7 +68,7 @@ export function serializeLead(lead: LeadWithRelations): LeadRecord {
     catalogSlug: lead.catalogSlug ?? "",
     searchTerm: lead.searchTerm ?? "",
     intent: lead.intent ?? "",
-    source: lead.source,
+    source: leadSourceLabel(lead.source),
     status: lead.status,
     statusLabel: leadStatusLabels[lead.status],
     propertyId: lead.propertyId,

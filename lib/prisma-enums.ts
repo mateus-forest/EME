@@ -1,6 +1,6 @@
 export type UserRole = "BROKER" | "AGENCY" | "ADMIN"
 export type PropertyStatus = "DRAFT" | "PUBLISHED" | "PAUSED"
-export type PropertyType = "APARTMENT" | "HOUSE" | "COMMERCIAL"
+export type PropertyType = "APARTMENT" | "HOUSE" | "COMMERCIAL" | "LAND" | "OFFICE" | "STORE" | "PENTHOUSE"
 export type CatalogOwnerType = "BROKER" | "AGENCY"
 export type SubscriptionOwnerType = "BROKER" | "AGENCY"
 export type SubscriptionStatus = "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED"
@@ -25,6 +25,10 @@ export const PROPERTY_TYPE = {
   APARTMENT: "APARTMENT",
   HOUSE: "HOUSE",
   COMMERCIAL: "COMMERCIAL",
+  LAND: "LAND",
+  OFFICE: "OFFICE",
+  STORE: "STORE",
+  PENTHOUSE: "PENTHOUSE",
 } as const satisfies Record<PropertyType, PropertyType>
 
 export const CATALOG_OWNER_TYPE = {

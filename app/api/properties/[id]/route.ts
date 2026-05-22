@@ -6,7 +6,7 @@ import {
   NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
+import { mapPropertyPurpose, mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
 const propertyInclude = {
@@ -35,6 +35,7 @@ type PropertyUpdateData = {
   bathrooms?: number
   parkingSpots?: number
   type?: PropertyType
+  purpose?: string
   imageUrls?: string[]
 }
 
@@ -124,6 +125,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         return NextResponse.json({ error: "Tipo de imóvel inválido." }, { status: 400 })
       }
       data.type = propertyType
+    }
+
+    if (body?.purpose !== undefined) {
+      data.purpose = mapPropertyPurpose(body.purpose)
     }
 
     if (body?.images !== undefined) {

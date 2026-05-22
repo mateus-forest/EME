@@ -21,7 +21,8 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 
 type CreationMode = "ai" | "manual" | "import"
-type PropertyType = "Apartamento" | "Casa" | "Comercial"
+type PropertyType = "Apartamento" | "Casa" | "Comercial" | "Terreno" | "Sala comercial" | "Loja" | "Cobertura"
+type PropertyPurpose = "Venda" | "Locação"
 type PublishStatus = "Rascunho" | "Publicado"
 
 type BrowserSpeechRecognition = {
@@ -61,6 +62,7 @@ export function BrokerNewPropertyPage() {
   const [neighborhood, setNeighborhood] = useState("")
   const [price, setPrice] = useState("")
   const [propertyType, setPropertyType] = useState<PropertyType>("Apartamento")
+  const [propertyPurpose, setPropertyPurpose] = useState<PropertyPurpose>("Venda")
   const [publishStatus, setPublishStatus] = useState<PublishStatus>("Publicado")
   const [description, setDescription] = useState("")
   const [bedrooms, setBedrooms] = useState(2)
@@ -240,6 +242,7 @@ export function BrokerNewPropertyPage() {
       const generated = await requestPropertyAi({
         title,
         type: propertyType,
+        purpose: propertyPurpose,
         city: city || "Não informado",
         neighborhood: neighborhood || "Não informado",
         price: price || "Não informado",
@@ -309,6 +312,7 @@ export function BrokerNewPropertyPage() {
         views: "0",
         leads: "0",
         type: propertyType,
+        purpose: propertyPurpose,
         description,
         audioUrl: "",
       })
@@ -432,7 +436,7 @@ export function BrokerNewPropertyPage() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-5 pt-0">
-            <label className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#00C853]/28 bg-[#00C853]/[0.05] px-6 text-center transition-colors hover:bg-[#00C853]/[0.08]">
+            <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#00C853]/28 bg-[#00C853]/[0.05] px-6 text-center transition-colors hover:bg-[#00C853]/[0.08]">
               <input
                 type="file"
                 multiple
@@ -462,7 +466,7 @@ export function BrokerNewPropertyPage() {
                 {previewImages.map((image, index) => (
                   <div
                     key={`${image}-${index}`}
-                    className="relative min-h-40 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
+                    className="relative min-h-28 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
@@ -470,7 +474,7 @@ export function BrokerNewPropertyPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex min-h-40 flex-col items-center justify-center rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
+              <div className="flex min-h-28 flex-col items-center justify-center rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
                 <Images className="size-8 text-white/35" />
                 <p className="mt-3 text-sm font-medium text-white/75">Nenhuma foto selecionada</p>
                 <p className="mt-1 text-sm text-white/45">As imagens reais aparecerão aqui antes da publicação.</p>
@@ -583,6 +587,21 @@ export function BrokerNewPropertyPage() {
                         <SelectItem value="Apartamento">Apartamento</SelectItem>
                         <SelectItem value="Casa">Casa</SelectItem>
                         <SelectItem value="Comercial">Comercial</SelectItem>
+                        <SelectItem value="Terreno">Terreno</SelectItem>
+                        <SelectItem value="Sala comercial">Sala comercial</SelectItem>
+                        <SelectItem value="Loja">Loja</SelectItem>
+                        <SelectItem value="Cobertura">Cobertura</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Finalidade">
+                    <Select value={propertyPurpose} onValueChange={(value) => setPropertyPurpose(value as PropertyPurpose)}>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                        <SelectItem value="Venda">Venda</SelectItem>
+                        <SelectItem value="Locação">Locação</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>

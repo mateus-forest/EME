@@ -19,6 +19,9 @@ function formatBRL(value: number) {
 export function AdminAiConsumptionPage() {
   const [brokers] = useAdminBrokers()
   const [selectedBroker, setSelectedBroker] = useState<AdminBrokerRecord | null>(null)
+  const [creditAmount, setCreditAmount] = useState(10)
+  const [creditReason, setCreditReason] = useState("Bonificação para testes reais")
+  const [feedback, setFeedback] = useState("")
   const summary = useMemo(
     () => ({
       balance: brokers.reduce((sum, broker) => sum + broker.aiCreditsBalance, 0),
@@ -56,7 +59,10 @@ export function AdminAiConsumptionPage() {
                     <Badge label={`${broker.aiCreditsBalance} disponíveis`} />
                     <Badge label={`${broker.aiCreditsUsedThisMonth} usados no mês`} />
                     <Badge label={formatBRL(broker.aiCreditsUsedThisMonth * ESTIMATED_COST_PER_CREDIT)} />
-                    <Button type="button" variant="ghost" onClick={() => setSelectedBroker(broker)} className="h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white">
+                    <Button type="button" variant="ghost" onClick={() => {
+                      setSelectedBroker(broker)
+                      setFeedback("")
+                    }} className="h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white">
                       <Eye className="size-3.5" />
                       Detalhes
                     </Button>
@@ -90,12 +96,38 @@ export function AdminAiConsumptionPage() {
                 <Info label="Custo estimado" value={formatBRL(selectedBroker.aiCreditsUsedThisMonth * ESTIMATED_COST_PER_CREDIT)} />
                 <Info label="Histórico" value={selectedBroker.aiCreditsUsedThisMonth > 0 ? "Uso registrado no mês." : "Sem uso recente."} />
               </div>
+              <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm font-semibold text-white">Bonificação de créditos</p>
+                <input type="number" value={creditAmount} onChange={(event) => setCreditAmount(Number(event.target.value) || 0)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white outline-none" />
+                <input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white outline-none" />
+                <Button type="button" onClick={() => void adjustCredits(selectedBroker, creditAmount, creditReason)} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676]">
+                  Adicionar créditos
+                </Button>
+                {feedback ? <p className="text-sm text-[#69F0AE]">{feedback}</p> : null}
+              </div>
             </>
           ) : null}
         </DialogContent>
       </Dialog>
     </AdminPageShell>
   )
+
+  async function adjustCredits(broker: AdminBrokerRecord, amount: number, reason: string) {
+    try {
+      const response = await fetch(`/api/admin/brokers/${broker.id}/credits`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({ amount, reason }),
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      if (!response.ok) throw new Error(data?.error || "Não foi possível ajustar créditos.")
+      setFeedback("Créditos atualizados. Recarregue a lista para ver o saldo atualizado.")
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível ajustar créditos.")
+    }
+  }
 }
 
 function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Bot }) {

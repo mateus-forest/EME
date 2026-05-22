@@ -153,6 +153,26 @@ export function BrokerMPage() {
   const assessorStatus =
     assessorConfig?.status === "ACTIVE" ? "Ativo" : assessorConfig?.status === "PAUSED" ? "Pausado" : "Em preparação"
 
+  async function requestMoreCredits() {
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          title: "Solicitação de créditos IA",
+          message: "Corretor solicitou mais créditos IA pelo Assessor EME.",
+        }),
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      if (!response.ok) throw new Error(data?.error || "Não foi possível registrar a solicitação.")
+      setFeedback("Solicitação de créditos registrada.")
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar a solicitação.")
+    }
+  }
+
   return (
     <BrokerPageShell title="Assessor EME">
       <div className="grid gap-5">

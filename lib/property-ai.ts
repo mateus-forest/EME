@@ -5,7 +5,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 
 export const propertyGenerationSchema = z.object({
   title: z.string().trim().max(120).optional().default(""),
-  type: z.enum(["Apartamento", "Casa", "Comercial"]),
+  type: z.enum(["Apartamento", "Casa", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]),
   city: z.string().trim().min(1).max(80),
   neighborhood: z.string().trim().min(1).max(80),
   price: z.string().trim().min(1).max(40),

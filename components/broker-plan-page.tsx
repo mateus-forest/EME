@@ -17,8 +17,8 @@ const benefits = [
   { label: "3 imóveis gratuitos", icon: Home },
   { label: "Catálogo online", icon: Globe },
   { label: "Leads", icon: ArrowUpRight },
-  { label: "Financeiro básico", icon: CheckCircle2 },
-  { label: "Analytics básico", icon: ChartColumn },
+  { label: "Financeiro completo", icon: CheckCircle2 },
+  { label: "Analytics completo", icon: ChartColumn },
   { label: "Assessor EME em modo avaliação", icon: Sparkles },
 ]
 

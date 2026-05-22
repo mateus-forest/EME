@@ -4,11 +4,14 @@ import { useCallback, useEffect, useState } from "react"
 
 import { getPropertyImages } from "@/lib/property-media"
 
+export type BrokerPropertyType = "Apartamento" | "Casa" | "Comercial" | "Terreno" | "Sala comercial" | "Loja" | "Cobertura"
+export type BrokerPropertyPurpose = "Venda" | "Locação"
+
 export type BrokerProperty = {
   id: string
   titulo: string
   preco: string
-  tipo: "Apartamento" | "Casa" | "Comercial"
+  tipo: BrokerPropertyType
   corretorId: string
   imobiliariaId?: string | null
   title: string
@@ -25,7 +28,8 @@ export type BrokerProperty = {
   published: boolean
   views: string
   leads: string
-  type: "Apartamento" | "Casa" | "Comercial"
+  type: BrokerPropertyType
+  purpose: BrokerPropertyPurpose
   description: string
   audioUrl: string
 }
@@ -47,7 +51,8 @@ type PropertyApiItem = {
   bedrooms: number
   bathrooms: number
   parkingSpots: number
-  type: "Apartamento" | "Casa" | "Comercial"
+  type: BrokerPropertyType
+  purpose: BrokerPropertyPurpose
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
   images: string[]
@@ -83,6 +88,7 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     views: String(property.views),
     leads: String(property.leads),
     type: property.type,
+    purpose: property.purpose,
     description: property.description,
     audioUrl: property.audioUrl,
   }
@@ -169,6 +175,7 @@ export function useBrokerProperties() {
         bathrooms: property.bathrooms,
         parkingSpots: property.parking,
         type: property.type,
+        purpose: property.purpose,
         status: property.status,
         images: property.images,
       }),
@@ -233,6 +240,7 @@ export function useBrokerProperties() {
         bathrooms: updates.bathrooms,
         parkingSpots: updates.parking,
         type: updates.type,
+        purpose: updates.purpose,
         images: updates.images,
       }),
     })
