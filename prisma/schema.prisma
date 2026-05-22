@@ -107,6 +107,7 @@ model Broker {
   catalogEvents CatalogEvent[]
   aiAssistantInteractions AiAssistantInteraction[]
   corretorEmeConfig BrokerEmeConfig?
+  financialConfig BrokerFinancialConfig?
   emeMessages EmeMessage[]
 }
 
@@ -189,6 +190,19 @@ model AssessorEmeConfig {
   webhookStatus      String   @default("NOT_CONFIGURED")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model BrokerFinancialConfig {
+  id                String   @id @default(cuid())
+  brokerId          String   @unique
+  commissionPercent Float    @default(6)
+  calculationType   String   @default("Todos os imóveis")
+  statusFilter      String   @default("Todos")
+  typeFilter        String   @default("Todos")
+  viewMode          String   @default("Geral")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  broker            Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 }
 
 model EmeMessage {

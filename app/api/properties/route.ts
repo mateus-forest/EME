@@ -85,6 +85,15 @@ export async function POST(request: NextRequest) {
       include: propertyInclude,
     })
 
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        title: statusPayload.published ? "Novo imóvel publicado" : "Novo rascunho criado",
+        message: `${title} foi ${statusPayload.published ? "publicado no catálogo" : "salvo como rascunho"}.`,
+        read: false,
+      },
+    })
+
     const response = NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response

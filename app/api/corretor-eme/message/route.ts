@@ -31,47 +31,36 @@ export async function POST(request: NextRequest) {
 
   try {
     const intent = inferCustomerIntent(message)
-    const suggestions = await searchBrokerProperties(brokerId, message, 3)
-    const lead = await prisma.lead.upsert({
+    const creditsUsed = 1
+    const reserved = await prisma.broker.updateMany({
       where: {
-        id: (
-          await prisma.lead.findFirst({
-            where: { brokerId, phone },
-            select: { id: true },
-            orderBy: { updatedAt: "desc" },
-          })
-        )?.id ?? "__new_lead__",
+        id: brokerId,
+        aiCreditsBalance: { gte: creditsUsed },
       },
-      create: {
-        name: customerName || null,
-        phone,
-        message,
-        intent,
-        source,
-        status: LeadStatus.NEW,
-        brokerId,
-        propertyId: propertyId || null,
+      data: {
+        aiCreditsBalance: { decrement: creditsUsed },
+        aiCreditsUsedThisMonth: { increment: creditsUsed },
       },
-      update: {
-        name: customerName || undefined,
-        message,
-        intent,
-        source,
-        status: LeadStatus.CONTACTED,
-        propertyId: propertyId || undefined,
-      },
-    }).catch(async () => {
-      const existing = await prisma.lead.findFirst({ where: { brokerId, phone }, select: { id: true } })
-      if (existing) {
-        return prisma.lead.update({
-          where: { id: existing.id },
+    })
+
+    if (reserved.count === 0) {
+      return NextResponse.json({ error: "Créditos insuficientes para processar o Corretor EME." }, { status: 402 })
+    }
+
+    const suggestions = await searchBrokerProperties(brokerId, message, 3)
+    const existingLead = await prisma.lead.findFirst({
+      where: { brokerId, phone },
+      select: { id: true },
+      orderBy: { updatedAt: "desc" },
+    })
+    const lead = existingLead
+      ? await prisma.lead.update({
+          where: { id: existingLead.id },
           data: { name: customerName || undefined, message, intent, source, status: LeadStatus.CONTACTED, propertyId: propertyId || undefined },
         })
-      }
-      return prisma.lead.create({
-        data: { name: customerName || null, phone, message, intent, source, status: LeadStatus.NEW, brokerId, propertyId: propertyId || null },
-      })
-    })
+      : await prisma.lead.create({
+          data: { name: customerName || null, phone, message, intent, source, status: LeadStatus.NEW, brokerId, propertyId: propertyId || null },
+        })
 
     const responseText = await generateCorretorEmeReply({
       message,
@@ -101,7 +90,7 @@ export async function POST(request: NextRequest) {
           actionType: "qualifyLead",
           actionStatus: "completed",
           metadata: { suggestedPropertyIds: suggestions.map((property) => property.id), source },
-          creditsUsed: 1,
+          creditsUsed,
         },
       }),
       prisma.aiAssistantInteraction.create({
@@ -111,7 +100,7 @@ export async function POST(request: NextRequest) {
           prompt: message,
           response: responseText,
           actionType: "qualifyLead",
-          creditsUsed: 1,
+          creditsUsed,
           channel: "corretor_eme",
           intent,
           actionStatus: "completed",
@@ -134,6 +123,7 @@ export async function POST(request: NextRequest) {
       response: responseText,
       intent,
       leadId: lead.id,
+      creditsUsed,
       suggestedProperties: suggestions.map((property) => ({
         id: property.id,
         title: property.title,

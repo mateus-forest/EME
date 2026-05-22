@@ -525,7 +525,7 @@ export function BrokerMyPropertiesPage() {
                     <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                         <h3 className="text-lg font-semibold text-white">Áudio (opcional)</h3>
-                        <Button variant="ghost" className="mt-4 h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                        <Button type="button" variant="ghost" onClick={() => setSaveFeedback("Use o botão Enviar áudio abaixo para anexar uma gravação do imóvel.")} className="mt-4 h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
                           <Mic className="size-4" />
                           Gravar áudio
                         </Button>

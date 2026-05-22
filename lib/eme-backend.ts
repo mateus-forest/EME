@@ -32,6 +32,7 @@ export function normalizePhone(value: unknown) {
 export function inferAssessorAction(message: string, requestedAction?: string): AssessorAction {
   if (requestedAction === "create_ad") return "createPropertyDraft"
   if (requestedAction === "improve_description") return "improvePropertyDescription"
+  if (requestedAction === "reply_client") return "summarizeLead"
   if (requestedAction === "match_properties") return "searchProperties"
   if (requestedAction === "analyze_catalog") return "analyzeCatalog"
   if (requestedAction === "lead_ideas") return "getAnalyticsSummary"
@@ -173,6 +174,34 @@ export async function runAssessorAction({
       },
     })
     return { response: "Notificação interna criada para acompanhamento.", metadata: {} }
+  }
+
+  if (action === "improvePropertyDescription") {
+    const properties = await searchBrokerProperties(brokerId, message, 1)
+    const property = properties[0]
+    return {
+      response: property
+        ? `Base para melhoria: ${property.title}. Descrição atual: ${property.description || "sem descrição cadastrada"}.`
+        : "Posso melhorar a descrição, mas preciso que você informe o imóvel ou envie a descrição atual.",
+      metadata: { propertyId: property?.id ?? null },
+      propertyId: property?.id,
+    }
+  }
+
+  if (action === "summarizeLead") {
+    const leads = await prisma.lead.findMany({
+      where: { brokerId },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: { property: { select: { title: true } } },
+    })
+    return {
+      response: leads.length
+        ? `Últimos leads: ${leads.map((lead) => `${lead.name || lead.phone || "Lead"} (${lead.status})${lead.property?.title ? ` - ${lead.property.title}` : ""}`).join("; ")}.`
+        : "Ainda não há leads cadastrados para resumir.",
+      metadata: { leadIds: leads.map((lead) => lead.id) },
+      leadId: leads[0]?.id,
+    }
   }
 
   if (action === "createLead") {

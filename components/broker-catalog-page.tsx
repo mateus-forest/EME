@@ -64,11 +64,21 @@ export function BrokerCatalogPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [expandedDescription, setExpandedDescription] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
+  const [favorites, setFavorites] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     setDraftSettings(settings)
   }, [settings])
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("eme_broker_catalog_favorites")
+      if (stored) setFavorites(JSON.parse(stored))
+    } catch {
+      setFavorites([])
+    }
+  }, [])
 
   const catalogUrl = useMemo(() => {
     if (!draftSettings.slug) return ""
@@ -156,6 +166,29 @@ export function BrokerCatalogPage() {
       window.setTimeout(() => setCopyFeedback(false), 1800)
     } catch {
       setCopyFeedback(false)
+    }
+  }
+
+  function toggleFavorite(propertyId: string) {
+    setFavorites((current) => {
+      const next = current.includes(propertyId) ? current.filter((id) => id !== propertyId) : [...current, propertyId]
+      window.localStorage.setItem("eme_broker_catalog_favorites", JSON.stringify(next))
+      return next
+    })
+  }
+
+  async function shareProperty(property: Property) {
+    const url = `${catalogUrl}#imovel-${property.id}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: property.title, text: "Veja este imóvel", url })
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      setCopyFeedback(true)
+      window.setTimeout(() => setCopyFeedback(false), 1800)
+    } catch {
+      await navigator.clipboard.writeText(url).catch(() => null)
     }
   }
 
@@ -409,9 +442,12 @@ export function BrokerCatalogPage() {
                   </>
                 }
                 imageActions={
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
-                    <Heart className="h-4 w-4 text-white" />
-                  </div>
+                  <button type="button" onClick={(event) => {
+                    event.stopPropagation()
+                    toggleFavorite(property.id)
+                  }} className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+                    <Heart className={`h-4 w-4 ${favorites.includes(property.id) ? "fill-[#69F0AE] text-[#69F0AE]" : "text-white"}`} />
+                  </button>
                 }
                 footer={
                   <Button
@@ -463,10 +499,10 @@ export function BrokerCatalogPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
                   <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <button className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60">
-                      <Heart className="size-4" />
+                    <button type="button" onClick={() => toggleFavorite(selectedProperty.id)} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60">
+                      <Heart className={`size-4 ${favorites.includes(selectedProperty.id) ? "fill-[#69F0AE] text-[#69F0AE]" : ""}`} />
                     </button>
-                    <button className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60">
+                    <button type="button" onClick={() => void shareProperty(selectedProperty)} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60">
                       <Share2 className="size-4" />
                     </button>
                   </div>

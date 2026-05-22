@@ -143,6 +143,23 @@ export function BrokerPlanPage() {
     }
   }
 
+  async function registerCommercialRequest(title: string, message: string) {
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({ title, message }),
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      if (!response.ok) throw new Error(data?.error || "Não foi possível registrar a solicitação.")
+      setUpgradeFeedback("Solicitação registrada. O suporte EME dará continuidade.")
+    } catch (caughtError) {
+      setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar a solicitação.")
+    }
+  }
+
   return (
     <BrokerPageShell
       title="Plano"
@@ -283,7 +300,7 @@ export function BrokerPlanPage() {
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-white">Pacotes extras</CardTitle>
-            <p className="text-sm text-white/50">Contrate módulos conforme sua operação crescer. Os botões estão preparados visualmente para a próxima etapa comercial.</p>
+            <p className="text-sm text-white/50">Contrate módulos conforme sua operação crescer. A solicitação fica registrada no portal para acompanhamento.</p>
           </CardHeader>
           <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2 xl:grid-cols-3">
             {extraPackages.map((item) => (
@@ -301,7 +318,7 @@ export function BrokerPlanPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setUpgradeFeedback(`${item.action}: ${item.title}. Fale com suporte para concluir.`)}
+                  onClick={() => void registerCommercialRequest(item.action, `${item.title} - ${item.price}`)}
                   className="mt-5 h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
                 >
                   {item.action}
@@ -319,7 +336,7 @@ export function BrokerPlanPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setUpgradeFeedback("Suporte acionado visualmente. Integração comercial será adicionada em etapa futura.")}
+              onClick={() => void registerCommercialRequest("Contato com suporte", "Corretor solicitou atendimento de suporte pela página Plano.")}
               className="h-10 shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
             >
               <Headphones className="size-4" />

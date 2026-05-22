@@ -86,3 +86,38 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao atualizar notificações." }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  const { error, user } = await getAuthenticatedUser()
+
+  if (error || !user) {
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json().catch(() => null)
+    const title = typeof body?.title === "string" && body.title.trim() ? body.title.trim().slice(0, 120) : "Solicitação registrada"
+    const message = typeof body?.message === "string" && body.message.trim() ? body.message.trim().slice(0, 400) : "Solicitação registrada no portal EME."
+
+    const notification = await prisma.notification.create({
+      data: {
+        userId: user.id,
+        title,
+        message,
+        read: false,
+      },
+    })
+
+    return NextResponse.json({ notification: serializePaymentNotification(notification) }, { status: 201 })
+  } catch (caughtError) {
+    console.error("[api][notifications] create failed", {
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+    })
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O serviço de notificações está indisponível no momento." }, { status: 503 })
+    }
+
+    return NextResponse.json({ error: "Erro interno ao criar notificação." }, { status: 500 })
+  }
+}

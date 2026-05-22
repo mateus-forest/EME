@@ -16,16 +16,30 @@ function toNumber(value: string) {
 
 type BrokerAnalytics = {
   totalViews: number
+  catalogViews: number
+  propertyViews: number
   whatsappClicks: number
   leads: number
   monitoredProperties: number
   mostAccessed: Array<{ id: string; title: string; views: number; leads: number }>
   leadOrigins: Array<{ source: string; count: number }>
+  sources: string[]
 }
+
+const periodOptions = [
+  { label: "7 dias", value: "7d" },
+  { label: "30 dias", value: "30d" },
+  { label: "90 dias", value: "90d" },
+  { label: "Todo período", value: "all" },
+] as const
 
 export function BrokerAnalyticsPage() {
   const { properties, isLoading } = useBrokerProperties()
   const [analytics, setAnalytics] = useState<BrokerAnalytics | null>(null)
+  const [search, setSearch] = useState("")
+  const [period, setPeriod] = useState<(typeof periodOptions)[number]["value"]>("30d")
+  const [propertyId, setPropertyId] = useState("all")
+  const [source, setSource] = useState("all")
   const totalViews = analytics?.totalViews ?? properties.reduce((sum, property) => sum + toNumber(property.views), 0)
   const totalLeads = analytics?.leads ?? properties.reduce((sum, property) => sum + toNumber(property.leads), 0)
   const whatsappClicks = analytics?.whatsappClicks ?? 0
@@ -34,8 +48,13 @@ export function BrokerAnalyticsPage() {
 
   useEffect(() => {
     let ignore = false
+    const params = new URLSearchParams()
+    params.set("period", period)
+    if (propertyId !== "all") params.set("propertyId", propertyId)
+    if (source !== "all") params.set("source", source)
+    if (search.trim()) params.set("search", search.trim())
 
-    fetch("/api/brokers/analytics", { credentials: "include", cache: "no-store" })
+    fetch(`/api/brokers/analytics?${params.toString()}`, { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as BrokerAnalytics | null
         if (!ignore && response.ok && data) setAnalytics(data)
@@ -45,14 +64,14 @@ export function BrokerAnalyticsPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [period, propertyId, search, source])
 
   return (
     <BrokerPageShell
       title="Analytics"
       searchPlaceholder="Buscar imóvel ou bairro"
-      searchValue=""
-      onSearchChange={() => {}}
+      searchValue={search}
+      onSearchChange={setSearch}
     >
       <div className="grid gap-5">
         {!hasProperties && !isLoading ? (
@@ -75,6 +94,22 @@ export function BrokerAnalyticsPage() {
           <MetricCard icon={MousePointerClick} label="Cliques no WhatsApp" value={String(whatsappClicks)} />
           <MetricCard icon={UsersRound} label="Leads recebidos" value={totalLeads.toLocaleString("pt-BR")} />
           <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
+        </section>
+
+        <section className="grid gap-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-3">
+          <SelectFilter label="Período" value={period} onChange={(value) => setPeriod(value as (typeof periodOptions)[number]["value"])} options={periodOptions.map((item) => item)} />
+          <SelectFilter
+            label="Imóvel"
+            value={propertyId}
+            onChange={setPropertyId}
+            options={[{ label: "Todos os imóveis", value: "all" }, ...properties.map((property) => ({ label: property.title, value: property.id }))]}
+          />
+          <SelectFilter
+            label="Origem"
+            value={source}
+            onChange={setSource}
+            options={[{ label: "Todas as origens", value: "all" }, ...(analytics?.sources ?? []).map((item) => ({ label: item, value: item }))]}
+          />
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -109,7 +144,7 @@ export function BrokerAnalyticsPage() {
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
               <InfoBlock label="Filtro atual" value="Todos os imóveis" />
-              <InfoBlock label="Origem dos leads" value={totalLeads > 0 ? "Catálogo e imóveis publicados" : "Sem origem registrada"} />
+              <InfoBlock label="Origem dos leads" value={analytics?.leadOrigins.length ? analytics.leadOrigins.map((item) => `${item.source}: ${item.count}`).join(" · ") : "Sem origem registrada"} />
               <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
             </CardContent>
           </Card>
@@ -123,13 +158,38 @@ export function BrokerAnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-3">
-            <InfoBlock label="Catálogo" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} />
+            <InfoBlock label="Catálogo" value={`${analytics?.catalogViews ?? 0} visualizações`} />
             <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
-            <InfoBlock label="Outras origens" value="Sem dados registrados" />
+            <InfoBlock label="Leads" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} />
           </CardContent>
         </Card>
       </div>
     </BrokerPageShell>
+  )
+}
+
+function SelectFilter({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: Array<{ label: string; value: string }>
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm text-white/50">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35">
+        {options.map((option) => (
+          <option key={option.value} value={option.value} className="bg-[#111]">
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

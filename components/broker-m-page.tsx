@@ -22,6 +22,16 @@ type AssessorConfig = {
   webhookStatus: string
 }
 
+type AssessorHistoryItem = {
+  id: string
+  message: string
+  response: string | null
+  detectedIntent: string | null
+  actionType: string | null
+  actionStatus: string | null
+  createdAt: string
+}
+
 const quickActions = [
   { label: "Criar anúncio com IA", actionType: "create_ad" },
   { label: "Melhorar descrição de imóvel", actionType: "improve_description" },
@@ -40,6 +50,7 @@ export function BrokerMPage() {
   const [isActive, setIsActive] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [assessorConfig, setAssessorConfig] = useState<AssessorConfig | null>(null)
+  const [history, setHistory] = useState<AssessorHistoryItem[]>([])
   const { subscription } = useBrokerSubscription()
   const selectedAction = useMemo(
     () => quickActions.find((action) => action.actionType === actionType),
@@ -54,11 +65,12 @@ export function BrokerMPage() {
     })
       .then(async (result) => {
         const data = (await result.json().catch(() => null)) as
-          | { credits?: AssistantCredits; assessorConfig?: AssessorConfig; error?: string }
+          | { credits?: AssistantCredits; assessorConfig?: AssessorConfig; history?: AssessorHistoryItem[]; error?: string }
           | null
         if (!result.ok) throw new Error(data?.error || "Não foi possível carregar os créditos.")
         if (data?.credits) setCredits(data.credits)
         if (data?.assessorConfig) setAssessorConfig(data.assessorConfig)
+        if (data?.history) setHistory(data.history)
       })
       .catch((caughtError) => {
         setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o Assessor EME.")
@@ -100,7 +112,7 @@ export function BrokerMPage() {
         }),
       })
       const data = (await result.json().catch(() => null)) as
-        | { response?: string; credits?: AssistantCredits; creditsUsed?: number; error?: string }
+        | { response?: string; action?: string; actionStatus?: string; credits?: AssistantCredits; creditsUsed?: number; error?: string }
         | null
 
       if (!result.ok) {
@@ -109,6 +121,18 @@ export function BrokerMPage() {
 
       setResponse(data?.response || "")
       if (data?.credits) setCredits(data.credits)
+      setHistory((current) => [
+        {
+          id: crypto.randomUUID(),
+          message: normalizedPrompt,
+          response: data?.response || "",
+          detectedIntent: data?.action || actionType,
+          actionType: data?.action || actionType,
+          actionStatus: data?.actionStatus || "completed",
+          createdAt: new Date().toISOString(),
+        },
+        ...current,
+      ].slice(0, 5))
       setFeedback(data?.creditsUsed ? `${data.creditsUsed} crédito(s) consumido(s).` : "")
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível acionar o Assessor EME.")
@@ -276,6 +300,30 @@ export function BrokerMPage() {
             </p>
           </div>
         </section>
+
+        <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+          <CardHeader className="px-5 py-5">
+            <CardTitle className="text-lg text-white">Histórico recente</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-5 pt-0">
+            {history.length > 0 ? history.map((item) => (
+              <div key={item.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-white">{item.actionType || "general"}</p>
+                  <span className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs text-[#69F0AE]">
+                    {item.actionStatus || "registrado"}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-white/65">{item.message}</p>
+                {item.response ? <p className="mt-2 text-sm leading-6 text-white/45">{item.response}</p> : null}
+              </div>
+            )) : (
+              <p className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
+                Nenhuma interação registrada ainda.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </BrokerPageShell>
   )

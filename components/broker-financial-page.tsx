@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, Building2, ChartColumn, CircleDollarSign, Home, MapPin, Percent, SlidersHorizontal } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -37,6 +37,8 @@ export function BrokerFinancialPage() {
   const [typeFilter, setTypeFilter] = useState("Todos")
   const [calculationType, setCalculationType] = useState<(typeof calculationTypes)[number]>("Todos os imóveis")
   const [viewMode, setViewMode] = useState<(typeof viewModes)[number]>("Geral")
+  const [configFeedback, setConfigFeedback] = useState("")
+  const [isSavingConfig, setIsSavingConfig] = useState(false)
   const propertyTypes = useMemo(() => ["Todos", ...Array.from(new Set(properties.map((property) => property.type)))], [properties])
   const filteredProperties = properties.filter((property) => {
     const matchesStatus = statusFilter === "Todos" || property.status === statusFilter
@@ -61,6 +63,62 @@ export function BrokerFinancialPage() {
   const propertiesByType = topEntries(countBy(filteredProperties.map((property) => property.type)))
   const propertiesByCity = topEntries(countBy(filteredProperties.map((property) => property.city)))
   const hasProperties = properties.length > 0
+
+  useEffect(() => {
+    let ignore = false
+
+    fetch("/api/brokers/financial", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as
+          | { config?: { commissionPercent: number; calculationType: string; statusFilter: string; typeFilter: string; viewMode: string } }
+          | null
+        if (!response.ok || !data?.config || ignore) return
+        setCommissionPercent(data.config.commissionPercent)
+        if (calculationTypes.includes(data.config.calculationType as (typeof calculationTypes)[number])) {
+          setCalculationType(data.config.calculationType as (typeof calculationTypes)[number])
+        }
+        if (statusFilters.includes(data.config.statusFilter as (typeof statusFilters)[number])) {
+          setStatusFilter(data.config.statusFilter as (typeof statusFilters)[number])
+        }
+        setTypeFilter(data.config.typeFilter || "Todos")
+        if (viewModes.includes(data.config.viewMode as (typeof viewModes)[number])) {
+          setViewMode(data.config.viewMode as (typeof viewModes)[number])
+        }
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  async function saveFinancialConfig() {
+    setIsSavingConfig(true)
+    setConfigFeedback("")
+
+    try {
+      const response = await fetch("/api/brokers/financial", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          commissionPercent,
+          calculationType,
+          statusFilter,
+          typeFilter,
+          viewMode,
+        }),
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      if (!response.ok) throw new Error(data?.error || "Não foi possível salvar a configuração.")
+      setConfigFeedback("Configuração financeira salva.")
+    } catch (caughtError) {
+      setConfigFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar a configuração.")
+    } finally {
+      setIsSavingConfig(false)
+    }
+  }
 
   return (
     <BrokerPageShell title="Financeiro">
@@ -129,6 +187,10 @@ export function BrokerFinancialPage() {
               <SelectBlock label="Filtro por status" value={statusFilter} onChange={(value) => setStatusFilter(value as (typeof statusFilters)[number])} options={statusFilters} />
               <SelectBlock label="Filtro por tipo" value={typeFilter} onChange={setTypeFilter} options={propertyTypes} />
               <SelectBlock label="Visualização" value={viewMode} onChange={(value) => setViewMode(value as (typeof viewModes)[number])} options={viewModes} />
+              <Button type="button" onClick={saveFinancialConfig} disabled={isSavingConfig} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60">
+                {isSavingConfig ? "Salvando..." : "Salvar configuração"}
+              </Button>
+              {configFeedback ? <p className="text-sm text-[#69F0AE]">{configFeedback}</p> : null}
             </CardContent>
           </Card>
         </section>
