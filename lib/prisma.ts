@@ -37,13 +37,19 @@ function getPoolMax() {
   return 5
 }
 
+function getPoolTimeout() {
+  const configured = Number(process.env.DATABASE_POOL_TIMEOUT_MS)
+  if (Number.isInteger(configured) && configured > 0) return configured
+  return 5_000
+}
+
 const pool =
   globalForPrisma.pool ??
   new Pool({
     connectionString: getDatabaseUrl(),
     max: getPoolMax(),
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: getPoolTimeout(),
     allowExitOnIdle: true,
   })
 

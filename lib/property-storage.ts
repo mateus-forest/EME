@@ -90,16 +90,27 @@ export async function savePropertyAudio(propertyId: string, file: File) {
 }
 
 export async function deletePropertyStorageFile(fileUrl: string) {
-  const config = getStorageConfig()
+  let config: ReturnType<typeof getStorageConfig>
+  try {
+    config = getStorageConfig()
+  } catch {
+    return
+  }
+
   const publicPrefix = `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/`
   if (!fileUrl.startsWith(publicPrefix)) return
 
   const objectPath = fileUrl.slice(publicPrefix.length)
-  await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${config.serviceRoleKey}`,
       apikey: config.anonKey,
     },
   }).catch(() => null)
+
+  if (response && !response.ok) {
+    const detail = await response.text().catch(() => "")
+    console.error("[storage][properties] delete failed", { status: response.status, detail })
+  }
 }

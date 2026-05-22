@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { BarChart3, Eye, MessageCircle, MousePointerClick, SlidersHorizontal, TrendingUp, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -96,6 +97,7 @@ export function BrokerAnalyticsPage() {
           <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
         </section>
 
+        <ResponsiveCollapsibleSection title="Período" defaultMobileOpen>
         <section className="grid gap-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-3">
           <SelectFilter label="Período" value={period} onChange={(value) => setPeriod(value as (typeof periodOptions)[number]["value"])} options={periodOptions.map((item) => item)} />
           <SelectFilter
@@ -111,8 +113,10 @@ export function BrokerAnalyticsPage() {
             options={[{ label: "Todas as origens", value: "all" }, ...(analytics?.sources ?? []).map((item) => ({ label: item, value: item }))]}
           />
         </section>
+        </ResponsiveCollapsibleSection>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <ResponsiveCollapsibleSection title="Imóveis mais acessados" defaultMobileOpen>
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -134,7 +138,9 @@ export function BrokerAnalyticsPage() {
               )}
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
 
+          <ResponsiveCollapsibleSection title="Filtros e origem">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -148,8 +154,10 @@ export function BrokerAnalyticsPage() {
               <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
         </section>
 
+        <ResponsiveCollapsibleSection title="Origem dos leads">
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -163,6 +171,7 @@ export function BrokerAnalyticsPage() {
             <InfoBlock label="Leads" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} />
           </CardContent>
         </Card>
+        </ResponsiveCollapsibleSection>
       </div>
     </BrokerPageShell>
   )

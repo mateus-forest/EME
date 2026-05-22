@@ -6,6 +6,7 @@ import { ArrowUpRight, Bot, ChartColumn, CheckCircle2, Globe, Headphones, Home, 
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
@@ -181,6 +182,7 @@ export function BrokerPlanPage() {
         )}
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+          <ResponsiveCollapsibleSection title="Informações da assinatura" defaultMobileOpen>
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardContent className="p-4 sm:p-5">
               <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
@@ -219,7 +221,9 @@ export function BrokerPlanPage() {
               </div>
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
 
+          <ResponsiveCollapsibleSection title="O que está incluso">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="text-xl text-white">Informações da assinatura</CardTitle>
@@ -237,6 +241,7 @@ export function BrokerPlanPage() {
               </div>
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -297,6 +302,7 @@ export function BrokerPlanPage() {
           </div>
         </section>
 
+        <ResponsiveCollapsibleSection title="Pacotes extras">
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-white">Pacotes extras</CardTitle>
@@ -327,6 +333,7 @@ export function BrokerPlanPage() {
             ))}
           </CardContent>
         </Card>
+        </ResponsiveCollapsibleSection>
 
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -345,6 +352,7 @@ export function BrokerPlanPage() {
           </CardContent>
         </Card>
 
+        <ResponsiveCollapsibleSection title="Histórico de uso">
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-white">Histórico simples de uso</CardTitle>
@@ -364,6 +372,7 @@ export function BrokerPlanPage() {
             )}
           </CardContent>
         </Card>
+        </ResponsiveCollapsibleSection>
       </div>
     </BrokerPageShell>
   )

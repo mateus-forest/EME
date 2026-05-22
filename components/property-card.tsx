@@ -82,7 +82,7 @@ export function PropertyCard({
         className,
       )}
     >
-      <div className="relative aspect-video overflow-hidden bg-white/[0.03]">
+      <div className="relative aspect-video max-h-[210px] overflow-hidden bg-white/[0.03]">
         {currentImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

@@ -5,6 +5,7 @@ import { CreditCard, Eye, Sparkles, TrendingUp, Wallet } from "lucide-react"
 
 import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import { AdminPageShell } from "@/components/admin-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { formatCurrencyBRL, useAdminBrokers, useAdminSubscriptions, type AdminSubscriptionRecord } from "@/components/use-admin-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +42,7 @@ export function AdminRevenuePage() {
           <Metric label="Créditos IA usados" value={String(summary.usedCredits)} icon={Sparkles} />
         </section>
 
+        <ResponsiveCollapsibleSection title="Receita" defaultMobileOpen>
         {hasSubscriptions ? (
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
@@ -77,6 +79,7 @@ export function AdminRevenuePage() {
             <AdminStructureCards items={["Tabela de histórico preparada", "Cards de receita e recorrência", "Detalhes de assinatura em modal"]} />
           </AdminEmptyState>
         )}
+        </ResponsiveCollapsibleSection>
       </div>
 
       <Dialog open={Boolean(selectedSubscription)} onOpenChange={(open) => !open && setSelectedSubscription(null)}>

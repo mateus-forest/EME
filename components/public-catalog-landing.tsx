@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import {
   Bath,
   Bed,
@@ -81,6 +82,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   const [feedback, setFeedback] = useState("")
   const [leadFeedback, setLeadFeedback] = useState("")
   const [isSavingLead, setIsSavingLead] = useState(false)
+  const [showPortalBackButton, setShowPortalBackButton] = useState(false)
   const properties = useMemo(() => normalizeProperties(catalog), [catalog])
   const searchAnalysis = useMemo(() => analyzeSearch(search), [search])
   const visibleProperties = useMemo(
@@ -106,6 +108,10 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       catalogType: kind,
     })
   }, [catalog.slug, kind, slug])
+
+  useEffect(() => {
+    setShowPortalBackButton(new URLSearchParams(window.location.search).get("from") === "portal")
+  }, [])
 
   function showFeedback(message: string) {
     setFeedback(message)
@@ -201,6 +207,13 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   return (
     <main className="min-h-screen bg-[#0B0B0B] px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-6">
+        {showPortalBackButton ? (
+          <div className="sticky top-3 z-30 flex justify-start">
+            <Button asChild variant="ghost" className="h-10 rounded-full border border-white/[0.08] bg-black/70 px-4 text-sm text-white/80 backdrop-blur-md hover:bg-black/80 hover:text-white">
+              <Link href="/corretor/catalogo">Voltar ao portal</Link>
+            </Button>
+          </div>
+        ) : null}
         <section className="overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.94))] shadow-[0_24px_60px_rgba(0,0,0,0.26)]">
           <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.55fr)] lg:p-9">
             <div className="min-w-0">
@@ -381,7 +394,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 <div className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt={selectedProperty.title} className="aspect-[1.15/1] w-full object-cover sm:aspect-[1.2/1]" />
+                    <img src={image} alt={selectedProperty.title} className="aspect-[1.15/1] max-h-[62vh] w-full object-cover sm:aspect-[1.2/1]" />
                   ) : (
                     <div className="aspect-[1.15/1] w-full sm:aspect-[1.2/1]">
                       <CatalogImagePlaceholder />

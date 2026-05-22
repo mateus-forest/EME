@@ -376,8 +376,8 @@ export function BrokerMyPropertiesPage() {
                 key={property.id}
                 className="overflow-hidden rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)]"
               >
-                <CardContent className="grid gap-4 p-3 lg:grid-cols-[minmax(260px,34%)_minmax(0,1fr)_210px] lg:items-center">
-                  <div className="relative min-h-[160px] overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] lg:min-h-[180px]">
+                <CardContent className="grid gap-4 p-3 lg:grid-cols-[190px_minmax(0,1fr)_210px] lg:items-center">
+                  <div className="relative aspect-video max-h-[155px] min-h-0 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] lg:h-[145px]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={getPropertyImage(property.images[0], property.id)} alt={property.title} className="h-full w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -481,7 +481,7 @@ export function BrokerMyPropertiesPage() {
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {editingProperty.images.map((image, index) => (
                           <div key={`${image}-${index}`} className="group relative overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
-                            <div className="relative min-h-36">
+                            <div className="relative aspect-[4/3] max-h-36">
                               <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill className="object-cover" />
                             </div>
                             <button type="button" onClick={() => removePhoto(index)} className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100">

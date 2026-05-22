@@ -32,10 +32,25 @@ export const authUserInclude = {
 export function isPrismaUnavailable(error: unknown) {
   const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : null
   const errorName = error instanceof Error ? error.constructor.name : ""
+  const message = error instanceof Error ? error.message.toLowerCase() : ""
+  const transientConnectionMessages = [
+    "emaxconnsessions",
+    "max clients reached",
+    "too many clients",
+    "remaining connection slots",
+    "timeout fetching a new connection",
+    "timed out fetching a new connection",
+    "connection terminated",
+    "connection timeout",
+    "pool_timeout",
+  ]
 
   return (
     errorName === "PrismaClientInitializationError" ||
-    (errorName === "PrismaClientKnownRequestError" && typeof code === "string" && ["P1000", "P1001", "P1002"].includes(code))
+    (errorName === "PrismaClientKnownRequestError" &&
+      typeof code === "string" &&
+      ["P1000", "P1001", "P1002", "P2024", "P2037"].includes(code)) ||
+    transientConnectionMessages.some((fragment) => message.includes(fragment))
   )
 }
 

@@ -68,6 +68,10 @@ export function useBrokerProfile() {
           }
         | null
 
+      if (response.status >= 500) {
+        return
+      }
+
       if (!response.ok || !data?.profile) {
         setProfileState(defaultProfile)
         return

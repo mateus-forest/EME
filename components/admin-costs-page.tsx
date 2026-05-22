@@ -5,6 +5,7 @@ import { Calculator, Eye, Receipt, UserRound } from "lucide-react"
 
 import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import { AdminPageShell } from "@/components/admin-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useAdminBrokers, type AdminBrokerRecord } from "@/components/use-admin-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,6 +44,7 @@ export function AdminCostsPage() {
           <Metric label="Custo médio por ação" value={formatBRL(summary.averageActionCost)} icon={Calculator} />
         </section>
 
+        <ResponsiveCollapsibleSection title="Custos" defaultMobileOpen>
         {hasCosts ? (
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
@@ -77,6 +79,7 @@ export function AdminCostsPage() {
             <AdminStructureCards items={["Custo estimado de IA", "Custo por usuário/corretor", "Custo médio por atendimento ou ação"]} />
           </AdminEmptyState>
         )}
+        </ResponsiveCollapsibleSection>
       </div>
 
       <Dialog open={Boolean(selectedBroker)} onOpenChange={(open) => !open && setSelectedBroker(null)}>

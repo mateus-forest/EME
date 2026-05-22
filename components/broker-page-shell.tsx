@@ -111,7 +111,7 @@ export function BrokerPageShell({
                 </div>
 
                 {(resolvedNotificationCenter || hasPrimaryAction) && (
-                  <div className="flex items-center gap-2 self-start xl:self-center">
+                  <div className="flex max-w-full flex-wrap items-center gap-2 self-start xl:self-center">
                     {resolvedNotificationCenter}
                     {hasPrimaryAction && (
                       <Button
@@ -141,7 +141,7 @@ export function BrokerPageShell({
             <BrokerSidebar />
 
             <main className="min-w-0 flex-1 overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(15,15,15,0.88),rgba(11,11,11,0.78))] shadow-[0_22px_50px_rgba(0,0,0,0.16)]">
-              <div className="h-full overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+              <div className="h-full max-w-full overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">{children}</div>
             </main>
           </div>
         </div>

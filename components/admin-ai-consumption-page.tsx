@@ -5,6 +5,7 @@ import { Bot, CreditCard, Eye, Sparkles, UserRound } from "lucide-react"
 
 import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import { AdminPageShell } from "@/components/admin-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useAdminBrokers, type AdminBrokerRecord } from "@/components/use-admin-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,8 +18,9 @@ function formatBRL(value: number) {
 }
 
 export function AdminAiConsumptionPage() {
-  const [brokers] = useAdminBrokers()
+  const [brokers, setBrokers] = useAdminBrokers()
   const [selectedBroker, setSelectedBroker] = useState<AdminBrokerRecord | null>(null)
+  const [bonusBrokerId, setBonusBrokerId] = useState("")
   const [creditAmount, setCreditAmount] = useState(10)
   const [creditReason, setCreditReason] = useState("Bonificação para testes reais")
   const [feedback, setFeedback] = useState("")
@@ -32,6 +34,7 @@ export function AdminAiConsumptionPage() {
     [brokers],
   )
   const hasUsage = summary.used > 0 || summary.balance > 0
+  const selectedBonusBroker = brokers.find((broker) => broker.id === bonusBrokerId) ?? brokers[0] ?? null
 
   return (
     <AdminPageShell title="Consumo IA" subtitle="Créditos e uso do Assessor EME por corretor">
@@ -42,6 +45,44 @@ export function AdminAiConsumptionPage() {
           <Metric label="Corretores com uso" value={String(summary.users)} icon={UserRound} />
           <Metric label="Custo estimado" value={formatBRL(summary.estimatedCost)} icon={Bot} />
         </section>
+
+        <ResponsiveCollapsibleSection title="Bonificar créditos IA" defaultMobileOpen>
+          <Card className="rounded-[1.75rem] border-[#00C853]/18 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="text-xl text-white">Bonificar corretor para testes</CardTitle>
+              <p className="text-sm text-white/50">Adicione ou remova créditos IA e registre uma notificação para o corretor.</p>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-[minmax(0,1fr)_160px_minmax(0,1fr)_auto] md:items-end">
+              <label className="grid min-w-0 gap-2">
+                <span className="text-sm text-white/50">Corretor</span>
+                <select value={selectedBonusBroker?.id ?? ""} onChange={(event) => setBonusBrokerId(event.target.value)} className="h-10 min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white outline-none">
+                  {brokers.map((broker) => (
+                    <option key={broker.id} value={broker.id} className="bg-[#111]">
+                      {broker.name} - {broker.aiCreditsBalance} créditos
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm text-white/50">Adicionar/remover</span>
+                <input type="number" value={creditAmount} onChange={(event) => setCreditAmount(Number(event.target.value) || 0)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white outline-none" />
+              </label>
+              <label className="grid min-w-0 gap-2">
+                <span className="text-sm text-white/50">Motivo/observação</span>
+                <input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} className="h-10 min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white outline-none" />
+              </label>
+              <Button type="button" disabled={!selectedBonusBroker} onClick={() => selectedBonusBroker ? void adjustCredits(selectedBonusBroker, creditAmount, creditReason) : undefined} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
+                Bonificar créditos
+              </Button>
+              {selectedBonusBroker ? (
+                <p className="text-sm text-white/50 md:col-span-4">
+                  Saldo atual: <span className="font-semibold text-white">{selectedBonusBroker.aiCreditsBalance}</span> créditos disponíveis.
+                </p>
+              ) : null}
+              {feedback ? <p className="text-sm text-[#69F0AE] md:col-span-4">{feedback}</p> : null}
+            </CardContent>
+          </Card>
+        </ResponsiveCollapsibleSection>
 
         {hasUsage ? (
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
@@ -121,9 +162,26 @@ export function AdminAiConsumptionPage() {
         cache: "no-store",
         body: JSON.stringify({ amount, reason }),
       })
-      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string; broker?: { id: string; aiCreditsBalance: number; aiCreditsUsedThisMonth: number } }
+        | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível ajustar créditos.")
-      setFeedback("Créditos atualizados. Recarregue a lista para ver o saldo atualizado.")
+      if (data?.broker) {
+        const updatedBroker = data.broker
+        setBrokers((current) =>
+          current.map((item) =>
+            item.id === updatedBroker.id
+              ? { ...item, aiCreditsBalance: updatedBroker.aiCreditsBalance, aiCreditsUsedThisMonth: updatedBroker.aiCreditsUsedThisMonth }
+              : item,
+          ),
+        )
+        setSelectedBroker((current) =>
+          current?.id === updatedBroker.id
+            ? { ...current, aiCreditsBalance: updatedBroker.aiCreditsBalance, aiCreditsUsedThisMonth: updatedBroker.aiCreditsUsedThisMonth }
+            : current,
+        )
+      }
+      setFeedback("Créditos atualizados e notificação enviada ao corretor.")
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível ajustar créditos.")
     }

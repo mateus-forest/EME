@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Bot, CreditCard, Lightbulb, MessageCircle, Send, Sparkles } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -210,6 +211,7 @@ export function BrokerMPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <ResponsiveCollapsibleSection title="Créditos disponíveis" defaultMobileOpen>
           <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-lg text-white">Créditos disponíveis</CardTitle>
@@ -233,7 +235,9 @@ export function BrokerMPage() {
               </div>
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
 
+          <ResponsiveCollapsibleSection title="Ações rápidas">
           <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-lg text-white">Ações rápidas</CardTitle>
@@ -253,8 +257,10 @@ export function BrokerMPage() {
               ))}
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
         </section>
 
+        <ResponsiveCollapsibleSection title="Histórico recente">
         <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
           <CardHeader className="px-5 py-5">
             <CardTitle className="text-lg text-white">Fale com o Assessor EME</CardTitle>
@@ -288,6 +294,7 @@ export function BrokerMPage() {
             ) : null}
           </CardContent>
         </Card>
+        </ResponsiveCollapsibleSection>
 
         <section className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
           <div className="flex items-start gap-3">

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, Building2, ChartColumn, CircleDollarSign, Home, MapPin, Percent, SlidersHorizontal } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -149,6 +150,7 @@ export function BrokerFinancialPage() {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <ResponsiveCollapsibleSection title="Comissão estimada" defaultMobileOpen>
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -164,7 +166,9 @@ export function BrokerFinancialPage() {
               <InfoBlock label="Menor comissão potencial" value={formatBRLFromCents(lowestCommission)} />
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
 
+          <ResponsiveCollapsibleSection title="Filtros e base">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -196,13 +200,19 @@ export function BrokerFinancialPage() {
               {configFeedback ? <p className="text-sm text-[#69F0AE]">{configFeedback}</p> : null}
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-2">
-          <BreakdownCard icon={Home} title="Imóveis por tipo" entries={propertiesByType} />
-          <BreakdownCard icon={MapPin} title="Imóveis por cidade" entries={propertiesByCity} />
+          <ResponsiveCollapsibleSection title="Imóveis por tipo">
+            <BreakdownCard icon={Home} title="Imóveis por tipo" entries={propertiesByType} />
+          </ResponsiveCollapsibleSection>
+          <ResponsiveCollapsibleSection title="Imóveis por cidade">
+            <BreakdownCard icon={MapPin} title="Imóveis por cidade" entries={propertiesByCity} />
+          </ResponsiveCollapsibleSection>
         </section>
 
+        <ResponsiveCollapsibleSection title={viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}>
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-white">{viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}</CardTitle>
@@ -211,7 +221,7 @@ export function BrokerFinancialPage() {
             {filteredProperties.length > 0 ? (
               viewMode === "Por imóvel" ? (
                 <div className="overflow-hidden rounded-[1.25rem] border border-white/[0.08]">
-                  <div className="grid gap-3 border-b border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/40 md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
+                  <div className="hidden gap-3 border-b border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/40 md:grid md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
                     <span>Imóvel</span>
                     <span>Valor</span>
                     <span>Percentual</span>
@@ -219,7 +229,7 @@ export function BrokerFinancialPage() {
                     <span>Status</span>
                   </div>
                   {filteredProperties.map((property) => (
-                    <div key={property.id} className="grid gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
+                    <div key={property.id} className="grid min-w-0 gap-2 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
                       <p className="truncate font-medium text-white">{property.title}</p>
                       <span className="text-white/60">{property.priceValue > 0 ? property.price : "Sem valor"}</span>
                       <span className="text-white/60">{commissionPercent.toLocaleString("pt-BR")}%</span>
@@ -244,6 +254,7 @@ export function BrokerFinancialPage() {
             )}
           </CardContent>
         </Card>
+        </ResponsiveCollapsibleSection>
       </div>
     </BrokerPageShell>
   )

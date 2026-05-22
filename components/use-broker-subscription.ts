@@ -66,6 +66,10 @@ export function useBrokerSubscription() {
 
       const data = (await response.json().catch(() => null)) as { subscription?: BrokerSubscription } | null
 
+      if (response.status >= 500) {
+        return
+      }
+
       if (!response.ok || !data?.subscription) {
         setSubscription(defaultSubscription)
         return

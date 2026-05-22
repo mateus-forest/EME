@@ -85,7 +85,7 @@ export function BrokerCatalogPage() {
     const origin = typeof window === "undefined" ? "" : window.location.origin
     return `${origin}/catalogo/${draftSettings.slug}`
   }, [draftSettings.slug])
-  const catalogInternalUrl = useMemo(() => `/catalogo/${draftSettings.slug}`, [draftSettings.slug])
+  const catalogInternalUrl = useMemo(() => `/catalogo/${draftSettings.slug}?from=portal`, [draftSettings.slug])
   const currentImage = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? ""
   const needsMore = (selectedProperty?.description.length ?? 0) > 180
   const shortDescription = selectedProperty?.description.slice(0, 180)
@@ -489,7 +489,7 @@ export function BrokerCatalogPage() {
                     <img
                       src={currentImage}
                       alt={selectedProperty.title}
-                      className="aspect-[1.15/1] w-full object-cover sm:aspect-[1.2/1]"
+                      className="aspect-[1.15/1] max-h-[62vh] w-full object-cover sm:aspect-[1.2/1]"
                     />
                   ) : (
                     <div className="aspect-[1.15/1] w-full sm:aspect-[1.2/1]">

@@ -466,7 +466,7 @@ export function BrokerNewPropertyPage() {
                 {previewImages.map((image, index) => (
                   <div
                     key={`${image}-${index}`}
-                    className="relative min-h-28 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
+                    className="relative aspect-[4/3] max-h-32 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
@@ -694,14 +694,14 @@ export function BrokerNewPropertyPage() {
                 </div>
               ) : (
                 <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-                  <div className="relative min-h-72 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
+                  <div className="relative aspect-[4/3] max-h-80 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
                     {previewImages[0] ? (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={previewImages[0]} alt="Preview do anúncio" className="h-full w-full object-cover" />
                       </>
                     ) : (
-                      <div className="flex h-full min-h-72 flex-col items-center justify-center px-4 text-center">
+                      <div className="flex h-full flex-col items-center justify-center px-4 text-center">
                         <Images className="size-9 text-white/35" />
                         <p className="mt-3 text-sm font-medium text-white/75">Preview sem foto</p>
                         <p className="mt-1 text-sm text-white/45">Selecione imagens para visualizar o anúncio.</p>

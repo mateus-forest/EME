@@ -104,7 +104,11 @@ async function parsePropertiesResponse(response: Response) {
     | null
 
   if (!response.ok) {
-    throw new Error(data?.error || "Não foi possível carregar os imóveis do corretor.")
+    const error = new Error(data?.error || "Não foi possível carregar os imóveis do corretor.") as Error & {
+      status?: number
+    }
+    error.status = response.status
+    throw error
   }
 
   return data
@@ -144,8 +148,11 @@ export function useBrokerProperties() {
   }, [])
 
   useEffect(() => {
-    refreshProperties().catch(() => {
-      setProperties([])
+    refreshProperties().catch((caughtError) => {
+      const status = caughtError instanceof Error ? (caughtError as Error & { status?: number }).status : undefined
+      if (!(status && status >= 500)) {
+        setProperties([])
+      }
       setIsLoading(false)
     })
 

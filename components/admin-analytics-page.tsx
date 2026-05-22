@@ -4,6 +4,7 @@ import { BarChart3, Building2, MessageCircle, Sparkles, UserRound } from "lucide
 
 import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import { AdminPageShell } from "@/components/admin-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useAdminBrokers } from "@/components/use-admin-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -25,6 +26,7 @@ export function AdminAnalyticsPage() {
           <Metric label="Créditos IA usados" value={String(totalCredits)} icon={Sparkles} />
         </section>
 
+        <ResponsiveCollapsibleSection title="Analytics" defaultMobileOpen>
         {hasData ? (
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
@@ -45,6 +47,7 @@ export function AdminAnalyticsPage() {
             <AdminStructureCards items={["Cards de uso da plataforma", "Indicadores de leads e catálogo", "Consumo IA consolidado"]} />
           </AdminEmptyState>
         )}
+        </ResponsiveCollapsibleSection>
       </div>
     </AdminPageShell>
   )

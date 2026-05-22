@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { Bot, CheckCircle2, Clock3, MessageCircle, ShieldCheck, UserRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -141,6 +142,7 @@ export function BrokerCorretorEmePage() {
           {feedback ? <p className="mt-4 text-sm text-[#69F0AE]">{feedback}</p> : null}
         </section>
 
+        <ResponsiveCollapsibleSection title="Configuração desejada" defaultMobileOpen>
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-white">Configuração desejada</CardTitle>
@@ -181,8 +183,10 @@ export function BrokerCorretorEmePage() {
             </div>
           </CardContent>
         </Card>
+        </ResponsiveCollapsibleSection>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <ResponsiveCollapsibleSection title="Como funciona">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -194,6 +198,7 @@ export function BrokerCorretorEmePage() {
               {howItWorks.map((item) => <ListItem key={item} text={item} />)}
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
 
           <Card className="rounded-[1.75rem] border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
@@ -214,6 +219,7 @@ export function BrokerCorretorEmePage() {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-2">
+          <ResponsiveCollapsibleSection title="O que ele faz">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-white">
@@ -225,7 +231,9 @@ export function BrokerCorretorEmePage() {
               {capabilities.map((item) => <ListItem key={item} text={item} />)}
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
 
+          <ResponsiveCollapsibleSection title="Corretor EME ou Assessor EME?">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="text-xl text-white">Corretor EME ou Assessor EME?</CardTitle>
@@ -235,6 +243,7 @@ export function BrokerCorretorEmePage() {
               <ChannelBlock icon={Bot} title="Assessor EME" text="Canal oficial do EME para o corretor conversar com a IA e pedir tarefas operacionais ao sistema." />
             </CardContent>
           </Card>
+          </ResponsiveCollapsibleSection>
         </section>
 
         {history.length > 0 ? (
