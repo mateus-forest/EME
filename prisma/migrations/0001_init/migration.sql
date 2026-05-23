@@ -29,7 +29,7 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "profiles" (
+CREATE TABLE "Broker" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "agencyId" TEXT,
@@ -104,10 +104,10 @@ CREATE TABLE "Notification" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Broker_userId_key" ON "profiles"("userId");
+CREATE UNIQUE INDEX "Broker_userId_key" ON "Broker"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Broker_catalogSlug_key" ON "profiles"("catalogSlug");
+CREATE UNIQUE INDEX "Broker_catalogSlug_key" ON "Broker"("catalogSlug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Agency_ownerUserId_key" ON "Agency"("ownerUserId");
@@ -125,16 +125,16 @@ CREATE INDEX "Catalog_ownerType_ownerId_idx" ON "Catalog"("ownerType", "ownerId"
 CREATE INDEX "Subscription_ownerType_ownerId_idx" ON "Subscription"("ownerType", "ownerId");
 
 -- AddForeignKey
-ALTER TABLE "profiles" ADD CONSTRAINT "Broker_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Broker" ADD CONSTRAINT "Broker_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "profiles" ADD CONSTRAINT "Broker_agencyId_fkey" FOREIGN KEY ("agencyId") REFERENCES "Agency"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Broker" ADD CONSTRAINT "Broker_agencyId_fkey" FOREIGN KEY ("agencyId") REFERENCES "Agency"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Agency" ADD CONSTRAINT "Agency_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Property" ADD CONSTRAINT "Property_brokerId_fkey" FOREIGN KEY ("brokerId") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Property" ADD CONSTRAINT "Property_brokerId_fkey" FOREIGN KEY ("brokerId") REFERENCES "Broker"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Property" ADD CONSTRAINT "Property_agencyId_fkey" FOREIGN KEY ("agencyId") REFERENCES "Agency"("id") ON DELETE SET NULL ON UPDATE CASCADE;

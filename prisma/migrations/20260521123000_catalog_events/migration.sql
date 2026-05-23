@@ -25,7 +25,7 @@ BEGIN
   ) THEN
     ALTER TABLE "CatalogEvent"
     ADD CONSTRAINT "CatalogEvent_brokerId_fkey"
-    FOREIGN KEY ("brokerId") REFERENCES "profiles"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    FOREIGN KEY ("brokerId") REFERENCES "Broker"("id") ON DELETE SET NULL ON UPDATE CASCADE;
   END IF;
 
   IF NOT EXISTS (

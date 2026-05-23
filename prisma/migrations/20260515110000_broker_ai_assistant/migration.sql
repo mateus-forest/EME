@@ -1,5 +1,5 @@
 -- Add initial credit controls for Corretor M.
-ALTER TABLE "profiles"
+ALTER TABLE "Broker"
 ADD COLUMN "aiCreditsBalance" INTEGER NOT NULL DEFAULT 10,
 ADD COLUMN "aiCreditsUsedThisMonth" INTEGER NOT NULL DEFAULT 0;
 
@@ -25,4 +25,4 @@ FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCA
 
 ALTER TABLE "AiAssistantInteraction"
 ADD CONSTRAINT "AiAssistantInteraction_brokerId_fkey"
-FOREIGN KEY ("brokerId") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+FOREIGN KEY ("brokerId") REFERENCES "Broker"("id") ON DELETE CASCADE ON UPDATE CASCADE;
