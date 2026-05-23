@@ -115,6 +115,8 @@ model Broker {
   corretorEmeConfig BrokerEmeConfig?
   financialConfig BrokerFinancialConfig?
   emeMessages EmeMessage[]
+
+  @@map("profiles")
 }
 
 model Agency {

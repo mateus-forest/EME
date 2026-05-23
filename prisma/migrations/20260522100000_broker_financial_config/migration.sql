@@ -21,6 +21,6 @@ BEGIN
   ) THEN
     ALTER TABLE "BrokerFinancialConfig"
     ADD CONSTRAINT "BrokerFinancialConfig_brokerId_fkey"
-    FOREIGN KEY ("brokerId") REFERENCES "Broker"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    FOREIGN KEY ("brokerId") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;

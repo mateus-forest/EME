@@ -26,7 +26,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'BrokerEmeConfig_brokerId_fkey') THEN
     ALTER TABLE "BrokerEmeConfig"
     ADD CONSTRAINT "BrokerEmeConfig_brokerId_fkey"
-    FOREIGN KEY ("brokerId") REFERENCES "Broker"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    FOREIGN KEY ("brokerId") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;
 
@@ -72,7 +72,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'EmeMessage_brokerId_fkey') THEN
     ALTER TABLE "EmeMessage" ADD CONSTRAINT "EmeMessage_brokerId_fkey"
-    FOREIGN KEY ("brokerId") REFERENCES "Broker"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    FOREIGN KEY ("brokerId") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'EmeMessage_userId_fkey') THEN
     ALTER TABLE "EmeMessage" ADD CONSTRAINT "EmeMessage_userId_fkey"

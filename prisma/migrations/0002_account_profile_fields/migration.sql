@@ -2,7 +2,7 @@ ALTER TABLE "User"
 ADD COLUMN "phone" TEXT,
 ADD COLUMN "photoUrl" TEXT;
 
-ALTER TABLE "Broker"
+ALTER TABLE "profiles"
 ADD COLUMN "creci" TEXT,
 ADD COLUMN "description" TEXT;
 
