@@ -58,8 +58,7 @@ export type AdminBrokerRecord = {
   leads: number
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number
-  assistantCredits: number
-  assistantEnabled: boolean
+  aiAssistantEnabled: boolean
   corretorEmeStatus: "Não configurado" | "Em preparação" | "Ativo" | "Pausado"
   corretorEmeUpdatedAt?: string
   createdAt: string
@@ -170,10 +169,9 @@ export function serializeAdminBroker(
     propertyCount: broker.properties.length,
     activeProperties: broker.properties.filter((property) => property.status === "PUBLISHED").length,
     leads: broker.properties.reduce((sum, property) => sum + (property._count?.leads ?? property.leadsCount), 0),
-    aiCreditsBalance: broker.assistantCredits,
+    aiCreditsBalance: broker.aiCreditsBalance,
     aiCreditsUsedThisMonth: broker.aiCreditsUsedThisMonth,
-    assistantCredits: broker.assistantCredits,
-    assistantEnabled: broker.assistantEnabled,
+    aiAssistantEnabled: broker.aiAssistantEnabled,
     corretorEmeStatus: formatCorretorEmeStatus(broker.corretorEmeConfig?.status),
     corretorEmeUpdatedAt: broker.corretorEmeConfig ? formatDate(broker.corretorEmeConfig.updatedAt) : undefined,
     createdAt: formatDate(broker.createdAt),

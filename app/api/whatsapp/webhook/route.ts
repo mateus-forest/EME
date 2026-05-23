@@ -120,13 +120,14 @@ async function reserveAssistantCredits(brokerId: string, creditsUsed: number) {
   const reserved = await prisma.broker.updateMany({
     where: {
       id: brokerId,
-      assistantEnabled: true,
-      assistantCredits: { gte: creditsUsed },
+      aiAssistantEnabled: true,
+      aiCreditsBalance: { gte: creditsUsed },
     },
     data: {
-      assistantCredits: { decrement: creditsUsed },
       aiCreditsBalance: { decrement: creditsUsed },
       aiCreditsUsedThisMonth: { increment: creditsUsed },
+      aiMonthlyUsage: { increment: creditsUsed },
+      aiLastInteractionAt: new Date(),
     },
   })
 
@@ -459,7 +460,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
       await sendWebhookReply(recipient.whatsappReplyTo, "Não encontrei seu cadastro de corretor no EME para usar o Assessor EME.", phoneNumberId)
       return
     }
-    if (!broker.assistantEnabled) {
+    if (!broker.aiAssistantEnabled) {
       const response = await recordDisabledAssessorMessage({
         brokerId: broker.id,
         userId: broker.userId,

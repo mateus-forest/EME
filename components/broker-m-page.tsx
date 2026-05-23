@@ -66,11 +66,11 @@ export function BrokerMPage() {
     })
       .then(async (result) => {
         const data = (await result.json().catch(() => null)) as
-          | { credits?: AssistantCredits; assistantEnabled?: boolean; assessorConfig?: AssessorConfig; history?: AssessorHistoryItem[]; error?: string }
+          | { credits?: AssistantCredits; aiAssistantEnabled?: boolean; assessorConfig?: AssessorConfig; history?: AssessorHistoryItem[]; error?: string }
           | null
         if (!result.ok) throw new Error(data?.error || "Não foi possível carregar os créditos.")
         if (data?.credits) setCredits(data.credits)
-        if (typeof data?.assistantEnabled === "boolean") setIsActive(data.assistantEnabled)
+        if (typeof data?.aiAssistantEnabled === "boolean") setIsActive(data.aiAssistantEnabled)
         if (data?.assessorConfig) setAssessorConfig(data.assessorConfig)
         if (data?.history) setHistory(data.history)
       })
@@ -161,11 +161,11 @@ export function BrokerMPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         cache: "no-store",
-        body: JSON.stringify({ assistantEnabled: nextEnabled }),
+        body: JSON.stringify({ aiAssistantEnabled: nextEnabled }),
       })
-      const data = (await result.json().catch(() => null)) as { assistantEnabled?: boolean; error?: string } | null
+      const data = (await result.json().catch(() => null)) as { aiAssistantEnabled?: boolean; error?: string } | null
       if (!result.ok) throw new Error(data?.error || "Não foi possível atualizar o Assessor EME.")
-      if (typeof data?.assistantEnabled === "boolean") setIsActive(data.assistantEnabled)
+      if (typeof data?.aiAssistantEnabled === "boolean") setIsActive(data.aiAssistantEnabled)
       setFeedback(nextEnabled ? "Assessor EME ativado." : "Assessor EME desativado.")
     } catch (caughtError) {
       setIsActive(!nextEnabled)

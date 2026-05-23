@@ -37,8 +37,9 @@ export type Broker = {
   description: string | null
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number
-  assistantCredits: number
-  assistantEnabled: boolean
+  aiAssistantEnabled: boolean
+  aiMonthlyUsage: number
+  aiLastInteractionAt: Date | null
   createdAt: Date
 }
 

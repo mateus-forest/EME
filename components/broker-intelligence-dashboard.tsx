@@ -23,7 +23,7 @@ type BrokerIntelligenceDashboardProps = {
 export function BrokerIntelligenceDashboard({ properties, subscription }: BrokerIntelligenceDashboardProps) {
   const [credits, setCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [leads, setLeads] = useState<LeadRecord[]>([])
-  const [assistantEnabled, setAssistantEnabled] = useState(true)
+  const [aiAssistantEnabled, setAiAssistantEnabled] = useState(true)
 
   useEffect(() => {
     let ignore = false
@@ -89,15 +89,15 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setAssistantEnabled((current) => !current)}
+                onClick={() => setAiAssistantEnabled((current) => !current)}
                 className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 text-white/80 hover:bg-white/[0.08] hover:text-white"
               >
-                {assistantEnabled ? "Desativar" : "Ativar"} Assessor EME
+                {aiAssistantEnabled ? "Desativar" : "Ativar"} Assessor EME
               </Button>
             </div>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric label="Status" value={assistantEnabled ? "Ativo" : "Pausado"} tone={assistantEnabled ? "green" : "muted"} />
+            <Metric label="Status" value={aiAssistantEnabled ? "Ativo" : "Pausado"} tone={aiAssistantEnabled ? "green" : "muted"} />
             <Metric label="Créditos IA" value={String(credits.balance)} />
             <Metric label="Uso no mês" value={String(credits.usedThisMonth)} />
             <Metric label="Ações IA" value={actionsCount > 0 ? String(actionsCount) : "Aguardando uso"} />

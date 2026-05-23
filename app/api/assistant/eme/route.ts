@@ -13,13 +13,13 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-function creditsResponse(broker: { assistantCredits: number; assistantEnabled: boolean; aiCreditsUsedThisMonth: number }) {
+function creditsResponse(broker: { aiCreditsBalance: number; aiAssistantEnabled: boolean; aiCreditsUsedThisMonth: number }) {
   return {
     credits: {
-      balance: broker.assistantCredits,
+      balance: broker.aiCreditsBalance,
       usedThisMonth: broker.aiCreditsUsedThisMonth,
     },
-    assistantEnabled: broker.assistantEnabled,
+    aiAssistantEnabled: broker.aiAssistantEnabled,
   }
 }
 
@@ -27,8 +27,8 @@ async function getBrokerCredits(brokerId: string) {
   return prisma.broker.findUnique({
     where: { id: brokerId },
     select: {
-      assistantCredits: true,
-      assistantEnabled: true,
+      aiCreditsBalance: true,
+      aiAssistantEnabled: true,
       aiCreditsUsedThisMonth: true,
     },
   })
@@ -94,7 +94,7 @@ export async function GET() {
     ])
 
     return NextResponse.json({
-      ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, assistantEnabled: false }),
+      ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: false }),
       assessorConfig: serializeAssessorConfig(assessorConfig),
       history: history.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
     })
@@ -121,17 +121,17 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => null)
-  if (typeof body?.assistantEnabled !== "boolean") {
+  if (typeof body?.aiAssistantEnabled !== "boolean") {
     return NextResponse.json({ error: "Informe o status do Assessor EME." }, { status: 400 })
   }
 
   try {
     const broker = await prisma.broker.update({
       where: { id: user.broker.id },
-      data: { assistantEnabled: body.assistantEnabled },
+      data: { aiAssistantEnabled: body.aiAssistantEnabled },
       select: {
-        assistantCredits: true,
-        assistantEnabled: true,
+        aiCreditsBalance: true,
+        aiAssistantEnabled: true,
         aiCreditsUsedThisMonth: true,
       },
     })
@@ -171,23 +171,24 @@ export async function POST(request: NextRequest) {
   try {
     const brokerState = await prisma.broker.findUnique({
       where: { id: user.broker.id },
-      select: { assistantEnabled: true },
+      select: { aiAssistantEnabled: true },
     })
 
-    if (!brokerState?.assistantEnabled) {
+    if (!brokerState?.aiAssistantEnabled) {
       return NextResponse.json({ error: "Seu Assessor EME está desativado no momento." }, { status: 403 })
     }
 
     const reserved = await prisma.broker.updateMany({
       where: {
         id: user.broker.id,
-        assistantEnabled: true,
-        assistantCredits: { gte: creditsUsed },
+        aiAssistantEnabled: true,
+        aiCreditsBalance: { gte: creditsUsed },
       },
       data: {
-        assistantCredits: { decrement: creditsUsed },
         aiCreditsBalance: { decrement: creditsUsed },
         aiCreditsUsedThisMonth: { increment: creditsUsed },
+        aiMonthlyUsage: { increment: creditsUsed },
+        aiLastInteractionAt: new Date(),
       },
     })
 
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Você atingiu o limite de créditos do Assessor EME do seu plano. Adquira créditos adicionais no painel para continuar utilizando.",
-          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, assistantEnabled: true }),
+          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
         },
         { status: 402 },
       )

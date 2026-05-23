@@ -29,16 +29,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
     const creditsAmount = Math.trunc(amount)
-    if (creditsAmount < 0 && broker.assistantCredits < Math.abs(creditsAmount)) {
+    if (creditsAmount < 0 && broker.aiCreditsBalance < Math.abs(creditsAmount)) {
       return NextResponse.json({ error: "O corretor não possui créditos suficientes para remover." }, { status: 400 })
     }
 
     const updated = await prisma.broker.update({
       where: { id },
       data: {
-        assistantCredits: {
-          increment: creditsAmount,
-        },
         aiCreditsBalance: {
           increment: creditsAmount,
         },
@@ -74,8 +71,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       broker: {
         id: updated.id,
         aiCreditsBalance: updated.aiCreditsBalance,
-        assistantCredits: updated.assistantCredits,
-        assistantEnabled: updated.assistantEnabled,
+        aiAssistantEnabled: updated.aiAssistantEnabled,
         aiCreditsUsedThisMonth: updated.aiCreditsUsedThisMonth,
       },
     })

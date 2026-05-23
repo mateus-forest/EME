@@ -1,7 +1,3 @@
-ALTER TABLE "Broker" ADD COLUMN IF NOT EXISTS "assistantCredits" INTEGER NOT NULL DEFAULT 10;
-ALTER TABLE "Broker" ADD COLUMN IF NOT EXISTS "assistantEnabled" BOOLEAN NOT NULL DEFAULT true;
-
-UPDATE "Broker"
-SET "assistantCredits" = "aiCreditsBalance"
-WHERE "assistantCredits" = 10
-  AND "aiCreditsBalance" IS NOT NULL;
+ALTER TABLE "Broker" ADD COLUMN IF NOT EXISTS "aiAssistantEnabled" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "Broker" ADD COLUMN IF NOT EXISTS "aiMonthlyUsage" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Broker" ADD COLUMN IF NOT EXISTS "aiLastInteractionAt" TIMESTAMP(3);
