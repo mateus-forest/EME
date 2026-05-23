@@ -14,6 +14,10 @@ export function createWhatsAppUrl(number: string, message: string) {
   return `https://wa.me/${sanitizedNumber}?text=${encodedMessage}`
 }
 
+export function normalizeWhatsAppCloudRecipient(value: string) {
+  return value.replace(/\D/g, "")
+}
+
 type WhatsAppSendOptions = {
   phoneNumberId?: string | null
   accessToken?: string | null
@@ -47,6 +51,9 @@ async function whatsappGraphRequest(path: string, body: Record<string, unknown>,
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "")
+    if (detail.includes("131030")) {
+      console.error("[whatsapp] Número destinatário não autorizado na lista de teste da Meta", { status: response.status, detail })
+    }
     console.error("[whatsapp] graph request failed", { status: response.status, detail })
     throw new Error("Não foi possível enviar a mensagem pelo WhatsApp.")
   }
@@ -56,26 +63,26 @@ async function whatsappGraphRequest(path: string, body: Record<string, unknown>,
 
 export async function sendTextMessage(to: string, text: string, options: WhatsAppSendOptions = {}) {
   const config = getWhatsAppApiConfig(options)
-  const sanitizedTo = sanitizeWhatsAppNumber(to)
+  const sanitizedTo = normalizeWhatsAppCloudRecipient(to)
 
   if (!sanitizedTo) {
     throw new Error("Informe um telefone válido para envio pelo WhatsApp.")
   }
 
-  return whatsappGraphRequest(
-    `${config.phoneNumberId}/messages`,
-    {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: sanitizedTo,
-      type: "text",
-      text: {
-        preview_url: false,
-        body: text.slice(0, 4000),
-      },
+  const finalPayload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: sanitizedTo,
+    type: "text",
+    text: {
+      preview_url: false,
+      body: text.slice(0, 4000),
     },
-    options,
-  )
+  }
+
+  console.info("[whatsapp] sending text message", { normalizedTo: sanitizedTo, finalPayloadTo: finalPayload.to })
+
+  return whatsappGraphRequest(`${config.phoneNumberId}/messages`, finalPayload, options)
 }
 
 export async function markAsRead(messageId: string, options: WhatsAppSendOptions = {}) {

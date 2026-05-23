@@ -15,7 +15,7 @@ import {
 import { isPrismaUnavailable } from "@/lib/auth-route"
 import { LeadStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
-import { markAsRead, sendTextMessage, sanitizeWhatsAppNumber } from "@/lib/whatsapp"
+import { markAsRead, normalizeWhatsAppCloudRecipient, sendTextMessage, sanitizeWhatsAppNumber } from "@/lib/whatsapp"
 
 export const dynamic = "force-dynamic"
 
@@ -65,6 +65,38 @@ function extractTextMessage(message: WhatsAppIncomingMessage) {
 function getContactName(change: WhatsAppWebhookChange, fromPhone: string) {
   const contact = change.value?.contacts?.find((item) => item.wa_id === fromPhone) ?? change.value?.contacts?.[0]
   return cleanText(contact?.profile?.name, 120)
+}
+
+function getContactWaId(change: WhatsAppWebhookChange, rawFrom: string) {
+  return cleanText(change.value?.contacts?.find((item) => item.wa_id === rawFrom)?.wa_id ?? change.value?.contacts?.[0]?.wa_id, 80)
+}
+
+function resolveReplyRecipient(change: WhatsAppWebhookChange, incomingMessage: WhatsAppIncomingMessage) {
+  const rawFrom = cleanText(incomingMessage.from, 80)
+  const contactWaId = getContactWaId(change, rawFrom)
+  const normalizedTo = normalizeWhatsAppCloudRecipient(contactWaId || rawFrom)
+
+  console.info("[api][whatsapp][recipient]", {
+    rawFrom,
+    contactWaId,
+    normalizedTo,
+    finalPayload: {
+      to: normalizedTo,
+    },
+  })
+
+  return { rawFrom, contactWaId, normalizedTo }
+}
+
+async function sendWebhookReply(to: string, text: string, phoneNumberId: string) {
+  try {
+    await sendTextMessage(to, text, { phoneNumberId })
+  } catch (caughtError) {
+    console.error("[api][whatsapp][webhook] reply send failed", {
+      to,
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+    })
+  }
 }
 
 async function reserveBrokerCredits(brokerId: string, creditsUsed: number) {
@@ -352,7 +384,8 @@ async function processCorretorMessage({
 async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMessage: WhatsAppIncomingMessage) {
   const phoneNumberId = cleanText(change.value?.metadata?.phone_number_id, 120)
   const displayPhoneNumber = cleanText(change.value?.metadata?.display_phone_number, 80)
-  const fromPhone = normalizePhone(incomingMessage.from)
+  const recipient = resolveReplyRecipient(change, incomingMessage)
+  const fromPhone = normalizePhone(recipient.normalizedTo)
   const messageId = cleanText(incomingMessage.id, 240)
   const message = extractTextMessage(incomingMessage)
   if (!fromPhone || !message) return
@@ -371,7 +404,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
   if (phoneNumberId && assessorPhoneNumberId && phoneNumberId === assessorPhoneNumberId) {
     const broker = await findAssessorBroker(fromPhone)
     if (!broker) {
-      await sendTextMessage(fromPhone, "Não encontrei seu cadastro de corretor no EME para usar o Assessor EME.", { phoneNumberId }).catch(() => null)
+      await sendWebhookReply(recipient.normalizedTo, "Não encontrei seu cadastro de corretor no EME para usar o Assessor EME.", phoneNumberId)
       return
     }
     const result = await processAssessorMessage({
@@ -382,13 +415,13 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
       message,
       metadata,
     })
-    await sendTextMessage(fromPhone, result.response, { phoneNumberId })
+    await sendWebhookReply(recipient.normalizedTo, result.response, phoneNumberId)
     return
   }
 
   const config = await findCorretorEmeBroker(phoneNumberId, displayPhoneNumber)
   if (!config?.broker) {
-    await sendTextMessage(fromPhone, "Canal EME em preparação. O atendimento será retomado em breve.", { phoneNumberId }).catch(() => null)
+    await sendWebhookReply(recipient.normalizedTo, "Canal EME em preparação. O atendimento será retomado em breve.", phoneNumberId)
     return
   }
 
@@ -401,7 +434,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
     message,
     metadata,
   })
-  await sendTextMessage(fromPhone, result.response, { phoneNumberId })
+  await sendWebhookReply(recipient.normalizedTo, result.response, phoneNumberId)
 }
 
 export async function GET(request: NextRequest) {
