@@ -7,7 +7,6 @@ import {
   generateCorretorEmeReply,
   inferAssessorAction,
   inferCustomerIntent,
-  normalizePhone,
   runAssessorAction,
   searchBrokerProperties,
   type AssessorAction,
@@ -83,6 +82,7 @@ function resolveReplyRecipient(change: WhatsAppWebhookChange, incomingMessage: W
     finalPayload: {
       to: normalizedTo,
     },
+    length: normalizedTo.length,
   })
 
   return { rawFrom, contactWaId, normalizedTo }
@@ -385,7 +385,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
   const phoneNumberId = cleanText(change.value?.metadata?.phone_number_id, 120)
   const displayPhoneNumber = cleanText(change.value?.metadata?.display_phone_number, 80)
   const recipient = resolveReplyRecipient(change, incomingMessage)
-  const fromPhone = normalizePhone(recipient.normalizedTo)
+  const fromPhone = recipient.normalizedTo
   const messageId = cleanText(incomingMessage.id, 240)
   const message = extractTextMessage(incomingMessage)
   if (!fromPhone || !message) return

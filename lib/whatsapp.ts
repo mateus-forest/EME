@@ -80,7 +80,13 @@ export async function sendTextMessage(to: string, text: string, options: WhatsAp
     },
   }
 
-  console.info("[whatsapp] sending text message", { normalizedTo: sanitizedTo, finalPayloadTo: finalPayload.to })
+  console.info("[whatsapp] sending text message", {
+    normalizedTo: sanitizedTo,
+    finalPayload: {
+      to: finalPayload.to,
+    },
+    length: finalPayload.to.length,
+  })
 
   return whatsappGraphRequest(`${config.phoneNumberId}/messages`, finalPayload, options)
 }
