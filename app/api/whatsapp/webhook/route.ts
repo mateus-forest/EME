@@ -18,6 +18,20 @@ import { markAsRead, sendTextMessage, sanitizeWhatsAppNumber } from "@/lib/whats
 
 export const dynamic = "force-dynamic"
 
+const WHATSAPP_WEBHOOK_RECIPIENT_VERSION = "whatsapp-reply-to-meta-from-v2"
+
+function getWebhookRuntimeLogContext() {
+  return {
+    timestamp: new Date().toISOString(),
+    version: WHATSAPP_WEBHOOK_RECIPIENT_VERSION,
+    commit:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+      process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+      "local-a7c2cdd",
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID || null,
+  }
+}
+
 type WhatsAppIncomingMessage = {
   id?: string
   from?: string
@@ -77,8 +91,10 @@ function resolveReplyRecipient(change: WhatsAppWebhookChange, incomingMessage: W
   const whatsappReplyTo = rawFromFromMeta.replace(/\D/g, "")
 
   console.info("[api][whatsapp][recipient]", {
+    ...getWebhookRuntimeLogContext(),
     rawFrom,
     contactWaId,
+    rawFromFromMeta,
     whatsappReplyTo,
     finalPayload: {
       to: whatsappReplyTo,
@@ -439,6 +455,8 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
 }
 
 export async function GET(request: NextRequest) {
+  console.info("[api][whatsapp][webhook][GET]", getWebhookRuntimeLogContext())
+
   const searchParams = request.nextUrl.searchParams
   const mode = searchParams.get("hub.mode")
   const token = searchParams.get("hub.verify_token")
@@ -452,6 +470,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.info("[api][whatsapp][webhook][POST]", getWebhookRuntimeLogContext())
+
   try {
     const payload = (await request.json().catch(() => null)) as WhatsAppWebhookPayload | null
     const changes = payload?.entry?.flatMap((entry) => entry.changes ?? []) ?? []

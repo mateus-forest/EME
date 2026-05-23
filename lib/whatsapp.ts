@@ -19,6 +19,20 @@ type WhatsAppSendOptions = {
   accessToken?: string | null
 }
 
+const WHATSAPP_SEND_VERSION = "whatsapp-send-raw-meta-recipient-v2"
+
+function getWhatsAppSendLogContext() {
+  return {
+    timestamp: new Date().toISOString(),
+    version: WHATSAPP_SEND_VERSION,
+    commit:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+      process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+      "local-a7c2cdd",
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID || null,
+  }
+}
+
 function getWhatsAppApiConfig(options: WhatsAppSendOptions = {}) {
   const accessToken = options.accessToken?.trim() || process.env.WHATSAPP_ACCESS_TOKEN?.trim()
   const phoneNumberId = options.phoneNumberId?.trim() || process.env.WHATSAPP_PHONE_NUMBER_ID?.trim()
@@ -78,6 +92,7 @@ export async function sendTextMessage(to: string, text: string, options: WhatsAp
   }
 
   console.info("[whatsapp] sending text message", {
+    ...getWhatsAppSendLogContext(),
     inputTo,
     finalTo,
     finalPayload: {
