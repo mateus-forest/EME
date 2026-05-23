@@ -267,8 +267,21 @@ async function processAssessorMessage({
       confirm: false,
       payload: {},
     })
-    actionStatus = actionResult.response.includes("confirmação") || actionResult.response.includes("confirmaÃ§Ã£o") ? "needs_confirmation" : "completed"
-    responseText = await generateAssessorText(message, action, actionResult.response)
+    actionStatus =
+      Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
+        ? "needs_input"
+        : actionResult.response.includes("confirmação") || actionResult.response.includes("confirmaÃ§Ã£o")
+          ? "needs_confirmation"
+          : "completed"
+    responseText = action === "createLead" || action === "searchProperties" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+    console.info("[api][whatsapp][assessor-action]", {
+      detectedIntent: action,
+      executedAction: action,
+      actionStatus,
+      brokerId,
+      leadId: actionResult.leadId ?? null,
+      propertySearchFilters: actionResult.metadata?.propertySearchFilters ?? null,
+    })
   } catch (caughtError) {
     actionStatus = "error"
     errorMessage = caughtError instanceof Error ? caughtError.message : "Erro na ação interna."

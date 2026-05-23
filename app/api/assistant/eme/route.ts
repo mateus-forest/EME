@@ -217,8 +217,21 @@ export async function POST(request: NextRequest) {
         confirm: Boolean(body?.confirm),
         payload: typeof body?.payload === "object" && body.payload ? body.payload : {},
       })
-      actionStatus = actionResult.response.includes("preciso de confirmação") || actionResult.response.includes("preciso de confirmação") ? "needs_confirmation" : "completed"
-      responseText = await generateAssessorText(message, action, actionResult.response)
+      actionStatus =
+        Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
+          ? "needs_input"
+          : actionResult.response.includes("preciso de confirmação") || actionResult.response.includes("confirmação")
+            ? "needs_confirmation"
+            : "completed"
+      responseText = action === "createLead" || action === "searchProperties" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+      console.info("[api][assistant][eme][action]", {
+        detectedIntent: action,
+        executedAction: action,
+        actionStatus,
+        brokerId: user.broker.id,
+        leadId: actionResult.leadId ?? null,
+        propertySearchFilters: actionResult.metadata?.propertySearchFilters ?? null,
+      })
     } catch (caughtActionError) {
       actionStatus = "error"
       errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na ação interna."
