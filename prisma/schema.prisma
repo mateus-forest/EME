@@ -112,6 +112,7 @@ model Broker {
   properties  Property[]
   leads       Lead[]
   catalogEvents CatalogEvent[]
+  searchEvents SearchEvent[]
   aiAssistantInteractions AiAssistantInteraction[]
   corretorEmeConfig BrokerEmeConfig?
   financialConfig BrokerFinancialConfig?
@@ -262,6 +263,20 @@ model CatalogEvent {
   @@index([propertyId, createdAt])
   @@index([catalogSlug, createdAt])
   @@index([visitorKey, eventType, createdAt])
+}
+
+model SearchEvent {
+  id          String   @id @default(cuid())
+  brokerId    String
+  query       String
+  filters     Json?
+  resultCount Int      @default(0)
+  source      String   @default("manual")
+  createdAt   DateTime @default(now())
+  broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([brokerId, createdAt])
+  @@index([source, createdAt])
 }
 
 model Catalog {

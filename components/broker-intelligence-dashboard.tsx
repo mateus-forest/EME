@@ -20,10 +20,19 @@ type BrokerIntelligenceDashboardProps = {
   subscription: BrokerSubscription
 }
 
+type SearchEventItem = {
+  id: string
+  query: string
+  resultCount: number
+  source: string
+  createdAt: string
+}
+
 export function BrokerIntelligenceDashboard({ properties, subscription }: BrokerIntelligenceDashboardProps) {
   const [credits, setCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [leads, setLeads] = useState<LeadRecord[]>([])
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(true)
+  const [recentSearches, setRecentSearches] = useState<SearchEventItem[]>([])
 
   useEffect(() => {
     let ignore = false
@@ -42,6 +51,13 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
       })
       .catch(() => null)
 
+    fetch("/api/brokers/analytics", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { recentSearches?: SearchEventItem[] } | null
+        if (!ignore && response.ok && data?.recentSearches) setRecentSearches(data.recentSearches)
+      })
+      .catch(() => null)
+
     return () => {
       ignore = true
     }
@@ -57,8 +73,12 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
     [leads],
   )
   const searchTerms = useMemo(
-    () => Array.from(new Set(leads.map((lead) => lead.searchTerm.trim()).filter(Boolean))).slice(0, 3),
-    [leads],
+    () => {
+      const tracked = recentSearches.map((item) => item.query.trim()).filter(Boolean)
+      const fromLeads = leads.map((lead) => lead.searchTerm.trim()).filter(Boolean)
+      return Array.from(new Set([...tracked, ...fromLeads])).slice(0, 3)
+    },
+    [leads, recentSearches],
   )
   const recentLeads = leads.slice(0, 3)
   const remainingEstimate = Math.max(0, credits.balance)

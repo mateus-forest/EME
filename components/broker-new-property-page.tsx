@@ -236,9 +236,10 @@ export function BrokerNewPropertyPage() {
     setIsGenerating(true)
     setHasGenerated(false)
     setIsPublished(false)
-    setPublishFeedback("")
+    setPublishFeedback("Gerando anúncio...")
 
     try {
+      setPublishFeedback("Analisando imóvel...")
       const generated = await requestPropertyAi({
         title,
         type: propertyType,
@@ -252,6 +253,8 @@ export function BrokerNewPropertyPage() {
         description,
       })
 
+      setPublishFeedback("Criando descrição otimizada...")
+
       if (!description.trim() || window.confirm("Substituir a descricao atual pela sugestao da IA?")) {
         setDescription(generated.description)
       }
@@ -264,10 +267,18 @@ export function BrokerNewPropertyPage() {
       setHasGenerated(true)
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : ""
+      console.error("[broker-new-property][generate-ai] failed", {
+        title,
+        propertyType,
+        city,
+        neighborhood,
+        hasDescription: Boolean(description.trim()),
+        message: message || "unknown",
+      })
       setPublishFeedback(
         message.toLowerCase().includes("ia ainda")
           ? "A geracao com IA ainda nao esta ativada."
-          : message || "Não foi possível gerar o anúncio com IA.",
+          : "Não foi possível gerar o anúncio com IA. Tente novamente em instantes.",
       )
     } finally {
       setIsGenerating(false)

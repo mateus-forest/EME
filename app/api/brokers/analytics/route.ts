@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       } : {}),
     }
 
-    const [catalogViews, propertyViews, whatsappClicks, leads, properties, leadOrigins, propertyViewGroups, leadPropertyGroups, sources] = await Promise.all([
+    const [catalogViews, propertyViews, whatsappClicks, leads, properties, leadOrigins, propertyViewGroups, leadPropertyGroups, sources, recentSearches] = await Promise.all([
       prisma.catalogEvent.count({ where: { ...eventWhere, eventType: "catalog_view" } }),
       prisma.catalogEvent.count({ where: { ...eventWhere, eventType: "property_view" } }),
       prisma.catalogEvent.count({ where: { ...eventWhere, eventType: "whatsapp_click" } }),
@@ -105,6 +105,22 @@ export async function GET(request: NextRequest) {
         where: { brokerId: user.broker.id },
         _count: { _all: true },
       }),
+      prisma.searchEvent.findMany({
+        where: {
+          brokerId: user.broker.id,
+          ...(periodStart ? { createdAt: { gte: periodStart } } : {}),
+          ...(search ? { query: { contains: search, mode: "insensitive" as const } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          query: true,
+          resultCount: true,
+          source: true,
+          createdAt: true,
+        },
+      }),
     ])
     const viewsByProperty = new Map(propertyViewGroups.map((item) => [item.propertyId, item._count._all]))
     const leadsByProperty = new Map(leadPropertyGroups.map((item) => [item.propertyId, item._count._all]))
@@ -130,6 +146,10 @@ export async function GET(request: NextRequest) {
         count: origin._count._all,
       })),
       sources: sources.map((origin) => origin.source || "Sem origem").filter(Boolean),
+      recentSearches: recentSearches.map((item) => ({
+        ...item,
+        createdAt: item.createdAt.toISOString(),
+      })),
     })
   } catch (caughtError) {
     console.error("[api][brokers][analytics] failed", {

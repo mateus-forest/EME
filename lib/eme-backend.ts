@@ -34,20 +34,24 @@ function normalizeForIntent(value: string) {
 }
 
 function extractLeadData(message: string) {
-  const phoneMatch = message.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/)
-  const phone = normalizePhone(phoneMatch?.[0] ?? "")
-  const withoutPhone = phoneMatch ? message.replace(phoneMatch[0], " ") : message
-  const namedMatch = withoutPhone.match(/\b(?:lead|contato|cliente)\s+([a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s.'-]{1,80})/i)?.[1]
-  const cleanedName = cleanText(namedMatch?.replace(/\b(?:com|telefone|fone|numero|número|whats|whatsapp)\b.*$/i, ""), 120)
-  const fallbackName = cleanText(
-    withoutPhone
-      .replace(/\b(?:cadastre|cadastrar|criar|crie|salvar|salva|adicione|adicionar|inclua|incluir)\b/gi, "")
-      .replace(/\b(?:um|uma|o|a|lead|contato|cliente|no crm|crm)\b/gi, "")
-      .replace(/\s+/g, " "),
+  const withoutCommands = message
+    .replace(/\b(?:cadastrar|cadastre|criar|crie|novo|nova|lead|contato|cliente|esse|essa|este|esta)\b/gi, " ")
+    .replace(/[:;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  const phoneMatch = withoutCommands.replace(/\D/g, "").match(/(\d{10,13})/)
+  const phone = phoneMatch?.[1] ?? ""
+  const phoneStart = phone ? withoutCommands.search(new RegExp(phone.split("").join("\\D*"))) : -1
+  const rawName = phoneStart >= 0 ? withoutCommands.slice(0, phoneStart) : withoutCommands
+  const name = cleanText(
+    rawName
+      .replace(/[,]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
     120,
   )
 
-  return { name: cleanedName || fallbackName, phone }
+  return { name, phone }
 }
 
 function parsePropertySearchFilters(message: string) {
@@ -137,7 +141,7 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     take: 30,
   })
 
-  return properties
+  const results = properties
     .map((property) => {
       const haystack = [
         property.title,
@@ -159,6 +163,24 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     .sort((first, second) => second.score - first.score || second.property.viewsCount - first.property.viewsCount)
     .slice(0, limit)
     .map(({ property }) => property)
+
+  await prisma.searchEvent.create({
+    data: {
+      brokerId,
+      query,
+      filters,
+      resultCount: results.length,
+      source: "assessor_eme",
+    },
+  }).catch((caughtError) => {
+    console.error("[eme-backend][search-properties][tracking-failed]", {
+      brokerId,
+      query,
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+    })
+  })
+
+  return results
 }
 
 export async function buildBrokerContext(brokerId: string) {

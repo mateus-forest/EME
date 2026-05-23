@@ -6,6 +6,9 @@ import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
 import { generatePropertyCopy, propertyGenerationSchema } from "@/lib/property-ai"
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now()
+  let stage = "auth"
+  let payloadForLog: unknown = null
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -16,7 +19,15 @@ export async function POST(request: NextRequest) {
   if (roleError) return roleError
 
   try {
+    stage = "parse_payload"
     const payload = await request.json().catch(() => null)
+    payloadForLog = payload
+    console.info("[api][ai][generate-property][stage]", {
+      stage,
+      userId: user.id,
+      role: user.role,
+      hasPayload: Boolean(payload),
+    })
     const input = propertyGenerationSchema.parse({
       title: payload?.title,
       type: payload?.type,
@@ -29,16 +40,42 @@ export async function POST(request: NextRequest) {
       description: payload?.description,
     })
 
+    stage = "openai_generate"
+    console.info("[api][ai][generate-property][stage]", {
+      stage,
+      userId: user.id,
+      type: input.type,
+      city: input.city,
+      hasDescription: Boolean(input.description),
+    })
     const result = await generatePropertyCopy(input)
 
+    console.info("[api][ai][generate-property][success]", {
+      stage: "completed",
+      userId: user.id,
+      elapsedMs: Date.now() - startedAt,
+      resultKeys: Object.keys(result),
+    })
     return NextResponse.json(result)
   } catch (error) {
     if (error instanceof ZodError) {
+      console.error("[api][ai][generate-property][validation-failed]", {
+        stage,
+        userId: user.id,
+        elapsedMs: Date.now() - startedAt,
+        issues: error.issues,
+        payload: payloadForLog,
+      })
       return NextResponse.json({ error: "Payload invalido para geracao de anuncio." }, { status: 400 })
     }
 
     console.error("[api][ai][generate-property] failed", {
+      stage,
+      userId: user.id,
+      elapsedMs: Date.now() - startedAt,
+      payload: payloadForLog,
       message: error instanceof Error ? error.message : "unknown",
+      stack: error instanceof Error ? error.stack : undefined,
     })
 
     const isOpenAIUnavailable =

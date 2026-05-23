@@ -285,10 +285,10 @@ export function BrokerMPage() {
           </ResponsiveCollapsibleSection>
         </section>
 
-        <ResponsiveCollapsibleSection title="Histórico recente">
+        <ResponsiveCollapsibleSection title="Comando rápido">
         <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
           <CardHeader className="px-5 py-5">
-            <CardTitle className="text-lg text-white">Fale com o Assessor EME</CardTitle>
+            <CardTitle className="text-lg text-white">Enviar comando</CardTitle>
             <p className="text-sm text-white/50">
               {selectedAction ? `Ação selecionada: ${selectedAction.label}` : "Faça um pedido livre ao assistente."}
             </p>
@@ -365,29 +365,6 @@ export function BrokerMPage() {
           </div>
         </section>
 
-        <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
-          <CardHeader className="px-5 py-5">
-            <CardTitle className="text-lg text-white">Histórico recente</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 p-5 pt-0">
-            {history.length > 0 ? history.map((item) => (
-              <div key={item.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-white">{item.actionType || "general"}</p>
-                  <span className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs text-[#69F0AE]">
-                    {item.actionStatus || "registrado"}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-white/65">{item.message}</p>
-                {item.response ? <p className="mt-2 text-sm leading-6 text-white/45">{item.response}</p> : null}
-              </div>
-            )) : (
-              <p className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
-                Nenhuma interação registrada ainda.
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </BrokerPageShell>
   )
