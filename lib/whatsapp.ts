@@ -14,10 +14,6 @@ export function createWhatsAppUrl(number: string, message: string) {
   return `https://wa.me/${sanitizedNumber}?text=${encodedMessage}`
 }
 
-export function normalizeWhatsAppCloudRecipient(value: string) {
-  return value.replace(/\D/g, "")
-}
-
 type WhatsAppSendOptions = {
   phoneNumberId?: string | null
   accessToken?: string | null
@@ -63,16 +59,17 @@ async function whatsappGraphRequest(path: string, body: Record<string, unknown>,
 
 export async function sendTextMessage(to: string, text: string, options: WhatsAppSendOptions = {}) {
   const config = getWhatsAppApiConfig(options)
-  const sanitizedTo = normalizeWhatsAppCloudRecipient(to)
+  const inputTo = to
+  const finalTo = inputTo.replace(/\D/g, "")
 
-  if (!sanitizedTo) {
+  if (!finalTo) {
     throw new Error("Informe um telefone válido para envio pelo WhatsApp.")
   }
 
   const finalPayload = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to: sanitizedTo,
+    to: finalTo,
     type: "text",
     text: {
       preview_url: false,
@@ -81,7 +78,8 @@ export async function sendTextMessage(to: string, text: string, options: WhatsAp
   }
 
   console.info("[whatsapp] sending text message", {
-    normalizedTo: sanitizedTo,
+    inputTo,
+    finalTo,
     finalPayload: {
       to: finalPayload.to,
     },
