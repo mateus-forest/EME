@@ -28,11 +28,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     if (!broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
+    const creditsAmount = Math.trunc(amount)
+    if (creditsAmount < 0 && broker.assistantCredits < Math.abs(creditsAmount)) {
+      return NextResponse.json({ error: "O corretor não possui créditos suficientes para remover." }, { status: 400 })
+    }
+
     const updated = await prisma.broker.update({
       where: { id },
       data: {
+        assistantCredits: {
+          increment: creditsAmount,
+        },
         aiCreditsBalance: {
-          increment: Math.trunc(amount),
+          increment: creditsAmount,
         },
       },
       include: { user: true },
@@ -44,19 +52,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           userId: broker.userId,
           brokerId: broker.id,
           prompt: reason,
-          response: `${amount > 0 ? "Adicionados" : "Removidos"} ${Math.abs(Math.trunc(amount))} créditos pelo admin.`,
+          response: `${amount > 0 ? "Adicionados" : "Removidos"} ${Math.abs(creditsAmount)} créditos pelo admin.`,
           actionType: amount > 0 ? "admin_credit_bonus" : "admin_credit_adjustment",
           creditsUsed: 0,
           channel: "admin",
           actionStatus: "completed",
-          metadata: { amount: Math.trunc(amount), reason, adminUserId: user.id },
+          metadata: { amount: creditsAmount, reason, adminUserId: user.id },
         },
       }),
       prisma.notification.create({
         data: {
           userId: broker.userId,
           title: amount > 0 ? "Créditos IA adicionados" : "Créditos IA ajustados",
-          message: `${Math.abs(Math.trunc(amount))} crédito(s). Motivo: ${reason}.`,
+          message: `${Math.abs(creditsAmount)} crédito(s). Motivo: ${reason}.`,
           read: false,
         },
       }),
@@ -66,6 +74,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       broker: {
         id: updated.id,
         aiCreditsBalance: updated.aiCreditsBalance,
+        assistantCredits: updated.assistantCredits,
+        assistantEnabled: updated.assistantEnabled,
         aiCreditsUsedThisMonth: updated.aiCreditsUsedThisMonth,
       },
     })

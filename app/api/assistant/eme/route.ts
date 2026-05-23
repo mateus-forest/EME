@@ -13,12 +13,13 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-function creditsResponse(broker: { aiCreditsBalance: number; aiCreditsUsedThisMonth: number }) {
+function creditsResponse(broker: { assistantCredits: number; assistantEnabled: boolean; aiCreditsUsedThisMonth: number }) {
   return {
     credits: {
-      balance: broker.aiCreditsBalance,
+      balance: broker.assistantCredits,
       usedThisMonth: broker.aiCreditsUsedThisMonth,
     },
+    assistantEnabled: broker.assistantEnabled,
   }
 }
 
@@ -26,7 +27,8 @@ async function getBrokerCredits(brokerId: string) {
   return prisma.broker.findUnique({
     where: { id: brokerId },
     select: {
-      aiCreditsBalance: true,
+      assistantCredits: true,
+      assistantEnabled: true,
       aiCreditsUsedThisMonth: true,
     },
   })
@@ -92,7 +94,7 @@ export async function GET() {
     ])
 
     return NextResponse.json({
-      ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 } }),
+      ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, assistantEnabled: false }),
       assessorConfig: serializeAssessorConfig(assessorConfig),
       history: history.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
     })
@@ -101,6 +103,45 @@ export async function GET() {
       return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
     }
     return NextResponse.json({ error: "Não foi possível carregar o Assessor EME." }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const { error, user } = await getAuthenticatedUser()
+
+  if (error || !user) {
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  }
+
+  const forbidden = ensureRole(user.role, [UserRole.BROKER])
+  if (forbidden) return forbidden
+
+  if (!user.broker) {
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
+  }
+
+  const body = await request.json().catch(() => null)
+  if (typeof body?.assistantEnabled !== "boolean") {
+    return NextResponse.json({ error: "Informe o status do Assessor EME." }, { status: 400 })
+  }
+
+  try {
+    const broker = await prisma.broker.update({
+      where: { id: user.broker.id },
+      data: { assistantEnabled: body.assistantEnabled },
+      select: {
+        assistantCredits: true,
+        assistantEnabled: true,
+        aiCreditsUsedThisMonth: true,
+      },
+    })
+
+    return NextResponse.json(creditsResponse(broker))
+  } catch (caughtError) {
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
+    }
+    return NextResponse.json({ error: "Não foi possível atualizar o Assessor EME." }, { status: 500 })
   }
 }
 
@@ -128,12 +169,23 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const brokerState = await prisma.broker.findUnique({
+      where: { id: user.broker.id },
+      select: { assistantEnabled: true },
+    })
+
+    if (!brokerState?.assistantEnabled) {
+      return NextResponse.json({ error: "Seu Assessor EME está desativado no momento." }, { status: 403 })
+    }
+
     const reserved = await prisma.broker.updateMany({
       where: {
         id: user.broker.id,
-        aiCreditsBalance: { gte: creditsUsed },
+        assistantEnabled: true,
+        assistantCredits: { gte: creditsUsed },
       },
       data: {
+        assistantCredits: { decrement: creditsUsed },
         aiCreditsBalance: { decrement: creditsUsed },
         aiCreditsUsedThisMonth: { increment: creditsUsed },
       },
@@ -143,8 +195,8 @@ export async function POST(request: NextRequest) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
         {
-          error: "Créditos insuficientes para usar o Assessor EME.",
-          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 } }),
+          error: "Você atingiu o limite de créditos do Assessor EME do seu plano. Adquira créditos adicionais no painel para continuar utilizando.",
+          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, assistantEnabled: true }),
         },
         { status: 402 },
       )

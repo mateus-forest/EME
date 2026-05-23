@@ -116,13 +116,15 @@ async function sendWebhookReply(to: string, text: string, phoneNumberId: string)
   }
 }
 
-async function reserveBrokerCredits(brokerId: string, creditsUsed: number) {
+async function reserveAssistantCredits(brokerId: string, creditsUsed: number) {
   const reserved = await prisma.broker.updateMany({
     where: {
       id: brokerId,
-      aiCreditsBalance: { gte: creditsUsed },
+      assistantEnabled: true,
+      assistantCredits: { gte: creditsUsed },
     },
     data: {
+      assistantCredits: { decrement: creditsUsed },
       aiCreditsBalance: { decrement: creditsUsed },
       aiCreditsUsedThisMonth: { increment: creditsUsed },
     },
@@ -145,6 +147,39 @@ async function findAssessorBroker(fromPhone: string) {
     },
     include: { user: true },
   })
+}
+
+async function recordDisabledAssessorMessage({
+  brokerId,
+  userId,
+  fromPhone,
+  message,
+  metadata,
+}: {
+  brokerId: string
+  userId: string
+  fromPhone: string
+  message: string
+  metadata: Prisma.InputJsonObject
+}) {
+  const response = "Seu Assessor EME está desativado no momento."
+  await prisma.emeMessage.create({
+    data: {
+      userId,
+      brokerId,
+      channel: "assessor_eme",
+      direction: "whatsapp_inbound",
+      fromPhone,
+      message,
+      response,
+      detectedIntent: "disabled",
+      actionType: "assistant_disabled",
+      actionStatus: "disabled",
+      creditsUsed: 0,
+      metadata,
+    },
+  })
+  return response
 }
 
 async function findCorretorEmeBroker(phoneNumberId: string, displayPhoneNumber: string) {
@@ -196,8 +231,8 @@ async function processAssessorMessage({
   const action = inferAssessorAction(message) as AssessorAction
   const creditsUsed = 1
 
-  if (!(await reserveBrokerCredits(brokerId, creditsUsed))) {
-    const response = "Créditos insuficientes para usar o Assessor EME. Solicite uma bonificação ou contrate créditos no portal."
+  if (!(await reserveAssistantCredits(brokerId, creditsUsed))) {
+    const response = "Você atingiu o limite de créditos do Assessor EME do seu plano. Adquira créditos adicionais no painel para continuar utilizando."
     await prisma.emeMessage.create({
       data: {
         userId,
@@ -302,7 +337,7 @@ async function processCorretorMessage({
   const actionType = "qualifyLead"
   const creditsUsed = 1
 
-  if (!(await reserveBrokerCredits(brokerId, creditsUsed))) {
+  if (!(await reserveAssistantCredits(brokerId, creditsUsed))) {
     const response = "Obrigado pelo contato. Recebi sua mensagem e o corretor dará continuidade ao atendimento em breve."
     await prisma.emeMessage.create({
       data: {
@@ -424,6 +459,17 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
       await sendWebhookReply(recipient.whatsappReplyTo, "Não encontrei seu cadastro de corretor no EME para usar o Assessor EME.", phoneNumberId)
       return
     }
+    if (!broker.assistantEnabled) {
+      const response = await recordDisabledAssessorMessage({
+        brokerId: broker.id,
+        userId: broker.userId,
+        fromPhone,
+        message,
+        metadata,
+      })
+      await sendWebhookReply(recipient.whatsappReplyTo, response, phoneNumberId)
+      return
+    }
     const result = await processAssessorMessage({
       brokerId: broker.id,
       userId: broker.userId,
@@ -436,22 +482,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
     return
   }
 
-  const config = await findCorretorEmeBroker(phoneNumberId, displayPhoneNumber)
-  if (!config?.broker) {
-    await sendWebhookReply(recipient.whatsappReplyTo, "Canal EME em preparação. O atendimento será retomado em breve.", phoneNumberId)
-    return
-  }
-
-  const result = await processCorretorMessage({
-    brokerId: config.broker.id,
-    userId: config.broker.userId,
-    fromPhone,
-    customerName: getContactName(change, incomingMessage.from ?? ""),
-    messageId,
-    message,
-    metadata,
-  })
-  await sendWebhookReply(recipient.whatsappReplyTo, result.response, phoneNumberId)
+  await sendWebhookReply(recipient.whatsappReplyTo, "Canal EME em preparação. O atendimento será retomado em breve.", phoneNumberId)
 }
 
 export async function GET(request: NextRequest) {

@@ -103,6 +103,8 @@ model Broker {
   description String?
   aiCreditsBalance Int      @default(10)
   aiCreditsUsedThisMonth Int @default(0)
+  assistantCredits Int      @default(10)
+  assistantEnabled Boolean  @default(true)
   createdAt   DateTime   @default(now())
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   agency      Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)

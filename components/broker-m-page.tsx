@@ -66,10 +66,11 @@ export function BrokerMPage() {
     })
       .then(async (result) => {
         const data = (await result.json().catch(() => null)) as
-          | { credits?: AssistantCredits; assessorConfig?: AssessorConfig; history?: AssessorHistoryItem[]; error?: string }
+          | { credits?: AssistantCredits; assistantEnabled?: boolean; assessorConfig?: AssessorConfig; history?: AssessorHistoryItem[]; error?: string }
           | null
         if (!result.ok) throw new Error(data?.error || "Não foi possível carregar os créditos.")
         if (data?.credits) setCredits(data.credits)
+        if (typeof data?.assistantEnabled === "boolean") setIsActive(data.assistantEnabled)
         if (data?.assessorConfig) setAssessorConfig(data.assessorConfig)
         if (data?.history) setHistory(data.history)
       })
@@ -149,6 +150,29 @@ export function BrokerMPage() {
     }
   }
 
+  async function toggleAssistantEnabled() {
+    const nextEnabled = !isActive
+    setIsActive(nextEnabled)
+    setFeedback("")
+
+    try {
+      const result = await fetch("/api/assistant/eme", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({ assistantEnabled: nextEnabled }),
+      })
+      const data = (await result.json().catch(() => null)) as { assistantEnabled?: boolean; error?: string } | null
+      if (!result.ok) throw new Error(data?.error || "Não foi possível atualizar o Assessor EME.")
+      if (typeof data?.assistantEnabled === "boolean") setIsActive(data.assistantEnabled)
+      setFeedback(nextEnabled ? "Assessor EME ativado." : "Assessor EME desativado.")
+    } catch (caughtError) {
+      setIsActive(!nextEnabled)
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o Assessor EME.")
+    }
+  }
+
   const hasOfficialAssessorNumber = Boolean(assessorConfig?.officialNumber?.trim())
   const assessorDisplayName = assessorConfig?.displayName?.trim() || "Assessor EME"
   const assessorStatus =
@@ -192,7 +216,7 @@ export function BrokerMPage() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setIsActive((current) => !current)}
+                onClick={toggleAssistantEnabled}
                 className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
               >
                 {isActive ? "Desativar" : "Ativar"} Assessor EME
@@ -200,7 +224,7 @@ export function BrokerMPage() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setFeedback("Compra de créditos será liberada na etapa de billing.")}
+                onClick={requestMoreCredits}
                 className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
               >
                 <CreditCard className="size-4" />
@@ -224,6 +248,7 @@ export function BrokerMPage() {
               <div>
                 <p className="text-4xl font-semibold text-white">{credits.balance}</p>
                 <p className="mt-2 text-sm text-white/50">créditos atuais</p>
+                {credits.balance <= 3 ? <p className="mt-2 text-sm text-[#69F0AE]">Créditos baixos. Solicite mais créditos para continuar testando o Assessor EME.</p> : null}
               </div>
               <div className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
                 <p className="text-sm text-white/45">Usados no mês</p>
@@ -314,6 +339,18 @@ export function BrokerMPage() {
               </p>
               {assessorConfig?.internalInstructions ? (
                 <p className="mt-2 text-sm leading-7 text-white/45">{assessorConfig.internalInstructions}</p>
+              ) : null}
+              {hasOfficialAssessorNumber ? (
+                <Button
+                  type="button"
+                  asChild
+                  className="mt-4 h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676]"
+                >
+                  <a href={`https://wa.me/${assessorConfig?.officialNumber.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                    <MessageCircle className="size-4" />
+                    Abrir WhatsApp
+                  </a>
+                </Button>
               ) : null}
             </div>
           </div>

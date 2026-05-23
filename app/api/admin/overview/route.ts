@@ -48,7 +48,7 @@ export async function GET() {
       }),
       prisma.broker.aggregate({
         _sum: {
-          aiCreditsBalance: true,
+          assistantCredits: true,
           aiCreditsUsedThisMonth: true,
         },
       }),
@@ -93,7 +93,7 @@ export async function GET() {
           canceled: canceledSubscriptions,
         },
         ai: {
-          creditsAvailable: brokerCredits._sum.aiCreditsBalance ?? 0,
+          creditsAvailable: brokerCredits._sum.assistantCredits ?? 0,
           creditsUsedThisMonth: brokerCredits._sum.aiCreditsUsedThisMonth ?? 0,
         },
         revenue: {

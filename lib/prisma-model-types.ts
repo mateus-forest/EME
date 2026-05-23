@@ -37,6 +37,8 @@ export type Broker = {
   description: string | null
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number
+  assistantCredits: number
+  assistantEnabled: boolean
   createdAt: Date
 }
 
