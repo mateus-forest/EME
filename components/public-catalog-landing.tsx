@@ -218,8 +218,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   }
 
   return (
-    <main className="min-h-screen bg-[#0B0B0B] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-6">
+    <main className="min-h-screen overflow-x-hidden bg-[#0B0B0B] px-4 py-6 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl min-w-0 gap-6">
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-white/[0.08] bg-black/70 px-4 text-sm text-white/80 backdrop-blur-md hover:bg-black/80 hover:text-white">
@@ -302,7 +302,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               <Sparkles className="size-4" />
               Busca inteligente
             </div>
-            <h2 className="mt-4 text-3xl font-semibold text-white">O que você procura?</h2>
+            <h2 className="mt-4 text-2xl font-semibold text-white sm:text-3xl">O que você procura?</h2>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-white/38" />
@@ -319,7 +319,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-14 rounded-2xl bg-[#00C853] px-6 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 hover:bg-[#00E676]"
+                className="h-14 w-full rounded-2xl bg-[#00C853] px-6 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all duration-200 hover:bg-[#00E676] sm:w-auto"
               >
                 <Search className="size-4" />
                 Buscar
@@ -337,16 +337,21 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 </button>
               ))}
             </div>
+            {search.trim() ? (
+              <p className="mt-4 text-sm text-white/55">
+                {visibleProperties.length} imóvel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
+              </p>
+            ) : null}
           </div>
         </section>
 
         {visibleProperties.length > 0 ? (
-          <section className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          <section className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {visibleProperties.map(({ property, matchLabel }) => (
               <article
                 key={property.id}
                 id={`imovel-${property.id}`}
-                className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(14,14,14,0.94))] shadow-[0_18px_36px_rgba(0,0,0,0.16)]"
+                className="min-w-0 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(14,14,14,0.94))] shadow-[0_18px_36px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-white/[0.12]"
               >
                 <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
                   <div className="relative aspect-video overflow-hidden bg-white/[0.03]">
@@ -361,7 +366,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                       {matchLabel}
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="text-2xl font-semibold tracking-tight text-white">{property.price || "Consulte valor"}</p>
+                      <p className="break-words text-xl font-semibold tracking-tight text-white sm:text-2xl">{property.price || "Consulte valor"}</p>
                     </div>
                   </div>
                 </button>
@@ -413,7 +418,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
         <DialogContent showCloseButton className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-5xl">
           {selectedProperty && (
-            <div className="grid max-h-[92vh] overflow-y-auto lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
+            <div className="grid max-h-[92vh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
               <div className="border-b border-white/[0.08] p-4 lg:border-b-0 lg:border-r lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
@@ -438,10 +443,10 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   ) : null}
                 </div>
               </div>
-              <div className="flex flex-col p-5 lg:p-6">
-                <p className="text-sm text-white/45">{selectedProperty.location}</p>
-                <h3 className="mt-2 text-3xl font-semibold leading-tight text-white">{selectedProperty.title}</h3>
-                <p className="mt-4 text-3xl font-bold text-white">{selectedProperty.price || "Consulte valor"}</p>
+              <div className="flex min-w-0 flex-col p-5 lg:p-6">
+                <p className="break-words text-sm text-white/45">{selectedProperty.location}</p>
+                <h3 className="mt-2 break-words text-2xl font-semibold leading-tight text-white sm:text-3xl">{selectedProperty.title}</h3>
+                <p className="mt-4 break-words text-2xl font-bold text-white sm:text-3xl">{selectedProperty.price || "Consulte valor"}</p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={`${selectedProperty.bedrooms} quartos`} /> : null}
                   {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={`${selectedProperty.bathrooms} banheiros`} /> : null}
@@ -450,7 +455,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 {selectedProperty.description ? (
                   <div className="mt-6">
                     <p className="text-sm font-medium text-white/70">Descrição</p>
-                    <p className="mt-3 text-sm leading-7 text-white/62">{selectedProperty.description}</p>
+                    <p className="mt-3 break-words text-sm leading-7 text-white/62">{selectedProperty.description}</p>
                   </div>
                 ) : null}
                 <div className="mt-8 flex flex-col gap-2 sm:flex-row">
@@ -475,7 +480,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
             <>
               <DialogTitle className="text-2xl text-white">Gostou deste imóvel?</DialogTitle>
               <DialogDescription className="text-white/58">
-                Para falar com o corretor, me diga seu nome 👇
+                Para falar com o corretor, me diga seu nome.
               </DialogDescription>
               <div className="grid gap-4 py-2">
                 <label className="grid gap-2">

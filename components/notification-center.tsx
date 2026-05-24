@@ -97,7 +97,7 @@ export function NotificationCenter({
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="w-[360px] rounded-[1.5rem] border border-white/[0.08] bg-[#101010]/96 p-0 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
+        className="w-[calc(100vw-2rem)] max-w-[360px] rounded-[1.5rem] border border-white/[0.08] bg-[#101010]/96 p-0 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
       >
         <div className="border-b border-white/[0.08] px-5 py-4">
           <div className="flex items-center justify-between gap-3">
@@ -203,7 +203,7 @@ export function NotificationCenter({
                 <DialogDescription className="text-white/55">{selectedNotification.date}</DialogDescription>
               </DialogHeader>
               <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-sm leading-7 text-white/70">{selectedNotification.contextMessage || selectedNotification.message}</p>
+                <p className="break-words text-sm leading-7 text-white/70">{selectedNotification.contextMessage || selectedNotification.message}</p>
               </div>
             </>
           ) : null}

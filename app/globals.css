@@ -121,8 +121,59 @@
   }
   html, body {
     font-family: var(--font-sans);
+    max-width: 100%;
+    overflow-x: hidden;
+    text-rendering: geometricPrecision;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
+    min-width: 0;
+    animation: eme-fade-in 180ms ease-out;
+  }
+  img, video, canvas, svg {
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .eme-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .eme-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    animation: eme-shimmer 1.45s ease-in-out infinite;
+  }
+
+  .eme-fade-in {
+    animation: eme-fade-in 180ms ease-out;
+  }
+}
+
+@keyframes eme-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes eme-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .eme-shimmer::after {
+    animation: none;
   }
 }

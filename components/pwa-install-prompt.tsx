@@ -182,8 +182,8 @@ export function PwaInstallPrompt() {
   const Icon = copy.icon
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-50 mx-auto w-[calc(100%-2rem)] max-w-sm">
-      <div className="rounded-[1.25rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(10,10,10,0.98))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 mx-auto w-[calc(100%-2rem)] max-w-sm">
+      <div className="eme-fade-in rounded-[1.25rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(10,10,10,0.98))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -213,11 +213,11 @@ export function PwaInstallPrompt() {
               </div>
             )}
 
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
               <Button
                 type="button"
                 onClick={handleAction}
-                className="h-9 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#69F0AE]"
+                className="h-9 w-full rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black transition-colors hover:bg-[#69F0AE] sm:w-auto"
               >
                 {installPrompt || deviceType !== "desktop" ? (
                   <Icon className="size-4" />
@@ -230,7 +230,7 @@ export function PwaInstallPrompt() {
                 type="button"
                 variant="ghost"
                 onClick={dismiss}
-                className="h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-white/65 hover:bg-white/[0.08] hover:text-white"
+                className="h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white sm:w-auto"
               >
                 <Check className="size-4" />
                 Agora não

@@ -126,19 +126,19 @@ export function BrokerLeadsPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid min-w-0 grid-cols-2 gap-4 xl:grid-cols-4">
           {leadStages.map((stage, index) => (
-            <Card key={stage.title} className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0">
-              <CardHeader className="px-5 py-5">
+            <Card key={stage.title} className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0">
+              <CardHeader className="px-4 py-5 sm:px-5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex size-11 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
                     <stage.icon className="size-5" />
                   </div>
-                  <p className="text-3xl font-semibold text-white">{values[index]}</p>
+                  <p className="break-words text-2xl font-semibold text-white sm:text-3xl">{values[index]}</p>
                 </div>
                 <CardTitle className="pt-3 text-lg text-white">{stage.title}</CardTitle>
               </CardHeader>
-              <CardContent className="px-5 pb-5 pt-0">
+              <CardContent className="px-4 pb-5 pt-0 sm:px-5">
                 <p className="text-sm leading-6 text-white/55">{stage.description}</p>
               </CardContent>
             </Card>
@@ -193,7 +193,7 @@ export function BrokerLeadsPage() {
       </div>
 
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-2xl">
+        <DialogContent className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-2xl">
           {selectedLead ? (
             <div className="grid gap-5">
               <div>
@@ -214,7 +214,7 @@ export function BrokerLeadsPage() {
 
               <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                 <p className="text-sm text-white/50">Mensagem</p>
-                <p className="mt-2 text-sm leading-6 text-white/70">{selectedLead.message || "Sem mensagem registrada."}</p>
+                <p className="mt-2 break-words text-sm leading-6 text-white/70">{selectedLead.message || "Sem mensagem registrada."}</p>
               </div>
 
               <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
@@ -252,9 +252,9 @@ function formatLeadSource(source: string) {
 
 function LeadInfo({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className="min-w-0 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
       <p className="text-sm text-white/50">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-white">{value}</p>
     </div>
   )
 }

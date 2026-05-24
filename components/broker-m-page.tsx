@@ -202,24 +202,24 @@ export function BrokerMPage() {
 
   return (
     <BrokerPageShell title="Assessor EME">
-      <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+      <div className="grid min-w-0 gap-5">
+        <section className="min-w-0 rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.14)] sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
+            <div className="min-w-0">
               <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
                 <Bot className="size-6" />
               </div>
-              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white">Assistente do corretor</h2>
+              <h2 className="mt-5 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Assistente do corretor</h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-white/55">
                 Use o Assessor EME para criar anúncios, analisar leads, melhorar seu catálogo e pedir tarefas operacionais.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={toggleAssistantEnabled}
-                className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto"
               >
                 {isActive ? "Desativar" : "Ativar"} Assessor EME
               </Button>
@@ -227,7 +227,7 @@ export function BrokerMPage() {
                 type="button"
                 variant="ghost"
                 onClick={requestMoreCredits}
-                className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto"
               >
                 <CreditCard className="size-4" />
                 Solicitar mais créditos
@@ -236,9 +236,9 @@ export function BrokerMPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid min-w-0 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <ResponsiveCollapsibleSection title="Créditos disponíveis" defaultMobileOpen>
-          <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-lg text-white">Créditos disponíveis</CardTitle>
             </CardHeader>
@@ -248,7 +248,7 @@ export function BrokerMPage() {
                 <p className="mt-1 text-xl font-semibold text-white">{isActive ? "Ativo" : "Pausado"}</p>
               </div>
               <div>
-                <p className="text-4xl font-semibold text-white">{credits.balance}</p>
+                <p className="break-words text-3xl font-semibold text-white sm:text-4xl">{credits.balance}</p>
                 <p className="mt-2 text-sm text-white/50">créditos atuais</p>
                 {credits.balance <= 3 ? <p className="mt-2 text-sm text-[#69F0AE]">Créditos baixos. Solicite mais créditos para continuar testando o Assessor EME.</p> : null}
               </div>
@@ -265,7 +265,7 @@ export function BrokerMPage() {
           </ResponsiveCollapsibleSection>
 
           <ResponsiveCollapsibleSection title="Ações rápidas">
-          <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-lg text-white">Ações rápidas</CardTitle>
             </CardHeader>
@@ -288,7 +288,7 @@ export function BrokerMPage() {
         </section>
 
         <ResponsiveCollapsibleSection title="Comando rápido">
-        <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+        <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
           <CardHeader className="px-5 py-5">
             <CardTitle className="text-lg text-white">Enviar comando</CardTitle>
             <p className="text-sm text-white/50">
@@ -300,14 +300,14 @@ export function BrokerMPage() {
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               placeholder="Ex: Me ajude a responder um cliente procurando apartamento até 700 mil..."
-              className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+              className="min-h-32 resize-none rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
             />
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
                 onClick={sendPrompt}
                 disabled={isSending}
-                className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60"
+                className="h-10 w-full rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60 sm:w-auto"
               >
                 <Send className="size-4" />
                 {isSending ? "Enviando..." : "Enviar para o Assessor EME"}
@@ -324,7 +324,7 @@ export function BrokerMPage() {
         </ResponsiveCollapsibleSection>
 
         <ResponsiveCollapsibleSection title="Histórico operacional">
-        <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+        <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
           <CardContent className="grid gap-3 p-5">
             {history.length > 0 ? (
               history.map((item) => (

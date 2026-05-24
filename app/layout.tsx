@@ -11,6 +11,7 @@ const barlow = Barlow({
 })
 
 export const metadata: Metadata = {
+  applicationName: 'EME',
   title: 'EME - Poste imóveis em 30 segundos',
   description:
     'Capture, crie anúncios com IA e publique imóveis em segundos. A forma mais rápida de vender imóveis.',
@@ -28,6 +29,16 @@ export const metadata: Metadata = {
       { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
       { url: '/icons/icon-180x180.png', sizes: '180x180', type: 'image/png' },
     ],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'EME',
+    statusBarStyle: 'black-translucent',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'black-translucent',
   },
 }
 
