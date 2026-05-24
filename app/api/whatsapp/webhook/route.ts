@@ -21,6 +21,20 @@ export const dynamic = "force-dynamic"
 
 const WHATSAPP_WEBHOOK_RECIPIENT_VERSION = "whatsapp-reply-to-meta-from-v2"
 
+function shouldReturnActionResponse(action: AssessorAction) {
+  return [
+    "createLead",
+    "searchProperties",
+    "createPropertyDraft",
+    "CREATE_AGENDA_EVENT",
+    "LIST_AGENDA_EVENTS",
+    "MARK_AGENDA_DONE",
+    "CREATE_PROPOSAL",
+    "LIST_DOCUMENTS",
+    "GET_DOCUMENT",
+  ].includes(action)
+}
+
 function getWebhookRuntimeLogContext() {
   return {
     timestamp: new Date().toISOString(),
@@ -291,7 +305,7 @@ async function processAssessorMessage({
         : actionResult.response.includes("confirmação")
           ? "needs_confirmation"
           : "completed"
-    responseText = action === "createLead" || action === "searchProperties" || action === "createPropertyDraft" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+    responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
     console.info("[api][whatsapp][assessor-action]", {
       detectedIntent: action,
       executedAction: action,

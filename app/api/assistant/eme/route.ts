@@ -59,7 +59,27 @@ function getVisualActionLabel(action: AssessorAction) {
   if (action === "summarizeLead") return "Resumo de leads"
   if (action === "analyzeCatalog") return "Catálogo analisado"
   if (action === "getAnalyticsSummary") return "Consulta de analytics"
+  if (action === "CREATE_AGENDA_EVENT") return "Compromisso criado"
+  if (action === "LIST_AGENDA_EVENTS") return "Consulta de agenda"
+  if (action === "MARK_AGENDA_DONE") return "Compromisso concluído"
+  if (action === "CREATE_PROPOSAL") return "Proposta gerada"
+  if (action === "LIST_DOCUMENTS") return "Consulta de documentos"
+  if (action === "GET_DOCUMENT") return "Documento consultado"
   return "Ação do Assessor"
+}
+
+function shouldReturnActionResponse(action: AssessorAction) {
+  return [
+    "createLead",
+    "searchProperties",
+    "createPropertyDraft",
+    "CREATE_AGENDA_EVENT",
+    "LIST_AGENDA_EVENTS",
+    "MARK_AGENDA_DONE",
+    "CREATE_PROPOSAL",
+    "LIST_DOCUMENTS",
+    "GET_DOCUMENT",
+  ].includes(action)
 }
 
 export async function GET() {
@@ -238,7 +258,7 @@ export async function POST(request: NextRequest) {
           : actionResult.response.includes("preciso de confirmação") || actionResult.response.includes("confirmação")
             ? "processing"
             : "success"
-      responseText = action === "createLead" || action === "searchProperties" || action === "createPropertyDraft" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+      responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,
         executedAction: action,

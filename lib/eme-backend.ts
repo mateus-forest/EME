@@ -16,6 +16,12 @@ export const assessorActions = [
   "createInternalNotification",
   "getFinancialSummary",
   "getAnalyticsSummary",
+  "CREATE_AGENDA_EVENT",
+  "LIST_AGENDA_EVENTS",
+  "MARK_AGENDA_DONE",
+  "CREATE_PROPOSAL",
+  "LIST_DOCUMENTS",
+  "GET_DOCUMENT",
 ] as const
 
 export type AssessorAction = (typeof assessorActions)[number]
@@ -31,6 +37,12 @@ const assessorActionRegistry: Record<AssessorAction, { visualAction: string; fut
   createInternalNotification: { visualAction: "Notificação interna" },
   getFinancialSummary: { visualAction: "Consulta financeira" },
   getAnalyticsSummary: { visualAction: "Consulta de analytics" },
+  CREATE_AGENDA_EVENT: { visualAction: "Compromisso criado", futureReady: true },
+  LIST_AGENDA_EVENTS: { visualAction: "Consulta de agenda", futureReady: true },
+  MARK_AGENDA_DONE: { visualAction: "Compromisso concluído", futureReady: true },
+  CREATE_PROPOSAL: { visualAction: "Proposta gerada", futureReady: true },
+  LIST_DOCUMENTS: { visualAction: "Consulta de documentos", futureReady: true },
+  GET_DOCUMENT: { visualAction: "Documento consultado", futureReady: true },
 }
 
 export function cleanText(value: unknown, maxLength: number) {
@@ -193,6 +205,98 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
   }
 }
 
+function getDateOnly(value: Date) {
+  const date = new Date(value)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function parseAgendaDate(message: string) {
+  const normalized = normalizeForIntent(message)
+  const today = getDateOnly(new Date())
+  if (normalized.includes("amanha")) return addDays(today, 1)
+  if (normalized.includes("hoje")) return today
+
+  const weekDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+  const targetWeekday = weekDays.findIndex((day) => normalized.includes(day))
+  if (targetWeekday >= 0) {
+    const current = today.getDay()
+    const diff = (targetWeekday - current + 7) % 7 || 7
+    return addDays(today, diff)
+  }
+
+  return today
+}
+
+function parseAgendaTime(message: string) {
+  const normalized = normalizeForIntent(message)
+  const match = normalized.match(/(?:as)?\s*(\d{1,2})(?:[:h](\d{2}))?\s*h?/)
+  if (!match) return ""
+  const hours = Math.min(23, Number(match[1])).toString().padStart(2, "0")
+  const minutes = (match[2] ? Math.min(59, Number(match[2])) : 0).toString().padStart(2, "0")
+  return `${hours}:${minutes}`
+}
+
+function parseAgendaType(message: string) {
+  const normalized = normalizeForIntent(message)
+  if (normalized.includes("visita")) return "visit"
+  if (normalized.includes("lemb")) return "reminder"
+  if (normalized.includes("evento")) return "event"
+  return "task"
+}
+
+function parseAgendaTitle(message: string) {
+  const normalized = normalizeForIntent(message)
+  if (normalized.includes("visita")) return "Visita"
+  if (normalized.includes("ligar")) return "Ligar para cliente"
+  if (normalized.includes("lemb")) return "Lembrete"
+  return cleanText(message.replace(/\b(agendar|agenda|lembrar|criar|novo|nova|tarefa|evento)\b/gi, " "), 160) || "Compromisso"
+}
+
+function parseAgendaListRange(message: string) {
+  const normalized = normalizeForIntent(message)
+  const start = normalized.includes("amanha") ? addDays(getDateOnly(new Date()), 1) : getDateOnly(new Date())
+  const end = new Date(start)
+  end.setDate(start.getDate() + (normalized.includes("semana") ? 7 : 1))
+  return { start, end, label: normalized.includes("amanha") ? "amanhã" : normalized.includes("semana") ? "da semana" : "de hoje" }
+}
+
+function extractPersonName(message: string) {
+  const cleaned = message
+    .replace(/\b(gerar|gere|criar|crie|proposta|documento|contrato|para|do|da|no|na|imovel|imóvel)\b/gi, " ")
+    .replace(/\d+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  return cleanText(cleaned.split(/\s+(?:apartamento|casa|terreno|centro)\b/i)[0], 120)
+}
+
+function buildProposalContent(input: {
+  lead?: { name: string | null; phone: string | null } | null
+  property?: { title: string; city: string; neighborhood: string | null; price: number; purpose: string | null } | null
+  brokerName: string
+  conditions?: string
+}) {
+  return [
+    "Proposta de Compra/Locação",
+    "",
+    `Cliente: ${input.lead?.name || "não informado"}`,
+    `Telefone: ${input.lead?.phone || "não informado"}`,
+    `Imóvel: ${input.property?.title || "não informado"}`,
+    `Endereço/Bairro/Cidade: ${[input.property?.neighborhood, input.property?.city].filter(Boolean).join(", ") || "não informado"}`,
+    `Valor: ${input.property ? formatCurrencyBRLFromCents(input.property.price) : "não informado"}`,
+    `Finalidade: ${input.property?.purpose === "RENT" ? "locação" : "venda"}`,
+    `Condições: ${input.conditions || "não informado"}`,
+    `Data: ${new Date().toLocaleDateString("pt-BR")}`,
+    `Corretor: ${input.brokerName || "não informado"}`,
+  ].join("\n")
+}
+
 export function inferAssessorAction(message: string, requestedAction?: string): AssessorAction {
   if (requestedAction === "create_ad") return "createPropertyDraft"
   if (requestedAction === "improve_description") return "improvePropertyDescription"
@@ -204,6 +308,12 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
 
   const normalized = normalizeForIntent(message)
   if (isAssessorGreeting(message)) return "general"
+  if (/\b(marcar|marque|concluir|feito|finalizar)\b/.test(normalized) && /\b(agenda|visita|lembrete|tarefa|compromisso)\b/.test(normalized)) return "MARK_AGENDA_DONE"
+  if (/\b(quais|mostrar|mostre|listar|lista|ver)\b/.test(normalized) && /\b(agenda|visitas|lembretes|compromissos|tarefas)\b/.test(normalized)) return "LIST_AGENDA_EVENTS"
+  if (/\b(agendar|agenda|lembrar|lembrete|visita|evento|tarefa)\b/.test(normalized)) return "CREATE_AGENDA_EVENT"
+  if (/\b(mostrar|mostre|listar|lista|documentos)\b/.test(normalized) && /\b(documento|documentos|proposta|propostas|contrato)\b/.test(normalized)) return "LIST_DOCUMENTS"
+  if (/\b(enviar|envie|abrir|me envie|ver)\b/.test(normalized) && /\b(documento|proposta|contrato)\b/.test(normalized)) return "GET_DOCUMENT"
+  if (/\b(gerar|gere|criar|crie)\b/.test(normalized) && /\b(proposta|documento|contrato)\b/.test(normalized)) return "CREATE_PROPOSAL"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione)\b/.test(normalized) && /\b(imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura)\b/.test(normalized)) return "createPropertyDraft"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b/.test(normalized) && /\d{10,13}/.test(normalized)) return "createLead"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b.*\b(lead|contato|cliente)\b/.test(normalized)) return "createLead"
@@ -367,6 +477,117 @@ export async function runAssessorAction({
   confirm?: boolean
   payload?: Record<string, unknown>
 }) {
+  if (action === "CREATE_AGENDA_EVENT") {
+    const date = parseAgendaDate(message)
+    const time = parseAgendaTime(message)
+    const type = parseAgendaType(message)
+    const title = parseAgendaTitle(message)
+    const event = await prisma.agendaEvent.create({
+      data: {
+        brokerId,
+        title,
+        type,
+        date,
+        time: time || null,
+        notes: message,
+        status: "pending",
+      },
+    })
+    return {
+      response: `Agendado ✅\n${title}${time ? ` às ${time}` : ""}.`,
+      metadata: { agendaEventId: event.id, parsedData: { title, type, date: date.toISOString(), time }, status: "pending" },
+    }
+  }
+
+  if (action === "LIST_AGENDA_EVENTS") {
+    const range = parseAgendaListRange(message)
+    const events = await prisma.agendaEvent.findMany({
+      where: { brokerId, date: { gte: range.start, lt: range.end }, status: { not: "cancelled" } },
+      orderBy: [{ date: "asc" }, { time: "asc" }],
+      take: 8,
+    })
+    return {
+      response: events.length
+        ? `Sua agenda ${range.label}:\n\n${events.map((event) => `• ${event.time || "Sem horário"} — ${event.title}`).join("\n")}`
+        : "Você não tem compromissos nessa data.",
+      metadata: { resultsCount: events.length, agendaEventIds: events.map((event) => event.id), parsedData: { range } },
+    }
+  }
+
+  if (action === "MARK_AGENDA_DONE") {
+    const event = await prisma.agendaEvent.findFirst({
+      where: { brokerId, status: "pending" },
+      orderBy: [{ date: "asc" }, { time: "asc" }],
+    })
+    if (!event) {
+      return { response: "Não encontrei compromisso pendente para marcar como feito.", metadata: { resultsCount: 0 } }
+    }
+    await prisma.agendaEvent.update({ where: { id: event.id }, data: { status: "done" } })
+    return {
+      response: "Compromisso marcado como feito ✅",
+      metadata: { agendaEventId: event.id, parsedData: { title: event.title }, status: "done" },
+    }
+  }
+
+  if (action === "CREATE_PROPOSAL") {
+    const personName = extractPersonName(message)
+    const [broker, lead, property] = await Promise.all([
+      prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true } } } }),
+      personName
+        ? prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, phone: true } })
+        : null,
+      prisma.property.findFirst({
+        where: { brokerId, OR: [{ title: { contains: message, mode: "insensitive" } }, { neighborhood: { contains: "centro", mode: "insensitive" } }] },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true },
+      }),
+    ])
+    const title = `Proposta ${lead?.name ?? (personName || property?.title || "EME")}`
+    const document = await prisma.brokerDocument.create({
+      data: {
+        brokerId,
+        leadId: lead?.id ?? null,
+        propertyId: property?.id ?? null,
+        type: "proposal",
+        title,
+        content: buildProposalContent({ lead, property, brokerName: broker?.user.name ?? "" }),
+        status: "draft",
+      },
+    })
+    return {
+      response: "Proposta gerada em rascunho ✅\nVocê pode revisar em Documentos.",
+      metadata: { documentId: document.id, leadId: lead?.id ?? null, propertyId: property?.id ?? null, parsedData: { personName, title }, status: "draft" },
+      leadId: lead?.id,
+      propertyId: property?.id,
+    }
+  }
+
+  if (action === "LIST_DOCUMENTS" || action === "GET_DOCUMENT") {
+    const personName = extractPersonName(message)
+    const lead = personName
+      ? await prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, select: { id: true } })
+      : null
+    const documents = await prisma.brokerDocument.findMany({
+      where: { brokerId, ...(lead?.id ? { leadId: lead.id } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: action === "GET_DOCUMENT" ? 1 : 5,
+      include: { property: { select: { title: true } }, lead: { select: { name: true } } },
+    })
+    if (action === "GET_DOCUMENT") {
+      const document = documents[0]
+      return {
+        response: document ? `${document.title}\n\n${document.content}` : "Não encontrei documentos para esse lead.",
+        metadata: { documentId: document?.id ?? null, resultsCount: documents.length, parsedData: { personName } },
+      }
+    }
+    return {
+      response: documents.length
+        ? `Encontrei ${documents.length} documento${documents.length === 1 ? "" : "s"}:\n\n${documents.map((document) => `• ${document.title}${document.property?.title ? ` — ${document.property.title}` : ""}`).join("\n")}`
+        : "Não encontrei documentos para esse lead.",
+      metadata: { documentIds: documents.map((document) => document.id), resultsCount: documents.length, parsedData: { personName } },
+    }
+  }
+
   if (action === "searchProperties") {
     const searchResult = await searchBrokerProperties(brokerId, message)
     const properties = searchResult.results

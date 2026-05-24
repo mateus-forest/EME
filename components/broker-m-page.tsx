@@ -241,9 +241,9 @@ export function BrokerMPage() {
             <Lightbulb className="mt-1 size-5 shrink-0 text-[#69F0AE]" />
             <div className="min-w-0 text-sm leading-7 text-white/70">
               <p className="font-semibold text-white">O que posso fazer:</p>
-              <p className="mt-1">• cadastrar leads • buscar imóveis • cadastrar imóveis • resumir atendimentos • gerar descrições</p>
+              <p className="mt-1">• cadastrar leads • buscar imóveis • cadastrar imóveis • agendar visitas e lembretes • gerar propostas • gerar descrições</p>
               <p className="mt-3 font-semibold text-white">Exemplos:</p>
-              <p className="mt-1 break-words">João Silva 54999999999<br />Casa até 600 mil em Vacaria<br />Cadastrar apartamento 3 dormitórios</p>
+              <p className="mt-1 break-words">João Silva 54999999999<br />Casa até 600 mil em Vacaria<br />Agendar visita amanhã às 15h<br />Gerar proposta para João no imóvel 142</p>
             </div>
           </div>
         </section>
@@ -416,6 +416,12 @@ function formatAssistantAction(action: string | null) {
   const normalized = action.toLowerCase()
   if (normalized.includes("createlead") || normalized.includes("create_lead")) return "Lead cadastrado"
   if (normalized.includes("searchproperties") || normalized.includes("search_properties")) return "Busca de imóveis"
+  if (normalized.includes("create_agenda_event")) return "Compromisso criado"
+  if (normalized.includes("list_agenda_events")) return "Consulta de agenda"
+  if (normalized.includes("mark_agenda_done")) return "Compromisso concluído"
+  if (normalized.includes("create_proposal")) return "Proposta gerada"
+  if (normalized.includes("list_documents")) return "Consulta de documentos"
+  if (normalized.includes("get_document")) return "Documento consultado"
   if (normalized.includes("getfinancialsummary") || normalized.includes("financial")) return "Consulta financeira"
   if (normalized.includes("improve")) return "Descrição melhorada"
   if (normalized.includes("create_ad")) return "Anúncio criado"

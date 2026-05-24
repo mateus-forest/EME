@@ -113,6 +113,8 @@ model Broker {
   leads       Lead[]
   catalogEvents CatalogEvent[]
   searchEvents SearchEvent[]
+  agendaEvents AgendaEvent[]
+  documents BrokerDocument[]
   aiAssistantInteractions AiAssistantInteraction[]
   corretorEmeConfig BrokerEmeConfig?
   financialConfig BrokerFinancialConfig?
@@ -163,6 +165,8 @@ model Property {
   leads        Lead[]
   catalogEvents CatalogEvent[]
   emeMessages  EmeMessage[]
+  agendaEvents AgendaEvent[]
+  documents    BrokerDocument[]
 }
 
 model BrokerEmeConfig {
@@ -279,6 +283,50 @@ model SearchEvent {
   @@index([source, createdAt])
 }
 
+model AgendaEvent {
+  id         String   @id @default(cuid())
+  brokerId   String
+  title      String
+  type       String   @default("task")
+  date       DateTime
+  time       String?
+  leadId     String?
+  propertyId String?
+  notes      String?
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  broker     Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([brokerId, date])
+  @@index([brokerId, status])
+  @@index([leadId])
+  @@index([propertyId])
+}
+
+model BrokerDocument {
+  id         String   @id @default(cuid())
+  brokerId   String
+  leadId     String?
+  propertyId String?
+  type       String   @default("proposal")
+  title      String
+  content    String
+  status     String   @default("draft")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  broker     Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([brokerId, createdAt])
+  @@index([brokerId, status])
+  @@index([leadId])
+  @@index([propertyId])
+}
+
 model Catalog {
   id        String           @id @default(cuid())
   slug      String           @unique
@@ -360,6 +408,8 @@ model Lead {
   agency     Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   emeMessages EmeMessage[]
+  agendaEvents AgendaEvent[]
+  documents BrokerDocument[]
 
   @@index([propertyId])
   @@index([brokerId])
