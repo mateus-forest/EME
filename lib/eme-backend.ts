@@ -227,14 +227,13 @@ export async function runAssessorAction({
     const filters = parsePropertySearchFilters(message)
     return {
       response: properties.length
-        ? `Encontrei ${properties.length} opção(ões):\n${properties
-            .map((property) => `• ${property.title} | ${property.neighborhood ?? property.city} | ${formatCurrencyBRLFromCents(property.price)} | ${property.bedrooms} quarto(s) | ID ${property.id.slice(-6)}`)
+        ? `Encontrei ${properties.length} opção${properties.length === 1 ? "" : "ões"}:\n${properties
+            .map((property) => `• ${property.title} · ${property.neighborhood ?? property.city} · ${formatCurrencyBRLFromCents(property.price)} · ${property.bedrooms} quarto(s)`)
             .join("\n")}\nQuer refinar por bairro, quartos ou garagem?`
-        : "Não encontrei opção nesse filtro. Quer ampliar valor ou cidade?",
+        : "Nenhum imóvel encontrado para essa busca. Quer ampliar valor ou cidade?",
       metadata: { propertyIds: properties.map((property) => property.id), propertySearchFilters: filters },
     }
   }
-
   if (action === "getFinancialSummary") {
     const properties = await prisma.property.findMany({ where: { brokerId } })
     const total = properties.reduce((sum, property) => sum + Math.max(0, property.price), 0)
@@ -382,9 +381,9 @@ export async function generateAssessorText(message: string, action: AssessorActi
   const { model } = getOpenAIEnv()
   const response = await client.responses.create({
     model,
-    max_output_tokens: 160,
+    max_output_tokens: 120,
     instructions:
-      "Você é o Assessor EME no WhatsApp. Responda como concierge comercial humano: curto, natural e operacional. Máximo 2 a 5 linhas. Nunca faça onboarding gigante, manual, lista enorme ou texto corporativo. Faça uma pergunta por vez. Assuma defaults inteligentes. Execute primeiro e pergunte depois. Nunca diga que não tem acesso ao CRM. Se houver Resultado interno, preserve a informação e deixe mais WhatsApp/mobile.",
+      "Você é o Assessor EME no WhatsApp: concierge comercial e SDR imobiliário para corretores. Responda em 1 a 4 linhas, natural e direto. Uma ação por vez. Sem onboarding, manual, listas grandes, linguagem técnica ou textão. Se a ação já foi executada, apenas confirme e sugira o próximo passo. Nunca diga que não tem acesso ao CRM. Não execute ações destrutivas nem altere créditos ou imóveis sem confirmação explícita.",
     input: [`Ação detectada: ${action}`, `Pedido do corretor: ${message}`, actionResponse ? `Resultado interno: ${actionResponse}` : "Resultado interno: Oi 👋 Sou o Assessor EME.\n\nPosso ajudar com:\n• imóveis\n• leads\n• anúncios\n• atendimentos\n\nO que você precisa?"].join("\n"),
   })
   return response.output_text.trim()

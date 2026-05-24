@@ -57,7 +57,7 @@ const quickCatalogFilters = ["Casas", "Apartamentos", "Até 300 mil", "Até 600 
 export function BrokerCatalogPage() {
   const { profile } = useBrokerProfile()
   const { settings, saveSettings } = useBrokerCatalogSettings()
-  const { properties: brokerProperties } = useBrokerProperties()
+  const { properties: brokerProperties, isLoading: isLoadingProperties } = useBrokerProperties()
   const [draftSettings, setDraftSettings] = useState(settings)
   const [saveFeedback, setSaveFeedback] = useState("")
   const [isSaving, setIsSaving] = useState(false)
@@ -437,11 +437,17 @@ export function BrokerCatalogPage() {
 
         {normalizedSearch && (
           <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
-            Filtrando resultados...
+            {filteredCatalogProperties.length} imóvel{filteredCatalogProperties.length === 1 ? "" : "is"} encontrado{filteredCatalogProperties.length === 1 ? "" : "s"}
           </div>
         )}
 
-        {filteredCatalogProperties.length > 0 ? (
+        {isLoadingProperties ? (
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <CatalogSkeletonCard key={index} />
+            ))}
+          </section>
+        ) : filteredCatalogProperties.length > 0 ? (
           <section className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-3">
             {filteredCatalogProperties.map((property) => (
               <PropertyCard
@@ -489,7 +495,7 @@ export function BrokerCatalogPage() {
           </section>
         ) : (
           <div className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] px-6 py-12 text-center text-sm text-white/65">
-            Nenhum imóvel encontrado
+            Nenhum imóvel encontrado.
           </div>
         )}
       </div>
@@ -679,6 +685,19 @@ function CatalogImagePlaceholder() {
     <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
       <Building2 className="size-9 text-white/30" />
       <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+    </div>
+  )
+}
+
+function CatalogSkeletonCard() {
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
+      <div className="aspect-[4/3] animate-pulse bg-white/[0.06]" />
+      <div className="grid gap-3 p-4">
+        <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/[0.08]" />
+        <div className="h-3 w-1/2 animate-pulse rounded-full bg-white/[0.06]" />
+        <div className="h-9 w-full animate-pulse rounded-full bg-white/[0.06]" />
+      </div>
     </div>
   )
 }

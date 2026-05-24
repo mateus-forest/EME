@@ -30,6 +30,7 @@ type AssessorHistoryItem = {
   detectedIntent: string | null
   actionType: string | null
   actionStatus: string | null
+  creditsUsed?: number | null
   createdAt: string
 }
 
@@ -130,12 +131,13 @@ export function BrokerMPage() {
           response: data?.response || "",
           detectedIntent: data?.action || actionType,
           actionType: data?.action || actionType,
-          actionStatus: data?.actionStatus || "completed",
+          actionStatus: data?.actionStatus || "success",
+          creditsUsed: data?.creditsUsed ?? 1,
           createdAt: new Date().toISOString(),
         },
         ...current,
       ].slice(0, 5))
-      setFeedback(data?.creditsUsed ? `${data.creditsUsed} crédito(s) consumido(s).` : "")
+      setFeedback(data?.creditsUsed ? `${formatAssistantAction(data?.action || actionType)} · -${data.creditsUsed} crédito IA` : "")
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível acionar o Assessor EME.")
     } finally {
@@ -332,11 +334,11 @@ export function BrokerMPage() {
                       <p className="truncate text-sm font-semibold text-white">{formatAssistantAction(item.actionType || item.detectedIntent)}</p>
                       <p className="mt-1 text-xs text-white/45">{formatAssistantTime(item.createdAt)}</p>
                     </div>
-                    <span className={item.actionStatus === "error" ? "rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200" : "rounded-full border border-[#00C853]/16 bg-[#00C853]/10 px-2 py-0.5 text-[10px] text-[#69F0AE]"}>
-                      {item.actionStatus === "error" ? "Atenção" : "Concluído"}
+                    <span className={item.actionStatus === "error" ? "rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200" : item.actionStatus === "processing" ? "rounded-full border border-[#ffd54f]/20 bg-[#ffd54f]/10 px-2 py-0.5 text-[10px] text-[#ffe082]" : "rounded-full border border-[#00C853]/16 bg-[#00C853]/10 px-2 py-0.5 text-[10px] text-[#69F0AE]"}>
+                      {item.actionStatus === "error" ? "Atenção" : item.actionStatus === "processing" ? "Em andamento" : "Concluído"}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-[#69F0AE]">-1 crédito IA</p>
+                  <p className="mt-2 text-xs text-[#69F0AE]">-{item.creditsUsed ?? 1} crédito IA</p>
                 </div>
               ))
             ) : (

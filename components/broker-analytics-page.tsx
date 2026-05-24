@@ -38,6 +38,8 @@ export function BrokerAnalyticsPage() {
   const { properties, isLoading } = useBrokerProperties()
   const [analytics, setAnalytics] = useState<BrokerAnalytics | null>(null)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(true)
   const [period, setPeriod] = useState<(typeof periodOptions)[number]["value"]>("30d")
   const [propertyId, setPropertyId] = useState("all")
   const [source, setSource] = useState("all")
@@ -48,24 +50,33 @@ export function BrokerAnalyticsPage() {
   const hasProperties = properties.length > 0
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    return () => window.clearTimeout(timeoutId)
+  }, [search])
+
+  useEffect(() => {
     let ignore = false
     const params = new URLSearchParams()
     params.set("period", period)
     if (propertyId !== "all") params.set("propertyId", propertyId)
     if (source !== "all") params.set("source", source)
-    if (search.trim()) params.set("search", search.trim())
+    if (debouncedSearch) params.set("search", debouncedSearch)
 
+    setIsAnalyticsLoading(true)
     fetch(`/api/brokers/analytics?${params.toString()}`, { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as BrokerAnalytics | null
         if (!ignore && response.ok && data) setAnalytics(data)
       })
       .catch(() => null)
+      .finally(() => {
+        if (!ignore) setIsAnalyticsLoading(false)
+      })
 
     return () => {
       ignore = true
     }
-  }, [period, propertyId, search, source])
+  }, [debouncedSearch, period, propertyId, source])
 
   return (
     <BrokerPageShell
@@ -91,10 +102,16 @@ export function BrokerAnalyticsPage() {
         ) : null}
 
         <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <MetricCard icon={Eye} label="Visualizações do catálogo" value={totalViews.toLocaleString("pt-BR")} />
-          <MetricCard icon={MousePointerClick} label="Cliques no WhatsApp" value={String(whatsappClicks)} />
-          <MetricCard icon={UsersRound} label="Leads recebidos" value={totalLeads.toLocaleString("pt-BR")} />
-          <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
+          {isAnalyticsLoading && !analytics ? (
+            Array.from({ length: 4 }).map((_, index) => <MetricSkeleton key={index} />)
+          ) : (
+            <>
+              <MetricCard icon={Eye} label="Visualizações do catálogo" value={totalViews.toLocaleString("pt-BR")} />
+              <MetricCard icon={MousePointerClick} label="Cliques no WhatsApp" value={String(whatsappClicks)} />
+              <MetricCard icon={UsersRound} label="Leads recebidos" value={totalLeads.toLocaleString("pt-BR")} />
+              <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
+            </>
+          )}
         </section>
 
         <ResponsiveCollapsibleSection title="Período" defaultMobileOpen>
@@ -211,6 +228,18 @@ function MetricCard({ icon: Icon, label, value }: { icon: typeof BarChart3; labe
         </div>
         <p className="mt-4 text-sm text-white/50">{label}</p>
         <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function MetricSkeleton() {
+  return (
+    <Card className="rounded-[1.5rem] border-white/[0.08] bg-white/[0.03] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+      <CardContent className="p-5">
+        <div className="size-10 animate-pulse rounded-2xl bg-white/[0.08]" />
+        <div className="mt-4 h-3 w-2/3 animate-pulse rounded-full bg-white/[0.06]" />
+        <div className="mt-3 h-6 w-1/2 animate-pulse rounded-full bg-white/[0.08]" />
       </CardContent>
     </Card>
   )

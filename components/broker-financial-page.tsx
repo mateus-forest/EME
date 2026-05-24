@@ -142,11 +142,17 @@ export function BrokerFinancialPage() {
         ) : null}
 
         <section className="grid grid-cols-2 gap-4 xl:grid-cols-5">
-          <MetricCard icon={Building2} label="Imóveis cadastrados" value={String(totalProperties)} />
-          <MetricCard icon={CircleDollarSign} label="Valor da carteira" value={formatBRLFromCents(totalPortfolioValue)} />
-          <MetricCard icon={ChartColumn} label="Ticket médio" value={formatBRLFromCents(averageTicket)} />
-          <MetricCard icon={Home} label="Imóveis ativos" value={String(activeProperties)} />
-          <MetricCard icon={ArrowUpRight} label="Inativos/rascunhos" value={String(draftProperties)} />
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, index) => <MetricSkeleton key={index} />)
+          ) : (
+            <>
+              <MetricCard icon={Building2} label="Imóveis cadastrados" value={String(totalProperties)} />
+              <MetricCard icon={CircleDollarSign} label="Valor da carteira" value={formatBRLFromCents(totalPortfolioValue)} />
+              <MetricCard icon={ChartColumn} label="Ticket médio" value={formatBRLFromCents(averageTicket)} />
+              <MetricCard icon={Home} label="Imóveis ativos" value={String(activeProperties)} />
+              <MetricCard icon={ArrowUpRight} label="Inativos/rascunhos" value={String(draftProperties)} />
+            </>
+          )}
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -220,8 +226,8 @@ export function BrokerFinancialPage() {
           <CardContent className="grid gap-3 p-6 pt-0">
             {filteredProperties.length > 0 ? (
               viewMode === "Por imóvel" ? (
-                <div className="overflow-hidden rounded-[1.25rem] border border-white/[0.08]">
-                  <div className="hidden gap-3 border-b border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/40 md:grid md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
+                <div className="overflow-x-auto rounded-[1.25rem] border border-white/[0.08]">
+                  <div className="hidden min-w-[680px] gap-3 border-b border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/40 md:grid md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
                     <span>Imóvel</span>
                     <span>Valor</span>
                     <span>Percentual</span>
@@ -229,7 +235,7 @@ export function BrokerFinancialPage() {
                     <span>Status</span>
                   </div>
                   {filteredProperties.map((property) => (
-                    <div key={property.id} className="grid min-w-0 gap-2 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
+                    <div key={property.id} className="grid min-w-0 gap-2 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm last:border-b-0 md:min-w-[680px] md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
                       <p className="truncate font-medium text-white">{property.title}</p>
                       <span className="text-white/60">{property.priceValue > 0 ? property.price : "Sem valor"}</span>
                       <span className="text-white/60">{commissionPercent.toLocaleString("pt-BR")}%</span>
@@ -269,6 +275,18 @@ function MetricCard({ icon: Icon, label, value }: { icon: typeof Building2; labe
         </div>
         <p className="mt-4 text-sm text-white/50">{label}</p>
         <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function MetricSkeleton() {
+  return (
+    <Card className="rounded-[1.5rem] border-white/[0.08] bg-white/[0.03] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+      <CardContent className="p-5">
+        <div className="size-10 animate-pulse rounded-2xl bg-white/[0.08]" />
+        <div className="mt-4 h-3 w-2/3 animate-pulse rounded-full bg-white/[0.06]" />
+        <div className="mt-3 h-6 w-1/2 animate-pulse rounded-full bg-white/[0.08]" />
       </CardContent>
     </Card>
   )

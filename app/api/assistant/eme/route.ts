@@ -50,6 +50,18 @@ function serializeAssessorConfig(config: {
   }
 }
 
+function getVisualActionLabel(action: AssessorAction) {
+  if (action === "createLead") return "Lead cadastrado"
+  if (action === "searchProperties") return "Busca de imóveis"
+  if (action === "getFinancialSummary") return "Consulta financeira"
+  if (action === "createPropertyDraft") return "Rascunho de imóvel"
+  if (action === "improvePropertyDescription") return "Descrição melhorada"
+  if (action === "summarizeLead") return "Resumo de leads"
+  if (action === "analyzeCatalog") return "Catálogo analisado"
+  if (action === "getAnalyticsSummary") return "Consulta de analytics"
+  return "Ação do Assessor"
+}
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
@@ -78,6 +90,7 @@ export async function GET() {
           detectedIntent: true,
           actionType: true,
           actionStatus: true,
+          creditsUsed: true,
           createdAt: true,
         },
       }),
@@ -205,8 +218,9 @@ export async function POST(request: NextRequest) {
 
     let actionResult: Awaited<ReturnType<typeof runAssessorAction>> = { response: "", metadata: {} }
     let responseText = ""
-    let actionStatus = "completed"
+    let actionStatus = "processing"
     let errorMessage: string | null = null
+    const actionStartedAt = Date.now()
 
     try {
       actionResult = await runAssessorAction({
@@ -219,10 +233,10 @@ export async function POST(request: NextRequest) {
       })
       actionStatus =
         Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
-          ? "needs_input"
+          ? "processing"
           : actionResult.response.includes("preciso de confirmação") || actionResult.response.includes("confirmação")
-            ? "needs_confirmation"
-            : "completed"
+            ? "processing"
+            : "success"
       responseText = action === "createLead" || action === "searchProperties" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,
@@ -231,6 +245,8 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker.id,
         leadId: actionResult.leadId ?? null,
         propertySearchFilters: actionResult.metadata?.propertySearchFilters ?? null,
+        visualAction: getVisualActionLabel(action),
+        durationMs: Date.now() - actionStartedAt,
       })
     } catch (caughtActionError) {
       actionStatus = "error"
@@ -259,7 +275,12 @@ export async function POST(request: NextRequest) {
           channel: "assessor_eme",
           intent: action,
           actionStatus,
-          metadata: actionResult.metadata,
+          metadata: {
+            ...actionResult.metadata,
+            source: "portal",
+            durationMs: Date.now() - actionStartedAt,
+            visualAction: getVisualActionLabel(action),
+          },
           errorMessage,
           leadId: actionResult.leadId ?? null,
           propertyId: actionResult.propertyId ?? null,
@@ -276,7 +297,12 @@ export async function POST(request: NextRequest) {
           detectedIntent: action,
           actionType: action,
           actionStatus,
-          metadata: actionResult.metadata,
+          metadata: {
+            ...actionResult.metadata,
+            source: "portal",
+            durationMs: Date.now() - actionStartedAt,
+            visualAction: getVisualActionLabel(action),
+          },
           errorMessage,
           creditsUsed,
           leadId: actionResult.leadId ?? null,
@@ -289,7 +315,12 @@ export async function POST(request: NextRequest) {
       response: responseText,
       action,
       actionStatus,
-      metadata: actionResult.metadata,
+      metadata: {
+        ...actionResult.metadata,
+        source: "portal",
+        durationMs: Date.now() - actionStartedAt,
+        visualAction: getVisualActionLabel(action),
+      },
       creditsUsed,
       ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 } }),
     })
