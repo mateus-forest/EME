@@ -141,7 +141,7 @@ export function BrokerFinancialPage() {
           </section>
         ) : null}
 
-        <section className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, index) => <MetricSkeleton key={index} />)
           ) : (
@@ -268,13 +268,13 @@ export function BrokerFinancialPage() {
 
 function MetricCard({ icon: Icon, label, value }: { icon: typeof Building2; label: string; value: string }) {
   return (
-    <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-      <CardContent className="p-5">
+    <Card className="min-w-0 rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+      <CardContent className="min-w-0 p-4 sm:p-5">
         <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
           <Icon className="size-4.5" />
         </div>
         <p className="mt-4 text-sm text-white/50">{label}</p>
-        <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+        <p className="mt-2 min-w-0 break-words text-xl font-semibold leading-tight text-white sm:text-2xl">{value}</p>
       </CardContent>
     </Card>
   )

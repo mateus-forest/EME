@@ -230,15 +230,15 @@ export function BrokerCatalogPage() {
 
   return (
     <BrokerPageShell title="Catálogo">
-      <div className="grid gap-5">
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
-            <CardHeader className="px-6 py-5">
+      <div className="grid max-w-full gap-5 overflow-hidden">
+        <section className="grid max-w-full gap-6 overflow-hidden xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <Card className="max-w-full overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+            <CardHeader className="px-4 py-5 sm:px-6">
               <CardTitle className="text-xl text-white">Gestão do catálogo</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-5 p-6 pt-0">
-              <div className="grid gap-5 lg:grid-cols-[auto_minmax(0,1fr)]">
-                <div className="flex flex-col items-center gap-3">
+            <CardContent className="grid min-w-0 gap-5 p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="grid min-w-0 gap-5 md:grid-cols-[auto_minmax(0,1fr)]">
+                <div className="flex w-full min-w-0 flex-col items-center gap-3 md:w-auto">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -257,15 +257,15 @@ export function BrokerCatalogPage() {
                   <Button
                     variant="ghost"
                     onClick={triggerPhotoPicker}
-                    className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                    className="h-9 max-w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-3 text-white/75 hover:bg-white/[0.08] hover:text-white"
                   >
                     <Camera className="size-4" />
                     Trocar foto
                   </Button>
                 </div>
 
-                <div className="grid gap-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid min-w-0 gap-4">
+                  <div className="grid min-w-0 gap-4 md:grid-cols-2">
                     <label className="grid gap-2">
                       <span className="text-sm font-medium text-white/70">Nome do corretor</span>
                       <Input
@@ -279,8 +279,8 @@ export function BrokerCatalogPage() {
                     <label className="grid gap-2">
                       <span className="text-sm font-medium text-white/70">Link do catálogo</span>
                       <div className="flex min-w-0 flex-col gap-3">
-                        <div className="flex min-w-0 items-stretch gap-2">
-                          <div className="flex h-10 shrink-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/45">
+                        <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row">
+                          <div className="flex h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/45 sm:w-auto sm:shrink-0">
                             <Link2 className="size-4 text-white/40" />
                             <span>/catalogo/</span>
                           </div>
@@ -295,12 +295,12 @@ export function BrokerCatalogPage() {
                             />
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto">
                             <Copy className="size-4" />
                             {copyFeedback ? "Link copiado" : "Copiar link"}
                           </Button>
-                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto">
                             <PencilLine className="size-4" />
                             Abrir link
                           </Button>
@@ -400,7 +400,7 @@ export function BrokerCatalogPage() {
             </Button>
           </div>
 
-          <div className="mt-5 max-w-2xl">
+          <div className="mt-5 max-w-full sm:max-w-2xl">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45" />
@@ -414,7 +414,7 @@ export function BrokerCatalogPage() {
               <Button
                 type="button"
                 onClick={() => setSearch(search.trim())}
-                className="h-11 rounded-full bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 sm:w-auto"
+                className="h-11 w-full rounded-full bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 sm:w-auto"
               >
                 <Search className="size-4" />
                 Buscar
