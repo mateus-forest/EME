@@ -241,9 +241,9 @@ export function BrokerMPage() {
             <Lightbulb className="mt-1 size-5 shrink-0 text-[#69F0AE]" />
             <div className="min-w-0 text-sm leading-7 text-white/70">
               <p className="font-semibold text-white">O que posso fazer:</p>
-              <p className="mt-1">• cadastrar leads • buscar imóveis • resumir atendimentos • gerar descrições</p>
+              <p className="mt-1">• cadastrar leads • buscar imóveis • cadastrar imóveis • resumir atendimentos • gerar descrições</p>
               <p className="mt-3 font-semibold text-white">Exemplos:</p>
-              <p className="mt-1 break-words">João Silva 54999999999<br />Casa até 600 mil em Vacaria<br />Apartamento 2 quartos no centro</p>
+              <p className="mt-1 break-words">João Silva 54999999999<br />Casa até 600 mil em Vacaria<br />Cadastrar apartamento 3 dormitórios</p>
             </div>
           </div>
         </section>

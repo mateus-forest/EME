@@ -220,6 +220,7 @@ export async function POST(request: NextRequest) {
     let responseText = ""
     let actionStatus = "processing"
     let errorMessage: string | null = null
+    let finalCreditsUsed = creditsUsed
     const actionStartedAt = Date.now()
 
     try {
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
           : actionResult.response.includes("preciso de confirmação") || actionResult.response.includes("confirmação")
             ? "processing"
             : "success"
-      responseText = action === "createLead" || action === "searchProperties" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+      responseText = action === "createLead" || action === "searchProperties" || action === "createPropertyDraft" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,
         executedAction: action,
@@ -252,6 +253,15 @@ export async function POST(request: NextRequest) {
       actionStatus = "error"
       errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na ação interna."
       responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
+      finalCreditsUsed = 0
+      await prisma.broker.update({
+        where: { id: user.broker.id },
+        data: {
+          aiCreditsBalance: { increment: creditsUsed },
+          aiCreditsUsedThisMonth: { decrement: creditsUsed },
+          aiMonthlyUsage: { decrement: creditsUsed },
+        },
+      }).catch(() => null)
       await prisma.notification.create({
         data: {
           userId: user.id,
@@ -271,7 +281,7 @@ export async function POST(request: NextRequest) {
           prompt: message,
           response: responseText,
           actionType: action,
-          creditsUsed,
+          creditsUsed: finalCreditsUsed,
           channel: "assessor_eme",
           intent: action,
           actionStatus,
@@ -304,7 +314,7 @@ export async function POST(request: NextRequest) {
             visualAction: getVisualActionLabel(action),
           },
           errorMessage,
-          creditsUsed,
+          creditsUsed: finalCreditsUsed,
           leadId: actionResult.leadId ?? null,
           propertyId: actionResult.propertyId ?? null,
         },
@@ -321,7 +331,7 @@ export async function POST(request: NextRequest) {
         durationMs: Date.now() - actionStartedAt,
         visualAction: getVisualActionLabel(action),
       },
-      creditsUsed,
+      creditsUsed: finalCreditsUsed,
       ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 } }),
     })
   } catch (caughtError) {

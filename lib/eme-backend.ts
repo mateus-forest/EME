@@ -20,6 +20,19 @@ export const assessorActions = [
 
 export type AssessorAction = (typeof assessorActions)[number]
 
+const assessorActionRegistry: Record<AssessorAction, { visualAction: string; futureReady?: boolean }> = {
+  general: { visualAction: "Atendimento do Assessor" },
+  createLead: { visualAction: "Lead cadastrado" },
+  searchProperties: { visualAction: "Busca de imóveis" },
+  createPropertyDraft: { visualAction: "Rascunho de imóvel" },
+  improvePropertyDescription: { visualAction: "Descrição melhorada" },
+  summarizeLead: { visualAction: "Resumo de atendimentos" },
+  analyzeCatalog: { visualAction: "Catálogo analisado" },
+  createInternalNotification: { visualAction: "Notificação interna" },
+  getFinancialSummary: { visualAction: "Consulta financeira" },
+  getAnalyticsSummary: { visualAction: "Consulta de analytics" },
+}
+
 export function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return ""
   return value.trim().slice(0, maxLength)
@@ -29,12 +42,16 @@ export function normalizePhone(value: unknown) {
   return cleanText(value, 40).replace(/[^\d+]/g, "")
 }
 
+export function getAssessorVisualAction(action: AssessorAction) {
+  return assessorActionRegistry[action]?.visualAction ?? "Ação do Assessor"
+}
+
 function normalizeForIntent(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
 
 const ASSESSOR_MENU_RESPONSE =
-  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis\n• resumir atendimentos\n• gerar descrições\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nBuscar imóvel: casa até 600 mil em Vacaria"
+  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis\n• cadastrar imóveis\n• resumir atendimentos\n• gerar descrições\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nBuscar imóvel: casa até 600 mil em Vacaria"
 
 const ASSESSOR_FALLBACK_RESPONSE =
   "Não consegui identificar o pedido ainda.\n\nVocê pode me mandar assim:\n• Cadastrar lead: João Silva 54999999999\n• Buscar imóvel: casa até 600 mil em Vacaria\n• Buscar apartamento 2 quartos no centro"
@@ -74,39 +91,105 @@ function extractLeadData(message: string) {
   return { name, phone }
 }
 
+function parseFlexiblePriceToCents(message: string) {
+  const normalized = normalizeForIntent(message)
+  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de|valor|preco|preço)?\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|k|mi|milhao|milhoes|milhão|milhões))\b/)
+  if (!priceMatch) return null
+
+  const rawPrice = Number(priceMatch[1].replace(",", "."))
+  if (!Number.isFinite(rawPrice) || rawPrice < 0) return null
+
+  const unit = priceMatch[2]
+  const multiplier = unit?.startsWith("mi") || unit?.startsWith("milh") ? 1_000_000 : 1000
+  return Math.round(rawPrice * multiplier * 100)
+}
+
+function inferPropertyTypeFromText(message: string): PropertyType | null {
+  const normalized = normalizeForIntent(message)
+  if (normalized.includes("casa")) return "HOUSE"
+  if (normalized.includes("apartamento") || normalized.includes("apto")) return "APARTMENT"
+  if (normalized.includes("terreno")) return "LAND"
+  if (normalized.includes("sala")) return "OFFICE"
+  if (normalized.includes("loja")) return "STORE"
+  if (normalized.includes("cobertura")) return "PENTHOUSE"
+  if (normalized.includes("comercial")) return "COMMERCIAL"
+  return null
+}
+
 function parsePropertySearchFilters(message: string) {
   const normalized = normalizeForIntent(message)
-  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de)?\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|k|mi|milhao|milhoes|milhão|milhões))\b/)
-  const rawPrice = priceMatch ? Number(priceMatch[1].replace(",", ".")) : null
-  const maxPrice =
-    rawPrice === null || Number.isNaN(rawPrice)
-      ? null
-      : Math.round(rawPrice * (priceMatch?.[2]?.startsWith("mi") || priceMatch?.[2]?.startsWith("milh") ? 1_000_000 : 1000) * 100)
   const cityMatch = normalized.match(/\b(?:em|na cidade de|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|no bairro|bairro|e|$)|$)/)
   const neighborhoodMatch =
     normalized.match(/\b(?:bairro|no bairro|na regiao|regiao)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/) ??
     normalized.match(/\b(?:no|na)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/)
   const bedroomsMatch = normalized.match(/(\d+)\s*(?:quartos|dormitorios|dormitórios)/)
-  const type = normalized.includes("casa")
-    ? "HOUSE"
-    : normalized.includes("apartamento") || normalized.includes("apto")
-      ? "APARTMENT"
-      : normalized.includes("terreno")
-        ? "LAND"
-        : normalized.includes("sala")
-          ? "OFFICE"
-          : normalized.includes("loja")
-            ? "STORE"
-            : normalized.includes("cobertura")
-              ? "PENTHOUSE"
-              : null
+  const purpose = normalized.includes("aluguel") || normalized.includes("alugar") || normalized.includes("locacao") || normalized.includes("locação")
+    ? "RENT"
+    : normalized.includes("venda") || normalized.includes("comprar")
+      ? "SALE"
+      : null
 
   return {
-    maxPrice,
+    maxPrice: parseFlexiblePriceToCents(message),
     city: cleanText(cityMatch?.[1], 80),
     neighborhood: cleanText(neighborhoodMatch?.[1], 80),
     bedrooms: bedroomsMatch ? Number(bedroomsMatch[1]) : null,
+    type: inferPropertyTypeFromText(message),
+    purpose,
+  }
+}
+
+function parsePropertyDraftData(message: string, payload?: Record<string, unknown>) {
+  const normalized = normalizeForIntent(message)
+  const type = inferPropertyTypeFromText(message) ?? "APARTMENT"
+  const cityMatch = normalized.match(/\b(?:em|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:bairro|no|na|com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/)
+  const neighborhoodMatch =
+    normalized.match(/\b(?:bairro|no bairro|no|na)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/) ??
+    normalized.match(/\b(centro)\b/)
+  const bedroomsMatch = normalized.match(/(\d+)\s*(?:quartos|dormitorios|dormitórios|dorms?)/)
+  const bathroomsMatch = normalized.match(/(\d+)\s*(?:banheiros|banheiro|bwc)/)
+  const parkingMatch = normalized.match(/(\d+)\s*(?:vagas|vaga|garagens|garagem)/)
+  const areaMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:m2|m²|metros)/)
+  const purpose = normalized.includes("aluguel") || normalized.includes("alugar") || normalized.includes("locacao") || normalized.includes("locação") ? "RENT" : "SALE"
+  const features = ["piscina", "mobiliado", "patio", "pátio", "churrasqueira", "sacada", "suite", "suíte"]
+    .filter((feature) => normalized.includes(normalizeForIntent(feature)))
+  const typeLabel =
+    type === "HOUSE" ? "Casa" :
+    type === "LAND" ? "Terreno" :
+    type === "OFFICE" ? "Sala comercial" :
+    type === "STORE" ? "Loja" :
+    type === "PENTHOUSE" ? "Cobertura" :
+    type === "COMMERCIAL" ? "Comercial" :
+    "Apartamento"
+
+  const city = cleanText(payload?.city, 100) || cleanText(cityMatch?.[1], 100) || "Não informada"
+  const neighborhood = cleanText(payload?.neighborhood, 100) || cleanText(neighborhoodMatch?.[1], 100) || null
+  const bedrooms = Number(payload?.bedrooms) || (bedroomsMatch ? Number(bedroomsMatch[1]) : 0)
+  const bathrooms = Number(payload?.bathrooms) || (bathroomsMatch ? Number(bathroomsMatch[1]) : 0)
+  const parkingSpots = Number(payload?.parkingSpots ?? payload?.parking) || (parkingMatch ? Number(parkingMatch[1]) : 0)
+  const area = cleanText(payload?.area, 40) || cleanText(areaMatch?.[0], 40)
+  const price = parseCurrencyInputToCents(payload?.price) ?? parseFlexiblePriceToCents(message) ?? 0
+  const title = cleanText(payload?.title, 160) || [typeLabel, bedrooms ? `${bedrooms} dormitórios` : "", neighborhood ? `no ${neighborhood}` : ""].filter(Boolean).join(" ")
+  const descriptionParts = [
+    cleanText(payload?.description, 2000),
+    area ? `Área informada: ${area}.` : "",
+    features.length ? `Características: ${features.join(", ")}.` : "",
+    `Dados capturados pelo Assessor EME a partir da mensagem: "${message.slice(0, 240)}"`,
+  ].filter(Boolean)
+
+  return {
+    title: title || `${typeLabel} em rascunho`,
+    city,
+    neighborhood,
+    price,
+    bedrooms,
+    bathrooms,
+    parkingSpots,
     type,
+    purpose,
+    area,
+    features,
+    description: descriptionParts.join("\n"),
   }
 }
 
@@ -121,6 +204,7 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
 
   const normalized = normalizeForIntent(message)
   if (isAssessorGreeting(message)) return "general"
+  if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione)\b/.test(normalized) && /\b(imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura)\b/.test(normalized)) return "createPropertyDraft"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b/.test(normalized) && /\d{10,13}/.test(normalized)) return "createLead"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b.*\b(lead|contato|cliente)\b/.test(normalized)) return "createLead"
   if (/\b(lead|contato|cliente)\b/.test(normalized) && /\d{8,}/.test(normalized)) return "createLead"
@@ -158,26 +242,46 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     brokerId,
     OR: [{ published: true }, { status: PropertyStatus.PUBLISHED }],
   }
+  const baseFilterWhere = {
+    ...activeWhere,
+    ...(filters.maxPrice ? { price: { lte: filters.maxPrice } } : {}),
+    ...(filters.city ? { city: { contains: filters.city, mode: "insensitive" as const } } : {}),
+    ...(filters.neighborhood ? { neighborhood: { contains: filters.neighborhood, mode: "insensitive" as const } } : {}),
+    ...(filters.bedrooms ? { bedrooms: { gte: filters.bedrooms } } : {}),
+    ...(filters.type ? { type: filters.type as PropertyType } : {}),
+    ...(filters.purpose ? { purpose: filters.purpose } : {}),
+  }
 
   const filteredProperties = await prisma.property.findMany({
-    where: {
-      ...activeWhere,
-      ...(filters.maxPrice ? { price: { lte: filters.maxPrice } } : {}),
-      ...(filters.city ? { city: { contains: filters.city, mode: "insensitive" } } : {}),
-      ...(filters.neighborhood ? { neighborhood: { contains: filters.neighborhood, mode: "insensitive" } } : {}),
-      ...(filters.bedrooms ? { bedrooms: { gte: filters.bedrooms } } : {}),
-      ...(filters.type ? { type: filters.type as PropertyType } : {}),
-    },
+    where: baseFilterWhere,
     orderBy: { createdAt: "desc" },
     take: 30,
   })
 
+  let usedRelaxedSearch = false
   let usedBroadSearch = false
   let properties = filteredProperties
+  if (properties.length === 0 && (filters.neighborhood || filters.bedrooms || filters.city)) {
+    usedRelaxedSearch = true
+    properties = await prisma.property.findMany({
+      where: {
+        ...activeWhere,
+        ...(filters.maxPrice ? { price: { lte: filters.maxPrice } } : {}),
+        ...(filters.type ? { type: filters.type as PropertyType } : {}),
+        ...(filters.purpose ? { purpose: filters.purpose } : {}),
+      },
+      orderBy: [{ viewsCount: "desc" }, { createdAt: "desc" }],
+      take: 30,
+    })
+  }
+
   if (properties.length === 0) {
     usedBroadSearch = true
     properties = await prisma.property.findMany({
-      where: activeWhere,
+      where: {
+      ...activeWhere,
+      ...(filters.type ? { type: filters.type as PropertyType } : {}),
+      },
       orderBy: [{ viewsCount: "desc" }, { createdAt: "desc" }],
       take: 30,
     })
@@ -210,7 +314,7 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     data: {
       brokerId,
       query,
-      filters: { ...filters, usedBroadSearch },
+      filters: { ...filters, usedRelaxedSearch, usedBroadSearch },
       resultCount: results.length,
       source: "assessor_eme",
     },
@@ -222,7 +326,7 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     })
   })
 
-  return { results, filters: { ...filters, usedBroadSearch } }
+  return { results, filters: { ...filters, usedRelaxedSearch, usedBroadSearch } }
 }
 
 export async function buildBrokerContext(brokerId: string) {
@@ -254,7 +358,6 @@ export async function runAssessorAction({
   userId,
   message,
   action,
-  confirm,
   payload,
 }: {
   brokerId: string
@@ -393,30 +496,39 @@ export async function runAssessorAction({
   }
 
   if (action === "createPropertyDraft") {
-    const title = cleanText(payload?.title, 160)
-    const city = cleanText(payload?.city, 100)
-    const price = parseCurrencyInputToCents(payload?.price)
-    if (!confirm || !title || !city || price === null) {
-      return {
-        response: "Posso preparar o rascunho do imóvel, mas preciso de confirmação e dos campos mínimos: título, cidade e preço.",
-        metadata: { required: ["title", "city", "price"], readyForConfirmation: Boolean(title && city && price !== null) },
-      }
-    }
+    const draft = parsePropertyDraftData(message, payload)
 
     const property = await prisma.property.create({
       data: {
-        title,
-        city,
-        neighborhood: cleanText(payload?.neighborhood, 100) || null,
-        price,
-        description: cleanText(payload?.description, 2000) || null,
+        title: draft.title,
+        city: draft.city,
+        neighborhood: draft.neighborhood,
+        price: draft.price,
+        description: draft.description,
+        bedrooms: draft.bedrooms,
+        bathrooms: draft.bathrooms,
+        parkingSpots: draft.parkingSpots,
+        type: draft.type,
+        purpose: draft.purpose,
         status: PropertyStatus.DRAFT,
         published: false,
         brokerId,
       },
     })
-    await prisma.notification.create({ data: { userId, title: "Rascunho criado pelo Assessor EME", message: `${title} foi criado como rascunho.`, read: false } })
-    return { response: `Rascunho do imóvel ${title} criado com sucesso.`, metadata: { propertyId: property.id }, propertyId: property.id }
+    await prisma.notification.create({ data: { userId, title: "Rascunho criado pelo Assessor EME", message: `${draft.title} foi criado como rascunho.`, read: false } })
+    return {
+      response: "Imóvel criado em rascunho ✅\n\nDeseja:\n• gerar descrição\n• gerar anúncio Instagram\n• gerar anúncio OLX\n• publicar imóvel",
+      metadata: {
+        propertyId: property.id,
+        parsedData: draft,
+        futureActions: ["agenda_eme", "follow_up", "documents", "proposals", "ad_publication"],
+        mediaHandling: {
+          prepared: true,
+          status: "waiting_storage_binding",
+        },
+      },
+      propertyId: property.id,
+    }
   }
 
   return { response: "", metadata: {} }

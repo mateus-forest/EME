@@ -5,6 +5,7 @@ import {
   cleanText,
   generateAssessorText,
   generateCorretorEmeReply,
+  getAssessorVisualAction,
   inferAssessorAction,
   inferCustomerIntent,
   runAssessorAction,
@@ -38,6 +39,7 @@ type WhatsAppIncomingMessage = {
   timestamp?: string
   type?: string
   text?: { body?: string }
+  image?: { id?: string; caption?: string; mime_type?: string; sha256?: string }
 }
 
 type WhatsAppWebhookChange = {
@@ -71,8 +73,22 @@ function normalizeComparablePhone(value?: string | null) {
 }
 
 function extractTextMessage(message: WhatsAppIncomingMessage) {
+  if (message.type === "image") {
+    return cleanText(message.image?.caption, 3000) || "Imagem recebida para análise do Assessor EME."
+  }
   if (message.type !== "text") return ""
   return cleanText(message.text?.body, 3000)
+}
+
+function extractMessageMedia(message: WhatsAppIncomingMessage) {
+  if (message.type !== "image" || !message.image?.id) return null
+  return {
+    type: "image",
+    id: cleanText(message.image.id, 180),
+    mimeType: cleanText(message.image.mime_type, 120),
+    sha256: cleanText(message.image.sha256, 180),
+    status: "received_pending_download",
+  }
 }
 
 function getContactName(change: WhatsAppWebhookChange, fromPhone: string) {
@@ -257,6 +273,8 @@ async function processAssessorMessage({
   let responseText: string
   let actionStatus: string
   let errorMessage: string | null = null
+  let finalCreditsUsed = creditsUsed
+  const actionStartedAt = Date.now()
 
   try {
     actionResult = await runAssessorAction({
@@ -273,19 +291,31 @@ async function processAssessorMessage({
         : actionResult.response.includes("confirmação")
           ? "needs_confirmation"
           : "completed"
-    responseText = action === "createLead" || action === "searchProperties" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+    responseText = action === "createLead" || action === "searchProperties" || action === "createPropertyDraft" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
     console.info("[api][whatsapp][assessor-action]", {
       detectedIntent: action,
       executedAction: action,
       actionStatus,
       brokerId,
+      visualAction: getAssessorVisualAction(action),
+      durationMs: Date.now() - actionStartedAt,
       leadId: actionResult.leadId ?? null,
+      propertyId: actionResult.propertyId ?? null,
       propertySearchFilters: actionResult.metadata?.propertySearchFilters ?? null,
     })
   } catch (caughtError) {
     actionStatus = "error"
     errorMessage = caughtError instanceof Error ? caughtError.message : "Erro na ação interna."
     responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
+    finalCreditsUsed = 0
+    await prisma.broker.update({
+      where: { id: brokerId },
+      data: {
+        aiCreditsBalance: { increment: creditsUsed },
+        aiCreditsUsedThisMonth: { decrement: creditsUsed },
+        aiMonthlyUsage: { decrement: creditsUsed },
+      },
+    }).catch(() => null)
   }
 
   await Promise.all([
@@ -303,9 +333,9 @@ async function processAssessorMessage({
         detectedIntent: action,
         actionType: action,
         actionStatus,
-        metadata: { ...metadata, ...(actionResult.metadata ?? {}), whatsappMessageId: messageId },
+        metadata: { ...metadata, ...(actionResult.metadata ?? {}), whatsappMessageId: messageId, visualAction: getAssessorVisualAction(action), durationMs: Date.now() - actionStartedAt },
         errorMessage,
-        creditsUsed,
+        creditsUsed: finalCreditsUsed,
       },
     }),
     prisma.aiAssistantInteraction.create({
@@ -315,11 +345,11 @@ async function processAssessorMessage({
         prompt: message,
         response: responseText,
         actionType: action,
-        creditsUsed,
+        creditsUsed: finalCreditsUsed,
         channel: "assessor_eme",
         intent: action,
         actionStatus,
-        metadata: { ...metadata, ...(actionResult.metadata ?? {}), whatsappMessageId: messageId },
+        metadata: { ...metadata, ...(actionResult.metadata ?? {}), whatsappMessageId: messageId, visualAction: getAssessorVisualAction(action), durationMs: Date.now() - actionStartedAt },
         errorMessage,
         leadId: actionResult.leadId ?? null,
         propertyId: actionResult.propertyId ?? null,
@@ -327,7 +357,7 @@ async function processAssessorMessage({
     }),
   ])
 
-  return { response: responseText, intent: action, actionType: action, actionStatus, creditsUsed }
+  return { response: responseText, intent: action, actionType: action, actionStatus, creditsUsed: finalCreditsUsed }
 }
 
 async function processCorretorMessage({
@@ -455,6 +485,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
   const fromPhone = recipient.whatsappReplyTo
   const messageId = cleanText(incomingMessage.id, 240)
   const message = extractTextMessage(incomingMessage)
+  const media = extractMessageMedia(incomingMessage)
   if (!fromPhone || !message) return
 
   await markAsRead(messageId, { phoneNumberId }).catch(() => null)
@@ -466,6 +497,7 @@ async function processIncomingMessage(change: WhatsAppWebhookChange, incomingMes
     displayPhoneNumber,
     whatsappMessageId: messageId,
     timestamp: incomingMessage.timestamp ?? null,
+    media,
   } satisfies Prisma.InputJsonObject
 
   if (phoneNumberId && assessorPhoneNumberId && phoneNumberId === assessorPhoneNumberId) {
