@@ -236,6 +236,18 @@ export function BrokerMPage() {
           </div>
         </section>
 
+        <section className="rounded-[1.5rem] border border-[#00C853]/16 bg-[#00C853]/10 p-5">
+          <div className="flex items-start gap-3">
+            <Lightbulb className="mt-1 size-5 shrink-0 text-[#69F0AE]" />
+            <div className="min-w-0 text-sm leading-7 text-white/70">
+              <p className="font-semibold text-white">O que posso fazer:</p>
+              <p className="mt-1">• cadastrar leads • buscar imóveis • resumir atendimentos • gerar descrições</p>
+              <p className="mt-3 font-semibold text-white">Exemplos:</p>
+              <p className="mt-1 break-words">João Silva 54999999999<br />Casa até 600 mil em Vacaria<br />Apartamento 2 quartos no centro</p>
+            </div>
+          </div>
+        </section>
+
         <section className="grid min-w-0 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <ResponsiveCollapsibleSection title="Créditos disponíveis" defaultMobileOpen>
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">

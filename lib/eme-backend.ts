@@ -33,6 +33,26 @@ function normalizeForIntent(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
 
+const ASSESSOR_MENU_RESPONSE =
+  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis\n• resumir atendimentos\n• gerar descrições\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nBuscar imóvel: casa até 600 mil em Vacaria"
+
+const ASSESSOR_FALLBACK_RESPONSE =
+  "Não consegui identificar o pedido ainda.\n\nVocê pode me mandar assim:\n• Cadastrar lead: João Silva 54999999999\n• Buscar imóvel: casa até 600 mil em Vacaria\n• Buscar apartamento 2 quartos no centro"
+
+function isAssessorGreeting(message: string) {
+  const normalized = normalizeForIntent(message).replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim()
+  return /^(oi|ola|olá|bom dia|boa tarde|boa noite|tudo bem|ajuda|menu|help)$/.test(normalized)
+}
+
+function isLikelyUnknownAssessorMessage(message: string, action: AssessorAction) {
+  if (action !== "general") return false
+  const normalized = normalizeForIntent(message).replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim()
+  if (!normalized) return false
+  if (isAssessorGreeting(message)) return false
+  if (/\b(lead|contato|cliente|imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura|descricao|anuncio|catalogo|financeiro|analytics|resumo|atendimento)\b/.test(normalized)) return false
+  return normalized.length <= 24
+}
+
 function extractLeadData(message: string) {
   const withoutCommands = message
     .replace(/\b(?:cadastrar|cadastre|criar|crie|novo|nova|lead|contato|cliente|esse|essa|este|esta)\b/gi, " ")
@@ -56,14 +76,16 @@ function extractLeadData(message: string) {
 
 function parsePropertySearchFilters(message: string) {
   const normalized = normalizeForIntent(message)
-  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de)\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|mi|milhao|milhoes))?/)
+  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de)?\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|k|mi|milhao|milhoes|milhão|milhões))\b/)
   const rawPrice = priceMatch ? Number(priceMatch[1].replace(",", ".")) : null
   const maxPrice =
     rawPrice === null || Number.isNaN(rawPrice)
       ? null
-      : Math.round(rawPrice * (priceMatch?.[2]?.startsWith("mi") ? 1_000_000 : priceMatch?.[2] === "mil" || rawPrice < 10000 ? 1000 : 1) * 100)
+      : Math.round(rawPrice * (priceMatch?.[2]?.startsWith("mi") || priceMatch?.[2]?.startsWith("milh") ? 1_000_000 : 1000) * 100)
   const cityMatch = normalized.match(/\b(?:em|na cidade de|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|no bairro|bairro|e|$)|$)/)
-  const neighborhoodMatch = normalized.match(/\b(?:bairro|no bairro|na regiao|regiao)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/)
+  const neighborhoodMatch =
+    normalized.match(/\b(?:bairro|no bairro|na regiao|regiao)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/) ??
+    normalized.match(/\b(?:no|na)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/)
   const bedroomsMatch = normalized.match(/(\d+)\s*(?:quartos|dormitorios|dormitórios)/)
   const type = normalized.includes("casa")
     ? "HOUSE"
@@ -98,9 +120,13 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
   if (assessorActions.includes(requestedAction as AssessorAction)) return requestedAction as AssessorAction
 
   const normalized = normalizeForIntent(message)
+  if (isAssessorGreeting(message)) return "general"
+  if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b/.test(normalized) && /\d{10,13}/.test(normalized)) return "createLead"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b.*\b(lead|contato|cliente)\b/.test(normalized)) return "createLead"
   if (/\b(lead|contato|cliente)\b/.test(normalized) && /\d{8,}/.test(normalized)) return "createLead"
-  if (/\b(buscar|busca|procurar|procura|listar|quero|preciso|acha|encontra)\b/.test(normalized) && /\b(imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura)\b/.test(normalized)) return "searchProperties"
+  if (/\b(buscar|busca|procurar|procura|listar|quero|preciso|acha|encontra|opcoes|opções)\b/.test(normalized) && /\b(imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura)\b/.test(normalized)) return "searchProperties"
+  if (/\b(casa|apartamento|apto|terreno|sala|loja|cobertura|imovel|imoveis)\b/.test(normalized) && (/\b(ate|até|mil|k|milhao|milhoes|milhão|milhões|quartos|dormitorios|centro)\b/.test(normalized) || /\d/.test(normalized))) return "searchProperties"
+  if (/\b(casa|apartamento|apto|terreno|sala|loja|cobertura|imovel|imoveis)\b/.test(normalized) && !/\b(cadastrar|cadastre|criar|crie)\b/.test(normalized)) return "searchProperties"
   if (normalized.includes("cadastrar imovel") || normalized.includes("criar imovel")) return "createPropertyDraft"
   if (normalized.includes("melhorar descricao") || normalized.includes("descrição")) return "improvePropertyDescription"
   if (normalized.includes("resumir lead") || normalized.includes("resumo")) return "summarizeLead"
@@ -126,11 +152,16 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .split(/\s+/)
-    .filter((term) => term.length > 2)
+    .filter((term) => term.length > 2 && !["buscar", "busca", "quero", "imovel", "imoveis", "ate", "com", "para", "opcoes", "opções"].includes(term))
+  const hasSpecificFilters = Boolean(filters.maxPrice || filters.city || filters.neighborhood || filters.type || filters.bedrooms)
+  const activeWhere = {
+    brokerId,
+    OR: [{ published: true }, { status: PropertyStatus.PUBLISHED }],
+  }
 
-  const properties = await prisma.property.findMany({
+  const filteredProperties = await prisma.property.findMany({
     where: {
-      brokerId,
+      ...activeWhere,
       ...(filters.maxPrice ? { price: { lte: filters.maxPrice } } : {}),
       ...(filters.city ? { city: { contains: filters.city, mode: "insensitive" } } : {}),
       ...(filters.neighborhood ? { neighborhood: { contains: filters.neighborhood, mode: "insensitive" } } : {}),
@@ -140,6 +171,17 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     orderBy: { createdAt: "desc" },
     take: 30,
   })
+
+  let usedBroadSearch = false
+  let properties = filteredProperties
+  if (properties.length === 0) {
+    usedBroadSearch = true
+    properties = await prisma.property.findMany({
+      where: activeWhere,
+      orderBy: [{ viewsCount: "desc" }, { createdAt: "desc" }],
+      take: 30,
+    })
+  }
 
   const results = properties
     .map((property) => {
@@ -159,7 +201,7 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
       const score = terms.reduce((sum, term) => sum + (haystack.includes(term) ? 1 : 0), 0)
       return { property, score }
     })
-    .filter((item) => terms.length === 0 || filters.maxPrice || filters.city || filters.neighborhood || filters.type || filters.bedrooms || item.score > 0)
+    .filter((item) => usedBroadSearch || terms.length === 0 || hasSpecificFilters || item.score > 0)
     .sort((first, second) => second.score - first.score || second.property.viewsCount - first.property.viewsCount)
     .slice(0, limit)
     .map(({ property }) => property)
@@ -168,7 +210,7 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     data: {
       brokerId,
       query,
-      filters,
+      filters: { ...filters, usedBroadSearch },
       resultCount: results.length,
       source: "assessor_eme",
     },
@@ -180,7 +222,7 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     })
   })
 
-  return results
+  return { results, filters: { ...filters, usedBroadSearch } }
 }
 
 export async function buildBrokerContext(brokerId: string) {
@@ -223,15 +265,21 @@ export async function runAssessorAction({
   payload?: Record<string, unknown>
 }) {
   if (action === "searchProperties") {
-    const properties = await searchBrokerProperties(brokerId, message)
-    const filters = parsePropertySearchFilters(message)
+    const searchResult = await searchBrokerProperties(brokerId, message)
+    const properties = searchResult.results
+    const filters = searchResult.filters
     return {
       response: properties.length
-        ? `Encontrei ${properties.length} opção${properties.length === 1 ? "" : "ões"}:\n${properties
-            .map((property) => `• ${property.title} · ${property.neighborhood ?? property.city} · ${formatCurrencyBRLFromCents(property.price)} · ${property.bedrooms} quarto(s)`)
-            .join("\n")}\nQuer refinar por bairro, quartos ou garagem?`
-        : "Nenhum imóvel encontrado para essa busca. Quer ampliar valor ou cidade?",
-      metadata: { propertyIds: properties.map((property) => property.id), propertySearchFilters: filters },
+        ? `Encontrei ${properties.length} imóvel${properties.length === 1 ? "" : "is"}:\n\n${properties
+            .map((property, index) => `${index + 1}. ${property.title} — ${formatCurrencyBRLFromCents(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
+            .join("\n")}\n\nQuer que eu te mande mais detalhes de algum?`
+        : "Não encontrei imóveis com esses filtros. Posso tentar uma busca mais ampla?",
+      metadata: {
+        propertyIds: properties.map((property) => property.id),
+        propertySearchFilters: filters,
+        resultCount: properties.length,
+        originalMessage: message,
+      },
     }
   }
   if (action === "getFinancialSummary") {
@@ -265,8 +313,8 @@ export async function runAssessorAction({
   }
 
   if (action === "improvePropertyDescription") {
-    const properties = await searchBrokerProperties(brokerId, message, 1)
-    const property = properties[0]
+    const searchResult = await searchBrokerProperties(brokerId, message, 1)
+    const property = searchResult.results[0]
     return {
       response: property
         ? `Base para melhoria: ${property.title}. Descrição atual: ${property.description || "sem descrição cadastrada"}.`
@@ -375,8 +423,11 @@ export async function runAssessorAction({
 }
 
 export async function generateAssessorText(message: string, action: AssessorAction, actionResponse: string) {
+  if (isAssessorGreeting(message)) return ASSESSOR_MENU_RESPONSE
+  if (isLikelyUnknownAssessorMessage(message, action)) return ASSESSOR_FALLBACK_RESPONSE
+
   const client = getOpenAIClient()
-  if (!client) return actionResponse || "Oi 👋 Sou o Assessor EME.\n\nPosso ajudar com:\n• imóveis\n• leads\n• anúncios\n• atendimentos\n\nO que você precisa?"
+  if (!client) return actionResponse || ASSESSOR_FALLBACK_RESPONSE
 
   const { model } = getOpenAIEnv()
   const response = await client.responses.create({

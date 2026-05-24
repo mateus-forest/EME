@@ -373,7 +373,8 @@ async function processCorretorMessage({
     return { response, intent, actionType, actionStatus: "insufficient_credits", creditsUsed: 0 }
   }
 
-  const suggestions = await searchBrokerProperties(brokerId, message, 3)
+  const propertySearch = await searchBrokerProperties(brokerId, message, 3)
+  const suggestions = propertySearch.results
   const existingLead = await prisma.lead.findFirst({
     where: { brokerId, phone: fromPhone },
     select: { id: true },

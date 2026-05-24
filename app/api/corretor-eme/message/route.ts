@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Créditos insuficientes para processar o Corretor EME." }, { status: 402 })
     }
 
-    const suggestions = await searchBrokerProperties(brokerId, message, 3)
+    const propertySearch = await searchBrokerProperties(brokerId, message, 3)
+    const suggestions = propertySearch.results
     const existingLead = await prisma.lead.findFirst({
       where: { brokerId, phone },
       select: { id: true },
