@@ -72,14 +72,6 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
     }),
     [leads],
   )
-  const searchTerms = useMemo(
-    () => {
-      const tracked = recentSearches.map((item) => item.query.trim()).filter(Boolean)
-      const fromLeads = leads.map((lead) => lead.searchTerm.trim()).filter(Boolean)
-      return Array.from(new Set([...tracked, ...fromLeads])).slice(0, 3)
-    },
-    [leads, recentSearches],
-  )
   const recentLeads = leads.slice(0, 3)
   const remainingEstimate = Math.max(0, credits.balance)
   const actionsCount = credits.usedThisMonth
@@ -116,7 +108,7 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-3 p-6 pt-0 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid grid-cols-2 gap-3 p-6 pt-0 xl:grid-cols-4">
             <Metric label="Status" value={aiAssistantEnabled ? "Ativo" : "Pausado"} tone={aiAssistantEnabled ? "green" : "muted"} />
             <Metric label="Créditos IA" value={String(credits.balance)} />
             <Metric label="Uso no mês" value={String(credits.usedThisMonth)} />
@@ -162,7 +154,7 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
           <CardContent className="grid gap-3 p-6 pt-0">
             {leadMetrics.received > 0 ? (
               <>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3">
                   <Metric label="Recebidos" value={String(leadMetrics.received)} />
                   <Metric label="Novos" value={String(leadMetrics.new)} />
                   <Metric label="Aguardando resposta" value={String(leadMetrics.pending)} />
@@ -192,11 +184,18 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
-            {searchTerms.length > 0 ? (
-              searchTerms.map((query) => (
-                <div key={query} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                  <p className="text-sm font-medium text-white">{query}</p>
-                  <p className="mt-1 text-xs text-white/45">Termo pesquisado no catálogo.</p>
+            {recentSearches.length > 0 ? (
+              recentSearches.slice(0, 4).map((search) => (
+                <div key={search.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium text-white">{search.query}</p>
+                    <span className="shrink-0 rounded-full border border-[#00C853]/16 bg-[#00C853]/10 px-2 py-0.5 text-[10px] text-[#69F0AE]">
+                      {formatSearchOrigin(search.source)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-white/45">
+                    {formatSearchTime(search.createdAt)} · {search.resultCount} resultado{search.resultCount === 1 ? "" : "s"}
+                  </p>
                 </div>
               ))
             ) : (
@@ -251,6 +250,23 @@ function Metric({ label, value, tone = "muted" }: { label: string; value: string
       <p className={`mt-2 text-base font-semibold ${tone === "green" ? "text-[#69F0AE]" : "text-white"}`}>{value}</p>
     </div>
   )
+}
+
+function formatSearchOrigin(source: string) {
+  const normalized = source.toLowerCase()
+  if (normalized.includes("whatsapp") || normalized.includes("assessor") || normalized.includes("corretor_eme")) return "WhatsApp"
+  if (normalized.includes("catalog")) return "Catálogo"
+  if (normalized.includes("dashboard")) return "Dashboard"
+  return source || "Dashboard"
+}
+
+function formatSearchTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Horário não informado"
+
+  const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  if (date.toDateString() === new Date().toDateString()) return `Hoje às ${time}`
+  return `${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${time}`
 }
 
 function EmptyState({ text }: { text: string }) {

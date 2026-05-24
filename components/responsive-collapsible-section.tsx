@@ -36,7 +36,7 @@ export function ResponsiveCollapsibleSection({
         aria-expanded={open}
       >
         <span className="min-w-0 truncate text-sm font-semibold md:text-base">{title}</span>
-        <ChevronDown className={cn("size-4 shrink-0 transition-transform", open ? "rotate-180" : "rotate-0")} />
+        <ChevronDown className={cn("size-4 shrink-0 transition-transform", open ? "rotate-0" : "-rotate-90")} />
       </button>
       <div className={cn("grid transition-[grid-template-rows,opacity] duration-200", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="min-h-0 overflow-hidden">

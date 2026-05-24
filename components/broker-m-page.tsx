@@ -321,6 +321,33 @@ export function BrokerMPage() {
         </Card>
         </ResponsiveCollapsibleSection>
 
+        <ResponsiveCollapsibleSection title="Histórico operacional">
+        <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+          <CardContent className="grid gap-3 p-5">
+            {history.length > 0 ? (
+              history.map((item) => (
+                <div key={item.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{formatAssistantAction(item.actionType || item.detectedIntent)}</p>
+                      <p className="mt-1 text-xs text-white/45">{formatAssistantTime(item.createdAt)}</p>
+                    </div>
+                    <span className={item.actionStatus === "error" ? "rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200" : "rounded-full border border-[#00C853]/16 bg-[#00C853]/10 px-2 py-0.5 text-[10px] text-[#69F0AE]"}>
+                      {item.actionStatus === "error" ? "Atenção" : "Concluído"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-[#69F0AE]">-1 crédito IA</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
+                Nenhuma ação operacional registrada ainda.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        </ResponsiveCollapsibleSection>
+
         <section className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
@@ -368,4 +395,24 @@ export function BrokerMPage() {
       </div>
     </BrokerPageShell>
   )
+}
+
+function formatAssistantAction(action: string | null) {
+  if (!action) return "Ação do Assessor"
+  const normalized = action.toLowerCase()
+  if (normalized.includes("createlead") || normalized.includes("create_lead")) return "Lead cadastrado"
+  if (normalized.includes("searchproperties") || normalized.includes("search_properties")) return "Busca de imóveis"
+  if (normalized.includes("getfinancialsummary") || normalized.includes("financial")) return "Consulta financeira"
+  if (normalized.includes("improve")) return "Descrição melhorada"
+  if (normalized.includes("create_ad")) return "Anúncio criado"
+  if (normalized.includes("analyze")) return "Catálogo analisado"
+  return action.replace(/_/g, " ")
+}
+
+function formatAssistantTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Horário não informado"
+  const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  if (date.toDateString() === new Date().toDateString()) return `Hoje às ${time}`
+  return `${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${time}`
 }

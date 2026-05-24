@@ -52,6 +52,8 @@ type Property = {
   images: string[]
 }
 
+const quickCatalogFilters = ["Casas", "Apartamentos", "Até 300 mil", "Até 600 mil", "2 quartos", "3 quartos", "Vacaria", "Centro"]
+
 export function BrokerCatalogPage() {
   const { profile } = useBrokerProfile()
   const { settings, saveSettings } = useBrokerCatalogSettings()
@@ -398,15 +400,37 @@ export function BrokerCatalogPage() {
             </Button>
           </div>
 
-          <div className="mt-5 max-w-xl">
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar imóvel"
-                className="h-11 rounded-full border-white/10 bg-white/5 pl-11 text-sm text-white placeholder:text-white/35"
-              />
+          <div className="mt-5 max-w-2xl">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar imóvel"
+                  className="h-11 rounded-full border-white/10 bg-white/5 pl-11 text-sm text-white placeholder:text-white/35"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={() => setSearch(search.trim())}
+                className="h-11 rounded-full bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 sm:w-auto"
+              >
+                <Search className="size-4" />
+                Buscar
+              </Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickCatalogFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setSearch(filter)}
+                  className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+                >
+                  {filter}
+                </button>
+              ))}
             </div>
           </div>
         </section>
@@ -418,7 +442,7 @@ export function BrokerCatalogPage() {
         )}
 
         {filteredCatalogProperties.length > 0 ? (
-          <section className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-3">
             {filteredCatalogProperties.map((property) => (
               <PropertyCard
                 key={property.id}

@@ -370,14 +370,14 @@ export function BrokerMyPropertiesPage() {
         )}
 
         {hasProperties ? (
-        <section className="grid gap-4">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {filteredProperties.map((property) => (
               <Card
                 key={property.id}
-                className="overflow-hidden rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)]"
+                className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)]"
               >
-                <CardContent className="grid gap-4 p-3 lg:grid-cols-[190px_minmax(0,1fr)_210px] lg:items-center">
-                  <div className="relative aspect-video max-h-[155px] min-h-0 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] lg:h-[145px]">
+                <CardContent className="flex h-full flex-col gap-4 p-3 sm:p-4">
+                  <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={getPropertyImage(property.images[0], property.id)} alt={property.title} className="h-full w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -388,14 +388,14 @@ export function BrokerMyPropertiesPage() {
                     </div>
                   </div>
 
-                  <div className="flex min-w-0 flex-col justify-center gap-4">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="min-w-0">
-                      <h2 className="text-[1.35rem] font-semibold leading-tight text-white">{property.title}</h2>
+                      <h2 className="line-clamp-2 text-lg font-semibold leading-tight text-white sm:text-xl">{property.title}</h2>
                       <div className="mt-2 flex items-center gap-2 text-sm text-white/55">
                         <MapPin className="size-4 shrink-0 text-[#69F0AE]" />
                         <span className="truncate">{property.location}</span>
                       </div>
-                      <p className="mt-4 text-[1.7rem] font-semibold tracking-tight text-white">{property.price}</p>
+                      <p className="mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">{property.price}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-3 text-sm text-white/60">
@@ -405,7 +405,7 @@ export function BrokerMyPropertiesPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col justify-center gap-4">
+                  <div className="mt-auto flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-3">
                       <MetricCard label="Visualizações" value={property.views} />
                       <MetricCard label="Leads" value={property.leads} />

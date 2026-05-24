@@ -76,13 +76,13 @@ export function PropertyCard({
       onClick={onClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(14,14,14,0.94))] text-left shadow-[0_18px_36px_rgba(0,0,0,0.16)]",
+        "flex h-full flex-col justify-between overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(14,14,14,0.94))] text-left shadow-[0_18px_36px_rgba(0,0,0,0.16)]",
         interactive &&
           "cursor-pointer transition-all hover:-translate-y-0.5 hover:border-[#00C853]/16 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-[#00C853]/30",
         className,
       )}
     >
-      <div className="relative aspect-video max-h-[210px] overflow-hidden bg-white/[0.03]">
+      <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full shrink-0 overflow-hidden bg-white/[0.03]">
         {currentImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -108,10 +108,10 @@ export function PropertyCard({
         </div>
       </div>
 
-      <div className={cn("grid gap-4 p-4", contentClassName)}>
+      <div className={cn("flex flex-1 flex-col gap-4 p-4", contentClassName)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-lg font-semibold text-white">{title}</h3>
+            <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-white">{title}</h3>
             <p className="mt-1 flex items-center gap-2 text-sm text-white/50">
               <MapPin className="size-4 shrink-0 text-[#69F0AE]" />
               <span className="truncate">{location}</span>
@@ -142,7 +142,7 @@ export function PropertyCard({
         ) : null}
 
         {meta}
-        {footer}
+        {footer ? <div className="mt-auto">{footer}</div> : null}
       </div>
     </article>
   )

@@ -141,7 +141,7 @@ export function BrokerFinancialPage() {
           </section>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid grid-cols-2 gap-4 xl:grid-cols-5">
           <MetricCard icon={Building2} label="Imóveis cadastrados" value={String(totalProperties)} />
           <MetricCard icon={CircleDollarSign} label="Valor da carteira" value={formatBRLFromCents(totalPortfolioValue)} />
           <MetricCard icon={ChartColumn} label="Ticket médio" value={formatBRLFromCents(averageTicket)} />
