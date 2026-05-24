@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
 
-const allowedEvents = new Set(["catalog_view", "property_view", "whatsapp_click"])
+const allowedEvents = new Set(["catalog_view", "property_view", "whatsapp_click", "catalog_search"])
 const DEDUPE_WINDOW_MS = 30 * 60 * 1000
 
 function cleanText(value: unknown, maxLength: number) {
@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
     const catalogSlug = cleanText(body?.catalogSlug, 160)
     const propertyId = cleanText(body?.propertyId, 120)
     const visitorKey = cleanText(body?.visitorKey, 160)
+    const query = cleanText(body?.query, 240)
+    const resultCount = typeof body?.resultCount === "number" ? Math.max(0, Math.trunc(body.resultCount)) : 0
 
     if (!allowedEvents.has(eventType)) {
       return NextResponse.json({ error: "Evento inválido." }, { status: 400 })
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    if (visitorKey) {
+    if (visitorKey && eventType !== "catalog_search") {
       const existing = await prisma.catalogEvent.findFirst({
         where: {
           visitorKey,
@@ -92,6 +94,18 @@ export async function POST(request: NextRequest) {
           agencyId,
         },
       }),
+      ...(brokerId && eventType === "catalog_search" && query
+        ? [
+            prisma.searchEvent.create({
+              data: {
+                brokerId,
+                query,
+                resultCount,
+                source: "catalog",
+              },
+            }),
+          ]
+        : []),
       ...(property?.id && eventType === "property_view"
         ? [
             prisma.property.update({

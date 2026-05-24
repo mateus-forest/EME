@@ -87,6 +87,27 @@ export function BrokerPortal() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    const query = search.trim()
+    if (!query) return
+
+    const timeoutId = window.setTimeout(() => {
+      fetch("/api/brokers/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          query,
+          resultCount: featuredProperties.length,
+          source: "dashboard",
+        }),
+      }).catch(() => null)
+    }, 700)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [featuredProperties.length, search])
   const stats = useMemo(
     () => [
       {

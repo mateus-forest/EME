@@ -187,7 +187,7 @@ export function BrokerNewPropertyPage() {
         : undefined
 
     if (!SpeechRecognition) {
-      setPublishFeedback("TranscriÃ§Ã£o por Ã¡udio nÃ£o estÃ¡ disponÃ­vel neste navegador.")
+      setPublishFeedback("Transcrição por áudio não está disponível neste navegador.")
       return
     }
 
@@ -197,7 +197,7 @@ export function BrokerNewPropertyPage() {
     recognition.continuous = false
 
     setIsTranscribingAudio(true)
-    setPublishFeedback("Ouvindo descriÃ§Ã£o do imÃ³vel...")
+    setPublishFeedback("Ouvindo descrição do imóvel...")
 
     recognition.onresult = (event) => {
       const transcript = Array.from(event.results)
@@ -207,12 +207,12 @@ export function BrokerNewPropertyPage() {
 
       if (transcript) {
         setDescription((current) => [current.trim(), transcript].filter(Boolean).join("\n\n"))
-        setPublishFeedback("Ãudio transcrito e adicionado Ã  descriÃ§Ã£o.")
+        setPublishFeedback("Áudio transcrito e adicionado à descrição.")
       }
     }
 
     recognition.onerror = () => {
-      setPublishFeedback("NÃ£o foi possÃ­vel transcrever o Ã¡udio. Tente novamente ou digite a descriÃ§Ã£o.")
+      setPublishFeedback("Não foi possível transcrever o áudio. Tente novamente ou digite a descrição.")
     }
 
     recognition.onend = () => {
@@ -390,7 +390,7 @@ export function BrokerNewPropertyPage() {
                 asChild
                 className="h-9 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
               >
-                <Link href="/corretor/plano">Fazer upgrade</Link>
+                <Link href="/corretor/plano">Assinar plano</Link>
               </Button>
             </div>
           </div>

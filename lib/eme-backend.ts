@@ -56,7 +56,7 @@ function extractLeadData(message: string) {
 
 function parsePropertySearchFilters(message: string) {
   const normalized = normalizeForIntent(message)
-  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de)\s*(?:r\$)?\s*(\d+(?:[\.,]\d+)?)(?:\s*(mil|mi|milhao|milhoes))?/)
+  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de)\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|mi|milhao|milhoes))?/)
   const rawPrice = priceMatch ? Number(priceMatch[1].replace(",", ".")) : null
   const maxPrice =
     rawPrice === null || Number.isNaN(rawPrice)

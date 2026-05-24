@@ -163,3 +163,47 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível carregar analytics." }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  const { error, user } = await getAuthenticatedUser()
+
+  if (error || !user) {
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  }
+
+  if (user.role !== UserRole.BROKER || !user.broker) {
+    return NextResponse.json({ error: "Acesso permitido apenas para corretor." }, { status: 403 })
+  }
+
+  try {
+    const body = await request.json().catch(() => null)
+    const query = cleanText(body?.query, 240)
+    const resultCount = typeof body?.resultCount === "number" ? Math.max(0, Math.trunc(body.resultCount)) : 0
+    const source = cleanText(body?.source, 80) || "dashboard"
+
+    if (!query) {
+      return NextResponse.json({ error: "Informe o termo buscado." }, { status: 400 })
+    }
+
+    await prisma.searchEvent.create({
+      data: {
+        brokerId: user.broker.id,
+        query,
+        resultCount,
+        source,
+      },
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (caughtError) {
+    console.error("[api][brokers][analytics][search] failed", {
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+    })
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "Serviço de analytics indisponível no momento." }, { status: 503 })
+    }
+
+    return NextResponse.json({ error: "Não foi possível registrar a busca." }, { status: 500 })
+  }
+}

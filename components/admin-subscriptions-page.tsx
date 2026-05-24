@@ -105,7 +105,7 @@ export function AdminSubscriptionsPage() {
           : `Assinatura de ${subscription.clientName} reativada com sucesso.`,
       )
     } catch (error) {
-      showFeedback(error instanceof Error ? error.message : "N?o foi poss?vel atualizar a assinatura.")
+      showFeedback(error instanceof Error ? error.message : "Não foi possível atualizar a assinatura.")
     }
   }
 
@@ -118,7 +118,7 @@ export function AdminSubscriptionsPage() {
         `Notifica??o enviada com sucesso para ${subscription.clientName}.`,
       )
     } catch (error) {
-      showFeedback(error instanceof Error ? error.message : "N?o foi poss?vel enviar a notifica??o.")
+      showFeedback(error instanceof Error ? error.message : "Não foi possível enviar a notificação.")
     }
   }
 

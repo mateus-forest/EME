@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { BarChart3, Eye, MessageCircle, MousePointerClick, SlidersHorizontal, TrendingUp, UsersRound } from "lucide-react"
+import { BarChart3, Eye, MessageCircle, MousePointerClick, Search, SlidersHorizontal, TrendingUp, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
@@ -25,6 +25,7 @@ type BrokerAnalytics = {
   mostAccessed: Array<{ id: string; title: string; views: number; leads: number }>
   leadOrigins: Array<{ source: string; count: number }>
   sources: string[]
+  recentSearches: Array<{ id: string; query: string; resultCount: number; source: string; createdAt: string }>
 }
 
 const periodOptions = [
@@ -127,7 +128,7 @@ export function BrokerAnalyticsPage() {
             label="Origem"
             value={source}
             onChange={setSource}
-            options={[{ label: "Todas as origens", value: "all" }, ...(analytics?.sources ?? []).map((item) => ({ label: item, value: item }))]}
+            options={[{ label: "Todas as origens", value: "all" }, ...(analytics?.sources ?? []).map((item) => ({ label: formatSourceLabel(item), value: item }))]}
           />
         </section>
         </ResponsiveCollapsibleSection>
@@ -167,7 +168,7 @@ export function BrokerAnalyticsPage() {
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
               <InfoBlock label="Filtro atual" value="Todos os imóveis" />
-              <InfoBlock label="Origem dos leads" value={analytics?.leadOrigins.length ? analytics.leadOrigins.map((item) => `${item.source}: ${item.count}`).join(" · ") : "Sem origem registrada"} />
+              <InfoBlock label="Origem dos leads" value={analytics?.leadOrigins.length ? analytics.leadOrigins.map((item) => `${formatSourceLabel(item.source)}: ${item.count}`).join(" · ") : "Sem origem registrada"} />
               <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
             </CardContent>
           </Card>
@@ -189,9 +190,54 @@ export function BrokerAnalyticsPage() {
           </CardContent>
         </Card>
         </ResponsiveCollapsibleSection>
+
+        <ResponsiveCollapsibleSection title="Buscas recentes">
+        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <CardHeader className="px-6 py-5">
+            <CardTitle className="flex items-center gap-2 text-xl text-white">
+              <Search className="size-5 text-[#69F0AE]" />
+              Buscas recentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-6 pt-0">
+            {analytics?.recentSearches?.length ? analytics.recentSearches.map((item) => (
+              <div key={item.id} className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{item.query}</p>
+                  <p className="mt-1 text-xs text-white/45">{formatSearchTime(item.createdAt)} · {formatSourceLabel(item.source)}</p>
+                </div>
+                <span className="rounded-full border border-[#00C853]/16 bg-[#00C853]/10 px-3 py-1 text-xs text-[#69F0AE]">
+                  {item.resultCount} resultado{item.resultCount === 1 ? "" : "s"}
+                </span>
+              </div>
+            )) : (
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
+                As buscas feitas no catálogo e no WhatsApp aparecerão aqui.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        </ResponsiveCollapsibleSection>
       </div>
     </BrokerPageShell>
   )
+}
+
+function formatSourceLabel(source: string) {
+  const normalized = source.toLowerCase()
+  if (normalized.includes("catalog")) return "Catálogo"
+  if (normalized.includes("assessor") || normalized.includes("whatsapp")) return "WhatsApp"
+  if (normalized.includes("dashboard")) return "Dashboard"
+  if (normalized.includes("manual")) return "Manual"
+  return source || "Portal"
+}
+
+function formatSearchTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Horário não informado"
+  const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  if (date.toDateString() === new Date().toDateString()) return `Hoje às ${time}`
+  return `${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${time}`
 }
 
 function SelectFilter({

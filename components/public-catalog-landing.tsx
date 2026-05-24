@@ -144,6 +144,19 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
     })
   }
 
+  function submitSearch() {
+    const query = search.trim()
+    if (!query) return
+
+    void trackCatalogEvent({
+      eventType: "catalog_search",
+      catalogSlug: catalog.slug || slug,
+      catalogType: kind,
+      query,
+      resultCount: visibleProperties.length,
+    })
+  }
+
   function openLeadModal(property: CatalogProperty) {
     const propertyUrl = `${catalogUrl}#imovel-${property.id}`
     setLeadFeedback("")
@@ -290,14 +303,27 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               Busca inteligente
             </div>
             <h2 className="mt-4 text-3xl font-semibold text-white">O que você procura?</h2>
-            <div className="relative mt-5">
-              <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-white/38" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Apartamento moderno até 700 mil em Porto Alegre..."
-                className="h-14 rounded-2xl border-white/10 bg-white/[0.05] pl-12 pr-4 text-base text-white placeholder:text-white/35"
-              />
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-white/38" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") submitSearch()
+                  }}
+                  placeholder="Apartamento moderno até 700 mil em Porto Alegre..."
+                  className="h-14 rounded-2xl border-white/10 bg-white/[0.05] pl-12 pr-4 text-base text-white placeholder:text-white/35"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={submitSearch}
+                className="h-14 rounded-2xl bg-[#00C853] px-6 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 hover:bg-[#00E676]"
+              >
+                <Search className="size-4" />
+                Buscar
+              </Button>
             </div>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {quickSuggestions.map((suggestion) => (
@@ -509,11 +535,15 @@ async function trackCatalogEvent({
   catalogSlug,
   catalogType,
   propertyId,
+  query,
+  resultCount,
 }: {
-  eventType: "catalog_view" | "property_view" | "whatsapp_click"
+  eventType: "catalog_view" | "property_view" | "whatsapp_click" | "catalog_search"
   catalogSlug: string
   catalogType: CatalogKind
   propertyId?: string
+  query?: string
+  resultCount?: number
 }) {
   try {
     await fetch("/api/catalog-events", {
@@ -525,6 +555,8 @@ async function trackCatalogEvent({
         catalogSlug,
         catalogType,
         propertyId,
+        query,
+        resultCount,
         visitorKey: getVisitorKey(),
       }),
     })

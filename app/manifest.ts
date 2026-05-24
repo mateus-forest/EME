@@ -4,8 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "EME",
     short_name: "EME",
-    description: "Poste imoveis em 30 segundos.",
-    start_url: "/",
+    description: "Poste imóveis em 30 segundos.",
+    start_url: "/login",
     scope: "/",
     display: "standalone",
     background_color: "#0B0B0B",

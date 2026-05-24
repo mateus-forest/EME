@@ -61,7 +61,7 @@ export function BrokerFreePlanLimitModal({
             onClick={handleUpgradeClick}
             className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
           >
-            Fazer upgrade
+            Assinar plano
           </Button>
         </DialogFooter>
       </DialogContent>

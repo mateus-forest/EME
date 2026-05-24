@@ -68,7 +68,7 @@ export function AdminBrokersPage() {
       setEditingBroker((current) => (current?.id === broker.id ? updated : current))
       setFeedback(`${updated.name} agora est? ${updated.status.toLowerCase()}.`)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "N?o foi poss?vel atualizar o status do corretor.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o status do corretor.")
     }
   }
 
@@ -93,7 +93,7 @@ export function AdminBrokersPage() {
         setFeedback(`${result.item.name} possui v?nculos e foi inativado.`)
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "N?o foi poss?vel excluir o corretor.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o corretor.")
     }
   }
 
@@ -111,7 +111,7 @@ export function AdminBrokersPage() {
       setSelectedBroker(updated)
       setFeedback("Corretor atualizado com sucesso.")
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "N?o foi poss?vel atualizar o corretor.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o corretor.")
     }
   }
 

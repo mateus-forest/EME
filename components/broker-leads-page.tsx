@@ -162,7 +162,7 @@ export function BrokerLeadsPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-white/45">
-                      {lead.propertyTitle || "Catálogo"} · {lead.source || "catalog"} · {formatDate(lead.createdAt)}
+                      {lead.propertyTitle || "Catálogo"} · {formatLeadSource(lead.source)} · {formatDate(lead.createdAt)}
                     </p>
                     {lead.message ? <p className="mt-2 line-clamp-2 text-sm text-white/60">{lead.message}</p> : null}
                   </div>
@@ -206,7 +206,7 @@ export function BrokerLeadsPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <LeadInfo label="Telefone" value={selectedLead.phone || "Não informado"} />
                 <LeadInfo label="Imóvel de interesse" value={selectedLead.propertyTitle || "Catálogo"} />
-                <LeadInfo label="Origem" value={selectedLead.source || "catalog"} />
+                <LeadInfo label="Origem" value={formatLeadSource(selectedLead.source)} />
                 <LeadInfo label="Data" value={formatDate(selectedLead.createdAt)} />
                 <LeadInfo label="Busca" value={selectedLead.searchTerm || "Sem busca registrada"} />
                 <LeadInfo label="Intenção" value={selectedLead.intent || "Sem intenção registrada"} />
@@ -237,6 +237,17 @@ export function BrokerLeadsPage() {
       </Dialog>
     </BrokerPageShell>
   )
+}
+
+function formatLeadSource(source: string) {
+  const normalized = source.toLowerCase()
+  if (normalized.includes("catalog")) return "Catálogo"
+  if (normalized.includes("assessor")) return "Assessor EME"
+  if (normalized.includes("corretor_eme")) return "Corretor EME"
+  if (normalized.includes("whatsapp")) return "WhatsApp"
+  if (normalized.includes("manual")) return "Manual"
+  if (normalized.includes("landing")) return "Landing page"
+  return source || "Portal"
 }
 
 function LeadInfo({ label, value }: { label: string; value: string }) {

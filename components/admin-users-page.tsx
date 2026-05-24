@@ -73,7 +73,7 @@ export function AdminUsersPage() {
       setEditingUser((current) => (current?.id === user.id ? updated : current))
       setFeedback(`${updated.name} agora est? ${updated.status.toLowerCase()}.`)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "N?o foi poss?vel atualizar o status do usu?rio.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o status do usuário.")
     }
   }
 
@@ -98,7 +98,7 @@ export function AdminUsersPage() {
         setFeedback(`${result.item.name} possui v?nculos e foi inativado.`)
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "N?o foi poss?vel excluir o usu?rio.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o usuário.")
     }
   }
 
@@ -110,7 +110,7 @@ export function AdminUsersPage() {
       setSelectedUser(updated)
       setFeedback("Usu?rio atualizado com sucesso.")
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "N?o foi poss?vel atualizar o usu?rio.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o usuário.")
     }
   }
 

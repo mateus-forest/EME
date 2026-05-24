@@ -63,7 +63,7 @@ export async function enforceBrokerPropertyCreation(user: AuthenticatedUser) {
     return createBillingBlockedResponse(
       billingMessages.brokerFreeLimit,
       "/corretor/plano",
-      "Fazer upgrade",
+      "Assinar plano",
     )
   }
 

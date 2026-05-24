@@ -254,8 +254,8 @@ async function processAssessorMessage({
   }
 
   let actionResult: Awaited<ReturnType<typeof runAssessorAction>> = { response: "", metadata: {} }
-  let responseText = ""
-  let actionStatus = "completed"
+  let responseText: string
+  let actionStatus: string
   let errorMessage: string | null = null
 
   try {
@@ -270,7 +270,7 @@ async function processAssessorMessage({
     actionStatus =
       Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
         ? "needs_input"
-        : actionResult.response.includes("confirmação") || actionResult.response.includes("confirmaÃ§Ã£o")
+        : actionResult.response.includes("confirmação")
           ? "needs_confirmation"
           : "completed"
     responseText = action === "createLead" || action === "searchProperties" ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
