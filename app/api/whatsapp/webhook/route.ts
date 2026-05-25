@@ -6,8 +6,9 @@ import {
   generateAssessorText,
   generateCorretorEmeReply,
   getAssessorVisualAction,
-  inferAssessorAction,
+  getPendingAssessorContext,
   inferCustomerIntent,
+  resolveAssessorInputWithContext,
   runAssessorAction,
   searchBrokerProperties,
   type AssessorAction,
@@ -265,10 +266,16 @@ async function processAssessorMessage({
   message: string
   metadata: Prisma.InputJsonObject
 }) {
-  const action = inferAssessorAction(message) as AssessorAction
   const creditsUsed = 1
+  const brokerCredits = await prisma.broker.findUnique({
+    where: { id: brokerId },
+    select: { aiCreditsBalance: true },
+  })
+  const pendingContext = await getPendingAssessorContext(brokerId)
+  const resolvedInput = resolveAssessorInputWithContext({ message, pendingContext })
+  const action = resolvedInput.action as AssessorAction
 
-  if (!(await reserveAssistantCredits(brokerId, creditsUsed))) {
+  if (!brokerCredits || brokerCredits.aiCreditsBalance < creditsUsed) {
     const response = "Você atingiu o limite de créditos do Assessor EME do seu plano. Adquira créditos adicionais no painel para continuar utilizando."
     await prisma.emeMessage.create({
       data: {
@@ -303,7 +310,7 @@ async function processAssessorMessage({
       message,
       action,
       confirm: false,
-      payload: {},
+      payload: resolvedInput.payload,
     })
     actionStatus =
       Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
@@ -313,14 +320,17 @@ async function processAssessorMessage({
           : "completed"
     if ((actionResult.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
       finalCreditsUsed = 0
+    }
+    if (finalCreditsUsed > 0) {
       await prisma.broker.update({
         where: { id: brokerId },
         data: {
-          aiCreditsBalance: { increment: creditsUsed },
-          aiCreditsUsedThisMonth: { decrement: creditsUsed },
-          aiMonthlyUsage: { decrement: creditsUsed },
+          aiCreditsBalance: { decrement: finalCreditsUsed },
+          aiCreditsUsedThisMonth: { increment: finalCreditsUsed },
+          aiMonthlyUsage: { increment: finalCreditsUsed },
+          aiLastInteractionAt: new Date(),
         },
-      }).catch(() => null)
+      })
     }
     responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
     console.info("[api][whatsapp][assessor-action]", {
@@ -339,15 +349,19 @@ async function processAssessorMessage({
     errorMessage = caughtError instanceof Error ? caughtError.message : "Erro na ação interna."
     responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
     finalCreditsUsed = 0
-    await prisma.broker.update({
-      where: { id: brokerId },
-      data: {
-        aiCreditsBalance: { increment: creditsUsed },
-        aiCreditsUsedThisMonth: { decrement: creditsUsed },
-        aiMonthlyUsage: { decrement: creditsUsed },
-      },
-    }).catch(() => null)
   }
+
+  const actionMetadata = (actionResult.metadata ?? {}) as Prisma.InputJsonObject
+  const interactionMetadata = {
+    ...metadata,
+    ...actionMetadata,
+    whatsappMessageId: messageId,
+    parsedIntent: action,
+    actionName: action,
+    brokerId,
+    visualAction: getAssessorVisualAction(action),
+    durationMs: Date.now() - actionStartedAt,
+  } as Prisma.InputJsonObject
 
   await Promise.all([
     prisma.emeMessage.create({
@@ -364,7 +378,7 @@ async function processAssessorMessage({
         detectedIntent: action,
         actionType: action,
         actionStatus,
-        metadata: { ...metadata, ...(actionResult.metadata ?? {}), whatsappMessageId: messageId, visualAction: getAssessorVisualAction(action), durationMs: Date.now() - actionStartedAt },
+        metadata: interactionMetadata,
         errorMessage,
         creditsUsed: finalCreditsUsed,
       },
@@ -380,7 +394,7 @@ async function processAssessorMessage({
         channel: "assessor_eme",
         intent: action,
         actionStatus,
-        metadata: { ...metadata, ...(actionResult.metadata ?? {}), whatsappMessageId: messageId, visualAction: getAssessorVisualAction(action), durationMs: Date.now() - actionStartedAt },
+        metadata: interactionMetadata,
         errorMessage,
         leadId: actionResult.leadId ?? null,
         propertyId: actionResult.propertyId ?? null,

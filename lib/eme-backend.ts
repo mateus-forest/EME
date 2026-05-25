@@ -63,6 +63,10 @@ export function getAssessorVisualAction(action: AssessorAction) {
   return assessorActionRegistry[action]?.visualAction ?? "Ação do Assessor"
 }
 
+export function isAssessorAction(value: unknown): value is AssessorAction {
+  return typeof value === "string" && assessorActions.includes(value as AssessorAction)
+}
+
 function normalizeForIntent(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
@@ -308,11 +312,115 @@ function firstImageUrl(value: unknown) {
   return Array.isArray(value) && typeof value[0] === "string" ? value[0] : null
 }
 
+type PendingAssessorContext = {
+  action: AssessorAction
+  missingField: string
+  parsedData: Record<string, unknown>
+  createdAt: Date
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+export async function getPendingAssessorContext(brokerId: string): Promise<PendingAssessorContext | null> {
+  const recent = await prisma.emeMessage.findFirst({
+    where: {
+      brokerId,
+      channel: "assessor_eme",
+      actionStatus: { in: ["processing", "needs_input"] },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { actionType: true, metadata: true, createdAt: true },
+  })
+  if (!recent || !isAssessorAction(recent.actionType)) return null
+  if (Date.now() - recent.createdAt.getTime() > 30 * 60 * 1000) return null
+
+  const metadata = metadataRecord(recent.metadata)
+  const required = Array.isArray(metadata.required) ? metadata.required : []
+  const missingField = typeof required[0] === "string" ? required[0] : ""
+  if (!missingField) return null
+
+  return {
+    action: recent.actionType,
+    missingField,
+    parsedData: metadataRecord(metadata.parsedData),
+    createdAt: recent.createdAt,
+  }
+}
+
+export function resolveAssessorInputWithContext(input: {
+  message: string
+  requestedAction?: string
+  pendingContext?: PendingAssessorContext | null
+}) {
+  const inferred = inferAssessorAction(input.message, input.requestedAction)
+  if (!input.pendingContext) return { action: inferred, payload: {} }
+
+  const normalized = normalizeForIntent(input.message).trim()
+  const shouldContinue =
+    inferred === "general" ||
+    /^\d+$/.test(normalized) ||
+    /^(sim|s|primeiro|segunda|segundo|terceiro|terceira|ok|pode|gerar)$/.test(normalized) ||
+    input.message.trim().split(/\s+/).length <= 4
+
+  return {
+    action: shouldContinue ? input.pendingContext.action : inferred,
+    payload: shouldContinue ? { pendingContext: input.pendingContext } : {},
+  }
+}
+
 function formatAgendaDateLabel(message: string, date: Date) {
   const normalized = normalizeForIntent(message)
   if (normalized.includes("amanha")) return "amanhã"
   if (normalized.includes("hoje")) return "hoje"
   return date.toLocaleDateString("pt-BR")
+}
+
+function resolvePropertyChoice(message: string, options: Array<{ id?: string; title?: string }>) {
+  const normalized = normalizeForIntent(message)
+  const index =
+    /^\d+$/.test(normalized) ? Number(normalized) - 1 :
+    normalized.includes("primeiro") ? 0 :
+    normalized.includes("segundo") ? 1 :
+    normalized.includes("terceiro") ? 2 :
+    -1
+  if (index >= 0 && options[index]) return options[index]
+  return options.find((option) => option.title && normalizeForIntent(option.title).includes(normalized)) ?? null
+}
+
+async function findProposalPropertyCandidates(
+  brokerId: string,
+  message: string,
+  propertyReference: { idOrCode?: string; neighborhood?: string; type?: PropertyType | null },
+  take = 4,
+) {
+  const normalized = normalizeForIntent(message)
+  const words = normalized
+    .split(/\s+/)
+    .filter((word) => word.length > 2 && !["gerar", "criar", "fazer", "proposta", "para", "imovel", "imoveis", "apartamento", "casa"].includes(word))
+  const OR = [
+    ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
+    ...(propertyReference.neighborhood ? [
+      { neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } },
+      { title: { contains: propertyReference.neighborhood, mode: "insensitive" as const } },
+      { description: { contains: propertyReference.neighborhood, mode: "insensitive" as const } },
+    ] : []),
+    ...words.slice(0, 4).flatMap((word) => [
+      { title: { contains: word, mode: "insensitive" as const } },
+      { neighborhood: { contains: word, mode: "insensitive" as const } },
+      { city: { contains: word, mode: "insensitive" as const } },
+      { description: { contains: word, mode: "insensitive" as const } },
+    ]),
+    ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
+  ]
+
+  return prisma.property.findMany({
+    where: { brokerId, ...(OR.length ? { OR } : {}) },
+    orderBy: [{ updatedAt: "desc" }],
+    take,
+    select: { id: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
+  })
 }
 
 export function inferAssessorAction(message: string, requestedAction?: string): AssessorAction {
@@ -499,7 +607,31 @@ export async function runAssessorAction({
   confirm?: boolean
   payload?: Record<string, unknown>
 }) {
+  const pendingContext = metadataRecord(payload?.pendingContext) as Partial<PendingAssessorContext>
+
   if (action === "CREATE_AGENDA_EVENT") {
+    if (pendingContext.action === "CREATE_AGENDA_EVENT" && pendingContext.missingField === "time") {
+      const parsedData = metadataRecord(pendingContext.parsedData)
+      const time = parseAgendaTime(message)
+      if (!time) {
+        return {
+          response: "Qual horário devo colocar?",
+          metadata: { required: ["time"], noCharge: true, parsedData },
+        }
+      }
+      const title = cleanText(parsedData.title, 160) || "Compromisso"
+      const type = cleanText(parsedData.type, 40) || "task"
+      const date = typeof parsedData.date === "string" ? new Date(parsedData.date) : new Date()
+      const event = await prisma.agendaEvent.create({
+        data: { brokerId, title, type, date, time, notes: message, status: "pending" },
+      })
+      await prisma.notification.create({ data: { userId, title: "Compromisso agendado", message: `${title} ${formatAgendaDateLabel(message, date)} às ${time}.`, read: false } })
+      return {
+        response: `Compromisso agendado ✅\n${formatAgendaDateLabel(message, date)} às ${time} — ${title}.`,
+        metadata: { agendaEventId: event.id, parsedData: { ...parsedData, time }, status: "pending" },
+      }
+    }
+
     const date = parseAgendaDate(message)
     const time = parseAgendaTime(message)
     const type = parseAgendaType(message)
@@ -549,8 +681,9 @@ export async function runAssessorAction({
         status: "pending",
       },
     })
+    await prisma.notification.create({ data: { userId, title: "Compromisso agendado", message: `${title} ${formatAgendaDateLabel(message, date)} às ${time}.`, read: false } })
     return {
-      response: `Compromisso agendado ✅\n${title} ${formatAgendaDateLabel(message, date)} às ${time}.`,
+      response: `Compromisso agendado ✅\n${formatAgendaDateLabel(message, date)} às ${time} — ${title}.`,
       metadata: {
         agendaEventId: event.id,
         leadId: lead?.id ?? null,
@@ -597,70 +730,103 @@ export async function runAssessorAction({
   }
 
   if (action === "CREATE_PROPOSAL") {
-    const personName = extractPersonName(message)
-    const propertyReference = extractPropertyReference(message)
-    const [broker, matchingLeads, property] = await Promise.all([
+    const pendingParsedData = pendingContext.action === "CREATE_PROPOSAL" ? metadataRecord(pendingContext.parsedData) : {}
+    const pendingPropertyReference = metadataRecord(pendingParsedData.propertyReference)
+    const pendingLeadIds = Array.isArray(pendingParsedData.leadIds) ? pendingParsedData.leadIds.map((id) => cleanText(id, 80)).filter(Boolean) : []
+    const personName = pendingContext.missingField === "lead"
+      ? cleanText(message, 120)
+      : cleanText(pendingParsedData.personName, 120) || extractPersonName(message)
+    const selectedLeadId = pendingContext.missingField === "lead" && pendingLeadIds.length
+      ? pendingLeadIds[Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)] ?? null
+      : null
+    const propertyReference = {
+      ...extractPropertyReference(message),
+      idOrCode: cleanText(pendingPropertyReference.idOrCode, 80) || cleanText(pendingParsedData.propertyId, 80) || extractPropertyReference(message).idOrCode,
+      neighborhood: cleanText(pendingPropertyReference.neighborhood, 80) || cleanText(pendingParsedData.propertyNeighborhood, 80) || cleanText(pendingParsedData.propertyTerm, 120) || extractPropertyReference(message).neighborhood,
+      type: (cleanText(pendingPropertyReference.type, 40) as PropertyType | "") || extractPropertyReference(message).type,
+    }
+    const propertyOptions = Array.isArray(pendingParsedData.propertyOptions) ? pendingParsedData.propertyOptions as Array<{ id?: string; title?: string }> : []
+    const selectedOption =
+      pendingContext.missingField === "propertyChoice"
+        ? resolvePropertyChoice(message, propertyOptions)
+        : null
+    const [broker, matchingLeads, selectedProperty] = await Promise.all([
       prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true, photoUrl: true } } } }),
-      personName
+      selectedLeadId
+        ? prisma.lead.findMany({ where: { brokerId, id: selectedLeadId }, take: 1, select: { id: true, name: true, phone: true, email: true } })
+        : personName
         ? prisma.lead.findMany({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, take: 3, select: { id: true, name: true, phone: true, email: true } })
         : [],
-      propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
+      selectedOption?.id
         ? prisma.property.findFirst({
-            where: {
-              brokerId,
-              OR: [
-                ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
-                ...(propertyReference.neighborhood ? [{ neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } }] : []),
-                ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
-              ],
-            },
-            orderBy: { updatedAt: "desc" },
-            select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
+            where: { brokerId, id: selectedOption.id },
+            select: { id: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
           })
         : null,
     ])
-    if (matchingLeads.length > 1) {
+    const propertyCandidates = selectedProperty
+      ? []
+      : await findProposalPropertyCandidates(brokerId, cleanText(pendingParsedData.propertyTerm, 160) || message, propertyReference, 4)
+    if (propertyCandidates.length > 1) {
+      return {
+        response: `Encontrei mais de um imóvel:\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.title} — ${item.neighborhood ?? item.city} — ${formatCurrencyBRLFromCents(item.price)}`).join("\n")}`,
+        metadata: {
+          required: ["propertyChoice"],
+          noCharge: true,
+          parsedData: {
+            personName,
+            propertyReference,
+            propertyTerm: cleanText(pendingParsedData.propertyTerm, 160) || message,
+            propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
+          },
+        },
+      }
+    }
+    const resolvedProperty = selectedProperty ?? propertyCandidates[0] ?? null
+
+    if (!selectedLeadId && matchingLeads.length > 1) {
       return {
         response: `Encontrei mais de um ${personName}. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"} ${leadItem.phone ? `- ${leadItem.phone}` : ""}`).join("\n")}`,
-        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, leadIds: matchingLeads.map((leadItem) => leadItem.id), propertyReference } },
+        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, leadIds: matchingLeads.map((leadItem) => leadItem.id), propertyReference, propertyTerm: message } },
       }
     }
     const lead = matchingLeads[0] ?? null
     if (!lead) {
       return {
-        response: "Para quem é a proposta?",
+        response: personName ? "Não encontrei esse lead cadastrado.\nQuer gerar manualmente?" : "Para qual cliente devo gerar a proposta?",
         metadata: { required: ["lead"], noCharge: true, parsedData: { personName, propertyReference } },
       }
     }
-    if (!property) {
+    if (!resolvedProperty) {
       return {
-        response: "Qual imóvel devo usar?",
+        response: "Não encontrei esse imóvel no seu catálogo.\nPode me mandar o título ou bairro?",
         metadata: { required: ["property"], noCharge: true, leadId: lead.id, parsedData: { personName, propertyReference } },
         leadId: lead.id,
       }
     }
-    const title = `Proposta ${lead?.name ?? (personName || property?.title || "EME")}`
-    const proposalProperty = { ...property, imageUrl: firstImageUrl(property.imageUrls) }
+    const title = `Proposta ${lead?.name ?? (personName || resolvedProperty?.title || "EME")}`
+    const proposalProperty = { ...resolvedProperty, imageUrl: firstImageUrl(resolvedProperty.imageUrls) }
     const document = await prisma.brokerDocument.create({
       data: {
         brokerId,
         leadId: lead.id,
-        propertyId: property.id,
+        propertyId: resolvedProperty.id,
         type: "proposal",
         title,
         content: buildProposalHtml({
           lead,
           property: proposalProperty,
-          broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: property.city, creci: broker?.creci, photoUrl: broker?.user.photoUrl },
+          broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: resolvedProperty.city, creci: broker?.creci, photoUrl: broker?.user.photoUrl },
         }),
         status: "generated",
       },
     })
+    await prisma.notification.create({ data: { userId, title: "Proposta gerada", message: `Proposta para ${lead.name || personName || "cliente"} foi salva em Documentos.`, read: false } })
     return {
-      response: "Proposta gerada ✅\nSalvei em Documentos e deixei pronta para baixar em PDF.",
-      metadata: { documentId: document.id, leadId: lead.id, propertyId: property.id, parsedData: { personName, title, propertyReference }, status: "generated" },
+      response: `Proposta gerada ✅\nUsei o imóvel: ${resolvedProperty.title}.\nSalvei em Documentos.`,
+      metadata: { documentId: document.id, leadId: lead.id, propertyId: resolvedProperty.id, parsedData: { personName, title, propertyReference }, status: "generated" },
       leadId: lead.id,
-      propertyId: property.id,
+      propertyId: resolvedProperty.id,
     }
   }
 
@@ -842,7 +1008,12 @@ export async function runAssessorAction({
   }
 
   if (action === "createPropertyDraft") {
-    const draft = parsePropertyDraftData(message, payload)
+    const pendingDraft = pendingContext.action === "createPropertyDraft" ? metadataRecord(pendingContext.parsedData) : {}
+    const draft = {
+      ...parsePropertyDraftData(message, payload),
+      ...pendingDraft,
+      price: parseFlexiblePriceToCents(message) ?? parseCurrencyInputToCents(payload?.price) ?? Number(pendingDraft.price ?? 0),
+    } as ReturnType<typeof parsePropertyDraftData>
     if (!draft.price) {
       return {
         response: "Qual o valor do imóvel?",
@@ -867,7 +1038,7 @@ export async function runAssessorAction({
         brokerId,
       },
     })
-    await prisma.notification.create({ data: { userId, title: "Rascunho criado pelo Assessor EME", message: `${draft.title} foi criado como rascunho.`, read: false } })
+    await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
     return {
       response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
       metadata: {

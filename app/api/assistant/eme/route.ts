@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import {
   cleanText,
   generateAssessorText,
-  inferAssessorAction,
+  getPendingAssessorContext,
+  resolveAssessorInputWithContext,
   runAssessorAction,
   type AssessorAction,
 } from "@/lib/eme-backend"
@@ -202,7 +204,6 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null)
   const message = cleanText(body?.message ?? body?.prompt, 3000)
-  const action = inferAssessorAction(message, cleanText(body?.action ?? body?.actionType, 80)) as AssessorAction
   const creditsUsed = 1
 
   if (!message) {
@@ -212,28 +213,14 @@ export async function POST(request: NextRequest) {
   try {
     const brokerState = await prisma.broker.findUnique({
       where: { id: user.broker.id },
-      select: { aiAssistantEnabled: true },
+      select: { aiAssistantEnabled: true, aiCreditsBalance: true },
     })
 
     if (!brokerState?.aiAssistantEnabled) {
       return NextResponse.json({ error: "Seu Assessor EME está desativado no momento." }, { status: 403 })
     }
 
-    const reserved = await prisma.broker.updateMany({
-      where: {
-        id: user.broker.id,
-        aiAssistantEnabled: true,
-        aiCreditsBalance: { gte: creditsUsed },
-      },
-      data: {
-        aiCreditsBalance: { decrement: creditsUsed },
-        aiCreditsUsedThisMonth: { increment: creditsUsed },
-        aiMonthlyUsage: { increment: creditsUsed },
-        aiLastInteractionAt: new Date(),
-      },
-    })
-
-    if (reserved.count === 0) {
+    if (brokerState.aiCreditsBalance < creditsUsed) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
         {
@@ -243,6 +230,13 @@ export async function POST(request: NextRequest) {
         { status: 402 },
       )
     }
+    const pendingContext = await getPendingAssessorContext(user.broker.id)
+    const resolvedInput = resolveAssessorInputWithContext({
+      message,
+      requestedAction: cleanText(body?.action ?? body?.actionType, 80),
+      pendingContext,
+    })
+    const action = resolvedInput.action as AssessorAction
 
     let actionResult: Awaited<ReturnType<typeof runAssessorAction>> = { response: "", metadata: {} }
     let responseText = ""
@@ -258,7 +252,10 @@ export async function POST(request: NextRequest) {
         message,
         action,
         confirm: Boolean(body?.confirm),
-        payload: typeof body?.payload === "object" && body.payload ? body.payload : {},
+        payload: {
+          ...(typeof body?.payload === "object" && body.payload ? body.payload : {}),
+          ...resolvedInput.payload,
+        },
       })
       actionStatus =
         Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
@@ -268,14 +265,17 @@ export async function POST(request: NextRequest) {
             : "success"
       if ((actionResult.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
         finalCreditsUsed = 0
+      }
+      if (finalCreditsUsed > 0) {
         await prisma.broker.update({
           where: { id: user.broker.id },
           data: {
-            aiCreditsBalance: { increment: creditsUsed },
-            aiCreditsUsedThisMonth: { decrement: creditsUsed },
-            aiMonthlyUsage: { decrement: creditsUsed },
+            aiCreditsBalance: { decrement: finalCreditsUsed },
+            aiCreditsUsedThisMonth: { increment: finalCreditsUsed },
+            aiMonthlyUsage: { increment: finalCreditsUsed },
+            aiLastInteractionAt: new Date(),
           },
-        }).catch(() => null)
+        })
       }
       responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
       console.info("[api][assistant][eme][action]", {
@@ -293,14 +293,6 @@ export async function POST(request: NextRequest) {
       errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na ação interna."
       responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
       finalCreditsUsed = 0
-      await prisma.broker.update({
-        where: { id: user.broker.id },
-        data: {
-          aiCreditsBalance: { increment: creditsUsed },
-          aiCreditsUsedThisMonth: { decrement: creditsUsed },
-          aiMonthlyUsage: { decrement: creditsUsed },
-        },
-      }).catch(() => null)
       await prisma.notification.create({
         data: {
           userId: user.id,
@@ -310,6 +302,17 @@ export async function POST(request: NextRequest) {
         },
       })
     }
+
+    const actionMetadata = (actionResult.metadata ?? {}) as Prisma.InputJsonObject
+    const interactionMetadata = {
+      ...actionMetadata,
+      source: "portal",
+      parsedIntent: action,
+      actionName: action,
+      brokerId: user.broker.id,
+      durationMs: Date.now() - actionStartedAt,
+      visualAction: getVisualActionLabel(action),
+    } as Prisma.InputJsonObject
 
     const [updatedBroker] = await Promise.all([
       getBrokerCredits(user.broker.id),
@@ -324,12 +327,7 @@ export async function POST(request: NextRequest) {
           channel: "assessor_eme",
           intent: action,
           actionStatus,
-          metadata: {
-            ...actionResult.metadata,
-            source: "portal",
-            durationMs: Date.now() - actionStartedAt,
-            visualAction: getVisualActionLabel(action),
-          },
+          metadata: interactionMetadata,
           errorMessage,
           leadId: actionResult.leadId ?? null,
           propertyId: actionResult.propertyId ?? null,
@@ -346,12 +344,7 @@ export async function POST(request: NextRequest) {
           detectedIntent: action,
           actionType: action,
           actionStatus,
-          metadata: {
-            ...actionResult.metadata,
-            source: "portal",
-            durationMs: Date.now() - actionStartedAt,
-            visualAction: getVisualActionLabel(action),
-          },
+          metadata: interactionMetadata,
           errorMessage,
           creditsUsed: finalCreditsUsed,
           leadId: actionResult.leadId ?? null,
@@ -364,12 +357,7 @@ export async function POST(request: NextRequest) {
       response: responseText,
       action,
       actionStatus,
-      metadata: {
-        ...actionResult.metadata,
-        source: "portal",
-        durationMs: Date.now() - actionStartedAt,
-        visualAction: getVisualActionLabel(action),
-      },
+      metadata: interactionMetadata,
       creditsUsed: finalCreditsUsed,
       ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 } }),
     })
