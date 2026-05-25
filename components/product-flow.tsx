@@ -1,95 +1,101 @@
 "use client"
 
-import { Camera, CheckCircle2, Sparkles } from "lucide-react"
+import { FileText, Keyboard, Sparkles, type LucideIcon } from "lucide-react"
+
+const creationCards = [
+  {
+    icon: Sparkles,
+    title: "Criar com IA",
+    description: "Descreva o imóvel e o EME monta o anúncio.",
+    delay: "0s",
+  },
+  {
+    icon: Keyboard,
+    title: "Criar manualmente",
+    description: "Preencha tudo do seu jeito.",
+    delay: "1.15s",
+  },
+  {
+    icon: FileText,
+    title: "Importar imóveis",
+    description: "Importe anúncios, XML ou planilhas.",
+    delay: "2.3s",
+  },
+]
 
 export function ProductFlow() {
-  const steps = [
-    {
-      icon: Camera,
-      title: "Importe",
-      description: "Fotos, áudio, XML, print ou link",
-      step: 1,
-    },
-    {
-      icon: Sparkles,
-      title: "IA cria",
-      description: "anúncio, dados e revisão",
-      step: 2,
-    },
-    {
-      icon: CheckCircle2,
-      title: "Publique",
-      description: "catálogo e leads",
-      step: 3,
-    },
-  ]
-
   return (
-    <section id="como-funciona" className="py-24 md:py-32 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-            Simples{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00C853] to-[#00E676]">
-              assim
-            </span>
-            .
+    <section id="como-funciona" className="relative z-10 px-4 pt-20 pb-24 md:pt-24 md:pb-32">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-10 max-w-2xl md:mb-12">
+          <div className="mb-4 inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium text-[#69F0AE]">
+            Criação inteligente
+          </div>
+          <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            Crie anúncios do seu jeito.
           </h2>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-4">
-          {steps.map((step, index) => (
-            <div key={step.step} className="flex items-center gap-4">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-b from-[#00C853]/20 to-transparent rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative w-48 h-80 rounded-3xl border-2 border-white/10 bg-gradient-to-b from-[#111] to-[#0B0B0B] p-3 shadow-2xl">
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-1.5 rounded-full bg-white/10" />
-                  <div className="w-full h-full rounded-2xl bg-[#0B0B0B] flex flex-col items-center justify-center gap-4 pt-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00C853]/20 to-[#00C853]/5 flex items-center justify-center">
-                      <step.icon className="w-8 h-8 text-[#00C853]" />
-                    </div>
-                    <div className="px-4 text-center">
-                      <p className="text-lg font-bold text-white">{step.title}</p>
-                      <p className="mt-1 text-sm leading-5 text-white/50">{step.description}</p>
-                    </div>
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#00C853] flex items-center justify-center font-bold text-black text-sm">
-                      {step.step}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {index < steps.length - 1 && (
-                <div className="hidden md:flex items-center">
-                  <div className="w-12 h-0.5 bg-gradient-to-r from-[#00C853]/50 to-transparent" />
-                  <div className="w-0 h-0 border-t-4 border-b-4 border-l-8 border-transparent border-l-[#00C853]/50" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="text-center mt-16 space-y-2">
-          <p className="text-lg text-white/60">Menos cadastro repetitivo.</p>
-          <p className="text-lg text-white/60">A IA organiza antes da publicação.</p>
-          <p className="text-lg text-white/60">Mais tempo para converter clientes.</p>
-        </div>
-
-        <div className="text-center mt-12 max-w-xl mx-auto space-y-6">
-          <p className="text-base text-white/50 italic">
-            A IA acelera a criação do anúncio, e você revisa antes de publicar.
-          </p>
-
-          <p className="text-sm text-white/40 leading-relaxed">
-            Crie por foto, áudio ou texto. Importe por XML, print ou link.<br />
-            O EME transforma tudo em um anúncio organizado para o catálogo.
-          </p>
-
-          <p className="text-base font-medium text-[#00C853]">
-            Importe e publique em minutos.
+          <p className="mt-4 max-w-xl text-base leading-7 text-white/58">
+            Use IA, preenchimento manual ou importação para publicar imóveis em poucos minutos.
           </p>
         </div>
       </div>
+      <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-3">
+        {creationCards.map((card) => (
+          <CreationCard key={card.title} {...card} />
+        ))}
+      </div>
     </section>
+  )
+}
+
+function CreationCard({
+  icon: Icon,
+  title,
+  description,
+  delay,
+}: {
+  icon: LucideIcon
+  title: string
+  description: string
+  delay: string
+}) {
+  return (
+    <article
+      style={{ animationDelay: delay }}
+      className="landing-creation-card rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-6 text-left shadow-[0_18px_40px_rgba(0,0,0,0.14)]"
+    >
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+        <Icon className="size-5" />
+      </div>
+      <h3 className="mt-7 text-xl font-semibold text-white">{title}</h3>
+      <p className="mt-4 max-w-sm text-sm leading-6 text-white/55">{description}</p>
+
+      <style jsx>{`
+        .landing-creation-card {
+          animation: landing-card-glow 3.45s ease-in-out infinite;
+        }
+
+        @keyframes landing-card-glow {
+          0%,
+          78%,
+          100% {
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0), 0 18px 40px rgba(0, 0, 0, 0.14);
+          }
+          18%,
+          38% {
+            border-color: rgba(0, 200, 83, 0.28);
+            box-shadow: inset 0 0 24px rgba(0, 200, 83, 0.055), 0 18px 42px rgba(0, 0, 0, 0.16),
+              0 0 32px rgba(0, 200, 83, 0.12);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .landing-creation-card {
+            animation: none;
+          }
+        }
+      `}</style>
+    </article>
   )
 }
