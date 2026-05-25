@@ -17,6 +17,8 @@ export const assessorActions = [
   "createInternalNotification",
   "getFinancialSummary",
   "getAnalyticsSummary",
+  "getCatalogSummary",
+  "getLeadsSummary",
   "CREATE_AGENDA_EVENT",
   "LIST_AGENDA_EVENTS",
   "MARK_AGENDA_DONE",
@@ -38,6 +40,8 @@ const assessorActionRegistry: Record<AssessorAction, { visualAction: string; fut
   createInternalNotification: { visualAction: "Notificação interna" },
   getFinancialSummary: { visualAction: "Consulta financeira" },
   getAnalyticsSummary: { visualAction: "Consulta de analytics" },
+  getCatalogSummary: { visualAction: "Resumo do catálogo" },
+  getLeadsSummary: { visualAction: "Resumo de leads" },
   CREATE_AGENDA_EVENT: { visualAction: "Compromisso criado", futureReady: true },
   LIST_AGENDA_EVENTS: { visualAction: "Consulta de agenda", futureReady: true },
   MARK_AGENDA_DONE: { visualAction: "Compromisso concluído", futureReady: true },
@@ -64,10 +68,10 @@ function normalizeForIntent(value: string) {
 }
 
 const ASSESSOR_MENU_RESPONSE =
-  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis\n• cadastrar imóveis\n• agendar visitas e lembretes\n• consultar agenda\n• gerar propostas\n• consultar documentos\n• gerar descrições\n\nExemplos:\nAgendar visita amanhã às 15h com João\nMinha agenda de hoje\nGerar proposta para João no imóvel 142\nMostrar documentos do João"
+  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• cadastrar imóveis em rascunho\n• buscar imóveis\n• agendar visitas e lembretes\n• consultar agenda\n• gerar propostas\n• consultar documentos\n• ver informações de leads, catálogo, analytics e financeiro\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nCadastrar imóvel: apartamento 3 quartos no Centro, R$ 650 mil, venda\nBuscar imóvel: casa até 600 mil em Vacaria\nAgendar visita amanhã às 15h com João\nMinha agenda de hoje\nGerar proposta para João no imóvel 142\nResumo dos leads\nComo está meu catálogo?"
 
 const ASSESSOR_FALLBACK_RESPONSE =
-  "Não consegui identificar o pedido ainda.\n\nVocê pode me mandar assim:\n• Cadastrar lead: João Silva 54999999999\n• Buscar imóvel: casa até 600 mil em Vacaria\n• Buscar apartamento 2 quartos no centro"
+  "Não consegui identificar o pedido.\n\nVocê pode mandar assim:\n• Cadastrar lead: João Silva 54999999999\n• Buscar imóvel: casa até 600 mil\n• Agendar visita amanhã às 15h\n• Gerar proposta para João no imóvel 142"
 
 function isAssessorGreeting(message: string) {
   const normalized = normalizeForIntent(message).replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim()
@@ -107,7 +111,11 @@ function extractLeadData(message: string) {
 function parseFlexiblePriceToCents(message: string) {
   const normalized = normalizeForIntent(message)
   const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de|valor|preco|preço)?\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|k|mi|milhao|milhoes|milhão|milhões))\b/)
-  if (!priceMatch) return null
+  if (!priceMatch) {
+    const currencyMatch = message.match(/r\$\s*([\d.]+(?:,\d{2})?)/i)
+    if (!currencyMatch) return null
+    return parseCurrencyInputToCents(currencyMatch[1])
+  }
 
   const rawPrice = Number(priceMatch[1].replace(",", "."))
   if (!Number.isFinite(rawPrice) || rawPrice < 0) return null
@@ -267,7 +275,8 @@ function parseAgendaListRange(message: string) {
   const start = normalized.includes("amanha") ? addDays(getDateOnly(new Date()), 1) : getDateOnly(new Date())
   const end = new Date(start)
   end.setDate(start.getDate() + (normalized.includes("semana") ? 7 : 1))
-  return { start, end, label: normalized.includes("amanha") ? "amanhã" : normalized.includes("semana") ? "da semana" : "de hoje" }
+  const pendingOnly = /\b(pendente|pendentes|abertos|em aberto)\b/.test(normalized)
+  return { start, end, label: pendingOnly ? "pendente" : normalized.includes("amanha") ? "de amanhã" : normalized.includes("semana") ? "da semana" : "de hoje", pendingOnly }
 }
 
 function extractPersonName(message: string) {
@@ -317,6 +326,10 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
 
   const normalized = normalizeForIntent(message)
   if (isAssessorGreeting(message)) return "general"
+  if (/\b(resumo|como esta|como estao|quantas|quantos|quais|mostrar|mostre|ver)\b/.test(normalized) && /\b(leads|lead|clientes|contatos)\b/.test(normalized)) return "getLeadsSummary"
+  if (/\b(resumo|como esta|como estao|quantas|quantos|quais|acessos|visitas|visualizacoes|visualiz)\b/.test(normalized) && /\b(analytics|acessos|visitas|visualizacoes|visualiz|vistos)\b/.test(normalized)) return "getAnalyticsSummary"
+  if (/\b(resumo|como esta|como estao|quantos|buscas|publicados|catalogo)\b/.test(normalized) && /\b(catalogo|imoveis publicados|buscas)\b/.test(normalized)) return "getCatalogSummary"
+  if (/\b(resumo|valor|carteira|ticket|ativos|financeiro|comissao)\b/.test(normalized) && /\b(financeiro|carteira|ticket|ativos|comissao)\b/.test(normalized)) return "getFinancialSummary"
   if (/\b(marcar|marque|concluir|feito|finalizar)\b/.test(normalized) && /\b(agenda|visita|lembrete|tarefa|compromisso)\b/.test(normalized)) return "MARK_AGENDA_DONE"
   if (/\b(quais|mostrar|mostre|listar|lista|ver)\b/.test(normalized) && /\b(agenda|visitas|lembretes|compromissos|tarefas)\b/.test(normalized)) return "LIST_AGENDA_EVENTS"
   if (/\b(agendar|agenda|lembrar|lembrete|visita|evento|tarefa)\b/.test(normalized)) return "CREATE_AGENDA_EVENT"
@@ -553,7 +566,10 @@ export async function runAssessorAction({
   if (action === "LIST_AGENDA_EVENTS") {
     const range = parseAgendaListRange(message)
     const events = await prisma.agendaEvent.findMany({
-      where: { brokerId, date: { gte: range.start, lt: range.end }, status: { not: "cancelled" } },
+      where: {
+        brokerId,
+        ...(range.pendingOnly ? { status: "pending" } : { date: { gte: range.start, lt: range.end }, status: { not: "cancelled" } }),
+      },
       orderBy: [{ date: "asc" }, { time: "asc" }],
       take: 8,
     })
@@ -650,11 +666,26 @@ export async function runAssessorAction({
 
   if (action === "LIST_DOCUMENTS" || action === "GET_DOCUMENT") {
     const personName = extractPersonName(message)
+    const propertyReference = extractPropertyReference(message)
     const lead = personName
       ? await prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, select: { id: true } })
       : null
+    const property = propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
+      ? await prisma.property.findFirst({
+          where: {
+            brokerId,
+            OR: [
+              ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
+              ...(propertyReference.neighborhood ? [{ neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } }] : []),
+              ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
+            ],
+          },
+          select: { id: true },
+          orderBy: { updatedAt: "desc" },
+        })
+      : null
     const documents = await prisma.brokerDocument.findMany({
-      where: { brokerId, ...(lead?.id ? { leadId: lead.id } : {}) },
+      where: { brokerId, ...(lead?.id ? { leadId: lead.id } : {}), ...(property?.id ? { propertyId: property.id } : {}) },
       orderBy: { createdAt: "desc" },
       take: action === "GET_DOCUMENT" ? 1 : 5,
       include: { property: { select: { title: true } }, lead: { select: { name: true } } },
@@ -662,15 +693,15 @@ export async function runAssessorAction({
     if (action === "GET_DOCUMENT") {
       const document = documents[0]
       return {
-        response: document ? `${document.title}\n\n${proposalHtmlToText(document.content).slice(0, 1200)}` : "Não encontrei documentos para esse lead.",
-        metadata: { documentId: document?.id ?? null, resultsCount: documents.length, parsedData: { personName } },
+        response: document ? `${document.title}\n\n${proposalHtmlToText(document.content).slice(0, 1200)}` : "Não encontrei documentos com esse filtro.",
+        metadata: { documentId: document?.id ?? null, resultsCount: documents.length, parsedData: { personName, propertyReference } },
       }
     }
     return {
       response: documents.length
         ? `Encontrei ${documents.length} documento${documents.length === 1 ? "" : "s"}:\n\n${documents.map((document) => `• ${document.title}${document.property?.title ? ` — ${document.property.title}` : ""}`).join("\n")}`
-        : "Não encontrei documentos para esse lead.",
-      metadata: { documentIds: documents.map((document) => document.id), resultsCount: documents.length, parsedData: { personName } },
+        : "Não encontrei documentos com esse filtro.",
+      metadata: { documentIds: documents.map((document) => document.id), resultsCount: documents.length, parsedData: { personName, propertyReference } },
     }
   }
 
@@ -695,18 +726,26 @@ export async function runAssessorAction({
   if (action === "getFinancialSummary") {
     const properties = await prisma.property.findMany({ where: { brokerId } })
     const total = properties.reduce((sum, property) => sum + Math.max(0, property.price), 0)
+    const active = properties.filter((property) => property.published || property.status === PropertyStatus.PUBLISHED).length
+    const average = properties.length ? Math.round(total / properties.length) : 0
     return {
-      response: `Sua carteira tem ${properties.length} imóvel(is), valor total estimado de ${formatCurrencyBRLFromCents(total)} e comissão potencial de ${formatCurrencyBRLFromCents(Math.round(total * 0.06))} usando 6%.`,
-      metadata: { totalProperties: properties.length, totalPortfolioValue: total },
+      response: `Sua carteira está em ${formatCurrencyBRLFromCents(total)}, com ticket médio de ${formatCurrencyBRLFromCents(average)} e ${active} imóvel${active === 1 ? "" : "is"} ativo${active === 1 ? "" : "s"}.`,
+      metadata: { totalProperties: properties.length, activeProperties: active, averageTicket: average, totalPortfolioValue: total },
     }
   }
 
-  if (action === "getAnalyticsSummary" || action === "analyzeCatalog") {
+  if (action === "getAnalyticsSummary" || action === "analyzeCatalog" || action === "getCatalogSummary") {
     const context = await buildBrokerContext(brokerId)
     const views = context.events.reduce((sum, item) => sum + (item.eventType.includes("view") ? item._count._all : 0), 0)
+    const whatsappClicks = context.events.reduce((sum, item) => sum + (item.eventType === "whatsapp_click" ? item._count._all : 0), 0)
+    const published = context.properties.filter((property) => property.published || property.status === PropertyStatus.PUBLISHED).length
+    const searches = await prisma.searchEvent.count({ where: { brokerId } })
     return {
-      response: `Seu catálogo tem ${context.properties.length} imóvel(is), ${context.leads.length} lead(s) e ${views} visualização(ões) registradas. Imóvel mais recente: ${context.properties[0]?.title ?? "nenhum cadastrado"}.`,
-      metadata: { properties: context.properties.length, leads: context.leads.length, views },
+      response:
+        action === "getAnalyticsSummary"
+          ? `Seu catálogo teve ${views} visualizações, ${whatsappClicks} cliques no WhatsApp e ${context.leads.length} leads recebidos.`
+          : `Seu catálogo tem ${published} imóveis publicados, ${views} visualizações e ${searches} buscas recentes.`,
+      metadata: { properties: context.properties.length, published, leads: context.leads.length, views, whatsappClicks, searches },
     }
   }
 
@@ -804,6 +843,12 @@ export async function runAssessorAction({
 
   if (action === "createPropertyDraft") {
     const draft = parsePropertyDraftData(message, payload)
+    if (!draft.price) {
+      return {
+        response: "Qual o valor do imóvel?",
+        metadata: { required: ["price"], noCharge: true, parsedData: draft },
+      }
+    }
 
     const property = await prisma.property.create({
       data: {
@@ -824,7 +869,7 @@ export async function runAssessorAction({
     })
     await prisma.notification.create({ data: { userId, title: "Rascunho criado pelo Assessor EME", message: `${draft.title} foi criado como rascunho.`, read: false } })
     return {
-      response: "Imóvel criado em rascunho ✅\n\nDeseja:\n• gerar descrição\n• gerar anúncio Instagram\n• gerar anúncio OLX\n• publicar imóvel",
+      response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
       metadata: {
         propertyId: property.id,
         parsedData: draft,
@@ -835,6 +880,20 @@ export async function runAssessorAction({
         },
       },
       propertyId: property.id,
+    }
+  }
+
+  if (action === "getLeadsSummary") {
+    const [total, newLeads, pending, recent] = await Promise.all([
+      prisma.lead.count({ where: { brokerId } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.NEW } }),
+      prisma.lead.count({ where: { brokerId, status: { in: [LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.NEGOTIATING] } } }),
+      prisma.lead.findMany({ where: { brokerId }, orderBy: { createdAt: "desc" }, take: 3, select: { id: true, name: true, phone: true, status: true } }),
+    ])
+    return {
+      response: `Você tem ${total} leads recebidos, ${newLeads} novo${newLeads === 1 ? "" : "s"} e ${pending} aguardando resposta.`,
+      metadata: { total, newLeads, pending, leadIds: recent.map((lead) => lead.id), parsedData: { recent } },
+      leadId: recent[0]?.id,
     }
   }
 

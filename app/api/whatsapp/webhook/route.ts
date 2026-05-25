@@ -32,6 +32,12 @@ function shouldReturnActionResponse(action: AssessorAction) {
     "CREATE_PROPOSAL",
     "LIST_DOCUMENTS",
     "GET_DOCUMENT",
+    "getFinancialSummary",
+    "getAnalyticsSummary",
+    "getCatalogSummary",
+    "getLeadsSummary",
+    "analyzeCatalog",
+    "summarizeLead",
   ].includes(action)
 }
 

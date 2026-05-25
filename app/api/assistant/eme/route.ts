@@ -54,6 +54,8 @@ function getVisualActionLabel(action: AssessorAction) {
   if (action === "createLead") return "Lead cadastrado"
   if (action === "searchProperties") return "Busca de imóveis"
   if (action === "getFinancialSummary") return "Consulta financeira"
+  if (action === "getCatalogSummary") return "Resumo do catálogo"
+  if (action === "getLeadsSummary") return "Resumo de leads"
   if (action === "createPropertyDraft") return "Rascunho de imóvel"
   if (action === "improvePropertyDescription") return "Descrição melhorada"
   if (action === "summarizeLead") return "Resumo de leads"
@@ -79,6 +81,12 @@ function shouldReturnActionResponse(action: AssessorAction) {
     "CREATE_PROPOSAL",
     "LIST_DOCUMENTS",
     "GET_DOCUMENT",
+    "getFinancialSummary",
+    "getAnalyticsSummary",
+    "getCatalogSummary",
+    "getLeadsSummary",
+    "analyzeCatalog",
+    "summarizeLead",
   ].includes(action)
 }
 
