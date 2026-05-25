@@ -1,12 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CheckCircle2, Copy, FileText, Plus } from "lucide-react"
+import { CheckCircle2, Copy, Download, ExternalLink, FileText, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { proposalHtmlToText } from "@/lib/proposal-template"
 
 type BrokerDocument = {
   id: string
@@ -22,8 +23,28 @@ type BrokerDocument = {
 const statuses = [
   { label: "Todos", value: "all" },
   { label: "Rascunhos", value: "draft" },
+  { label: "Gerados", value: "generated" },
   { label: "Assinados", value: "signed" },
 ] as const
+
+function isHtmlDocument(content: string) {
+  return /<!doctype html|<html|<main|<section/i.test(content)
+}
+
+function statusLabel(status: string) {
+  if (status === "signed") return "Assinado"
+  if (status === "generated") return "Gerado"
+  if (status === "archived") return "Arquivado"
+  return "Rascunho"
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
 
 export function BrokerDocumentsPage() {
   const [documents, setDocuments] = useState<BrokerDocument[]>([])
@@ -67,7 +88,7 @@ export function BrokerDocumentsPage() {
       const data = (await response.json().catch(() => null)) as { document?: BrokerDocument; error?: string } | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível gerar a proposta.")
       setDraft({ title: "", conditions: "" })
-      setFeedback("Proposta gerada em rascunho.")
+      setFeedback("Proposta gerada e pronta para baixar.")
       await loadDocuments()
       if (data?.document) setSelectedDocument(data.document)
     } catch (error) {
@@ -96,8 +117,32 @@ export function BrokerDocumentsPage() {
 
   async function copyContent() {
     if (!selectedDocument) return
-    await navigator.clipboard.writeText(selectedDocument.content).catch(() => null)
+    const content = isHtmlDocument(selectedDocument.content)
+      ? proposalHtmlToText(selectedDocument.content)
+      : selectedDocument.content
+    await navigator.clipboard.writeText(content).catch(() => null)
     setFeedback("Texto copiado.")
+  }
+
+  function openDocument(shouldPrint = false) {
+    if (!selectedDocument) return
+    const printableContent = isHtmlDocument(selectedDocument.content)
+      ? selectedDocument.content
+      : `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" /><title>${escapeHtml(selectedDocument.title)}</title><style>body{font-family:Arial,sans-serif;padding:32px;white-space:pre-wrap;color:#111}</style></head><body>${escapeHtml(selectedDocument.content)}</body></html>`
+    const popup = window.open("", "_blank")
+    if (!popup) {
+      setFeedback("Permita pop-ups para abrir o documento.")
+      return
+    }
+    popup.document.open()
+    popup.document.write(printableContent)
+    popup.document.close()
+    if (shouldPrint) {
+      popup.onload = () => {
+        popup.focus()
+        popup.print()
+      }
+    }
   }
 
   return (
@@ -130,7 +175,7 @@ export function BrokerDocumentsPage() {
               documents.map((document) => (
                 <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`rounded-[1.25rem] border p-4 text-left transition ${selectedDocument?.id === document.id ? "border-[#00C853]/25 bg-[#00C853]/10" : "border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]"}`}>
                   <p className="truncate font-semibold text-white">{document.title}</p>
-                  <p className="mt-1 text-sm text-white/50">{document.status === "signed" ? "Assinado" : "Rascunho"} {document.leadName ? `· ${document.leadName}` : ""}</p>
+                  <p className="mt-1 text-sm text-white/50">{statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
                 </button>
               ))
             ) : (
@@ -163,8 +208,24 @@ export function BrokerDocumentsPage() {
             <CardContent className="grid gap-4 p-5 pt-0">
               {selectedDocument ? (
                 <>
-                  <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm leading-7 text-white/70">{selectedDocument.content}</pre>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  {isHtmlDocument(selectedDocument.content) ? (
+                    <iframe
+                      title={selectedDocument.title}
+                      srcDoc={selectedDocument.content}
+                      className="h-[520px] w-full rounded-[1.25rem] border border-white/[0.08] bg-white"
+                    />
+                  ) : (
+                    <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm leading-7 text-white/70">{selectedDocument.content}</pre>
+                  )}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <Button type="button" variant="ghost" onClick={() => openDocument(false)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
+                      <ExternalLink className="size-4" />
+                      Abrir
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => openDocument(true)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
+                      <Download className="size-4" />
+                      Baixar PDF
+                    </Button>
                     <Button type="button" variant="ghost" onClick={copyContent} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
                       <Copy className="size-4" />
                       Copiar texto

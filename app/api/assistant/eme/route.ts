@@ -258,6 +258,17 @@ export async function POST(request: NextRequest) {
           : actionResult.response.includes("preciso de confirmação") || actionResult.response.includes("confirmação")
             ? "processing"
             : "success"
+      if ((actionResult.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
+        finalCreditsUsed = 0
+        await prisma.broker.update({
+          where: { id: user.broker.id },
+          data: {
+            aiCreditsBalance: { increment: creditsUsed },
+            aiCreditsUsedThisMonth: { decrement: creditsUsed },
+            aiMonthlyUsage: { decrement: creditsUsed },
+          },
+        }).catch(() => null)
+      }
       responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,

@@ -305,6 +305,17 @@ async function processAssessorMessage({
         : actionResult.response.includes("confirmação")
           ? "needs_confirmation"
           : "completed"
+    if ((actionResult.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
+      finalCreditsUsed = 0
+      await prisma.broker.update({
+        where: { id: brokerId },
+        data: {
+          aiCreditsBalance: { increment: creditsUsed },
+          aiCreditsUsedThisMonth: { decrement: creditsUsed },
+          aiMonthlyUsage: { decrement: creditsUsed },
+        },
+      }).catch(() => null)
+    }
     responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
     console.info("[api][whatsapp][assessor-action]", {
       detectedIntent: action,

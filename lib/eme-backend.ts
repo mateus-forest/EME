@@ -4,6 +4,7 @@ import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/cur
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
+import { buildProposalHtml, proposalHtmlToText } from "@/lib/proposal-template"
 
 export const assessorActions = [
   "general",
@@ -63,7 +64,7 @@ function normalizeForIntent(value: string) {
 }
 
 const ASSESSOR_MENU_RESPONSE =
-  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis\n• cadastrar imóveis\n• resumir atendimentos\n• gerar descrições\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nBuscar imóvel: casa até 600 mil em Vacaria"
+  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis\n• cadastrar imóveis\n• agendar visitas e lembretes\n• consultar agenda\n• gerar propostas\n• consultar documentos\n• gerar descrições\n\nExemplos:\nAgendar visita amanhã às 15h com João\nMinha agenda de hoje\nGerar proposta para João no imóvel 142\nMostrar documentos do João"
 
 const ASSESSOR_FALLBACK_RESPONSE =
   "Não consegui identificar o pedido ainda.\n\nVocê pode me mandar assim:\n• Cadastrar lead: João Silva 54999999999\n• Buscar imóvel: casa até 600 mil em Vacaria\n• Buscar apartamento 2 quartos no centro"
@@ -236,7 +237,9 @@ function parseAgendaDate(message: string) {
 
 function parseAgendaTime(message: string) {
   const normalized = normalizeForIntent(message)
-  const match = normalized.match(/(?:as)?\s*(\d{1,2})(?:[:h](\d{2}))?\s*h?/)
+  const match =
+    normalized.match(/\bas\s*(\d{1,2})(?:[:h]\s*(\d{2}))?\b/) ??
+    normalized.match(/\b(\d{1,2})(?:[:h]\s*(\d{2})?| horas?)\b/)
   if (!match) return ""
   const hours = Math.min(23, Number(match[1])).toString().padStart(2, "0")
   const minutes = (match[2] ? Math.min(59, Number(match[2])) : 0).toString().padStart(2, "0")
@@ -276,25 +279,27 @@ function extractPersonName(message: string) {
   return cleanText(cleaned.split(/\s+(?:apartamento|casa|terreno|centro)\b/i)[0], 120)
 }
 
-function buildProposalContent(input: {
-  lead?: { name: string | null; phone: string | null } | null
-  property?: { title: string; city: string; neighborhood: string | null; price: number; purpose: string | null } | null
-  brokerName: string
-  conditions?: string
-}) {
-  return [
-    "Proposta de Compra/Locação",
-    "",
-    `Cliente: ${input.lead?.name || "não informado"}`,
-    `Telefone: ${input.lead?.phone || "não informado"}`,
-    `Imóvel: ${input.property?.title || "não informado"}`,
-    `Endereço/Bairro/Cidade: ${[input.property?.neighborhood, input.property?.city].filter(Boolean).join(", ") || "não informado"}`,
-    `Valor: ${input.property ? formatCurrencyBRLFromCents(input.property.price) : "não informado"}`,
-    `Finalidade: ${input.property?.purpose === "RENT" ? "locação" : "venda"}`,
-    `Condições: ${input.conditions || "não informado"}`,
-    `Data: ${new Date().toLocaleDateString("pt-BR")}`,
-    `Corretor: ${input.brokerName || "não informado"}`,
-  ].join("\n")
+function extractAgendaPersonName(message: string) {
+  const match = message.match(/\b(?:com|para)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)?)/i)
+  return cleanText(match?.[1]?.replace(/\b(?:no|na|imóvel|imovel|apartamento|casa|terreno)\b.*$/i, ""), 120)
+}
+
+function extractPropertyReference(message: string) {
+  const normalized = normalizeForIntent(message)
+  const idMatch = normalized.match(/\b(?:imovel|codigo|id)\s+([a-z0-9-]{2,80})\b/)
+  const neighborhoodMatch = normalized.match(/\b(?:apartamento|casa|terreno|imovel)?\s*(?:do|da|no|na)\s+([a-z\s-]{3,60})\b/)
+  return {
+    idOrCode: cleanText(idMatch?.[1], 80),
+    neighborhood: cleanText(neighborhoodMatch?.[1], 80),
+    type: inferPropertyTypeFromText(message),
+  }
+}
+
+function formatAgendaDateLabel(message: string, date: Date) {
+  const normalized = normalizeForIntent(message)
+  if (normalized.includes("amanha")) return "amanhã"
+  if (normalized.includes("hoje")) return "hoje"
+  return date.toLocaleDateString("pt-BR")
 }
 
 export function inferAssessorAction(message: string, requestedAction?: string): AssessorAction {
@@ -481,21 +486,63 @@ export async function runAssessorAction({
     const date = parseAgendaDate(message)
     const time = parseAgendaTime(message)
     const type = parseAgendaType(message)
-    const title = parseAgendaTitle(message)
+    const personName = extractAgendaPersonName(message)
+    const propertyReference = extractPropertyReference(message)
+    const [lead, property] = await Promise.all([
+      personName
+        ? prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true } })
+        : null,
+      propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
+        ? prisma.property.findFirst({
+            where: {
+              brokerId,
+              OR: [
+                ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
+                ...(propertyReference.neighborhood ? [{ neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } }] : []),
+                ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
+              ],
+            },
+            orderBy: { updatedAt: "desc" },
+            select: { id: true, title: true },
+          })
+        : null,
+    ])
+    const baseTitle = parseAgendaTitle(message)
+    const title = cleanText(`${baseTitle}${lead?.name || personName ? ` com ${lead?.name ?? personName}` : ""}${property ? ` no ${property.title}` : ""}`, 160)
+    if (!time) {
+      return {
+        response: "Qual horário devo colocar?",
+        metadata: {
+          required: ["time"],
+          noCharge: true,
+          parsedData: { title, type, date: date.toISOString(), personName, propertyReference },
+        },
+      }
+    }
     const event = await prisma.agendaEvent.create({
       data: {
         brokerId,
         title,
         type,
         date,
-        time: time || null,
+        time,
+        leadId: lead?.id ?? null,
+        propertyId: property?.id ?? null,
         notes: message,
         status: "pending",
       },
     })
     return {
-      response: `Agendado ✅\n${title}${time ? ` às ${time}` : ""}.`,
-      metadata: { agendaEventId: event.id, parsedData: { title, type, date: date.toISOString(), time }, status: "pending" },
+      response: `Compromisso agendado ✅\n${title} ${formatAgendaDateLabel(message, date)} às ${time}.`,
+      metadata: {
+        agendaEventId: event.id,
+        leadId: lead?.id ?? null,
+        propertyId: property?.id ?? null,
+        parsedData: { title, type, date: date.toISOString(), time, personName, propertyReference },
+        status: "pending",
+      },
+      leadId: lead?.id,
+      propertyId: property?.id,
     }
   }
 
@@ -531,34 +578,61 @@ export async function runAssessorAction({
 
   if (action === "CREATE_PROPOSAL") {
     const personName = extractPersonName(message)
+    const propertyReference = extractPropertyReference(message)
     const [broker, lead, property] = await Promise.all([
       prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true } } } }),
       personName
         ? prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, phone: true } })
         : null,
-      prisma.property.findFirst({
-        where: { brokerId, OR: [{ title: { contains: message, mode: "insensitive" } }, { neighborhood: { contains: "centro", mode: "insensitive" } }] },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true },
-      }),
+      propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
+        ? prisma.property.findFirst({
+            where: {
+              brokerId,
+              OR: [
+                ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
+                ...(propertyReference.neighborhood ? [{ neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } }] : []),
+                ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
+              ],
+            },
+            orderBy: { updatedAt: "desc" },
+            select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true },
+          })
+        : null,
     ])
+    if (!lead) {
+      return {
+        response: "Para quem é a proposta?",
+        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, propertyReference } },
+      }
+    }
+    if (!property) {
+      return {
+        response: "Qual imóvel devo usar?",
+        metadata: { required: ["property"], noCharge: true, leadId: lead.id, parsedData: { personName, propertyReference } },
+        leadId: lead.id,
+      }
+    }
     const title = `Proposta ${lead?.name ?? (personName || property?.title || "EME")}`
     const document = await prisma.brokerDocument.create({
       data: {
         brokerId,
-        leadId: lead?.id ?? null,
-        propertyId: property?.id ?? null,
+        leadId: lead.id,
+        propertyId: property.id,
         type: "proposal",
         title,
-        content: buildProposalContent({ lead, property, brokerName: broker?.user.name ?? "" }),
-        status: "draft",
+        content: buildProposalHtml({
+          lead,
+          property,
+          broker: { name: broker?.user.name ?? "", phone: broker?.phone, creci: broker?.creci },
+        }),
+        status: "generated",
       },
     })
     return {
-      response: "Proposta gerada em rascunho ✅\nVocê pode revisar em Documentos.",
-      metadata: { documentId: document.id, leadId: lead?.id ?? null, propertyId: property?.id ?? null, parsedData: { personName, title }, status: "draft" },
-      leadId: lead?.id,
-      propertyId: property?.id,
+      response: "Proposta gerada ✅\nSalvei em Documentos e deixei pronta para baixar em PDF.",
+      metadata: { documentId: document.id, leadId: lead.id, propertyId: property.id, parsedData: { personName, title, propertyReference }, status: "generated" },
+      leadId: lead.id,
+      propertyId: property.id,
     }
   }
 
@@ -576,7 +650,7 @@ export async function runAssessorAction({
     if (action === "GET_DOCUMENT") {
       const document = documents[0]
       return {
-        response: document ? `${document.title}\n\n${document.content}` : "Não encontrei documentos para esse lead.",
+        response: document ? `${document.title}\n\n${proposalHtmlToText(document.content).slice(0, 1200)}` : "Não encontrei documentos para esse lead.",
         metadata: { documentId: document?.id ?? null, resultsCount: documents.length, parsedData: { personName } },
       }
     }

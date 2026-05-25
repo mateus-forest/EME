@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { formatCurrencyBRLFromCents } from "@/lib/currency"
+import { buildProposalHtml } from "@/lib/proposal-template"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -9,10 +9,6 @@ const documentStatuses = ["draft", "generated", "signed", "archived"] as const
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
-}
-
-function notInformed(value?: string | null) {
-  return value?.trim() || "não informado"
 }
 
 function serializeDocument(document: {
@@ -26,7 +22,7 @@ function serializeDocument(document: {
   createdAt: Date
   updatedAt: Date
   lead?: { name: string | null; phone: string | null } | null
-  property?: { title: string; city: string; neighborhood: string | null; price: number; purpose: string | null } | null
+  property?: { id: string; title: string; city: string; neighborhood: string | null; price: number; purpose: string | null; type: string; bedrooms: number; parkingSpots: number } | null
 }) {
   return {
     id: document.id,
@@ -41,28 +37,6 @@ function serializeDocument(document: {
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
   }
-}
-
-function buildProposalContent(input: {
-  lead?: { name: string | null; phone: string | null } | null
-  property?: { title: string; city: string; neighborhood: string | null; price: number; purpose: string | null } | null
-  brokerName: string
-  conditions: string
-}) {
-  const purpose = input.property?.purpose === "RENT" ? "locação" : "venda"
-  return [
-    "Proposta de Compra/Locação",
-    "",
-    `Cliente: ${notInformed(input.lead?.name)}`,
-    `Telefone: ${notInformed(input.lead?.phone)}`,
-    `Imóvel: ${notInformed(input.property?.title)}`,
-    `Endereço/Bairro/Cidade: ${[input.property?.neighborhood, input.property?.city].filter(Boolean).join(", ") || "não informado"}`,
-    `Valor: ${input.property ? formatCurrencyBRLFromCents(input.property.price) : "não informado"}`,
-    `Finalidade: ${purpose}`,
-    `Condições: ${input.conditions || "não informado"}`,
-    `Data: ${new Date().toLocaleDateString("pt-BR")}`,
-    `Corretor: ${notInformed(input.brokerName)}`,
-  ].join("\n")
 }
 
 export async function GET(request: NextRequest) {
@@ -83,7 +57,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         lead: { select: { name: true, phone: true } },
-        property: { select: { title: true, city: true, neighborhood: true, price: true, purpose: true } },
+        property: { select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } },
       },
     })
 
@@ -110,13 +84,13 @@ export async function POST(request: NextRequest) {
     const propertyId = cleanText(body?.propertyId, 80)
     const [lead, property] = await Promise.all([
       leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true } }) : null,
-      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true } }) : null,
+      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } }) : null,
     ])
     const title = cleanText(body?.title, 160) || `Proposta ${lead?.name ?? property?.title ?? "EME"}`
-    const content = buildProposalContent({
+    const content = buildProposalHtml({
       lead,
       property,
-      brokerName: user.name,
+      broker: { name: user.name, phone: user.broker.phone, creci: user.broker.creci },
       conditions: cleanText(body?.conditions, 500),
     })
 
@@ -128,11 +102,11 @@ export async function POST(request: NextRequest) {
         type: "proposal",
         title,
         content,
-        status: "draft",
+        status: "generated",
       },
       include: {
         lead: { select: { name: true, phone: true } },
-        property: { select: { title: true, city: true, neighborhood: true, price: true, purpose: true } },
+        property: { select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } },
       },
     })
 
@@ -176,7 +150,7 @@ export async function PATCH(request: NextRequest) {
       where: { id, brokerId: user.broker.id },
       include: {
         lead: { select: { name: true, phone: true } },
-        property: { select: { title: true, city: true, neighborhood: true, price: true, purpose: true } },
+        property: { select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } },
       },
     })
     if (!document) return NextResponse.json({ error: "Documento não encontrado." }, { status: 404 })
