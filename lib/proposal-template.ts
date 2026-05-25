@@ -15,6 +15,7 @@ type ProposalProperty = {
   purpose?: string | null
   type?: string | null
   area?: string | null
+  imageUrl?: string | null
   bedrooms?: number | null
   parkingSpots?: number | null
 } | null
@@ -76,13 +77,14 @@ export function buildProposalHtml(input: {
   const leadName = valueOrFallback(lead?.name)
   const purpose = propertyPurposeLabel(property?.purpose)
   const brokerPhoto = broker?.photoUrl?.trim()
+  const propertyImage = property?.imageUrl?.trim()
 
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Proposta de Compra/Locação</title>
+  <title>Proposta Comercial</title>
   <style>
     :root {
       color-scheme: dark;
@@ -142,13 +144,7 @@ export function buildProposalHtml(input: {
         rgba(8, 10, 9, .82);
       z-index: 1;
     }
-    .logo {
-      color: var(--green);
-      font-size: 54px;
-      line-height: .9;
-      font-weight: 950;
-      letter-spacing: -.08em;
-    }
+    .brand-logo { width: 172px; max-width: 100%; height: auto; display: block; }
     .tagline {
       margin-top: 12px;
       color: rgba(255,255,255,.72);
@@ -205,7 +201,8 @@ export function buildProposalHtml(input: {
       margin-bottom: 28px;
     }
     .hero-kicker { color: rgba(255,255,255,.88); font-size: 25px; letter-spacing: .02em; text-transform: uppercase; }
-    h1 { margin: 8px 0 0; color: var(--green); font-size: clamp(40px, 6vw, 64px); line-height: .96; letter-spacing: -.045em; text-transform: uppercase; }
+    h1 { margin: 8px 0 0; color: var(--text); font-size: clamp(32px, 4.5vw, 48px); line-height: 1.02; letter-spacing: -.035em; }
+    .subtitle { margin-top: 8px; color: var(--green); font-size: clamp(19px, 2.4vw, 27px); font-weight: 850; letter-spacing: -.02em; }
     .hero p { max-width: 540px; margin: 18px 0 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
     .date-card {
       min-width: 188px;
@@ -257,17 +254,16 @@ export function buildProposalHtml(input: {
       text-transform: uppercase;
     }
     .price-value { color: var(--green); font-size: 30px; font-weight: 900; letter-spacing: -.03em; }
-    .notes { color: rgba(255,255,255,.72); line-height: 1.7; }
-    .signatures {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 28px;
-      padding-top: 18px;
+    .property-card-grid { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 22px; align-items: stretch; }
+    .property-photo {
+      min-height: 180px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.035);
     }
-    .signature { text-align: center; }
-    .signature .line { height: 1px; margin: 42px auto 12px; max-width: 220px; background: rgba(255,255,255,.32); }
-    .signature .name { font-weight: 750; }
-    .signature .role { margin-top: 4px; color: var(--muted-2); font-size: 13px; }
+    .property-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .notes { color: rgba(255,255,255,.72); line-height: 1.7; }
     .footer {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -287,7 +283,7 @@ export function buildProposalHtml(input: {
       .content { padding: 34px 22px; }
       .hero { grid-template-columns: 1fr; }
       .date-card { width: 100%; }
-      .grid, .grid.two, .footer, .signatures { grid-template-columns: 1fr; }
+      .grid, .grid.two, .footer, .property-card-grid { grid-template-columns: 1fr; }
       .quote { margin-top: 0; }
     }
     @media print {
@@ -303,7 +299,7 @@ export function buildProposalHtml(input: {
     <section class="sheet">
       <aside class="sidebar">
         <div>
-          <div class="logo">EME</div>
+          <img class="brand-logo" src="/images/eme-logo.png" alt="EME" />
           <div class="tagline">Soluções imobiliárias</div>
         </div>
 
@@ -339,9 +335,10 @@ export function buildProposalHtml(input: {
       <section class="content">
         <header class="hero">
           <div>
-            <div class="hero-kicker">Proposta de</div>
-            <h1>Compra/Locação</h1>
-            <p>Apresentamos esta proposta com condições especiais, elaborada com exclusividade para você.</p>
+            <div class="hero-kicker">Documento comercial</div>
+            <h1>Proposta Comercial</h1>
+            <div class="subtitle">Compra ou locação de imóvel</div>
+            <p>Apresentamos esta proposta com condições organizadas para análise e negociação.</p>
           </div>
           <div class="date-card">
             <div class="label">Data da proposta</div>
@@ -361,17 +358,20 @@ export function buildProposalHtml(input: {
 
           <section class="card">
             <div class="card-header"><div class="icon">▥</div><h2>Dados do imóvel</h2></div>
-            <div class="grid">
-              <div class="item"><div class="label">Imóvel</div><div class="value">${escapeHtml(property?.title)}</div></div>
-              <div class="item"><div class="label">Código/ID</div><div class="value">${escapeHtml(property?.id)}</div></div>
-              <div class="item"><div class="label">Tipo</div><div class="value">${escapeHtml(property?.type)}</div></div>
-              <div class="item"><div class="label">Finalidade</div><div class="value"><span class="pill">${escapeHtml(purpose)}</span></div></div>
-              <div class="item"><div class="label">Bairro</div><div class="value">${escapeHtml(property?.neighborhood)}</div></div>
-              <div class="item"><div class="label">Cidade</div><div class="value">${escapeHtml(property?.city)}</div></div>
-              <div class="item"><div class="label">Metragem</div><div class="value">${escapeHtml(property?.area)}</div></div>
-              <div class="item"><div class="label">Dormitórios</div><div class="value">${escapeHtml(property?.bedrooms)}</div></div>
-              <div class="item"><div class="label">Vagas</div><div class="value">${escapeHtml(property?.parkingSpots)}</div></div>
-              <div class="item"><div class="label">Valor do imóvel</div><div class="price-value">${escapeHtml(price)}</div></div>
+            <div class="property-card-grid">
+              <div class="grid">
+                <div class="item"><div class="label">Imóvel</div><div class="value">${escapeHtml(property?.title)}</div></div>
+                <div class="item"><div class="label">Código/ID</div><div class="value">${escapeHtml(property?.id)}</div></div>
+                <div class="item"><div class="label">Tipo</div><div class="value">${escapeHtml(property?.type)}</div></div>
+                <div class="item"><div class="label">Finalidade</div><div class="value"><span class="pill">${escapeHtml(purpose)}</span></div></div>
+                <div class="item"><div class="label">Bairro</div><div class="value">${escapeHtml(property?.neighborhood)}</div></div>
+                <div class="item"><div class="label">Cidade</div><div class="value">${escapeHtml(property?.city)}</div></div>
+                <div class="item"><div class="label">Metragem</div><div class="value">${escapeHtml(property?.area)}</div></div>
+                <div class="item"><div class="label">Dormitórios</div><div class="value">${escapeHtml(property?.bedrooms)}</div></div>
+                <div class="item"><div class="label">Vagas</div><div class="value">${escapeHtml(property?.parkingSpots)}</div></div>
+                <div class="item"><div class="label">Valor do imóvel</div><div class="price-value">${escapeHtml(price)}</div></div>
+              </div>
+              ${propertyImage ? `<div class="property-photo"><img src="${escapeHtml(propertyImage)}" alt="${escapeHtml(property?.title)}" /></div>` : ""}
             </div>
           </section>
 
@@ -385,21 +385,6 @@ export function buildProposalHtml(input: {
             <div class="item" style="margin-top:24px"><div class="label">Observações</div><div class="value notes">${escapeHtml(conditions?.notes || input.notes)}</div></div>
           </section>
 
-          <section class="card">
-            <div class="card-header"><div class="icon">✎</div><h2>Assinaturas</h2></div>
-            <div class="signatures">
-              <div class="signature">
-                <div class="line"></div>
-                <div class="name">${escapeHtml(leadName)}</div>
-                <div class="role">Cliente</div>
-              </div>
-              <div class="signature">
-                <div class="line"></div>
-                <div class="name">${escapeHtml(brokerName)}</div>
-                <div class="role">Corretor ${broker?.creci ? `- CRECI ${escapeHtml(broker.creci)}` : ""}</div>
-              </div>
-            </div>
-          </section>
         </div>
 
         <footer class="footer">

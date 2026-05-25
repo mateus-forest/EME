@@ -295,6 +295,10 @@ function extractPropertyReference(message: string) {
   }
 }
 
+function firstImageUrl(value: unknown) {
+  return Array.isArray(value) && typeof value[0] === "string" ? value[0] : null
+}
+
 function formatAgendaDateLabel(message: string, date: Date) {
   const normalized = normalizeForIntent(message)
   if (normalized.includes("amanha")) return "amanhã"
@@ -579,11 +583,11 @@ export async function runAssessorAction({
   if (action === "CREATE_PROPOSAL") {
     const personName = extractPersonName(message)
     const propertyReference = extractPropertyReference(message)
-    const [broker, lead, property] = await Promise.all([
-      prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true } } } }),
+    const [broker, matchingLeads, property] = await Promise.all([
+      prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true, photoUrl: true } } } }),
       personName
-        ? prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, phone: true } })
-        : null,
+        ? prisma.lead.findMany({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, take: 3, select: { id: true, name: true, phone: true, email: true } })
+        : [],
       propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
         ? prisma.property.findFirst({
             where: {
@@ -595,10 +599,17 @@ export async function runAssessorAction({
               ],
             },
             orderBy: { updatedAt: "desc" },
-            select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true },
+            select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
           })
         : null,
     ])
+    if (matchingLeads.length > 1) {
+      return {
+        response: `Encontrei mais de um ${personName}. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"} ${leadItem.phone ? `- ${leadItem.phone}` : ""}`).join("\n")}`,
+        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, leadIds: matchingLeads.map((leadItem) => leadItem.id), propertyReference } },
+      }
+    }
+    const lead = matchingLeads[0] ?? null
     if (!lead) {
       return {
         response: "Para quem é a proposta?",
@@ -613,6 +624,7 @@ export async function runAssessorAction({
       }
     }
     const title = `Proposta ${lead?.name ?? (personName || property?.title || "EME")}`
+    const proposalProperty = { ...property, imageUrl: firstImageUrl(property.imageUrls) }
     const document = await prisma.brokerDocument.create({
       data: {
         brokerId,
@@ -622,8 +634,8 @@ export async function runAssessorAction({
         title,
         content: buildProposalHtml({
           lead,
-          property,
-          broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: property.city, creci: broker?.creci },
+          property: proposalProperty,
+          broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: property.city, creci: broker?.creci, photoUrl: broker?.user.photoUrl },
         }),
         status: "generated",
       },

@@ -20,6 +20,25 @@ type BrokerDocument = {
   createdAt: string
 }
 
+type LeadOption = {
+  id: string
+  name: string
+  phone: string
+  email: string
+}
+
+type PropertyOption = {
+  id: string
+  title: string
+  formattedPrice: string
+  city: string
+  neighborhood: string
+  bedrooms: number
+  parkingSpots: number
+  type: string
+  purpose: string
+}
+
 const statuses = [
   { label: "Todos", value: "all" },
   { label: "Rascunhos", value: "draft" },
@@ -46,30 +65,39 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;")
 }
 
+const emptyDraft = {
+  title: "",
+  leadId: "",
+  propertyId: "",
+  clientName: "",
+  clientPhone: "",
+  clientEmail: "",
+  propertyTitle: "",
+  propertyCode: "",
+  propertyNeighborhood: "",
+  propertyCity: "",
+  propertyType: "",
+  propertyPurpose: "venda",
+  propertyPrice: "",
+  propertyArea: "",
+  propertyBedrooms: "",
+  propertyParkingSpots: "",
+  entry: "",
+  installments: "",
+  paymentMethod: "",
+  conditions: "",
+  validity: "",
+}
+
 export function BrokerDocumentsPage() {
   const [documents, setDocuments] = useState<BrokerDocument[]>([])
+  const [leads, setLeads] = useState<LeadOption[]>([])
+  const [properties, setProperties] = useState<PropertyOption[]>([])
   const [selectedDocument, setSelectedDocument] = useState<BrokerDocument | null>(null)
   const [status, setStatus] = useState<(typeof statuses)[number]["value"]>("all")
   const [feedback, setFeedback] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const emptyDraft = {
-    title: "",
-    clientName: "",
-    clientPhone: "",
-    clientEmail: "",
-    propertyTitle: "",
-    propertyNeighborhood: "",
-    propertyCity: "",
-    propertyType: "",
-    propertyPurpose: "venda",
-    propertyPrice: "",
-    entry: "",
-    installments: "",
-    paymentMethod: "",
-    conditions: "",
-    validity: "",
-  }
   const [draft, setDraft] = useState(emptyDraft)
 
   const loadDocuments = useCallback(async (nextStatus = status) => {
@@ -91,6 +119,57 @@ export function BrokerDocumentsPage() {
   useEffect(() => {
     loadDocuments(status)
   }, [status, loadDocuments])
+
+  useEffect(() => {
+    let ignore = false
+
+    fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { leads?: LeadOption[] } | null
+        if (!ignore && response.ok) setLeads(data?.leads ?? [])
+      })
+      .catch(() => null)
+
+    fetch("/api/properties/me", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { properties?: PropertyOption[] } | null
+        if (!ignore && response.ok) setProperties(data?.properties ?? [])
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  function selectLead(leadId: string) {
+    const lead = leads.find((item) => item.id === leadId)
+    setDraft((current) => ({
+      ...current,
+      leadId,
+      clientName: lead?.name ?? current.clientName,
+      clientPhone: lead?.phone ?? current.clientPhone,
+      clientEmail: lead?.email ?? current.clientEmail,
+    }))
+  }
+
+  function selectProperty(propertyId: string) {
+    const property = properties.find((item) => item.id === propertyId)
+    const purpose = property?.purpose?.toLowerCase().includes("loc") ? "locação" : "venda"
+    setDraft((current) => ({
+      ...current,
+      propertyId,
+      propertyTitle: property?.title ?? current.propertyTitle,
+      propertyCode: property?.id ?? current.propertyCode,
+      propertyNeighborhood: property?.neighborhood ?? current.propertyNeighborhood,
+      propertyCity: property?.city ?? current.propertyCity,
+      propertyType: property?.type ?? current.propertyType,
+      propertyPurpose: property ? purpose : current.propertyPurpose,
+      propertyPrice: property?.formattedPrice ?? current.propertyPrice,
+      propertyBedrooms: property ? String(property.bedrooms) : current.propertyBedrooms,
+      propertyParkingSpots: property ? String(property.parkingSpots) : current.propertyParkingSpots,
+    }))
+  }
 
   async function createProposal() {
     setIsSaving(true)
@@ -214,6 +293,12 @@ export function BrokerDocumentsPage() {
 
               <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                 <p className="text-sm font-semibold text-white">Dados do cliente</p>
+                <select value={draft.leadId} onChange={(event) => selectLead(event.target.value)} className="h-10 min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white">
+                  <option value="" className="bg-[#111]">Lead cadastrado ou preenchimento manual</option>
+                  {leads.map((lead) => (
+                    <option key={lead.id} value={lead.id} className="bg-[#111]">{lead.name || lead.phone || "Lead sem nome"}</option>
+                  ))}
+                </select>
                 <div className="grid gap-3 md:grid-cols-3">
                   <Input value={draft.clientName} onChange={(event) => setDraft({ ...draft, clientName: event.target.value })} placeholder="Nome cliente" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.clientPhone} onChange={(event) => setDraft({ ...draft, clientPhone: event.target.value })} placeholder="Telefone" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
@@ -223,12 +308,22 @@ export function BrokerDocumentsPage() {
 
               <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                 <p className="text-sm font-semibold text-white">Dados do imóvel</p>
+                <select value={draft.propertyId} onChange={(event) => selectProperty(event.target.value)} className="h-10 min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white">
+                  <option value="" className="bg-[#111]">Imóvel cadastrado ou preenchimento manual</option>
+                  {properties.map((property) => (
+                    <option key={property.id} value={property.id} className="bg-[#111]">{property.title}</option>
+                  ))}
+                </select>
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input value={draft.propertyTitle} onChange={(event) => setDraft({ ...draft, propertyTitle: event.target.value })} placeholder="Imóvel" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.propertyPrice} onChange={(event) => setDraft({ ...draft, propertyPrice: event.target.value })} placeholder="Valor" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyCode} onChange={(event) => setDraft({ ...draft, propertyCode: event.target.value })} placeholder="Código/ID" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.propertyNeighborhood} onChange={(event) => setDraft({ ...draft, propertyNeighborhood: event.target.value })} placeholder="Bairro" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.propertyCity} onChange={(event) => setDraft({ ...draft, propertyCity: event.target.value })} placeholder="Cidade" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.propertyType} onChange={(event) => setDraft({ ...draft, propertyType: event.target.value })} placeholder="Tipo" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyArea} onChange={(event) => setDraft({ ...draft, propertyArea: event.target.value })} placeholder="Metragem" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyBedrooms} onChange={(event) => setDraft({ ...draft, propertyBedrooms: event.target.value })} placeholder="Dormitórios" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyParkingSpots} onChange={(event) => setDraft({ ...draft, propertyParkingSpots: event.target.value })} placeholder="Vagas" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <select value={draft.propertyPurpose} onChange={(event) => setDraft({ ...draft, propertyPurpose: event.target.value })} className="h-10 min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white">
                     <option value="venda" className="bg-[#111]">Venda</option>
                     <option value="locação" className="bg-[#111]">Locação</option>

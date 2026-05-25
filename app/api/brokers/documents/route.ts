@@ -12,6 +12,10 @@ function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
 }
 
+function firstImageUrl(value: unknown) {
+  return Array.isArray(value) && typeof value[0] === "string" ? value[0] : null
+}
+
 function serializeDocument(document: {
   id: string
   type: string
@@ -97,20 +101,42 @@ export async function POST(request: NextRequest) {
       purpose: cleanText(body?.propertyPurpose, 20).toLowerCase() === "locação" || cleanText(body?.propertyPurpose, 20).toLowerCase() === "locacao" ? "RENT" : "SALE",
       price: parseCurrencyInputToCents(body?.propertyPrice) ?? 0,
       area: cleanText(body?.propertyArea, 40),
-      bedrooms: 0,
-      parkingSpots: 0,
+      bedrooms: Number(body?.propertyBedrooms) || 0,
+      parkingSpots: Number(body?.propertyParkingSpots) || 0,
     }
     const [lead, property] = await Promise.all([
-      leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true } }) : null,
-      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } }) : null,
+      leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true, email: true } }) : null,
+      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true } }) : null,
     ])
-    const proposalLead = lead ?? (manualLead.name || manualLead.phone || manualLead.email ? manualLead : null)
-    const proposalProperty = property ?? (manualProperty.title || manualProperty.neighborhood || manualProperty.city || manualProperty.price ? manualProperty : null)
+    const proposalLead = lead
+      ? {
+          ...lead,
+          name: manualLead.name || lead.name,
+          phone: manualLead.phone || lead.phone,
+          email: manualLead.email || lead.email,
+        }
+      : (manualLead.name || manualLead.phone || manualLead.email ? manualLead : null)
+    const proposalProperty = property
+      ? {
+          ...property,
+          id: manualProperty.id || property.id,
+          title: manualProperty.title || property.title,
+          neighborhood: manualProperty.neighborhood || property.neighborhood,
+          city: manualProperty.city || property.city,
+          type: manualProperty.type || property.type,
+          purpose: manualProperty.purpose || property.purpose,
+          price: manualProperty.price || property.price,
+          area: manualProperty.area,
+          bedrooms: manualProperty.bedrooms || property.bedrooms,
+          parkingSpots: manualProperty.parkingSpots || property.parkingSpots,
+          imageUrl: firstImageUrl(property.imageUrls),
+        }
+      : (manualProperty.title || manualProperty.neighborhood || manualProperty.city || manualProperty.price ? manualProperty : null)
     const title = cleanText(body?.title, 160) || `Proposta ${proposalLead?.name ?? proposalProperty?.title ?? "EME"}`
     const content = buildProposalHtml({
       lead: proposalLead,
       property: proposalProperty,
-      broker: { name: user.name, phone: user.broker.phone, email: user.email, city: proposalProperty?.city, creci: user.broker.creci },
+      broker: { name: user.name, phone: user.broker.phone, email: user.email, city: proposalProperty?.city, creci: user.broker.creci, photoUrl: user.photoUrl },
       conditions: {
         entry: cleanText(body?.entry, 120),
         installments: cleanText(body?.installments, 200),

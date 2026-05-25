@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Bot, CheckCircle2, Lightbulb, MessageCircle, Search, UsersRound, Zap } from "lucide-react"
+import { Bot, CalendarDays, CheckCircle2, FileText, Lightbulb, Search, UsersRound } from "lucide-react"
 
 import type { BrokerProperty } from "@/components/use-broker-properties"
 import type { BrokerSubscription } from "@/components/use-broker-subscription"
@@ -28,11 +28,29 @@ type SearchEventItem = {
   createdAt: string
 }
 
-export function BrokerIntelligenceDashboard({ properties, subscription }: BrokerIntelligenceDashboardProps) {
+type AgendaEventItem = {
+  id: string
+  title: string
+  date: string
+  time: string
+  status: string
+}
+
+type DocumentItem = {
+  id: string
+  title: string
+  type: string
+  status: string
+  createdAt: string
+}
+
+export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDashboardProps) {
   const [credits, setCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [leads, setLeads] = useState<LeadRecord[]>([])
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(true)
   const [recentSearches, setRecentSearches] = useState<SearchEventItem[]>([])
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
 
   useEffect(() => {
     let ignore = false
@@ -58,6 +76,20 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
       })
       .catch(() => null)
 
+    fetch("/api/brokers/agenda?filter=all", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { events?: AgendaEventItem[] } | null
+        if (!ignore && response.ok) setAgendaEvents(data?.events ?? [])
+      })
+      .catch(() => null)
+
+    fetch("/api/brokers/documents?status=all", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { documents?: DocumentItem[] } | null
+        if (!ignore && response.ok) setDocuments(data?.documents ?? [])
+      })
+      .catch(() => null)
+
     return () => {
       ignore = true
     }
@@ -73,14 +105,30 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
     [leads],
   )
   const recentLeads = leads.slice(0, 3)
-  const remainingEstimate = Math.max(0, credits.balance)
   const actionsCount = credits.usedThisMonth
-  const currentPackage = subscription.isUpgraded ? "Assessor EME Pro" : "Assessor EME inicial"
   const recommendedActions = [
     properties.length === 0 ? "Publique seu primeiro imóvel no catálogo inteligente." : "",
     leads.length === 0 ? "Compartilhe seu catálogo para começar a capturar leads." : "",
     credits.balance === 0 ? "Adicione créditos IA para usar o Assessor EME." : "",
   ].filter(Boolean)
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const tomorrowDate = new Date()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowKey = tomorrowDate.toISOString().slice(0, 10)
+  const agendaMetrics = {
+    today: agendaEvents.filter((event) => event.date === todayKey).length,
+    tomorrow: agendaEvents.filter((event) => event.date === tomorrowKey).length,
+    pending: agendaEvents.filter((event) => event.status === "pending").length,
+  }
+  const nextAgendaEvents = agendaEvents
+    .filter((event) => event.status !== "cancelled")
+    .slice(0, 2)
+  const documentMetrics = {
+    proposals: documents.filter((document) => document.type === "proposal").length,
+    drafts: documents.filter((document) => document.status === "draft").length,
+    signed: documents.filter((document) => document.status === "signed").length,
+  }
+  const recentDocuments = documents.slice(0, 2)
 
   return (
     <section className="grid gap-6">
@@ -122,23 +170,37 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-[#00C853]/18 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-2xl border border-[#25D366]/20 bg-[#25D366]/12 text-[#25D366]">
-                <MessageCircle className="size-5" />
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/12 text-[#69F0AE]">
+                <CalendarDays className="size-5" />
               </div>
               <div>
-                <CardTitle className="text-xl text-white">Assessor EME no WhatsApp</CardTitle>
-                <p className="mt-1 text-sm text-[#25D366]">Canal oficial do sistema</p>
+                <CardTitle className="text-xl text-white">Agenda</CardTitle>
+                <p className="mt-1 text-sm text-[#69F0AE]">Próximos compromissos</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <p className="text-2xl font-semibold text-white">Canal oficial EME</p>
-            <p className="mt-3 text-sm leading-6 text-white/58">
-              Use este canal para falar com a IA do EME e solicitar tarefas operacionais. O número oficial será informado nos canais de atendimento.
-            </p>
+          <CardContent className="grid gap-3 p-6 pt-0">
+            <div className="grid grid-cols-3 gap-2">
+              <Metric label="Hoje" value={String(agendaMetrics.today)} />
+              <Metric label="Amanhã" value={String(agendaMetrics.tomorrow)} />
+              <Metric label="Pendentes" value={String(agendaMetrics.pending)} />
+            </div>
+            {nextAgendaEvents.length > 0 ? (
+              nextAgendaEvents.map((event) => (
+                <div key={event.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                  <p className="truncate text-sm font-medium text-white">{event.title}</p>
+                  <p className="mt-1 text-xs text-white/45">{formatAgendaDate(event.date, event.time)}</p>
+                </div>
+              ))
+            ) : (
+              <EmptyState text="Os próximos compromissos aparecerão aqui." />
+            )}
+            <Button asChild variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white">
+              <Link href="/corretor/agenda">Ver agenda</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -207,15 +269,29 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="flex items-center gap-2 text-xl text-white">
-              <Zap className="size-5 text-[#69F0AE]" />
-              Consumo IA
+              <FileText className="size-5 text-[#69F0AE]" />
+              Documentos
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
-            <Metric label="Créditos disponíveis" value={String(credits.balance)} />
-            <Metric label="Créditos consumidos" value={String(credits.usedThisMonth)} />
-            <Metric label="Estimativa restante" value={`${remainingEstimate} ações`} />
-            <Metric label="Pacote atual" value={currentPackage} />
+            <div className="grid grid-cols-3 gap-2">
+              <Metric label="Propostas" value={String(documentMetrics.proposals)} />
+              <Metric label="Rascunhos" value={String(documentMetrics.drafts)} />
+              <Metric label="Assinados" value={String(documentMetrics.signed)} />
+            </div>
+            {recentDocuments.length > 0 ? (
+              recentDocuments.map((document) => (
+                <div key={document.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                  <p className="truncate text-sm font-medium text-white">{document.title}</p>
+                  <p className="mt-1 text-xs text-white/45">{formatDocumentStatus(document.status)} · {formatSearchTime(document.createdAt)}</p>
+                </div>
+              ))
+            ) : (
+              <EmptyState text="As propostas geradas aparecerão aqui." />
+            )}
+            <Button asChild variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white">
+              <Link href="/corretor/documentos">Ver documentos</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -241,6 +317,20 @@ export function BrokerIntelligenceDashboard({ properties, subscription }: Broker
       </Card>
     </section>
   )
+}
+
+function formatAgendaDate(dateValue: string, time: string) {
+  const date = new Date(`${dateValue}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return time || "Data não informada"
+  const dateLabel = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+  return `${dateLabel}${time ? ` às ${time}` : ""}`
+}
+
+function formatDocumentStatus(status: string) {
+  if (status === "signed") return "Assinado"
+  if (status === "generated") return "Gerado"
+  if (status === "draft") return "Rascunho"
+  return "Documento"
 }
 
 function Metric({ label, value, tone = "muted" }: { label: string; value: string; tone?: "green" | "muted" }) {
