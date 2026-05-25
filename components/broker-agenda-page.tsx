@@ -21,6 +21,7 @@ type AgendaEvent = {
 }
 
 const filters = [
+  { label: "Todos", value: "all" },
   { label: "Hoje", value: "today" },
   { label: "Amanhã", value: "tomorrow" },
   { label: "Semana", value: "week" },

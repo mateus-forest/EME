@@ -53,7 +53,23 @@ export function BrokerDocumentsPage() {
   const [feedback, setFeedback] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [draft, setDraft] = useState({ title: "", conditions: "" })
+  const emptyDraft = {
+    title: "",
+    clientName: "",
+    clientPhone: "",
+    clientEmail: "",
+    propertyTitle: "",
+    propertyNeighborhood: "",
+    propertyCity: "",
+    propertyType: "",
+    propertyPurpose: "venda",
+    propertyPrice: "",
+    entry: "",
+    installments: "",
+    conditions: "",
+    validity: "",
+  }
+  const [draft, setDraft] = useState(emptyDraft)
 
   const loadDocuments = useCallback(async (nextStatus = status) => {
     setIsLoading(true)
@@ -87,7 +103,7 @@ export function BrokerDocumentsPage() {
       })
       const data = (await response.json().catch(() => null)) as { document?: BrokerDocument; error?: string } | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível gerar a proposta.")
-      setDraft({ title: "", conditions: "" })
+      setDraft(emptyDraft)
       setFeedback("Proposta gerada e pronta para baixar.")
       await loadDocuments()
       if (data?.document) setSelectedDocument(data.document)
@@ -194,7 +210,41 @@ export function BrokerDocumentsPage() {
             </CardHeader>
             <CardContent className="grid gap-3 p-5 pt-0">
               <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Título da proposta" className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
-              <Textarea value={draft.conditions} onChange={(event) => setDraft({ ...draft, conditions: event.target.value })} placeholder="Condições da proposta" className="min-h-24 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+
+              <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm font-semibold text-white">Dados do cliente</p>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Input value={draft.clientName} onChange={(event) => setDraft({ ...draft, clientName: event.target.value })} placeholder="Nome cliente" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.clientPhone} onChange={(event) => setDraft({ ...draft, clientPhone: event.target.value })} placeholder="Telefone" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.clientEmail} onChange={(event) => setDraft({ ...draft, clientEmail: event.target.value })} placeholder="E-mail" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm font-semibold text-white">Dados do imóvel</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input value={draft.propertyTitle} onChange={(event) => setDraft({ ...draft, propertyTitle: event.target.value })} placeholder="Imóvel" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyPrice} onChange={(event) => setDraft({ ...draft, propertyPrice: event.target.value })} placeholder="Valor" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyNeighborhood} onChange={(event) => setDraft({ ...draft, propertyNeighborhood: event.target.value })} placeholder="Bairro" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyCity} onChange={(event) => setDraft({ ...draft, propertyCity: event.target.value })} placeholder="Cidade" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.propertyType} onChange={(event) => setDraft({ ...draft, propertyType: event.target.value })} placeholder="Tipo" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <select value={draft.propertyPurpose} onChange={(event) => setDraft({ ...draft, propertyPurpose: event.target.value })} className="h-10 min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white">
+                    <option value="venda" className="bg-[#111]">Venda</option>
+                    <option value="locação" className="bg-[#111]">Locação</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <p className="text-sm font-semibold text-white">Condições</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input value={draft.entry} onChange={(event) => setDraft({ ...draft, entry: event.target.value })} placeholder="Entrada" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Parcelamento" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.validity} onChange={(event) => setDraft({ ...draft, validity: event.target.value })} placeholder="Validade da proposta" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white md:col-span-2" />
+                </div>
+                <Textarea value={draft.conditions} onChange={(event) => setDraft({ ...draft, conditions: event.target.value })} placeholder="Observações" className="min-h-24 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+              </div>
+
               <Button type="button" disabled={isSaving} onClick={createProposal} className="h-10 rounded-xl bg-[#00C853] text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
                 {isSaving ? "Gerando..." : "Gerar proposta"}
               </Button>

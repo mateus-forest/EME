@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { parseCurrencyInputToCents } from "@/lib/currency"
 import { buildProposalHtml } from "@/lib/proposal-template"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -22,7 +23,7 @@ function serializeDocument(document: {
   createdAt: Date
   updatedAt: Date
   lead?: { name: string | null; phone: string | null } | null
-  property?: { id: string; title: string; city: string; neighborhood: string | null; price: number; purpose: string | null; type: string; bedrooms: number; parkingSpots: number } | null
+  property?: { id: string; title: string; city: string; neighborhood: string | null; price: number; purpose: string | null; type: string; bedrooms: number; parkingSpots: number; area?: string | null } | null
 }) {
   return {
     id: document.id,
@@ -82,16 +83,40 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const leadId = cleanText(body?.leadId, 80)
     const propertyId = cleanText(body?.propertyId, 80)
+    const manualLead = {
+      name: cleanText(body?.clientName, 120),
+      phone: cleanText(body?.clientPhone, 40),
+      email: cleanText(body?.clientEmail, 120),
+    }
+    const manualProperty = {
+      id: cleanText(body?.propertyCode, 80),
+      title: cleanText(body?.propertyTitle, 160),
+      neighborhood: cleanText(body?.propertyNeighborhood, 100),
+      city: cleanText(body?.propertyCity, 100),
+      type: cleanText(body?.propertyType, 80),
+      purpose: cleanText(body?.propertyPurpose, 20).toLowerCase() === "locação" || cleanText(body?.propertyPurpose, 20).toLowerCase() === "locacao" ? "RENT" : "SALE",
+      price: parseCurrencyInputToCents(body?.propertyPrice) ?? 0,
+      area: cleanText(body?.propertyArea, 40),
+      bedrooms: 0,
+      parkingSpots: 0,
+    }
     const [lead, property] = await Promise.all([
       leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true } }) : null,
       propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } }) : null,
     ])
-    const title = cleanText(body?.title, 160) || `Proposta ${lead?.name ?? property?.title ?? "EME"}`
+    const proposalLead = lead ?? (manualLead.name || manualLead.phone || manualLead.email ? manualLead : null)
+    const proposalProperty = property ?? (manualProperty.title || manualProperty.neighborhood || manualProperty.city || manualProperty.price ? manualProperty : null)
+    const title = cleanText(body?.title, 160) || `Proposta ${proposalLead?.name ?? proposalProperty?.title ?? "EME"}`
     const content = buildProposalHtml({
-      lead,
-      property,
+      lead: proposalLead,
+      property: proposalProperty,
       broker: { name: user.name, phone: user.broker.phone, creci: user.broker.creci },
-      conditions: cleanText(body?.conditions, 500),
+      conditions: {
+        entry: cleanText(body?.entry, 120),
+        installments: cleanText(body?.installments, 200),
+        notes: cleanText(body?.conditions ?? body?.notes, 700),
+        validity: cleanText(body?.validity, 80),
+      },
     })
 
     const document = await prisma.brokerDocument.create({

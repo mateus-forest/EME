@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     const events = await prisma.agendaEvent.findMany({
       where: {
         brokerId: user.broker.id,
-        date: { gte: start, lt: end },
+        ...(filter === "all" ? {} : { date: { gte: start, lt: end } }),
       },
       orderBy: [{ date: "asc" }, { time: "asc" }, { createdAt: "desc" }],
       include: {
