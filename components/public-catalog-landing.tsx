@@ -92,7 +92,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   const publicPath =
     kind === "broker" ? `/catalogo/${catalog.slug || slug}` : `/catalogo/imobiliaria/${catalog.slug || slug}`
   const catalogUrl = typeof window === "undefined" ? publicPath : `${window.location.origin}${publicPath}`
-  const image = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? ""
+  const image = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
   const cities = useMemo(
     () => Array.from(new Set(properties.map((property) => property.city).filter(Boolean))),
     [properties],
@@ -355,9 +355,9 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               >
                 <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
                   <div className="relative aspect-video overflow-hidden bg-white/[0.03]">
-                    {property.images[0] ? (
+                    {property.images[0]?.trim() ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={property.images[0]} alt={property.title} className="h-full w-full object-cover" />
+                      <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover" />
                     ) : (
                       <CatalogImagePlaceholder />
                     )}
@@ -566,7 +566,7 @@ async function trackCatalogEvent({
       }),
     })
   } catch {
-    // Tracking nao deve bloquear a experiencia publica do catalogo.
+    // Tracking não deve bloquear a experiência pública do catálogo.
   }
 }
 

@@ -17,8 +17,8 @@ export function IntelligentSearchSection() {
             </span>
           </h2>
           <p className="text-lg leading-relaxed text-white/60">
-            Em vez de filtros frios, o catalogo entende linguagem natural: preco, bairro, tipo,
-            diferenciais e intencao de compra aparecem no mesmo fluxo.
+            Em vez de filtros frios, o catálogo entende linguagem natural: preço, bairro, tipo,
+            diferenciais e intenção de compra aparecem no mesmo fluxo.
           </p>
         </div>
 

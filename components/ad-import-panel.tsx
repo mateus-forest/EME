@@ -55,9 +55,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     try {
       const result = await extractPropertyAd({ adText, sourceUrl, notes, image })
       setDraft(result.draft)
-      setFeedback("Dados extraidos. Revise as informacoes antes de publicar.")
+      setFeedback("Dados extraídos. Revise as informações antes de publicar.")
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel extrair os dados do anuncio.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível extrair os dados do anúncio.")
     } finally {
       setIsExtracting(false)
     }
@@ -71,7 +71,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
     try {
       await confirmPropertyAdImport(draft)
-      setFeedback("Imovel criado como rascunho.")
+      setFeedback("Imóvel criado como rascunho.")
       setDraft(null)
       setAdText("")
       setSourceUrl("")
@@ -79,7 +79,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       setImage(null)
       await onImported()
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar o imovel.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível criar o imóvel.")
     } finally {
       setIsSaving(false)
     }
@@ -90,9 +90,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   return (
     <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
       <div>
-        <h3 className="text-lg font-semibold text-white">Importar de anuncio</h3>
+        <h3 className="text-lg font-semibold text-white">Importar de anúncio</h3>
         <p className="mt-1 text-sm leading-6 text-white/55">
-          Cole um anuncio, envie um print ou informe um link para a IA montar o imovel automaticamente.
+          Cole um anúncio, envie um print ou informe um link para a IA montar o imóvel automaticamente.
         </p>
       </div>
 
@@ -101,12 +101,12 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           <Textarea
             value={adText}
             onChange={(event) => setAdText(event.target.value)}
-            placeholder="Cole aqui o texto do anuncio..."
+            placeholder="Cole aqui o texto do anúncio..."
             className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-black/20 text-white placeholder:text-white/30"
           />
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-white/70">Link do anuncio</span>
+              <span className="text-sm font-medium text-white/70">Link do anúncio</span>
               <div className="relative">
                 <LinkIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-white/35" />
                 <Input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://..." className="h-10 rounded-xl border-white/[0.08] bg-black/20 pl-9 text-white placeholder:text-white/30" />
@@ -124,7 +124,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           <Textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Observacoes opcionais..."
+            placeholder="Observações opcionais..."
             className="min-h-20 rounded-[1.25rem] border-white/[0.08] bg-black/20 text-white placeholder:text-white/30"
           />
           <Button type="button" onClick={handleExtract} disabled={isExtracting} className="h-10 w-fit rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
@@ -135,16 +135,16 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       ) : (
         <div className="grid gap-4">
           <div className="rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-white/60">
-            Revise as informacoes antes de publicar.
+            Revise as informações antes de publicar.
             {[...currentDraft.lowConfidenceFields, ...currentDraft.missingFields].length > 0
               ? ` Campos para revisar: ${[...currentDraft.lowConfidenceFields, ...currentDraft.missingFields].join(", ")}.`
               : null}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <DraftField label="Titulo">
+            <DraftField label="Título">
               <Input value={currentDraft.title} onChange={(event) => updateDraft("title", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
             </DraftField>
-            <DraftField label="Preco">
+            <DraftField label="Preço">
               <Input value={currentDraft.price} onChange={(event) => updateDraft("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
             </DraftField>
             <DraftField label="Tipo">

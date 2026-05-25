@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
 
     if (!adText && !sourceUrl && !notes) {
       return NextResponse.json(
-        { error: "Cole o texto do anuncio, informe um link ou adicione observacoes para extrair os dados." },
+        { error: "Cole o texto do anúncio, informe um link ou adicione observações para extrair os dados." },
         { status: 400 },
       )
     }
 
     if (adText.length > AD_IMPORT_MAX_TEXT_LENGTH) {
-      return NextResponse.json({ error: "O texto do anuncio deve ter ate 12.000 caracteres." }, { status: 400 })
+      return NextResponse.json({ error: "O texto do anúncio deve ter até 12.000 caracteres." }, { status: 400 })
     }
 
     const draft = await extractPropertyFromAd({ adText, sourceUrl, notes })
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
       caughtError instanceof Error && caughtError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")
 
     if (isOpenAIUnavailable) {
-      return NextResponse.json({ error: "A importacao inteligente precisa da IA ativada." }, { status: 503 })
+      return NextResponse.json({ error: "A importação inteligente precisa da IA ativada." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Nao foi possivel extrair os dados do anuncio." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível extrair os dados do anúncio." }, { status: 500 })
   }
 }

@@ -378,8 +378,15 @@ export function BrokerMyPropertiesPage() {
               >
                 <CardContent className="flex h-full flex-col gap-4 p-3 sm:p-4">
                   <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={getPropertyImage(property.images[0], property.id)} alt={property.title} className="h-full w-full object-cover" />
+                    {getPropertyImage(property.images?.[0] ?? null, property.id) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={getPropertyImage(property.images?.[0] ?? null, property.id)} alt={property.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center px-4 text-center">
+                        <ImagePlus className="size-9 text-white/30" />
+                        <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                     <div className="absolute top-3 left-3">
                       <Badge className={property.status === "Publicado" ? "rounded-full border border-[#00C853]/20 bg-black/60 px-2.5 py-1 text-[11px] text-[#69F0AE] backdrop-blur-md" : "rounded-full border border-white/[0.08] bg-black/60 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur-md"}>
@@ -482,7 +489,13 @@ export function BrokerMyPropertiesPage() {
                         {editingProperty.images.map((image, index) => (
                           <div key={`${image}-${index}`} className="group relative overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
                             <div className="relative aspect-[4/3] max-h-36">
-                              <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill className="object-cover" />
+                              {getPropertyImage(image, `${editingProperty.id}-${index}`) ? (
+                                <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill className="object-cover" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <ImagePlus className="size-7 text-white/30" />
+                                </div>
+                              )}
                             </div>
                             <button type="button" onClick={() => removePhoto(index)} className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100">
                               <X className="size-4" />

@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (!requestedSlug) {
-      return NextResponse.json({ error: "Link do catalogo e obrigatorio." }, { status: 400 })
+      return NextResponse.json({ error: "Link do catálogo é obrigatório." }, { status: 400 })
     }
 
     if (displayName.length > 120) {
@@ -169,7 +169,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     if (caughtError instanceof Error && caughtError.message === "CATALOG_SLUG_IN_USE") {
-      return NextResponse.json({ error: "Este link de catalogo ja esta em uso." }, { status: 409 })
+      return NextResponse.json({ error: "Este link de catálogo já está em uso." }, { status: 409 })
     }
 
     if (isPrismaUnavailable(caughtError)) {

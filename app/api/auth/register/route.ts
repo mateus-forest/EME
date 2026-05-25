@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!registeredAccount) {
-      return NextResponse.json({ error: "Nao foi possivel gerar um catalogo unico para esta conta." }, { status: 409 })
+      return NextResponse.json({ error: "Não foi possível gerar um catálogo único para esta conta." }, { status: 409 })
     }
 
     const { user, brokerId, agencyId } = registeredAccount

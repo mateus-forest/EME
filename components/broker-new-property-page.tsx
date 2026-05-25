@@ -141,9 +141,9 @@ export function BrokerNewPropertyPage() {
       const result = await previewPropertyXml(file)
       setXmlPreview(result.properties)
       setXmlSummary(result.summary)
-      setPublishFeedback("XML analisado. Revise os imoveis antes de importar.")
+      setPublishFeedback("XML analisado. Revise os imóveis antes de importar.")
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsAnalyzingXml(false)
     }
@@ -152,7 +152,7 @@ export function BrokerNewPropertyPage() {
   async function handleConfirmXmlImport() {
     const importableProperties = xmlPreview.filter((property) => property.status !== "invalid")
     if (importableProperties.length === 0) {
-      setPublishFeedback("Nenhum imovel esta pronto para importar.")
+      setPublishFeedback("Nenhum imóvel está pronto para importar.")
       return
     }
 
@@ -162,10 +162,10 @@ export function BrokerNewPropertyPage() {
     try {
       const result = await confirmPropertyXmlImport(importableProperties)
       setXmlReport(result.report)
-      setPublishFeedback("Importacao finalizada.")
+      setPublishFeedback("Importação finalizada.")
       await refreshProperties()
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel importar os imoveis.")
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível importar os imóveis.")
     } finally {
       setIsImportingXml(false)
     }
@@ -255,7 +255,7 @@ export function BrokerNewPropertyPage() {
 
       setPublishFeedback("Criando descrição otimizada...")
 
-      if (!description.trim() || window.confirm("Substituir a descricao atual pela sugestao da IA?")) {
+      if (!description.trim() || window.confirm("Substituir a descrição atual pela sugestão da IA?")) {
         setDescription(generated.description)
       }
 
@@ -277,7 +277,7 @@ export function BrokerNewPropertyPage() {
       })
       setPublishFeedback(
         message.toLowerCase().includes("ia ainda")
-          ? "A geracao com IA ainda nao esta ativada."
+          ? "A geração com IA ainda não está ativada."
           : "Não foi possível gerar o anúncio com IA. Tente novamente em instantes.",
       )
     } finally {
@@ -701,7 +701,7 @@ export function BrokerNewPropertyPage() {
               ) : !hasPreviewData ? (
                 <div className="flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
                   <Images className="size-9 text-white/35" />
-                  <p className="mt-3 text-sm font-medium text-white/75">Preencha os dados para visualizar o anuncio.</p>
+                  <p className="mt-3 text-sm font-medium text-white/75">Preencha os dados para visualizar o anúncio.</p>
                 </div>
               ) : (
                 <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -780,28 +780,28 @@ export function BrokerNewPropertyPage() {
 function PropertyCreationChoice({ onChoose }: { onChoose: (mode: CreationMode) => void }) {
   return (
     <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
-      <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imovel</p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Como voce quer criar este imovel?</h2>
+      <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imóvel</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Como você quer criar este imóvel?</h2>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
-        Escolha o melhor ponto de partida. Voce sempre podera revisar antes de publicar.
+        Escolha o melhor ponto de partida. Você sempre poderá revisar antes de publicar.
       </p>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <CreationOption
           icon={Sparkles}
           title="Criar com IA"
-          description="Envie fotos, audio ou uma descricao e gere um anuncio automaticamente."
+          description="Descreva o imóvel e deixe o EME montar o anúncio para você."
           onClick={() => onChoose("ai")}
         />
         <CreationOption
           icon={Keyboard}
           title="Criar manualmente"
-          description="Ideal para anuncios ja existentes ou preenchimento completo."
+          description="Preencha os dados do imóvel passo a passo."
           onClick={() => onChoose("manual")}
         />
         <CreationOption
           icon={FileText}
-          title="Importar imoveis"
-          description="Importe imoveis via XML, planilha ou anuncio existente."
+          title="Importar"
+          description="Importe informações de outro anúncio ou arquivo."
           onClick={() => onChoose("import")}
         />
       </div>
@@ -862,10 +862,10 @@ function ImportPropertyPanel({
     <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Importar imoveis</p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Importar imóveis</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Escolha uma origem</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
-            Envie um arquivo XML de imoveis para revisar antes de importar.
+            Envie um arquivo XML de imóveis para revisar antes de importar.
           </p>
         </div>
         <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
@@ -877,11 +877,11 @@ function ImportPropertyPanel({
           <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
           <Upload className="size-8 text-[#69F0AE]" />
           <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imoveis para revisar antes de importar.</p>
+          <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imóveis para revisar antes de importar.</p>
         </label>
         <div className="min-h-48 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
           <Sparkles className="size-8 text-[#69F0AE]" />
-          <h3 className="mt-5 text-lg font-semibold text-white">Importar de anuncio</h3>
+          <h3 className="mt-5 text-lg font-semibold text-white">Importar de anúncio</h3>
           <p className="mt-2 text-sm leading-6 text-white/55">Cole texto, informe um link ou envie um print para extrair com IA.</p>
         </div>
       </div>
@@ -918,13 +918,13 @@ function XmlImportPreview({
     <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Preview da importacao</h3>
+          <h3 className="text-lg font-semibold text-white">Preview da importação</h3>
           <p className="mt-1 text-sm text-white/55">
-            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} invalidos
+            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} inválidos
           </p>
         </div>
         <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
-          {isImporting ? "Importando..." : "Confirmar importacao"}
+          {isImporting ? "Importando..." : "Confirmar importação"}
         </Button>
       </div>
       <div className="grid gap-3">

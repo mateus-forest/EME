@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const roleError = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         issues: error.issues,
         payload: payloadForLog,
       })
-      return NextResponse.json({ error: "Payload invalido para geracao de anuncio." }, { status: 400 })
+      return NextResponse.json({ error: "Payload inválido para geração de anúncio." }, { status: 400 })
     }
 
     console.error("[api][ai][generate-property] failed", {
@@ -83,11 +83,11 @@ export async function POST(request: NextRequest) {
 
     if (isOpenAIUnavailable) {
       return NextResponse.json(
-        { error: "A integracao de IA ainda nao esta habilitada neste ambiente." },
+        { error: "A integração de IA ainda não está habilitada neste ambiente." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel gerar o anuncio com IA no momento." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível gerar o anúncio com IA no momento." }, { status: 500 })
   }
 }

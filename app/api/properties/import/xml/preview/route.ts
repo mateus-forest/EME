@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (properties.length === 0) {
       return NextResponse.json(
-        { error: "Nao encontramos imoveis validos neste XML. Revise o arquivo e tente novamente." },
+        { error: "Não encontramos imóveis válidos neste XML. Revise o arquivo e tente novamente." },
         { status: 400 },
       )
     }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML." },
+      { error: caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML." },
       { status: 400 },
     )
   }

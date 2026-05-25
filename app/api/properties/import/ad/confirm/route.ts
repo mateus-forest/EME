@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (!draft.title || !draft.city || !draft.neighborhood || price === null) {
       return NextResponse.json(
-        { error: "Revise titulo, cidade, bairro e preco antes de criar o imovel." },
+        { error: "Revise título, cidade, bairro e preço antes de criar o imóvel." },
         { status: 400 },
       )
     }
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     if (!broker) {
       return NextResponse.json(
-        { error: user.role === UserRole.AGENCY ? "Cadastre ou vincule um corretor antes de criar imoveis." : "Corretor nao encontrado para esta conta." },
+        { error: user.role === UserRole.AGENCY ? "Cadastre ou vincule um corretor antes de criar imóveis." : "Corretor não encontrado para esta conta." },
         { status: 400 },
       )
     }
@@ -120,11 +120,11 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel criar o imovel a partir do anuncio." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível criar o imóvel a partir do anúncio." }, { status: 500 })
   }
 }

@@ -88,7 +88,7 @@ export function BrokerCatalogPage() {
     return `${origin}/catalogo/${draftSettings.slug}`
   }, [draftSettings.slug])
   const catalogInternalUrl = useMemo(() => `/catalogo/${draftSettings.slug}?from=portal`, [draftSettings.slug])
-  const currentImage = selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? ""
+  const currentImage = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
   const needsMore = (selectedProperty?.description.length ?? 0) > 180
   const shortDescription = selectedProperty?.description.slice(0, 180)
   const normalizedSearch = search.trim().toLowerCase()
@@ -210,7 +210,7 @@ export function BrokerCatalogPage() {
       setDraftSettings((current) => ({ ...current, photoUrl }))
       setSaveFeedback("")
     } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel preparar a foto.")
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível preparar a foto.")
     }
   }
 
@@ -575,8 +575,14 @@ export function BrokerCatalogPage() {
                           : "border-white/[0.08] opacity-75 hover:opacity-100"
                       }`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image} alt={`Imagem ${index + 1}`} className="aspect-square w-full object-cover" />
+                      {image.trim() ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image.trim()} alt={`Imagem ${index + 1}`} className="aspect-square w-full object-cover" />
+                      ) : (
+                        <div className="flex aspect-square w-full items-center justify-center bg-white/[0.03]">
+                          <Camera className="size-5 text-white/30" />
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>

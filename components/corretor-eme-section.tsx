@@ -4,19 +4,19 @@ import { Bot, CheckCheck, MessageCircle, Sparkles, UserRound } from "lucide-reac
 
 export function CorretorEmeSection() {
   const messages = [
-    { from: "Corretor", text: "Crie um anuncio para esse imovel." },
-    { from: "EME", text: "Montei titulo, descricao e diferenciais. Quer revisar agora?" },
-    { from: "Corretor", text: "Cadastre esse lead e me traga imoveis ate 900 mil." },
-    { from: "EME", text: "Lead salvo. Separei opcoes com melhor aderencia ao perfil." },
+    { from: "Corretor", text: "Crie um anúncio para esse imóvel." },
+    { from: "EME", text: "Montei título, descrição e diferenciais. Quer revisar agora?" },
+    { from: "Corretor", text: "Cadastre esse lead e me traga imóveis até 900 mil." },
+    { from: "EME", text: "Lead salvo. Separei opções com melhor aderência ao perfil." },
   ]
   const channels = [
     {
       icon: UserRound,
       title: "Corretor EME",
-      description: "Integre seu WhatsApp para receber, pre-atender e qualificar leads automaticamente.",
+      description: "Integre seu WhatsApp para receber, pré-atender e qualificar leads automaticamente.",
       bullets: [
         "Atendimento inicial de leads",
-        "Qualificacao automatica",
+        "Qualificação automática",
         "Registro no CRM",
         "Apoio ao funil de vendas",
       ],
@@ -26,9 +26,9 @@ export function CorretorEmeSection() {
       title: "Assessor EME",
       description: "Converse com a IA do EME para executar tarefas do dia a dia pelo WhatsApp oficial do sistema.",
       bullets: [
-        "Cadastrar imoveis",
-        "Criar anuncios",
-        "Buscar imoveis no catalogo",
+        "Cadastrar imóveis",
+        "Criar anúncios",
+        "Buscar imóveis no catálogo",
         "Cadastrar e resumir leads",
         "Pedir apoio operacional",
       ],
@@ -95,11 +95,11 @@ export function CorretorEmeSection() {
           <div className="mt-8 grid gap-3 text-sm text-white/60">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-[#00C853]" />
-              Assessor EME para anuncios, catalogo, leads, resumos e apoio operacional.
+              Assessor EME para anúncios, catálogo, leads, resumos e apoio operacional.
             </div>
             <div className="flex items-center gap-3">
               <MessageCircle className="h-5 w-5 text-[#25D366]" />
-              Corretor EME para pre-atendimento e qualificacao no WhatsApp do proprio corretor.
+              Corretor EME para pré-atendimento e qualificação no WhatsApp do próprio corretor.
             </div>
           </div>
         </div>

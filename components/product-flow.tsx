@@ -7,19 +7,19 @@ export function ProductFlow() {
     {
       icon: Camera,
       title: "Importe",
-      description: "Fotos, audio, XML, print ou link",
+      description: "Fotos, áudio, XML, print ou link",
       step: 1,
     },
     {
       icon: Sparkles,
       title: "IA cria",
-      description: "anuncio, dados e revisao",
+      description: "anúncio, dados e revisão",
       step: 2,
     },
     {
       icon: CheckCircle2,
       title: "Publique",
-      description: "catalogo e leads",
+      description: "catálogo e leads",
       step: 3,
     },
   ]
