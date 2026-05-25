@@ -66,6 +66,7 @@ export function BrokerDocumentsPage() {
     propertyPrice: "",
     entry: "",
     installments: "",
+    paymentMethod: "",
     conditions: "",
     validity: "",
   }
@@ -240,6 +241,7 @@ export function BrokerDocumentsPage() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input value={draft.entry} onChange={(event) => setDraft({ ...draft, entry: event.target.value })} placeholder="Entrada" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Parcelamento" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <Input value={draft.paymentMethod} onChange={(event) => setDraft({ ...draft, paymentMethod: event.target.value })} placeholder="Forma de pagamento" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
                   <Input value={draft.validity} onChange={(event) => setDraft({ ...draft, validity: event.target.value })} placeholder="Validade da proposta" className="h-10 min-w-0 rounded-xl border-white/[0.08] bg-white/[0.04] text-white md:col-span-2" />
                 </div>
                 <Textarea value={draft.conditions} onChange={(event) => setDraft({ ...draft, conditions: event.target.value })} placeholder="Observações" className="min-h-24 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />

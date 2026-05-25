@@ -580,7 +580,7 @@ export async function runAssessorAction({
     const personName = extractPersonName(message)
     const propertyReference = extractPropertyReference(message)
     const [broker, lead, property] = await Promise.all([
-      prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true } } } }),
+      prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true } } } }),
       personName
         ? prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, phone: true } })
         : null,
@@ -623,7 +623,7 @@ export async function runAssessorAction({
         content: buildProposalHtml({
           lead,
           property,
-          broker: { name: broker?.user.name ?? "", phone: broker?.phone, creci: broker?.creci },
+          broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: property.city, creci: broker?.creci },
         }),
         status: "generated",
       },

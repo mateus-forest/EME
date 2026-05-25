@@ -22,7 +22,10 @@ type ProposalProperty = {
 type ProposalBroker = {
   name?: string | null
   phone?: string | null
+  email?: string | null
+  city?: string | null
   creci?: string | null
+  photoUrl?: string | null
 } | null
 
 function valueOrFallback(value?: string | number | null) {
@@ -42,6 +45,13 @@ function propertyPurposeLabel(purpose?: string | null) {
   return purpose === "RENT" ? "Locação" : "Venda"
 }
 
+function initials(value?: string | null) {
+  const parts = valueOrFallback(value)
+    .split(/\s+/)
+    .filter((part) => part && part !== "Não" && part !== "informado")
+  return (parts[0]?.[0] ?? "E") + (parts[1]?.[0] ?? "M")
+}
+
 export function buildProposalHtml(input: {
   lead?: ProposalLead
   property?: ProposalProperty
@@ -49,6 +59,7 @@ export function buildProposalHtml(input: {
   conditions?: {
     entry?: string | null
     installments?: string | null
+    paymentMethod?: string | null
     notes?: string | null
     validity?: string | null
   } | string
@@ -57,104 +68,346 @@ export function buildProposalHtml(input: {
   const property = input.property
   const lead = input.lead
   const broker = input.broker
-  const propertyAddress = [property?.neighborhood, property?.city].filter(Boolean).join(", ") || "Não informado"
   const price = property?.price ? formatCurrencyBRLFromCents(property.price) : "Não informado"
   const generatedAt = new Date().toLocaleDateString("pt-BR")
   const conditions = typeof input.conditions === "string" ? { notes: input.conditions } : input.conditions
+  const validity = conditions?.validity || "Não informado"
+  const brokerName = valueOrFallback(broker?.name)
+  const leadName = valueOrFallback(lead?.name)
+  const purpose = propertyPurposeLabel(property?.purpose)
+  const brokerPhoto = broker?.photoUrl?.trim()
 
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Proposta de Compra/Locação</title>
   <style>
-    :root { color-scheme: light; }
-    body { margin: 0; background: #f3f4f3; color: #101311; font-family: Arial, Helvetica, sans-serif; }
-    .page { max-width: 920px; margin: 0 auto; padding: 36px; }
-    .sheet { overflow: hidden; border-radius: 24px; background: #fff; box-shadow: 0 24px 70px rgba(0,0,0,.12); }
-    .hero { padding: 34px; color: #fff; background: linear-gradient(135deg, #0B0B0B, #111 62%, #00C853); }
-    .brand { font-size: 14px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #69F0AE; }
-    h1 { margin: 14px 0 0; font-size: 34px; line-height: 1.08; }
-    .date { margin-top: 10px; color: rgba(255,255,255,.7); }
-    .content { display: grid; gap: 22px; padding: 30px; }
-    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    .card { border: 1px solid #e7ebe8; border-radius: 18px; padding: 18px; background: #fbfcfb; }
-    .section-title { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
-    .section-title:before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: #00C853; box-shadow: 0 0 0 5px rgba(0,200,83,.12); }
-    .card h2 { margin: 0 0 14px; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: #536158; }
-    .section-title h2 { margin: 0; }
-    .item { margin-top: 10px; }
-    .label { font-size: 12px; color: #7b857f; }
-    .value { margin-top: 3px; font-size: 15px; font-weight: 700; color: #111; }
-    .price { border-color: rgba(0,200,83,.25); background: #effbf3; }
-    .price .value { font-size: 26px; color: #087a38; }
-    .footer { padding: 20px 30px 28px; color: #68736c; font-size: 12px; border-top: 1px solid #edf0ee; }
-    @media (max-width: 680px) {
-      .page { padding: 14px; }
-      .hero, .content { padding: 22px; }
-      .grid { grid-template-columns: 1fr; }
-      h1 { font-size: 27px; }
+    :root {
+      color-scheme: dark;
+      --bg: #050705;
+      --panel: rgba(14, 17, 15, .92);
+      --panel-soft: rgba(255, 255, 255, .035);
+      --line: rgba(255, 255, 255, .105);
+      --line-strong: rgba(0, 200, 83, .28);
+      --green: #00C853;
+      --green-soft: #69F0AE;
+      --text: #F6F8F6;
+      --muted: rgba(246, 248, 246, .62);
+      --muted-2: rgba(246, 248, 246, .42);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(0, 200, 83, .16), transparent 25%),
+        radial-gradient(circle at 82% 8%, rgba(105, 240, 174, .10), transparent 24%),
+        #030503;
+      color: var(--text);
+      font-family: Inter, Arial, Helvetica, sans-serif;
+    }
+    .page { max-width: 1120px; margin: 0 auto; padding: 28px; }
+    .sheet {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      min-height: 980px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(12, 14, 13, .98), rgba(4, 7, 5, .98));
+      box-shadow: 0 28px 90px rgba(0, 0, 0, .45);
+    }
+    .sheet:before {
+      content: "";
+      position: absolute;
+      inset: -90px -120px auto 280px;
+      height: 280px;
+      background:
+        repeating-linear-gradient(165deg, rgba(0, 200, 83, .18) 0 1px, transparent 1px 12px);
+      opacity: .34;
+      transform: rotate(-5deg);
+      pointer-events: none;
+    }
+    .sidebar {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      padding: 54px 28px 32px;
+      border-right: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.05)),
+        rgba(8, 10, 9, .82);
+      z-index: 1;
+    }
+    .logo {
+      color: var(--green);
+      font-size: 54px;
+      line-height: .9;
+      font-weight: 950;
+      letter-spacing: -.08em;
+    }
+    .tagline {
+      margin-top: 12px;
+      color: rgba(255,255,255,.72);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .32em;
+      text-transform: uppercase;
+    }
+    .broker-card, .validity-card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025));
+      padding: 22px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .avatar-wrap { display: grid; place-items: center; margin-top: 18px; }
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 142px;
+      height: 142px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 200, 83, .46);
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(105, 240, 174, .28), rgba(0, 200, 83, .12) 45%, rgba(0,0,0,.22)),
+        #0d1710;
+      color: var(--green-soft);
+      font-size: 40px;
+      font-weight: 850;
+      box-shadow: 0 0 0 18px rgba(0, 200, 83, .05), 0 0 55px rgba(0, 200, 83, .22);
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .eyebrow { color: var(--muted-2); font-size: 13px; }
+    .broker-name { margin: 8px 0 4px; font-size: 22px; font-weight: 800; }
+    .creci { color: var(--green); font-size: 13px; font-weight: 700; }
+    .contact { display: grid; gap: 12px; margin-top: 24px; }
+    .contact-item { display: flex; gap: 10px; align-items: center; color: rgba(255,255,255,.78); font-size: 14px; }
+    .contact-item span:first-child { color: var(--green); width: 18px; text-align: center; }
+    .quote { margin-top: auto; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .quote strong { display: block; color: var(--green); font-size: 38px; line-height: .7; }
+    .validity-card { margin-top: 12px; }
+    .validity-card .big { margin-top: 6px; color: var(--green); font-size: 24px; font-weight: 850; }
+    .content {
+      position: relative;
+      z-index: 1;
+      padding: 52px 34px 34px;
+    }
+    .hero {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      margin-bottom: 28px;
+    }
+    .hero-kicker { color: rgba(255,255,255,.88); font-size: 25px; letter-spacing: .02em; text-transform: uppercase; }
+    h1 { margin: 8px 0 0; color: var(--green); font-size: clamp(40px, 6vw, 64px); line-height: .96; letter-spacing: -.045em; text-transform: uppercase; }
+    .hero p { max-width: 540px; margin: 18px 0 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
+    .date-card {
+      min-width: 188px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(0,0,0,.24);
+    }
+    .date-card .label { margin: 0; color: var(--muted-2); }
+    .date-card .value { margin-top: 5px; font-size: 15px; }
+    .stack { display: grid; gap: 16px; }
+    .card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.024)),
+        rgba(6, 9, 7, .68);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    .card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+    .icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      background: rgba(0, 200, 83, .16);
+      color: var(--green);
+      font-size: 21px;
+      box-shadow: inset 0 0 0 1px rgba(0, 200, 83, .18);
+    }
+    h2 { margin: 0; color: var(--text); font-size: 15px; letter-spacing: .05em; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .item { min-width: 0; }
+    .label { color: var(--muted-2); font-size: 13px; }
+    .value { margin-top: 7px; color: var(--text); font-size: 16px; font-weight: 680; line-height: 1.35; overflow-wrap: anywhere; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 12px;
+      background: rgba(0, 200, 83, .16);
+      color: var(--green-soft);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .price-value { color: var(--green); font-size: 30px; font-weight: 900; letter-spacing: -.03em; }
+    .notes { color: rgba(255,255,255,.72); line-height: 1.7; }
+    .signatures {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 28px;
+      padding-top: 18px;
+    }
+    .signature { text-align: center; }
+    .signature .line { height: 1px; margin: 42px auto 12px; max-width: 220px; background: rgba(255,255,255,.32); }
+    .signature .name { font-weight: 750; }
+    .signature .role { margin-top: 4px; color: var(--muted-2); font-size: 13px; }
+    .footer {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line-strong);
+    }
+    .footer-item { display: flex; gap: 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .footer-item b { display: block; color: var(--text); font-size: 13px; }
+    .footer-mark { margin-top: 24px; color: var(--muted-2); font-size: 12px; }
+    .footer-mark strong { color: var(--green); }
+    @media (max-width: 860px) {
+      .page { padding: 10px; }
+      .sheet { grid-template-columns: 1fr; border-radius: 22px; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding: 34px 22px; }
+      .content { padding: 34px 22px; }
+      .hero { grid-template-columns: 1fr; }
+      .date-card { width: 100%; }
+      .grid, .grid.two, .footer, .signatures { grid-template-columns: 1fr; }
+      .quote { margin-top: 0; }
     }
     @media print {
-      body { background: #fff; }
+      body { background: #050705; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .page { max-width: none; padding: 0; }
-      .sheet { box-shadow: none; border-radius: 0; }
+      .sheet { min-height: 100vh; border-radius: 0; box-shadow: none; }
+      .card, .broker-card, .validity-card, .date-card { break-inside: avoid; }
     }
   </style>
 </head>
 <body>
   <main class="page">
     <section class="sheet">
-      <header class="hero">
-        <div class="brand">EME</div>
-        <h1>Proposta de Compra/Locação</h1>
-        <div class="date">Gerada em ${escapeHtml(generatedAt)}</div>
-      </header>
+      <aside class="sidebar">
+        <div>
+          <div class="logo">EME</div>
+          <div class="tagline">Soluções imobiliárias</div>
+        </div>
+
+        <div class="avatar-wrap">
+          <div class="avatar">${brokerPhoto ? `<img src="${escapeHtml(brokerPhoto)}" alt="${escapeHtml(brokerName)}" />` : escapeHtml(initials(broker?.name))}</div>
+        </div>
+
+        <section class="broker-card">
+          <div class="eyebrow">Corretor responsável</div>
+          <div class="broker-name">${escapeHtml(brokerName)}</div>
+          <div class="creci">${escapeHtml(broker?.creci)}</div>
+          <div class="contact">
+            <div class="contact-item"><span>☎</span><span>${escapeHtml(broker?.phone)}</span></div>
+            <div class="contact-item"><span>✉</span><span>${escapeHtml(broker?.email)}</span></div>
+            <div class="contact-item"><span>⌖</span><span>${escapeHtml(broker?.city || property?.city)}</span></div>
+          </div>
+        </section>
+
+        <section class="validity-card">
+          <div class="eyebrow">Proposta válida por</div>
+          <div class="big">${escapeHtml(validity)}</div>
+          <div class="eyebrow" style="margin-top:18px">Data da proposta</div>
+          <div class="value">${escapeHtml(generatedAt)}</div>
+        </section>
+
+        <div class="quote">
+          <strong>“</strong>
+          Transformamos imóveis em oportunidades e sonhos em realidade.
+        </div>
+        <div class="footer-mark">Documento gerado pelo <strong>EME</strong>.</div>
+      </aside>
+
       <section class="content">
-        <div class="grid">
-          <div class="card">
-            <div class="section-title"><h2>Cliente</h2></div>
-            <div class="item"><div class="label">Nome</div><div class="value">${escapeHtml(lead?.name)}</div></div>
-            <div class="item"><div class="label">Telefone</div><div class="value">${escapeHtml(lead?.phone)}</div></div>
-            <div class="item"><div class="label">E-mail</div><div class="value">${escapeHtml(lead?.email)}</div></div>
+        <header class="hero">
+          <div>
+            <div class="hero-kicker">Proposta de</div>
+            <h1>Compra/Locação</h1>
+            <p>Apresentamos esta proposta com condições especiais, elaborada com exclusividade para você.</p>
           </div>
-          <div class="card price">
-            <div class="section-title"><h2>Valor</h2></div>
-            <div class="item"><div class="label">Valor</div><div class="value">${escapeHtml(price)}</div></div>
-            <div class="item"><div class="label">Finalidade</div><div class="value">${escapeHtml(propertyPurposeLabel(property?.purpose))}</div></div>
+          <div class="date-card">
+            <div class="label">Data da proposta</div>
+            <div class="value">${escapeHtml(generatedAt)}</div>
           </div>
+        </header>
+
+        <div class="stack">
+          <section class="card">
+            <div class="card-header"><div class="icon">♙</div><h2>Dados do cliente</h2></div>
+            <div class="grid">
+              <div class="item"><div class="label">Nome</div><div class="value">${escapeHtml(leadName)}</div></div>
+              <div class="item"><div class="label">Telefone</div><div class="value">${escapeHtml(lead?.phone)}</div></div>
+              <div class="item"><div class="label">E-mail</div><div class="value">${escapeHtml(lead?.email)}</div></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><div class="icon">▥</div><h2>Dados do imóvel</h2></div>
+            <div class="grid">
+              <div class="item"><div class="label">Imóvel</div><div class="value">${escapeHtml(property?.title)}</div></div>
+              <div class="item"><div class="label">Código/ID</div><div class="value">${escapeHtml(property?.id)}</div></div>
+              <div class="item"><div class="label">Tipo</div><div class="value">${escapeHtml(property?.type)}</div></div>
+              <div class="item"><div class="label">Finalidade</div><div class="value"><span class="pill">${escapeHtml(purpose)}</span></div></div>
+              <div class="item"><div class="label">Bairro</div><div class="value">${escapeHtml(property?.neighborhood)}</div></div>
+              <div class="item"><div class="label">Cidade</div><div class="value">${escapeHtml(property?.city)}</div></div>
+              <div class="item"><div class="label">Metragem</div><div class="value">${escapeHtml(property?.area)}</div></div>
+              <div class="item"><div class="label">Dormitórios</div><div class="value">${escapeHtml(property?.bedrooms)}</div></div>
+              <div class="item"><div class="label">Vagas</div><div class="value">${escapeHtml(property?.parkingSpots)}</div></div>
+              <div class="item"><div class="label">Valor do imóvel</div><div class="price-value">${escapeHtml(price)}</div></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><div class="icon">▤</div><h2>Condições da proposta</h2></div>
+            <div class="grid">
+              <div class="item"><div class="label">Entrada</div><div class="value">${escapeHtml(conditions?.entry)}</div></div>
+              <div class="item"><div class="label">Parcelamento</div><div class="value">${escapeHtml(conditions?.installments)}</div></div>
+              <div class="item"><div class="label">Forma de pagamento</div><div class="value">${escapeHtml(conditions?.paymentMethod)}</div></div>
+            </div>
+            <div class="item" style="margin-top:24px"><div class="label">Observações</div><div class="value notes">${escapeHtml(conditions?.notes || input.notes)}</div></div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><div class="icon">✎</div><h2>Assinaturas</h2></div>
+            <div class="signatures">
+              <div class="signature">
+                <div class="line"></div>
+                <div class="name">${escapeHtml(leadName)}</div>
+                <div class="role">Cliente</div>
+              </div>
+              <div class="signature">
+                <div class="line"></div>
+                <div class="name">${escapeHtml(brokerName)}</div>
+                <div class="role">Corretor ${broker?.creci ? `- CRECI ${escapeHtml(broker.creci)}` : ""}</div>
+              </div>
+            </div>
+          </section>
         </div>
-        <div class="card">
-          <div class="section-title"><h2>Imóvel</h2></div>
-          <div class="grid">
-            <div class="item"><div class="label">Título</div><div class="value">${escapeHtml(property?.title)}</div></div>
-            <div class="item"><div class="label">Código/ID</div><div class="value">${escapeHtml(property?.id)}</div></div>
-            <div class="item"><div class="label">Tipo</div><div class="value">${escapeHtml(property?.type)}</div></div>
-            <div class="item"><div class="label">Bairro/Cidade</div><div class="value">${escapeHtml(propertyAddress)}</div></div>
-            <div class="item"><div class="label">Metragem</div><div class="value">${escapeHtml(property?.area)}</div></div>
-            <div class="item"><div class="label">Dormitórios</div><div class="value">${escapeHtml(property?.bedrooms)}</div></div>
-            <div class="item"><div class="label">Vagas</div><div class="value">${escapeHtml(property?.parkingSpots)}</div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="section-title"><h2>Condições</h2></div>
-          <div class="grid">
-            <div class="item"><div class="label">Entrada</div><div class="value">${escapeHtml(conditions?.entry)}</div></div>
-            <div class="item"><div class="label">Parcelamento</div><div class="value">${escapeHtml(conditions?.installments)}</div></div>
-            <div class="item"><div class="label">Validade da proposta</div><div class="value">${escapeHtml(conditions?.validity)}</div></div>
-            <div class="item"><div class="label">Observações</div><div class="value">${escapeHtml(conditions?.notes || input.notes)}</div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="section-title"><h2>Corretor</h2></div>
-          <div class="grid">
-            <div class="item"><div class="label">Nome</div><div class="value">${escapeHtml(broker?.name)}</div></div>
-            <div class="item"><div class="label">Telefone</div><div class="value">${escapeHtml(broker?.phone)}</div></div>
-            <div class="item"><div class="label">CRECI</div><div class="value">${escapeHtml(broker?.creci)}</div></div>
-          </div>
-        </div>
+
+        <footer class="footer">
+          <div class="footer-item"><span class="icon" style="width:34px;height:34px;font-size:15px">✓</span><span><b>Segurança</b>Informações claras e verificáveis.</span></div>
+          <div class="footer-item"><span class="icon" style="width:34px;height:34px;font-size:15px">◎</span><span><b>Transparência</b>Condições organizadas para negociação.</span></div>
+          <div class="footer-item"><span class="icon" style="width:34px;height:34px;font-size:15px">♡</span><span><b>Compromisso</b>Documento profissional para decisão.</span></div>
+        </footer>
       </section>
-      <footer class="footer">Documento gerado pelo EME.</footer>
     </section>
   </main>
 </body>

@@ -110,10 +110,11 @@ export async function POST(request: NextRequest) {
     const content = buildProposalHtml({
       lead: proposalLead,
       property: proposalProperty,
-      broker: { name: user.name, phone: user.broker.phone, creci: user.broker.creci },
+      broker: { name: user.name, phone: user.broker.phone, email: user.email, city: proposalProperty?.city, creci: user.broker.creci },
       conditions: {
         entry: cleanText(body?.entry, 120),
         installments: cleanText(body?.installments, 200),
+        paymentMethod: cleanText(body?.paymentMethod, 160),
         notes: cleanText(body?.conditions ?? body?.notes, 700),
         validity: cleanText(body?.validity, 80),
       },
