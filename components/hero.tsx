@@ -59,13 +59,13 @@ export function Hero() {
           <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-[#00C853]/10 blur-3xl" />
           <div className="relative overflow-visible">
             <Image
-              src="/images/eme-landing-hero-final.png"
+              src="/images/eme-landing-hero-mockup.png"
               alt="Dashboard do EME com Assessor EME no WhatsApp"
-              width={1774}
-              height={887}
+              width={4956}
+              height={3100}
               priority
               sizes="(min-width: 1024px) 58vw, 100vw"
-              className="h-auto w-full rounded-[1.35rem] object-contain shadow-[0_28px_90px_rgba(0,0,0,0.54),0_0_70px_rgba(0,200,83,0.16)] lg:scale-[1.04] xl:scale-[1.06]"
+              className="h-auto w-full rounded-[1.35rem] object-contain shadow-[0_28px_90px_rgba(0,0,0,0.54),0_0_70px_rgba(0,200,83,0.16)] lg:scale-[1.1] xl:scale-[1.12]"
             />
           </div>
         </div>
