@@ -4,10 +4,9 @@ import { ProductFlow } from "@/components/product-flow"
 import { ProposalDocumentsSection } from "@/components/proposal-documents-section"
 import { AssessorEmeSection } from "@/components/assessor-eme-section"
 import { EmeModulesSection } from "@/components/eme-modules-section"
-import { DistributionSection } from "@/components/distribution-section"
+import { CatalogIntelligentSection } from "@/components/catalog-intelligent-section"
 import { IntelligentSearchSection } from "@/components/intelligent-search-section"
 import { LeadCaptureSection } from "@/components/lead-capture-section"
-import { CorretorEmeSection } from "@/components/corretor-eme-section"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
 import { FlowLine } from "@/components/flow-line"
@@ -18,13 +17,12 @@ export default function Home() {
       <FlowLine />
       <Header />
       <Hero />
+      <AssessorEmeSection />
       <ProductFlow />
       <ProposalDocumentsSection />
-      <AssessorEmeSection />
-      <EmeModulesSection />
+      <CatalogIntelligentSection />
       <IntelligentSearchSection />
-      <CorretorEmeSection />
-      <DistributionSection />
+      <EmeModulesSection />
       <LeadCaptureSection />
       <CTASection />
       <Footer />
