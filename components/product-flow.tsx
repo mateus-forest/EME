@@ -31,8 +31,11 @@ export function ProductFlow() {
           <div className="mb-4 inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium text-[#69F0AE]">
             Criação inteligente
           </div>
-          <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Crie anúncios do seu jeito.
+          <h2 className="text-3xl font-bold text-balance text-white sm:text-4xl md:text-5xl">
+            Crie anúncios{" "}
+            <span className="bg-gradient-to-r from-[#00C853] to-[#00E676] bg-clip-text text-transparent">
+              do seu jeito.
+            </span>
           </h2>
           <p className="mt-4 max-w-xl text-base leading-7 text-white/58">
             Use IA, preenchimento manual ou importação para publicar imóveis em poucos minutos.

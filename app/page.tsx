@@ -1,6 +1,9 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { ProductFlow } from "@/components/product-flow"
+import { ProposalDocumentsSection } from "@/components/proposal-documents-section"
+import { AssessorEmeSection } from "@/components/assessor-eme-section"
+import { EmeModulesSection } from "@/components/eme-modules-section"
 import { DistributionSection } from "@/components/distribution-section"
 import { IntelligentSearchSection } from "@/components/intelligent-search-section"
 import { LeadCaptureSection } from "@/components/lead-capture-section"
@@ -16,6 +19,9 @@ export default function Home() {
       <Header />
       <Hero />
       <ProductFlow />
+      <ProposalDocumentsSection />
+      <AssessorEmeSection />
+      <EmeModulesSection />
       <IntelligentSearchSection />
       <CorretorEmeSection />
       <DistributionSection />
