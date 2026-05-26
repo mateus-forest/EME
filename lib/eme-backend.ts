@@ -1,4 +1,5 @@
 import { LeadStatus, PropertyStatus, PropertyType } from "@/lib/prisma-enums"
+import type { Prisma } from "@prisma/client"
 
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
 import { getOpenAIEnv } from "@/lib/env.server"
@@ -470,6 +471,10 @@ export function inferCustomerIntent(message: string) {
 }
 
 export async function searchBrokerProperties(brokerId: string, query: string, limit = 5) {
+  if (!brokerId) {
+    throw new Error("SEARCH_PROPERTIES sem brokerId.")
+  }
+
   const filters = parsePropertySearchFilters(query)
   const terms = query
     .normalize("NFD")
@@ -478,11 +483,11 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     .split(/\s+/)
     .filter((term) => term.length > 2 && !["buscar", "busca", "quero", "imovel", "imoveis", "ate", "com", "para", "opcoes", "opções"].includes(term))
   const hasSpecificFilters = Boolean(filters.maxPrice || filters.city || filters.neighborhood || filters.type || filters.bedrooms)
-  const activeWhere = {
+  const activeWhere: Prisma.PropertyWhereInput = {
     brokerId,
     OR: [{ published: true }, { status: PropertyStatus.PUBLISHED }],
   }
-  const baseFilterWhere = {
+  const baseFilterWhere: Prisma.PropertyWhereInput = {
     ...activeWhere,
     ...(filters.maxPrice ? { price: { lte: filters.maxPrice } } : {}),
     ...(filters.city ? { city: { contains: filters.city, mode: "insensitive" as const } } : {}),
@@ -519,8 +524,8 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
     usedBroadSearch = true
     properties = await prisma.property.findMany({
       where: {
-      ...activeWhere,
-      ...(filters.type ? { type: filters.type as PropertyType } : {}),
+        ...activeWhere,
+        ...(filters.type ? { type: filters.type as PropertyType } : {}),
       },
       orderBy: [{ viewsCount: "desc" }, { createdAt: "desc" }],
       take: 30,
@@ -608,6 +613,23 @@ export async function runAssessorAction({
   payload?: Record<string, unknown>
 }) {
   const pendingContext = metadataRecord(payload?.pendingContext) as Partial<PendingAssessorContext>
+  if (!brokerId) {
+    return {
+      response: "Não encontrei seu cadastro de corretor vinculado a este WhatsApp.",
+      metadata: { noCharge: true, errorReason: "missing_broker_id" },
+    }
+  }
+
+  const brokerExists = await prisma.broker.findUnique({
+    where: { id: brokerId },
+    select: { id: true },
+  })
+  if (!brokerExists) {
+    return {
+      response: "Não encontrei seu cadastro de corretor vinculado a este WhatsApp.",
+      metadata: { noCharge: true, errorReason: "broker_not_found" },
+    }
+  }
 
   if (action === "CREATE_AGENDA_EVENT") {
     if (pendingContext.action === "CREATE_AGENDA_EVENT" && pendingContext.missingField === "time") {
@@ -872,21 +894,37 @@ export async function runAssessorAction({
   }
 
   if (action === "searchProperties") {
-    const searchResult = await searchBrokerProperties(brokerId, message)
-    const properties = searchResult.results
-    const filters = searchResult.filters
-    return {
-      response: properties.length
-        ? `Encontrei ${properties.length} imóvel${properties.length === 1 ? "" : "is"}:\n\n${properties
-            .map((property, index) => `${index + 1}. ${property.title} — ${formatCurrencyBRLFromCents(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
-            .join("\n")}\n\nQuer que eu te mande mais detalhes de algum?`
-        : "Não encontrei imóveis com esses filtros. Posso tentar uma busca mais ampla?",
-      metadata: {
-        propertyIds: properties.map((property) => property.id),
-        propertySearchFilters: filters,
-        resultCount: properties.length,
+    const startedAt = Date.now()
+    try {
+      const searchResult = await searchBrokerProperties(brokerId, message)
+      const properties = searchResult.results
+      const filters = searchResult.filters
+      return {
+        response: properties.length
+          ? `Encontrei ${properties.length} imóvel${properties.length === 1 ? "" : "is"}:\n\n${properties
+              .map((property, index) => `${index + 1}. ${property.title} — ${formatCurrencyBRLFromCents(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
+              .join("\n")}\n\nQuer que eu te mande mais detalhes de algum?`
+          : "Não encontrei imóveis com esses filtros. Quer que eu tente uma busca mais ampla?",
+        metadata: {
+          propertyIds: properties.map((property) => property.id),
+          propertySearchFilters: filters,
+          resultCount: properties.length,
+          originalMessage: message,
+          actionStatus: "success",
+          durationMs: Date.now() - startedAt,
+        },
+      }
+    } catch (caughtError) {
+      console.error("[eme-backend][search-properties][failed]", {
+        actionName: "searchProperties",
         originalMessage: message,
-      },
+        brokerId,
+        userId,
+        errorMessage: caughtError instanceof Error ? caughtError.message : "unknown",
+        errorStack: caughtError instanceof Error ? caughtError.stack : undefined,
+        durationMs: Date.now() - startedAt,
+      })
+      throw caughtError
     }
   }
   if (action === "getFinancialSummary") {
@@ -1008,49 +1046,76 @@ export async function runAssessorAction({
   }
 
   if (action === "createPropertyDraft") {
-    const pendingDraft = pendingContext.action === "createPropertyDraft" ? metadataRecord(pendingContext.parsedData) : {}
-    const draft = {
-      ...parsePropertyDraftData(message, payload),
-      ...pendingDraft,
-      price: parseFlexiblePriceToCents(message) ?? parseCurrencyInputToCents(payload?.price) ?? Number(pendingDraft.price ?? 0),
-    } as ReturnType<typeof parsePropertyDraftData>
-    if (!draft.price) {
-      return {
-        response: "Qual o valor do imóvel?",
-        metadata: { required: ["price"], noCharge: true, parsedData: draft },
+    const startedAt = Date.now()
+    try {
+      const pendingDraft = pendingContext.action === "createPropertyDraft" ? metadataRecord(pendingContext.parsedData) : {}
+      const parsedDraft = parsePropertyDraftData(message, payload)
+      const draft = {
+        ...parsedDraft,
+        ...pendingDraft,
+        title: cleanText(pendingDraft.title, 160) || parsedDraft.title,
+        city: cleanText(pendingDraft.city, 100) || parsedDraft.city || "Não informada",
+        neighborhood: cleanText(pendingDraft.neighborhood, 100) || parsedDraft.neighborhood || null,
+        description: cleanText(pendingDraft.description, 2000) || parsedDraft.description,
+        bedrooms: Number(pendingDraft.bedrooms ?? parsedDraft.bedrooms) || 0,
+        bathrooms: Number(pendingDraft.bathrooms ?? parsedDraft.bathrooms) || 0,
+        parkingSpots: Number(pendingDraft.parkingSpots ?? parsedDraft.parkingSpots) || 0,
+        type: (cleanText(pendingDraft.type, 40) as PropertyType) || parsedDraft.type || "APARTMENT",
+        purpose: cleanText(pendingDraft.purpose, 20) || parsedDraft.purpose || "SALE",
+        price: parseFlexiblePriceToCents(message) ?? parseCurrencyInputToCents(payload?.price) ?? Number(pendingDraft.price ?? parsedDraft.price ?? 0),
+      } as ReturnType<typeof parsePropertyDraftData>
+      if (!draft.price) {
+        return {
+          response: "Qual o valor do imóvel?",
+          metadata: { required: ["price"], noCharge: true, parsedData: draft },
+        }
       }
-    }
 
-    const property = await prisma.property.create({
-      data: {
-        title: draft.title,
-        city: draft.city,
-        neighborhood: draft.neighborhood,
-        price: draft.price,
-        description: draft.description,
-        bedrooms: draft.bedrooms,
-        bathrooms: draft.bathrooms,
-        parkingSpots: draft.parkingSpots,
-        type: draft.type,
-        purpose: draft.purpose,
-        status: PropertyStatus.DRAFT,
-        published: false,
-        brokerId,
-      },
-    })
-    await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
-    return {
-      response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
-      metadata: {
-        propertyId: property.id,
-        parsedData: draft,
-        futureActions: ["agenda_eme", "follow_up", "documents", "proposals", "ad_publication"],
-        mediaHandling: {
-          prepared: true,
-          status: "waiting_storage_binding",
+      const property = await prisma.property.create({
+        data: {
+          title: draft.title || "Imóvel em rascunho",
+          city: draft.city || "Não informada",
+          neighborhood: draft.neighborhood || null,
+          price: draft.price,
+          description: draft.description,
+          bedrooms: draft.bedrooms,
+          bathrooms: draft.bathrooms,
+          parkingSpots: draft.parkingSpots,
+          type: draft.type,
+          purpose: draft.purpose,
+          status: PropertyStatus.DRAFT,
+          published: false,
+          brokerId,
         },
-      },
-      propertyId: property.id,
+      })
+      await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
+      return {
+        response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
+        metadata: {
+          propertyId: property.id,
+          parsedData: draft,
+          actionStatus: "success",
+          durationMs: Date.now() - startedAt,
+          futureActions: ["agenda_eme", "follow_up", "documents", "proposals", "ad_publication"],
+          mediaHandling: {
+            prepared: true,
+            status: "waiting_storage_binding",
+          },
+        },
+        propertyId: property.id,
+      }
+    } catch (caughtError) {
+      console.error("[eme-backend][create-property-draft][failed]", {
+        actionName: "createPropertyDraft",
+        originalMessage: message,
+        brokerId,
+        userId,
+        payload,
+        errorMessage: caughtError instanceof Error ? caughtError.message : "unknown",
+        errorStack: caughtError instanceof Error ? caughtError.stack : undefined,
+        durationMs: Date.now() - startedAt,
+      })
+      throw caughtError
     }
   }
 

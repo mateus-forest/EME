@@ -5,8 +5,6 @@ import { ProposalDocumentsSection } from "@/components/proposal-documents-sectio
 import { AssessorEmeSection } from "@/components/assessor-eme-section"
 import { EmeModulesSection } from "@/components/eme-modules-section"
 import { CatalogIntelligentSection } from "@/components/catalog-intelligent-section"
-import { IntelligentSearchSection } from "@/components/intelligent-search-section"
-import { LeadCaptureSection } from "@/components/lead-capture-section"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
 import { FlowLine } from "@/components/flow-line"
@@ -21,9 +19,7 @@ export default function Home() {
       <ProductFlow />
       <ProposalDocumentsSection />
       <CatalogIntelligentSection />
-      <IntelligentSearchSection />
       <EmeModulesSection />
-      <LeadCaptureSection />
       <CTASection />
       <Footer />
     </main>

@@ -30,13 +30,14 @@ export function CatalogIntelligentSection() {
             Catálogo inteligente
           </div>
           <h2 className="max-w-xl text-3xl font-bold text-balance text-white sm:text-4xl md:text-5xl">
-            O cliente escreve do jeito dele.{" "}
+            Catálogo inteligente, compartilhável e{" "}
             <span className="bg-gradient-to-r from-[#00C853] to-[#00E676] bg-clip-text text-transparent">
-              O EME encontra.
+              feito para vender.
             </span>
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-white/58 sm:text-lg sm:leading-8">
-            O catálogo entende linguagem natural e conecta o cliente aos imóveis certos em segundos.
+            Seu catálogo online reúne imóveis, busca inteligente e captação de leads em uma experiência pronta para
+            compartilhar com clientes e redes sociais.
           </p>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">

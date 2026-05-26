@@ -42,6 +42,10 @@ function shouldReturnActionResponse(action: AssessorAction) {
   ].includes(action)
 }
 
+function toLoggableJson(value: unknown) {
+  return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue
+}
+
 function getWebhookRuntimeLogContext() {
   return {
     timestamp: new Date().toISOString(),
@@ -267,6 +271,16 @@ async function processAssessorMessage({
   metadata: Prisma.InputJsonObject
 }) {
   const creditsUsed = 1
+  if (!brokerId) {
+    return {
+      response: "Não encontrei seu cadastro de corretor vinculado a este WhatsApp.",
+      intent: "general" as AssessorAction,
+      actionType: "general" as AssessorAction,
+      actionStatus: "broker_not_found",
+      creditsUsed: 0,
+    }
+  }
+
   const brokerCredits = await prisma.broker.findUnique({
     where: { id: brokerId },
     select: { aiCreditsBalance: true },
@@ -296,7 +310,12 @@ async function processAssessorMessage({
     return { response, intent: action, actionType: action, actionStatus: "insufficient_credits", creditsUsed: 0 }
   }
 
-  let actionResult: Awaited<ReturnType<typeof runAssessorAction>> = { response: "", metadata: {} }
+  let actionResult: {
+    response: string
+    metadata: Prisma.InputJsonObject
+    leadId?: string
+    propertyId?: string
+  } = { response: "", metadata: {} }
   let responseText: string
   let actionStatus: string
   let errorMessage: string | null = null
@@ -311,7 +330,7 @@ async function processAssessorMessage({
       action,
       confirm: false,
       payload: resolvedInput.payload,
-    })
+    }) as typeof actionResult
     actionStatus =
       Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
         ? "needs_input"
@@ -349,6 +368,36 @@ async function processAssessorMessage({
     errorMessage = caughtError instanceof Error ? caughtError.message : "Erro na ação interna."
     responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
     finalCreditsUsed = 0
+    const errorStack = caughtError instanceof Error ? caughtError.stack : undefined
+    console.error("[api][whatsapp][assessor-action][failed]", {
+      actionName: action,
+      originalMessage: message,
+      parsedIntent: action,
+      parsedEntities: actionResult.metadata ?? null,
+      brokerId,
+      userId,
+      phoneNumber: fromPhone,
+      payload: resolvedInput.payload,
+      errorMessage,
+      errorStack,
+      durationMs: Date.now() - actionStartedAt,
+    })
+    actionResult = {
+      ...actionResult,
+      metadata: {
+        ...(actionResult.metadata ?? {}),
+        actionName: action,
+        originalMessage: message,
+        parsedIntent: action,
+        brokerId,
+        userId,
+        phoneNumber: fromPhone,
+        actionPayload: toLoggableJson(resolvedInput.payload),
+        errorReason: errorMessage,
+        errorStack,
+        durationMs: Date.now() - actionStartedAt,
+      } as Prisma.InputJsonObject,
+    }
   }
 
   const actionMetadata = (actionResult.metadata ?? {}) as Prisma.InputJsonObject
