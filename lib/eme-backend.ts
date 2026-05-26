@@ -1,7 +1,7 @@
 import { LeadStatus, PropertyStatus, PropertyType } from "@/lib/prisma-enums"
 import type { Prisma } from "@prisma/client"
 
-import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
+import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
@@ -73,7 +73,7 @@ function normalizeForIntent(value: string) {
 }
 
 const ASSESSOR_MENU_RESPONSE =
-  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• cadastrar imóveis em rascunho\n• buscar imóveis\n• agendar visitas e lembretes\n• consultar agenda\n• gerar propostas\n• consultar documentos\n• ver informações de leads, catálogo, analytics e financeiro\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nCadastrar imóvel: apartamento 3 quartos no Centro, R$ 650 mil, venda\nBuscar imóvel: casa até 600 mil em Vacaria\nAgendar visita amanhã às 15h com João\nMinha agenda de hoje\nGerar proposta para João no imóvel 142\nResumo dos leads\nComo está meu catálogo?"
+  "Olá! Sou o Assessor EME 😊\n\nPosso te ajudar com:\n• cadastrar leads\n• buscar imóveis do seu catálogo\n• cadastrar imóveis em rascunho\n• agendar visitas e lembretes\n• consultar sua agenda\n• gerar propostas\n• consultar documentos\n• trazer resumos de leads, catálogo, financeiro e analytics\n\nExemplos:\nCadastrar lead: João Silva 54999999999\nBuscar imóvel: apartamento até 900 mil\nCadastrar imóvel: apartamento 3 quartos no Centro, R$ 850 mil, venda\nAgendar visita amanhã às 15h com João\nGerar proposta para Mateus no apartamento do Centro"
 
 const ASSESSOR_FALLBACK_RESPONSE =
   "Não consegui identificar o pedido.\n\nVocê pode mandar assim:\n• Cadastrar lead: João Silva 54999999999\n• Buscar imóvel: casa até 600 mil\n• Agendar visita amanhã às 15h\n• Gerar proposta para João no imóvel 142"
@@ -113,21 +113,64 @@ function extractLeadData(message: string) {
   return { name, phone }
 }
 
-function parseFlexiblePriceToCents(message: string) {
-  const normalized = normalizeForIntent(message)
-  const priceMatch = normalized.match(/(?:ate|até|maximo|max|abaixo de|menos de|valor|preco|preço)?\s*(?:r\$)?\s*(\d+(?:[.,]\d+)?)(?:\s*(mil|k|mi|milhao|milhoes|milhão|milhões))\b/)
-  if (!priceMatch) {
-    const currencyMatch = message.match(/r\$\s*([\d.]+(?:,\d{2})?)/i)
-    if (!currencyMatch) return null
-    return parseCurrencyInputToCents(currencyMatch[1])
+const MAX_PROPERTY_INTEGER_VALUE = 2_147_483_647
+
+type ParsedBrazilianMoney = {
+  raw: string
+  value: number
+  outOfRange: boolean
+}
+
+function parseNumericMoneyToken(raw: string, hasUnit: boolean) {
+  const token = raw.trim()
+  if (!token) return null
+  if (token.includes(",")) return Number(token.replace(/\./g, "").replace(",", "."))
+  if (token.includes(".") && hasUnit) return Number(token)
+  if (token.includes(".")) return Number(token.replace(/\./g, ""))
+  return Number(token)
+}
+
+function parseBrazilianMoney(input: unknown): ParsedBrazilianMoney | null {
+  if (typeof input === "number" && Number.isFinite(input) && input >= 0) {
+    const value = Math.round(input)
+    return { raw: String(input), value, outOfRange: value > MAX_PROPERTY_INTEGER_VALUE }
   }
+  if (typeof input !== "string") return null
 
-  const rawPrice = Number(priceMatch[1].replace(",", "."))
-  if (!Number.isFinite(rawPrice) || rawPrice < 0) return null
+  const normalized = normalizeForIntent(input)
+  const match = normalized.match(/(?:r\$\s*)?(\d[\d.,]*)(?:\s*(milhao|milhoes|milhão|milhões|mil|k|mi))?\b/)
+  if (!match) return null
 
-  const unit = priceMatch[2]
-  const multiplier = unit?.startsWith("mi") || unit?.startsWith("milh") ? 1_000_000 : 1000
-  return Math.round(rawPrice * multiplier * 100)
+  const raw = match[0].trim()
+  const unit = match[2] ?? ""
+  const numberPart = match[1]
+  const hasUnit = Boolean(unit)
+  const hasCurrency = /r\$/.test(raw)
+  const numeric = parseNumericMoneyToken(numberPart, hasUnit)
+  if (numeric === null || !Number.isFinite(numeric) || numeric < 0) return null
+  if (!hasCurrency && !hasUnit && !/[.,]/.test(numberPart) && numeric < 1000) return null
+
+  const multiplier =
+    unit === "mil" || unit === "k"
+      ? 1000
+      : unit === "mi" || unit.startsWith("milh")
+        ? 1_000_000
+        : 1
+  const value = Math.round(numeric * multiplier)
+  return { raw, value, outOfRange: value > MAX_PROPERTY_INTEGER_VALUE }
+}
+
+export function parseBrazilianMoneyToInt(input: unknown) {
+  const parsed = parseBrazilianMoney(input)
+  return parsed && !parsed.outOfRange ? parsed.value : null
+}
+
+function formatAssessorPropertyPrice(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(Math.max(0, value || 0))
 }
 
 function inferPropertyTypeFromText(message: string): PropertyType | null {
@@ -144,6 +187,7 @@ function inferPropertyTypeFromText(message: string): PropertyType | null {
 
 function parsePropertySearchFilters(message: string) {
   const normalized = normalizeForIntent(message)
+  const parsedPrice = parseBrazilianMoney(message)
   const cityMatch = normalized.match(/\b(?:em|na cidade de|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|no bairro|bairro|e|$)|$)/)
   const neighborhoodMatch =
     normalized.match(/\b(?:bairro|no bairro|na regiao|regiao)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/) ??
@@ -156,7 +200,10 @@ function parsePropertySearchFilters(message: string) {
       : null
 
   return {
-    maxPrice: parseFlexiblePriceToCents(message),
+    maxPrice: parsedPrice && !parsedPrice.outOfRange ? parsedPrice.value : null,
+    parsedPriceRaw: parsedPrice?.raw ?? "",
+    parsedPriceFinal: parsedPrice && !parsedPrice.outOfRange ? parsedPrice.value : null,
+    priceOutOfRange: parsedPrice?.outOfRange ?? false,
     city: cleanText(cityMatch?.[1], 80),
     neighborhood: cleanText(neighborhoodMatch?.[1], 80),
     bedrooms: bedroomsMatch ? Number(bedroomsMatch[1]) : null,
@@ -169,6 +216,7 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
   const normalized = normalizeForIntent(message)
   const type = inferPropertyTypeFromText(message) ?? "APARTMENT"
   const cityMatch = normalized.match(/\b(?:em|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:bairro|no|na|com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/)
+  const centerCityMatch = normalized.match(/\b(?:no|na)\s+centro\s+de\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/)
   const neighborhoodMatch =
     normalized.match(/\b(?:bairro|no bairro|no|na)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/) ??
     normalized.match(/\b(centro)\b/)
@@ -188,13 +236,14 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
     type === "COMMERCIAL" ? "Comercial" :
     "Apartamento"
 
-  const city = cleanText(payload?.city, 100) || cleanText(cityMatch?.[1], 100) || "Não informada"
-  const neighborhood = cleanText(payload?.neighborhood, 100) || cleanText(neighborhoodMatch?.[1], 100) || null
+  const city = cleanText(payload?.city, 100) || cleanText(centerCityMatch?.[1], 100) || cleanText(cityMatch?.[1], 100) || "Não informada"
+  const neighborhood = cleanText(payload?.neighborhood, 100) || (centerCityMatch ? "Centro" : cleanText(neighborhoodMatch?.[1], 100)) || null
   const bedrooms = Number(payload?.bedrooms) || (bedroomsMatch ? Number(bedroomsMatch[1]) : 0)
   const bathrooms = Number(payload?.bathrooms) || (bathroomsMatch ? Number(bathroomsMatch[1]) : 0)
   const parkingSpots = Number(payload?.parkingSpots ?? payload?.parking) || (parkingMatch ? Number(parkingMatch[1]) : 0)
   const area = cleanText(payload?.area, 40) || cleanText(areaMatch?.[0], 40)
-  const price = parseCurrencyInputToCents(payload?.price) ?? parseFlexiblePriceToCents(message) ?? 0
+  const parsedPrice = parseBrazilianMoney(payload?.price) ?? parseBrazilianMoney(message)
+  const price = parsedPrice && !parsedPrice.outOfRange ? parsedPrice.value : 0
   const title = cleanText(payload?.title, 160) || [typeLabel, bedrooms ? `${bedrooms} dormitórios` : "", neighborhood ? `no ${neighborhood}` : ""].filter(Boolean).join(" ")
   const descriptionParts = [
     cleanText(payload?.description, 2000),
@@ -208,6 +257,9 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
     city,
     neighborhood,
     price,
+    parsedPriceRaw: parsedPrice?.raw ?? "",
+    parsedPriceFinal: price || null,
+    priceOutOfRange: parsedPrice?.outOfRange ?? false,
     bedrooms,
     bathrooms,
     parkingSpots,
@@ -285,12 +337,51 @@ function parseAgendaListRange(message: string) {
 }
 
 function extractPersonName(message: string) {
+  const directMatch = message.match(/\bpara\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)?)/i)
+  if (directMatch?.[1]) {
+    return cleanText(directMatch[1].replace(/\b(?:no|na|do|da|imóvel|imovel|apartamento|casa|terreno)\b.*$/i, ""), 120)
+  }
   const cleaned = message
     .replace(/\b(gerar|gere|criar|crie|proposta|documento|contrato|para|do|da|no|na|imovel|imóvel)\b/gi, " ")
     .replace(/\d+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
   return cleanText(cleaned.split(/\s+(?:apartamento|casa|terreno|centro)\b/i)[0], 120)
+}
+
+function normalizeComparableText(value: unknown) {
+  return cleanText(value, 300)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+async function findLeadCandidates(brokerId: string, personName: string, take = 4) {
+  const normalizedName = normalizeComparableText(personName)
+  if (!normalizedName) return []
+  const firstName = normalizedName.split(" ")[0] ?? normalizedName
+  const candidates = await prisma.lead.findMany({
+    where: {
+      brokerId,
+      OR: [
+        { name: { contains: personName, mode: "insensitive" as const } },
+        ...(firstName ? [{ name: { contains: firstName, mode: "insensitive" as const } }] : []),
+      ],
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 30,
+    select: { id: true, name: true, phone: true, email: true },
+  })
+
+  const filtered = candidates.filter((lead) => {
+    const leadName = normalizeComparableText(lead.name)
+    return leadName.includes(normalizedName) || leadName.split(" ")[0] === firstName
+  })
+
+  return (filtered.length ? filtered : candidates).slice(0, take)
 }
 
 function extractAgendaPersonName(message: string) {
@@ -300,12 +391,15 @@ function extractAgendaPersonName(message: string) {
 
 function extractPropertyReference(message: string) {
   const normalized = normalizeForIntent(message)
+  const parsedPrice = parseBrazilianMoney(message)
   const idMatch = normalized.match(/\b(?:imovel|codigo|id)\s+([a-z0-9-]{2,80})\b/)
   const neighborhoodMatch = normalized.match(/\b(?:apartamento|casa|terreno|imovel)?\s*(?:do|da|no|na)\s+([a-z\s-]{3,60})\b/)
   return {
     idOrCode: cleanText(idMatch?.[1], 80),
     neighborhood: cleanText(neighborhoodMatch?.[1], 80),
     type: inferPropertyTypeFromText(message),
+    price: parsedPrice && !parsedPrice.outOfRange ? parsedPrice.value : null,
+    parsedPriceRaw: parsedPrice?.raw ?? "",
   }
 }
 
@@ -393,10 +487,11 @@ function resolvePropertyChoice(message: string, options: Array<{ id?: string; ti
 async function findProposalPropertyCandidates(
   brokerId: string,
   message: string,
-  propertyReference: { idOrCode?: string; neighborhood?: string; type?: PropertyType | null },
+  propertyReference: { idOrCode?: string; neighborhood?: string; type?: PropertyType | null; price?: number | null; parsedPriceRaw?: string },
   take = 4,
 ) {
   const normalized = normalizeForIntent(message)
+  const price = propertyReference.price ?? parseBrazilianMoneyToInt(message)
   const words = normalized
     .split(/\s+/)
     .filter((word) => word.length > 2 && !["gerar", "criar", "fazer", "proposta", "para", "imovel", "imoveis", "apartamento", "casa"].includes(word))
@@ -415,9 +510,24 @@ async function findProposalPropertyCandidates(
     ]),
     ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
   ]
+  const AND: Prisma.PropertyWhereInput[] = []
+  if (price) {
+    AND.push({
+      price: {
+        gte: Math.round(price * 0.9),
+        lte: Math.round(price * 1.1),
+      },
+    })
+  }
+  if (propertyReference.type) {
+    AND.push({ type: propertyReference.type })
+  }
+  if (OR.length) {
+    AND.push({ OR })
+  }
 
   return prisma.property.findMany({
-    where: { brokerId, ...(OR.length ? { OR } : {}) },
+    where: { brokerId, ...(AND.length ? { AND } : {}) },
     orderBy: [{ updatedAt: "desc" }],
     take,
     select: { id: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
@@ -476,6 +586,15 @@ export async function searchBrokerProperties(brokerId: string, query: string, li
   }
 
   const filters = parsePropertySearchFilters(query)
+  if (filters.priceOutOfRange) {
+    return {
+      results: [],
+      filters: {
+        ...filters,
+        blockedByPriceLimit: true,
+      },
+    }
+  }
   const terms = query
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -755,8 +874,12 @@ export async function runAssessorAction({
     const pendingParsedData = pendingContext.action === "CREATE_PROPOSAL" ? metadataRecord(pendingContext.parsedData) : {}
     const pendingPropertyReference = metadataRecord(pendingParsedData.propertyReference)
     const pendingLeadIds = Array.isArray(pendingParsedData.leadIds) ? pendingParsedData.leadIds.map((id) => cleanText(id, 80)).filter(Boolean) : []
+    const isManualProposalConfirmation =
+      pendingContext.missingField === "lead" &&
+      pendingParsedData.awaitingManualConfirmation === true &&
+      /^(sim|s|pode|gerar manual|isso|ok|claro)$/i.test(normalizeForIntent(message).trim())
     const personName = pendingContext.missingField === "lead"
-      ? cleanText(message, 120)
+      ? cleanText(pendingParsedData.personName, 120) || cleanText(message, 120)
       : cleanText(pendingParsedData.personName, 120) || extractPersonName(message)
     const selectedLeadId = pendingContext.missingField === "lead" && pendingLeadIds.length
       ? pendingLeadIds[Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)] ?? null
@@ -766,6 +889,8 @@ export async function runAssessorAction({
       idOrCode: cleanText(pendingPropertyReference.idOrCode, 80) || cleanText(pendingParsedData.propertyId, 80) || extractPropertyReference(message).idOrCode,
       neighborhood: cleanText(pendingPropertyReference.neighborhood, 80) || cleanText(pendingParsedData.propertyNeighborhood, 80) || cleanText(pendingParsedData.propertyTerm, 120) || extractPropertyReference(message).neighborhood,
       type: (cleanText(pendingPropertyReference.type, 40) as PropertyType | "") || extractPropertyReference(message).type,
+      price: Number(pendingPropertyReference.price ?? pendingParsedData.propertyPrice) || extractPropertyReference(message).price,
+      parsedPriceRaw: cleanText(pendingPropertyReference.parsedPriceRaw, 80) || cleanText(pendingParsedData.parsedPriceRaw, 80) || extractPropertyReference(message).parsedPriceRaw,
     }
     const propertyOptions = Array.isArray(pendingParsedData.propertyOptions) ? pendingParsedData.propertyOptions as Array<{ id?: string; title?: string }> : []
     const selectedOption =
@@ -777,7 +902,7 @@ export async function runAssessorAction({
       selectedLeadId
         ? prisma.lead.findMany({ where: { brokerId, id: selectedLeadId }, take: 1, select: { id: true, name: true, phone: true, email: true } })
         : personName
-        ? prisma.lead.findMany({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, take: 3, select: { id: true, name: true, phone: true, email: true } })
+        ? findLeadCandidates(brokerId, personName, 4)
         : [],
       selectedOption?.id
         ? prisma.property.findFirst({
@@ -786,26 +911,6 @@ export async function runAssessorAction({
           })
         : null,
     ])
-    const propertyCandidates = selectedProperty
-      ? []
-      : await findProposalPropertyCandidates(brokerId, cleanText(pendingParsedData.propertyTerm, 160) || message, propertyReference, 4)
-    if (propertyCandidates.length > 1) {
-      return {
-        response: `Encontrei mais de um imóvel:\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.title} — ${item.neighborhood ?? item.city} — ${formatCurrencyBRLFromCents(item.price)}`).join("\n")}`,
-        metadata: {
-          required: ["propertyChoice"],
-          noCharge: true,
-          parsedData: {
-            personName,
-            propertyReference,
-            propertyTerm: cleanText(pendingParsedData.propertyTerm, 160) || message,
-            propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
-          },
-        },
-      }
-    }
-    const resolvedProperty = selectedProperty ?? propertyCandidates[0] ?? null
-
     if (!selectedLeadId && matchingLeads.length > 1) {
       return {
         response: `Encontrei mais de um ${personName}. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"} ${leadItem.phone ? `- ${leadItem.phone}` : ""}`).join("\n")}`,
@@ -813,41 +918,68 @@ export async function runAssessorAction({
       }
     }
     const lead = matchingLeads[0] ?? null
-    if (!lead) {
+    if (!lead && !isManualProposalConfirmation) {
       return {
         response: personName ? "Não encontrei esse lead cadastrado.\nQuer gerar manualmente?" : "Para qual cliente devo gerar a proposta?",
-        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, propertyReference } },
+        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, propertyReference, propertyTerm: cleanText(pendingParsedData.propertyTerm, 160) || message, awaitingManualConfirmation: Boolean(personName) } },
       }
     }
+    const propertyCandidates = selectedProperty
+      ? []
+      : await findProposalPropertyCandidates(brokerId, cleanText(pendingParsedData.propertyTerm, 160) || message, propertyReference, 4)
+    if (propertyCandidates.length > 1) {
+      return {
+        response: `Encontrei mais de um imóvel. Qual devo usar?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.title} — ${item.neighborhood ?? "Sem bairro"} — ${item.city} — ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
+        metadata: {
+          required: ["propertyChoice"],
+          noCharge: true,
+          parsedData: {
+            personName,
+            propertyReference,
+            propertyTerm: cleanText(pendingParsedData.propertyTerm, 160) || message,
+            propertyPrice: propertyReference.price,
+            parsedPriceRaw: propertyReference.parsedPriceRaw,
+            propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
+          },
+        },
+      }
+    }
+    const resolvedProperty = selectedProperty ?? propertyCandidates[0] ?? null
     if (!resolvedProperty) {
       return {
         response: "Não encontrei esse imóvel no seu catálogo.\nPode me mandar o título ou bairro?",
-        metadata: { required: ["property"], noCharge: true, leadId: lead.id, parsedData: { personName, propertyReference } },
-        leadId: lead.id,
+        metadata: { required: ["property"], noCharge: true, leadId: lead?.id ?? null, parsedData: { personName, propertyReference, awaitingManualConfirmation: isManualProposalConfirmation } },
+        leadId: lead?.id,
       }
     }
-    const title = `Proposta ${lead?.name ?? (personName || resolvedProperty?.title || "EME")}`
+    const proposalLead = lead ?? {
+      id: null,
+      name: personName || "Cliente não informado",
+      phone: null,
+      email: null,
+    }
+    const title = `Proposta ${proposalLead.name ?? (personName || resolvedProperty?.title || "EME")}`
     const proposalProperty = { ...resolvedProperty, imageUrl: firstImageUrl(resolvedProperty.imageUrls) }
     const document = await prisma.brokerDocument.create({
       data: {
         brokerId,
-        leadId: lead.id,
+        leadId: lead?.id ?? null,
         propertyId: resolvedProperty.id,
         type: "proposal",
         title,
         content: buildProposalHtml({
-          lead,
+          lead: proposalLead,
           property: proposalProperty,
           broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: resolvedProperty.city, creci: broker?.creci, photoUrl: broker?.user.photoUrl },
         }),
         status: "generated",
       },
     })
-    await prisma.notification.create({ data: { userId, title: "Proposta gerada", message: `Proposta para ${lead.name || personName || "cliente"} foi salva em Documentos.`, read: false } })
+    await prisma.notification.create({ data: { userId, title: "Proposta gerada", message: `Proposta para ${proposalLead.name || personName || "cliente"} foi salva em Documentos.`, read: false } })
     return {
       response: `Proposta gerada ✅\nUsei o imóvel: ${resolvedProperty.title}.\nSalvei em Documentos.`,
-      metadata: { documentId: document.id, leadId: lead.id, propertyId: resolvedProperty.id, parsedData: { personName, title, propertyReference }, status: "generated" },
-      leadId: lead.id,
+      metadata: { documentId: document.id, leadId: lead?.id ?? null, propertyId: resolvedProperty.id, parsedData: { personName, title, propertyReference, manualLead: !lead }, status: "generated" },
+      leadId: lead?.id,
       propertyId: resolvedProperty.id,
     }
   }
@@ -895,14 +1027,30 @@ export async function runAssessorAction({
 
   if (action === "searchProperties") {
     const startedAt = Date.now()
+    const parsedPriceForLog = parseBrazilianMoney(message)
     try {
       const searchResult = await searchBrokerProperties(brokerId, message)
       const properties = searchResult.results
       const filters = searchResult.filters
+      if (filters.priceOutOfRange) {
+        return {
+          response: "O valor informado parece alto demais. Pode confirmar o valor do imóvel?",
+          metadata: {
+            required: ["price"],
+            noCharge: true,
+            propertySearchFilters: filters,
+            originalMessage: message,
+            parsedPriceRaw: filters.parsedPriceRaw,
+            parsedPriceFinal: null,
+            actionStatus: "needs_input",
+            durationMs: Date.now() - startedAt,
+          },
+        }
+      }
       return {
         response: properties.length
           ? `Encontrei ${properties.length} imóvel${properties.length === 1 ? "" : "is"}:\n\n${properties
-              .map((property, index) => `${index + 1}. ${property.title} — ${formatCurrencyBRLFromCents(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
+              .map((property, index) => `${index + 1}. ${property.title} — ${formatAssessorPropertyPrice(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
               .join("\n")}\n\nQuer que eu te mande mais detalhes de algum?`
           : "Não encontrei imóveis com esses filtros. Quer que eu tente uma busca mais ampla?",
         metadata: {
@@ -910,6 +1058,8 @@ export async function runAssessorAction({
           propertySearchFilters: filters,
           resultCount: properties.length,
           originalMessage: message,
+          parsedPriceRaw: filters.parsedPriceRaw,
+          parsedPriceFinal: filters.parsedPriceFinal,
           actionStatus: "success",
           durationMs: Date.now() - startedAt,
         },
@@ -920,6 +1070,8 @@ export async function runAssessorAction({
         originalMessage: message,
         brokerId,
         userId,
+        parsedPriceRaw: parsedPriceForLog?.raw ?? "",
+        parsedPriceFinal: parsedPriceForLog && !parsedPriceForLog.outOfRange ? parsedPriceForLog.value : null,
         errorMessage: caughtError instanceof Error ? caughtError.message : "unknown",
         errorStack: caughtError instanceof Error ? caughtError.stack : undefined,
         durationMs: Date.now() - startedAt,
@@ -1047,9 +1199,18 @@ export async function runAssessorAction({
 
   if (action === "createPropertyDraft") {
     const startedAt = Date.now()
+    const messagePriceForLog = parseBrazilianMoney(message)
+    const payloadPriceForLog = parseBrazilianMoney(payload?.price)
     try {
       const pendingDraft = pendingContext.action === "createPropertyDraft" ? metadataRecord(pendingContext.parsedData) : {}
       const parsedDraft = parsePropertyDraftData(message, payload)
+      const messagePrice = messagePriceForLog
+      const payloadPrice = payloadPriceForLog
+      const pendingPrice = parseBrazilianMoney(pendingDraft.price)?.value ?? (Number(pendingDraft.price ?? 0) || null)
+      const priceOutOfRange = Boolean(messagePrice?.outOfRange || payloadPrice?.outOfRange || pendingDraft.priceOutOfRange)
+      const resolvedPrice = priceOutOfRange
+        ? 0
+        : messagePrice?.value ?? payloadPrice?.value ?? pendingPrice ?? parsedDraft.price ?? 0
       const draft = {
         ...parsedDraft,
         ...pendingDraft,
@@ -1062,12 +1223,27 @@ export async function runAssessorAction({
         parkingSpots: Number(pendingDraft.parkingSpots ?? parsedDraft.parkingSpots) || 0,
         type: (cleanText(pendingDraft.type, 40) as PropertyType) || parsedDraft.type || "APARTMENT",
         purpose: cleanText(pendingDraft.purpose, 20) || parsedDraft.purpose || "SALE",
-        price: parseFlexiblePriceToCents(message) ?? parseCurrencyInputToCents(payload?.price) ?? Number(pendingDraft.price ?? parsedDraft.price ?? 0),
+        price: resolvedPrice,
+        parsedPriceRaw: messagePrice?.raw ?? payloadPrice?.raw ?? (cleanText(pendingDraft.parsedPriceRaw, 80) || parsedDraft.parsedPriceRaw),
+        parsedPriceFinal: resolvedPrice || null,
+        priceOutOfRange,
       } as ReturnType<typeof parsePropertyDraftData>
+      if (draft.priceOutOfRange) {
+        return {
+          response: "O valor informado parece alto demais. Pode confirmar o valor do imóvel?",
+          metadata: {
+            required: ["price"],
+            noCharge: true,
+            parsedData: draft,
+            parsedPriceRaw: draft.parsedPriceRaw,
+            parsedPriceFinal: null,
+          },
+        }
+      }
       if (!draft.price) {
         return {
           response: "Qual o valor do imóvel?",
-          metadata: { required: ["price"], noCharge: true, parsedData: draft },
+          metadata: { required: ["price"], noCharge: true, parsedData: draft, parsedPriceRaw: draft.parsedPriceRaw, parsedPriceFinal: null },
         }
       }
 
@@ -1094,6 +1270,8 @@ export async function runAssessorAction({
         metadata: {
           propertyId: property.id,
           parsedData: draft,
+          parsedPriceRaw: draft.parsedPriceRaw,
+          parsedPriceFinal: draft.parsedPriceFinal,
           actionStatus: "success",
           durationMs: Date.now() - startedAt,
           futureActions: ["agenda_eme", "follow_up", "documents", "proposals", "ad_publication"],
@@ -1111,6 +1289,12 @@ export async function runAssessorAction({
         brokerId,
         userId,
         payload,
+        parsedPriceRaw: messagePriceForLog?.raw ?? payloadPriceForLog?.raw ?? "",
+        parsedPriceFinal: messagePriceForLog && !messagePriceForLog.outOfRange
+          ? messagePriceForLog.value
+          : payloadPriceForLog && !payloadPriceForLog.outOfRange
+            ? payloadPriceForLog.value
+            : null,
         errorMessage: caughtError instanceof Error ? caughtError.message : "unknown",
         errorStack: caughtError instanceof Error ? caughtError.stack : undefined,
         durationMs: Date.now() - startedAt,
