@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 
 export type PublicBrokerCatalogProperty = {
   id: string
+  publicCode: number | null
   title: string
   location: string
   city: string
@@ -37,6 +38,7 @@ export type PublicBrokerCatalogData = {
 
 export type PublicAgencyCatalogProperty = {
   id: string
+  publicCode: number | null
   title: string
   location: string
   city: string
@@ -139,6 +141,7 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
     whatsApp: broker.user.phone ?? broker.phone ?? "",
     properties: broker.properties.map((property) => ({
       id: property.id,
+      publicCode: property.publicCode ?? null,
       title: property.title,
       location: locationFromProperty(property.city, property.neighborhood),
       city: property.city,
@@ -212,6 +215,7 @@ export async function getPublicAgencyCatalogBySlug(slug: string): Promise<Public
     whatsApp: agency.phone ?? agency.ownerUser.phone ?? "",
     properties: agency.properties.map((property) => ({
       id: property.id,
+      publicCode: property.publicCode ?? null,
       title: property.title,
       location: locationFromProperty(property.city, property.neighborhood),
       city: property.city,

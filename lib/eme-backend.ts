@@ -5,6 +5,7 @@ import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
+import { extractPropertyPublicCode, findPropertyByBrokerPublicCode, getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { buildProposalHtml, proposalHtmlToText } from "@/lib/proposal-template"
 
 export const assessorActions = [
@@ -392,9 +393,11 @@ function extractAgendaPersonName(message: string) {
 function extractPropertyReference(message: string) {
   const normalized = normalizeForIntent(message)
   const parsedPrice = parseBrazilianMoney(message)
+  const publicCode = extractPropertyPublicCode(message)
   const idMatch = normalized.match(/\b(?:imovel|codigo|id)\s+([a-z0-9-]{2,80})\b/)
   const neighborhoodMatch = normalized.match(/\b(?:apartamento|casa|terreno|imovel)?\s*(?:do|da|no|na)\s+([a-z\s-]{3,60})\b/)
   return {
+    publicCode,
     idOrCode: cleanText(idMatch?.[1], 80),
     neighborhood: cleanText(neighborhoodMatch?.[1], 80),
     type: inferPropertyTypeFromText(message),
@@ -487,9 +490,13 @@ function resolvePropertyChoice(message: string, options: Array<{ id?: string; ti
 async function findProposalPropertyCandidates(
   brokerId: string,
   message: string,
-  propertyReference: { idOrCode?: string; neighborhood?: string; type?: PropertyType | null; price?: number | null; parsedPriceRaw?: string },
+  propertyReference: { publicCode?: number | null; idOrCode?: string; neighborhood?: string; type?: PropertyType | null; price?: number | null; parsedPriceRaw?: string },
   take = 4,
 ) {
+  if (propertyReference.publicCode) {
+    const property = await findPropertyByBrokerPublicCode(prisma, brokerId, propertyReference.publicCode)
+    return property ? [property] : []
+  }
   const normalized = normalizeForIntent(message)
   const price = propertyReference.price ?? parseBrazilianMoneyToInt(message)
   const words = normalized
@@ -530,7 +537,7 @@ async function findProposalPropertyCandidates(
     where: { brokerId, ...(AND.length ? { AND } : {}) },
     orderBy: [{ updatedAt: "desc" }],
     take,
-    select: { id: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
+    select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
   })
 }
 
@@ -554,7 +561,7 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
   if (/\b(agendar|agenda|lembrar|lembrete|visita|evento|tarefa)\b/.test(normalized)) return "CREATE_AGENDA_EVENT"
   if (/\b(mostrar|mostre|listar|lista|documentos)\b/.test(normalized) && /\b(documento|documentos|proposta|propostas|contrato)\b/.test(normalized)) return "LIST_DOCUMENTS"
   if (/\b(enviar|envie|abrir|me envie|ver)\b/.test(normalized) && /\b(documento|proposta|contrato)\b/.test(normalized)) return "GET_DOCUMENT"
-  if (/\b(gerar|gere|criar|crie)\b/.test(normalized) && /\b(proposta|documento|contrato)\b/.test(normalized)) return "CREATE_PROPOSAL"
+  if (/\b(gerar|gere|criar|crie|fazer|faca|cadastrar|cadastre)\b/.test(normalized) && /\b(proposta|documento|contrato)\b/.test(normalized)) return "CREATE_PROPOSAL"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione)\b/.test(normalized) && /\b(imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura)\b/.test(normalized)) return "createPropertyDraft"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b/.test(normalized) && /\d{10,13}/.test(normalized)) return "createLead"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b.*\b(lead|contato|cliente)\b/.test(normalized)) return "createLead"
@@ -583,6 +590,20 @@ export function inferCustomerIntent(message: string) {
 export async function searchBrokerProperties(brokerId: string, query: string, limit = 5) {
   if (!brokerId) {
     throw new Error("SEARCH_PROPERTIES sem brokerId.")
+  }
+
+  const publicCode = extractPropertyPublicCode(query)
+  if (publicCode) {
+    const property = await prisma.property.findFirst({
+      where: {
+        brokerId,
+        publicCode,
+        OR: [{ published: true }, { status: PropertyStatus.PUBLISHED }],
+      },
+      orderBy: { updatedAt: "desc" },
+    })
+    const filters = { publicCode, codeSearch: true }
+    return { results: property ? [property] : [], filters }
   }
 
   const filters = parsePropertySearchFilters(query)
@@ -907,7 +928,7 @@ export async function runAssessorAction({
       selectedOption?.id
         ? prisma.property.findFirst({
             where: { brokerId, id: selectedOption.id },
-            select: { id: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
+            select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
           })
         : null,
     ])
@@ -929,7 +950,7 @@ export async function runAssessorAction({
       : await findProposalPropertyCandidates(brokerId, cleanText(pendingParsedData.propertyTerm, 160) || message, propertyReference, 4)
     if (propertyCandidates.length > 1) {
       return {
-        response: `Encontrei mais de um imóvel. Qual devo usar?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.title} — ${item.neighborhood ?? "Sem bairro"} — ${item.city} — ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
+        response: `Encontrei mais de um imóvel. Qual devo usar?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.publicCode ? `Imóvel ${item.publicCode} — ` : ""}${item.title} — ${item.neighborhood ?? "Sem bairro"} — ${item.city} — ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
         metadata: {
           required: ["propertyChoice"],
           noCharge: true,
@@ -1031,7 +1052,11 @@ export async function runAssessorAction({
     try {
       const searchResult = await searchBrokerProperties(brokerId, message)
       const properties = searchResult.results
-      const filters = searchResult.filters
+      const filters = searchResult.filters as typeof searchResult.filters & {
+        priceOutOfRange?: boolean
+        parsedPriceRaw?: string
+        parsedPriceFinal?: number | null
+      }
       if (filters.priceOutOfRange) {
         return {
           response: "O valor informado parece alto demais. Pode confirmar o valor do imóvel?",
@@ -1050,7 +1075,7 @@ export async function runAssessorAction({
       return {
         response: properties.length
           ? `Encontrei ${properties.length} imóvel${properties.length === 1 ? "" : "is"}:\n\n${properties
-              .map((property, index) => `${index + 1}. ${property.title} — ${formatAssessorPropertyPrice(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
+              .map((property, index) => `${index + 1}. ${property.publicCode ? `Imóvel ${property.publicCode} — ` : ""}${property.title} — ${formatAssessorPropertyPrice(property.price)}${property.neighborhood || property.city ? ` — ${property.neighborhood ?? property.city}` : ""}`)
               .join("\n")}\n\nQuer que eu te mande mais detalhes de algum?`
           : "Não encontrei imóveis com esses filtros. Quer que eu tente uma busca mais ampla?",
         metadata: {
@@ -1247,8 +1272,10 @@ export async function runAssessorAction({
         }
       }
 
+      const publicCode = await getNextPropertyPublicCode(prisma, brokerId)
       const property = await prisma.property.create({
         data: {
+          publicCode,
           title: draft.title || "Imóvel em rascunho",
           city: draft.city || "Não informada",
           neighborhood: draft.neighborhood || null,
@@ -1269,6 +1296,7 @@ export async function runAssessorAction({
         response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
         metadata: {
           propertyId: property.id,
+          publicCode: property.publicCode,
           parsedData: draft,
           parsedPriceRaw: draft.parsedPriceRaw,
           parsedPriceFinal: draft.parsedPriceFinal,

@@ -6,6 +6,7 @@ import {
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
 import { mapPropertyPurpose, mapPropertyStatus, mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
+import { getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { prisma } from "@/lib/prisma"
 
 const propertyInclude = {
@@ -66,8 +67,10 @@ export async function POST(request: NextRequest) {
     const billingBlocked = await enforceBrokerPropertyCreation(user)
     if (billingBlocked) return billingBlocked
 
+    const publicCode = await getNextPropertyPublicCode(prisma, user.broker.id)
     const property = await prisma.property.create({
       data: {
+        publicCode,
         title,
         description: description || null,
         price,

@@ -20,6 +20,7 @@ type PropertyWithRelations = Property & {
 
 export type PropertyApiItem = {
   id: string
+  publicCode: number | null
   title: string
   description: string
   audioUrl: string
@@ -128,6 +129,7 @@ export function serializeProperty(property: PropertyWithRelations): PropertyApiI
 
   return {
     id: property.id,
+    publicCode: property.publicCode ?? null,
     title: property.title,
     description: property.description ?? "",
     audioUrl: property.audioUrl ?? "",

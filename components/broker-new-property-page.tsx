@@ -233,6 +233,11 @@ export function BrokerNewPropertyPage() {
       return
     }
 
+    if (!description.trim() && selectedFiles.length === 0 && !audioFile) {
+      setPublishFeedback("Envie uma descrição, foto ou áudio para a IA montar o anúncio.")
+      return
+    }
+
     setIsGenerating(true)
     setHasGenerated(false)
     setIsPublished(false)

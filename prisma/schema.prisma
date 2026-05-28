@@ -140,6 +140,7 @@ model Agency {
 
 model Property {
   id           String         @id @default(cuid())
+  publicCode   Int?
   title        String
   description  String?
   audioUrl     String?
@@ -167,6 +168,8 @@ model Property {
   emeMessages  EmeMessage[]
   agendaEvents AgendaEvent[]
   documents    BrokerDocument[]
+
+  @@unique([brokerId, publicCode])
 }
 
 model BrokerEmeConfig {

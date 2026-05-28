@@ -9,6 +9,7 @@ export type BrokerPropertyPurpose = "Venda" | "Locação"
 
 export type BrokerProperty = {
   id: string
+  publicCode: number | null
   titulo: string
   preco: string
   tipo: BrokerPropertyType
@@ -34,13 +35,14 @@ export type BrokerProperty = {
   audioUrl: string
 }
 
-type BrokerPropertyInput = Omit<BrokerProperty, "id" | "published" | "priceValue"> & {
+type BrokerPropertyInput = Omit<BrokerProperty, "id" | "publicCode" | "published" | "priceValue"> & {
   id?: string
   published?: boolean
 }
 
 type PropertyApiItem = {
   id: string
+  publicCode: number | null
   title: string
   description: string
   price: number
@@ -68,6 +70,7 @@ const PROPERTIES_UPDATED_EVENT = "eme-broker-properties-updated"
 function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
   return {
     id: property.id,
+    publicCode: property.publicCode ?? null,
     titulo: property.title,
     preco: property.formattedPrice,
     tipo: property.type,

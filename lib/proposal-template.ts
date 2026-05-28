@@ -8,6 +8,7 @@ type ProposalLead = {
 
 type ProposalProperty = {
   id?: string | null
+  publicCode?: number | null
   title?: string | null
   city?: string | null
   neighborhood?: string | null
@@ -46,6 +47,17 @@ function propertyPurposeLabel(purpose?: string | null) {
   return purpose === "RENT" ? "Locação" : "Venda"
 }
 
+function propertyTypeLabel(type?: string | null) {
+  if (type === "HOUSE") return "Casa"
+  if (type === "COMMERCIAL") return "Comercial"
+  if (type === "LAND") return "Terreno"
+  if (type === "OFFICE") return "Sala comercial"
+  if (type === "STORE") return "Loja"
+  if (type === "PENTHOUSE") return "Cobertura"
+  if (type === "APARTMENT") return "Apartamento"
+  return type || null
+}
+
 function initials(value?: string | null) {
   const parts = valueOrFallback(value)
     .split(/\s+/)
@@ -76,6 +88,7 @@ export function buildProposalHtml(input: {
   const brokerName = valueOrFallback(broker?.name)
   const leadName = valueOrFallback(lead?.name)
   const purpose = propertyPurposeLabel(property?.purpose)
+  const propertyType = propertyTypeLabel(property?.type)
   const brokerPhoto = broker?.photoUrl?.trim()
   const propertyImage = property?.imageUrl?.trim()
 
@@ -107,7 +120,7 @@ export function buildProposalHtml(input: {
         radial-gradient(circle at 82% 8%, rgba(105, 240, 174, .10), transparent 24%),
         #030503;
       color: var(--text);
-      font-family: Inter, Arial, Helvetica, sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
     }
     .page { max-width: 1120px; margin: 0 auto; padding: 28px; }
     .sheet {
@@ -144,13 +157,14 @@ export function buildProposalHtml(input: {
         rgba(8, 10, 9, .82);
       z-index: 1;
     }
-    .brand-logo { width: 172px; max-width: 100%; height: auto; display: block; }
+    .brand-logo { width: 172px; max-width: 100%; height: auto; display: block; margin: 0 auto; }
     .tagline {
-      margin-top: 12px;
+      margin-top: 6px;
       color: rgba(255,255,255,.72);
       font-size: 10px;
       font-weight: 700;
       letter-spacing: .32em;
+      text-align: center;
       text-transform: uppercase;
     }
     .broker-card, .validity-card {
@@ -335,7 +349,6 @@ export function buildProposalHtml(input: {
       <section class="content">
         <header class="hero">
           <div>
-            <div class="hero-kicker">Documento comercial</div>
             <h1>Proposta Comercial</h1>
             <div class="subtitle">Compra ou locação de imóvel</div>
             <p>Apresentamos esta proposta com condições organizadas para análise e negociação.</p>
@@ -361,8 +374,8 @@ export function buildProposalHtml(input: {
             <div class="property-card-grid">
               <div class="grid">
                 <div class="item"><div class="label">Imóvel</div><div class="value">${escapeHtml(property?.title)}</div></div>
-                <div class="item"><div class="label">Código/ID</div><div class="value">${escapeHtml(property?.id)}</div></div>
-                <div class="item"><div class="label">Tipo</div><div class="value">${escapeHtml(property?.type)}</div></div>
+                <div class="item"><div class="label">Código</div><div class="value">${escapeHtml(property?.publicCode ?? property?.id)}</div></div>
+                <div class="item"><div class="label">Tipo</div><div class="value">${escapeHtml(propertyType)}</div></div>
                 <div class="item"><div class="label">Finalidade</div><div class="value"><span class="pill">${escapeHtml(purpose)}</span></div></div>
                 <div class="item"><div class="label">Bairro</div><div class="value">${escapeHtml(property?.neighborhood)}</div></div>
                 <div class="item"><div class="label">Cidade</div><div class="value">${escapeHtml(property?.city)}</div></div>

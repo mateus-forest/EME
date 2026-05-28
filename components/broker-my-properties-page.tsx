@@ -75,7 +75,7 @@ export function BrokerMyPropertiesPage() {
   const filteredProperties = useMemo(
     () =>
       properties.filter((property) => {
-        const matchesSearch = normalizedSearch ? [property.title, property.city, property.neighborhood].some((field) => field.toLowerCase().includes(normalizedSearch)) : true
+        const matchesSearch = normalizedSearch ? [property.title, property.city, property.neighborhood, property.publicCode ? String(property.publicCode) : ""].some((field) => field.toLowerCase().includes(normalizedSearch)) : true
         const matchesStatus = statusFilters.includes(property.status)
         const matchesType = typeFilters.includes(property.type)
         const numericPrice = Number(property.price.replace(/\D/g, "")) / 100
@@ -397,6 +397,11 @@ export function BrokerMyPropertiesPage() {
 
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="min-w-0">
+                      {property.publicCode ? (
+                        <span className="mb-2 inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-2.5 py-1 text-xs font-semibold text-[#69F0AE]">
+                          Imóvel {property.publicCode}
+                        </span>
+                      ) : null}
                       <h2 className="line-clamp-2 text-lg font-semibold leading-tight text-white sm:text-xl">{property.title}</h2>
                       <div className="mt-2 flex items-center gap-2 text-sm text-white/55">
                         <MapPin className="size-4 shrink-0 text-[#69F0AE]" />

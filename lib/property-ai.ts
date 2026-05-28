@@ -45,11 +45,35 @@ function buildPrompt(input: PropertyGenerationInput) {
   ].join("\n")
 }
 
+function generateFallbackPropertyCopy(input: PropertyGenerationInput): PropertyGenerationResult {
+  const location = [input.neighborhood, input.city].filter((item) => item && item !== "Não informado").join(", ")
+  const specs = [
+    input.bedrooms ? `${input.bedrooms} dormitório${input.bedrooms === 1 ? "" : "s"}` : "",
+    input.bathrooms ? `${input.bathrooms} banheiro${input.bathrooms === 1 ? "" : "s"}` : "",
+    input.parkingSpots ? `${input.parkingSpots} vaga${input.parkingSpots === 1 ? "" : "s"}` : "",
+  ].filter(Boolean)
+  const suggestedTitle = input.title || `${input.type}${location ? ` em ${location}` : ""}`
+  const description = [
+    `${suggestedTitle} disponível para negociação.`,
+    location ? `Localização: ${location}.` : "",
+    specs.length ? `O imóvel conta com ${specs.join(", ")}.` : "",
+    input.price && input.price !== "Não informado" ? `Valor anunciado: ${input.price}.` : "",
+    input.description || "Revise os detalhes e complemente as informações antes de publicar.",
+  ].filter(Boolean).join(" ")
+
+  return {
+    description,
+    suggestedTitle,
+    highlights: [input.type, location || "Cadastro revisável", specs[0] || "Pronto para revisar"].filter(Boolean).slice(0, 3),
+  }
+}
+
 export async function generatePropertyCopy(input: PropertyGenerationInput) {
   const client = getOpenAIClient()
 
   if (!client) {
-    throw new Error("OPENAI_DISABLED_OR_NOT_CONFIGURED")
+    console.warn("[property-ai] OpenAI disabled; using local fallback generation.")
+    return generateFallbackPropertyCopy(input)
   }
   const { model } = getOpenAIEnv()
 

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceAgencyOperationalAccess, enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
 import { parsePriceInput, serializeProperty } from "@/lib/property-contract"
+import { getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { mapXmlPropertyType, type ParsedXmlProperty, XML_IMPORT_MAX_PROPERTIES } from "@/lib/property-xml-import"
 import { prisma } from "@/lib/prisma"
 
@@ -161,8 +162,10 @@ export async function POST(request: NextRequest) {
         property.externalRef ? `Referencia externa: ${property.externalRef}` : "",
       ].filter(Boolean)
 
+      const publicCode = await getNextPropertyPublicCode(prisma, broker.id)
       const created = await prisma.property.create({
         data: {
+          publicCode,
           title: property.title,
           description: descriptionParts.join("\n\n") || null,
           price,

@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
     const [lead, property] = await Promise.all([
       leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true, email: true } }) : null,
-      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true } }) : null,
+      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true } }) : null,
     ])
     const proposalLead = lead
       ? {
@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
       ? {
           ...property,
           id: manualProperty.id || property.id,
+          publicCode: property.publicCode,
           title: manualProperty.title || property.title,
           neighborhood: manualProperty.neighborhood || property.neighborhood,
           city: manualProperty.city || property.city,
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         lead: { select: { name: true, phone: true } },
-        property: { select: { id: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } },
+        property: { select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } },
       },
     })
 

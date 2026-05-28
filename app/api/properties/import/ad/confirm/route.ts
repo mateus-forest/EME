@@ -5,6 +5,7 @@ import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/aut
 import { enforceAgencyOperationalAccess, enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
 import { adImportDraftSchema, type AdImportDraft } from "@/lib/property-ad-import"
 import { parsePriceInput, serializeProperty } from "@/lib/property-contract"
+import { getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { mapXmlPropertyType } from "@/lib/property-xml-import"
 import { prisma } from "@/lib/prisma"
 
@@ -90,8 +91,10 @@ export async function POST(request: NextRequest) {
     }
 
     const agencyId = user.role === UserRole.AGENCY ? user.ownedAgency?.id ?? null : null
+    const publicCode = await getNextPropertyPublicCode(prisma, broker.id)
     const created = await prisma.property.create({
       data: {
+        publicCode,
         title: draft.title,
         description: buildDescription(draft) || null,
         price,

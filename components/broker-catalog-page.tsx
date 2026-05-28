@@ -246,7 +246,7 @@ export function BrokerCatalogPage() {
                     className="sr-only"
                     onChange={(event) => handleProfilePhotoChange(event.target.files?.[0] ?? null)}
                   />
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-amber-400 text-2xl">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#00C853]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-2xl font-semibold text-[#69F0AE]">
                     {draftSettings.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
@@ -379,7 +379,7 @@ export function BrokerCatalogPage() {
         <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.14)] sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-amber-400 text-xl">
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#00C853]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-xl font-semibold text-[#69F0AE]">
                 {draftSettings.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
@@ -623,7 +623,7 @@ export function BrokerCatalogPage() {
 
                 <div className="mt-8 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-amber-400 text-lg">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-[#00C853]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-lg font-semibold text-[#69F0AE]">
                       {draftSettings.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />

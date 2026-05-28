@@ -57,6 +57,7 @@ export type Agency = {
 
 export type Property = {
   id: string
+  publicCode: number | null
   title: string
   description: string | null
   audioUrl: string | null
