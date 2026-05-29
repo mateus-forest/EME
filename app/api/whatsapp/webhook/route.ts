@@ -5,6 +5,7 @@ import {
   cleanText,
   generateAssessorText,
   generateCorretorEmeReply,
+  getAssessorActionErrorResponse,
   getAssessorVisualAction,
   getPendingAssessorContext,
   inferCustomerIntent,
@@ -37,6 +38,7 @@ function shouldReturnActionResponse(action: AssessorAction) {
     "getAnalyticsSummary",
     "getCatalogSummary",
     "getLeadsSummary",
+    "createInternalNotification",
     "analyzeCatalog",
     "summarizeLead",
   ].includes(action)
@@ -329,7 +331,7 @@ async function processAssessorMessage({
       message,
       action,
       confirm: false,
-      payload: resolvedInput.payload,
+      payload: { ...resolvedInput.payload, whatsappMedia: metadata.media },
     }) as typeof actionResult
     actionStatus =
       Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
@@ -366,7 +368,7 @@ async function processAssessorMessage({
   } catch (caughtError) {
     actionStatus = "error"
     errorMessage = caughtError instanceof Error ? caughtError.message : "Erro na ação interna."
-    responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
+    responseText = getAssessorActionErrorResponse(action)
     finalCreditsUsed = 0
     const errorStack = caughtError instanceof Error ? caughtError.stack : undefined
     console.error("[api][whatsapp][assessor-action][failed]", {

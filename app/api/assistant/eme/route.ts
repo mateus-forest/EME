@@ -5,6 +5,7 @@ import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/aut
 import {
   cleanText,
   generateAssessorText,
+  getAssessorActionErrorResponse,
   getPendingAssessorContext,
   resolveAssessorInputWithContext,
   runAssessorAction,
@@ -87,6 +88,7 @@ function shouldReturnActionResponse(action: AssessorAction) {
     "getAnalyticsSummary",
     "getCatalogSummary",
     "getLeadsSummary",
+    "createInternalNotification",
     "analyzeCatalog",
     "summarizeLead",
   ].includes(action)
@@ -291,7 +293,7 @@ export async function POST(request: NextRequest) {
     } catch (caughtActionError) {
       actionStatus = "error"
       errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na ação interna."
-      responseText = "Não consegui concluir essa ação agora. Registrei o erro para acompanhamento interno."
+      responseText = getAssessorActionErrorResponse(action)
       finalCreditsUsed = 0
       await prisma.notification.create({
         data: {

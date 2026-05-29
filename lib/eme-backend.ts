@@ -84,6 +84,36 @@ function isAssessorGreeting(message: string) {
   return /^(oi|ola|olá|bom dia|boa tarde|boa noite|tudo bem|ajuda|menu|help)$/.test(normalized)
 }
 
+const FIXED_ASSESSOR_MENU_RESPONSE =
+  "Ol\u00e1! Sou o Assessor EME \ud83d\ude0a\n\nPara eu executar tudo corretamente, envie seus pedidos nesse formato:\n\n\u2022 Cadastrar im\u00f3vel: apartamento 3 quartos, Centro, Vacaria, R$ 790 mil, venda\n\u2022 Buscar im\u00f3vel: apartamento at\u00e9 790 mil em Vacaria\n\u2022 Criar proposta: Jo\u00e3o im\u00f3vel 2\n\u2022 Cadastrar lead: Mateus, (54) 99990-2688, novo\n\u2022 Agendar compromisso: visita amanh\u00e3 com Jo\u00e3o \u00e0s 15h\n\u2022 Minha agenda de amanh\u00e3\n\u2022 Analisar leads\n\u2022 Relat\u00f3rio analytics\n\u2022 Analisar financeiro\n\u2022 Minhas notifica\u00e7\u00f5es\n\nSe faltar alguma informa\u00e7\u00e3o, eu aviso e continuo o rascunho sempre que poss\u00edvel."
+
+const FIXED_ASSESSOR_FALLBACK_RESPONSE =
+  "N\u00e3o identifiquei a a\u00e7\u00e3o.\nVoc\u00ea pode enviar assim:\n\n\u2022 Cadastrar lead: Mateus, 54999999999, novo\n\u2022 Cadastrar im\u00f3vel: apartamento 3 quartos, Centro, Vacaria, R$ 790 mil, venda\n\u2022 Buscar im\u00f3vel: apartamento at\u00e9 790 mil\n\u2022 Criar proposta: Jo\u00e3o im\u00f3vel 2\n\u2022 Agendar compromisso: visita amanh\u00e3 com Jo\u00e3o \u00e0s 15h"
+
+function isFixedAssessorGreeting(message: string) {
+  const normalized = normalizeForIntent(message).replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim()
+  return /^(oi|ola|olá|bom dia|boa tarde|boa noite|tudo bem|ajuda|menu|help|o que voce faz|o que você faz)$/.test(normalized)
+}
+
+export function getAssessorActionErrorResponse(action: AssessorAction) {
+  if (action === "searchProperties") return "Não consegui buscar esse imóvel agora.\nEnvie assim: Buscar imóvel: apartamento até 790 mil em Vacaria."
+  if (action === "CREATE_PROPOSAL") return "Não consegui criar a proposta agora.\nEnvie assim: Criar proposta: João imóvel 2."
+  if (action === "createPropertyDraft") return "Não consegui cadastrar o imóvel agora.\nEnvie assim: Cadastrar imóvel: apartamento 3 quartos, Centro, Vacaria, R$ 790 mil, venda."
+  if (action === "createLead") return "Não consegui cadastrar o lead agora.\nEnvie assim: Cadastrar lead: Mateus, 54999999999, novo."
+  if (action === "CREATE_AGENDA_EVENT" || action === "LIST_AGENDA_EVENTS") return "Não consegui acessar a agenda agora.\nEnvie assim: Agendar compromisso: visita amanhã com João às 15h."
+  return "Não consegui concluir essa ação agora.\nEnvie menu para ver os formatos aceitos."
+}
+
+export function buildSaturdayAssessorMessage(date = new Date()) {
+  if (date.getDay() !== 6) return null
+  const key = date.toISOString().slice(0, 10)
+  return {
+    key,
+    message: "Final de semana é dia de descanso, mas eu sigo aqui na operação, junto com meu aliado catálogo 🚀",
+    pendingCron: true,
+  }
+}
+
 function isLikelyUnknownAssessorMessage(message: string, action: AssessorAction) {
   if (action !== "general") return false
   const normalized = normalizeForIntent(message).replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim()
@@ -112,6 +142,14 @@ function extractLeadData(message: string) {
   )
 
   return { name, phone }
+}
+
+function parseLeadStatusFromText(message: string): LeadStatus {
+  const normalized = normalizeForIntent(message)
+  if (/\b(convertido|ganho|fechado)\b/.test(normalized)) return LeadStatus.WON
+  if (/\b(perdido|perdeu)\b/.test(normalized)) return LeadStatus.LOST
+  if (/\b(em atendimento|atendimento|negociacao|negociação)\b/.test(normalized)) return LeadStatus.CONTACTED
+  return LeadStatus.NEW
 }
 
 const MAX_PROPERTY_INTEGER_VALUE = 2_147_483_647
@@ -189,10 +227,10 @@ function inferPropertyTypeFromText(message: string): PropertyType | null {
 function parsePropertySearchFilters(message: string) {
   const normalized = normalizeForIntent(message)
   const parsedPrice = parseBrazilianMoney(message)
-  const cityMatch = normalized.match(/\b(?:em|na cidade de|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|no bairro|bairro|e|$)|$)/)
+  const cityMatch = normalized.match(/\b(?:em|na cidade de|cidade)\s+([\p{L}\s-]{3,60})(?:\s+(?:ate|até|com|no bairro|bairro|e|$)|$)/u)
   const neighborhoodMatch =
-    normalized.match(/\b(?:bairro|no bairro|na regiao|regiao)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/) ??
-    normalized.match(/\b(?:no|na)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/)
+    normalized.match(/\b(?:bairro|no bairro|na regiao|regiao)\s+([\p{L}\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/u) ??
+    normalized.match(/\b(?:no|na)\s+([\p{L}\s-]{3,60})(?:\s+(?:ate|até|com|e|$)|$)/u)
   const bedroomsMatch = normalized.match(/(\d+)\s*(?:quartos|dormitorios|dormitórios)/)
   const purpose = normalized.includes("aluguel") || normalized.includes("alugar") || normalized.includes("locacao") || normalized.includes("locação")
     ? "RENT"
@@ -213,13 +251,49 @@ function parsePropertySearchFilters(message: string) {
   }
 }
 
+function parseFixedPropertyDraftCommand(message: string) {
+  const afterCommand = message.replace(/^.*?cadastrar\s+im[oó]vel\s*:?\s*/i, "").trim()
+  const parts = afterCommand
+    .split(",")
+    .map((part) => cleanText(part, 120))
+    .filter(Boolean)
+  const normalizedParts = parts.map((part) => normalizeForIntent(part))
+  const pricePart = parts.find((part) => parseBrazilianMoney(part))
+  const purposePart = normalizedParts.find((part) => /\b(venda|aluguel|locacao|locação|alugar)\b/.test(part)) ?? ""
+  const purpose = purposePart.includes("aluguel") || purposePart.includes("locacao") || purposePart.includes("locação") || purposePart.includes("alugar")
+    ? "RENT"
+    : purposePart.includes("venda")
+      ? "SALE"
+      : null
+  const detailPart = parts[0] ?? afterCommand
+  const localityParts = parts.filter((part) => {
+    const normalized = normalizeForIntent(part)
+    return part !== pricePart &&
+      !/\b(venda|aluguel|locacao|locação|alugar)\b/.test(normalized) &&
+      !/\b(apartamento|apto|casa|cobertura|terreno|sala|loja|quartos|dormitorios|dormitórios|dorms?)\b/.test(normalized)
+  })
+  const firstLocality = localityParts[0] ?? ""
+  const secondLocality = localityParts[1] ?? ""
+  const firstLooksLikeNeighborhood = /\b(centro|bairro|menino deus|petropolis|petrópolis)\b/.test(normalizeForIntent(firstLocality))
+  const city = secondLocality ? (firstLooksLikeNeighborhood ? secondLocality : firstLocality) : ""
+  const neighborhood = secondLocality ? (firstLooksLikeNeighborhood ? firstLocality : secondLocality) : firstLocality
+
+  return {
+    detailPart,
+    city: cleanText(city, 100),
+    neighborhood: cleanText(neighborhood, 100),
+    purpose,
+  }
+}
+
 function parsePropertyDraftData(message: string, payload?: Record<string, unknown>) {
   const normalized = normalizeForIntent(message)
+  const fixedCommand = parseFixedPropertyDraftCommand(message)
   const type = inferPropertyTypeFromText(message) ?? "APARTMENT"
-  const cityMatch = normalized.match(/\b(?:em|cidade)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:bairro|no|na|com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/)
-  const centerCityMatch = normalized.match(/\b(?:no|na)\s+centro\s+de\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/)
+  const cityMatch = normalized.match(/\b(?:em|cidade)\s+([\p{L}\s-]{3,60})(?:\s+(?:bairro|no|na|com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/u)
+  const centerCityMatch = normalized.match(/\b(?:no|na)\s+centro\s+de\s+([\p{L}\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/u)
   const neighborhoodMatch =
-    normalized.match(/\b(?:bairro|no bairro|no|na)\s+([a-zà-ÿ\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/) ??
+    normalized.match(/\b(?:bairro|no bairro|no|na)\s+([\p{L}\s-]{3,60})(?:\s+(?:com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/u) ??
     normalized.match(/\b(centro)\b/)
   const bedroomsMatch = normalized.match(/(\d+)\s*(?:quartos|dormitorios|dormitórios|dorms?)/)
   const bathroomsMatch = normalized.match(/(\d+)\s*(?:banheiros|banheiro|bwc)/)
@@ -239,6 +313,9 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
 
   const city = cleanText(payload?.city, 100) || cleanText(centerCityMatch?.[1], 100) || cleanText(cityMatch?.[1], 100) || "Não informada"
   const neighborhood = cleanText(payload?.neighborhood, 100) || (centerCityMatch ? "Centro" : cleanText(neighborhoodMatch?.[1], 100)) || null
+  const resolvedCity = fixedCommand.city || city
+  const resolvedNeighborhood = fixedCommand.neighborhood || neighborhood
+  const resolvedPurpose = fixedCommand.purpose ?? purpose
   const bedrooms = Number(payload?.bedrooms) || (bedroomsMatch ? Number(bedroomsMatch[1]) : 0)
   const bathrooms = Number(payload?.bathrooms) || (bathroomsMatch ? Number(bathroomsMatch[1]) : 0)
   const parkingSpots = Number(payload?.parkingSpots ?? payload?.parking) || (parkingMatch ? Number(parkingMatch[1]) : 0)
@@ -255,8 +332,8 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
 
   return {
     title: title || `${typeLabel} em rascunho`,
-    city,
-    neighborhood,
+    city: resolvedCity,
+    neighborhood: resolvedNeighborhood,
     price,
     parsedPriceRaw: parsedPrice?.raw ?? "",
     parsedPriceFinal: price || null,
@@ -265,7 +342,7 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
     bathrooms,
     parkingSpots,
     type,
-    purpose,
+    purpose: resolvedPurpose,
     area,
     features,
     description: descriptionParts.join("\n"),
@@ -337,8 +414,38 @@ function parseAgendaListRange(message: string) {
   return { start, end, label: pendingOnly ? "pendente" : normalized.includes("amanha") ? "de amanhã" : normalized.includes("semana") ? "da semana" : "de hoje", pendingOnly }
 }
 
+function parseFixedAgendaListRange(message: string) {
+  const normalized = normalizeForIntent(message)
+  const start = normalized.includes("amanha") ? addDays(getDateOnly(new Date()), 1) : parseAgendaDate(message)
+  const end = new Date(start)
+  end.setDate(start.getDate() + (normalized.includes("mes") || normalized.includes("mês") ? 31 : normalized.includes("semana") ? 7 : 1))
+  const pendingOnly = /\b(pendente|pendentes|abertos|em aberto)\b/.test(normalized)
+  const label = pendingOnly
+    ? "pendente"
+    : normalized.includes("amanha")
+      ? "de amanhã"
+      : normalized.includes("semana")
+        ? "da próxima semana"
+        : normalized.includes("mes") || normalized.includes("mês")
+          ? "do próximo mês"
+          : normalized.includes("hoje")
+            ? "de hoje"
+            : `de ${formatAgendaDateLabel(message, start)}`
+  return { start, end, label, pendingOnly }
+}
+
+function parseFixedProposalCommand(message: string) {
+  const match = message.match(/(?:criar|gerar|cadastrar)\s+proposta\s*:?\s*([^,\n]+?)\s+im[oó]vel\s+(\d{1,6})/i)
+  if (!match) return { personName: "", publicCode: null as number | null }
+  const publicCode = Number(match[2])
+  return {
+    personName: cleanText(match[1], 120),
+    publicCode: Number.isInteger(publicCode) && publicCode > 0 ? publicCode : null,
+  }
+}
+
 function extractPersonName(message: string) {
-  const directMatch = message.match(/\bpara\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)?)/i)
+  const directMatch = message.match(/\bpara\s+([\p{L}]+(?:\s+[\p{L}]+)?)/iu)
   if (directMatch?.[1]) {
     return cleanText(directMatch[1].replace(/\b(?:no|na|do|da|imóvel|imovel|apartamento|casa|terreno)\b.*$/i, ""), 120)
   }
@@ -386,7 +493,7 @@ async function findLeadCandidates(brokerId: string, personName: string, take = 4
 }
 
 function extractAgendaPersonName(message: string) {
-  const match = message.match(/\b(?:com|para)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)?)/i)
+  const match = message.match(/\b(?:com|para)\s+([\p{L}]+(?:\s+[\p{L}]+)?)/iu)
   return cleanText(match?.[1]?.replace(/\b(?:no|na|imóvel|imovel|apartamento|casa|terreno)\b.*$/i, ""), 120)
 }
 
@@ -551,7 +658,17 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
   if (assessorActions.includes(requestedAction as AssessorAction)) return requestedAction as AssessorAction
 
   const normalized = normalizeForIntent(message)
-  if (isAssessorGreeting(message)) return "general"
+  if (isFixedAssessorGreeting(message) || isAssessorGreeting(message)) return "general"
+  if (/\b(minhas notificacoes|minhas notificações|o que preciso revisar|resumo da operacao|resumo da operação|pendencias de hoje|pendências de hoje)\b/.test(normalized)) return "createInternalNotification"
+  if (/^\s*cadastrar\s+im[oó]vel\s*:/i.test(message)) return "createPropertyDraft"
+  if (/^\s*buscar\s+im[oó]vel\s*:/i.test(message)) return "searchProperties"
+  if (/^\s*(criar|gerar|cadastrar)\s+proposta\s*:/i.test(message)) return "CREATE_PROPOSAL"
+  if (/^\s*cadastrar\s+lead\s*:/i.test(message)) return "createLead"
+  if (/^\s*agendar\s+compromisso\s*:/i.test(message)) return "CREATE_AGENDA_EVENT"
+  if (/\b(minha agenda|agenda de|agenda da proxima|agenda do proximo|agenda da próxima|agenda do próximo)\b/.test(normalized)) return "LIST_AGENDA_EVENTS"
+  if (/\b(analisar leads|resumo dos leads|como estao meus leads|como estão meus leads)\b/.test(normalized)) return "getLeadsSummary"
+  if (/\b(relatorio analytics|relatório analytics|analisar analytics|como esta meu catalogo|como está meu catálogo)\b/.test(normalized)) return "getAnalyticsSummary"
+  if (/\b(analisar financeiro|resumo financeiro|como esta meu financeiro|como está meu financeiro)\b/.test(normalized)) return "getFinancialSummary"
   if (/\b(resumo|como esta|como estao|quantas|quantos|quais|mostrar|mostre|ver)\b/.test(normalized) && /\b(leads|lead|clientes|contatos)\b/.test(normalized)) return "getLeadsSummary"
   if (/\b(resumo|como esta|como estao|quantas|quantos|quais|acessos|visitas|visualizacoes|visualiz)\b/.test(normalized) && /\b(analytics|acessos|visitas|visualizacoes|visualiz|vistos)\b/.test(normalized)) return "getAnalyticsSummary"
   if (/\b(resumo|como esta|como estao|quantos|buscas|publicados|catalogo)\b/.test(normalized) && /\b(catalogo|imoveis publicados|buscas)\b/.test(normalized)) return "getCatalogSummary"
@@ -789,13 +906,13 @@ export async function runAssessorAction({
       })
       await prisma.notification.create({ data: { userId, title: "Compromisso agendado", message: `${title} ${formatAgendaDateLabel(message, date)} às ${time}.`, read: false } })
       return {
-        response: `Compromisso agendado ✅\n${formatAgendaDateLabel(message, date)} às ${time} — ${title}.`,
+        response: `Compromisso criado ✅\n${formatAgendaDateLabel(message, date)} às ${time} — ${title}.`,
         metadata: { agendaEventId: event.id, parsedData: { ...parsedData, time }, status: "pending" },
       }
     }
 
     const date = parseAgendaDate(message)
-    const time = parseAgendaTime(message)
+    const time = parseAgendaTime(message) || "não informado"
     const type = parseAgendaType(message)
     const personName = extractAgendaPersonName(message)
     const propertyReference = extractPropertyReference(message)
@@ -820,7 +937,7 @@ export async function runAssessorAction({
     ])
     const baseTitle = parseAgendaTitle(message)
     const title = cleanText(`${baseTitle}${lead?.name || personName ? ` com ${lead?.name ?? personName}` : ""}${property ? ` no ${property.title}` : ""}`, 160)
-    if (!time) {
+    if (!time && Boolean(payload?.requireTime)) {
       return {
         response: "Qual horário devo colocar?",
         metadata: {
@@ -836,7 +953,7 @@ export async function runAssessorAction({
         title,
         type,
         date,
-        time,
+        time: time || null,
         leadId: lead?.id ?? null,
         propertyId: property?.id ?? null,
         notes: message,
@@ -845,7 +962,7 @@ export async function runAssessorAction({
     })
     await prisma.notification.create({ data: { userId, title: "Compromisso agendado", message: `${title} ${formatAgendaDateLabel(message, date)} às ${time}.`, read: false } })
     return {
-      response: `Compromisso agendado ✅\n${formatAgendaDateLabel(message, date)} às ${time} — ${title}.`,
+      response: `Compromisso criado ✅\n${title} — ${formatAgendaDateLabel(message, date)}.\nHorário: ${time || "não informado"}.`,
       metadata: {
         agendaEventId: event.id,
         leadId: lead?.id ?? null,
@@ -859,7 +976,7 @@ export async function runAssessorAction({
   }
 
   if (action === "LIST_AGENDA_EVENTS") {
-    const range = parseAgendaListRange(message)
+    const range = parseFixedAgendaListRange(message)
     const events = await prisma.agendaEvent.findMany({
       where: {
         brokerId,
@@ -892,6 +1009,7 @@ export async function runAssessorAction({
   }
 
   if (action === "CREATE_PROPOSAL") {
+    const fixedProposal = parseFixedProposalCommand(message)
     const pendingParsedData = pendingContext.action === "CREATE_PROPOSAL" ? metadataRecord(pendingContext.parsedData) : {}
     const pendingPropertyReference = metadataRecord(pendingParsedData.propertyReference)
     const pendingLeadIds = Array.isArray(pendingParsedData.leadIds) ? pendingParsedData.leadIds.map((id) => cleanText(id, 80)).filter(Boolean) : []
@@ -899,14 +1017,15 @@ export async function runAssessorAction({
       pendingContext.missingField === "lead" &&
       pendingParsedData.awaitingManualConfirmation === true &&
       /^(sim|s|pode|gerar manual|isso|ok|claro)$/i.test(normalizeForIntent(message).trim())
-    const personName = pendingContext.missingField === "lead"
+    const personName = fixedProposal.personName || (pendingContext.missingField === "lead"
       ? cleanText(pendingParsedData.personName, 120) || cleanText(message, 120)
-      : cleanText(pendingParsedData.personName, 120) || extractPersonName(message)
+      : cleanText(pendingParsedData.personName, 120) || extractPersonName(message))
     const selectedLeadId = pendingContext.missingField === "lead" && pendingLeadIds.length
       ? pendingLeadIds[Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)] ?? null
       : null
     const propertyReference = {
       ...extractPropertyReference(message),
+      publicCode: fixedProposal.publicCode ?? extractPropertyReference(message).publicCode,
       idOrCode: cleanText(pendingPropertyReference.idOrCode, 80) || cleanText(pendingParsedData.propertyId, 80) || extractPropertyReference(message).idOrCode,
       neighborhood: cleanText(pendingPropertyReference.neighborhood, 80) || cleanText(pendingParsedData.propertyNeighborhood, 80) || cleanText(pendingParsedData.propertyTerm, 120) || extractPropertyReference(message).neighborhood,
       type: (cleanText(pendingPropertyReference.type, 40) as PropertyType | "") || extractPropertyReference(message).type,
@@ -939,7 +1058,7 @@ export async function runAssessorAction({
       }
     }
     const lead = matchingLeads[0] ?? null
-    if (!lead && !isManualProposalConfirmation) {
+    if (!lead && !personName && !isManualProposalConfirmation) {
       return {
         response: personName ? "Não encontrei esse lead cadastrado.\nQuer gerar manualmente?" : "Para qual cliente devo gerar a proposta?",
         metadata: { required: ["lead"], noCharge: true, parsedData: { personName, propertyReference, propertyTerm: cleanText(pendingParsedData.propertyTerm, 160) || message, awaitingManualConfirmation: Boolean(personName) } },
@@ -993,13 +1112,16 @@ export async function runAssessorAction({
           property: proposalProperty,
           broker: { name: broker?.user.name ?? "", phone: broker?.phone, email: broker?.user.email, city: resolvedProperty.city, creci: broker?.creci, photoUrl: broker?.user.photoUrl },
         }),
-        status: "generated",
+        status: "draft",
       },
     })
     await prisma.notification.create({ data: { userId, title: "Proposta gerada", message: `Proposta para ${proposalLead.name || personName || "cliente"} foi salva em Documentos.`, read: false } })
     return {
-      response: `Proposta gerada ✅\nUsei o imóvel: ${resolvedProperty.title}.\nSalvei em Documentos.`,
-      metadata: { documentId: document.id, leadId: lead?.id ?? null, propertyId: resolvedProperty.id, parsedData: { personName, title, propertyReference, manualLead: !lead }, status: "generated" },
+      response: `Proposta criada em rascunho ✅
+Cliente: ${proposalLead.name || personName || "Cliente"}
+Imóvel: ${resolvedProperty.publicCode ?? resolvedProperty.id}
+Revise e preencha os dados restantes antes de enviar.`,
+      metadata: { documentId: document.id, leadId: lead?.id ?? null, propertyId: resolvedProperty.id, parsedData: { personName, title, propertyReference, manualLead: !lead }, status: "draft" },
       leadId: lead?.id,
       propertyId: resolvedProperty.id,
     }
@@ -1050,6 +1172,21 @@ export async function runAssessorAction({
     const startedAt = Date.now()
     const parsedPriceForLog = parseBrazilianMoney(message)
     try {
+      if (pendingContext.action === "searchProperties" && pendingContext.missingField === "propertyChoice") {
+        const pendingParsedData = metadataRecord(pendingContext.parsedData)
+        const propertyOptions = Array.isArray(pendingParsedData.propertyOptions) ? pendingParsedData.propertyOptions as Array<{ id?: string; title?: string }> : []
+        const selectedOption = resolvePropertyChoice(message, propertyOptions)
+        if (selectedOption?.id) {
+          const property = await prisma.property.findFirst({ where: { brokerId, id: selectedOption.id } })
+          if (property) {
+            return {
+              response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} — ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
+              metadata: { propertyId: property.id, publicCode: property.publicCode, actionStatus: "success", durationMs: Date.now() - startedAt },
+              propertyId: property.id,
+            }
+          }
+        }
+      }
       const searchResult = await searchBrokerProperties(brokerId, message)
       const properties = searchResult.results
       const filters = searchResult.filters as typeof searchResult.filters & {
@@ -1068,6 +1205,57 @@ export async function runAssessorAction({
             parsedPriceRaw: filters.parsedPriceRaw,
             parsedPriceFinal: null,
             actionStatus: "needs_input",
+            durationMs: Date.now() - startedAt,
+          },
+        }
+      }
+      if (properties.length === 1) {
+        const property = properties[0]
+        return {
+          response: `Encontrei este imóvel:\n\nImóvel ${property.publicCode ?? "-"} — ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} — ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
+          metadata: {
+            propertyIds: [property.id],
+            propertySearchFilters: filters,
+            resultCount: 1,
+            originalMessage: message,
+            parsedPriceRaw: filters.parsedPriceRaw,
+            parsedPriceFinal: filters.parsedPriceFinal,
+            actionStatus: "success",
+            durationMs: Date.now() - startedAt,
+          },
+          propertyId: property.id,
+        }
+      }
+      if (properties.length > 1) {
+        return {
+          response: `Encontrei mais de um imóvel:\n\n${properties
+            .map((property, index) => `${index + 1}. ${property.title} — ${property.neighborhood ?? property.city} — ${formatAssessorPropertyPrice(property.price)}`)
+            .join("\n")}\n\nQual deles você quer?`,
+          metadata: {
+            required: ["propertyChoice"],
+            propertyOptions: properties.map((property) => ({ id: property.id, title: property.title })),
+            propertyIds: properties.map((property) => property.id),
+            propertySearchFilters: filters,
+            resultCount: properties.length,
+            originalMessage: message,
+            parsedPriceRaw: filters.parsedPriceRaw,
+            parsedPriceFinal: filters.parsedPriceFinal,
+            actionStatus: "success",
+            durationMs: Date.now() - startedAt,
+          },
+        }
+      }
+      if (properties.length === 0) {
+        return {
+          response: "Não encontrei imóveis com esses dados.\nEnvie assim: Buscar imóvel: apartamento até 790 mil em Vacaria.",
+          metadata: {
+            propertyIds: [],
+            propertySearchFilters: filters,
+            resultCount: 0,
+            originalMessage: message,
+            parsedPriceRaw: filters.parsedPriceRaw,
+            parsedPriceFinal: filters.parsedPriceFinal,
+            actionStatus: "success",
             durationMs: Date.now() - startedAt,
           },
         }
@@ -1108,10 +1296,11 @@ export async function runAssessorAction({
     const properties = await prisma.property.findMany({ where: { brokerId } })
     const total = properties.reduce((sum, property) => sum + Math.max(0, property.price), 0)
     const active = properties.filter((property) => property.published || property.status === PropertyStatus.PUBLISHED).length
+    const inactive = properties.length - active
     const average = properties.length ? Math.round(total / properties.length) : 0
     return {
-      response: `Sua carteira está em ${formatCurrencyBRLFromCents(total)}, com ticket médio de ${formatCurrencyBRLFromCents(average)} e ${active} imóvel${active === 1 ? "" : "is"} ativo${active === 1 ? "" : "s"}.`,
-      metadata: { totalProperties: properties.length, activeProperties: active, averageTicket: average, totalPortfolioValue: total },
+      response: `Resumo financeiro:\n\n• Imóveis cadastrados: ${properties.length}\n• Valor da carteira: ${formatAssessorPropertyPrice(total)}\n• Ticket médio: ${formatAssessorPropertyPrice(average)}\n• Ativos: ${active}\n• Inativos/rascunhos: ${inactive}`,
+      metadata: { totalProperties: properties.length, activeProperties: active, inactiveProperties: inactive, averageTicket: average, totalPortfolioValue: total },
     }
   }
 
@@ -1124,13 +1313,27 @@ export async function runAssessorAction({
     return {
       response:
         action === "getAnalyticsSummary"
-          ? `Seu catálogo teve ${views} visualizações, ${whatsappClicks} cliques no WhatsApp e ${context.leads.length} leads recebidos.`
+          ? `Relatório Analytics:\n\n• Visualizações do catálogo: ${views}\n• Cliques no WhatsApp: ${whatsappClicks}\n• Leads recebidos: ${context.leads.length}\n• Imóveis monitorados: ${context.properties.length}`
           : `Seu catálogo tem ${published} imóveis publicados, ${views} visualizações e ${searches} buscas recentes.`,
       metadata: { properties: context.properties.length, published, leads: context.leads.length, views, whatsappClicks, searches },
     }
   }
 
   if (action === "createInternalNotification") {
+    const today = getDateOnly(new Date())
+    const tomorrow = addDays(today, 1)
+    const [draftProperties, upcomingEvents, pastEvents, draftDocuments, todayClicks, newLeads] = await Promise.all([
+      prisma.property.count({ where: { brokerId, OR: [{ status: PropertyStatus.DRAFT }, { published: false }] } }),
+      prisma.agendaEvent.count({ where: { brokerId, status: "pending", date: { gte: today, lt: addDays(today, 7) } } }),
+      prisma.agendaEvent.count({ where: { brokerId, status: "pending", date: { lt: today } } }),
+      prisma.brokerDocument.count({ where: { brokerId, status: "draft" } }),
+      prisma.catalogEvent.count({ where: { brokerId, eventType: "whatsapp_click", createdAt: { gte: today, lt: tomorrow } } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.NEW } }),
+    ])
+    return {
+      response: `Resumo da operação:\n\n• Imóveis em rascunho: ${draftProperties}\n• Compromissos próximos: ${upcomingEvents}\n• Compromissos atrasados: ${pastEvents}\n• Propostas em rascunho: ${draftDocuments}\n• Cliques do catálogo hoje: ${todayClicks}\n• Leads novos: ${newLeads}`,
+      metadata: { draftProperties, upcomingEvents, pastEvents, draftDocuments, todayClicks, newLeads },
+    }
     await prisma.notification.create({
       data: {
         userId,
@@ -1180,29 +1383,30 @@ export async function runAssessorAction({
         metadata: { required: ["name"], readyForConfirmation: false },
       }
     }
-    if (!phone) {
+    if (!phone && Boolean(payload?.requirePhone)) {
       return {
         response: "Qual o telefone dele?",
         metadata: { required: ["phone"], readyForConfirmation: false, extractedName: name },
       }
     }
 
-    const existingLead = await prisma.lead.findFirst({
+    const requestedStatus = parseLeadStatusFromText(message)
+    const existingLead = phone ? await prisma.lead.findFirst({
       where: { brokerId, phone },
       select: { id: true },
       orderBy: { updatedAt: "desc" },
-    })
+    }) : null
     const lead = existingLead
       ? await prisma.lead.update({
           where: { id: existingLead.id },
-          data: { name, phone, source: "assessor_eme", status: LeadStatus.CONTACTED, message },
+          data: { name, phone: phone || null, source: "assessor_eme", status: requestedStatus, message },
         })
       : await prisma.lead.create({
           data: {
             name,
-            phone,
+            phone: phone || null,
             source: "assessor_eme",
-            status: LeadStatus.NEW,
+            status: requestedStatus,
             brokerId,
             message,
           },
@@ -1215,9 +1419,16 @@ export async function runAssessorAction({
         read: false,
       },
     })
+    if (!phone) {
+      return {
+        response: "Lead cadastrado ✅\nFaltou telefone.",
+        metadata: { leadId: lead.id, phone, name, status: requestedStatus, updatedExisting: Boolean(existingLead) },
+        leadId: lead.id,
+      }
+    }
     return {
       response: existingLead ? "Esse lead já existia. Atualizei as informações 👌" : `Lead ${name} cadastrado com sucesso 👌`,
-      metadata: { leadId: lead.id, phone, name, updatedExisting: Boolean(existingLead) },
+      metadata: { leadId: lead.id, phone, name, status: requestedStatus, updatedExisting: Boolean(existingLead) },
       leadId: lead.id,
     }
   }
@@ -1265,13 +1476,20 @@ export async function runAssessorAction({
           },
         }
       }
-      if (!draft.price) {
+      if (!draft.price && Boolean(payload?.requirePrice)) {
         return {
           response: "Qual o valor do imóvel?",
           metadata: { required: ["price"], noCharge: true, parsedData: draft, parsedPriceRaw: draft.parsedPriceRaw, parsedPriceFinal: null },
         }
       }
 
+      const missingFields = [
+        draft.price ? "" : "valor",
+        draft.city && draft.city !== "Não informada" && draft.city !== "Não informada" ? "" : "cidade",
+        draft.neighborhood ? "" : "bairro",
+        draft.area ? "" : "metragem",
+        draft.parkingSpots ? "" : "vagas",
+      ].filter(Boolean)
       const publicCode = await getNextPropertyPublicCode(prisma, brokerId)
       const property = await prisma.property.create({
         data: {
@@ -1291,6 +1509,28 @@ export async function runAssessorAction({
           brokerId,
         },
       })
+      await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
+      return {
+        response: `Imóvel criado em rascunho ✅
+Código: ${property.publicCode ?? publicCode}
+${missingFields.length ? `Faltou preencher: ${missingFields.join(" e ")}.
+` : ""}Revise antes de publicar.`,
+        metadata: {
+          propertyId: property.id,
+          publicCode: property.publicCode,
+          parsedData: draft,
+          parsedPriceRaw: draft.parsedPriceRaw,
+          parsedPriceFinal: draft.parsedPriceFinal,
+          missingFields,
+          actionStatus: "success",
+          durationMs: Date.now() - startedAt,
+          mediaHandling: {
+            prepared: true,
+            status: "not_saved_without_media_storage_binding",
+          },
+        },
+        propertyId: property.id,
+      }
       await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
       return {
         response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
@@ -1332,6 +1572,19 @@ export async function runAssessorAction({
   }
 
   if (action === "getLeadsSummary") {
+    const [leadTotal, leadNew, contacted, negotiating, won, lost] = await Promise.all([
+      prisma.lead.count({ where: { brokerId } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.NEW } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.CONTACTED } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.NEGOTIATING } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.WON } }),
+      prisma.lead.count({ where: { brokerId, status: LeadStatus.LOST } }),
+    ])
+    const inProgress = contacted + negotiating
+    return {
+      response: `Seus leads:\n\n• Total: ${leadTotal}\n• Novos: ${leadNew}\n• Em atendimento: ${inProgress}\n• Convertidos: ${won}\n• Perdidos: ${lost}`,
+      metadata: { total: leadTotal, newLeads: leadNew, inProgress, won, lost },
+    }
     const [total, newLeads, pending, recent] = await Promise.all([
       prisma.lead.count({ where: { brokerId } }),
       prisma.lead.count({ where: { brokerId, status: LeadStatus.NEW } }),
@@ -1349,8 +1602,8 @@ export async function runAssessorAction({
 }
 
 export async function generateAssessorText(message: string, action: AssessorAction, actionResponse: string) {
-  if (isAssessorGreeting(message)) return ASSESSOR_MENU_RESPONSE
-  if (isLikelyUnknownAssessorMessage(message, action)) return ASSESSOR_FALLBACK_RESPONSE
+  if (isFixedAssessorGreeting(message) || isAssessorGreeting(message)) return FIXED_ASSESSOR_MENU_RESPONSE
+  if (isLikelyUnknownAssessorMessage(message, action)) return FIXED_ASSESSOR_FALLBACK_RESPONSE
 
   const client = getOpenAIClient()
   if (!client) return actionResponse || ASSESSOR_FALLBACK_RESPONSE
