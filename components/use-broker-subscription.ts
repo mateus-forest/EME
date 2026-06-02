@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { type DomainSubscription } from "@/lib/domain-entities"
 
 export type BrokerSubscription = DomainSubscription & {
-  planName: "Sincronizando" | "Plano em teste" | "Corretor"
+  planName: string
   ownerType: "broker"
   brokerId: string | null
   agencyId: string | null
@@ -19,7 +19,7 @@ export type BrokerSubscription = DomainSubscription & {
   requiresRegularization: boolean
   isProfileResolved: boolean
   currentPrice: string
-  previousPrice: string
+  previousPrice: string | null
   nextCharge: string
   paymentMethod: string
 }

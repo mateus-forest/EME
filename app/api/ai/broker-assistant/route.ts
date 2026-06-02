@@ -7,6 +7,7 @@ import {
   getBrokerAssistantCreditCost,
 } from "@/lib/broker-assistant"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
 
@@ -22,13 +23,11 @@ function creditsResponse(broker: { aiCreditsBalance: number; aiCreditsUsedThisMo
 }
 
 async function getBrokerCredits(brokerId: string) {
-  return prisma.broker.findUnique({
-    where: { id: brokerId },
-    select: {
-      aiCreditsBalance: true,
-      aiCreditsUsedThisMonth: true,
-    },
-  })
+  const credits = await getBrokerAiCreditBalance(brokerId)
+  return {
+    aiCreditsBalance: credits.balance,
+    aiCreditsUsedThisMonth: credits.usedThisMonth,
+  }
 }
 
 export async function GET() {
@@ -92,29 +91,12 @@ export async function POST(request: NextRequest) {
     }
 
     const creditsUsed = getBrokerAssistantCreditCost(input.actionType)
-
-    const reserved = await prisma.broker.updateMany({
-      where: {
-        id: user.broker.id,
-        aiCreditsBalance: {
-          gte: creditsUsed,
-        },
-      },
-      data: {
-        aiCreditsBalance: {
-          decrement: creditsUsed,
-        },
-        aiCreditsUsedThisMonth: {
-          increment: creditsUsed,
-        },
-      },
-    })
-
-    if (reserved.count === 0) {
+    const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
+    if (!credits.allowed) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
         {
-          error: "Creditos insuficientes para usar o Assessor EME.",
+          ...createInsufficientCreditsPayload(),
           ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 } }),
         },
         { status: 402 },
@@ -123,7 +105,20 @@ export async function POST(request: NextRequest) {
 
     try {
       const assistantResponse = await generateBrokerAssistantResponse(input.prompt, input.actionType)
-      const updatedBroker = await getBrokerCredits(user.broker.id)
+      const updatedCredits = await consumeBrokerAiCredits({
+        brokerId: user.broker.id,
+        amount: creditsUsed,
+        actionType: input.actionType,
+        description: `Assessor EME: ${input.actionType}`,
+        metadata: {
+          source: "api/ai/broker-assistant",
+          actionType: input.actionType,
+        },
+      })
+      const updatedBroker = {
+        aiCreditsBalance: updatedCredits.balance,
+        aiCreditsUsedThisMonth: updatedCredits.usedThisMonth,
+      }
 
       if (!updatedBroker) {
         return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
@@ -148,18 +143,6 @@ export async function POST(request: NextRequest) {
       response.headers.set("Cache-Control", "no-store, max-age=0")
       return response
     } catch (assistantError) {
-      await prisma.broker.update({
-        where: { id: user.broker.id },
-        data: {
-          aiCreditsBalance: {
-            increment: creditsUsed,
-          },
-          aiCreditsUsedThisMonth: {
-            decrement: creditsUsed,
-          },
-        },
-      })
-
       const isOpenAIUnavailable =
         assistantError instanceof Error && assistantError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")
 

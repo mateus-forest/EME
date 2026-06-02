@@ -15,6 +15,8 @@ import {
   type AssessorAction,
 } from "@/lib/eme-backend"
 import { isPrismaUnavailable } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
+import { getEmeCreditCost } from "@/lib/eme-plans"
 import { LeadStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { markAsRead, sendTextMessage, sanitizeWhatsAppNumber } from "@/lib/whatsapp"
@@ -272,7 +274,6 @@ async function processAssessorMessage({
   message: string
   metadata: Prisma.InputJsonObject
 }) {
-  const creditsUsed = 1
   if (!brokerId) {
     return {
       response: "Não encontrei seu cadastro de corretor vinculado a este WhatsApp.",
@@ -283,15 +284,13 @@ async function processAssessorMessage({
     }
   }
 
-  const brokerCredits = await prisma.broker.findUnique({
-    where: { id: brokerId },
-    select: { aiCreditsBalance: true },
-  })
   const pendingContext = await getPendingAssessorContext(brokerId)
   const resolvedInput = resolveAssessorInputWithContext({ message, pendingContext })
   const action = resolvedInput.action as AssessorAction
+  const creditsUsed: number = getEmeCreditCost(action)
+  const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)
 
-  if (!brokerCredits || brokerCredits.aiCreditsBalance < creditsUsed) {
+  if (!creditState.allowed) {
     const response = "Você atingiu o limite de créditos do Assessor EME do seu plano. Adquira créditos adicionais no painel para continuar utilizando."
     await prisma.emeMessage.create({
       data: {
@@ -343,13 +342,16 @@ async function processAssessorMessage({
       finalCreditsUsed = 0
     }
     if (finalCreditsUsed > 0) {
-      await prisma.broker.update({
-        where: { id: brokerId },
-        data: {
-          aiCreditsBalance: { decrement: finalCreditsUsed },
-          aiCreditsUsedThisMonth: { increment: finalCreditsUsed },
-          aiMonthlyUsage: { increment: finalCreditsUsed },
-          aiLastInteractionAt: new Date(),
+      await consumeBrokerAiCredits({
+        brokerId,
+        amount: finalCreditsUsed,
+        actionType: action,
+        description: `Assessor EME WhatsApp: ${getAssessorVisualAction(action)}`,
+        metadata: {
+          source: "api/whatsapp/webhook",
+          whatsappMessageId: messageId,
+          phoneNumber: fromPhone,
+          action,
         },
       })
     }

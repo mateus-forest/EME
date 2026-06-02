@@ -220,7 +220,7 @@ export function BrokerDocumentsPage() {
     setFeedback("Texto copiado.")
   }
 
-  function openDocument(shouldPrint = false) {
+  async function openDocument(shouldPrint = false) {
     if (!selectedDocument) return
     const printableContent = isHtmlDocument(selectedDocument.content)
       ? selectedDocument.content
@@ -229,6 +229,19 @@ export function BrokerDocumentsPage() {
     if (!popup) {
       setFeedback("Permita pop-ups para abrir o documento.")
       return
+    }
+    if (shouldPrint) {
+      const response = await fetch(`/api/brokers/documents/${selectedDocument.id}/pdf-credit`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      if (!response.ok) {
+        popup.close()
+        setFeedback(data?.error || "Não foi possível preparar o PDF.")
+        return
+      }
     }
     popup.document.open()
     popup.document.write(printableContent)
@@ -365,11 +378,11 @@ export function BrokerDocumentsPage() {
                     <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm leading-7 text-white/70">{selectedDocument.content}</pre>
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <Button type="button" variant="ghost" onClick={() => openDocument(false)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
+                    <Button type="button" variant="ghost" onClick={() => void openDocument(false)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
                       <ExternalLink className="size-4" />
                       Abrir
                     </Button>
-                    <Button type="button" variant="ghost" onClick={() => openDocument(true)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
+                    <Button type="button" variant="ghost" onClick={() => void openDocument(true)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08]">
                       <Download className="size-4" />
                       Baixar PDF
                     </Button>

@@ -116,6 +116,9 @@ model Broker {
   agendaEvents AgendaEvent[]
   documents BrokerDocument[]
   aiAssistantInteractions AiAssistantInteraction[]
+  planAccount BrokerPlanAccount?
+  aiCreditTransactions AiCreditTransaction[]
+  extraPackagePurchases ExtraPackagePurchase[]
   corretorEmeConfig BrokerEmeConfig?
   financialConfig BrokerFinancialConfig?
   emeMessages EmeMessage[]
@@ -376,6 +379,53 @@ model Subscription {
 
   @@unique([ownerType, ownerId])
   @@index([ownerType, ownerId])
+}
+
+model BrokerPlanAccount {
+  id                             String    @id @default(cuid())
+  brokerId                       String    @unique
+  planKey                        String    @default("free")
+  propertyExtraLimit             Int       @default(0)
+  initialCreditsGrantedAt        DateTime?
+  currentPeriodCreditsGrantedAt  DateTime?
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime  @updatedAt
+  broker                         Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([planKey])
+}
+
+model AiCreditTransaction {
+  id          String   @id @default(cuid())
+  brokerId    String
+  type        String
+  amount      Int
+  balanceAfter Int
+  actionType  String?
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([brokerId, createdAt])
+  @@index([type, createdAt])
+}
+
+model ExtraPackagePurchase {
+  id          String   @id @default(cuid())
+  brokerId    String
+  packageKey  String
+  packageType String
+  quantity    Int
+  amountCents Int
+  status      String   @default("registered")
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([brokerId, createdAt])
+  @@index([packageKey])
+  @@index([status])
 }
 
 model Notification {

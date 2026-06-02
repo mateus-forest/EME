@@ -2,9 +2,7 @@ import { NextResponse } from "next/server"
 
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
-import { prisma } from "@/lib/prisma"
-
-const BROKER_FREE_PROPERTY_LIMIT = 3
+import { canCreateBrokerProperties, canPublishBrokerProperty, createPropertyLimitErrorPayload } from "@/lib/eme-plan-service"
 
 type AuthenticatedUser = User & {
   broker: { id: string } | null
@@ -36,35 +34,33 @@ function createBillingBlockedResponse(error: string, ctaHref: string, ctaLabel: 
   )
 }
 
-export async function enforceBrokerPropertyCreation(user: AuthenticatedUser) {
+export async function enforceBrokerPropertyCreation(user: AuthenticatedUser, amount = 1) {
   if (isBillingBypassEnabled()) {
     return null
   }
 
-  const hasActiveBrokerPlan =
-    user.plan === BILLING_PLAN.BROKER &&
-    user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
+  if (user.broker) {
+    const limit = await canCreateBrokerProperties(user.broker.id, amount)
+    if (limit.allowed) return null
+    return NextResponse.json(createPropertyLimitErrorPayload(), { status: 403 })
+  }
 
-  if (hasActiveBrokerPlan) {
+  return createBillingBlockedResponse(
+    billingMessages.brokerInactive,
+    "/corretor/plano",
+    "Regularizar plano",
+  )
+}
+
+export async function enforceBrokerPropertyPublication(user: AuthenticatedUser) {
+  if (isBillingBypassEnabled()) {
     return null
   }
 
-  if (user.plan === BILLING_PLAN.NONE && user.broker) {
-    const totalProperties = await prisma.property.count({
-      where: {
-        brokerId: user.broker.id,
-      },
-    })
-
-    if (totalProperties < BROKER_FREE_PROPERTY_LIMIT) {
-      return null
-    }
-
-    return createBillingBlockedResponse(
-      billingMessages.brokerFreeLimit,
-      "/corretor/plano",
-      "Assinar plano",
-    )
+  if (user.broker) {
+    const limit = await canPublishBrokerProperty(user.broker.id)
+    if (limit.allowed) return null
+    return NextResponse.json(createPropertyLimitErrorPayload(), { status: 403 })
   }
 
   return createBillingBlockedResponse(

@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (user.role === UserRole.BROKER) {
-      const billingBlocked = await enforceBrokerPropertyCreation(user)
+      const billingBlocked = await enforceBrokerPropertyCreation(user, properties.length)
       if (billingBlocked) return billingBlocked
     } else {
       const billingBlocked = enforceAgencyOperationalAccess(user)

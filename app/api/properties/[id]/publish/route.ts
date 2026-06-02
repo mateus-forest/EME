@@ -4,6 +4,7 @@ import {
   NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { enforceBrokerPropertyPublication } from "@/lib/billing-enforcement"
 import { mapPropertyStatus, serializeProperty } from "@/lib/property-contract"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
@@ -53,6 +54,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     if (!statusPayload) {
       return NextResponse.json({ error: "Informe um status de publicação válido." }, { status: 400 })
+    }
+
+    if (statusPayload.published && !property.published) {
+      const billingBlocked = await enforceBrokerPropertyPublication(user)
+      if (billingBlocked) return billingBlocked
     }
 
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {

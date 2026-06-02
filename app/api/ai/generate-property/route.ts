@@ -3,12 +3,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { ZodError } from "zod"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
+import { getEmeCreditCost } from "@/lib/eme-plans"
 import { generatePropertyCopy, propertyGenerationSchema } from "@/lib/property-ai"
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now()
   let stage = "auth"
   let payloadForLog: unknown = null
+  const actionType = "generate_property_ai"
+  const creditsUsed = getEmeCreditCost(actionType)
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -40,6 +44,14 @@ export async function POST(request: NextRequest) {
       description: payload?.description,
     })
 
+    if (user.role === UserRole.BROKER && user.broker) {
+      stage = "check_ai_credits"
+      const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+    }
+
     stage = "openai_generate"
     console.info("[api][ai][generate-property][stage]", {
       stage,
@@ -49,6 +61,22 @@ export async function POST(request: NextRequest) {
       hasDescription: Boolean(input.description),
     })
     const result = await generatePropertyCopy(input)
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      stage = "consume_ai_credits"
+      await consumeBrokerAiCredits({
+        brokerId: user.broker.id,
+        amount: creditsUsed,
+        actionType,
+        description: "Criar anúncio com IA",
+        metadata: {
+          source: "api/ai/generate-property",
+          title: input.title,
+          type: input.type,
+          city: input.city,
+        },
+      })
+    }
 
     console.info("[api][ai][generate-property][success]", {
       stage: "completed",

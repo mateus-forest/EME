@@ -11,6 +11,8 @@ import {
   runAssessorAction,
   type AssessorAction,
 } from "@/lib/eme-backend"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
+import { getEmeCreditCost } from "@/lib/eme-plans"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -27,14 +29,21 @@ function creditsResponse(broker: { aiCreditsBalance: number; aiAssistantEnabled:
 }
 
 async function getBrokerCredits(brokerId: string) {
-  return prisma.broker.findUnique({
-    where: { id: brokerId },
-    select: {
-      aiCreditsBalance: true,
-      aiAssistantEnabled: true,
-      aiCreditsUsedThisMonth: true,
-    },
-  })
+  const [broker, credits] = await Promise.all([
+    prisma.broker.findUnique({
+      where: { id: brokerId },
+      select: { aiAssistantEnabled: true },
+    }),
+    getBrokerAiCreditBalance(brokerId),
+  ])
+
+  return broker
+    ? {
+        aiCreditsBalance: credits.balance,
+        aiAssistantEnabled: broker.aiAssistantEnabled,
+        aiCreditsUsedThisMonth: credits.usedThisMonth,
+      }
+    : null
 }
 
 function serializeAssessorConfig(config: {
@@ -206,7 +215,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null)
   const message = cleanText(body?.message ?? body?.prompt, 3000)
-  const creditsUsed = 1
+  let creditsUsed = 1
 
   if (!message) {
     return NextResponse.json({ error: "Digite uma mensagem para o Assessor EME." }, { status: 400 })
@@ -239,6 +248,18 @@ export async function POST(request: NextRequest) {
       pendingContext,
     })
     const action = resolvedInput.action as AssessorAction
+    creditsUsed = getEmeCreditCost(action)
+
+    if (brokerState.aiCreditsBalance < creditsUsed) {
+      const brokerCredits = await getBrokerCredits(user.broker.id)
+      return NextResponse.json(
+        {
+          ...createInsufficientCreditsPayload(),
+          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+        },
+        { status: 402 },
+      )
+    }
 
     let actionResult: Awaited<ReturnType<typeof runAssessorAction>> = { response: "", metadata: {} }
     let responseText = ""
@@ -269,13 +290,14 @@ export async function POST(request: NextRequest) {
         finalCreditsUsed = 0
       }
       if (finalCreditsUsed > 0) {
-        await prisma.broker.update({
-          where: { id: user.broker.id },
-          data: {
-            aiCreditsBalance: { decrement: finalCreditsUsed },
-            aiCreditsUsedThisMonth: { increment: finalCreditsUsed },
-            aiMonthlyUsage: { increment: finalCreditsUsed },
-            aiLastInteractionAt: new Date(),
+        await consumeBrokerAiCredits({
+          brokerId: user.broker.id,
+          amount: finalCreditsUsed,
+          actionType: action,
+          description: `Assessor EME: ${getVisualActionLabel(action)}`,
+          metadata: {
+            source: "api/assistant/eme",
+            action,
           },
         })
       }

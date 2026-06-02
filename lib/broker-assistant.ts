@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
+import { getEmeCreditCost } from "@/lib/eme-plans"
 import { getOpenAIClient } from "@/lib/openai-server"
 
 export const brokerAssistantActionTypes = [
@@ -37,7 +38,8 @@ function readPositiveInt(name: string, fallback: number) {
 
 export function getBrokerAssistantCreditCost(actionType: BrokerAssistantActionType) {
   const specificKey = `BROKER_M_CREDIT_COST_${actionType.toUpperCase()}`
-  return readPositiveInt(specificKey, readPositiveInt("BROKER_M_CREDIT_COST_DEFAULT", defaultActionCosts[actionType]))
+  const centralCost = actionType === "create_ad" ? getEmeCreditCost("create_ad") : defaultActionCosts[actionType]
+  return readPositiveInt(specificKey, readPositiveInt("BROKER_M_CREDIT_COST_DEFAULT", centralCost))
 }
 
 function buildAssistantPrompt(prompt: string, actionType: BrokerAssistantActionType) {

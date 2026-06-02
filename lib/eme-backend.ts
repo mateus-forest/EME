@@ -2,6 +2,7 @@ import { LeadStatus, PropertyStatus, PropertyType } from "@/lib/prisma-enums"
 import type { Prisma } from "@prisma/client"
 
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
+import { canCreateBrokerProperties } from "@/lib/eme-plan-service"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
@@ -1490,6 +1491,19 @@ Revise e preencha os dados restantes antes de enviar.`,
         draft.area ? "" : "metragem",
         draft.parkingSpots ? "" : "vagas",
       ].filter(Boolean)
+      const propertyLimit = await canCreateBrokerProperties(brokerId)
+      if (!propertyLimit.allowed) {
+        return {
+          response: propertyLimit.message,
+          metadata: {
+            noCharge: true,
+            propertyLimit: propertyLimit.propertyLimit,
+            propertyCount: propertyLimit.propertyCount,
+            requested: propertyLimit.requested,
+          },
+        }
+      }
+
       const publicCode = await getNextPropertyPublicCode(prisma, brokerId)
       const property = await prisma.property.create({
         data: {

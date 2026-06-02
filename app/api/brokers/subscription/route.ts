@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
 import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
@@ -48,6 +49,11 @@ export async function GET() {
       user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE &&
       subscription?.status === "ACTIVE"
     const requiresRegularization = isBrokerPlan && !isActive
+    const planSnapshot = await getBrokerPlanSnapshot(user.broker.id)
+    const isFreePlan = planSnapshot.plan.key === "free"
+    const planPrice = planSnapshot.plan.priceCents === 0
+      ? "R$ 0"
+      : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(planSnapshot.plan.priceCents / 100)
     const nextCharge = isActive
       ? formatDate(subscription?.nextBillingAt ?? null)
       : requiresRegularization
@@ -62,24 +68,24 @@ export async function GET() {
         brokerId: user.broker.id,
         agencyId: null,
         accountType: "BROKER_INDEPENDENT",
-        tipoPlano: isBrokerPlan ? "Corretor" : "Plano em teste",
+        tipoPlano: planSnapshot.plan.name,
         ultimoPagamento: isActive
           ? "Pagamento confirmado pelo Stripe"
           : requiresRegularization
             ? "Pagamento pendente"
             : "Modo teste",
         proximaCobranca: nextCharge,
-        planName: isBrokerPlan ? "Corretor" : "Plano em teste",
-        isUpgraded: isActive,
+        planName: planSnapshot.plan.name,
+        isUpgraded: !isFreePlan || isActive,
         isAgencyLinked: false,
-        propertyLimit: isActive ? null : 3,
-        limitLabel: isActive ? "Publicações do plano Corretor" : "3 imóveis no ambiente de avaliação",
+        propertyLimit: planSnapshot.propertyLimit,
+        limitLabel: `${planSnapshot.propertyLimit} imóveis no ${planSnapshot.plan.name}`,
         billingPlan: user.plan,
         billingStatus: user.subscriptionStatus,
         requiresRegularization,
         isProfileResolved: true,
-        currentPrice: isActive ? "R$ 49,90" : "Modo teste",
-        previousPrice: "R$ 89,90",
+        currentPrice: planPrice,
+        previousPrice: null,
         status: requiresRegularization ? "Pendente" : isActive ? "Ativo" : "Ambiente de avaliação",
         nextCharge,
         paymentMethod: isActive ? "Stripe" : "Configurar plano",

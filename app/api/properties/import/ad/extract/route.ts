@@ -2,6 +2,8 @@ import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
+import { getEmeCreditCost } from "@/lib/eme-plans"
 import { AD_IMPORT_MAX_IMAGE_BYTES, AD_IMPORT_MAX_TEXT_LENGTH, extractPropertyFromAd } from "@/lib/property-ad-import"
 
 export const dynamic = "force-dynamic"
@@ -22,6 +24,8 @@ export async function POST(request: NextRequest) {
     const sourceUrl = typeof formData.get("sourceUrl") === "string" ? String(formData.get("sourceUrl")).trim() : ""
     const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
     const image = formData.get("image")
+    const actionType = image instanceof File && image.size > 0 ? "smart_import_image" : "smart_import_text"
+    const creditsUsed = getEmeCreditCost(actionType)
 
     if (image instanceof File && image.size > 0) {
       const validImage = ["image/jpeg", "image/png", "image/webp"].includes(image.type)
@@ -52,7 +56,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "O texto do anúncio deve ter até 12.000 caracteres." }, { status: 400 })
     }
 
+    if (user.role === UserRole.BROKER && user.broker) {
+      const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+    }
+
     const draft = await extractPropertyFromAd({ adText, sourceUrl, notes })
+    if (user.role === UserRole.BROKER && user.broker) {
+      await consumeBrokerAiCredits({
+        brokerId: user.broker.id,
+        amount: creditsUsed,
+        actionType,
+        description: actionType === "smart_import_image" ? "Importação inteligente por imagem" : "Importação inteligente por texto livre",
+        metadata: {
+          source: "api/properties/import/ad/extract",
+          hasImage: image instanceof File && image.size > 0,
+          hasSourceUrl: Boolean(sourceUrl),
+          hasNotes: Boolean(notes),
+        },
+      })
+    }
     const response = NextResponse.json({ draft })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
