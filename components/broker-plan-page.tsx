@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowUpRight, Bot, ChartColumn, CheckCircle2, Globe, Headphones, Home, MessageCircle, PackagePlus, Sparkles } from "lucide-react"
+import { ArrowUpRight, Bot, CalendarDays, ChartColumn, CheckCircle2, FileText, Globe, Headphones, Home, PackagePlus, Sparkles, WalletCards } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
@@ -10,61 +10,93 @@ import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsibl
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
-import { startStripeCheckout } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const benefits = [
-  { label: "3 imóveis gratuitos", icon: Home },
+  { label: "Até 3 imóveis", icon: Home },
   { label: "Catálogo online", icon: Globe },
   { label: "Leads", icon: ArrowUpRight },
-  { label: "Financeiro completo", icon: CheckCircle2 },
-  { label: "Analytics completo", icon: ChartColumn },
-  { label: "Assessor EME em modo avaliação", icon: Sparkles },
+  { label: "Agenda", icon: CalendarDays },
+  { label: "Documentos", icon: FileText },
+  { label: "Financeiro", icon: WalletCards },
+  { label: "Analytics", icon: ChartColumn },
+  { label: "Assessor EME em teste", icon: Sparkles },
+  { label: "20 créditos IA", icon: Bot },
+]
+
+const availablePlans = [
+  {
+    name: "Plano Free",
+    price: "R$ 0",
+    description: "Para começar a operar com catálogo, leads e recursos essenciais do EME.",
+    highlights: [
+      "Até 3 imóveis",
+      "Catálogo online",
+      "Leads, agenda, documentos, financeiro e analytics",
+      "Assessor EME em teste",
+      "20 créditos IA",
+    ],
+  },
+  {
+    name: "Plano EME Pro",
+    price: "R$ 89,90/mês",
+    description: "Para corretores que precisam de mais imóveis e operação assistida pela IA.",
+    highlights: [
+      "Até 50 imóveis",
+      "Todas as funcionalidades",
+      "Assessor EME",
+      "50 créditos IA/mês",
+    ],
+  },
+  {
+    name: "Plano EME Growth",
+    price: "R$ 149,90/mês",
+    description: "Para carteiras maiores, com mais capacidade de catálogo e créditos mensais.",
+    highlights: [
+      "Até 150 imóveis",
+      "Todas as funcionalidades",
+      "Assessor EME",
+      "150 créditos IA/mês",
+    ],
+  },
 ]
 
 const extraPackages = [
   {
-    title: "Pacote +10 imóveis",
-    price: "R$ 29,90/mês",
-    description: "Amplie o catálogo com mais dez imóveis no portal do corretor.",
-    action: "Contratar extra",
-    icon: PackagePlus,
-  },
-  {
-    title: "Pacote +30 imóveis",
-    price: "R$ 59,90/mês",
-    description: "Mais espaço para crescer a carteira sem mudar o plano base.",
-    action: "Contratar extra",
-    icon: PackagePlus,
-  },
-  {
-    title: "Pacote +100 imóveis",
-    price: "R$ 129,90/mês",
-    description: "Para corretores com carteira maior e catálogo em expansão.",
-    action: "Contratar extra",
-    icon: PackagePlus,
-  },
-  {
-    title: "Corretor EME",
-    price: "R$ 49,90/mês por número",
-    description: "WhatsApp do corretor para pré-atendimento e qualificação de leads.",
-    action: "Solicitar ativação",
-    icon: MessageCircle,
-  },
-  {
-    title: "Assessor EME",
-    price: "R$ 39,90/mês",
-    description: "Canal oficial do EME para o corretor pedir tarefas à IA.",
-    action: "Solicitar ativação",
-    icon: Bot,
-  },
-  {
-    title: "Créditos IA extra",
-    price: "R$ 19,90 / 100 ações",
-    description: "Para criar anúncios, melhorar descrições, resumir leads e executar ações inteligentes.",
-    action: "Contratar extra",
+    title: "+50 créditos IA",
+    price: "R$ 29,90",
+    description: "Créditos IA adicionados à carteira da conta.",
+    action: "Solicitar pacote",
     icon: Sparkles,
+  },
+  {
+    title: "+150 créditos IA",
+    price: "R$ 69,90",
+    description: "Mais créditos para anúncios, propostas, buscas e ações do Assessor EME.",
+    action: "Solicitar pacote",
+    icon: Sparkles,
+  },
+  {
+    title: "+300 créditos IA",
+    price: "R$ 119,90",
+    description: "Pacote maior para operações com uso frequente de IA.",
+    action: "Solicitar pacote",
+    icon: Sparkles,
+  },
+  {
+    title: "+30 imóveis",
+    price: "R$ 49,90",
+    description: "Aumenta permanentemente o limite de imóveis da conta.",
+    action: "Solicitar pacote",
+    icon: PackagePlus,
+  },
+  {
+    title: "+90 imóveis",
+    price: "R$ 119,90",
+    description: "Expande permanentemente a capacidade do catálogo.",
+    action: "Solicitar pacote",
+    icon: PackagePlus,
   },
 ]
 
@@ -95,10 +127,12 @@ export function BrokerPlanPage() {
     ? "100%"
     : `${Math.min(100, Math.round((publishedPropertiesCount / (subscription.propertyLimit ?? 3)) * 100))}%`
   const hasConfirmedPaidPlan = subscription.isUpgraded && subscription.billingStatus === "ACTIVE"
-  const planDisplayName = "Plano Corretor EME"
+  const planDisplayName = hasConfirmedPaidPlan ? "Plano EME Pro" : "Plano Free"
   const planStatus = hasConfirmedPaidPlan ? subscription.status : "Ambiente de avaliação"
-  const planPrice = "R$ 89,90/mês"
-  const planDescription = "Plano base para o corretor individual operar catálogo, leads, financeiro e analytics com apoio do Assessor EME em avaliação."
+  const planPrice = hasConfirmedPaidPlan ? "R$ 89,90/mês" : "R$ 0"
+  const planDescription = hasConfirmedPaidPlan
+    ? "Até 50 imóveis, todas as funcionalidades, Assessor EME e 50 créditos IA por mês."
+    : "Até 3 imóveis, catálogo online, leads, agenda, documentos, financeiro, analytics e 20 créditos IA."
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout")
@@ -132,17 +166,6 @@ export function BrokerPlanPage() {
       ignore = true
     }
   }, [])
-
-  async function handleUpgradeClick() {
-    try {
-      setUpgradeFeedback("Redirecionando para o checkout Stripe...")
-      await startStripeCheckout()
-    } catch (caughtError) {
-      setUpgradeFeedback(
-        caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout Stripe.",
-      )
-    }
-  }
 
   async function registerCommercialRequest(title: string, message: string) {
     try {
@@ -213,10 +236,10 @@ export function BrokerPlanPage() {
                 </div>
                 <Button
                   type="button"
-                  onClick={handleUpgradeClick}
+                  onClick={() => void registerCommercialRequest("Solicitação de plano", `${planDisplayName} - ${planPrice}`)}
                   className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
                 >
-                  Assinar plano
+                  Solicitar plano
                 </Button>
               </div>
             </CardContent>
@@ -236,13 +259,61 @@ export function BrokerPlanPage() {
               <InfoBlock label="Créditos IA usados no mês" value={String(aiCredits.usedThisMonth)} />
               <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
                 <p className="text-sm text-[#69F0AE]">
-                  Financeiro básico para acompanhar assinatura e uso de IA. Upgrade e ativação completa entram em etapa futura.
+                  Esta tela apresenta os planos e pacotes disponíveis. Limites reais, cobrança e consumo seguem sem alteração nesta etapa.
                 </p>
               </div>
             </CardContent>
           </Card>
           </ResponsiveCollapsibleSection>
         </section>
+
+        <ResponsiveCollapsibleSection title="Planos disponíveis" defaultMobileOpen>
+          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="text-xl text-white">Planos disponíveis</CardTitle>
+              <p className="text-sm text-white/50">Escolha o plano ideal para a fase atual da sua operação.</p>
+            </CardHeader>
+            <CardContent className="grid gap-4 p-6 pt-0 lg:grid-cols-3">
+              {availablePlans.map((plan) => (
+                <div
+                  key={plan.name}
+                  className="flex min-h-[360px] flex-col justify-between rounded-[1.35rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-all hover:border-[#00C853]/25 hover:bg-white/[0.05]"
+                >
+                  <div>
+                    <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#69F0AE]">
+                      {plan.name === planDisplayName ? "Plano atual" : "Plano"}
+                    </div>
+                    <h3 className="mt-4 text-xl font-semibold text-white">{plan.name}</h3>
+                    <p className="mt-2 text-2xl font-semibold text-[#69F0AE]">{plan.price}</p>
+                    <p className="mt-3 text-sm leading-6 text-white/58">{plan.description}</p>
+
+                    <div className="mt-5 grid gap-3">
+                      {plan.highlights.map((highlight) => (
+                        <div key={highlight} className="flex items-start gap-2 text-sm text-white/70">
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#69F0AE]" />
+                          <span>{highlight}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant={plan.name === planDisplayName ? "ghost" : "default"}
+                    onClick={() => void registerCommercialRequest("Solicitação de plano", `${plan.name} - ${plan.price}`)}
+                    className={
+                      plan.name === planDisplayName
+                        ? "mt-6 h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
+                        : "mt-6 h-10 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                    }
+                  >
+                    {plan.name === planDisplayName ? "Solicitar alteração" : "Solicitar plano"}
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </ResponsiveCollapsibleSection>
 
         <ResponsiveCollapsibleSection title="O que está incluso">
           <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
@@ -289,15 +360,15 @@ export function BrokerPlanPage() {
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 <p className="text-sm leading-7 text-white/60">
-                  O upgrade usa checkout Stripe para ativar seu plano pago com segurança.
+                  Solicite uma conversa com o suporte EME para ajustar plano, créditos ou capacidade de imóveis.
                 </p>
                 <Button
                   type="button"
-                  onClick={handleUpgradeClick}
+                  onClick={() => void registerCommercialRequest("Solicitação de plano", "Corretor solicitou conversa sobre planos e pacotes EME.")}
                   className="mt-5 h-10 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
                 >
                   <Bot className="size-4" />
-                  Assinar plano
+                  Falar sobre planos
                 </Button>
                 {upgradeFeedback && <p className="mt-3 text-sm text-[#69F0AE]">{upgradeFeedback}</p>}
               </CardContent>
@@ -309,7 +380,9 @@ export function BrokerPlanPage() {
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-white">Pacotes extras</CardTitle>
-            <p className="text-sm text-white/50">Contrate módulos conforme sua operação crescer. A solicitação fica registrada no portal para acompanhamento.</p>
+            <p className="text-sm text-white/50">
+              Pacotes extras são compra única. Créditos IA entram na carteira da conta e imóveis extras aumentam permanentemente o limite.
+            </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2 xl:grid-cols-3">
             {extraPackages.map((item) => (
@@ -341,7 +414,7 @@ export function BrokerPlanPage() {
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm leading-6 text-white/58">
-              Corretor EME é o WhatsApp do corretor para pré-atendimento. Assessor EME é o canal oficial do EME para tarefas com IA. Créditos IA são usados em anúncios, descrições, resumos e ações inteligentes.
+              Créditos IA são adicionados à carteira da conta. Imóveis extras aumentam permanentemente o limite de imóveis. Nenhum bloqueio real foi ativado nesta etapa.
             </p>
             <Button
               type="button"
