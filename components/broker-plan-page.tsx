@@ -1,111 +1,110 @@
 ﻿"use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import { ArrowUpRight, Bot, CalendarDays, ChartColumn, CheckCircle2, FileText, Globe, Headphones, Home, PackagePlus, Sparkles, WalletCards } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
-import { useBrokerProperties } from "@/components/use-broker-properties"
-import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const benefits = [
-  { label: "Até 3 imóveis", icon: Home },
-  { label: "Catálogo online", icon: Globe },
-  { label: "Leads", icon: ArrowUpRight },
-  { label: "Agenda", icon: CalendarDays },
-  { label: "Documentos", icon: FileText },
-  { label: "Financeiro", icon: WalletCards },
-  { label: "Analytics", icon: ChartColumn },
-  { label: "Assessor EME em teste", icon: Sparkles },
-  { label: "20 créditos IA", icon: Bot },
-]
+type PlanItem = {
+  key: string
+  name: string
+  price: string
+  propertyLimit: number
+  monthlyAiCredits: number
+  initialAiCredits: number
+  features: string[]
+}
 
-const availablePlans = [
-  {
-    name: "Plano Free",
-    price: "R$ 0",
-    description: "Para começar a operar com catálogo, leads e recursos essenciais do EME.",
-    highlights: [
-      "Até 3 imóveis",
-      "Catálogo online",
-      "Leads, agenda, documentos, financeiro e analytics",
-      "Assessor EME em teste",
-      "20 créditos IA",
-    ],
-  },
-  {
-    name: "Plano EME Pro",
-    price: "R$ 89,90/mês",
-    description: "Para corretores que precisam de mais imóveis e operação assistida pela IA.",
-    highlights: [
-      "Até 50 imóveis",
-      "Todas as funcionalidades",
-      "Assessor EME",
-      "50 créditos IA/mês",
-    ],
-  },
-  {
-    name: "Plano EME Growth",
-    price: "R$ 149,90/mês",
-    description: "Para carteiras maiores, com mais capacidade de catálogo e créditos mensais.",
-    highlights: [
-      "Até 150 imóveis",
-      "Todas as funcionalidades",
-      "Assessor EME",
-      "150 créditos IA/mês",
-    ],
-  },
-]
+type PlanPackage = {
+  key: string
+  type: "credit" | "property"
+  label: string
+  quantity: number
+  price: string
+}
 
-const extraPackages = [
-  {
-    title: "+50 créditos IA",
-    price: "R$ 29,90",
-    description: "Créditos IA adicionados à carteira da conta.",
-    action: "Solicitar pacote",
-    icon: Sparkles,
-  },
-  {
-    title: "+150 créditos IA",
-    price: "R$ 69,90",
-    description: "Mais créditos para anúncios, propostas, buscas e ações do Assessor EME.",
-    action: "Solicitar pacote",
-    icon: Sparkles,
-  },
-  {
-    title: "+300 créditos IA",
-    price: "R$ 119,90",
-    description: "Pacote maior para operações com uso frequente de IA.",
-    action: "Solicitar pacote",
-    icon: Sparkles,
-  },
-  {
-    title: "+30 imóveis",
-    price: "R$ 49,90",
-    description: "Aumenta permanentemente o limite de imóveis da conta.",
-    action: "Solicitar pacote",
-    icon: PackagePlus,
-  },
-  {
-    title: "+90 imóveis",
-    price: "R$ 119,90",
-    description: "Expande permanentemente a capacidade do catálogo.",
-    action: "Solicitar pacote",
-    icon: PackagePlus,
-  },
-]
+type CreditHistoryItem = {
+  id: string
+  type: string
+  amount: number
+  balanceAfter: number
+  actionType: string | null
+  description: string | null
+  createdAt: string
+}
+
+type BrokerPlanSnapshot = {
+  currentPlan: PlanItem
+  plans: PlanItem[]
+  propertyLimits: {
+    baseLimit: number
+    extraLimit: number
+    totalLimit: number
+    used: number
+    remaining: number
+  }
+  credits: {
+    balance: number
+    usedThisMonth: number
+    monthlyCredits: number
+    history: CreditHistoryItem[]
+  }
+  packages: PlanPackage[]
+}
+
+const featureIcons: Record<string, typeof Home> = {
+  catalog: Globe,
+  leads: ArrowUpRight,
+  agenda: CalendarDays,
+  documents: FileText,
+  financial: WalletCards,
+  analytics: ChartColumn,
+  assessor_eme: Sparkles,
+  all: CheckCircle2,
+}
+
+const featureLabels: Record<string, string> = {
+  catalog: "Catálogo online",
+  leads: "Leads",
+  agenda: "Agenda",
+  documents: "Documentos",
+  financial: "Financeiro",
+  analytics: "Analytics",
+  assessor_eme: "Assessor EME",
+  all: "Todas as funcionalidades",
+}
+
+function buildPlanHighlights(plan: PlanItem) {
+  return [
+    `Até ${plan.propertyLimit} imóveis`,
+    plan.features.includes("all") ? "Todas as funcionalidades" : "Catálogo, leads, agenda, documentos, financeiro e analytics",
+    plan.features.includes("assessor_eme") ? "Assessor EME" : "",
+    `${plan.monthlyAiCredits} créditos IA/mês`,
+  ].filter(Boolean)
+}
+
+function formatHistoryDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value))
+}
+
+function isPlanSnapshot(value: BrokerPlanSnapshot | { error?: string } | null): value is BrokerPlanSnapshot {
+  return Boolean(value && "currentPlan" in value && "propertyLimits" in value && "credits" in value)
+}
 
 export function BrokerPlanPage() {
-  const searchParams = useSearchParams()
   const [upgradeFeedback, setUpgradeFeedback] = useState("")
-  const [aiCredits, setAiCredits] = useState({ balance: 0, usedThisMonth: 0 })
-  const { subscription, refreshSubscription } = useBrokerSubscription()
-  const { properties } = useBrokerProperties()
+  const [planSnapshot, setPlanSnapshot] = useState<BrokerPlanSnapshot | null>(null)
+  const [isPlanLoading, setIsPlanLoading] = useState(true)
   const {
     historyNotifications,
     unreadCount,
@@ -113,54 +112,37 @@ export function BrokerPlanPage() {
     archive,
   } = useBrokerPaymentNotifications()
 
-  const publishedPropertiesCount = properties.filter((property) => property.status === "Publicado").length
-  const hasReachedLimit =
-    subscription.isProfileResolved &&
-    !subscription.isUpgraded &&
-    publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
-  const propertyLimitLabel = !subscription.isProfileResolved
-    ? `${publishedPropertiesCount} imóveis cadastrados`
-    : subscription.isUpgraded
-      ? `${publishedPropertiesCount} imóveis ativos no plano Corretor`
-      : `${publishedPropertiesCount} de ${subscription.propertyLimit ?? 3} imóveis gratuitos`
-  const usageWidth = !subscription.isProfileResolved || subscription.isUpgraded
-    ? "100%"
-    : `${Math.min(100, Math.round((publishedPropertiesCount / (subscription.propertyLimit ?? 3)) * 100))}%`
-  const hasConfirmedPaidPlan = subscription.isUpgraded && subscription.billingStatus === "ACTIVE"
-  const planDisplayName = hasConfirmedPaidPlan ? "Plano EME Pro" : "Plano Free"
-  const planStatus = hasConfirmedPaidPlan ? subscription.status : "Ambiente de avaliação"
-  const planPrice = hasConfirmedPaidPlan ? "R$ 89,90/mês" : "R$ 0"
-  const planDescription = hasConfirmedPaidPlan
-    ? "Até 50 imóveis, todas as funcionalidades, Assessor EME e 50 créditos IA por mês."
-    : "Até 3 imóveis, catálogo online, leads, agenda, documentos, financeiro, analytics e 20 créditos IA."
-
-  useEffect(() => {
-    const checkoutStatus = searchParams.get("checkout")
-
-    if (checkoutStatus === "success") {
-      refreshSubscription().catch(() => null)
-      setUpgradeFeedback("Pagamento concluído. Atualizando seu plano.")
-    }
-
-    if (checkoutStatus === "cancel") {
-      setUpgradeFeedback("Checkout cancelado. Você pode tentar novamente quando quiser.")
-    }
-  }, [refreshSubscription, searchParams])
+  const propertyLimits = planSnapshot?.propertyLimits
+  const currentPlan = planSnapshot?.currentPlan
+  const hasReachedLimit = Boolean(propertyLimits && propertyLimits.remaining <= 0)
+  const propertyLimitLabel = propertyLimits
+    ? `${propertyLimits.used} usados / ${propertyLimits.totalLimit} disponíveis`
+    : "Carregando limite de imóveis"
+  const usageWidth = propertyLimits?.totalLimit
+    ? `${Math.min(100, Math.round((propertyLimits.used / propertyLimits.totalLimit) * 100))}%`
+    : "0%"
+  const planDisplayName = currentPlan?.name ?? "Carregando plano"
+  const planStatus = currentPlan ? "Ativo na conta" : "Sincronizando"
+  const planPrice = currentPlan?.price ?? "-"
+  const planDescription = propertyLimits && currentPlan
+    ? `${propertyLimits.baseLimit} imóveis do plano + ${propertyLimits.extraLimit} extras = ${propertyLimits.totalLimit} disponíveis.`
+    : "Carregando dados reais do plano."
 
   useEffect(() => {
     let ignore = false
 
-    fetch("/api/ai/broker-assistant", { credentials: "include", cache: "no-store" })
+    fetch("/api/brokers/plan", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as
-          | { credits?: { balance: number; usedThisMonth: number } }
-          | null
-
-        if (!ignore && response.ok && data?.credits) {
-          setAiCredits(data.credits)
-        }
+        const data = (await response.json().catch(() => null)) as BrokerPlanSnapshot | { error?: string } | null
+        if (!response.ok || !isPlanSnapshot(data)) throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o plano.")
+        if (!ignore) setPlanSnapshot(data)
       })
-      .catch(() => null)
+      .catch((caughtError) => {
+        if (!ignore) setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o plano.")
+      })
+      .finally(() => {
+        if (!ignore) setIsPlanLoading(false)
+      })
 
     return () => {
       ignore = true
@@ -200,7 +182,7 @@ export function BrokerPlanPage() {
       <div className="grid gap-5">
         {hasReachedLimit && (
           <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
-            Você atingiu o limite gratuito de 3 imóveis. Faça upgrade para continuar publicando.
+            Você atingiu o limite de imóveis do seu plano. Faça upgrade ou solicite um pacote de imóveis extras para continuar publicando.
           </div>
         )}
 
@@ -221,9 +203,6 @@ export function BrokerPlanPage() {
                 <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.18em] text-white/40">Status comercial</p>
                   <div className="mt-2 flex items-end gap-2">
-                    {hasConfirmedPaidPlan && subscription.previousPrice ? (
-                      <span className="text-sm text-white/35 line-through">{subscription.previousPrice}</span>
-                    ) : null}
                     <p className="text-2xl font-semibold text-white">{planPrice}</p>
                   </div>
                 </div>
@@ -253,13 +232,18 @@ export function BrokerPlanPage() {
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
               <InfoBlock label="Plano atual" value={planDisplayName} />
-              <InfoBlock label="Modo teste/em avaliação" value={hasConfirmedPaidPlan ? "Não" : "Sim"} />
+              <InfoBlock label="Limite base do plano" value={propertyLimits ? `${propertyLimits.baseLimit} imóveis` : "-"} />
+              <InfoBlock label="Imóveis extras permanentes" value={propertyLimits ? `${propertyLimits.extraLimit} imóveis` : "-"} />
+              <InfoBlock label="Limite total atual" value={propertyLimits ? `${propertyLimits.totalLimit} imóveis` : "-"} />
+              <InfoBlock label="Imóveis usados" value={propertyLimits ? `${propertyLimits.used} imóveis` : "-"} />
+              <InfoBlock label="Imóveis restantes" value={propertyLimits ? `${propertyLimits.remaining} imóveis` : "-"} />
               <InfoBlock label="Status da assinatura" value={planStatus} />
-              <InfoBlock label="Créditos IA disponíveis" value={String(aiCredits.balance)} />
-              <InfoBlock label="Créditos IA usados no mês" value={String(aiCredits.usedThisMonth)} />
+              <InfoBlock label="Créditos IA disponíveis" value={String(planSnapshot?.credits.balance ?? 0)} />
+              <InfoBlock label="Créditos IA do plano/mês" value={String(planSnapshot?.credits.monthlyCredits ?? 0)} />
+              <InfoBlock label="Créditos IA usados no mês" value={String(planSnapshot?.credits.usedThisMonth ?? 0)} />
               <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
                 <p className="text-sm text-[#69F0AE]">
-                  Esta tela apresenta os planos e pacotes disponíveis. Limites reais, cobrança e consumo seguem sem alteração nesta etapa.
+                  Dados carregados do backend de planos, limites e créditos IA. Pagamento real ainda não foi integrado.
                 </p>
               </div>
             </CardContent>
@@ -274,21 +258,23 @@ export function BrokerPlanPage() {
               <p className="text-sm text-white/50">Escolha o plano ideal para a fase atual da sua operação.</p>
             </CardHeader>
             <CardContent className="grid gap-4 p-6 pt-0 lg:grid-cols-3">
-              {availablePlans.map((plan) => (
+              {(planSnapshot?.plans ?? []).map((plan) => (
                 <div
-                  key={plan.name}
+                  key={plan.key}
                   className="flex min-h-[360px] flex-col justify-between rounded-[1.35rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-all hover:border-[#00C853]/25 hover:bg-white/[0.05]"
                 >
                   <div>
                     <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#69F0AE]">
-                      {plan.name === planDisplayName ? "Plano atual" : "Plano"}
+                      {plan.key === currentPlan?.key ? "Plano atual" : "Plano"}
                     </div>
                     <h3 className="mt-4 text-xl font-semibold text-white">{plan.name}</h3>
                     <p className="mt-2 text-2xl font-semibold text-[#69F0AE]">{plan.price}</p>
-                    <p className="mt-3 text-sm leading-6 text-white/58">{plan.description}</p>
+                    <p className="mt-3 text-sm leading-6 text-white/58">
+                      {plan.propertyLimit} imóveis no plano e {plan.monthlyAiCredits} créditos IA por mês.
+                    </p>
 
                     <div className="mt-5 grid gap-3">
-                      {plan.highlights.map((highlight) => (
+                      {buildPlanHighlights(plan).map((highlight) => (
                         <div key={highlight} className="flex items-start gap-2 text-sm text-white/70">
                           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#69F0AE]" />
                           <span>{highlight}</span>
@@ -299,18 +285,23 @@ export function BrokerPlanPage() {
 
                   <Button
                     type="button"
-                    variant={plan.name === planDisplayName ? "ghost" : "default"}
+                    variant={plan.key === currentPlan?.key ? "ghost" : "default"}
                     onClick={() => void registerCommercialRequest("Solicitação de plano", `${plan.name} - ${plan.price}`)}
                     className={
-                      plan.name === planDisplayName
+                      plan.key === currentPlan?.key
                         ? "mt-6 h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
                         : "mt-6 h-10 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
                     }
                   >
-                    {plan.name === planDisplayName ? "Solicitar alteração" : "Solicitar plano"}
+                    {plan.key === currentPlan?.key ? "Plano atual" : "Solicitar plano"}
                   </Button>
                 </div>
               ))}
+              {!isPlanLoading && !planSnapshot ? (
+                <p className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55 lg:col-span-3">
+                  Não foi possível carregar os planos agora.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </ResponsiveCollapsibleSection>
@@ -321,17 +312,28 @@ export function BrokerPlanPage() {
               <CardTitle className="text-xl text-white">O que está incluso</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-2">
-              {benefits.map((benefit) => (
+              {(currentPlan?.features ?? []).map((feature) => {
+                const Icon = featureIcons[feature] ?? CheckCircle2
+                return (
                 <div
-                  key={benefit.label}
+                  key={feature}
                   className="flex items-center gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4"
                 >
                   <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
-                    <benefit.icon className="size-4.5" />
+                    <Icon className="size-4.5" />
                   </div>
-                  <p className="text-sm text-white/75">{benefit.label}</p>
+                  <p className="text-sm text-white/75">{featureLabels[feature] ?? feature}</p>
                 </div>
-              ))}
+                )
+              })}
+              {currentPlan ? (
+                <div className="flex items-center gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4">
+                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                    <Bot className="size-4.5" />
+                  </div>
+                  <p className="text-sm text-white/75">{currentPlan.monthlyAiCredits} créditos IA/mês</p>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -385,28 +387,34 @@ export function BrokerPlanPage() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2 xl:grid-cols-3">
-            {extraPackages.map((item) => (
-              <div key={item.title} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+            {(planSnapshot?.packages ?? []).map((item) => {
+              const Icon = item.type === "credit" ? Sparkles : PackagePlus
+              const description = item.type === "credit"
+                ? "Créditos IA adicionados à carteira da conta."
+                : "Aumenta permanentemente o limite de imóveis da conta."
+              return (
+              <div key={item.key} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
                 <div className="flex items-start gap-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
-                    <item.icon className="size-4.5" />
+                    <Icon className="size-4.5" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base font-semibold text-white">{item.title}</h3>
+                    <h3 className="text-base font-semibold text-white">{item.label}</h3>
                     <p className="mt-1 text-sm font-medium text-[#69F0AE]">{item.price}</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-white/58">{item.description}</p>
+                <p className="mt-4 text-sm leading-6 text-white/58">{description}</p>
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => void registerCommercialRequest(item.action, `${item.title} - ${item.price}`)}
+                  onClick={() => void registerCommercialRequest("Solicitar pacote", `${item.label} - ${item.price}`)}
                   className="mt-5 h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
                 >
-                  {item.action}
+                  Solicitar pacote
                 </Button>
               </div>
-            ))}
+              )
+            })}
           </CardContent>
         </Card>
         </ResponsiveCollapsibleSection>
@@ -414,7 +422,7 @@ export function BrokerPlanPage() {
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm leading-6 text-white/58">
-              Créditos IA são adicionados à carteira da conta. Imóveis extras aumentam permanentemente o limite de imóveis. Nenhum bloqueio real foi ativado nesta etapa.
+              Créditos IA são adicionados à carteira da conta. Imóveis extras aumentam permanentemente o limite de imóveis. Pagamento real ainda não foi integrado.
             </p>
             <Button
               type="button"
@@ -428,22 +436,29 @@ export function BrokerPlanPage() {
           </CardContent>
         </Card>
 
-        <ResponsiveCollapsibleSection title="Histórico de uso">
+        <ResponsiveCollapsibleSection title="Histórico de créditos">
         <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">Histórico simples de uso</CardTitle>
+            <CardTitle className="text-xl text-white">Histórico de créditos IA</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
-            {historyNotifications.length > 0 ? (
-              historyNotifications.slice(0, 3).map((notification) => (
-                <div key={notification.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                  <p className="text-sm font-medium text-white">{notification.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-white/55">{notification.message}</p>
+            {planSnapshot?.credits.history.length ? (
+              planSnapshot.credits.history.map((item) => (
+                <div key={item.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-white">{item.description || item.actionType || "Movimento de créditos"}</p>
+                    <span className={item.amount >= 0 ? "text-sm font-semibold text-[#69F0AE]" : "text-sm font-semibold text-white/75"}>
+                      {item.amount > 0 ? "+" : ""}{item.amount} crédito{Math.abs(item.amount) === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-white/55">
+                    {formatHistoryDate(item.createdAt)} · Saldo após movimento: {item.balanceAfter}
+                  </p>
                 </div>
               ))
             ) : (
               <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-sm text-white/55">Nenhum uso financeiro registrado ainda.</p>
+                <p className="text-sm text-white/55">Nenhuma movimentação de créditos registrada ainda.</p>
               </div>
             )}
           </CardContent>
