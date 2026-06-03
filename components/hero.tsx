@@ -18,26 +18,27 @@ export function Hero() {
         <div className="absolute left-[20%] top-20 h-56 w-[64%] rounded-[100%] border-t border-[#00E676]/18 blur-[0.5px]" />
       </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-[1760px] overflow-hidden rounded-[40px] border border-white/10 bg-black shadow-[0_28px_90px_rgba(0,0,0,0.54),0_0_70px_rgba(0,200,83,0.16)]">
+      <div className="relative z-10 mx-auto w-full max-w-[1760px] overflow-hidden rounded-t-[40px] border-x border-t border-white/10 bg-transparent shadow-[0_22px_70px_rgba(0,0,0,0.42),0_0_54px_rgba(0,200,83,0.14)]">
         <div className="absolute -inset-4 -z-10 bg-[#00C853]/10 blur-3xl" />
-        <div className="relative aspect-[2048/897] w-full overflow-hidden rounded-[40px]">
+        <div className="relative aspect-[1900/850] w-full overflow-hidden rounded-t-[40px]">
           <Image
-            src="/images/eme-landing-hero-banner-2026-06-02.png"
+            src="/images/eme-landing-hero-banner-2026-06-03.png"
             alt="Assessor EME e Catálogo Inteligente"
             fill
             priority
             sizes="100vw"
-            className="rounded-[40px] object-cover"
+            className="rounded-t-[40px] object-cover"
           />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[34%] bg-gradient-to-b from-transparent via-[#0B0B0B]/78 to-[#0B0B0B]" />
           <Link
             href="/cadastro/corretor"
             aria-label="Testar agora"
-            className="absolute left-[2.45%] top-[58.55%] h-[7.6%] w-[10.75%] rounded-[0.8vw] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00E676]"
+            className="absolute left-[5.15%] top-[54.4%] h-[6.8%] w-[9.55%] rounded-[0.8vw] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00E676]"
           />
           <Link
             href="#assessor-eme-landing"
             aria-label="Ver como funciona"
-            className="absolute left-[14.2%] top-[58.55%] h-[7.6%] w-[12.4%] rounded-[0.8vw] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00E676]"
+            className="absolute left-[15.55%] top-[54.4%] h-[6.8%] w-[11.4%] rounded-[0.8vw] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00E676]"
           />
         </div>
       </div>
