@@ -28,16 +28,16 @@ export function ProductFlow() {
     <section id="como-funciona" className="relative z-10 px-4 pt-20 pb-24 md:pt-24 md:pb-32">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 max-w-2xl md:mb-12">
-          <div className="mb-4 inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium text-[#69F0AE]">
+          <div className="mb-4 inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium text-[#00A844]">
             Criação inteligente
           </div>
-          <h2 className="text-3xl font-bold text-balance text-white sm:text-4xl md:text-5xl">
+          <h2 className="text-3xl font-bold text-balance text-[#111111] sm:text-4xl md:text-5xl">
             Crie anúncios{" "}
             <span className="bg-gradient-to-r from-[#00C853] to-[#00E676] bg-clip-text text-transparent">
               do seu jeito.
             </span>
           </h2>
-          <p className="mt-4 max-w-xl text-base leading-7 text-white/58">
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#6B7280]">
             Use IA, preenchimento manual ou importação para publicar imóveis em poucos minutos.
           </p>
         </div>
@@ -65,13 +65,13 @@ function CreationCard({
   return (
     <article
       style={{ animationDelay: delay }}
-      className="landing-creation-card rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-6 text-left shadow-[0_18px_40px_rgba(0,0,0,0.14)]"
+      className="landing-creation-card rounded-[1.5rem] border border-[#E5E7EB] bg-white p-6 text-left shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
     >
-      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#00A844]">
         <Icon className="size-5" />
       </div>
-      <h3 className="mt-7 text-xl font-semibold text-white">{title}</h3>
-      <p className="mt-4 max-w-sm text-sm leading-6 text-white/55">{description}</p>
+      <h3 className="mt-7 text-xl font-semibold text-[#111111]">{title}</h3>
+      <p className="mt-4 max-w-sm text-sm leading-6 text-[#6B7280]">{description}</p>
 
       <style jsx>{`
         .landing-creation-card {
@@ -82,14 +82,14 @@ function CreationCard({
           0%,
           78%,
           100% {
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0), 0 18px 40px rgba(0, 0, 0, 0.14);
+            border-color: #e5e7eb;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0), 0 18px 48px rgba(17, 24, 39, 0.08);
           }
           18%,
           38% {
-            border-color: rgba(0, 200, 83, 0.28);
-            box-shadow: inset 0 0 24px rgba(0, 200, 83, 0.055), 0 18px 42px rgba(0, 0, 0, 0.16),
-              0 0 32px rgba(0, 200, 83, 0.12);
+            border-color: rgba(0, 200, 83, 0.14);
+            box-shadow: inset 0 0 24px rgba(0, 200, 83, 0.028), 0 18px 48px rgba(17, 24, 39, 0.08),
+              0 0 32px rgba(0, 200, 83, 0.06);
           }
         }
 

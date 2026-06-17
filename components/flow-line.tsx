@@ -32,11 +32,11 @@ export function FlowLine() {
         <defs>
           {/* Gradient for the line */}
           <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#00C853" stopOpacity="0.05" />
-            <stop offset="10%" stopColor="#00C853" stopOpacity="0.15" />
-            <stop offset="50%" stopColor="#00E676" stopOpacity="0.2" />
-            <stop offset="90%" stopColor="#00C853" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#00C853" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="#00C853" stopOpacity="0.025" />
+            <stop offset="10%" stopColor="#00C853" stopOpacity="0.08" />
+            <stop offset="50%" stopColor="#00E676" stopOpacity="0.12" />
+            <stop offset="90%" stopColor="#00C853" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#00C853" stopOpacity="0.025" />
           </linearGradient>
           
           {/* Subtle glow filter */}
@@ -58,7 +58,7 @@ export function FlowLine() {
             <stop 
               offset={`${scrollProgress * 100}%`} 
               stopColor="#00E676" 
-              stopOpacity="0.5" 
+              stopOpacity="0.28" 
             />
             <stop 
               offset={`${Math.min(100, scrollProgress * 100 + 5)}%`} 

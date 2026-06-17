@@ -89,7 +89,7 @@ export function LoginPage() {
         title="Entrar"
         subtitle="Acesse sua conta para continuar publicando, gerenciando e acompanhando seus resultados."
         footer={
-          <p className="text-sm text-white/55">
+          <p className="text-sm text-[#6B7280]">
             Ainda não tem conta?{" "}
             <Link href="/cadastro" className="font-semibold text-[#00C853] hover:text-[#00E676]">
               Comece agora
@@ -99,7 +99,7 @@ export function LoginPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-white/80">
+            <label htmlFor="email" className="text-sm font-medium text-[#374151]">
               Email
             </label>
             <Input
@@ -109,12 +109,12 @@ export function LoginPage() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="voce@exemplo.com"
               required
-              className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+              className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="senha" className="text-sm font-medium text-white/80">
+            <label htmlFor="senha" className="text-sm font-medium text-[#374151]">
               Senha
             </label>
             <Input
@@ -124,7 +124,7 @@ export function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Sua senha"
               required
-              className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+              className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
             />
             <div className="flex justify-end">
               <button
@@ -134,7 +134,7 @@ export function LoginPage() {
                   setRecoveryFeedback("")
                   setForgotPasswordOpen(true)
                 }}
-                className="text-sm font-medium text-[#69F0AE] transition-colors hover:text-[#00E676]"
+                className="text-sm font-medium text-[#00A844] transition-colors hover:text-[#00C853]"
               >
                 Esqueci minha senha?
               </button>
@@ -142,14 +142,14 @@ export function LoginPage() {
           </div>
 
           {loginError && (
-            <div className="rounded-[1.25rem] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <div className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {loginError}
             </div>
           )}
 
           <Button
             type="submit"
-            className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/20 hover:bg-[#00E676]"
+            className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
           >
             {isSubmitting ? "Entrando..." : "Entrar"}
           </Button>
@@ -165,18 +165,18 @@ export function LoginPage() {
           }
         }}
       >
-        <DialogContent className="max-w-md rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)]">
+        <DialogContent className="max-w-md rounded-[1.75rem] border-[#E5E7EB] bg-white p-0 text-[#111111] shadow-[0_30px_80px_rgba(17,24,39,0.14)]">
           <div className="p-6 sm:p-7">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-2xl font-semibold text-white">Recuperar senha</DialogTitle>
-              <DialogDescription className="text-sm leading-6 text-white/55">
+              <DialogTitle className="text-2xl font-semibold text-[#111111]">Recuperar senha</DialogTitle>
+              <DialogDescription className="text-sm leading-6 text-[#6B7280]">
                 Informe seu email para solicitar a redefinição de senha quando a integração com backend estiver conectada.
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleRecoverySubmit} className="mt-6 space-y-5">
               <div className="space-y-2">
-                <label htmlFor="recovery-email" className="text-sm font-medium text-white/80">
+                <label htmlFor="recovery-email" className="text-sm font-medium text-[#374151]">
                   Email
                 </label>
                 <Input
@@ -186,12 +186,12 @@ export function LoginPage() {
                   onChange={(event) => setRecoveryEmail(event.target.value)}
                   placeholder="voce@exemplo.com"
                   required
-                  className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+                  className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
                 />
               </div>
 
               {recoveryFeedback && (
-                <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+                <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#00A844]">
                   {recoveryFeedback}
                 </div>
               )}
@@ -201,13 +201,13 @@ export function LoginPage() {
                   type="button"
                   variant="ghost"
                   onClick={() => setForgotPasswordOpen(false)}
-                  className="h-11 rounded-xl border border-white/10 bg-white/5 px-5 text-white/75 hover:bg-white/10 hover:text-white"
+                  className="h-11 rounded-xl border border-[#E5E7EB] bg-white px-5 text-[#111111] shadow-sm hover:bg-[#F8FAF9] hover:text-[#111111]"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 hover:bg-[#00E676]"
+                  className="h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
                 >
                   {isRecoverySubmitting ? "Enviando..." : "Enviar instruções"}
                 </Button>

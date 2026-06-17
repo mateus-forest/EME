@@ -11,7 +11,7 @@ import { FlowLine } from "@/components/flow-line"
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0B0B0B] relative overflow-x-hidden">
+    <main className="relative min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#F8FAF9_0%,#F4F6F5_40%,#EEF2F0_100%)]">
       <FlowLine />
       <Header />
       <Hero />

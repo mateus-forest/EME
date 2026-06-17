@@ -11,14 +11,14 @@ export function SignupAgencyPage() {
       title="Área de imobiliárias em evolução"
       subtitle="Nesta fase, o EME está focado no corretor individual para reduzir complexidade e acelerar estabilidade do produto."
       footer={
-        <p className="text-sm text-white/55">
+        <p className="text-sm text-[#6B7280]">
           Para imobiliárias: cadastre seus corretores individualmente e gerencie a operação pelo fluxo do corretor enquanto a área de equipes evolui.
         </p>
       }
     >
-      <div className="rounded-2xl border border-[#00C853]/20 bg-[#00C853]/[0.06] p-5">
-        <h3 className="text-xl font-semibold text-white">Use o acesso de corretor nesta fase</h3>
-        <p className="mt-2 text-sm leading-relaxed text-white/60">
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-[0_18px_48px_rgba(17,24,39,0.08)]">
+        <h3 className="text-xl font-semibold text-[#111111]">Use o acesso de corretor nesta fase</h3>
+        <p className="mt-2 text-sm leading-relaxed text-[#6B7280]">
           O cadastro de imobiliária está pausado temporariamente. O fluxo de corretor segue ativo com catálogo inteligente, leads, IA e Assessor EME.
         </p>
         <Button

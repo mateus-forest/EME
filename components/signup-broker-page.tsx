@@ -62,11 +62,11 @@ export function SignupBrokerPage() {
     <AuthShell
       title="Cadastro de corretor"
       subtitle="Crie sua conta e comece a publicar imóveis com rapidez em poucos passos."
-      footer={<p className="text-sm text-white/55">MVP focado em corretores individuais.</p>}
+      footer={<p className="text-sm text-[#6B7280]">MVP focado em corretores individuais.</p>}
     >
       <form onSubmit={handleSubmit} className="grid gap-5">
         <div className="space-y-2">
-          <label htmlFor="nome" className="text-sm font-medium text-white/80">
+          <label htmlFor="nome" className="text-sm font-medium text-[#374151]">
             Nome
           </label>
           <Input
@@ -75,12 +75,12 @@ export function SignupBrokerPage() {
             onChange={(event) => setName(event.target.value)}
             placeholder="Seu nome completo"
             required
-            className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-white/80">
+          <label htmlFor="email" className="text-sm font-medium text-[#374151]">
             Email
           </label>
           <Input
@@ -90,12 +90,12 @@ export function SignupBrokerPage() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="voce@exemplo.com"
             required
-            className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="whatsapp" className="text-sm font-medium text-white/80">
+          <label htmlFor="whatsapp" className="text-sm font-medium text-[#374151]">
             WhatsApp
           </label>
           <Input
@@ -105,12 +105,12 @@ export function SignupBrokerPage() {
             onChange={(event) => setPhone(event.target.value)}
             placeholder="(11) 99999-9999"
             required
-            className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="creci" className="text-sm font-medium text-white/80">
+          <label htmlFor="creci" className="text-sm font-medium text-[#374151]">
             CRECI
           </label>
           <Input
@@ -119,12 +119,12 @@ export function SignupBrokerPage() {
             onChange={(event) => setCreci(event.target.value)}
             placeholder="123456"
             required
-            className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="senha" className="text-sm font-medium text-white/80">
+          <label htmlFor="senha" className="text-sm font-medium text-[#374151]">
             Senha
           </label>
           <Input
@@ -134,19 +134,19 @@ export function SignupBrokerPage() {
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Crie sua senha"
             required
-            className="h-12 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-white/35"
+            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
           />
         </div>
 
         {error && (
-          <div className="rounded-[1.25rem] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <Button
           type="submit"
-          className="mt-2 h-12 rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/20 hover:bg-[#00E676]"
+          className="mt-2 h-12 rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
         >
           {isSubmitting ? "Criando conta..." : "Criar conta"}
         </Button>

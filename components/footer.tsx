@@ -3,7 +3,7 @@ import Image from "next/image"
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 py-12 px-4">
+    <footer className="border-t border-[#E5E7EB] py-12 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
@@ -19,22 +19,22 @@ export function Footer() {
 
           {/* Links */}
           <div className="flex items-center gap-6">
-            <Link href="#produto" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="#produto" className="text-sm text-[#6B7280] hover:text-[#111111] transition-colors">
               Produto
             </Link>
-            <Link href="#busca-inteligente" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="#busca-inteligente" className="text-sm text-[#6B7280] hover:text-[#111111] transition-colors">
               Busca inteligente
             </Link>
-            <Link href="#corretor-eme" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="#corretor-eme" className="text-sm text-[#6B7280] hover:text-[#111111] transition-colors">
               Canais EME
             </Link>
-            <Link href="mailto:suporte@eme.com" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="mailto:suporte@eme.com" className="text-sm text-[#6B7280] hover:text-[#111111] transition-colors">
               Contato
             </Link>
           </div>
 
           {/* Copyright */}
-          <p className="text-sm text-white/30">
+          <p className="text-sm text-[#6B7280]">
             © 2024 EME. Todos os direitos reservados.
           </p>
         </div>

@@ -10,7 +10,7 @@ export function SignupChoicePage() {
       title="Comece como corretor"
       subtitle="Nesta fase, o EME está focado em corretores individuais para acelerar criação de anúncios, catálogo inteligente, leads e Assessor EME."
       footer={
-        <p className="text-sm text-white/55">
+        <p className="text-sm text-[#6B7280]">
           Já tem conta?{" "}
           <Link href="/login" className="font-semibold text-[#00C853] hover:text-[#00E676]">
             Entrar
@@ -19,9 +19,9 @@ export function SignupChoicePage() {
       }
     >
       <div className="grid gap-4 sm:gap-5">
-        <div className="rounded-2xl border border-[#00C853]/20 bg-[#00C853]/[0.06] p-5 shadow-lg shadow-black/10">
-          <h3 className="text-xl font-semibold text-white">Corretor individual</h3>
-          <p className="mt-2 text-sm leading-relaxed text-white/60">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-[0_18px_48px_rgba(17,24,39,0.08)]">
+          <h3 className="text-xl font-semibold text-[#111111]">Corretor individual</h3>
+          <p className="mt-2 text-sm leading-relaxed text-[#6B7280]">
             Publique imóveis, use IA, capture leads e opere seu catálogo em poucos minutos.
           </p>
           <Button
