@@ -73,15 +73,13 @@ export default function Home() {
       <section id="produto" className="px-4 pb-14 pt-5 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="relative overflow-hidden rounded-[28px] bg-white">
-            <Image
+            <img
               src="/images/eme-hero-v2-banner.png"
               alt="O corretor que vende mais"
-              width={2560}
-              height={1200}
-              priority
-              quality={100}
-              sizes="100vw"
-              className="h-auto w-full select-none"
+              width={1831}
+              height={859}
+              className="block h-auto w-full select-none"
+              draggable={false}
             />
 
             {heroHotspots.map((hotspot) => (
@@ -104,56 +102,60 @@ export default function Home() {
 
       <section className="px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-white">
-          <Image
+          <img
             src="/images/eme-section-2-results-banner.png"
             alt="Veja o resultado"
             width={1774}
             height={887}
-            quality={100}
-            sizes="100vw"
-            className="h-auto w-full select-none"
+            className="block h-auto w-full select-none"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
           />
         </div>
       </section>
 
       <section id="como-funciona" className="px-4 pb-14 sm:px-6 lg:px-8">
         <div id="corretor-eme" className="mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-white">
-          <Image
+          <img
             src="/images/assistente-eme.png"
             alt="Seu assistente. Nao seu sistema."
             width={1913}
             height={822}
-            quality={100}
-            sizes="100vw"
-            className="h-auto w-full select-none"
+            className="block h-auto w-full select-none"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
           />
         </div>
       </section>
 
       <section id="busca-inteligente" className="px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-white">
-          <Image
+          <img
             src="/images/catalogo-eme.png"
             alt="Seu catalogo trabalhando para voce"
             width={2057}
             height={765}
-            quality={100}
-            sizes="100vw"
-            className="h-auto w-full select-none"
+            className="block h-auto w-full select-none"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
           />
         </div>
       </section>
 
       <section className="px-4 pb-14 sm:px-6 lg:px-8">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-white">
-          <Image
+          <img
             src="/images/cta-final-eme.png"
             alt="Menos trabalho. Mais vendas."
             width={1983}
             height={793}
-            quality={100}
-            sizes="100vw"
-            className="h-auto w-full select-none"
+            className="block h-auto w-full select-none"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
           />
           <Link
             href={finalCtaHotspot.href}
