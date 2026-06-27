@@ -81,7 +81,7 @@ export function BrokerAnalyticsPage() {
 
   return (
     <BrokerPageShell
-      title="Analytics"
+      title="Desempenho"
       searchPlaceholder="Buscar imóvel ou bairro"
       searchValue={search}
       onSearchChange={setSearch}
@@ -92,7 +92,7 @@ export function BrokerAnalyticsPage() {
             <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
               <BarChart3 className="size-6" />
             </div>
-            <h3 className="mt-4 text-2xl font-semibold text-[#050505]">Analytics pronto para acompanhar</h3>
+            <h3 className="mt-4 text-2xl font-semibold text-[#050505]">Desempenho pronto para acompanhar</h3>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[#5F6B7A]">
               Cadastre imóveis para acompanhar visualizações do catálogo, cliques no WhatsApp, leads recebidos e imóveis mais acessados.
             </p>

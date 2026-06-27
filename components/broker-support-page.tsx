@@ -16,7 +16,7 @@ const faqItems = [
   },
   {
     question: "Como editar um imóvel?",
-    answer: "Na página Meus imóveis, clique em Editar e ajuste as informações sem sair da tela.",
+    answer: "Na página Imóveis, clique em Editar e ajuste as informações sem sair da tela.",
   },
   {
     question: "Como funciona o catálogo?",
@@ -28,7 +28,7 @@ const faqItems = [
   },
   {
     question: "Como melhorar meus resultados?",
-    answer: "Use boas fotos, descrição clara e acompanhe os insights em Analytics para repetir o que funciona.",
+    answer: "Use boas fotos, descrição clara e acompanhe os insights em Desempenho para repetir o que funciona.",
   },
 ]
 

@@ -137,7 +137,7 @@ export function BrokerPortal() {
   return (
     <>
       <BrokerPageShell
-        title="Dashboard"
+        title="COS"
         searchPlaceholder="Buscar imóveis, bairros ou campanhas"
         searchValue={search}
         onSearchChange={setSearch}
@@ -153,6 +153,7 @@ export function BrokerPortal() {
             unreadCount={unreadCount}
             onMarkAsRead={markAsRead}
             onArchive={archive}
+            tone="light"
           />
         }
         headerControls={

@@ -3,7 +3,7 @@ import { BrokerAgendaPage } from "@/components/broker-agenda-page"
 
 export default function AgendaPage() {
   return (
-    <BrokerPageShell title="Agenda">
+    <BrokerPageShell title="Compromissos">
       <BrokerAgendaPage />
     </BrokerPageShell>
   )

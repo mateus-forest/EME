@@ -124,7 +124,7 @@ export function BrokerCorretorEmePage() {
   return (
     <BrokerPageShell title="Corretor EME">
       <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-[#009b3a]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex size-12 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
@@ -200,7 +200,7 @@ export function BrokerCorretorEmePage() {
           </Card>
           </ResponsiveCollapsibleSection>
 
-          <Card className="rounded-[1.75rem] border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+          <Card className="rounded-[1.75rem] border-[#25D366]/20 bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
                 <Clock3 className="size-5 text-[#25D366]" />

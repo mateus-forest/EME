@@ -133,7 +133,7 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
   return (
     <section className="grid gap-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <Card className="overflow-hidden rounded-[1.75rem] border-[#009b3a]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.16),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+        <Card className="overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -170,7 +170,7 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-[#009b3a]/18 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/12 text-[#009b3a]">
@@ -270,7 +270,7 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
           <CardHeader className="px-6 py-5">
             <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
               <FileText className="size-5 text-[#009b3a]" />
-              Documentos
+              Propostas
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">

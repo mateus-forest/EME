@@ -261,7 +261,7 @@ export function BrokerDocumentsPage() {
           <CardHeader className="px-5 py-5">
             <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
               <FileText className="size-5 text-[#009b3a]" />
-              Documentos
+              Propostas
             </CardTitle>
             <div className="flex flex-wrap gap-2 pt-3">
               {statuses.map((item) => (

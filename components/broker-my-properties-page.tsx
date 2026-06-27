@@ -311,7 +311,7 @@ export function BrokerMyPropertiesPage() {
   return (
     <>
       <BrokerPageShell
-        title="Meus imóveis"
+        title="Imóveis"
         searchPlaceholder="Buscar por imóvel, bairro ou código"
         searchValue={search}
         onSearchChange={setSearch}

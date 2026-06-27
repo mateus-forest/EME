@@ -72,9 +72,9 @@ const featureLabels: Record<string, string> = {
   catalog: "Catálogo online",
   leads: "Leads",
   agenda: "Agenda",
-  documents: "Documentos",
+  documents: "Propostas",
   financial: "Financeiro",
-  analytics: "Analytics",
+  analytics: "Desempenho",
   assessor_eme: "Assessor EME",
   all: "Todas as funcionalidades",
 }
@@ -176,6 +176,7 @@ export function BrokerPlanPage() {
           unreadCount={unreadCount}
           onMarkAsRead={markAsRead}
           onArchive={archive}
+          tone="light"
         />
       }
     >

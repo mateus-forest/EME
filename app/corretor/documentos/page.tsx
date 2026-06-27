@@ -3,7 +3,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 
 export default function DocumentsPage() {
   return (
-    <BrokerPageShell title="Documentos">
+    <BrokerPageShell title="Propostas">
       <BrokerDocumentsPage />
     </BrokerPageShell>
   )

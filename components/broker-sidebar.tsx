@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -8,6 +9,7 @@ import {
   BookOpenText,
   Building2,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   CreditCard,
   FileText,
@@ -78,11 +80,14 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
   },
 ]
 
+const defaultOpenSections = Object.fromEntries(menuSections.map((section) => [section.label, true]))
+
 export function BrokerSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useBrokerProfile()
   const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar()
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(defaultOpenSections)
   const collapsed = state === "collapsed"
   const initials = profile.fullName
     .split(" ")
@@ -107,6 +112,10 @@ export function BrokerSidebar() {
     }
 
     router.push("/login")
+  }
+
+  function toggleSection(label: string) {
+    setOpenSections((current) => ({ ...current, [label]: !current[label] }))
   }
 
   const sidebarInner = (
@@ -138,36 +147,49 @@ export function BrokerSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2.5 py-3">
-        <div className="grid gap-4">
-          {menuSections.map((section) => (
-            <div key={section.label} className="grid gap-1.5">
-              {(!collapsed || isMobile) && (
-                <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8B95A1]">
-                  {section.label}
-                </p>
-              )}
-              <SidebarMenu className="gap-1.5">
-                {section.items.map((item) => (
-                  <SidebarMenuItem key={`${section.label}-${item.label}`}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={item.href !== "#" && pathname === item.href}
-                      tooltip={item.label}
-                      className={`h-10 rounded-xl border border-transparent text-[15px] font-medium text-[#5F6B7A] hover:border-black/[0.06] hover:bg-[#f6f7f4] hover:text-[#050505] data-[active=true]:border-[#009b3a]/15 data-[active=true]:bg-[#009b3a]/10 data-[active=true]:text-[#050505] ${collapsed && !isMobile ? "px-0" : "px-3"}`}
-                    >
-                      <Link
-                        href={item.href}
-                        className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-3"}`}
-                      >
-                        <item.icon className="size-[18px] shrink-0" />
-                        <span className={collapsed && !isMobile ? "hidden" : "min-w-0 truncate"}>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </div>
-          ))}
+        <div className="grid gap-3">
+          {menuSections.map((section) => {
+            const sectionOpen = collapsed && !isMobile ? true : openSections[section.label]
+
+            return (
+              <div key={section.label} className="grid gap-1.5">
+                {(!collapsed || isMobile) && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.label)}
+                    className="flex h-7 items-center justify-between rounded-lg px-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8B95A1] transition-colors hover:bg-[#f6f7f4] hover:text-[#050505]"
+                    aria-expanded={sectionOpen}
+                  >
+                    <span>{section.label}</span>
+                    <ChevronDown className={`size-3.5 transition-transform ${sectionOpen ? "rotate-180" : ""}`} />
+                  </button>
+                )}
+
+                {sectionOpen && (
+                  <SidebarMenu className="gap-1.5">
+                    {section.items.map((item) => (
+                      <SidebarMenuItem key={`${section.label}-${item.label}`}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={item.href !== "#" && pathname === item.href}
+                          tooltip={item.label}
+                          className={`h-10 rounded-xl border border-transparent text-[15px] font-medium text-[#5F6B7A] hover:border-black/[0.06] hover:bg-[#f6f7f4] hover:text-[#050505] data-[active=true]:border-[#009b3a]/15 data-[active=true]:bg-[#009b3a]/10 data-[active=true]:text-[#050505] ${collapsed && !isMobile ? "px-0" : "px-3"}`}
+                        >
+                          <Link
+                            href={item.href}
+                            className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-3"}`}
+                          >
+                            <item.icon className="size-[18px] shrink-0" />
+                            <span className={collapsed && !isMobile ? "hidden" : "min-w-0 truncate"}>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
