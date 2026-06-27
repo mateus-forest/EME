@@ -5,20 +5,17 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   BarChart3,
-  Bot,
   BookOpenText,
   Building2,
   CalendarDays,
   ChevronLeft,
   CreditCard,
   FileText,
-  MessageCircle,
   LayoutDashboard,
-  LifeBuoy,
   LogOut,
   UserRound,
-  WalletCards,
   UsersRound,
+  type LucideIcon,
 } from "lucide-react"
 
 import { useBrokerProfile } from "@/components/use-broker-profile"
@@ -39,20 +36,46 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 
-const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/corretor" },
-  { label: "Meus imÃ³veis", icon: Building2, href: "/corretor/imoveis" },
-  { label: "CatÃ¡logo", icon: BookOpenText, href: "/corretor/catalogo" },
-  { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
-  { label: "Corretor EME", icon: MessageCircle, href: "/corretor/corretor-eme" },
-  { label: "Assessor EME", icon: Bot, href: "/corretor/corretor-m" },
-  { label: "Agenda", icon: CalendarDays, href: "/corretor/agenda" },
-  { label: "Documentos", icon: FileText, href: "/corretor/documentos" },
-  { label: "Analytics", icon: BarChart3, href: "/corretor/analytics" },
-  { label: "Financeiro", icon: WalletCards, href: "/corretor/financeiro" },
-  { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
-  { label: "Suporte", icon: LifeBuoy, href: "/corretor/suporte" },
-  { label: "Conta", icon: UserRound, href: "/corretor/conta" },
+type MenuItem = {
+  label: string
+  icon: LucideIcon
+  href: string
+}
+
+const menuSections: Array<{ label: string; items: MenuItem[] }> = [
+  {
+    label: "INÍCIO",
+    items: [{ label: "COS", icon: LayoutDashboard, href: "/corretor" }],
+  },
+  {
+    label: "CARTEIRA",
+    items: [
+      { label: "Clientes", icon: UserRound, href: "/corretor/leads" },
+      { label: "Imóveis", icon: Building2, href: "/corretor/imoveis" },
+    ],
+  },
+  {
+    label: "VENDAS",
+    items: [
+      { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
+      { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
+      { label: "Propostas", icon: FileText, href: "/corretor/documentos" },
+    ],
+  },
+  {
+    label: "OPERAÇÃO",
+    items: [
+      { label: "Compromissos", icon: CalendarDays, href: "/corretor/agenda" },
+      { label: "Desempenho", icon: BarChart3, href: "/corretor/analytics" },
+    ],
+  },
+  {
+    label: "CONFIGURAÇÕES",
+    items: [
+      { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
+      { label: "Conta", icon: UserRound, href: "/corretor/conta" },
+    ],
+  },
 ]
 
 export function BrokerSidebar() {
@@ -114,27 +137,38 @@ export function BrokerSidebar() {
         </Button>
       </div>
 
-      <div className="flex-1 px-2.5 py-3">
-        <SidebarMenu className="gap-1.5">
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.label}>
-              <SidebarMenuButton
-                asChild
-                isActive={item.href !== "#" && pathname === item.href}
-                tooltip={item.label}
-                className={`h-10 rounded-xl border border-transparent text-[15px] font-medium text-[#5F6B7A] hover:border-black/[0.06] hover:bg-[#f6f7f4] hover:text-[#050505] data-[active=true]:border-[#009b3a]/15 data-[active=true]:bg-[#009b3a]/10 data-[active=true]:text-[#050505] ${collapsed && !isMobile ? "px-0" : "px-3"}`}
-              >
-                <Link
-                  href={item.href}
-                  className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-3"}`}
-                >
-                  <item.icon className="size-[18px] shrink-0" />
-                  <span className={collapsed && !isMobile ? "hidden" : "min-w-0 truncate"}>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+      <div className="flex-1 overflow-y-auto px-2.5 py-3">
+        <div className="grid gap-4">
+          {menuSections.map((section) => (
+            <div key={section.label} className="grid gap-1.5">
+              {(!collapsed || isMobile) && (
+                <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8B95A1]">
+                  {section.label}
+                </p>
+              )}
+              <SidebarMenu className="gap-1.5">
+                {section.items.map((item) => (
+                  <SidebarMenuItem key={`${section.label}-${item.label}`}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={item.href !== "#" && pathname === item.href}
+                      tooltip={item.label}
+                      className={`h-10 rounded-xl border border-transparent text-[15px] font-medium text-[#5F6B7A] hover:border-black/[0.06] hover:bg-[#f6f7f4] hover:text-[#050505] data-[active=true]:border-[#009b3a]/15 data-[active=true]:bg-[#009b3a]/10 data-[active=true]:text-[#050505] ${collapsed && !isMobile ? "px-0" : "px-3"}`}
+                    >
+                      <Link
+                        href={item.href}
+                        className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-3"}`}
+                      >
+                        <item.icon className="size-[18px] shrink-0" />
+                        <span className={collapsed && !isMobile ? "hidden" : "min-w-0 truncate"}>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </div>
           ))}
-        </SidebarMenu>
+        </div>
       </div>
 
       <div className="mt-auto px-3 pb-3">
@@ -179,7 +213,7 @@ export function BrokerSidebar() {
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Portal do corretor</SheetTitle>
-            <SheetDescription>NavegaÃ§Ã£o lateral do portal do corretor.</SheetDescription>
+            <SheetDescription>Navegação lateral do portal do corretor.</SheetDescription>
           </SheetHeader>
           {sidebarInner}
         </SheetContent>
