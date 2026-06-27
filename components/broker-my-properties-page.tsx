@@ -321,27 +321,27 @@ export function BrokerMyPropertiesPage() {
         headerControls={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8.5 rounded-xl border border-white/10 bg-white/5 px-4 text-white/75 hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" className="h-8.5 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
                 <Filter className="size-4" />
                 Filtros
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-72 rounded-2xl border-white/[0.08] bg-[#101010]/96 p-2 text-white shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-              <DropdownMenuLabel className="text-white/50">Status</DropdownMenuLabel>
-              <DropdownMenuCheckboxItem checked={statusFilters.includes("Publicado")} onCheckedChange={() => toggleFilter("Publicado", statusFilters, setStatusFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Publicado</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={statusFilters.includes("Rascunho")} onCheckedChange={() => toggleFilter("Rascunho", statusFilters, setStatusFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Rascunho</DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator className="bg-white/[0.08]" />
-              <DropdownMenuLabel className="text-white/50">Tipo</DropdownMenuLabel>
+            <DropdownMenuContent align="start" className="w-72 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+              <DropdownMenuLabel className="text-[#6B7280]">Status</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem checked={statusFilters.includes("Publicado")} onCheckedChange={() => toggleFilter("Publicado", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Publicado</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={statusFilters.includes("Rascunho")} onCheckedChange={() => toggleFilter("Rascunho", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Rascunho</DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator className="bg-white" />
+              <DropdownMenuLabel className="text-[#6B7280]">Tipo</DropdownMenuLabel>
               {allPropertyTypes.map((type) => (
-                <DropdownMenuCheckboxItem key={type} checked={typeFilters.includes(type)} onCheckedChange={() => toggleFilter(type, typeFilters, setTypeFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">{type}</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem key={type} checked={typeFilters.includes(type)} onCheckedChange={() => toggleFilter(type, typeFilters, setTypeFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">{type}</DropdownMenuCheckboxItem>
               ))}
-              <DropdownMenuSeparator className="bg-white/[0.08]" />
-              <DropdownMenuLabel className="text-white/50">Faixa de preço</DropdownMenuLabel>
-              <DropdownMenuCheckboxItem checked={priceFilters.includes("low")} onCheckedChange={() => toggleFilter("low", priceFilters, setPriceFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Até R$ 800 mil</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={priceFilters.includes("mid")} onCheckedChange={() => toggleFilter("mid", priceFilters, setPriceFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">R$ 800 mil a R$ 2 mi</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={priceFilters.includes("high")} onCheckedChange={() => toggleFilter("high", priceFilters, setPriceFilters)} className="rounded-xl text-white/80 focus:bg-white/[0.06]">Acima de R$ 2 mi</DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator className="bg-white/[0.08]" />
-              <Button type="button" variant="ghost" onClick={clearFilters} className="mt-2 h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+              <DropdownMenuSeparator className="bg-white" />
+              <DropdownMenuLabel className="text-[#6B7280]">Faixa de preço</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem checked={priceFilters.includes("low")} onCheckedChange={() => toggleFilter("low", priceFilters, setPriceFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Até R$ 800 mil</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={priceFilters.includes("mid")} onCheckedChange={() => toggleFilter("mid", priceFilters, setPriceFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">R$ 800 mil a R$ 2 mi</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={priceFilters.includes("high")} onCheckedChange={() => toggleFilter("high", priceFilters, setPriceFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Acima de R$ 2 mi</DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator className="bg-white" />
+              <Button type="button" variant="ghost" onClick={clearFilters} className="mt-2 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
                 Limpar filtros
               </Button>
             </DropdownMenuContent>
@@ -349,20 +349,20 @@ export function BrokerMyPropertiesPage() {
         }
       >
         {listFeedback && (
-          <div className="mb-4 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          <div className="mb-4 rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
             {listFeedback}
           </div>
         )}
         {hasReachedLimit && (
-          <div className="mb-4 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          <div className="mb-4 rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
             Você atingiu o limite gratuito de 3 imóveis. Faça upgrade para continuar publicando.
           </div>
         )}
         {hasActiveFilters && (
-          <div className="mb-4 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="mb-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>Filtrando resultados...</span>
-              <Button type="button" variant="ghost" onClick={clearFilters} className="h-8 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white">
+              <Button type="button" variant="ghost" onClick={clearFilters} className="h-8 rounded-lg border border-black/[0.06] bg-white/80 px-3 text-xs text-[#4B5563] hover:bg-white hover:text-[#050505]">
                 Limpar filtros
               </Button>
             </div>
@@ -374,22 +374,22 @@ export function BrokerMyPropertiesPage() {
             {filteredProperties.map((property) => (
               <Card
                 key={property.id}
-                className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)]"
+                className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(15,23,42,0.10)]"
               >
                 <CardContent className="flex h-full flex-col gap-4 p-3 sm:p-4">
-                  <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
+                  <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
                     {getPropertyImage(property.images?.[0] ?? null, property.id) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={getPropertyImage(property.images?.[0] ?? null, property.id)} alt={property.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center px-4 text-center">
-                        <ImagePlus className="size-9 text-white/30" />
-                        <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+                        <ImagePlus className="size-9 text-[#8B95A1]" />
+                        <p className="mt-3 text-sm font-medium text-[#5F6B7A]">Sem imagem cadastrada</p>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                     <div className="absolute top-3 left-3">
-                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#00C853]/20 bg-black/60 px-2.5 py-1 text-[11px] text-[#69F0AE] backdrop-blur-md" : "rounded-full border border-white/[0.08] bg-black/60 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur-md"}>
+                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#009b3a]/20 bg-white/85 px-2.5 py-1 text-[11px] text-[#009b3a] backdrop-blur-md" : "rounded-full border border-black/[0.06] bg-white/85 px-2.5 py-1 text-[11px] text-[#050505]/80 backdrop-blur-md"}>
                         {property.status}
                       </Badge>
                     </div>
@@ -398,19 +398,19 @@ export function BrokerMyPropertiesPage() {
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="min-w-0">
                       {property.publicCode ? (
-                        <span className="mb-2 inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-2.5 py-1 text-xs font-semibold text-[#69F0AE]">
+                        <span className="mb-2 inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-2.5 py-1 text-xs font-semibold text-[#009b3a]">
                           Imóvel {property.publicCode}
                         </span>
                       ) : null}
-                      <h2 className="line-clamp-2 text-lg font-semibold leading-tight text-white sm:text-xl">{property.title}</h2>
-                      <div className="mt-2 flex items-center gap-2 text-sm text-white/55">
-                        <MapPin className="size-4 shrink-0 text-[#69F0AE]" />
+                      <h2 className="line-clamp-2 text-lg font-semibold leading-tight text-[#050505] sm:text-xl">{property.title}</h2>
+                      <div className="mt-2 flex items-center gap-2 text-sm text-[#6B7280]">
+                        <MapPin className="size-4 shrink-0 text-[#009b3a]" />
                         <span className="truncate">{property.location}</span>
                       </div>
-                      <p className="mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">{property.price}</p>
+                      <p className="mt-3 text-xl font-semibold tracking-tight text-[#050505] sm:text-2xl">{property.price}</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 text-sm text-white/60">
+                    <div className="flex flex-wrap gap-3 text-sm text-[#5F6B7A]">
                       <Spec icon={BedDouble} value={`${property.bedrooms} quartos`} />
                       <Spec icon={Bath} value={`${property.bathrooms} banheiros`} />
                       <Spec icon={CarFront} value={`${property.parking} vagas`} />
@@ -424,21 +424,21 @@ export function BrokerMyPropertiesPage() {
                     </div>
 
                     <div className="grid gap-2">
-                      <Button type="button" variant="ghost" onClick={() => togglePropertyStatus(property)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm text-white/75 hover:bg-white/[0.08] hover:text-white">
+                      <Button type="button" variant="ghost" onClick={() => togglePropertyStatus(property)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">
                         {property.status === "Publicado" ? "Despublicar" : "Publicar"}
                       </Button>
-                      <Button asChild className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+                      <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
                         <a href={whatsAppUrl} target="_blank" rel="noreferrer">
                           <MessageCircle className="size-4" />
                           WhatsApp
                         </a>
                       </Button>
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="ghost" onClick={() => openEditModal(property)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/70 hover:bg-white/[0.08] hover:text-white">
+                        <Button variant="ghost" onClick={() => openEditModal(property)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#5F6B7A] hover:bg-white hover:text-[#050505]">
                           <PencilLine className="size-4" />
                           Editar
                         </Button>
-                        <Button variant="ghost" onClick={() => handleDeleteProperty(property.id)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/55 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
+                        <Button variant="ghost" onClick={() => handleDeleteProperty(property.id)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#6B7280] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
                           <Trash2 className="size-4" />
                           Excluir
                         </Button>
@@ -450,12 +450,12 @@ export function BrokerMyPropertiesPage() {
             ))}
           </section>
         ) : (
-          <Card className="rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_22px_50px_rgba(0,0,0,0.18)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardContent className="flex flex-col items-center justify-center px-6 py-20 text-center">
-              <div className="flex size-14 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]"><Plus className="size-6" /></div>
-              <h2 className="mt-6 text-2xl font-semibold text-white">{properties.length > 0 ? "Nenhum imóvel encontrado" : "Você ainda não cadastrou imóveis"}</h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-white/55">{properties.length > 0 ? "Ajuste a busca ou os filtros para ver mais resultados." : "Comece agora e publique seu primeiro imóvel em segundos."}</p>
-              <Button type="button" onClick={hasReachedLimit ? () => setIsLimitModalOpen(true) : () => router.push("/corretor/novo-imovel")} className="mt-6 h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+              <div className="flex size-14 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]"><Plus className="size-6" /></div>
+              <h2 className="mt-6 text-2xl font-semibold text-[#050505]">{properties.length > 0 ? "Nenhum imóvel encontrado" : "Você ainda não cadastrou imóveis"}</h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#6B7280]">{properties.length > 0 ? "Ajuste a busca ou os filtros para ver mais resultados." : "Comece agora e publique seu primeiro imóvel em segundos."}</p>
+              <Button type="button" onClick={hasReachedLimit ? () => setIsLimitModalOpen(true) : () => router.push("/corretor/novo-imovel")} className="mt-6 h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
                 Adicionar imóvel
               </Button>
             </CardContent>
@@ -463,19 +463,19 @@ export function BrokerMyPropertiesPage() {
         )}
 
         <Dialog open={isEditModalOpen} onOpenChange={closeEditModal}>
-          <DialogContent className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-4xl">
+          <DialogContent className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 p-0 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:max-w-4xl">
             {editingProperty && (
               <>
-                <div className="border-b border-white/[0.08] px-6 py-5">
-                  <DialogTitle className="text-xl text-white">Editar imóvel</DialogTitle>
-                  <DialogDescription className="mt-2 text-white/50">Atualize fotos, informações e status sem sair da tela.</DialogDescription>
+                <div className="border-b border-black/[0.06] px-6 py-5">
+                  <DialogTitle className="text-xl text-[#050505]">Editar imóvel</DialogTitle>
+                  <DialogDescription className="mt-2 text-[#6B7280]">Atualize fotos, informações e status sem sair da tela.</DialogDescription>
                 </div>
                 <div className="max-h-[calc(92vh-168px)] overflow-y-auto px-6 py-5">
                   <div className="grid gap-6">
                     <section className="grid gap-4">
                       <div className="flex items-center justify-between gap-4">
-                        <h3 className="text-lg font-semibold text-white">Mídia</h3>
-                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
+                        <h3 className="text-lg font-semibold text-[#050505]">Mídia</h3>
+                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] transition-colors hover:bg-white hover:text-[#050505]">
                           <input
                             type="file"
                             multiple
@@ -492,21 +492,21 @@ export function BrokerMyPropertiesPage() {
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {editingProperty.images.map((image, index) => (
-                          <div key={`${image}-${index}`} className="group relative overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]">
+                          <div key={`${image}-${index}`} className="group relative overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
                             <div className="relative aspect-[4/3] max-h-36">
                               {getPropertyImage(image, `${editingProperty.id}-${index}`) ? (
                                 <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill className="object-cover" />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center">
-                                  <ImagePlus className="size-7 text-white/30" />
+                                  <ImagePlus className="size-7 text-[#8B95A1]" />
                                 </div>
                               )}
                             </div>
-                            <button type="button" onClick={() => removePhoto(index)} className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100">
+                            <button type="button" onClick={() => removePhoto(index)} className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-[#050505]/80 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100">
                               <X className="size-4" />
                               <span className="sr-only">Remover foto</span>
                             </button>
-                            <button type="button" onClick={() => void makeCover(index)} className="absolute bottom-2 left-2 rounded-full bg-black/55 px-3 py-1 text-xs text-white/80 opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100">
+                            <button type="button" onClick={() => void makeCover(index)} className="absolute bottom-2 left-2 rounded-full bg-white/85 px-3 py-1 text-xs text-[#050505]/80 opacity-0 transition-opacity hover:bg-white group-hover:opacity-100">
                               {index === 0 ? "Capa" : "Usar capa"}
                             </button>
                           </div>
@@ -515,14 +515,14 @@ export function BrokerMyPropertiesPage() {
                     </section>
 
                     <section className="grid gap-4">
-                      <h3 className="text-lg font-semibold text-white">Informações</h3>
+                      <h3 className="text-lg font-semibold text-[#050505]">Informações</h3>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        <Field label="Título"><Input value={editingProperty.title} onChange={(event) => updateField("title", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
-                        <Field label="Preço"><Input value={editingProperty.price} onChange={(event) => updateField("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
+                        <Field label="Título"><Input value={editingProperty.title} onChange={(event) => updateField("title", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Preço"><Input value={editingProperty.price} onChange={(event) => updateField("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Tipo">
                           <Select value={editingProperty.type} onValueChange={(value) => updateField("type", value as EditableProperty["type"])}>
-                            <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white"><SelectValue /></SelectTrigger>
-                            <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                            <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"><SelectValue /></SelectTrigger>
+                            <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
                               <SelectItem value="Apartamento">Apartamento</SelectItem>
                               <SelectItem value="Casa">Casa</SelectItem>
                               <SelectItem value="Comercial">Comercial</SelectItem>
@@ -535,8 +535,8 @@ export function BrokerMyPropertiesPage() {
                         </Field>
                         <Field label="Finalidade">
                           <Select value={editingProperty.purpose} onValueChange={(value) => updateField("purpose", value as EditableProperty["purpose"])}>
-                            <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white"><SelectValue /></SelectTrigger>
-                            <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                            <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"><SelectValue /></SelectTrigger>
+                            <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
                               <SelectItem value="Venda">Venda</SelectItem>
                               <SelectItem value="Locação">Locação</SelectItem>
                             </SelectContent>
@@ -545,30 +545,30 @@ export function BrokerMyPropertiesPage() {
                         <Field label="Quartos"><CounterInput value={editingProperty.bedrooms} onChange={(value) => updateField("bedrooms", value)} /></Field>
                         <Field label="Banheiros"><CounterInput value={editingProperty.bathrooms} onChange={(value) => updateField("bathrooms", value)} /></Field>
                         <Field label="Vagas"><CounterInput value={editingProperty.parking} onChange={(value) => updateField("parking", value)} /></Field>
-                        <Field label="Cidade"><Input value={editingProperty.city} onChange={(event) => updateField("city", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
-                        <Field label="Bairro"><Input value={editingProperty.neighborhood} onChange={(event) => updateField("neighborhood", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" /></Field>
+                        <Field label="Cidade"><Input value={editingProperty.city} onChange={(event) => updateField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Bairro"><Input value={editingProperty.neighborhood} onChange={(event) => updateField("neighborhood", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                       </div>
                     </section>
 
                     <section className="grid gap-4">
-                      <h3 className="text-lg font-semibold text-white">Descrição</h3>
-                      <Textarea value={editingProperty.description} onChange={(event) => updateField("description", event.target.value)} placeholder="Descreva os principais diferenciais do imóvel..." className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30" />
+                      <h3 className="text-lg font-semibold text-[#050505]">Descrição</h3>
+                      <Textarea value={editingProperty.description} onChange={(event) => updateField("description", event.target.value)} placeholder="Descreva os principais diferenciais do imóvel..." className="min-h-32 rounded-[1.25rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
                     </section>
 
                     <section className="grid gap-4">
-                      <div className="flex items-center justify-between gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                      <div className="flex items-center justify-between gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                         <div>
-                          <h3 className="text-lg font-semibold text-white">IA para anúncio</h3>
-                          <p className="mt-1 text-sm text-white/50">Gere uma descrição comercial com os dados atuais do imóvel.</p>
+                          <h3 className="text-lg font-semibold text-[#050505]">IA para anúncio</h3>
+                          <p className="mt-1 text-sm text-[#6B7280]">Gere uma descrição comercial com os dados atuais do imóvel.</p>
                         </div>
-                        <Button type="button" variant="ghost" onClick={generateDescriptionWithAi} disabled={isGeneratingAi} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white disabled:opacity-60">
+                        <Button type="button" variant="ghost" onClick={generateDescriptionWithAi} disabled={isGeneratingAi} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60">
                           {isGeneratingAi ? "Gerando..." : "Gerar descrição com IA"}
                         </Button>
                       </div>
                       {aiHighlights.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {aiHighlights.map((highlight) => (
-                            <Badge key={highlight} className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs text-[#69F0AE]">
+                            <Badge key={highlight} className="rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs text-[#009b3a]">
                               {highlight}
                             </Badge>
                           ))}
@@ -577,32 +577,32 @@ export function BrokerMyPropertiesPage() {
                     </section>
 
                     <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
-                      <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                        <h3 className="text-lg font-semibold text-white">Áudio (opcional)</h3>
-                        <Button type="button" variant="ghost" disabled className="mt-4 h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/45 disabled:opacity-60">
+                      <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                        <h3 className="text-lg font-semibold text-[#050505]">Áudio (opcional)</h3>
+                        <Button type="button" variant="ghost" disabled className="mt-4 h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#7B8491] disabled:opacity-60">
                           <Mic className="size-4" />
                           Gravação em breve
                         </Button>
                       </div>
-                      <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                        <h3 className="text-lg font-semibold text-white">Status</h3>
+                      <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                        <h3 className="text-lg font-semibold text-[#050505]">Status</h3>
                         <div className="mt-3 flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm text-white/60">Status atual</p>
-                            <p className="mt-1 font-medium text-white">{editingProperty.status}</p>
+                            <p className="text-sm text-[#5F6B7A]">Status atual</p>
+                            <p className="mt-1 font-medium text-[#050505]">{editingProperty.status}</p>
                           </div>
                           <Switch checked={publishToggleChecked} onCheckedChange={(checked) => updateField("status", checked ? "Publicado" : "Rascunho")} />
                         </div>
-                        <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="mt-3 h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/75 hover:bg-white/[0.08] hover:text-white">
+                        <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="mt-3 h-9 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">
                           {publishToggleChecked ? "Despublicar imóvel" : "Publicar imóvel"}
                         </Button>
                       </div>
                     </section>
 
                     <section className="grid gap-3">
-                      <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                        <h3 className="text-lg font-semibold text-white">Áudio</h3>
-                        <label className="mt-4 inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
+                      <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                        <h3 className="text-lg font-semibold text-[#050505]">Áudio</h3>
+                        <label className="mt-4 inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] transition-colors hover:bg-white hover:text-[#050505]">
                           <input
                             type="file"
                             accept="audio/*"
@@ -620,28 +620,28 @@ export function BrokerMyPropertiesPage() {
                             <audio controls src={editingProperty.audioUrl} className="mt-3 w-full">
                               Seu navegador não suporta reprodução de áudio.
                             </audio>
-                            <Button variant="ghost" onClick={() => void removeAudio()} className="mt-3 h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                            <Button variant="ghost" onClick={() => void removeAudio()} className="mt-3 h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
                               Remover áudio
                             </Button>
                           </>
                         ) : (
-                          <p className="mt-3 text-sm text-white/50">Nenhum áudio enviado para este imóvel.</p>
+                          <p className="mt-3 text-sm text-[#6B7280]">Nenhum áudio enviado para este imóvel.</p>
                         )}
                       </div>
                     </section>
 
-                    {saveFeedback && <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{saveFeedback}</div>}
+                    {saveFeedback && <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">{saveFeedback}</div>}
                   </div>
                 </div>
-                <DialogFooter className="sticky bottom-0 border-t border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.98))] px-6 py-4 sm:justify-between">
+                <DialogFooter className="sticky bottom-0 border-t border-black/[0.06] bg-white/90 px-6 py-4 sm:justify-between">
                   <Button variant="ghost" onClick={() => handleDeleteProperty(editingProperty.id)} className="h-10 rounded-xl border border-red-500/12 bg-red-500/5 px-4 text-red-200 hover:bg-red-500/10 hover:text-red-100">
                     <Trash2 className="size-4" />
                     Excluir imóvel
                   </Button>
                   <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                    <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">{publishToggleChecked ? "Despublicar" : "Publicar"}</Button>
-                    <Button variant="ghost" onClick={() => closeEditModal(false)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">Cancelar</Button>
-                    <Button onClick={saveChanges} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">Salvar alterações</Button>
+                    <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">{publishToggleChecked ? "Despublicar" : "Publicar"}</Button>
+                    <Button variant="ghost" onClick={() => closeEditModal(false)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">Cancelar</Button>
+                    <Button onClick={saveChanges} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">Salvar alterações</Button>
                   </div>
                 </DialogFooter>
               </>
@@ -655,23 +655,23 @@ export function BrokerMyPropertiesPage() {
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3 py-3"><p className="text-xs text-white/45">{label}</p><p className="mt-1.5 text-sm font-semibold text-white">{value}</p></div>
+  return <div className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] px-3 py-3"><p className="text-xs text-[#7B8491]">{label}</p><p className="mt-1.5 text-sm font-semibold text-[#050505]">{value}</p></div>
 }
 
 function Spec({ icon: Icon, value }: { icon: typeof BedDouble; value: string }) {
-  return <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5"><Icon className="size-4 text-[#69F0AE]" /><span>{value}</span></div>
+  return <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1.5"><Icon className="size-4 text-[#009b3a]" /><span>{value}</span></div>
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="grid gap-2"><span className="text-sm font-medium text-white/70">{label}</span>{children}</label>
+  return <label className="grid gap-2"><span className="text-sm font-medium text-[#5F6B7A]">{label}</span>{children}</label>
 }
 
 function CounterInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
-    <div className="flex h-10 items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.04] px-2">
-      <Button type="button" variant="ghost" size="icon" onClick={() => onChange(Math.max(0, value - 1))} className="size-7 rounded-lg text-white/70 hover:bg-white/[0.08] hover:text-white">-</Button>
-      <span className="text-sm font-semibold text-white">{value}</span>
-      <Button type="button" variant="ghost" size="icon" onClick={() => onChange(value + 1)} className="size-7 rounded-lg text-white/70 hover:bg-white/[0.08] hover:text-white">+</Button>
+    <div className="flex h-10 items-center justify-between rounded-xl border border-black/[0.06] bg-white/80 px-2">
+      <Button type="button" variant="ghost" size="icon" onClick={() => onChange(Math.max(0, value - 1))} className="size-7 rounded-lg text-[#5F6B7A] hover:bg-white hover:text-[#050505]">-</Button>
+      <span className="text-sm font-semibold text-[#050505]">{value}</span>
+      <Button type="button" variant="ghost" size="icon" onClick={() => onChange(value + 1)} className="size-7 rounded-lg text-[#5F6B7A] hover:bg-white hover:text-[#050505]">+</Button>
     </div>
   )
 }

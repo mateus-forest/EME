@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { ArrowUpRight, Bot, CalendarDays, ChartColumn, CheckCircle2, FileText, Globe, Headphones, Home, PackagePlus, Sparkles, WalletCards } from "lucide-react"
@@ -181,42 +181,42 @@ export function BrokerPlanPage() {
     >
       <div className="grid gap-5">
         {hasReachedLimit && (
-          <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
             Você atingiu o limite de imóveis do seu plano. Faça upgrade ou solicite um pacote de imóveis extras para continuar publicando.
           </div>
         )}
 
         <section className="grid gap-4">
           <ResponsiveCollapsibleSection title="Plano atual" defaultMobileOpen>
-          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardContent className="p-4 sm:p-5">
-              <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
+              <div className="inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
                 Plano atual
               </div>
 
               <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-white">{planDisplayName}</h2>
-                  <p className="mt-2 text-sm text-white/55">{planDescription}</p>
+                  <h2 className="text-2xl font-semibold tracking-tight text-[#050505]">{planDisplayName}</h2>
+                  <p className="mt-2 text-sm text-[#6B7280]">{planDescription}</p>
                 </div>
 
-                <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/40">Status comercial</p>
+                <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">Status comercial</p>
                   <div className="mt-2 flex items-end gap-2">
-                    <p className="text-2xl font-semibold text-white">{planPrice}</p>
+                    <p className="text-2xl font-semibold text-[#050505]">{planPrice}</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1.5 text-sm text-[#69F0AE]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1.5 text-sm text-[#009b3a]">
                   <CheckCircle2 className="size-4" />
                   {planStatus}
                 </div>
                 <Button
                   type="button"
                   onClick={() => void registerCommercialRequest("Solicitação de plano", `${planDisplayName} - ${planPrice}`)}
-                  className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                  className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                 >
                   Solicitar plano
                 </Button>
@@ -226,9 +226,9 @@ export function BrokerPlanPage() {
           </ResponsiveCollapsibleSection>
 
           <ResponsiveCollapsibleSection title="Informações da assinatura">
-          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-white">Informações da assinatura</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Informações da assinatura</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0">
               <InfoBlock label="Plano atual" value={planDisplayName} />
@@ -241,8 +241,8 @@ export function BrokerPlanPage() {
               <InfoBlock label="Créditos IA disponíveis" value={String(planSnapshot?.credits.balance ?? 0)} />
               <InfoBlock label="Créditos IA do plano/mês" value={String(planSnapshot?.credits.monthlyCredits ?? 0)} />
               <InfoBlock label="Créditos IA usados no mês" value={String(planSnapshot?.credits.usedThisMonth ?? 0)} />
-              <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 p-4">
-                <p className="text-sm text-[#69F0AE]">
+              <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 p-4">
+                <p className="text-sm text-[#009b3a]">
                   Dados carregados do backend de planos, limites e créditos IA. Pagamento real ainda não foi integrado.
                 </p>
               </div>
@@ -252,31 +252,31 @@ export function BrokerPlanPage() {
         </section>
 
         <ResponsiveCollapsibleSection title="Planos disponíveis" defaultMobileOpen>
-          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-white">Planos disponíveis</CardTitle>
-              <p className="text-sm text-white/50">Escolha o plano ideal para a fase atual da sua operação.</p>
+              <CardTitle className="text-xl text-[#050505]">Planos disponíveis</CardTitle>
+              <p className="text-sm text-[#6B7280]">Escolha o plano ideal para a fase atual da sua operação.</p>
             </CardHeader>
             <CardContent className="grid gap-4 p-6 pt-0 lg:grid-cols-3">
               {(planSnapshot?.plans ?? []).map((plan) => (
                 <div
                   key={plan.key}
-                  className="flex min-h-[360px] flex-col justify-between rounded-[1.35rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-all hover:border-[#00C853]/25 hover:bg-white/[0.05]"
+                  className="flex min-h-[360px] flex-col justify-between rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] p-5 transition-all hover:border-[#009b3a]/25 hover:bg-white/85"
                 >
                   <div>
-                    <div className="inline-flex rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#69F0AE]">
+                    <div className="inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#009b3a]">
                       {plan.key === currentPlan?.key ? "Plano atual" : "Plano"}
                     </div>
-                    <h3 className="mt-4 text-xl font-semibold text-white">{plan.name}</h3>
-                    <p className="mt-2 text-2xl font-semibold text-[#69F0AE]">{plan.price}</p>
-                    <p className="mt-3 text-sm leading-6 text-white/58">
+                    <h3 className="mt-4 text-xl font-semibold text-[#050505]">{plan.name}</h3>
+                    <p className="mt-2 text-2xl font-semibold text-[#009b3a]">{plan.price}</p>
+                    <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">
                       {plan.propertyLimit} imóveis no plano e {plan.monthlyAiCredits} créditos IA por mês.
                     </p>
 
                     <div className="mt-5 grid gap-3">
                       {buildPlanHighlights(plan).map((highlight) => (
-                        <div key={highlight} className="flex items-start gap-2 text-sm text-white/70">
-                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#69F0AE]" />
+                        <div key={highlight} className="flex items-start gap-2 text-sm text-[#5F6B7A]">
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
                           <span>{highlight}</span>
                         </div>
                       ))}
@@ -289,8 +289,8 @@ export function BrokerPlanPage() {
                     onClick={() => void registerCommercialRequest("Solicitação de plano", `${plan.name} - ${plan.price}`)}
                     className={
                       plan.key === currentPlan?.key
-                        ? "mt-6 h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
-                        : "mt-6 h-10 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                        ? "mt-6 h-10 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                        : "mt-6 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                     }
                   >
                     {plan.key === currentPlan?.key ? "Plano atual" : "Solicitar plano"}
@@ -298,7 +298,7 @@ export function BrokerPlanPage() {
                 </div>
               ))}
               {!isPlanLoading && !planSnapshot ? (
-                <p className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55 lg:col-span-3">
+                <p className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280] lg:col-span-3">
                   Não foi possível carregar os planos agora.
                 </p>
               ) : null}
@@ -307,9 +307,9 @@ export function BrokerPlanPage() {
         </ResponsiveCollapsibleSection>
 
         <ResponsiveCollapsibleSection title="O que está incluso">
-          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-white">O que está incluso</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">O que está incluso</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-2">
               {(currentPlan?.features ?? []).map((feature) => {
@@ -317,21 +317,21 @@ export function BrokerPlanPage() {
                 return (
                 <div
                   key={feature}
-                  className="flex items-center gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4"
+                  className="flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4"
                 >
-                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                     <Icon className="size-4.5" />
                   </div>
-                  <p className="text-sm text-white/75">{featureLabels[feature] ?? feature}</p>
+                  <p className="text-sm text-[#4B5563]">{featureLabels[feature] ?? feature}</p>
                 </div>
                 )
               })}
               {currentPlan ? (
-                <div className="flex items-center gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4">
-                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                <div className="flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4">
+                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                     <Bot className="size-4.5" />
                   </div>
-                  <p className="text-sm text-white/75">{currentPlan.monthlyAiCredits} créditos IA/mês</p>
+                  <p className="text-sm text-[#4B5563]">{currentPlan.monthlyAiCredits} créditos IA/mês</p>
                 </div>
               ) : null}
             </CardContent>
@@ -341,48 +341,48 @@ export function BrokerPlanPage() {
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6">
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Uso atual</CardTitle>
+                <CardTitle className="text-xl text-[#050505]">Uso atual</CardTitle>
               </CardHeader>
               <CardContent className="p-6 pt-0">
-                <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                  <p className="text-sm text-white/60">Imóveis cadastrados</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{propertyLimitLabel}</p>
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                    <div className="h-full rounded-full bg-[#00C853]" style={{ width: usageWidth }} />
+                <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                  <p className="text-sm text-[#5F6B7A]">Imóveis cadastrados</p>
+                  <p className="mt-2 text-2xl font-semibold text-[#050505]">{propertyLimitLabel}</p>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f6f7f4]">
+                    <div className="h-full rounded-full bg-[#009b3a]" style={{ width: usageWidth }} />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Precisa de mais?</CardTitle>
+                <CardTitle className="text-xl text-[#050505]">Precisa de mais?</CardTitle>
               </CardHeader>
               <CardContent className="p-6 pt-0">
-                <p className="text-sm leading-7 text-white/60">
+                <p className="text-sm leading-7 text-[#5F6B7A]">
                   Solicite uma conversa com o suporte EME para ajustar plano, créditos ou capacidade de imóveis.
                 </p>
                 <Button
                   type="button"
                   onClick={() => void registerCommercialRequest("Solicitação de plano", "Corretor solicitou conversa sobre planos e pacotes EME.")}
-                  className="mt-5 h-10 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                  className="mt-5 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                 >
                   <Bot className="size-4" />
                   Falar sobre planos
                 </Button>
-                {upgradeFeedback && <p className="mt-3 text-sm text-[#69F0AE]">{upgradeFeedback}</p>}
+                {upgradeFeedback && <p className="mt-3 text-sm text-[#009b3a]">{upgradeFeedback}</p>}
               </CardContent>
             </Card>
           </div>
         </section>
 
         <ResponsiveCollapsibleSection title="Pacotes extras">
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">Pacotes extras</CardTitle>
-            <p className="text-sm text-white/50">
+            <CardTitle className="text-xl text-[#050505]">Pacotes extras</CardTitle>
+            <p className="text-sm text-[#6B7280]">
               Pacotes extras são compra única. Créditos IA entram na carteira da conta e imóveis extras aumentam permanentemente o limite.
             </p>
           </CardHeader>
@@ -393,22 +393,22 @@ export function BrokerPlanPage() {
                 ? "Créditos IA adicionados à carteira da conta."
                 : "Aumenta permanentemente o limite de imóveis da conta."
               return (
-              <div key={item.key} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+              <div key={item.key} className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                     <Icon className="size-4.5" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base font-semibold text-white">{item.label}</h3>
-                    <p className="mt-1 text-sm font-medium text-[#69F0AE]">{item.price}</p>
+                    <h3 className="text-base font-semibold text-[#050505]">{item.label}</h3>
+                    <p className="mt-1 text-sm font-medium text-[#009b3a]">{item.price}</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-white/58">{description}</p>
+                <p className="mt-4 text-sm leading-6 text-[#5F6B7A]">{description}</p>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => void registerCommercialRequest("Solicitar pacote", `${item.label} - ${item.price}`)}
-                  className="mt-5 h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
+                  className="mt-5 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
                 >
                   Solicitar pacote
                 </Button>
@@ -419,16 +419,16 @@ export function BrokerPlanPage() {
         </Card>
         </ResponsiveCollapsibleSection>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-[#fbfbf8] py-0">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-6 text-white/58">
+            <p className="text-sm leading-6 text-[#5F6B7A]">
               Créditos IA são adicionados à carteira da conta. Imóveis extras aumentam permanentemente o limite de imóveis. Pagamento real ainda não foi integrado.
             </p>
             <Button
               type="button"
               variant="ghost"
               onClick={() => void registerCommercialRequest("Contato com suporte", "Corretor solicitou atendimento de suporte pela página Plano.")}
-              className="h-10 shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
+              className="h-10 shrink-0 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
             >
               <Headphones className="size-4" />
               Falar com suporte
@@ -437,28 +437,28 @@ export function BrokerPlanPage() {
         </Card>
 
         <ResponsiveCollapsibleSection title="Histórico de créditos">
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">Histórico de créditos IA</CardTitle>
+            <CardTitle className="text-xl text-[#050505]">Histórico de créditos IA</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
             {planSnapshot?.credits.history.length ? (
               planSnapshot.credits.history.map((item) => (
-                <div key={item.id} className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <div key={item.id} className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm font-medium text-white">{item.description || item.actionType || "Movimento de créditos"}</p>
-                    <span className={item.amount >= 0 ? "text-sm font-semibold text-[#69F0AE]" : "text-sm font-semibold text-white/75"}>
+                    <p className="text-sm font-medium text-[#050505]">{item.description || item.actionType || "Movimento de créditos"}</p>
+                    <span className={item.amount >= 0 ? "text-sm font-semibold text-[#009b3a]" : "text-sm font-semibold text-[#4B5563]"}>
                       {item.amount > 0 ? "+" : ""}{item.amount} crédito{Math.abs(item.amount) === 1 ? "" : "s"}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-white/55">
+                  <p className="mt-2 text-sm leading-6 text-[#6B7280]">
                     {formatHistoryDate(item.createdAt)} · Saldo após movimento: {item.balanceAfter}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-sm text-white/55">Nenhuma movimentação de créditos registrada ainda.</p>
+              <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                <p className="text-sm text-[#6B7280]">Nenhuma movimentação de créditos registrada ainda.</p>
               </div>
             )}
           </CardContent>
@@ -471,9 +471,9 @@ export function BrokerPlanPage() {
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-sm text-white/50">{label}</p>
-      <p className="mt-2 text-base font-semibold text-white">{value}</p>
+    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-sm text-[#6B7280]">{label}</p>
+      <p className="mt-2 text-base font-semibold text-[#050505]">{value}</p>
     </div>
   )
 }

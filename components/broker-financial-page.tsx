@@ -127,15 +127,15 @@ export function BrokerFinancialPage() {
     <BrokerPageShell title="Financeiro">
       <div className="grid gap-5">
         {!hasProperties && !isLoading ? (
-          <section className="rounded-[1.75rem] border border-[#00C853]/20 bg-[#00C853]/10 p-6 text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+          <section className="rounded-[1.75rem] border border-[#009b3a]/20 bg-[#009b3a]/10 p-6 text-center shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
               <CircleDollarSign className="size-6" />
             </div>
-            <h3 className="mt-4 text-2xl font-semibold text-white">Sua carteira ainda está vazia</h3>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-white/60">
+            <h3 className="mt-4 text-2xl font-semibold text-[#050505]">Sua carteira ainda está vazia</h3>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[#5F6B7A]">
               Cadastre seus imóveis para acompanhar valor de carteira, comissão potencial, ticket médio e histórico financeiro sem dados artificiais.
             </p>
-            <Button asChild className="mt-6 h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+            <Button asChild className="mt-6 h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
               <Link href="/corretor/novo-imovel">Cadastrar imóvel</Link>
             </Button>
           </section>
@@ -157,13 +157,13 @@ export function BrokerFinancialPage() {
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <ResponsiveCollapsibleSection title="Comissão estimada" defaultMobileOpen>
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="flex items-center gap-2 text-xl text-white">
-                <Percent className="size-5 text-[#69F0AE]" />
+              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+                <Percent className="size-5 text-[#009b3a]" />
                 Comissões estimadas
               </CardTitle>
-              <p className="text-sm text-white/50">Cálculo estimado com a taxa configurada sobre a base filtrada.</p>
+              <p className="text-sm text-[#6B7280]">Cálculo estimado com a taxa configurada sobre a base filtrada.</p>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0 md:grid-cols-2">
               <InfoBlock label="Comissão potencial total" value={formatBRLFromCents(totalPotentialCommission)} />
@@ -175,24 +175,24 @@ export function BrokerFinancialPage() {
           </ResponsiveCollapsibleSection>
 
           <ResponsiveCollapsibleSection title="Filtros e base">
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="flex items-center gap-2 text-xl text-white">
-                <SlidersHorizontal className="size-5 text-[#69F0AE]" />
+              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+                <SlidersHorizontal className="size-5 text-[#009b3a]" />
                 Filtros e base
               </CardTitle>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0">
               <InfoBlock label="Imóveis com valor informado" value={`${pricedValues.length} de ${totalProperties}`} />
-              <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <span className="text-sm text-white/50">Percentual de comissão</span>
+              <label className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                <span className="text-sm text-[#6B7280]">Percentual de comissão</span>
                 <input
                   type="number"
                   min="0"
                   step="0.1"
                   value={commissionPercent}
                   onChange={(event) => setCommissionPercent(Number(event.target.value) || 0)}
-                  className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35"
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm font-semibold text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/35"
                 />
               </label>
               <SelectBlock label="Tipo de cálculo" value={calculationType} onChange={(value) => setCalculationType(value as (typeof calculationTypes)[number])} options={calculationTypes} />
@@ -200,10 +200,10 @@ export function BrokerFinancialPage() {
               <SelectBlock label="Filtro por tipo" value={typeFilter} onChange={setTypeFilter} options={propertyTypes} />
               <SelectBlock label="Filtro por finalidade" value={purposeFilter} onChange={setPurposeFilter} options={["Todos", "Venda", "Locação"]} />
               <SelectBlock label="Visualização" value={viewMode} onChange={(value) => setViewMode(value as (typeof viewModes)[number])} options={viewModes} />
-              <Button type="button" onClick={saveFinancialConfig} disabled={isSavingConfig} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60">
+              <Button type="button" onClick={saveFinancialConfig} disabled={isSavingConfig} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:opacity-60">
                 {isSavingConfig ? "Salvando..." : "Salvar configuração"}
               </Button>
-              {configFeedback ? <p className="text-sm text-[#69F0AE]">{configFeedback}</p> : null}
+              {configFeedback ? <p className="text-sm text-[#009b3a]">{configFeedback}</p> : null}
             </CardContent>
           </Card>
           </ResponsiveCollapsibleSection>
@@ -219,15 +219,15 @@ export function BrokerFinancialPage() {
         </section>
 
         <ResponsiveCollapsibleSection title={viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}>
-        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">{viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}</CardTitle>
+            <CardTitle className="text-xl text-[#050505]">{viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}</CardTitle>
           </CardHeader>
           <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0">
             {filteredProperties.length > 0 ? (
               viewMode === "Por imóvel" ? (
-                <div className="overflow-x-auto rounded-[1.25rem] border border-white/[0.08]">
-                  <div className="hidden min-w-[680px] gap-3 border-b border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/40 md:grid md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
+                <div className="overflow-x-auto rounded-[1.25rem] border border-black/[0.06]">
+                  <div className="hidden min-w-[680px] gap-3 border-b border-black/[0.06] bg-white/80 px-4 py-3 text-xs uppercase tracking-[0.16em] text-[#7B8491] md:grid md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px]">
                     <span>Imóvel</span>
                     <span>Valor</span>
                     <span>Percentual</span>
@@ -235,26 +235,26 @@ export function BrokerFinancialPage() {
                     <span>Status</span>
                   </div>
                   {filteredProperties.map((property) => (
-                    <div key={property.id} className="grid min-w-0 gap-2 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm last:border-b-0 md:min-w-[680px] md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
-                      <p className="truncate font-medium text-white">{property.title}</p>
-                      <span className="break-words text-white/60">{property.priceValue > 0 ? property.price : "Sem valor"}</span>
-                      <span className="text-white/60">{commissionPercent.toLocaleString("pt-BR")}%</span>
-                      <span className="break-words font-semibold text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
-                      <span className="text-white/60">{property.status}</span>
+                    <div key={property.id} className="grid min-w-0 gap-2 border-b border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm last:border-b-0 md:min-w-[680px] md:grid-cols-[minmax(0,1fr)_140px_120px_150px_110px] md:items-center">
+                      <p className="truncate font-medium text-[#050505]">{property.title}</p>
+                      <span className="break-words text-[#5F6B7A]">{property.priceValue > 0 ? property.price : "Sem valor"}</span>
+                      <span className="text-[#5F6B7A]">{commissionPercent.toLocaleString("pt-BR")}%</span>
+                      <span className="break-words font-semibold text-[#009b3a]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+                      <span className="text-[#5F6B7A]">{property.status}</span>
                     </div>
                   ))}
                 </div>
               ) : (
                 filteredProperties.slice(0, 5).map((property) => (
-                  <div key={property.id} className="grid min-w-0 gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
-                    <p className="truncate text-sm font-medium text-white">{property.title}</p>
-                    <span className="break-words text-sm text-white/60">{property.price}</span>
-                    <span className="break-words text-sm text-[#69F0AE]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+                  <div key={property.id} className="grid min-w-0 gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
+                    <p className="truncate text-sm font-medium text-[#050505]">{property.title}</p>
+                    <span className="break-words text-sm text-[#5F6B7A]">{property.price}</span>
+                    <span className="break-words text-sm text-[#009b3a]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
                   </div>
                 ))
               )
             ) : (
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">
+              <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">
                 Nenhum imóvel cadastrado para compor histórico.
               </div>
             )}
@@ -268,13 +268,13 @@ export function BrokerFinancialPage() {
 
 function MetricCard({ icon: Icon, label, value }: { icon: typeof Building2; label: string; value: string }) {
   return (
-    <Card className="min-w-0 rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
       <CardContent className="min-w-0 p-4 sm:p-5">
-        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
           <Icon className="size-4.5" />
         </div>
-        <p className="mt-4 text-sm text-white/50">{label}</p>
-        <p className="mt-2 min-w-0 break-words text-xl font-semibold leading-tight text-white sm:text-2xl">{value}</p>
+        <p className="mt-4 text-sm text-[#6B7280]">{label}</p>
+        <p className="mt-2 min-w-0 break-words text-xl font-semibold leading-tight text-[#050505] sm:text-2xl">{value}</p>
       </CardContent>
     </Card>
   )
@@ -282,11 +282,11 @@ function MetricCard({ icon: Icon, label, value }: { icon: typeof Building2; labe
 
 function MetricSkeleton() {
   return (
-    <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-white/[0.03] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-[#fbfbf8] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
       <CardContent className="p-5">
-        <div className="eme-shimmer size-10 rounded-2xl bg-white/[0.08]" />
-        <div className="eme-shimmer mt-4 h-3 w-2/3 rounded-full bg-white/[0.06]" />
-        <div className="eme-shimmer mt-3 h-6 w-1/2 rounded-full bg-white/[0.08]" />
+        <div className="eme-shimmer size-10 rounded-2xl bg-white" />
+        <div className="eme-shimmer mt-4 h-3 w-2/3 rounded-full bg-[#f6f7f4]" />
+        <div className="eme-shimmer mt-3 h-6 w-1/2 rounded-full bg-white" />
       </CardContent>
     </Card>
   )
@@ -294,9 +294,9 @@ function MetricSkeleton() {
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-sm text-white/50">{label}</p>
-      <p className="mt-2 break-words text-base font-semibold leading-tight text-white">{value}</p>
+    <div className="min-w-0 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-sm text-[#6B7280]">{label}</p>
+      <p className="mt-2 break-words text-base font-semibold leading-tight text-[#050505]">{value}</p>
     </div>
   )
 }
@@ -313,15 +313,15 @@ function SelectBlock({
   options: readonly string[]
 }) {
   return (
-    <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-      <span className="text-sm text-white/50">{label}</span>
+    <label className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <span className="text-sm text-[#6B7280]">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35"
+        className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm font-semibold text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/35"
       >
         {options.map((option) => (
-          <option key={option} value={option} className="bg-[#111]">
+          <option key={option} value={option} className="bg-white">
             {option}
           </option>
         ))}
@@ -332,21 +332,21 @@ function SelectBlock({
 
 function BreakdownCard({ icon: Icon, title, entries }: { icon: typeof Home; title: string; entries: [string, number][] }) {
   return (
-    <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
       <CardHeader className="px-6 py-5">
-        <CardTitle className="flex items-center gap-2 text-xl text-white">
-          <Icon className="size-5 text-[#69F0AE]" />
+        <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+          <Icon className="size-5 text-[#009b3a]" />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3 p-6 pt-0">
         {entries.length > 0 ? entries.map(([label, count]) => (
-          <div key={label} className="flex items-center justify-between rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-            <span className="text-sm text-white/65">{label}</span>
-            <span className="text-sm font-semibold text-white">{count}</span>
+          <div key={label} className="flex items-center justify-between rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+            <span className="text-sm text-[#5F6B7A]">{label}</span>
+            <span className="text-sm font-semibold text-[#050505]">{count}</span>
           </div>
         )) : (
-          <p className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/55">Nenhum dado disponível.</p>
+          <p className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">Nenhum dado disponível.</p>
         )}
       </CardContent>
     </Card>

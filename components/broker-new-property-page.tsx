@@ -370,7 +370,7 @@ export function BrokerNewPropertyPage() {
     <BrokerPageShell title="Novo imóvel">
       <div className="grid gap-6">
         {billingBypassEnabled ? (
-          <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+          <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
             Ambiente local com billing em modo de teste. Os bloqueios de plano estão temporariamente desativados.
           </div>
         ) : null}
@@ -381,19 +381,19 @@ export function BrokerNewPropertyPage() {
             <div>
               <Button
                 asChild
-                className="h-9 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                className="h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
               >
                 <Link href="/corretor/plano">Regularizar plano</Link>
               </Button>
             </div>
           </div>
         ) : hasReachedLimit ? (
-          <div className="flex flex-col gap-3 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-4 text-sm text-[#69F0AE]">
+          <div className="flex flex-col gap-3 rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-4 text-sm text-[#009b3a]">
             <p>Seu plano atual atingiu o limite permitido de 3 imóveis. Faça upgrade para continuar.</p>
             <div>
               <Button
                 asChild
-                className="h-9 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                className="h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
               >
                 <Link href="/corretor/plano">Assinar plano</Link>
               </Button>
@@ -422,12 +422,12 @@ export function BrokerNewPropertyPage() {
         ) : (
           <>
 
-        <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] px-6 py-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imóvel</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 px-6 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imóvel</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">
             {creationMode === "ai" ? "Use fotos, áudio ou texto para gerar o anúncio" : "Preencha os dados do imóvel com controle total"}
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
             {creationMode === "ai"
               ? "A IA monta a primeira versão do anúncio e você revisa tudo antes de publicar."
               : "Cadastre cada detalhe do imóvel com calma, sem depender da geração automática."}
@@ -436,23 +436,23 @@ export function BrokerNewPropertyPage() {
             type="button"
             variant="ghost"
             onClick={() => setCreationMode(null)}
-            className="mt-5 h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+            className="mt-5 h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
           >
             Voltar
           </Button>
         </section>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-white">{creationMode === "ai" ? "Fotos para acelerar a IA" : "Fotos do imóvel"}</CardTitle>
-            <p className="text-sm text-white/50">
+            <CardTitle className="text-xl text-[#050505]">{creationMode === "ai" ? "Fotos para acelerar a IA" : "Fotos do imóvel"}</CardTitle>
+            <p className="text-sm text-[#6B7280]">
               {creationMode === "ai"
                 ? "Envie fotos reais para apoiar a criação do anúncio. Você revisa o resultado antes de publicar."
                 : "Adicione fotos reais do imóvel para compor o anúncio manual."}
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-5 pt-0">
-            <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#00C853]/28 bg-[#00C853]/[0.05] px-6 text-center transition-colors hover:bg-[#00C853]/[0.08]">
+            <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#009b3a]/28 bg-[#009b3a]/[0.05] px-6 text-center transition-colors hover:bg-[#009b3a]/[0.08]">
               <input
                 type="file"
                 multiple
@@ -460,18 +460,18 @@ export function BrokerNewPropertyPage() {
                 className="sr-only"
                 onChange={(event) => handleImageSelection(event.target.files)}
               />
-              <div className="flex size-14 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+              <div className="flex size-14 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <ImagePlus className="size-6" />
               </div>
-              <h3 className="mt-5 text-lg font-semibold text-white">
+              <h3 className="mt-5 text-lg font-semibold text-[#050505]">
                 Arraste imagens aqui ou selecione do dispositivo
               </h3>
-              <p className="mt-2 max-w-lg text-sm leading-6 text-white/55">
+              <p className="mt-2 max-w-lg text-sm leading-6 text-[#6B7280]">
                 {creationMode === "ai"
                   ? "Use fotos, áudio ou texto para a IA montar uma primeira versão do anúncio."
                   : "Selecione imagens reais para o cadastro tradicional do imóvel."}
               </p>
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-white/75">
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/80 px-4 py-2 text-sm text-[#4B5563]">
                 <Upload className="size-4" />
                 Selecionar imagens
               </div>
@@ -482,7 +482,7 @@ export function BrokerNewPropertyPage() {
                 {previewImages.map((image, index) => (
                   <div
                     key={`${image}-${index}`}
-                    className="relative aspect-[4/3] max-h-32 overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03]"
+                    className="relative aspect-[4/3] max-h-32 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
@@ -490,10 +490,10 @@ export function BrokerNewPropertyPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex min-h-28 flex-col items-center justify-center rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
-                <Images className="size-8 text-white/35" />
-                <p className="mt-3 text-sm font-medium text-white/75">Nenhuma foto selecionada</p>
-                <p className="mt-1 text-sm text-white/45">As imagens reais aparecerão aqui antes da publicação.</p>
+              <div className="flex min-h-28 flex-col items-center justify-center rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 text-center">
+                <Images className="size-8 text-[#8B95A1]" />
+                <p className="mt-3 text-sm font-medium text-[#4B5563]">Nenhuma foto selecionada</p>
+                <p className="mt-1 text-sm text-[#7B8491]">As imagens reais aparecerão aqui antes da publicação.</p>
               </div>
             )}
           </CardContent>
@@ -502,10 +502,10 @@ export function BrokerNewPropertyPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6">
             {creationMode === "ai" ? (
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">{creationMode === "ai" ? "Descrição, áudio e IA" : "Descrição do imóvel"}</CardTitle>
-                <p className="text-sm text-white/50">
+                <CardTitle className="text-xl text-[#050505]">{creationMode === "ai" ? "Descrição, áudio e IA" : "Descrição do imóvel"}</CardTitle>
+                <p className="text-sm text-[#6B7280]">
                   {creationMode === "ai"
                     ? "Descreva ou grave os pontos principais. A IA transforma isso em um anúncio revisável."
                     : "Escreva a descrição do imóvel diretamente, com os detalhes que deseja publicar."}
@@ -516,7 +516,7 @@ export function BrokerNewPropertyPage() {
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Fale sobre ambientes, diferenciais, lazer, localização ou qualquer detalhe relevante."
-                  className="min-h-40 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                  className="min-h-40 rounded-[1.25rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                 />
 
                 {creationMode === "ai" ? (
@@ -526,13 +526,13 @@ export function BrokerNewPropertyPage() {
                     variant="ghost"
                     onClick={handleAudioDescription}
                     disabled={isTranscribingAudio}
-                    className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
+                    className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60"
                   >
                     <AudioLines className="size-4" />
                     {isTranscribingAudio ? "Ouvindo..." : "Áudio"}
                   </Button>
 
-                  <label className="inline-flex h-10 cursor-pointer items-center justify-start gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white">
+                  <label className="inline-flex h-10 cursor-pointer items-center justify-start gap-2 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] transition-colors hover:bg-white hover:text-[#050505]">
                     <input
                       type="file"
                       accept="audio/*"
@@ -549,16 +549,16 @@ export function BrokerNewPropertyPage() {
                   <Button
                     onClick={handleGenerateAd}
                     disabled={isGenerating || hasReachedLimit || isPlanBlocked}
-                    className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-60"
+                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:opacity-60"
                   >
-                    {isGenerating ? <Spinner className="size-4 text-black" /> : <Sparkles className="size-4" />}
+                    {isGenerating ? <Spinner className="size-4 text-white" /> : <Sparkles className="size-4" />}
                     {isGenerating ? "Gerando..." : "Gerar anúncio com IA"}
                   </Button>
                 </div>
                 ) : null}
 
                 {creationMode === "ai" && audioFile ? (
-                  <div className="grid gap-3 rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/60">
+                  <div className="grid gap-3 rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
                     <p>{audioFile.name}</p>
                     {audioPreviewUrl ? (
                       <audio controls src={audioPreviewUrl} className="w-full">
@@ -572,9 +572,9 @@ export function BrokerNewPropertyPage() {
             ) : null}
 
             {(creationMode === "manual" || hasGenerated) ? (
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">{creationMode === "manual" ? "Dados do imóvel" : "Revisão do imóvel"}</CardTitle>
+                <CardTitle className="text-xl text-[#050505]">{creationMode === "manual" ? "Dados do imóvel" : "Revisão do imóvel"}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 p-5 pt-0">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -583,7 +583,7 @@ export function BrokerNewPropertyPage() {
                       value={title}
                       onChange={(event) => setTitle(event.target.value)}
                       placeholder="Ex.: Apartamento com varanda no Jardins"
-                      className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                      className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>
                   <Field label="Valor">
@@ -591,15 +591,15 @@ export function BrokerNewPropertyPage() {
                       value={price}
                       onChange={(event) => setPrice(formatCurrencyInput(event.target.value))}
                       placeholder="R$ 500.000,00"
-                      className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                      className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>
                   <Field label="Tipo">
                     <Select value={propertyType} onValueChange={(value) => setPropertyType(value as PropertyType)}>
-                      <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white">
+                      <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                      <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
                         <SelectItem value="Apartamento">Apartamento</SelectItem>
                         <SelectItem value="Casa">Casa</SelectItem>
                         <SelectItem value="Comercial">Comercial</SelectItem>
@@ -612,10 +612,10 @@ export function BrokerNewPropertyPage() {
                   </Field>
                   <Field label="Finalidade">
                     <Select value={propertyPurpose} onValueChange={(value) => setPropertyPurpose(value as PropertyPurpose)}>
-                      <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white">
+                      <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                      <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
                         <SelectItem value="Venda">Venda</SelectItem>
                         <SelectItem value="Locação">Locação</SelectItem>
                       </SelectContent>
@@ -623,10 +623,10 @@ export function BrokerNewPropertyPage() {
                   </Field>
                   <Field label="Status">
                     <Select value={publishStatus} onValueChange={(value) => setPublishStatus(value as PublishStatus)}>
-                      <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-white/[0.04] text-white">
+                      <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                      <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
                         <SelectItem value="Publicado">Publicado</SelectItem>
                         <SelectItem value="Rascunho">Rascunho</SelectItem>
                       </SelectContent>
@@ -637,7 +637,7 @@ export function BrokerNewPropertyPage() {
                       value={city}
                       onChange={(event) => setCity(event.target.value)}
                       placeholder="São Paulo"
-                      className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                      className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>
                   <Field label="Bairro">
@@ -645,7 +645,7 @@ export function BrokerNewPropertyPage() {
                       value={neighborhood}
                       onChange={(event) => setNeighborhood(event.target.value)}
                       placeholder="Jardins"
-                      className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                      className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>
                 </div>
@@ -656,7 +656,7 @@ export function BrokerNewPropertyPage() {
                       value={description}
                       onChange={(event) => setDescription(event.target.value)}
                       placeholder="Descreva os principais diferenciais do imóvel..."
-                      className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/30"
+                      className="min-h-32 rounded-[1.25rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>
                 ) : null}
@@ -673,9 +673,9 @@ export function BrokerNewPropertyPage() {
           </div>
 
           <div className="grid gap-6">
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardContent className="p-6">
-                <p className="text-sm leading-7 text-white/60">
+                <p className="text-sm leading-7 text-[#5F6B7A]">
                   {creationMode === "ai"
                     ? "Fluxo rápido: envie contexto, gere com IA e ajuste os dados antes de publicar."
                     : "Fluxo manual: preencha informações, descrição e fotos com controle total sobre o anúncio."}
@@ -683,34 +683,34 @@ export function BrokerNewPropertyPage() {
               </CardContent>
             </Card>
             {publishFeedback && !hasGenerated ? (
-              <p className="text-center text-sm text-[#69F0AE]">{publishFeedback}</p>
+              <p className="text-center text-sm text-[#009b3a]">{publishFeedback}</p>
             ) : null}
           </div>
         </div>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-white">
+              <CardTitle className="text-xl text-[#050505]">
                 {isGenerating ? "Gerando seu anúncio..." : "Preview do anúncio"}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 pt-0">
               {isGenerating ? (
-                <div className="flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] text-center">
-                  <Spinner className="size-6 text-[#69F0AE]" />
-                  <p className="mt-4 text-base font-medium text-white">Gerando seu anúncio...</p>
-                  <p className="mt-2 text-sm text-white/50">
+                <div className="flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] text-center">
+                  <Spinner className="size-6 text-[#009b3a]" />
+                  <p className="mt-4 text-base font-medium text-[#050505]">Gerando seu anúncio...</p>
+                  <p className="mt-2 text-sm text-[#6B7280]">
                     Organizamos as fotos e montamos uma descrição pronta para publicar.
                   </p>
                 </div>
               ) : !hasPreviewData ? (
-                <div className="flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] px-4 text-center">
-                  <Images className="size-9 text-white/35" />
-                  <p className="mt-3 text-sm font-medium text-white/75">Preencha os dados para visualizar o anúncio.</p>
+                <div className="flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-4 text-center">
+                  <Images className="size-9 text-[#8B95A1]" />
+                  <p className="mt-3 text-sm font-medium text-[#4B5563]">Preencha os dados para visualizar o anúncio.</p>
                 </div>
               ) : (
                 <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-                  <div className="relative aspect-[4/3] max-h-80 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
+                  <div className="relative aspect-[4/3] max-h-80 overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8]">
                     {previewImages[0] ? (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -718,22 +718,22 @@ export function BrokerNewPropertyPage() {
                       </>
                     ) : (
                       <div className="flex h-full flex-col items-center justify-center px-4 text-center">
-                        <Images className="size-9 text-white/35" />
-                        <p className="mt-3 text-sm font-medium text-white/75">Preview sem foto</p>
-                        <p className="mt-1 text-sm text-white/45">Selecione imagens para visualizar o anúncio.</p>
+                        <Images className="size-9 text-[#8B95A1]" />
+                        <p className="mt-3 text-sm font-medium text-[#4B5563]">Preview sem foto</p>
+                        <p className="mt-1 text-sm text-[#7B8491]">Selecione imagens para visualizar o anúncio.</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex flex-col justify-between gap-5 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
+                  <div className="flex flex-col justify-between gap-5 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-[#69F0AE]">{hasGenerated ? "Anúncio gerado com IA" : "Anúncio manual"}</p>
-                      <h3 className="mt-3 text-2xl font-semibold text-white">{title}</h3>
-                      <p className="mt-2 text-sm text-white/55">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-[#009b3a]">{hasGenerated ? "Anúncio gerado com IA" : "Anúncio manual"}</p>
+                      <h3 className="mt-3 text-2xl font-semibold text-[#050505]">{title}</h3>
+                      <p className="mt-2 text-sm text-[#6B7280]">
                         {previewLocation}
                       </p>
-                      <p className="mt-4 text-2xl font-semibold text-white">{price || "Consulte valor"}</p>
-                      <p className="mt-5 text-sm leading-7 text-white/65">
+                      <p className="mt-4 text-2xl font-semibold text-[#050505]">{price || "Consulte valor"}</p>
+                      <p className="mt-5 text-sm leading-7 text-[#5F6B7A]">
                         {description}
                       </p>
                     </div>
@@ -750,7 +750,7 @@ export function BrokerNewPropertyPage() {
                         {aiHighlights.map((highlight) => (
                           <span
                             key={highlight}
-                            className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs text-[#69F0AE]"
+                            className="rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs text-[#009b3a]"
                           >
                             {highlight}
                           </span>
@@ -762,12 +762,12 @@ export function BrokerNewPropertyPage() {
                       <Button
                         onClick={handlePublishToCatalog}
                         disabled={isPublished || hasReachedLimit || isPlanBlocked || isSubmitting}
-                        className="h-11 w-full rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30 disabled:opacity-70"
+                        className="h-11 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:opacity-70"
                       >
                         <ArrowUpFromLine className="size-4" />
                         {isPublished ? "Publicado no catálogo" : isSubmitting ? "Publicando..." : "Publicar no catálogo"}
                       </Button>
-                      {publishFeedback && <p className="mt-3 text-sm text-[#69F0AE]">{publishFeedback}</p>}
+                      {publishFeedback && <p className="mt-3 text-sm text-[#009b3a]">{publishFeedback}</p>}
                     </div>
                   </div>
                 </div>
@@ -784,10 +784,10 @@ export function BrokerNewPropertyPage() {
 
 function PropertyCreationChoice({ onChoose }: { onChoose: (mode: CreationMode) => void }) {
   return (
-    <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
-      <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Novo imóvel</p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Como você quer criar este imóvel?</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
+    <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imóvel</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Como você quer criar este imóvel?</h2>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
         Escolha o melhor ponto de partida. Você sempre poderá revisar antes de publicar.
       </p>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -829,13 +829,13 @@ function CreationOption({
     <button
       type="button"
       onClick={onClick}
-      className="group min-h-52 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 text-left transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]"
+      className="group min-h-52 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5 text-left transition-colors hover:border-[#009b3a]/30 hover:bg-[#009b3a]/[0.06]"
     >
-      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
         <Icon className="size-5" />
       </div>
-      <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
-      <p className="mt-3 text-sm leading-6 text-white/55">{description}</p>
+      <h3 className="mt-5 text-xl font-semibold text-[#050505]">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-[#6B7280]">{description}</p>
     </button>
   )
 }
@@ -864,34 +864,34 @@ function ImportPropertyPanel({
   onConfirmImport: () => void | Promise<void>
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+    <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Importar imóveis</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">Escolha uma origem</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Importar imóveis</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Escolha uma origem</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
             Envie um arquivo XML de imóveis para revisar antes de importar.
           </p>
         </div>
-        <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+        <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
           Voltar
         </Button>
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <label className="min-h-48 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
+        <label className="min-h-48 cursor-pointer rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5 transition-colors hover:border-[#009b3a]/30 hover:bg-[#009b3a]/[0.06]">
           <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
-          <Upload className="size-8 text-[#69F0AE]" />
-          <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imóveis para revisar antes de importar.</p>
+          <Upload className="size-8 text-[#009b3a]" />
+          <h3 className="mt-5 text-lg font-semibold text-[#050505]">Importar XML</h3>
+          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Envie um arquivo XML de imóveis para revisar antes de importar.</p>
         </label>
-        <div className="min-h-48 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
-          <Sparkles className="size-8 text-[#69F0AE]" />
-          <h3 className="mt-5 text-lg font-semibold text-white">Importar de anúncio</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Cole texto, informe um link ou envie um print para extrair com IA.</p>
+        <div className="min-h-48 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
+          <Sparkles className="size-8 text-[#009b3a]" />
+          <h3 className="mt-5 text-lg font-semibold text-[#050505]">Importar de anúncio</h3>
+          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole texto, informe um link ou envie um print para extrair com IA.</p>
         </div>
       </div>
       <AdImportPanel onImported={onImported} />
-      {isAnalyzing ? <p className="mt-5 text-sm text-white/55">Analisando XML...</p> : null}
+      {isAnalyzing ? <p className="mt-5 text-sm text-[#6B7280]">Analisando XML...</p> : null}
       {summary ? (
         <XmlImportPreview
           preview={preview}
@@ -901,7 +901,7 @@ function ImportPropertyPanel({
           onConfirmImport={onConfirmImport}
         />
       ) : null}
-      {feedback ? <p className="mt-5 rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
+      {feedback ? <p className="mt-5 rounded-[1rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">{feedback}</p> : null}
     </section>
   )
 }
@@ -920,35 +920,35 @@ function XmlImportPreview({
   onConfirmImport: () => void | Promise<void>
 }) {
   return (
-    <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Preview da importação</h3>
-          <p className="mt-1 text-sm text-white/55">
+          <h3 className="text-lg font-semibold text-[#050505]">Preview da importação</h3>
+          <p className="mt-1 text-sm text-[#6B7280]">
             {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} inválidos
           </p>
         </div>
-        <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
+        <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
           {isImporting ? "Importando..." : "Confirmar importação"}
         </Button>
       </div>
       <div className="grid gap-3">
         {preview.slice(0, 12).map((property, index) => (
-          <div key={`${property.title}-${index}`} className="rounded-[1rem] border border-white/[0.08] bg-black/20 p-3">
+          <div key={`${property.title}-${index}`} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-medium text-white">{property.title || "Imovel sem titulo"}</p>
-                <p className="mt-1 text-sm text-white/50">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localizacao pendente"}</p>
+                <p className="font-medium text-[#050505]">{property.title || "Imovel sem titulo"}</p>
+                <p className="mt-1 text-sm text-[#6B7280]">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localizacao pendente"}</p>
               </div>
               <ImportStatusBadge status={property.status} />
             </div>
-            <p className="mt-2 text-sm text-white/70">{property.price || "Preco pendente"}</p>
-            {property.issues.length > 0 ? <p className="mt-2 text-xs text-white/45">Revisar: {property.issues.join(", ")}</p> : null}
+            <p className="mt-2 text-sm text-[#5F6B7A]">{property.price || "Preco pendente"}</p>
+            {property.issues.length > 0 ? <p className="mt-2 text-xs text-[#7B8491]">Revisar: {property.issues.join(", ")}</p> : null}
           </div>
         ))}
       </div>
       {report ? (
-        <div className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
+        <div className="rounded-[1rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
           Importados: {report.imported}. Duplicados ignorados: {report.duplicates}. Com erro: {report.errors}.
         </div>
       ) : null}
@@ -961,7 +961,7 @@ function ImportStatusBadge({ status }: { status: ParsedXmlProperty["status"] }) 
     status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Invalido"
 
   return (
-    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/70">
+    <span className="rounded-full border border-black/[0.06] bg-white/80 px-3 py-1 text-xs text-[#5F6B7A]">
       {label}
     </span>
   )
@@ -976,7 +976,7 @@ function Field({
 }) {
   return (
     <label className="grid gap-2">
-      <span className="text-sm font-medium text-white/70">{label}</span>
+      <span className="text-sm font-medium text-[#5F6B7A]">{label}</span>
       {children}
     </label>
   )
@@ -992,25 +992,25 @@ function CounterCard({
   onChange: (value: number) => void
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-sm font-medium text-white/70">{label}</p>
+    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-sm font-medium text-[#5F6B7A]">{label}</p>
       <div className="mt-4 flex items-center justify-between gap-3">
         <Button
           type="button"
           variant="ghost"
           size="icon"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="h-9 w-9 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
+          className="h-9 w-9 rounded-xl border border-black/[0.06] bg-white/80 text-[#5F6B7A] hover:bg-white hover:text-[#050505]"
         >
           -
         </Button>
-        <span className="text-2xl font-semibold text-white">{value}</span>
+        <span className="text-2xl font-semibold text-[#050505]">{value}</span>
         <Button
           type="button"
           variant="ghost"
           size="icon"
           onClick={() => onChange(value + 1)}
-          className="h-9 w-9 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
+          className="h-9 w-9 rounded-xl border border-black/[0.06] bg-white/80 text-[#5F6B7A] hover:bg-white hover:text-[#050505]"
         >
           +
         </Button>
@@ -1021,7 +1021,7 @@ function CounterCard({
 
 function InfoPill({ label }: { label: string }) {
   return (
-    <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/70">
+    <div className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1.5 text-sm text-[#5F6B7A]">
       {label}
     </div>
   )

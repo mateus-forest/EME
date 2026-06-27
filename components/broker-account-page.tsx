@@ -133,33 +133,33 @@ function AccountForm() {
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       {isLoading && (
-        <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white/65">
+        <div className="rounded-[1.25rem] border border-black/[0.06] bg-white/80 px-4 py-3 text-sm text-[#5F6B7A]">
           Carregando conta...
         </div>
       )}
 
       <section className="grid gap-3">
-        <p className="text-sm uppercase tracking-[0.24em] text-white/40">Portal do corretor</p>
+        <p className="text-sm uppercase tracking-[0.24em] text-[#7B8491]">Portal do corretor</p>
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-white">Gerencie suas informações e acesso</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-white/55">
+          <h2 className="text-3xl font-semibold tracking-tight text-[#050505]">Gerencie suas informações e acesso</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6B7280]">
             Atualize seus dados pessoais e mantenha a segurança da sua conta sem sair do portal.
           </p>
         </div>
       </section>
 
       {feedback && (
-        <div className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-3 text-sm ${feedbackTone === "success" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-[#ff6b6b]/20 bg-[#ff6b6b]/10 text-[#ffb3b3]"}`}>
+        <div className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-3 text-sm ${feedbackTone === "success" ? "border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]" : "border-[#ff6b6b]/20 bg-[#ff6b6b]/10 text-[#ffb3b3]"}`}>
           <CheckCircle2 className="size-4 shrink-0" />
           <span>{feedback}</span>
         </div>
       )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-white">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
+              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <UserRound className="size-4.5" />
               </span>
               Dados pessoais
@@ -167,7 +167,7 @@ function AccountForm() {
           </CardHeader>
           <CardContent className="grid gap-4 p-6 pt-0">
             <div className="grid gap-3">
-              <Label className="text-sm font-medium text-white/70">Foto do perfil</Label>
+              <Label className="text-sm font-medium text-[#5F6B7A]">Foto do perfil</Label>
               <div className="flex items-center gap-4">
                 <input
                   ref={fileInputRef}
@@ -176,7 +176,7 @@ function AccountForm() {
                   className="sr-only"
                   onChange={(event) => handlePhotoChange(event.target.files?.[0] ?? null)}
                 />
-                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/[0.08] bg-white/[0.04] text-lg text-white/60">
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-black/[0.06] bg-white/80 text-lg text-[#5F6B7A]">
                   {photoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={photoUrl} alt={fullName} className="h-full w-full object-cover" />
@@ -188,7 +188,7 @@ function AccountForm() {
                   type="button"
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                 >
                   <Camera className="size-4" />
                   Trocar foto
@@ -213,13 +213,13 @@ function AccountForm() {
                 error={errors.whatsApp}
                 placeholder="(11) 99999-9999"
               />
-              <p className="-mt-1 text-xs leading-5 text-white/45">
+              <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
                 Este número será utilizado para receber os contatos dos clientes e leads gerados pelos seus anúncios e catálogo.
               </p>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="description" className="text-sm font-medium text-white/70">
+              <Label htmlFor="description" className="text-sm font-medium text-[#5F6B7A]">
                 Descrição do corretor
               </Label>
               <Textarea
@@ -227,16 +227,16 @@ function AccountForm() {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="Conte em poucas linhas sua especialidade e região de atuação."
-                className="min-h-24 rounded-[1rem] border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25"
+                className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF]"
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-white">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
+              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <ShieldCheck className="size-4.5" />
               </span>
               Alterar senha
@@ -250,15 +250,15 @@ function AccountForm() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.9),rgba(14,14,14,0.86))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.14)] sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 text-sm text-white/55">
-          <span className="flex size-10 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-white/70">
+      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 text-sm text-[#6B7280]">
+          <span className="flex size-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white/80 text-[#5F6B7A]">
             <LockKeyhole className="size-4" />
           </span>
           <p>Mantenha seus dados atualizados para acessar o portal com mais segurança.</p>
         </div>
 
-        <Button disabled={isSaving || isLoading} className="h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+        <Button disabled={isSaving || isLoading} className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
           {isSaving ? "Salvando..." : "Salvar alterações"}
         </Button>
       </div>
@@ -291,7 +291,7 @@ type FieldProps = {
 function Field({ id, label, value, onChange, error, placeholder, type = "text" }: FieldProps) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id} className="text-sm font-medium text-white/70">
+      <Label htmlFor={id} className="text-sm font-medium text-[#5F6B7A]">
         {label}
       </Label>
       <Input
@@ -300,7 +300,7 @@ function Field({ id, label, value, onChange, error, placeholder, type = "text" }
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25 focus-visible:ring-[#00C853]/35"
+        className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35"
       />
       {error && <p className="text-xs text-[#ff8a80]">{error}</p>}
     </div>

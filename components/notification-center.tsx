@@ -19,6 +19,7 @@ type NotificationCenterProps = {
   onMarkAsRead: (id: string) => void
   onArchive: (id: string) => void
   onOpenDetails?: (id: string) => void
+  tone?: "dark" | "light"
 }
 
 const statusLabels: Record<PaymentNotificationStatus, string> = {
@@ -45,9 +46,11 @@ export function NotificationCenter({
   onMarkAsRead,
   onArchive,
   onOpenDetails,
+  tone = "dark",
 }: NotificationCenterProps) {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const isLight = tone === "light"
 
   const orderedNotifications = useMemo(
     () => [...notifications].sort((first, second) => Number(first.lida) - Number(second.lida)),
@@ -84,11 +87,15 @@ export function NotificationCenter({
         <Button
           type="button"
           variant="ghost"
-          className="relative h-8.5 w-8.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-0 text-white/75 hover:bg-white/[0.08] hover:text-white"
+          className={
+            isLight
+              ? "relative h-8.5 w-8.5 rounded-xl border border-black/[0.06] bg-white/80 px-0 text-[#5F6B7A] hover:bg-white hover:text-[#050505]"
+              : "relative h-8.5 w-8.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-0 text-white/75 hover:bg-white/[0.08] hover:text-white"
+          }
         >
           <Bell className="size-4.5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex min-w-5 items-center justify-center rounded-full bg-[#00C853] px-1.5 py-0.5 text-[10px] font-semibold text-black">
+            <span className="absolute -top-1.5 -right-1.5 flex min-w-5 items-center justify-center rounded-full bg-[#009b3a] px-1.5 py-0.5 text-[10px] font-semibold text-white">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -97,23 +104,27 @@ export function NotificationCenter({
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="w-[calc(100vw-2rem)] max-w-[360px] rounded-[1.5rem] border border-white/[0.08] bg-[#101010]/96 p-0 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
+        className={
+          isLight
+            ? "w-[calc(100vw-2rem)] max-w-[360px] rounded-[1.5rem] border border-black/[0.06] bg-white/95 p-0 text-[#050505] shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-2xl"
+            : "w-[calc(100vw-2rem)] max-w-[360px] rounded-[1.5rem] border border-white/[0.08] bg-[#101010]/96 p-0 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
+        }
       >
-        <div className="border-b border-white/[0.08] px-5 py-4">
+        <div className={`${isLight ? "border-b border-black/[0.06]" : "border-b border-white/[0.08]"} px-5 py-4`}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">{title}</p>
-              <p className="mt-1 text-xs text-white/45">
+              <p className={`text-sm font-semibold ${isLight ? "text-[#050505]" : "text-white"}`}>{title}</p>
+              <p className={`mt-1 text-xs ${isLight ? "text-[#7B8491]" : "text-white/45"}`}>
                 {unreadCount > 0
                   ? `${unreadCount} notificação${unreadCount > 1 ? "es" : ""} não lida${unreadCount > 1 ? "s" : ""}`
                   : "Tudo em ordem por aqui"}
               </p>
             </div>
-            <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+            <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
               <BellRing className="size-4.5" />
             </div>
           </div>
-          {feedback && <p className="mt-3 text-xs text-[#69F0AE]">{feedback}</p>}
+          {feedback && <p className="mt-3 text-xs text-[#009b3a]">{feedback}</p>}
         </div>
 
         <div className="max-h-[420px] space-y-3 overflow-y-auto px-4 py-4">
@@ -123,33 +134,35 @@ export function NotificationCenter({
                 key={notification.id}
                 className={`rounded-[1.25rem] border p-4 ${
                   notification.lida
-                    ? "border-white/[0.08] bg-white/[0.03]"
-                    : "border-[#00C853]/14 bg-[#00C853]/[0.05]"
+                    ? isLight
+                      ? "border-black/[0.06] bg-[#fbfbf8]"
+                      : "border-white/[0.08] bg-white/[0.03]"
+                    : "border-[#009b3a]/14 bg-[#009b3a]/[0.05]"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-white">{notification.title}</p>
+                      <p className={`text-sm font-medium ${isLight ? "text-[#050505]" : "text-white"}`}>{notification.title}</p>
                       {!notification.lida && (
-                        <span className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-2 py-0.5 text-[10px] text-[#69F0AE]">
+                        <span className="rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-2 py-0.5 text-[10px] text-[#009b3a]">
                           Nova
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-white/58">{notification.message}</p>
+                    <p className={`mt-2 text-xs leading-5 ${isLight ? "text-[#5F6B7A]" : "text-white/58"}`}>{notification.message}</p>
                   </div>
-                  <StatusIcon status={notification.financialStatus} />
+                  <StatusIcon status={notification.financialStatus} tone={tone} />
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/45">
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1">
+                <div className={`mt-3 flex flex-wrap gap-2 text-[11px] ${isLight ? "text-[#7B8491]" : "text-white/45"}`}>
+                  <span className={`rounded-full border px-2.5 py-1 ${isLight ? "border-black/[0.06] bg-white/80" : "border-white/[0.08] bg-white/[0.04]"}`}>
                     {categoryLabels[notification.category]}
                   </span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1">
+                  <span className={`rounded-full border px-2.5 py-1 ${isLight ? "border-black/[0.06] bg-white/80" : "border-white/[0.08] bg-white/[0.04]"}`}>
                     {statusLabels[notification.financialStatus]}
                   </span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1">
+                  <span className={`rounded-full border px-2.5 py-1 ${isLight ? "border-black/[0.06] bg-white/80" : "border-white/[0.08] bg-white/[0.04]"}`}>
                     {notification.date}
                   </span>
                 </div>
@@ -159,7 +172,11 @@ export function NotificationCenter({
                     type="button"
                     variant="ghost"
                     onClick={() => handleOpenDetails(notification.id)}
-                    className="h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white"
+                    className={
+                      isLight
+                        ? "h-8 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-xs text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                        : "h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white"
+                    }
                   >
                     <Eye className="size-3.5" />
                     Ver detalhes
@@ -169,7 +186,7 @@ export function NotificationCenter({
                       type="button"
                       variant="ghost"
                       onClick={() => handleMarkAsRead(notification.id)}
-                      className="h-8 rounded-xl border border-[#00C853]/20 bg-[#00C853]/10 px-3 text-xs text-[#69F0AE] hover:bg-[#00C853]/14"
+                      className="h-8 rounded-xl border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 text-xs text-[#009b3a] hover:bg-[#009b3a]/14"
                     >
                       Marcar como lida
                     </Button>
@@ -178,7 +195,11 @@ export function NotificationCenter({
                     type="button"
                     variant="ghost"
                     onClick={() => handleArchive(notification.id)}
-                    className="h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/70 hover:bg-white/[0.08] hover:text-white"
+                    className={
+                      isLight
+                        ? "h-8 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-xs text-[#5F6B7A] hover:bg-white hover:text-[#050505]"
+                        : "h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/70 hover:bg-white/[0.08] hover:text-white"
+                    }
                   >
                     <Archive className="size-3.5" />
                     Arquivar
@@ -187,7 +208,13 @@ export function NotificationCenter({
               </article>
             ))
           ) : (
-            <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-8 text-center text-sm text-white/55">
+            <div
+              className={
+                isLight
+                  ? "rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-8 text-center text-sm text-[#6B7280]"
+                  : "rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-8 text-center text-sm text-white/55"
+              }
+            >
               Nenhuma notificação disponível.
             </div>
           )}
@@ -195,15 +222,15 @@ export function NotificationCenter({
       </PopoverContent>
       </Popover>
       <Dialog open={Boolean(selectedNotification)} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-w-lg border-white/[0.08] bg-[#111111] text-white">
+        <DialogContent className={isLight ? "max-w-lg border-black/[0.06] bg-white/95 text-[#050505]" : "max-w-lg border-white/[0.08] bg-[#111111] text-white"}>
           {selectedNotification ? (
             <>
               <DialogHeader>
                 <DialogTitle>{selectedNotification.title}</DialogTitle>
-                <DialogDescription className="text-white/55">{selectedNotification.date}</DialogDescription>
+                <DialogDescription className={isLight ? "text-[#6B7280]" : "text-white/55"}>{selectedNotification.date}</DialogDescription>
               </DialogHeader>
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="break-words text-sm leading-7 text-white/70">{selectedNotification.contextMessage || selectedNotification.message}</p>
+              <div className={isLight ? "rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4" : "rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4"}>
+                <p className={`break-words text-sm leading-7 ${isLight ? "text-[#5F6B7A]" : "text-white/70"}`}>{selectedNotification.contextMessage || selectedNotification.message}</p>
               </div>
             </>
           ) : null}
@@ -213,10 +240,12 @@ export function NotificationCenter({
   )
 }
 
-function StatusIcon({ status }: { status: PaymentNotificationStatus }) {
+function StatusIcon({ status, tone }: { status: PaymentNotificationStatus; tone: "dark" | "light" }) {
+  const isLight = tone === "light"
+
   if (status === "aguardando-regularizacao") {
     return (
-      <div className="flex size-9 items-center justify-center rounded-2xl border border-[#8ecae6]/20 bg-[#8ecae6]/10 text-[#c9f0ff]">
+      <div className={`flex size-9 items-center justify-center rounded-2xl border border-[#8ecae6]/20 bg-[#8ecae6]/10 ${isLight ? "text-[#277da1]" : "text-[#c9f0ff]"}`}>
         <CreditCard className="size-4" />
       </div>
     )
@@ -224,14 +253,14 @@ function StatusIcon({ status }: { status: PaymentNotificationStatus }) {
 
   if (status === "atraso-leve" || status === "inadimplente") {
     return (
-      <div className="flex size-9 items-center justify-center rounded-2xl border border-[#ff6b6b]/20 bg-[#ff6b6b]/10 text-[#ff9b9b]">
+      <div className={`flex size-9 items-center justify-center rounded-2xl border border-[#ff6b6b]/20 bg-[#ff6b6b]/10 ${isLight ? "text-[#d94848]" : "text-[#ff9b9b]"}`}>
         <CircleAlert className="size-4" />
       </div>
     )
   }
 
   return (
-    <div className="flex size-9 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+    <div className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
       <BellRing className="size-4" />
     </div>
   )

@@ -160,7 +160,7 @@ export function BrokerPortal() {
             type="button"
             variant="ghost"
             onClick={() => setFiltersOpen((current) => !current)}
-            className="h-8.5 rounded-xl border border-white/10 bg-white/5 px-4 text-white/75 hover:bg-white/10 hover:text-white"
+            className="h-8.5 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
           >
             <SlidersHorizontal className="size-4" />
             Filtros rápidos
@@ -168,7 +168,7 @@ export function BrokerPortal() {
         }
       >
         {filtersOpen && (
-          <div className="mb-4 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-4">
+          <div className="mb-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4">
             <div className="flex flex-wrap gap-2">
               {(["Todos", "Publicado", "Rascunho"] as const).map((filter) => (
                 <Button
@@ -178,8 +178,8 @@ export function BrokerPortal() {
                   onClick={() => setActiveStatusFilter(filter)}
                   className={`h-9 rounded-full border px-4 text-sm ${
                     activeStatusFilter === filter
-                      ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE] hover:bg-[#00C853]/14"
-                      : "border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
+                      ? "border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a] hover:bg-[#009b3a]/14"
+                      : "border-black/[0.06] bg-white/80 text-[#5F6B7A] hover:bg-white hover:text-[#050505]"
                   }`}
                 >
                   {filter}
@@ -190,13 +190,13 @@ export function BrokerPortal() {
         )}
 
         {normalizedSearch && (
-          <div className="mb-4 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="mb-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
             Filtrando resultados...
           </div>
         )}
 
         {normalizedSearch && featuredProperties.length === 0 && (
-          <div className="mb-4 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="mb-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
             Nenhum imóvel encontrado
           </div>
         )}

@@ -108,19 +108,19 @@ export function BrokerLeadsPage() {
   return (
     <BrokerPageShell title="Leads" primaryActionLabel="Novo imóvel" primaryActionHref="/corretor/novo-imovel">
       <div className="grid gap-6">
-        <section className="rounded-[1.75rem] border border-[#00C853]/16 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <section className="rounded-[1.75rem] border border-[#009b3a]/16 bg-[linear-gradient(135deg,rgba(0,200,83,0.14),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
                 <Sparkles className="size-3.5" />
                 Pipeline inteligente
               </div>
-              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white">Leads organizados para vender melhor</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[#050505]">Leads organizados para vender melhor</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
                 Aqui ficam os contatos reais capturados pelo catálogo, imóveis e ações inteligentes do EME.
               </p>
             </div>
-            <Button asChild className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+            <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
               <Link href="/corretor/corretor-m">Analisar com Assessor EME</Link>
             </Button>
           </div>
@@ -128,24 +128,24 @@ export function BrokerLeadsPage() {
 
         <section className="grid min-w-0 grid-cols-2 gap-4 xl:grid-cols-4">
           {leadStages.map((stage, index) => (
-            <Card key={stage.title} className="min-w-0 overflow-hidden rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0">
+            <Card key={stage.title} className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
               <CardHeader className="px-4 py-5 sm:px-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex size-11 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                  <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                     <stage.icon className="size-5" />
                   </div>
-                  <p className="break-words text-2xl font-semibold text-white sm:text-3xl">{values[index]}</p>
+                  <p className="break-words text-2xl font-semibold text-[#050505] sm:text-3xl">{values[index]}</p>
                 </div>
-                <CardTitle className="pt-3 text-lg text-white">{stage.title}</CardTitle>
+                <CardTitle className="pt-3 text-lg text-[#050505]">{stage.title}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-5 pt-0 sm:px-5">
-                <p className="text-sm leading-6 text-white/55">{stage.description}</p>
+                <p className="text-sm leading-6 text-[#6B7280]">{stage.description}</p>
               </CardContent>
             </Card>
           ))}
         </section>
 
-        <section className="rounded-[1.75rem] border border-white/[0.08] bg-white/[0.03] p-6">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-6">
           {feedback ? (
             <div className="rounded-[1.25rem] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
               {feedback}
@@ -153,24 +153,24 @@ export function BrokerLeadsPage() {
           ) : leads.length > 0 ? (
             <div className="grid gap-3">
               {leads.map((lead) => (
-                <div key={lead.id} className="grid gap-4 rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div key={lead.id} className="grid gap-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-white">{lead.name || "Lead sem nome"}</p>
-                      <span className="rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-2.5 py-1 text-xs text-[#69F0AE]">
+                      <p className="font-medium text-[#050505]">{lead.name || "Lead sem nome"}</p>
+                      <span className="rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-2.5 py-1 text-xs text-[#009b3a]">
                         {lead.statusLabel}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-white/45">
+                    <p className="mt-1 text-sm text-[#7B8491]">
                       {lead.propertyTitle || "Catálogo"} · {formatLeadSource(lead.source)} · {formatDate(lead.createdAt)}
                     </p>
-                    {lead.message ? <p className="mt-2 line-clamp-2 text-sm text-white/60">{lead.message}</p> : null}
+                    {lead.message ? <p className="mt-2 line-clamp-2 text-sm text-[#5F6B7A]">{lead.message}</p> : null}
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => setSelectedLead(lead)}
-                    className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                    className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                   >
                     <Eye className="size-4" />
                     Ver detalhes
@@ -180,11 +180,11 @@ export function BrokerLeadsPage() {
             </div>
           ) : (
             <div className="py-10 text-center">
-              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <UsersRound className="size-6" />
               </div>
-              <h3 className="text-xl font-semibold text-white">Nenhum lead recebido ainda.</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/55">
+              <h3 className="text-xl font-semibold text-[#050505]">Nenhum lead recebido ainda.</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
                 Compartilhe seu catálogo para começar.
               </p>
             </div>
@@ -193,12 +193,12 @@ export function BrokerLeadsPage() {
       </div>
 
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-2xl">
+        <DialogContent className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[1.75rem] border-black/[0.06] bg-white/90 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:max-w-2xl">
           {selectedLead ? (
             <div className="grid gap-5">
               <div>
-                <DialogTitle className="text-2xl text-white">{selectedLead.name || "Lead sem nome"}</DialogTitle>
-                <DialogDescription className="mt-2 text-white/55">
+                <DialogTitle className="text-2xl text-[#050505]">{selectedLead.name || "Lead sem nome"}</DialogTitle>
+                <DialogDescription className="mt-2 text-[#6B7280]">
                   Detalhes do lead capturado no catálogo.
                 </DialogDescription>
               </div>
@@ -212,23 +212,23 @@ export function BrokerLeadsPage() {
                 <LeadInfo label="Intenção" value={selectedLead.intent || "Sem intenção registrada"} />
               </div>
 
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-sm text-white/50">Mensagem</p>
-                <p className="mt-2 break-words text-sm leading-6 text-white/70">{selectedLead.message || "Sem mensagem registrada."}</p>
+              <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                <p className="text-sm text-[#6B7280]">Mensagem</p>
+                <p className="mt-2 break-words text-sm leading-6 text-[#5F6B7A]">{selectedLead.message || "Sem mensagem registrada."}</p>
               </div>
 
-              <label className="grid gap-2 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <span className="text-sm text-white/50">Status atual</span>
+              <label className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                <span className="text-sm text-[#6B7280]">Status atual</span>
                 <select
                   value={selectedLead.status === "NEGOTIATING" ? "CONTACTED" : selectedLead.status}
                   disabled={isUpdatingStatus}
                   onChange={(event) => updateLeadStatus(selectedLead, event.target.value as LeadRecord["status"])}
-                  className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-[#00C853]/35"
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm font-semibold text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/35"
                 >
-                  <option value="NEW" className="bg-[#111]">Novo</option>
-                  <option value="CONTACTED" className="bg-[#111]">Em atendimento</option>
-                  <option value="WON" className="bg-[#111]">Convertido</option>
-                  <option value="LOST" className="bg-[#111]">Perdido</option>
+                  <option value="NEW" className="bg-white">Novo</option>
+                  <option value="CONTACTED" className="bg-white">Em atendimento</option>
+                  <option value="WON" className="bg-white">Convertido</option>
+                  <option value="LOST" className="bg-white">Perdido</option>
                 </select>
               </label>
             </div>
@@ -252,9 +252,9 @@ function formatLeadSource(source: string) {
 
 function LeadInfo({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-sm text-white/50">{label}</p>
-      <p className="mt-2 break-words text-sm font-semibold text-white">{value}</p>
+    <div className="min-w-0 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-sm text-[#6B7280]">{label}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-[#050505]">{value}</p>
     </div>
   )
 }

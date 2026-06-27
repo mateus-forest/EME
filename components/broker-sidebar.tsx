@@ -41,8 +41,8 @@ import {
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/corretor" },
-  { label: "Meus imóveis", icon: Building2, href: "/corretor/imoveis" },
-  { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
+  { label: "Meus imÃ³veis", icon: Building2, href: "/corretor/imoveis" },
+  { label: "CatÃ¡logo", icon: BookOpenText, href: "/corretor/catalogo" },
   { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
   { label: "Corretor EME", icon: MessageCircle, href: "/corretor/corretor-eme" },
   { label: "Assessor EME", icon: Bot, href: "/corretor/corretor-m" },
@@ -179,7 +179,7 @@ export function BrokerSidebar() {
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Portal do corretor</SheetTitle>
-            <SheetDescription>Navegação lateral do portal do corretor.</SheetDescription>
+            <SheetDescription>NavegaÃ§Ã£o lateral do portal do corretor.</SheetDescription>
           </SheetHeader>
           {sidebarInner}
         </SheetContent>

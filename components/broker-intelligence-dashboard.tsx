@@ -133,16 +133,16 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
   return (
     <section className="grid gap-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <Card className="overflow-hidden rounded-[1.75rem] border-[#00C853]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.16),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="overflow-hidden rounded-[1.75rem] border-[#009b3a]/18 bg-[linear-gradient(135deg,rgba(0,200,83,0.16),rgba(17,17,17,0.96)_42%,rgba(14,14,14,0.92))] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#69F0AE]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
                   <Bot className="size-3.5" />
                   IA viva
                 </div>
-                <CardTitle className="mt-4 text-2xl text-white">Assessor EME</CardTitle>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">
+                <CardTitle className="mt-4 text-2xl text-[#050505]">Assessor EME</CardTitle>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[#5F6B7A]">
                   Canal oficial do EME para criar anúncios, analisar leads, melhorar catálogo e pedir apoio operacional.
                 </p>
               </div>
@@ -150,7 +150,7 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
                 type="button"
                 variant="ghost"
                 onClick={() => setAiAssistantEnabled((current) => !current)}
-                className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 text-white/80 hover:bg-white/[0.08] hover:text-white"
+                className="h-10 rounded-xl border border-black/[0.06] bg-white/85 px-4 text-[#050505]/80 hover:bg-white hover:text-[#050505]"
               >
                 {aiAssistantEnabled ? "Desativar" : "Ativar"} Assessor EME
               </Button>
@@ -161,24 +161,24 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
             <Metric label="Créditos IA" value={String(credits.balance)} />
             <Metric label="Uso no mês" value={String(credits.usedThisMonth)} />
             <Metric label="Ações IA" value={actionsCount > 0 ? String(actionsCount) : "Aguardando uso"} />
-            <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4 sm:col-span-2 xl:col-span-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/40">Última interação</p>
-              <p className="mt-2 text-sm text-white/68">
+            <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 sm:col-span-2 xl:col-span-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">Última interação</p>
+              <p className="mt-2 text-sm text-[#050505]/68">
                 {actionsCount > 0 ? "Ação registrada neste mês." : "O Assessor EME ainda não realizou ações."}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-[#00C853]/18 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-[#009b3a]/18 bg-[linear-gradient(180deg,rgba(18,28,22,0.9),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/12 text-[#69F0AE]">
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/12 text-[#009b3a]">
                 <CalendarDays className="size-5" />
               </div>
               <div>
-                <CardTitle className="text-xl text-white">Agenda</CardTitle>
-                <p className="mt-1 text-sm text-[#69F0AE]">Próximos compromissos</p>
+                <CardTitle className="text-xl text-[#050505]">Agenda</CardTitle>
+                <p className="mt-1 text-sm text-[#009b3a]">Próximos compromissos</p>
               </div>
             </div>
           </CardHeader>
@@ -190,15 +190,15 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
             </div>
             {nextAgendaEvents.length > 0 ? (
               nextAgendaEvents.map((event) => (
-                <div key={event.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                  <p className="truncate text-sm font-medium text-white">{event.title}</p>
-                  <p className="mt-1 text-xs text-white/45">{formatAgendaDate(event.date, event.time)}</p>
+                <div key={event.id} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+                  <p className="truncate text-sm font-medium text-[#050505]">{event.title}</p>
+                  <p className="mt-1 text-xs text-[#7B8491]">{formatAgendaDate(event.date, event.time)}</p>
                 </div>
               ))
             ) : (
               <EmptyState text="Os próximos compromissos aparecerão aqui." />
             )}
-            <Button asChild variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white">
+            <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white hover:text-[#050505]">
               <Link href="/corretor/agenda">Ver agenda</Link>
             </Button>
           </CardContent>
@@ -206,10 +206,10 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-2 text-xl text-white">
-              <UsersRound className="size-5 text-[#69F0AE]" />
+            <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+              <UsersRound className="size-5 text-[#009b3a]" />
               Leads recentes
             </CardTitle>
           </CardHeader>
@@ -223,39 +223,39 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
                   <Metric label="Convertidos" value={String(leadMetrics.converted)} />
                 </div>
                 {recentLeads.map((lead) => (
-                  <div key={lead.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                    <p className="text-sm font-medium text-white">{lead.name || "Lead sem nome"}</p>
-                    <p className="mt-1 text-xs text-white/45">{lead.propertyTitle || "Catálogo"} · {lead.statusLabel}</p>
+                  <div key={lead.id} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+                    <p className="text-sm font-medium text-[#050505]">{lead.name || "Lead sem nome"}</p>
+                    <p className="mt-1 text-xs text-[#7B8491]">{lead.propertyTitle || "Catálogo"} · {lead.statusLabel}</p>
                   </div>
                 ))}
               </>
             ) : (
               <EmptyState text="Nenhum lead recebido ainda. Compartilhe seu catálogo para começar." />
             )}
-            <Button asChild variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white">
+            <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white hover:text-[#050505]">
               <Link href="/corretor/leads">Ver leads</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-2 text-xl text-white">
-              <Search className="size-5 text-[#69F0AE]" />
+            <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+              <Search className="size-5 text-[#009b3a]" />
               Buscas dos clientes
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 p-6 pt-0">
             {recentSearches.length > 0 ? (
               recentSearches.slice(0, 4).map((search) => (
-                <div key={search.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                <div key={search.id} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
                   <div className="flex min-w-0 items-start justify-between gap-3">
-                    <p className="min-w-0 truncate text-sm font-medium text-white">{search.query}</p>
-                    <span className="shrink-0 rounded-full border border-[#00C853]/16 bg-[#00C853]/10 px-2 py-0.5 text-[10px] text-[#69F0AE]">
+                    <p className="min-w-0 truncate text-sm font-medium text-[#050505]">{search.query}</p>
+                    <span className="shrink-0 rounded-full border border-[#009b3a]/16 bg-[#009b3a]/10 px-2 py-0.5 text-[10px] text-[#009b3a]">
                       {formatSearchOrigin(search.source)}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-white/45">
+                  <p className="mt-1 text-xs text-[#7B8491]">
                     {formatSearchTime(search.createdAt)} · {search.resultCount} resultado{search.resultCount === 1 ? "" : "s"}
                   </p>
                 </div>
@@ -266,10 +266,10 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-2 text-xl text-white">
-              <FileText className="size-5 text-[#69F0AE]" />
+            <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+              <FileText className="size-5 text-[#009b3a]" />
               Documentos
             </CardTitle>
           </CardHeader>
@@ -281,32 +281,32 @@ export function BrokerIntelligenceDashboard({ properties }: BrokerIntelligenceDa
             </div>
             {recentDocuments.length > 0 ? (
               recentDocuments.map((document) => (
-                <div key={document.id} className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-                  <p className="truncate text-sm font-medium text-white">{document.title}</p>
-                  <p className="mt-1 text-xs text-white/45">{formatDocumentStatus(document.status)} · {formatSearchTime(document.createdAt)}</p>
+                <div key={document.id} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+                  <p className="truncate text-sm font-medium text-[#050505]">{document.title}</p>
+                  <p className="mt-1 text-xs text-[#7B8491]">{formatDocumentStatus(document.status)} · {formatSearchTime(document.createdAt)}</p>
                 </div>
               ))
             ) : (
               <EmptyState text="As propostas geradas aparecerão aqui." />
             )}
-            <Button asChild variant="ghost" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white">
+            <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white hover:text-[#050505]">
               <Link href="/corretor/documentos">Ver documentos</Link>
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="rounded-[1.75rem] border-white/[0.08] bg-white/[0.03] py-0">
+      <Card className="rounded-[1.75rem] border-black/[0.06] bg-[#fbfbf8] py-0">
         <CardHeader className="px-6 py-5">
-          <CardTitle className="flex items-center gap-2 text-xl text-white">
-            <Lightbulb className="size-5 text-[#69F0AE]" />
+          <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+            <Lightbulb className="size-5 text-[#009b3a]" />
             Ações recomendadas
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 p-6 pt-0">
           {recommendedActions.length > 0 ? (
             recommendedActions.map((action) => (
-              <div key={action} className="rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-white/65">
+              <div key={action} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
                 {action}
               </div>
             ))
@@ -335,9 +335,9 @@ function formatDocumentStatus(status: string) {
 
 function Metric({ label, value, tone = "muted" }: { label: string; value: string; tone?: "green" | "muted" }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-white/40">{label}</p>
-      <p className={`mt-2 text-base font-semibold ${tone === "green" ? "text-[#69F0AE]" : "text-white"}`}>{value}</p>
+    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">{label}</p>
+      <p className={`mt-2 text-base font-semibold ${tone === "green" ? "text-[#009b3a]" : "text-[#050505]"}`}>{value}</p>
     </div>
   )
 }
@@ -361,7 +361,7 @@ function formatSearchTime(value: string) {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-[#00C853]/16 bg-[#00C853]/[0.06] p-4 text-sm leading-6 text-[#69F0AE]">
+    <div className="rounded-[1.25rem] border border-[#009b3a]/16 bg-[#009b3a]/[0.06] p-4 text-sm leading-6 text-[#009b3a]">
       <CheckCircle2 className="mb-3 size-5" />
       {text}
     </div>

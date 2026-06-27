@@ -66,65 +66,65 @@ export function BrokerSupportPage() {
   return (
     <BrokerPageShell title="Suporte">
       <div className="grid gap-6">
-        <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] px-6 py-6 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Suporte</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 px-6 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Suporte</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">
             Precisa de ajuda? Resolva rápido ou fale com a gente
           </h2>
 
           <div className="mt-5 max-w-xl">
             <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-white/35" />
+              <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-[#8B95A1]" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar ajuda..."
-                className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-11 pr-4 text-sm text-white outline-none placeholder:text-white/30"
+                className="h-11 w-full rounded-xl border border-black/[0.06] bg-white/80 pl-11 pr-4 text-sm text-[#050505] outline-none placeholder:text-[#8B95A1]"
               />
             </div>
           </div>
         </section>
 
         {normalizedSearch && (
-          <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
             Filtrando resultados...
           </div>
         )}
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-white">Principais dúvidas</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Principais dúvidas</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-4 pt-0">
               <Accordion type="single" collapsible className="w-full">
                 {filteredFaqItems.map((item) => (
-                  <AccordionItem key={item.question} value={item.question} className="border-white/[0.08]">
-                    <AccordionTrigger className="py-4 text-base text-white hover:no-underline">
+                  <AccordionItem key={item.question} value={item.question} className="border-black/[0.06]">
+                    <AccordionTrigger className="py-4 text-base text-[#050505] hover:no-underline">
                       {item.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-sm leading-7 text-white/60">
+                    <AccordionContent className="text-sm leading-7 text-[#5F6B7A]">
                       {item.answer}
                     </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
               {filteredFaqItems.length === 0 && (
-                <div className="py-4 text-sm text-white/55">Nenhuma ajuda encontrada.</div>
+                <div className="py-4 text-sm text-[#6B7280]">Nenhuma ajuda encontrada.</div>
               )}
             </CardContent>
           </Card>
 
           <div className="grid gap-6">
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-white">Falar com suporte</CardTitle>
+                <CardTitle className="text-xl text-[#050505]">Falar com suporte</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 p-6 pt-0">
-                <p className="text-sm text-white/55">Respondemos o mais rápido possível.</p>
+                <p className="text-sm text-[#6B7280]">Respondemos o mais rápido possível.</p>
                 <Button
                   asChild
-                  className="h-10 rounded-xl bg-[#00C853] text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                  className="h-10 rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                 >
                   <a href={supportWhatsAppUrl} target="_blank" rel="noreferrer">
                     <MessageCircle className="size-4" />
@@ -134,7 +134,7 @@ export function BrokerSupportPage() {
                 <Button
                   asChild
                   variant="ghost"
-                  className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white"
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                 >
                   <a href="mailto:suporte@eme.com">
                     <Mail className="size-4" />
@@ -144,14 +144,14 @@ export function BrokerSupportPage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardContent className="flex items-center gap-3 p-5">
-                <div className="flex size-11 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                   <CheckCircle2 className="size-5" />
                 </div>
                 <div>
-                  <p className="text-sm text-white/50">Status do sistema</p>
-                  <p className="mt-1 text-base font-semibold text-white">Tudo funcionando normalmente</p>
+                  <p className="text-sm text-[#6B7280]">Status do sistema</p>
+                  <p className="mt-1 text-base font-semibold text-[#050505]">Tudo funcionando normalmente</p>
                 </div>
               </CardContent>
             </Card>
@@ -162,13 +162,13 @@ export function BrokerSupportPage() {
           {filteredQuickTips.map((tip) => (
             <Card
               key={tip}
-              className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+              className="rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]"
             >
               <CardContent className="p-5">
-                <div className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+                <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                   <Lightbulb className="size-4.5" />
                 </div>
-                <p className="mt-4 text-sm leading-7 text-white/70">{tip}</p>
+                <p className="mt-4 text-sm leading-7 text-[#5F6B7A]">{tip}</p>
               </CardContent>
             </Card>
           ))}

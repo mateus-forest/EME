@@ -232,9 +232,9 @@ export function BrokerCatalogPage() {
     <BrokerPageShell title="Catálogo">
       <div className="grid max-w-full gap-5 overflow-hidden">
         <section className="grid max-w-full gap-6 overflow-hidden xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <Card className="max-w-full overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+          <Card className="max-w-full overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-4 py-5 sm:px-6">
-              <CardTitle className="text-xl text-white">Gestão do catálogo</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Gestão do catálogo</CardTitle>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-5 p-4 pt-0 sm:p-6 sm:pt-0">
               <div className="grid min-w-0 gap-5 md:grid-cols-[auto_minmax(0,1fr)]">
@@ -246,7 +246,7 @@ export function BrokerCatalogPage() {
                     className="sr-only"
                     onChange={(event) => handleProfilePhotoChange(event.target.files?.[0] ?? null)}
                   />
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#00C853]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-2xl font-semibold text-[#69F0AE]">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#009b3a]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-2xl font-semibold text-[#009b3a]">
                     {draftSettings.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
@@ -257,7 +257,7 @@ export function BrokerCatalogPage() {
                   <Button
                     variant="ghost"
                     onClick={triggerPhotoPicker}
-                    className="h-9 max-w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-3 text-white/75 hover:bg-white/[0.08] hover:text-white"
+                    className="h-9 max-w-full rounded-full border border-black/[0.06] bg-white/80 px-3 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                   >
                     <Camera className="size-4" />
                     Trocar foto
@@ -267,40 +267,40 @@ export function BrokerCatalogPage() {
                 <div className="grid min-w-0 gap-4">
                   <div className="grid min-w-0 gap-4 md:grid-cols-2">
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium text-white/70">Nome do corretor</span>
+                      <span className="text-sm font-medium text-[#5F6B7A]">Nome do corretor</span>
                       <Input
                         value={draftSettings.displayName}
                         onChange={(event) =>
                           setDraftSettings((current) => ({ ...current, displayName: event.target.value }))
                         }
-                        className="h-10 rounded-xl border-white/[0.08] bg-white/[0.04] text-white"
+                        className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"
                       />
                     </label>
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium text-white/70">Link do catálogo</span>
+                      <span className="text-sm font-medium text-[#5F6B7A]">Link do catálogo</span>
                       <div className="flex min-w-0 flex-col gap-3">
                         <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row">
-                          <div className="flex h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/45 sm:w-auto sm:shrink-0">
-                            <Link2 className="size-4 text-white/40" />
+                          <div className="flex h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#7B8491] sm:w-auto sm:shrink-0">
+                            <Link2 className="size-4 text-[#7B8491]" />
                             <span>/catalogo/</span>
                           </div>
-                          <div className="flex min-w-0 flex-1 items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3">
+                          <div className="flex min-w-0 flex-1 items-center rounded-xl border border-black/[0.06] bg-white/80 px-3">
                             <input
                               value={draftSettings.slug}
                               onChange={(event) =>
                                 setDraftSettings((current) => ({ ...current, slug: sanitizeSlug(event.target.value) }))
                               }
-                              className="h-10 min-w-0 flex-1 truncate bg-transparent text-sm text-white outline-none placeholder:text-white/25"
+                              className="h-10 min-w-0 flex-1 truncate bg-transparent text-sm text-[#050505] outline-none placeholder:text-[#9CA3AF]"
                               placeholder="slug-do-corretor"
                             />
                           </div>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto">
+                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto">
                             <Copy className="size-4" />
                             {copyFeedback ? "Link copiado" : "Copiar link"}
                           </Button>
-                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto">
+                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto">
                             <PencilLine className="size-4" />
                             Abrir link
                           </Button>
@@ -310,13 +310,13 @@ export function BrokerCatalogPage() {
                   </div>
 
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-white/70">Descrição (opcional)</span>
+                    <span className="text-sm font-medium text-[#5F6B7A]">Descrição (opcional)</span>
                     <Textarea
                       value={draftSettings.description}
                       onChange={(event) =>
                         setDraftSettings((current) => ({ ...current, description: event.target.value }))
                       }
-                      className="min-h-24 rounded-[1rem] border-white/[0.08] bg-white/[0.04] text-white"
+                      className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505]"
                     />
                   </label>
                   <div className="flex flex-wrap items-center gap-3">
@@ -324,31 +324,31 @@ export function BrokerCatalogPage() {
                       type="button"
                       onClick={handleSaveCatalog}
                       disabled={isSaving}
-                      className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30"
+                      className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                     >
                       {isSaving ? "Salvando..." : "Salvar alterações"}
                     </Button>
-                    {saveFeedback && <p className="text-sm text-[#69F0AE]">{saveFeedback}</p>}
+                    {saveFeedback && <p className="text-sm text-[#009b3a]">{saveFeedback}</p>}
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-white/40">URL pública</p>
-                <div className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5">
-                  <Link2 className="size-4 shrink-0 text-white/35" />
-                  <p className="min-w-0 truncate text-base font-medium text-white">{catalogUrl}</p>
+              <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">URL pública</p>
+                <div className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2.5">
+                  <Link2 className="size-4 shrink-0 text-[#8B95A1]" />
+                  <p className="min-w-0 truncate text-base font-medium text-[#050505]">{catalogUrl}</p>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                  <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
                     <Copy className="size-4" />
                     {copyFeedback ? "Link copiado" : "Copiar link"}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                  <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
                     <PencilLine className="size-4" />
                     Abrir link
                   </Button>
-                  <Button asChild className="h-9 rounded-full bg-[#25D366] px-4 text-sm font-semibold text-white hover:bg-[#2fe06f]">
+                  <Button asChild className="h-9 rounded-full bg-[#25D366] px-4 text-sm font-semibold text-[#050505] hover:bg-[#2fe06f]">
                     <a href={catalogWhatsAppUrl} target="_blank" rel="noreferrer">
                       <MessageCircle className="size-4" />
                       Enviar no WhatsApp
@@ -361,13 +361,13 @@ export function BrokerCatalogPage() {
 
           <div className="grid gap-4">
 
-            <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
+            <Card className="rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardContent className="flex flex-wrap items-center gap-4 p-5">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1.5 text-sm text-[#69F0AE]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1.5 text-sm text-[#009b3a]">
                   <CheckCircle2 className="size-4" />
                   Catálogo ativo
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-white/65">
+                <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/80 px-3 py-1.5 text-sm text-[#5F6B7A]">
                   <RefreshCw className="size-4" />
                   Catálogo sincronizado
                 </div>
@@ -376,10 +376,10 @@ export function BrokerCatalogPage() {
           </div>
         </section>
 
-        <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.14)] sm:p-6">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#00C853]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-xl font-semibold text-[#69F0AE]">
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#009b3a]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-xl font-semibold text-[#009b3a]">
                 {draftSettings.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
@@ -388,12 +388,12 @@ export function BrokerCatalogPage() {
                 )}
               </div>
               <div>
-                <p className="text-lg font-semibold text-white">{draftSettings.displayName}</p>
-                <p className="text-sm text-white/50">CRECI {profile.creci}</p>
+                <p className="text-lg font-semibold text-[#050505]">{draftSettings.displayName}</p>
+                <p className="text-sm text-[#6B7280]">CRECI {profile.creci}</p>
               </div>
             </div>
 
-            <Button asChild className="h-10 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-white hover:bg-[#2fe06f]">
+            <Button asChild className="h-10 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-[#050505] hover:bg-[#2fe06f]">
               <a href={propertyWhatsAppUrl} target="_blank" rel="noreferrer">
                 Falar no WhatsApp
               </a>
@@ -403,18 +403,18 @@ export function BrokerCatalogPage() {
           <div className="mt-5 max-w-full sm:max-w-2xl">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45" />
+                <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-[#7B8491]" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Buscar imóvel"
-                  className="h-11 rounded-full border-white/10 bg-white/5 pl-11 text-sm text-white placeholder:text-white/35"
+                  className="h-11 rounded-full border-black/[0.06] bg-white/80 pl-11 text-sm text-[#050505] placeholder:text-[#8B95A1]"
                 />
               </div>
               <Button
                 type="button"
                 onClick={() => setSearch(search.trim())}
-                className="h-11 w-full rounded-full bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all duration-200 hover:bg-[#00E676] hover:shadow-[#00C853]/30 sm:w-auto"
+                className="h-11 w-full rounded-full bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all duration-200 hover:bg-[#008633] hover:shadow-[#009b3a]/30 sm:w-auto"
               >
                 <Search className="size-4" />
                 Buscar
@@ -426,7 +426,7 @@ export function BrokerCatalogPage() {
                   key={filter}
                   type="button"
                   onClick={() => setSearch(filter)}
-                  className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+                  className="rounded-full border border-black/[0.06] bg-white/80 px-3 py-1.5 text-xs text-[#5F6B7A] transition-colors hover:bg-white hover:text-[#050505]"
                 >
                   {filter}
                 </button>
@@ -436,7 +436,7 @@ export function BrokerCatalogPage() {
         </section>
 
         {normalizedSearch && (
-          <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
             {filteredCatalogProperties.length} imóvel{filteredCatalogProperties.length === 1 ? "" : "is"} encontrado{filteredCatalogProperties.length === 1 ? "" : "s"}
           </div>
         )}
@@ -465,9 +465,9 @@ export function BrokerCatalogPage() {
                 statusTone="published"
                 badges={
                   <>
-                    <div className="flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 backdrop-blur-sm">
+                    <div className="flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 backdrop-blur-sm">
                       <Flame className="h-3 w-3 text-orange-400" />
-                      <span className="text-[10px] text-white">Publicado</span>
+                      <span className="text-[10px] text-[#050505]">Publicado</span>
                     </div>
                   </>
                 }
@@ -475,15 +475,15 @@ export function BrokerCatalogPage() {
                   <button type="button" onClick={(event) => {
                     event.stopPropagation()
                     toggleFavorite(property.id)
-                  }} className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
-                    <Heart className={`h-4 w-4 ${favorites.includes(property.id) ? "fill-[#69F0AE] text-[#69F0AE]" : "text-white"}`} />
+                  }} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/85 backdrop-blur-sm">
+                    <Heart className={`h-4 w-4 ${favorites.includes(property.id) ? "fill-[#009b3a] text-[#009b3a]" : "text-[#050505]"}`} />
                   </button>
                 }
                 footer={
                   <Button
                     asChild
                     onClick={(event) => event.stopPropagation()}
-                    className="h-10 w-full rounded-full bg-[#25D366] text-sm font-semibold text-white hover:bg-[#2fe06f]"
+                    className="h-10 w-full rounded-full bg-[#25D366] text-sm font-semibold text-[#050505] hover:bg-[#2fe06f]"
                   >
                     <a href={propertyWhatsAppUrl} target="_blank" rel="noreferrer">
                       Falar no WhatsApp
@@ -494,7 +494,7 @@ export function BrokerCatalogPage() {
             ))}
           </section>
         ) : (
-          <div className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] px-6 py-12 text-center text-sm text-white/65">
+          <div className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 px-6 py-12 text-center text-sm text-[#5F6B7A]">
             Nenhum imóvel encontrado.
           </div>
         )}
@@ -503,17 +503,17 @@ export function BrokerCatalogPage() {
       <Dialog open={!!selectedProperty} onOpenChange={closeProperty}>
         <DialogContent
           showCloseButton
-          className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-5xl"
+          className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 p-0 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:max-w-5xl"
         >
           {selectedProperty && (
             <div className="grid max-h-[92vh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-              <div className="border-b border-white/[0.08] p-4 lg:border-r lg:border-b-0 lg:p-5">
+              <div className="border-b border-black/[0.06] p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">
                   Visualização completa do imóvel com imagens, descrição e contato do corretor.
                 </DialogDescription>
 
-                <div className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
+                <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8]">
                   {currentImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -529,16 +529,16 @@ export function BrokerCatalogPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
                   <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <button type="button" onClick={() => toggleFavorite(selectedProperty.id)} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60">
-                      <Heart className={`size-4 ${favorites.includes(selectedProperty.id) ? "fill-[#69F0AE] text-[#69F0AE]" : ""}`} />
+                    <button type="button" onClick={() => toggleFavorite(selectedProperty.id)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-[#050505] backdrop-blur-sm transition-colors hover:bg-white/85">
+                      <Heart className={`size-4 ${favorites.includes(selectedProperty.id) ? "fill-[#009b3a] text-[#009b3a]" : ""}`} />
                     </button>
-                    <button type="button" onClick={() => void shareProperty(selectedProperty)} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60">
+                    <button type="button" onClick={() => void shareProperty(selectedProperty)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-[#050505] backdrop-blur-sm transition-colors hover:bg-white/85">
                       <Share2 className="size-4" />
                     </button>
                   </div>
 
                   {selectedProperty.images.length > 0 ? (
-                    <div className="absolute right-4 bottom-4 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-sm">
+                    <div className="absolute right-4 bottom-4 rounded-full bg-white/85 px-3 py-1 text-xs text-[#050505] backdrop-blur-sm">
                       {currentImageIndex + 1}/{selectedProperty.images.length}
                     </div>
                   ) : null}
@@ -548,14 +548,14 @@ export function BrokerCatalogPage() {
                       <button
                         type="button"
                         onClick={showPrevImage}
-                        className="absolute top-1/2 left-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
+                        className="absolute top-1/2 left-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#050505] backdrop-blur-sm transition-colors hover:bg-white/85"
                       >
                         <ChevronLeft className="size-5" />
                       </button>
                       <button
                         type="button"
                         onClick={showNextImage}
-                        className="absolute top-1/2 right-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
+                        className="absolute top-1/2 right-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#050505] backdrop-blur-sm transition-colors hover:bg-white/85"
                       >
                         <ChevronRight className="size-5" />
                       </button>
@@ -571,16 +571,16 @@ export function BrokerCatalogPage() {
                       onClick={() => setCurrentImageIndex(index)}
                       className={`overflow-hidden rounded-[1rem] border transition-all ${
                         currentImageIndex === index
-                          ? "border-[#00C853]/30 ring-2 ring-[#00C853]/20"
-                          : "border-white/[0.08] opacity-75 hover:opacity-100"
+                          ? "border-[#009b3a]/30 ring-2 ring-[#009b3a]/20"
+                          : "border-black/[0.06] opacity-75 hover:opacity-100"
                       }`}
                     >
                       {image.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={image.trim()} alt={`Imagem ${index + 1}`} className="aspect-square w-full object-cover" />
                       ) : (
-                        <div className="flex aspect-square w-full items-center justify-center bg-white/[0.03]">
-                          <Camera className="size-5 text-white/30" />
+                        <div className="flex aspect-square w-full items-center justify-center bg-[#fbfbf8]">
+                          <Camera className="size-5 text-[#8B95A1]" />
                         </div>
                       )}
                     </button>
@@ -590,11 +590,11 @@ export function BrokerCatalogPage() {
 
               <div className="flex min-w-0 flex-col p-5 lg:p-6">
                 <div className="flex-1">
-                  <p className="break-words text-sm text-white/45">{selectedProperty.location}</p>
-                  <h3 className="mt-2 break-words text-2xl font-semibold leading-tight text-white sm:text-3xl">
+                  <p className="break-words text-sm text-[#7B8491]">{selectedProperty.location}</p>
+                  <h3 className="mt-2 break-words text-2xl font-semibold leading-tight text-[#050505] sm:text-3xl">
                     {selectedProperty.title}
                   </h3>
-                  <p className="mt-4 break-words text-2xl font-bold text-white sm:text-3xl">{selectedProperty.price}</p>
+                  <p className="mt-4 break-words text-2xl font-bold text-[#050505] sm:text-3xl">{selectedProperty.price}</p>
 
                   <div className="mt-5 flex flex-wrap gap-3">
                     <Feature icon={Bed} label={`${selectedProperty.bedrooms} quartos`} />
@@ -603,8 +603,8 @@ export function BrokerCatalogPage() {
                   </div>
 
                   <div className="mt-6">
-                    <p className="text-sm font-medium text-white/70">Descrição</p>
-                    <p className="mt-3 break-words text-sm leading-7 text-white/62">
+                    <p className="text-sm font-medium text-[#5F6B7A]">Descrição</p>
+                    <p className="mt-3 break-words text-sm leading-7 text-[#050505]/62">
                       {expandedDescription || !needsMore
                         ? selectedProperty.description
                         : `${shortDescription}...`}
@@ -613,7 +613,7 @@ export function BrokerCatalogPage() {
                       <button
                         type="button"
                         onClick={() => setExpandedDescription((current) => !current)}
-                        className="mt-3 text-sm font-medium text-[#69F0AE] transition-opacity hover:opacity-80"
+                        className="mt-3 text-sm font-medium text-[#009b3a] transition-opacity hover:opacity-80"
                       >
                         {expandedDescription ? "Ver menos" : "Ver mais"}
                       </button>
@@ -621,9 +621,9 @@ export function BrokerCatalogPage() {
                   </div>
                 </div>
 
-                <div className="mt-8 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
+                <div className="mt-8 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-[#00C853]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-lg font-semibold text-[#69F0AE]">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-[#009b3a]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-lg font-semibold text-[#009b3a]">
                       {draftSettings.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={draftSettings.photoUrl} alt={draftSettings.displayName} className="h-full w-full object-cover" />
@@ -632,11 +632,11 @@ export function BrokerCatalogPage() {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-white">{draftSettings.displayName}</p>
-                      <p className="text-sm text-white/45">CRECI {profile.creci}</p>
+                      <p className="font-medium text-[#050505]">{draftSettings.displayName}</p>
+                      <p className="text-sm text-[#7B8491]">CRECI {profile.creci}</p>
                     </div>
                   </div>
-                  <Button asChild className="mt-4 h-11 w-full rounded-full bg-[#25D366] text-base font-semibold text-white hover:bg-[#2fe06f]">
+                  <Button asChild className="mt-4 h-11 w-full rounded-full bg-[#25D366] text-base font-semibold text-[#050505] hover:bg-[#2fe06f]">
                     <a href={propertyWhatsAppUrl} target="_blank" rel="noreferrer">
                       <MessageCircle className="size-4" />
                       Falar no WhatsApp
@@ -660,8 +660,8 @@ function Feature({
   label: string
 }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/72">
-      <Icon className="size-4 text-[#69F0AE]" />
+    <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1.5 text-sm text-[#050505]/72">
+      <Icon className="size-4 text-[#009b3a]" />
       <span>{label}</span>
     </div>
   )
@@ -688,21 +688,21 @@ function sanitizeSlug(value: string) {
 
 function CatalogImagePlaceholder() {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
-      <Building2 className="size-9 text-white/30" />
-      <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+    <div className="flex h-full w-full flex-col items-center justify-center bg-[#fbfbf8] px-4 text-center">
+      <Building2 className="size-9 text-[#8B95A1]" />
+      <p className="mt-3 text-sm font-medium text-[#5F6B7A]">Sem imagem cadastrada</p>
     </div>
   )
 }
 
 function CatalogSkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
-      <div className="eme-shimmer aspect-[4/3] bg-white/[0.06]" />
+    <div className="overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8]">
+      <div className="eme-shimmer aspect-[4/3] bg-[#f6f7f4]" />
       <div className="grid gap-3 p-4">
-        <div className="eme-shimmer h-4 w-2/3 rounded-full bg-white/[0.08]" />
-        <div className="eme-shimmer h-3 w-1/2 rounded-full bg-white/[0.06]" />
-        <div className="eme-shimmer h-9 w-full rounded-full bg-white/[0.06]" />
+        <div className="eme-shimmer h-4 w-2/3 rounded-full bg-white" />
+        <div className="eme-shimmer h-3 w-1/2 rounded-full bg-[#f6f7f4]" />
+        <div className="eme-shimmer h-9 w-full rounded-full bg-[#f6f7f4]" />
       </div>
     </div>
   )
