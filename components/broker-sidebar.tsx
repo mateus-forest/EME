@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -52,7 +52,7 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
   {
     label: "CARTEIRA",
     items: [
-      { label: "Clientes", icon: UserRound, href: "/corretor/leads" },
+      { label: "Clientes", icon: UserRound, href: "/corretor/clientes" },
       { label: "Imóveis", icon: Building2, href: "/corretor/imoveis" },
     ],
   },
@@ -80,14 +80,21 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
   },
 ]
 
-const defaultOpenSections = Object.fromEntries(menuSections.map((section) => [section.label, true]))
+function buildOpenSections(pathname: string) {
+  return Object.fromEntries(
+    menuSections.map((section) => [
+      section.label,
+      section.items.some((item) => item.href === pathname),
+    ]),
+  )
+}
 
 export function BrokerSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useBrokerProfile()
   const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar()
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(defaultOpenSections)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => buildOpenSections(pathname))
   const collapsed = state === "collapsed"
   const initials = profile.fullName
     .split(" ")
@@ -117,6 +124,10 @@ export function BrokerSidebar() {
   function toggleSection(label: string) {
     setOpenSections((current) => ({ ...current, [label]: !current[label] }))
   }
+
+  useEffect(() => {
+    setOpenSections(buildOpenSections(pathname))
+  }, [pathname])
 
   const sidebarInner = (
     <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.25rem] border border-black/[0.05] bg-white/92 shadow-[0_10px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl">
