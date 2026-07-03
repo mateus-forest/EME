@@ -2,13 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
   ArrowRight,
   Building2,
   CalendarDays,
   FileText,
-  Home,
   MessageCircle,
   Search,
   Send,
@@ -35,7 +33,6 @@ type AgendaEventItem = {
 }
 
 export function BrokerPortal() {
-  const router = useRouter()
   const { properties } = useBrokerProperties()
   const { profile } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
@@ -44,10 +41,10 @@ export function BrokerPortal() {
     unreadCount,
     markAsRead,
     archive,
+    financialSummary,
   } = useBrokerPaymentNotifications()
   const [search, setSearch] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
-  const [analytics, setAnalytics] = useState<{ totalViews: number; whatsappClicks: number; leads: number } | null>(null)
   const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
   const normalizedSearch = search.trim().toLowerCase()
@@ -76,10 +73,6 @@ export function BrokerPortal() {
     [properties, normalizedSearch],
   )
 
-  const totalViews = useMemo(
-    () => properties.reduce((sum, property) => sum + Number(property.views || 0), 0),
-    [properties],
-  )
   const totalLeads = useMemo(
     () => properties.reduce((sum, property) => sum + Number(property.leads || 0), 0),
     [properties],
@@ -87,19 +80,6 @@ export function BrokerPortal() {
 
   useEffect(() => {
     let ignore = false
-
-    fetch("/api/brokers/analytics", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { totalViews?: number; whatsappClicks?: number; leads?: number } | null
-        if (!ignore && response.ok && data) {
-          setAnalytics({
-            totalViews: data.totalViews ?? 0,
-            whatsappClicks: data.whatsappClicks ?? 0,
-            leads: data.leads ?? 0,
-          })
-        }
-      })
-      .catch(() => null)
 
     fetch("/api/brokers/agenda?filter=all", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -144,30 +124,19 @@ export function BrokerPortal() {
     [agendaEvents],
   )
 
-  const stats = useMemo(
+  const contextMetrics = useMemo(
     () => [
-      {
-        title: "Imóveis ativos",
-        value: String(publishedPropertiesCount),
-        change: publishedPropertiesCount > 0 ? "Publicados no catálogo" : "Nenhum imóvel publicado",
-      },
-      {
-        title: "Visualizações",
-        value: (analytics?.totalViews ?? totalViews).toLocaleString("pt-BR"),
-        change: (analytics?.totalViews ?? totalViews) > 0 ? "No catálogo" : "Aguardando tráfego",
-      },
-      {
-        title: "Leads",
-        value: (analytics?.leads ?? totalLeads).toLocaleString("pt-BR"),
-        change: (analytics?.leads ?? totalLeads) > 0 ? "Recebidos" : "Nenhum lead ainda",
-      },
-      {
-        title: "Próximos compromissos",
-        value: String(upcomingAppointmentsCount),
-        change: upcomingAppointmentsCount > 0 ? "Na agenda" : "Agenda livre",
-      },
+      { label: "Clientes", value: totalLeads.toLocaleString("pt-BR") },
+      { label: "Operações", value: String(upcomingAppointmentsCount) },
+      { label: "Balanço", value: financialSummary.currentAmount.replace("R$", "").trim() || "0,00" },
+      { label: "Imóveis", value: String(publishedPropertiesCount) },
     ],
-    [analytics, publishedPropertiesCount, totalLeads, totalViews, upcomingAppointmentsCount],
+    [financialSummary.currentAmount, publishedPropertiesCount, totalLeads, upcomingAppointmentsCount],
+  )
+
+  const contextFeed = useMemo(
+    () => historyNotifications.slice(0, 5),
+    [historyNotifications],
   )
 
   const quickActions = [
@@ -198,182 +167,197 @@ export function BrokerPortal() {
     <>
       <BrokerPageShell
         title="COS"
-        contentClassName="lg:overflow-y-hidden"
-        notificationCenter={
-          <NotificationCenter
-            title="Notificações do corretor"
-            notifications={historyNotifications}
-            unreadCount={unreadCount}
-            onMarkAsRead={markAsRead}
-            onArchive={archive}
-            tone="light"
-          />
-        }
+        variant="cos"
+        contentClassName="overflow-hidden"
       >
-        <section className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-1 py-2 sm:px-3 lg:h-full lg:justify-between lg:py-1">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 rounded-[1.5rem] border border-black/[0.06] bg-white/72 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)] lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/15 bg-[#eef9f1] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#009b3a]">
-                <Sparkles className="size-3.5" />
-                COS
+        <section className="grid min-h-full w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="flex min-h-full items-start justify-center bg-[#f4f1eb] px-6 py-8 lg:px-12 lg:py-12">
+            <div className="flex w-full max-w-5xl flex-col items-center">
+              <div className="flex size-7 items-center justify-center text-[#111111]">
+                <Sparkles className="size-4" />
               </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#050505] sm:text-[2rem]">
-                Olá, {brokerFirstName}.
+              <h2 className="mt-6 text-center text-[2.1rem] font-semibold tracking-tight text-[#111111]">
+                Ola, {brokerFirstName}
               </h2>
-              <p className="mt-1 text-sm text-[#667085] sm:text-[15px]">Central de operação do corretor.</p>
-            </div>
+              <p className="mt-2 text-center text-[15px] text-[#70809a]">O que voce deseja fazer hoje?</p>
 
-            <div className="flex flex-wrap gap-2 lg:max-w-[34rem] lg:justify-end">
-              {quickActions.map((action) => {
-                const Icon = action.icon
-                const className =
-                  "inline-flex h-9 items-center justify-center gap-2 rounded-full border border-black/[0.06] bg-white px-3.5 text-sm font-medium text-[#344054] transition-colors hover:border-[#009b3a]/20 hover:bg-[#f8fbf7] hover:text-[#050505]"
+              <div className="mt-8 flex flex-wrap justify-center gap-2.5">
+                {quickActions.map((action, index) => {
+                  const Icon = action.icon
+                  const labels = ["Sugerir ação", "Próximo passo", "Gravar reunião", "Suporte"]
+                  const className =
+                    "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[#d9dde5] bg-white px-5 text-sm font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb]"
 
-                if (action.onClick) {
+                  if (action.onClick) {
+                    return (
+                      <button key={action.label} type="button" onClick={action.onClick} className={className}>
+                        <Icon className="size-4 text-[#5e6d82]" />
+                        {labels[index] ?? action.label}
+                      </button>
+                    )
+                  }
+
                   return (
-                    <button key={action.label} type="button" onClick={action.onClick} className={className}>
-                      <Icon className="size-3.5 text-[#009b3a]" />
-                      {action.label}
-                    </button>
+                    <Link key={action.label} href={action.href ?? "#"} className={className}>
+                      <Icon className="size-4 text-[#5e6d82]" />
+                      {labels[index] ?? action.label}
+                    </Link>
                   )
-                }
+                })}
+              </div>
 
-                return (
-                  <Link key={action.label} href={action.href ?? "#"} className={className}>
-                    <Icon className="size-3.5 text-[#009b3a]" />
-                    {action.label}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="mx-auto mt-3 w-full max-w-5xl">
-            <form
-              onSubmit={(event) => event.preventDefault()}
-              className="overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.05)]"
-            >
-              <div className="flex min-h-0 items-center gap-3 px-4 py-3 sm:px-5">
-                <div className="hidden size-9 shrink-0 items-center justify-center rounded-xl bg-[#eef9f1] text-[#009b3a] sm:flex">
-                  <MessageCircle className="size-4" />
+              <div className="mt-8 w-full max-w-[60rem]">
+                <div className="flex items-center justify-between px-6 text-sm text-[#91a0b5]">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4" />
+                    Atalhos inteligentes
+                  </div>
+                  <button type="button" className="transition-colors hover:text-[#111111]">
+                    Editar
+                  </button>
                 </div>
-                <Input
-                  ref={searchInputRef}
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Fale com o COS"
-                  className="h-11 flex-1 border-0 bg-transparent px-0 text-[15px] text-[#050505] shadow-none outline-none placeholder:text-[#98A2B3] focus-visible:ring-0"
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="size-10 shrink-0 rounded-full bg-[#009b3a] text-white shadow-[0_10px_24px_rgba(0,155,58,0.18)] hover:bg-[#008633]"
-                  aria-label="Enviar mensagem ao COS"
+                <div className="mt-3 rounded-[1.8rem] bg-white px-8 py-6 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
+                  <div className="grid grid-cols-4 gap-4">
+                    {contextMetrics.map((item) => (
+                      <div key={item.label} className="flex flex-col items-center justify-center text-center">
+                        <UsersRound className="size-4 text-[#9aa8bd]" />
+                        <p className="mt-3 text-[2rem] font-semibold leading-none text-[#111111]">{item.value}</p>
+                        <p className="mt-1 text-sm text-[#6f7f97]">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-auto w-full max-w-[60rem] pt-10">
+                <form
+                  onSubmit={(event) => event.preventDefault()}
+                  className="flex items-center gap-3 rounded-full bg-white px-7 py-5 shadow-[0_10px_26px_rgba(15,23,42,0.06)]"
                 >
-                  <Send className="size-4" />
-                </Button>
-              </div>
-            </form>
-          </div>
-
-          <div className="mx-auto mt-4 w-full max-w-5xl">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#009b3a]">Resumo do dia</p>
-                <h3 className="mt-1 text-lg font-semibold text-[#050505]">Contexto para o COS</h3>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => router.push("/corretor/analytics")}
-                className="h-9 self-start rounded-full border border-black/[0.06] bg-white px-3.5 text-sm text-[#5F6B7A] hover:bg-white hover:text-[#050505] sm:self-auto"
-              >
-                Ver desempenho
-                <ArrowRight className="size-4" />
-              </Button>
-            </div>
-
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map((stat) => (
-                <div key={stat.title} className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
-                  <p className="text-[13px] text-[#667085]">{stat.title}</p>
-                  <p className="mt-1.5 text-xl font-semibold tracking-tight text-[#050505]">{stat.value}</p>
-                  <p className="mt-1 text-xs text-[#009b3a]">{stat.change}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mx-auto mt-4 grid w-full max-w-5xl gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
-            <div className="rounded-[1.5rem] border border-black/[0.06] bg-white px-4 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.035)] lg:min-h-0">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-semibold text-[#050505]">Imóveis em foco</h3>
-                  <p className="mt-1 text-[13px] text-[#667085]">
-                    {normalizedSearch ? "Resultados filtrados no COS." : "Os mais relevantes para abrir a operação."}
-                  </p>
-                </div>
-                <Link href="/corretor/imoveis" className="text-sm font-medium text-[#009b3a] hover:text-[#008633]">
-                  Ver todos
-                </Link>
-              </div>
-
-              <div className="mt-3 grid gap-2.5">
-                {featuredProperties.length > 0 ? (
-                  featuredProperties.map((property) => (
-                    <Link
-                      key={property.id}
-                      href="/corretor/imoveis"
-                      className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-black/[0.05] bg-[#fbfbf8] px-3.5 py-3 transition-colors hover:bg-white"
+                  <Input
+                    ref={searchInputRef}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Fale com o COS..."
+                    className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-[15px] text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
+                  />
+                  <MessageCircle className="size-5 text-[#9aa6b6]" />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="size-11 shrink-0 rounded-full bg-[#a7a7a7] text-white shadow-none hover:bg-[#8f8f8f]"
+                    aria-label="Enviar mensagem ao COS"
+                  >
+                    <Send className="size-4" />
+                  </Button>
+                </form>
+                {hasReachedLimit ? (
+                  <div className="mt-3 flex justify-center">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setIsLimitModalOpen(true)}
+                      className="rounded-full text-sm text-[#5f6d82]"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#009b3a]">
-                          <Home className="size-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[#050505]">{property.title}</p>
-                          <p className="mt-1 truncate text-xs text-[#667085]">{property.location}</p>
+                      Limite do plano atingido
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <aside className="hidden border-l border-black/[0.06] bg-white lg:flex lg:min-h-full lg:flex-col">
+            <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-5">
+              <h3 className="text-[1.05rem] font-semibold text-[#111111]">Contexto</h3>
+              <NotificationCenter
+                title="Notificações do corretor"
+                notifications={historyNotifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={markAsRead}
+                onArchive={archive}
+                tone="light"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
+                  <span className="text-[#9aa6b6]">$</span>
+                  Financeiro
+                </div>
+                <div className="rounded-[1.7rem] bg-[#111111] px-5 py-4 text-white">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm">Saldo final</span>
+                    <span className="text-[1.05rem] font-semibold">{financialSummary.currentAmount}</span>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2.5">
+                  <ContextRow label="Ganhos" value={financialSummary.currentAmount} valueClassName="text-[#16a34a]" />
+                  <ContextRow
+                    label="Gastos"
+                    value={financialSummary.valueOpen ?? "R$ 0,00"}
+                    valueClassName="text-[#ef4444]"
+                  />
+                  <ContextRow label="Saldo anterior" value={financialSummary.currentAmount} />
+                </div>
+                <p className="mt-3 text-sm text-[#91a0b5]">
+                  {historyNotifications.length} atividade(s) registrada(s) no workspace.
+                </p>
+              </div>
+
+              <div className="mt-7">
+                <div className="mb-4 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
+                  <ClockBadge />
+                  Atividades recentes
+                </div>
+                <div className="grid gap-5">
+                  {contextFeed.length > 0 ? (
+                    contextFeed.map((notification) => (
+                      <div key={notification.id} className="flex gap-3">
+                        <span className="mt-2 size-2 shrink-0 rounded-full bg-[#4c83ff]" />
+                        <div>
+                          <p className="text-[15px] text-[#24324a]">{notification.title.toLowerCase()}</p>
+                          <p className="mt-1 text-sm text-[#91a0b5]">{notification.date}</p>
                         </div>
                       </div>
-                      <p className="hidden shrink-0 text-sm font-medium text-[#344054] sm:block">{property.price}</p>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-black/[0.05] bg-[#fbfbf8] px-4 py-6 text-sm text-[#667085]">
-                    Nenhum imóvel encontrado.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-[1.5rem] border border-black/[0.06] bg-white px-4 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.035)] lg:min-h-0">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-[#eef9f1] text-[#009b3a]">
-                  <UsersRound className="size-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-[#050505]">Leitura rápida</h3>
-                  <p className="mt-1 text-[13px] text-[#667085]">Pontos de atenção antes do próximo passo.</p>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[#91a0b5]">Sem atividades recentes.</p>
+                  )}
                 </div>
               </div>
-              <div className="mt-3 space-y-2.5 text-sm text-[#667085]">
-                <p className="rounded-2xl bg-[#fbfbf8] px-3.5 py-3">
-                  {analytics?.whatsappClicks
-                    ? `${analytics.whatsappClicks} cliques no WhatsApp registrados.`
-                    : "Os cliques no WhatsApp aparecerão conforme o catálogo ganhar tráfego."}
-                </p>
-                <p className="rounded-2xl bg-[#fbfbf8] px-3.5 py-3">
-                  {upcomingAppointmentsCount > 0
-                    ? `${upcomingAppointmentsCount} compromisso(s) aguardando acompanhamento.`
-                    : "Sem compromissos pendentes na agenda."}
-                </p>
-              </div>
             </div>
-          </div>
+          </aside>
         </section>
       </BrokerPageShell>
 
       <BrokerFreePlanLimitModal open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen} />
     </>
+  )
+}
+
+function ContextRow({
+  label,
+  value,
+  valueClassName = "text-[#40516d]",
+}: {
+  label: string
+  value: string
+  valueClassName?: string
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-[1.5rem] bg-[#f8f8f8] px-4 py-4">
+      <span className="text-sm text-[#7d8aa0]">{label}</span>
+      <span className={`text-[0.95rem] font-semibold ${valueClassName}`}>{value}</span>
+    </div>
+  )
+}
+
+function ClockBadge() {
+  return (
+    <span className="inline-flex size-5 items-center justify-center rounded-full border border-[#b6c0d0] text-[#8b98ab]">
+      <ArrowRight className="size-3 rotate-90" />
+    </span>
   )
 }

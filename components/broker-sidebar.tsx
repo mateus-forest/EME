@@ -6,6 +6,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   BarChart3,
+  Bell,
   BookOpenText,
   Building2,
   CalendarDays,
@@ -15,11 +16,15 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
+  Plus,
+  Search,
   UserRound,
   UsersRound,
   type LucideIcon,
 } from "lucide-react"
 
+import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { clearLegacyAuthState } from "@/lib/auth-client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -89,13 +94,32 @@ function buildOpenSections(pathname: string) {
   )
 }
 
-export function BrokerSidebar() {
+function normalizeDateLabel(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date)
+}
+
+const cosMenuItems: MenuItem[] = [
+  { label: "Início", icon: LayoutDashboard, href: "/corretor" },
+  { label: "Conversas", icon: MessageCircle, href: "/corretor/leads" },
+  { label: "Histórico", icon: CalendarDays, href: "/corretor/agenda" },
+  { label: "Você", icon: UserRound, href: "/corretor/conta" },
+]
+
+export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "cos" }) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useBrokerProfile()
+  const { historyNotifications, unreadCount } = useBrokerPaymentNotifications()
   const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar()
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => buildOpenSections(pathname))
   const collapsed = state === "collapsed"
+  const isCosVariant = variant === "cos"
   const initials = profile.fullName
     .split(" ")
     .filter(Boolean)
@@ -128,6 +152,94 @@ export function BrokerSidebar() {
   useEffect(() => {
     setOpenSections(buildOpenSections(pathname))
   }, [pathname])
+
+  if (isCosVariant) {
+    const latestNotification = historyNotifications[0]
+
+    const sidebarInnerCos = (
+      <div className="flex h-full min-w-0 max-w-full flex-col border-r border-black/[0.06] bg-white">
+        <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-5">
+          <Link href="/" className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#111111]">
+            <SparkBadge />
+            COS
+          </Link>
+
+          <div className="flex items-center gap-3 text-[#6b7485]">
+            <button type="button" className="transition-colors hover:text-[#111111]" aria-label="Buscar">
+              <Search className="size-5" />
+            </button>
+            <button type="button" className="relative transition-colors hover:text-[#111111]" aria-label="Notificações">
+              <Bell className="size-5" />
+              {unreadCount > 0 ? <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-[#111111]" /> : null}
+            </button>
+            <Avatar className="size-9 border border-black/[0.08]">
+              <AvatarImage src={profile.photoUrl} alt={profile.fullName} />
+              <AvatarFallback className="bg-[#eef1f6] font-semibold text-[#111111]">{initials || "EM"}</AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+
+        <div className="flex-1 px-4 py-4">
+          <Link
+            href="/corretor/novo-imovel"
+            className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-[#111111] text-white transition-colors hover:bg-black"
+            aria-label="Novo imóvel"
+          >
+            <Plus className="size-5" />
+          </Link>
+
+          <nav className="grid gap-1">
+            {cosMenuItems.map((item) => {
+              const active = pathname === item.href
+              const badge =
+                item.href === "/corretor/leads" && unreadCount > 0 ? String(unreadCount) : item.href === "/corretor/agenda" && latestNotification ? "1" : null
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center justify-between rounded-[1.6rem] px-4 py-3 text-[15px] transition-colors ${active ? "bg-[#f2f4f7] text-[#111111]" : "text-[#596579] hover:bg-[#f7f8fa] hover:text-[#111111]"}`}
+                >
+                  <span className="flex items-center gap-3">
+                    <item.icon className="size-[18px]" />
+                    {item.label}
+                  </span>
+                  {badge ? (
+                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#111111] px-2 py-0.5 text-xs font-semibold text-white">
+                      {badge}
+                    </span>
+                  ) : null}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+
+        <div className="px-4 pb-4 text-xs text-[#98A2B3]">
+          {latestNotification ? `Atualizado em ${normalizeDateLabel(latestNotification.date)}` : "Portal do corretor"}
+        </div>
+      </div>
+    )
+
+    if (isMobile) {
+      return (
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+          <SheetContent
+            side="left"
+            className="w-[17rem] border-black/[0.06] bg-white p-0 text-[#050505] [&>button]:hidden"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Portal do corretor</SheetTitle>
+              <SheetDescription>Navegação lateral do portal do corretor.</SheetDescription>
+            </SheetHeader>
+            {sidebarInnerCos}
+          </SheetContent>
+        </Sheet>
+      )
+    }
+
+    return <aside className="hidden w-[17rem] shrink-0 md:flex">{sidebarInnerCos}</aside>
+  }
 
   const sidebarInner = (
     <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.25rem] border border-black/[0.05] bg-white/92 shadow-[0_10px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl">
@@ -260,5 +372,13 @@ export function BrokerSidebar() {
     >
       {sidebarInner}
     </aside>
+  )
+}
+
+function SparkBadge() {
+  return (
+    <span className="inline-flex size-4 items-center justify-center rounded-full border border-black text-[10px] font-bold leading-none">
+      C
+    </span>
   )
 }
