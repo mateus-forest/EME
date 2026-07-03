@@ -23,6 +23,7 @@ type BrokerPageShellProps = {
   primaryActionOnClick?: () => void
   headerControls?: ReactNode
   notificationCenter?: ReactNode
+  contentClassName?: string
   children: ReactNode
 }
 
@@ -36,6 +37,7 @@ export function BrokerPageShell({
   primaryActionOnClick,
   headerControls,
   notificationCenter,
+  contentClassName,
   children,
 }: BrokerPageShellProps) {
   const hasSearchArea = searchPlaceholder || headerControls
@@ -67,10 +69,10 @@ export function BrokerPageShell({
         } as CSSProperties
       }
     >
-      <div className="relative min-h-screen overflow-hidden bg-[#fbfbf8] text-[#050505]">
+      <div className="relative min-h-svh w-full overflow-hidden bg-[#fbfbf8] text-[#050505]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
 
-        <div className="relative z-0 flex min-h-screen flex-col">
+        <div className="relative z-0 flex min-h-svh w-full flex-col">
           <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/86 backdrop-blur-2xl">
             <div className="px-4 py-3 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
@@ -142,7 +144,9 @@ export function BrokerPageShell({
             <BrokerSidebar />
 
             <main className="min-w-0 flex-1 overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-white/86 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <div className="h-full max-w-full overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+              <div className={`h-full max-w-full overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 ${contentClassName ?? ""}`}>
+                {children}
+              </div>
             </main>
           </div>
         </div>
