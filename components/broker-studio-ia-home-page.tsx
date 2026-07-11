@@ -36,7 +36,9 @@ const studioActions: StudioAction[] = [
     title: "Criar campanha para Instagram",
     description: "Monte uma campanha visual para publicar o imovel com narrativa pronta para redes sociais.",
     icon: Megaphone,
-    status: "Em breve",
+    href: "/corretor/studio-ia/criar-campanha-instagram",
+    cta: "Abrir fluxo",
+    status: "Disponivel",
   },
   {
     title: "Criar video do imovel",
