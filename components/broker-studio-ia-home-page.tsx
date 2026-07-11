@@ -68,7 +68,9 @@ const studioActions: StudioAction[] = [
     title: "Captar proprietarios",
     description: "Estruture abordagens de captacao para ampliar a carteira com foco no perfil certo.",
     icon: Camera,
-    status: "Em breve",
+    href: "/corretor/studio-ia/captar-proprietarios",
+    cta: "Abrir fluxo",
+    status: "Disponivel",
   },
 ]
 
