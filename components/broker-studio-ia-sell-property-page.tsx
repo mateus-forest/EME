@@ -68,8 +68,9 @@ const commercialFlows: CommercialFlow[] = [
     key: "buyers",
     title: "Atrair compradores",
     description: "Planeje a captacao de demanda para acelerar a operacao comercial.",
+    href: "/corretor/studio-ia/atrair-compradores",
     icon: Users,
-    isAvailable: false,
+    isAvailable: true,
   },
   {
     key: "owners",

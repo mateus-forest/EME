@@ -60,7 +60,9 @@ const studioActions: StudioAction[] = [
     title: "Atrair compradores",
     description: "Planeje a mensagem e os ganchos comerciais para aumentar interesse qualificado no imovel.",
     icon: Users,
-    status: "Em breve",
+    href: "/corretor/studio-ia/atrair-compradores",
+    cta: "Abrir fluxo",
+    status: "Disponivel",
   },
   {
     title: "Captar proprietarios",
