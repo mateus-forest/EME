@@ -222,8 +222,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f8f5f1] px-4 py-6 text-[#1f2937] sm:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto grid max-w-[1360px] min-w-0 gap-8 lg:gap-10">
+    <main className="min-h-screen overflow-x-hidden bg-[#f8f5f1] px-4 py-6 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:px-6 lg:px-8 lg:py-8">
+      <div className="mx-auto grid max-w-[1360px] min-w-0 gap-10 lg:gap-12">
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
@@ -232,10 +232,10 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
           </div>
         ) : null}
 
-        <section className="overflow-hidden rounded-[2rem] border border-[#ebe3da] bg-white px-6 py-7 shadow-[0_18px_48px_rgba(15,23,42,0.06)] sm:px-8 sm:py-8 lg:px-10 lg:py-10">
-          <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)_430px] lg:items-center">
+        <section className="overflow-hidden rounded-[2rem] border border-[#ece5dc] bg-white px-6 py-6 shadow-[0_20px_54px_rgba(15,23,42,0.05)] sm:px-8 sm:py-7 lg:px-10 lg:py-8">
+          <div className="grid gap-6 lg:grid-cols-[160px_minmax(0,1fr)_390px] lg:items-center lg:gap-8">
             <div className="flex justify-center lg:justify-start">
-              <Avatar className="size-32 border border-[#ece6de] shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:size-36">
+              <Avatar className="size-28 border border-[#ece6de] shadow-[0_10px_28px_rgba(15,23,42,0.08)] sm:size-32">
                 <AvatarImage src={avatarUrl} alt={catalog.displayName} className="size-full object-cover object-center" />
                 <AvatarFallback className="bg-[#eef9f1] text-2xl font-semibold text-[#009b3a]">
                   {getInitials(catalog.displayName)}
@@ -247,15 +247,15 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               <p className="text-xs uppercase tracking-[0.28em] text-[#6a6a6a]">
                 {kind === "broker" ? "Catalogo do corretor" : "Catalogo da imobiliaria"}
               </p>
-              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#111111] sm:text-5xl">
+              <h1 className="mt-2.5 text-[2.75rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[3.5rem]">
                 {catalog.displayName || "Catalogo EME"}
               </h1>
-              <p className="mt-4 text-lg text-[#5f5f5f]">
+              <p className="mt-3 text-[1.05rem] leading-7 text-[#5f5f5f]">
                 {catalog.description || "Corretor especialista em imoveis de alto padrao."}
               </p>
-              {creci ? <p className="mt-2 text-base text-[#707070]">CRECI {creci}</p> : null}
+              {creci ? <p className="mt-1.5 text-[0.95rem] text-[#707070]">CRECI {creci}</p> : null}
 
-              <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
+              <div className="mt-6 flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Button
                   type="button"
                   onClick={() => {
@@ -270,7 +270,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                       catalogType: kind,
                     })
                   }}
-                  className="h-12 rounded-full bg-[#3d9751] px-6 text-sm font-medium text-white shadow-[0_10px_24px_rgba(61,151,81,0.22)] hover:bg-[#347f46]"
+                  className="h-11 rounded-full bg-[#3d9751] px-6 text-sm font-medium text-white shadow-[0_10px_24px_rgba(61,151,81,0.18)] hover:bg-[#347f46]"
                 >
                   <MessageCircle className="size-4" />
                   WhatsApp
@@ -279,7 +279,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   type="button"
                   variant="ghost"
                   onClick={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catalogo de imoveis")}
-                  className="h-12 rounded-full border border-[#e6dfd7] bg-white px-6 text-sm font-medium text-[#2f2f2f] shadow-[0_6px_18px_rgba(15,23,42,0.04)] hover:bg-[#faf8f5]"
+                  className="h-11 rounded-full border border-[#e6dfd7] bg-white px-6 text-sm font-medium text-[#2f2f2f] shadow-[0_4px_14px_rgba(15,23,42,0.04)] hover:bg-[#faf8f5]"
                 >
                   <Share2 className="size-4" />
                   Compartilhar
@@ -288,7 +288,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               </div>
             </div>
 
-            <div className="grid overflow-hidden rounded-[1.6rem] border border-[#eee6de] bg-white sm:grid-cols-3">
+            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] sm:grid-cols-3 lg:border-l lg:border-[#f0e9e1]">
               <MetricStat icon={Home} label="Imoveis" value={String(properties.length)} />
               <MetricStat icon={MapPin} label="Cidades" value={cities.length ? String(cities.length) : "A consultar"} />
               <MetricStat icon={CircleDollarSign} label="Faixa de preco" value={priceRange} />
@@ -296,16 +296,16 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-[#ebe3da] bg-white p-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:p-8 lg:p-12">
+        <section className="rounded-[2rem] bg-white px-6 py-8 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-8 sm:py-10 lg:px-12 lg:py-12">
           <div className="mx-auto max-w-none">
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2.3rem]">
+            <h2 className="text-3xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.55rem]">
               Encontre seu proximo imovel
             </h2>
-            <p className="mt-3 text-base text-[#6b6b6b]">
+            <p className="mt-3 text-base leading-7 text-[#6b6b6b]">
               Busque por bairro, cidade ou caracteristica.
             </p>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
+            <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
               <div className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-[#9a9a9a]" />
                 <Input
@@ -315,25 +315,25 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Buscar por bairro, cidade ou caracteristica"
-                  className="h-16 rounded-[1.15rem] border-[#e8e1d8] bg-white pl-14 pr-4 text-base text-[#111111] placeholder:text-[#9a9a9a]"
+                  className="h-[4.4rem] rounded-[1.2rem] border-transparent bg-[#fbfaf8] pl-14 pr-4 text-base text-[#111111] shadow-[inset_0_0_0_1px_rgba(207,200,190,0.45)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8]"
                 />
               </div>
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-16 rounded-[1.15rem] bg-[#17181d] px-7 text-lg font-medium text-white hover:bg-[#111216]"
+                className="h-[4.4rem] rounded-[1.2rem] bg-[#17181d] px-7 text-lg font-medium text-white shadow-[0_14px_30px_rgba(23,24,29,0.16)] hover:bg-[#111216]"
               >
                 Buscar
               </Button>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap gap-3">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   onClick={() => setSearch(suggestion === "Mais filtros" ? search : suggestion)}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#ebe3da] bg-white px-5 py-3 text-sm font-medium text-[#2f2f2f] shadow-[0_4px_14px_rgba(15,23,42,0.03)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#efe8df] bg-white px-5 py-3 text-sm font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
                 >
                   {getSuggestionIcon(suggestion)}
                   {suggestion}
@@ -352,7 +352,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
         {visibleProperties.length > 0 ? (
           <>
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#111111]">Imoveis em destaque</h2>
+              <h2 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111]">Imoveis em destaque</h2>
               <button
                 type="button"
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -362,64 +362,65 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               </button>
             </div>
 
-            <section className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
+            <section className="grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2">
               {visibleProperties.map(({ property, matchLabel }) => (
                 <article
                   key={property.id}
                   id={`imovel-${property.id}`}
-                  className="min-w-0 overflow-hidden rounded-[1.7rem] border border-[#ebe3da] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.08)]"
+                  className="min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"
                 >
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                    <div className="relative aspect-[1.95/1] overflow-hidden bg-[#eef2f0]">
+                    <div className="relative aspect-[2.08/1] overflow-hidden bg-[#eef2f0]">
                       {property.images[0]?.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-500 hover:scale-[1.02]" />
+                        <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
                       ) : (
                         <CatalogImagePlaceholder />
                       )}
-                      <div className="absolute left-4 top-4 rounded-full border border-white/90 bg-white px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-sm">
+                      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+                      <div className="absolute left-4 top-4 rounded-full border border-white/90 bg-white/96 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-sm backdrop-blur-sm">
                         {matchLabel}
                       </div>
-                      <div className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)]">
+                      <div className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm">
                         <Heart className="size-5" />
                       </div>
                     </div>
                   </button>
 
-                  <div className="grid gap-5 p-5 sm:p-6">
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className="grid gap-6 p-6 sm:p-7">
+                    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                       <div className="min-w-0">
-                        <h3 className="line-clamp-2 text-[1.85rem] font-semibold tracking-[-0.04em] text-[#111111]">
+                        <h3 className="line-clamp-2 text-[2rem] font-semibold leading-tight tracking-[-0.05em] text-[#111111]">
                           {property.title}
                         </h3>
-                        <p className="mt-2 flex items-center gap-2 text-sm text-[#757575]">
-                          <MapPin className="size-4 shrink-0 text-[#757575]" />
+                        <p className="mt-2.5 flex items-center gap-2 text-sm text-[#838383]">
+                          <MapPin className="size-4 shrink-0 text-[#8a8a8a]" />
                           <span className="truncate">{property.location}</span>
                         </p>
                       </div>
 
                       <div className="sm:text-right">
-                        <p className="break-words text-[1.85rem] font-semibold tracking-[-0.04em] text-[#2f9c58]">
+                        <p className="break-words text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]">
                           {property.price || "Consulte valor"}
                         </p>
-                        <p className="mt-1 text-sm text-[#7b7b7b]">{getShortHighlight(property)}</p>
+                        <p className="mt-1.5 text-sm text-[#8a8a8a]">{getShortHighlight(property)}</p>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-[#545454]">
+                    <div className="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-[#545454]">
                       {property.bedrooms > 0 ? <InlineSpec icon={Bed} value={`${property.bedrooms} quartos`} /> : null}
                       {property.parking > 0 ? <InlineSpec icon={Car} value={`${property.parking} vagas`} /> : null}
                       {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={`${property.bathrooms} banheiros`} /> : null}
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="inline-flex w-fit rounded-full border border-[#e7e0d8] bg-[#fbfaf8] px-3 py-1.5 text-xs font-medium text-[#636363]">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="inline-flex w-fit rounded-full border border-[#ebe3da] bg-[#fbfaf8] px-3.5 py-1.5 text-xs font-medium text-[#636363]">
                         {property.type}
                       </span>
                       <Button
                         type="button"
                         onClick={() => openLeadModal(property)}
-                        className="h-11 rounded-full border border-[#dbeadf] bg-white px-6 text-sm font-medium text-[#2f8f4f] shadow-none hover:bg-[#f3fbf5]"
+                        className="h-11 rounded-full border border-[#dce9df] bg-[#fcfffd] px-6 text-sm font-medium text-[#2f8f4f] shadow-[0_8px_18px_rgba(61,151,81,0.08)] hover:bg-[#f3fbf5]"
                       >
                         <MessageCircle className="size-4" />
                         Tenho interesse
@@ -430,16 +431,16 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               ))}
             </section>
 
-            <section className="rounded-[1.8rem] border border-[#e8e1d8] bg-white px-6 py-6 shadow-[0_14px_34px_rgba(15,23,42,0.04)] sm:px-8">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <section className="rounded-[1.9rem] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="flex size-14 items-center justify-center rounded-full border border-[#dceadf] bg-[#f4fbf6] text-[#3e9651]">
+                  <div className="flex size-14 items-center justify-center rounded-full border border-[#dceadf] bg-[#f4fbf6] text-[#3e9651] shadow-[0_8px_18px_rgba(61,151,81,0.08)]">
                     <MessageCircle className="size-7" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#111111]">Nao encontrou o que procura?</h3>
-                    <p className="mt-1 text-base text-[#6b6b6b]">
-                      Fale comigo diretamente e receba opcoes exclusivas.
+                    <h3 className="text-[1.9rem] font-semibold tracking-[-0.04em] text-[#111111]">Ainda nao encontrou o imovel ideal?</h3>
+                    <p className="mt-1.5 text-base leading-7 text-[#6b6b6b]">
+                      Receba novas oportunidades diretamente pelo WhatsApp.
                     </p>
                   </div>
                 </div>
@@ -454,7 +455,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                     }
                     window.open(createWhatsAppUrl(catalog.whatsApp, `Ola, quero receber opcoes exclusivas do catalogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
                   }}
-                  className="h-12 rounded-full border border-transparent bg-transparent px-0 text-lg font-medium text-[#3e9651] hover:bg-transparent hover:text-[#2f7c40]"
+                  className="h-12 rounded-full bg-[#f4fbf6] px-6 text-base font-medium text-[#3e9651] shadow-[0_10px_22px_rgba(61,151,81,0.08)] hover:bg-[#eef9f1] hover:text-[#2f7c40]"
                 >
                   Falar no WhatsApp
                 </Button>
@@ -723,12 +724,12 @@ function getInitials(name: string) {
 
 function MetricStat({ icon: Icon, label, value }: { icon: typeof Home; label: string; value: string }) {
   return (
-    <div className="flex min-h-[154px] flex-col items-center justify-center gap-4 border-b border-[#eee6de] px-6 py-6 text-center last:border-b-0 sm:border-b-0 sm:border-r last:sm:border-r-0">
+    <div className="flex min-h-[138px] flex-col items-center justify-center gap-3 border-b border-[#eee6de] px-5 py-5 text-center last:border-b-0 sm:border-b-0 sm:border-r last:sm:border-r-0">
       <div className="flex size-10 items-center justify-center rounded-full bg-[#f4faf5] text-[#3e9651]">
         <Icon className="size-5" />
       </div>
-      <p className="text-[2rem] font-semibold tracking-[-0.04em] text-[#151515]">{value}</p>
-      <p className="text-base text-[#5f5f5f]">{label}</p>
+      <p className="text-[1.8rem] font-semibold tracking-[-0.05em] text-[#151515]">{value}</p>
+      <p className="text-[0.95rem] text-[#676767]">{label}</p>
     </div>
   )
 }
@@ -736,7 +737,7 @@ function MetricStat({ icon: Icon, label, value }: { icon: typeof Home; label: st
 function InlineSpec({ icon: Icon, value }: { icon: typeof Bed; value: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-sm">
-      <Icon className="size-4 text-[#6a6a6a]" />
+      <Icon className="size-4 text-[#767676]" />
       <span>{value}</span>
     </span>
   )
