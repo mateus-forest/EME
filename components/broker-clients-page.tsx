@@ -2,51 +2,72 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Clock3, MessageCircle, Phone, Search, Sparkles, Trophy, UsersRound } from "lucide-react"
+import { Clock3, FileText, MessageCircle, Phone, Search, Sparkles, Trophy, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import type { LeadRecord } from "@/lib/lead-contract"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { LeadRecord } from "@/lib/lead-contract"
+
+type ClientFilterId =
+  | "all"
+  | "new"
+  | "contacted"
+  | "visit"
+  | "negotiating"
+  | "active"
+  | "sold"
+  | "archived"
 
 const clientStages: Array<{
   title: string
   description: string
   icon: typeof UsersRound
-  statuses: LeadRecord["status"][]
+  match: (client: LeadRecord) => boolean
 }> = [
   {
-    title: "Novos clientes",
+    title: "Novos interessados",
     description: "Contatos que chegaram e ainda precisam do primeiro atendimento.",
     icon: UsersRound,
-    statuses: ["NEW"],
+    match: (client) => client.status === "NEW",
   },
   {
-    title: "Em contato",
-    description: "Clientes com conversa ativa, retorno ou negociação em andamento.",
+    title: "Em atendimento",
+    description: "Clientes com conversa ativa, retorno ou negociacao em andamento.",
     icon: MessageCircle,
-    statuses: ["CONTACTED", "NEGOTIATING"],
+    match: (client) => client.status === "CONTACTED" || client.status === "NEGOTIATING",
   },
   {
-    title: "Convertidos",
-    description: "Clientes que avançaram para visita, proposta ou fechamento.",
+    title: "Vendidos",
+    description: "Clientes que avancaram para fechamento dentro do funil comercial.",
     icon: Trophy,
-    statuses: ["WON"],
+    match: (client) => client.status === "WON",
   },
   {
-    title: "Inativos",
-    description: "Contatos perdidos, sem aderência ou sem resposta recente.",
+    title: "Arquivados",
+    description: "Contatos arquivados ou encerrados fora da operacao ativa.",
     icon: Clock3,
-    statuses: ["LOST"],
+    match: (client) => client.status === "ARCHIVED" || client.status === "LOST",
   },
+]
+
+const clientFilters: Array<{ id: ClientFilterId; label: string }> = [
+  { id: "all", label: "Todos" },
+  { id: "new", label: "Novos interessados" },
+  { id: "contacted", label: "Em atendimento" },
+  { id: "visit", label: "Visita agendada" },
+  { id: "negotiating", label: "Negociacao" },
+  { id: "active", label: "Clientes ativos" },
+  { id: "sold", label: "Vendidos" },
+  { id: "archived", label: "Arquivados" },
 ]
 
 function formatDate(value: string) {
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Data não disponível"
+  if (Number.isNaN(date.getTime())) return "Data nao disponivel"
 
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -55,10 +76,20 @@ function formatDate(value: string) {
   }).format(date)
 }
 
+const statusLabelOverrides: Record<LeadRecord["status"], string> = {
+  NEW: "Novo interessado",
+  CONTACTED: "Em atendimento",
+  NEGOTIATING: "Negociacao",
+  WON: "Vendido",
+  LOST: "Arquivado",
+  ARCHIVED: "Arquivado",
+}
+
 export function BrokerClientsPage() {
   const [clients, setClients] = useState<LeadRecord[]>([])
   const [feedback, setFeedback] = useState("")
   const [search, setSearch] = useState("")
+  const [activeFilter, setActiveFilter] = useState<ClientFilterId>("all")
   const [selectedClient, setSelectedClient] = useState<LeadRecord | null>(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
@@ -68,11 +99,11 @@ export function BrokerClientsPage() {
     fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[]; error?: string } | null
-        if (!response.ok) throw new Error(data?.error || "Não foi possível carregar seus clientes.")
+        if (!response.ok) throw new Error(data?.error || "Nao foi possivel carregar seus clientes.")
         if (!ignore) setClients(data?.leads ?? [])
       })
       .catch((error) => {
-        if (!ignore) setFeedback(error instanceof Error ? error.message : "Não foi possível carregar seus clientes.")
+        if (!ignore) setFeedback(error instanceof Error ? error.message : "Nao foi possivel carregar seus clientes.")
       })
 
     return () => {
@@ -82,7 +113,7 @@ export function BrokerClientsPage() {
 
   const normalizedSearch = search.trim().toLowerCase()
 
-  const filteredClients = useMemo(
+  const filteredBySearch = useMemo(
     () =>
       clients.filter((client) =>
         normalizedSearch
@@ -94,12 +125,14 @@ export function BrokerClientsPage() {
     [clients, normalizedSearch],
   )
 
+  const filteredClients = useMemo(
+    () => filteredBySearch.filter((client) => matchesClientFilter(client, activeFilter)),
+    [activeFilter, filteredBySearch],
+  )
+
   const values = useMemo(
-    () =>
-      clientStages.map((stage) =>
-        filteredClients.filter((client) => stage.statuses.includes(client.status)).length,
-      ),
-    [filteredClients],
+    () => clientStages.map((stage) => clients.filter((client) => stage.match(client)).length),
+    [clients],
   )
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
@@ -117,20 +150,20 @@ export function BrokerClientsPage() {
       const data = (await response.json().catch(() => null)) as { lead?: LeadRecord; error?: string } | null
 
       if (!response.ok || !data?.lead) {
-        throw new Error(data?.error || "Não foi possível atualizar o status do cliente.")
+        throw new Error(data?.error || "Nao foi possivel atualizar o status do cliente.")
       }
 
       setClients((current) => current.map((item) => (item.id === data.lead?.id ? data.lead : item)))
       setSelectedClient(data.lead)
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do cliente.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel atualizar o status do cliente.")
     } finally {
       setIsUpdatingStatus(false)
     }
   }
 
   return (
-    <BrokerPageShell title="Clientes" primaryActionLabel="Novo imóvel" primaryActionHref="/corretor/novo-imovel">
+    <BrokerPageShell title="Clientes" primaryActionLabel="Novo imovel" primaryActionHref="/corretor/novo-imovel">
       <div className="grid gap-5">
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -139,9 +172,9 @@ export function BrokerClientsPage() {
                 <Sparkles className="size-3.5" />
                 Relacionamento ativo
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Clientes em uma visão própria</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Clientes como centro da operacao</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                Acompanhe quem já entrou no seu funil com contexto, status e próximos passos, sem misturar com a tela de leads.
+                Toda a entrada do funil fica organizada aqui com filtros, contexto e proximos passos, sem depender de uma area separada de leads.
               </p>
             </div>
             <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
@@ -178,12 +211,25 @@ export function BrokerClientsPage() {
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Nome, telefone ou imóvel"
+                  placeholder="Nome, telefone ou imovel"
                   className="h-11 rounded-xl pl-10"
                 />
               </div>
             </label>
           </div>
+        </section>
+
+        <section className="flex flex-wrap gap-2">
+          {clientFilters.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              onClick={() => setActiveFilter(filter.id)}
+              className={`rounded-full border px-4 py-2 text-sm transition-colors ${activeFilter === filter.id ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white/90 text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
+            >
+              {filter.label}
+            </button>
+          ))}
         </section>
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
@@ -202,28 +248,40 @@ export function BrokerClientsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-[#050505]">{client.name || "Cliente sem nome"}</p>
                       <span className="rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-2.5 py-1 text-xs text-[#009b3a]">
-                        {client.statusLabel}
+                        {statusLabelOverrides[client.status]}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-[#7B8491]">
-                      {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDate(client.createdAt)}
+                      {client.propertyTitle || "Catalogo"} · {formatLeadSource(client.source)} · {formatDate(client.createdAt)}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#5F6B7A]">
                       <span className="inline-flex items-center gap-1.5">
                         <Phone className="size-3.5 text-[#009b3a]" />
-                        {client.phone || "Telefone não informado"}
+                        {client.phone || "Telefone nao informado"}
                       </span>
                     </div>
                     {client.message ? <p className="mt-2 line-clamp-2 text-sm text-[#5F6B7A]">{client.message}</p> : null}
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setSelectedClient(client)}
-                    className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
-                  >
-                    Ver cliente
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setSelectedClient(client)}
+                      className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                    >
+                      Ver cliente
+                    </Button>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                    >
+                      <Link href="/corretor/documentos">
+                        <FileText className="size-4" />
+                        Propostas
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -234,7 +292,7 @@ export function BrokerClientsPage() {
               </div>
               <h3 className="text-xl font-semibold text-[#050505]">Nenhum cliente encontrado.</h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                {normalizedSearch ? "Ajuste sua busca para localizar o cliente." : "Seus clientes aparecerão aqui conforme o funil começar a receber contatos."}
+                {normalizedSearch ? "Ajuste sua busca para localizar o cliente." : "Seus clientes aparecerao aqui conforme o funil comecar a receber contatos."}
               </p>
             </div>
           )}
@@ -248,17 +306,17 @@ export function BrokerClientsPage() {
               <div>
                 <DialogTitle className="text-2xl text-[#050505]">{selectedClient.name || "Cliente sem nome"}</DialogTitle>
                 <DialogDescription className="mt-2 text-[#6B7280]">
-                  Histórico e enquadramento do cliente dentro do portal.
+                  Historico e enquadramento do cliente dentro do portal.
                 </DialogDescription>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <ClientInfo label="Telefone" value={selectedClient.phone || "Não informado"} />
-                <ClientInfo label="Imóvel de interesse" value={selectedClient.propertyTitle || "Catálogo"} />
+                <ClientInfo label="Telefone" value={selectedClient.phone || "Nao informado"} />
+                <ClientInfo label="Imovel de interesse" value={selectedClient.propertyTitle || "Catalogo"} />
                 <ClientInfo label="Origem" value={formatLeadSource(selectedClient.source)} />
                 <ClientInfo label="Data" value={formatDate(selectedClient.createdAt)} />
                 <ClientInfo label="Busca" value={selectedClient.searchTerm || "Sem busca registrada"} />
-                <ClientInfo label="Intenção" value={selectedClient.intent || "Sem intenção registrada"} />
+                <ClientInfo label="Intencao" value={selectedClient.intent || "Sem intencao registrada"} />
               </div>
 
               <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
@@ -269,7 +327,7 @@ export function BrokerClientsPage() {
               <label className="grid gap-2">
                 <span className="text-sm text-[#6B7280]">Status atual</span>
                 <Select
-                  value={selectedClient.status === "NEGOTIATING" ? "CONTACTED" : selectedClient.status}
+                  value={selectedClient.status}
                   disabled={isUpdatingStatus}
                   onValueChange={(value) => updateClientStatus(selectedClient, value as LeadRecord["status"])}
                 >
@@ -277,13 +335,30 @@ export function BrokerClientsPage() {
                     <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NEW">Novo</SelectItem>
+                    <SelectItem value="NEW">Novo interessado</SelectItem>
                     <SelectItem value="CONTACTED">Em atendimento</SelectItem>
-                    <SelectItem value="WON">Convertido</SelectItem>
-                    <SelectItem value="LOST">Perdido</SelectItem>
+                    <SelectItem value="NEGOTIATING">Negociacao</SelectItem>
+                    <SelectItem value="WON">Vendido</SelectItem>
+                    <SelectItem value="ARCHIVED">Arquivado</SelectItem>
                   </SelectContent>
                 </Select>
               </label>
+
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
+                  <Link href="/corretor/documentos">
+                    <FileText className="size-4" />
+                    Abrir propostas
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                >
+                  <Link href="/corretor/imoveis">Ver imoveis</Link>
+                </Button>
+              </div>
             </div>
           ) : null}
         </DialogContent>
@@ -294,13 +369,33 @@ export function BrokerClientsPage() {
 
 function formatLeadSource(source: string) {
   const normalized = source.toLowerCase()
-  if (normalized.includes("catalog")) return "Catálogo"
+  if (normalized.includes("catalog")) return "Catalogo"
   if (normalized.includes("assessor")) return "Assessor EME"
   if (normalized.includes("corretor_eme")) return "Corretor EME"
   if (normalized.includes("whatsapp")) return "WhatsApp"
   if (normalized.includes("manual")) return "Manual"
   if (normalized.includes("landing")) return "Landing page"
   return source || "Portal"
+}
+
+function matchesClientFilter(client: LeadRecord, filter: ClientFilterId) {
+  if (filter === "all") return true
+  if (filter === "new") return client.status === "NEW"
+  if (filter === "contacted") return client.status === "CONTACTED"
+  if (filter === "visit") return hasVisitScheduled(client)
+  if (filter === "negotiating") return client.status === "NEGOTIATING"
+  if (filter === "active") return ["NEW", "CONTACTED", "NEGOTIATING"].includes(client.status)
+  if (filter === "sold") return client.status === "WON"
+  return client.status === "ARCHIVED" || client.status === "LOST"
+}
+
+function hasVisitScheduled(client: LeadRecord) {
+  const content = [client.message, client.intent, client.searchTerm]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\b(visita|visitar|agendada|agendar|tour)\b/.test(content)
 }
 
 function ClientInfo({ label, value }: { label: string; value: string }) {

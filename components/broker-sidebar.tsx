@@ -7,16 +7,15 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   BarChart3,
   BookOpenText,
+  Bot,
   Building2,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   CreditCard,
-  FileText,
   LayoutDashboard,
   LogOut,
   UserRound,
-  UsersRound,
   type LucideIcon,
 } from "lucide-react"
 
@@ -57,11 +56,10 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     ],
   },
   {
-    label: "VENDAS",
+    label: "VENDER",
     items: [
       { label: "Catalogo", icon: BookOpenText, href: "/corretor/catalogo" },
-      { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
-      { label: "Propostas", icon: FileText, href: "/corretor/documentos" },
+      { label: "Studio IA", icon: Bot, href: "/corretor/studio-ia" },
     ],
   },
   {

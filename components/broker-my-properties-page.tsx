@@ -1,9 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Bath, BedDouble, CarFront, Filter, ImagePlus, MapPin, MessageCircle, Mic, PencilLine, Plus, Trash2, X } from "lucide-react"
+import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, PencilLine, Plus, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
@@ -432,6 +433,12 @@ export function BrokerMyPropertiesPage() {
                           <MessageCircle className="size-4" />
                           WhatsApp
                         </a>
+                      </Button>
+                      <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                        <Link href="/corretor/documentos">
+                          <FileText className="size-4" />
+                          Propostas
+                        </Link>
                       </Button>
                       <div className="grid grid-cols-2 gap-2">
                         <Button variant="ghost" onClick={() => openEditModal(property)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#5F6B7A] hover:bg-white hover:text-[#050505]">

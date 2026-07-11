@@ -1,5 +1,5 @@
-import { BrokerLeadsPage } from "@/components/broker-leads-page"
+import { redirect } from "next/navigation"
 
 export default function BrokerLeadsRoute() {
-  return <BrokerLeadsPage />
+  redirect("/corretor/clientes")
 }
