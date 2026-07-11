@@ -1,5 +1,5 @@
-import { BrokerStudioIaPage } from "@/components/broker-studio-ia-page"
+import { BrokerStudioIaHomePage } from "@/components/broker-studio-ia-home-page"
 
 export default function BrokerStudioIaRoute() {
-  return <BrokerStudioIaPage />
+  return <BrokerStudioIaHomePage />
 }

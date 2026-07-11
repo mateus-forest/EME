@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Home,
   ImagePlus,
+  ChevronLeft,
   LoaderCircle,
   MessageCircle,
   RefreshCcw,
@@ -210,16 +211,28 @@ export function BrokerStudioIaPage() {
                 Selecione um imovel, escolha a imagem de base, defina o estilo visual e acompanhe a geracao real ate a aprovacao do resultado.
               </p>
             </div>
-            <Button
-              asChild
-              variant="ghost"
-              className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
-            >
-              <Link href="/corretor/corretor-m">
-                <MessageCircle className="size-4" />
-                Abrir Assessor EME atual
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+              >
+                <Link href="/corretor/studio-ia">
+                  <ChevronLeft className="size-4" />
+                  Voltar para Studio IA
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+              >
+                <Link href="/corretor/corretor-m">
+                  <MessageCircle className="size-4" />
+                  Abrir Assessor EME atual
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
 
