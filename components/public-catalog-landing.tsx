@@ -233,7 +233,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
         ) : null}
 
         <section className="overflow-hidden rounded-[2rem] border border-[#ece5dc] bg-white px-6 py-6 shadow-[0_20px_54px_rgba(15,23,42,0.05)] sm:px-8 sm:py-7 lg:px-10 lg:py-8">
-          <div className="grid gap-6 lg:grid-cols-[160px_minmax(0,1fr)_390px] lg:items-center lg:gap-8">
+          <div className="grid gap-6 lg:grid-cols-[170px_minmax(0,1fr)_520px] lg:items-center lg:gap-8">
             <div className="flex justify-center lg:justify-start">
               <Avatar className="size-28 border border-[#ece6de] shadow-[0_10px_28px_rgba(15,23,42,0.08)] sm:size-32">
                 <AvatarImage src={avatarUrl} alt={catalog.displayName} className="size-full object-cover object-center" />
@@ -244,13 +244,13 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
             </div>
 
             <div className="min-w-0 text-center lg:text-left">
-              <p className="text-xs uppercase tracking-[0.28em] text-[#6a6a6a]">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#6a6a6a]">
                 {kind === "broker" ? "Catalogo do corretor" : "Catalogo da imobiliaria"}
               </p>
-              <h1 className="mt-2.5 text-[2.75rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[3.5rem]">
+              <h1 className="mt-2 text-[2.9rem] font-semibold tracking-[-0.055em] text-[#111111] sm:text-[3.65rem]">
                 {catalog.displayName || "Catalogo EME"}
               </h1>
-              <p className="mt-3 text-[1.05rem] leading-7 text-[#5f5f5f]">
+              <p className="mt-3 text-[1.04rem] leading-7 text-[#5f5f5f]">
                 {catalog.description || "Corretor especialista em imoveis de alto padrao."}
               </p>
               {creci ? <p className="mt-1.5 text-[0.95rem] text-[#707070]">CRECI {creci}</p> : null}
@@ -288,24 +288,24 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               </div>
             </div>
 
-            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] sm:grid-cols-3 lg:border-l lg:border-[#f0e9e1]">
+            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] sm:grid-cols-[1fr_1fr_1.55fr] lg:border-l lg:border-[#f0e9e1]">
               <MetricStat icon={Home} label="Imoveis" value={String(properties.length)} />
               <MetricStat icon={MapPin} label="Cidades" value={cities.length ? String(cities.length) : "A consultar"} />
-              <MetricStat icon={CircleDollarSign} label="Faixa de preco" value={priceRange} />
+              <MetricStat icon={CircleDollarSign} label="Faixa de preco" value={priceRange} valueClassName="whitespace-nowrap text-[1.6rem] sm:text-[1.75rem]" />
             </div>
           </div>
         </section>
 
         <section className="rounded-[2rem] bg-white px-6 py-8 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-8 sm:py-10 lg:px-12 lg:py-12">
           <div className="mx-auto max-w-none">
-            <h2 className="text-3xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.55rem]">
+            <h2 className="text-3xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.7rem]">
               Encontre seu proximo imovel
             </h2>
             <p className="mt-3 text-base leading-7 text-[#6b6b6b]">
               Busque por bairro, cidade ou caracteristica.
             </p>
 
-            <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
+            <div className="mt-9 grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
               <div className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-[#9a9a9a]" />
                 <Input
@@ -315,7 +315,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Buscar por bairro, cidade ou caracteristica"
-                  className="h-[4.4rem] rounded-[1.2rem] border-transparent bg-[#fbfaf8] pl-14 pr-4 text-base text-[#111111] shadow-[inset_0_0_0_1px_rgba(207,200,190,0.45)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8]"
+                  className="h-[4.4rem] rounded-[1.2rem] border-transparent bg-white pl-14 pr-4 text-base text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8]"
                 />
               </div>
               <Button
@@ -327,7 +327,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               </Button>
             </div>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
@@ -370,14 +370,14 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   className="min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"
                 >
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                    <div className="relative aspect-[2.08/1] overflow-hidden bg-[#eef2f0]">
+                    <div className="relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]">
                       {property.images[0]?.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
                       ) : (
                         <CatalogImagePlaceholder />
                       )}
-                      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/28 via-black/10 to-transparent" />
                       <div className="absolute left-4 top-4 rounded-full border border-white/90 bg-white/96 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-sm backdrop-blur-sm">
                         {matchLabel}
                       </div>
@@ -400,7 +400,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                       </div>
 
                       <div className="sm:text-right">
-                        <p className="break-words text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]">
+                        <p className="break-words whitespace-nowrap text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]">
                           {property.price || "Consulte valor"}
                         </p>
                         <p className="mt-1.5 text-sm text-[#8a8a8a]">{getShortHighlight(property)}</p>
@@ -431,7 +431,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               ))}
             </section>
 
-            <section className="rounded-[1.9rem] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
+            <section className="rounded-[1.9rem] border border-[#ece5dc] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex size-14 items-center justify-center rounded-full border border-[#dceadf] bg-[#f4fbf6] text-[#3e9651] shadow-[0_8px_18px_rgba(61,151,81,0.08)]">
@@ -722,13 +722,23 @@ function getInitials(name: string) {
     .join("")
 }
 
-function MetricStat({ icon: Icon, label, value }: { icon: typeof Home; label: string; value: string }) {
+function MetricStat({
+  icon: Icon,
+  label,
+  value,
+  valueClassName = "",
+}: {
+  icon: typeof Home
+  label: string
+  value: string
+  valueClassName?: string
+}) {
   return (
     <div className="flex min-h-[138px] flex-col items-center justify-center gap-3 border-b border-[#eee6de] px-5 py-5 text-center last:border-b-0 sm:border-b-0 sm:border-r last:sm:border-r-0">
       <div className="flex size-10 items-center justify-center rounded-full bg-[#f4faf5] text-[#3e9651]">
         <Icon className="size-5" />
       </div>
-      <p className="text-[1.8rem] font-semibold tracking-[-0.05em] text-[#151515]">{value}</p>
+      <p className={`text-[1.8rem] font-semibold tracking-[-0.05em] text-[#151515] ${valueClassName}`}>{value}</p>
       <p className="text-[0.95rem] text-[#676767]">{label}</p>
     </div>
   )
