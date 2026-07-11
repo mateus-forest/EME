@@ -10,7 +10,6 @@ import {
   Instagram,
   LoaderCircle,
   RefreshCcw,
-  Sparkles,
   Wand2,
 } from "lucide-react"
 
@@ -40,6 +39,8 @@ type CampaignPreview = {
   cta: string
   hashtags: string[]
 }
+
+type GenerationError = string | null
 
 const goalOptions: CampaignGoal[] = ["Venda", "Captacao", "Lancamento", "Alto padrao", "Investimento", "Aluguel"]
 const identityOptions: VisualIdentity[] = ["Moderna", "Luxo", "Minimalista", "Comercial"]
@@ -71,6 +72,7 @@ export function BrokerStudioIaInstagramPage() {
   const [approvedVersion, setApprovedVersion] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<CampaignPreview | null>(null)
+  const [generationError, setGenerationError] = useState<GenerationError>(null)
   const [approvedItems, setApprovedItems] = useState<Record<CampaignItemKey, boolean>>({
     postFeed: false,
     story: false,
@@ -92,36 +94,6 @@ export function BrokerStudioIaInstagramPage() {
     }
   }, [propertyOptions, selectedPropertyId])
 
-  useEffect(() => {
-    if (currentStep !== "processing") return
-
-    const timeoutId = window.setTimeout(() => {
-      const nextVersion = resultVersion + 1
-      setPreview(buildCampaignPreview({
-        propertyTitle: selectedProperty?.title ?? "Imovel em destaque",
-        city: selectedProperty?.city ?? "sua cidade",
-        neighborhood: selectedProperty?.neighborhood ?? "bairro estrategico",
-        goal: selectedGoal,
-        identity: selectedIdentity,
-        version: nextVersion,
-      }))
-      setResultVersion(nextVersion)
-      setApprovedVersion(null)
-      setApprovedItems({
-        postFeed: false,
-        story: false,
-        carousel: false,
-        caption: false,
-        cta: false,
-        hashtags: false,
-      })
-      setIsSubmitting(false)
-      setCurrentStep("result")
-    }, 1600)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [currentStep, resultVersion, selectedGoal, selectedIdentity, selectedProperty])
-
   const canAdvanceToConfiguration = Boolean(selectedProperty)
   const canProcess = Boolean(selectedProperty) && !isSubmitting
   const approvedItemsCount = Object.values(approvedItems).filter(Boolean).length
@@ -137,10 +109,66 @@ export function BrokerStudioIaInstagramPage() {
     setCurrentStep("configuration")
   }
 
-  function startProcessing() {
+  async function startProcessing() {
     if (!canProcess) return
+    const nextVersion = resultVersion + 1
+    await requestCampaignGeneration(nextVersion)
+  }
+
+  async function requestCampaignGeneration(nextVersion: number) {
+    if (!selectedProperty) return
+
+    setGenerationError(null)
     setIsSubmitting(true)
     setCurrentStep("processing")
+
+    try {
+      const response = await fetch("/api/studio-ia/instagram", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          propertyId: selectedProperty.id,
+          goal: selectedGoal,
+          identity: selectedIdentity,
+          version: nextVersion,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (CampaignPreview & { error?: string }) | null
+
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel gerar a campanha para Instagram.")
+      }
+
+      setPreview({
+        postFeed: data.postFeed,
+        story: data.story,
+        carousel: data.carousel,
+        caption: data.caption,
+        cta: data.cta,
+        hashtags: data.hashtags,
+      })
+      setResultVersion(nextVersion)
+      setApprovedVersion(null)
+      setApprovedItems({
+        postFeed: false,
+        story: false,
+        carousel: false,
+        caption: false,
+        cta: false,
+        hashtags: false,
+      })
+      setCurrentStep("result")
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a campanha.")
+      setCurrentStep("configuration")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function toggleItemApproval(item: CampaignItemKey) {
@@ -156,11 +184,10 @@ export function BrokerStudioIaInstagramPage() {
     setCurrentStep("approval")
   }
 
-  function generateAnotherVersion() {
+  async function generateAnotherVersion() {
     if (!canProcess) return
     setApprovedVersion(null)
-    setCurrentStep("processing")
-    setIsSubmitting(true)
+    await requestCampaignGeneration(resultVersion + 1)
   }
 
   function restartFlow() {
@@ -172,6 +199,7 @@ export function BrokerStudioIaInstagramPage() {
     setResultVersion(0)
     setApprovedVersion(null)
     setPreview(null)
+    setGenerationError(null)
     setApprovedItems({
       postFeed: false,
       story: false,
@@ -206,7 +234,7 @@ export function BrokerStudioIaInstagramPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar campanha para Instagram</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione o imovel, defina o objetivo da campanha, escolha a identidade visual e acompanhe a geracao simulada ate a aprovacao final.
+                Selecione o imovel, defina o objetivo da campanha, escolha a identidade visual e acompanhe a geracao real do conteudo ate a aprovacao final.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -250,7 +278,7 @@ export function BrokerStudioIaInstagramPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio usa a mesma experiencia em etapas para facilitar futuras integracoes com IA real.
+                O Studio usa a mesma experiencia em etapas e agora gera o conteudo real no servidor para este fluxo.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -262,7 +290,7 @@ export function BrokerStudioIaInstagramPage() {
                   <div>
                     <p className="text-base font-semibold text-[#050505]">Criar campanha para Instagram</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      Monte uma campanha simulada com pecas prontas para feed, story, carrossel, legenda, CTA e hashtags.
+                      Monte uma campanha com pecas reais prontas para feed, story, carrossel, legenda, CTA e hashtags.
                     </p>
                   </div>
                 </div>
@@ -368,6 +396,9 @@ export function BrokerStudioIaInstagramPage() {
                         {isSubmitting ? "Gerando campanha" : "Gerar campanha"}
                         <Wand2 className="size-4" />
                       </Button>
+                      {generationError ? (
+                        <p className="text-sm text-[#D14343]">{generationError}</p>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="mt-3 text-sm text-[#6B7280]">Escolha um imovel primeiro para liberar a configuracao.</p>
@@ -405,14 +436,14 @@ export function BrokerStudioIaInstagramPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Revise a campanha simulada, aprove cada peca e finalize a campanha quando estiver pronta.
+                Revise a campanha gerada, aprove cada peca e finalize a campanha quando estiver pronta.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
                 <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
                   <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando campanha simulada</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando campanha com IA</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
                     Montando a campanha para Instagram com foco em {selectedGoal.toLowerCase()} e identidade {selectedIdentity.toLowerCase()}.
                   </p>
@@ -588,7 +619,7 @@ export function BrokerStudioIaInstagramPage() {
                   <ImagePlus className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma campanha gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao simulada desta campanha.
+                    Avance pelas etapas de selecao e configuracao para iniciar a geracao desta campanha.
                   </p>
                 </div>
               )}
@@ -655,57 +686,6 @@ function PreviewCard({
   )
 }
 
-function buildCampaignPreview({
-  propertyTitle,
-  city,
-  neighborhood,
-  goal,
-  identity,
-  version,
-}: {
-  propertyTitle: string
-  city: string
-  neighborhood: string
-  goal: CampaignGoal
-  identity: VisualIdentity
-  version: number
-}): CampaignPreview {
-  return {
-    postFeed: {
-      title: propertyTitle,
-      highlight: `${goal} com linguagem ${identity.toLowerCase()} e foco em conversao.`,
-      support: `${neighborhood} em ${city} com apresentacao pronta para o feed da imobiliaria.`,
-    },
-    story: {
-      kicker: `Versao ${version}`,
-      line1: `Campanha para ${goal.toLowerCase()}`,
-      line2: `Destaque rapido do imovel com identidade ${identity.toLowerCase()}.`,
-    },
-    carousel: [
-      `Apresente o imovel e conecte o publico ao contexto de ${goal.toLowerCase()}.`,
-      `Mostre diferenciais, localizacao e valor percebido com linguagem ${identity.toLowerCase()}.`,
-      "Feche o carrossel com chamada comercial clara para gerar conversa e conversao.",
-    ],
-    caption: `${propertyTitle} ganha uma campanha focada em ${goal.toLowerCase()}, com tom ${identity.toLowerCase()} e argumentos prontos para despertar interesse logo nos primeiros segundos. Destaque localizacao, diferencial e oportunidade para incentivar o contato direto do publico ideal.`,
-    cta: goal === "Captacao" ? "Fale com nosso time e anuncie seu imovel" : "Chame no direct e receba os detalhes",
-    hashtags: [
-      "#mercadoimobiliario",
-      `#${normalizeTag(goal)}`,
-      `#${normalizeTag(identity)}`,
-      `#${normalizeTag(city)}`,
-      "#corretordeimoveis",
-      "#eme",
-    ],
-  }
-}
-
-function normalizeTag(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "")
-}
-
 function stepOrder(step: StudioStep) {
   if (step === "selection") return 0
   if (step === "configuration") return 1
@@ -728,17 +708,17 @@ function buildStatusItems(step: StudioStep) {
               : step === "result"
                 ? "Resultado"
                 : "Aprovacao",
-      description: "O Studio reaproveita a mesma sequencia de etapas para facilitar a evolucao futura com IA real.",
+      description: "O Studio reaproveita a mesma sequencia de etapas para manter consistencia e permitir novas versoes do conteudo.",
     },
     {
       title: "Integracoes",
-      value: "Simuladas",
-      description: "Este fluxo ainda nao aciona OpenAI nem outras APIs. Toda a campanha e montada localmente na interface.",
+      value: "OpenAI",
+      description: "Este fluxo gera o conteudo real no servidor com OpenAI, sem expor chaves no cliente.",
     },
     {
       title: "Persistencia",
       value: "Sem alterar banco",
-      description: "As aprovacoes e versoes da campanha existem apenas na sessao atual, preservando a arquitetura do portal.",
+      description: "As aprovacoes e versoes da campanha continuam na sessao atual, preservando a arquitetura do portal.",
     },
   ]
 }
