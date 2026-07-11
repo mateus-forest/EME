@@ -30,7 +30,9 @@ const studioActions: StudioAction[] = [
     title: "Vender este imovel",
     description: "Organize uma acao focada em conversao para apresentar o imovel certo no momento certo.",
     icon: Home,
-    status: "Em breve",
+    href: "/corretor/studio-ia/vender-este-imovel",
+    cta: "Abrir fluxo",
+    status: "Disponivel",
   },
   {
     title: "Criar campanha para Instagram",
