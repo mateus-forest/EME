@@ -9,7 +9,6 @@ import {
   Car,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Home,
   MapPin,
   MessageCircle,
@@ -67,11 +66,12 @@ type LeadDraft = {
 }
 
 const quickSuggestions = [
-  "Casas com pátio",
-  "Alto padrão",
-  "Até 500 mil",
-  "Imóveis para investir",
-  "Condomínio fechado",
+  "Alto padrao",
+  "Frente mar",
+  "Casas",
+  "Apartamentos",
+  "Investimento",
+  "Ate R$ 1 milhao",
 ]
 
 export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandingProps) {
@@ -164,7 +164,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       property,
       name: "",
       phone: "",
-      message: `Olá, tenho interesse no imóvel ${property.title}: ${propertyUrl}`,
+      message: `Ola, tenho interesse no imovel ${property.title}: ${propertyUrl}`,
     })
   }
 
@@ -181,7 +181,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
     setLeadFeedback("")
 
     const propertyUrl = `${catalogUrl}#imovel-${leadDraft.property.id}`
-    const whatsappMessage = `Olá, tenho interesse no imóvel ${leadDraft.property.title}: ${propertyUrl}. Meu nome é ${name}.`
+    const whatsappMessage = `Ola, tenho interesse no imovel ${leadDraft.property.title}: ${propertyUrl}. Meu nome e ${name}.`
 
     try {
       await createPublicLead({
@@ -197,7 +197,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       })
 
       if (!catalog.whatsApp) {
-        setLeadFeedback("Interesse registrado. O responsável pelo catálogo receberá seu contato.")
+        setLeadFeedback("Interesse registrado. O responsavel pelo catalogo recebera seu contato.")
         setLeadDraft(null)
         return
       }
@@ -211,48 +211,49 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       })
       setLeadDraft(null)
     } catch (caughtError) {
-      setLeadFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar seu interesse.")
+      setLeadFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel registrar seu interesse.")
     } finally {
       setIsSavingLead(false)
     }
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#0B0B0B] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl min-w-0 gap-6">
+    <main className="min-h-screen overflow-x-hidden bg-[#f5f7f4] px-4 py-6 text-[#1f2937] sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl min-w-0 gap-8">
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
-            <Button asChild variant="ghost" className="h-10 rounded-full border border-white/[0.08] bg-black/70 px-4 text-sm text-white/80 backdrop-blur-md hover:bg-black/80 hover:text-white">
+            <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
               <Link href="/corretor/catalogo">Voltar ao portal</Link>
             </Button>
           </div>
         ) : null}
-        <section className="overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.94))] shadow-[0_24px_60px_rgba(0,0,0,0.26)]">
-          <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.55fr)] lg:p-9">
+
+        <section className="overflow-hidden rounded-[1.9rem] border border-black/[0.05] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+          <div className="grid gap-10 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-10">
             <div className="min-w-0">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <Avatar className="size-20 border border-white/10 sm:size-24">
+                <Avatar className="size-20 border border-black/[0.06] sm:size-24">
                   <AvatarImage src={avatarUrl} alt={catalog.displayName} className="size-full object-cover object-center" />
-                  <AvatarFallback className="bg-[#00C853]/15 text-xl font-semibold text-[#69F0AE]">
+                  <AvatarFallback className="bg-[#eef9f1] text-xl font-semibold text-[#009b3a]">
                     {getInitials(catalog.displayName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="text-sm uppercase tracking-[0.24em] text-[#69F0AE]">
-                    {kind === "broker" ? "Catálogo do corretor" : "Catálogo da imobiliária"}
+                  <p className="text-xs uppercase tracking-[0.24em] text-[#009b3a]">
+                    {kind === "broker" ? "Catalogo do corretor" : "Catalogo da imobiliaria"}
                   </p>
-                  <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                    {catalog.displayName || "Catálogo EME"}
+                  <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#050505] sm:text-4xl">
+                    {catalog.displayName || "Catalogo EME"}
                   </h1>
-                  {creci ? <p className="mt-2 text-sm text-white/50">CRECI {creci}</p> : null}
+                  {creci ? <p className="mt-2 text-sm text-[#6B7280]">CRECI {creci}</p> : null}
                 </div>
               </div>
 
-              <p className="mt-7 max-w-3xl text-2xl font-medium leading-snug tracking-tight text-white sm:text-4xl">
-                Encontre o imóvel ideal com busca inteligente.
+              <p className="mt-8 max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[#050505] sm:text-5xl">
+                Um catalogo imobiliario premium, claro e direto para inspirar confianca.
               </p>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/62 sm:text-base">
-                {catalog.description || "Veja imóveis selecionados e fale com o responsável pelo atendimento."}
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#6B7280] sm:text-base">
+                {catalog.description || "Veja imoveis selecionados e fale com o responsavel pelo atendimento."}
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -260,17 +261,17 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   type="button"
                   onClick={() => {
                     if (!catalog.whatsApp) {
-                      showFeedback("Contato indisponível no momento")
+                      showFeedback("Contato indisponivel no momento")
                       return
                     }
-                    window.open(createWhatsAppUrl(catalog.whatsApp, `Olá, quero saber mais sobre o catálogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
+                    window.open(createWhatsAppUrl(catalog.whatsApp, `Ola, quero saber mais sobre o catalogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
                     void trackCatalogEvent({
                       eventType: "whatsapp_click",
                       catalogSlug: catalog.slug || slug,
                       catalogType: kind,
                     })
                   }}
-                  className="h-11 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-white hover:bg-[#2fe06f]"
+                  className="h-11 rounded-full bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
                 >
                   <MessageCircle className="size-4" />
                   WhatsApp
@@ -278,128 +279,125 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catálogo de imóveis")}
-                  className="h-11 rounded-full border border-white/[0.08] bg-white/[0.04] px-5 text-sm text-white/75 hover:bg-white/[0.08] hover:text-white"
+                  onClick={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catalogo de imoveis")}
+                  className="h-11 rounded-full border border-black/[0.06] bg-white px-5 text-sm text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]"
                 >
                   <Share2 className="size-4" />
                   Compartilhar
                 </Button>
-                {feedback ? <span className="inline-flex items-center text-sm text-[#69F0AE]">{feedback}</span> : null}
+                {feedback ? <span className="inline-flex items-center text-sm text-[#009b3a]">{feedback}</span> : null}
               </div>
             </div>
 
             <div className="grid content-start gap-3">
-              <QuickMetric icon={Home} label="Imóveis" value={String(properties.length)} />
+              <QuickMetric icon={Home} label="Imoveis" value={String(properties.length)} />
               <QuickMetric icon={MapPin} label="Cidades atendidas" value={cities.length ? String(cities.length) : "A consultar"} />
-              <QuickMetric icon={Building2} label="Faixa de preço" value={priceRange} />
+              <QuickMetric icon={Building2} label="Faixa de preco" value={priceRange} />
             </div>
           </div>
         </section>
 
-        <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)] sm:p-6">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#00C853]/20 bg-[#00C853]/10 px-3 py-1.5 text-sm text-[#69F0AE]">
+        <section className="rounded-[1.9rem] border border-black/[0.05] bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.06)] sm:p-8">
+          <div className="mx-auto max-w-5xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/15 bg-[#eef9f1] px-3 py-1.5 text-sm text-[#009b3a]">
               <Sparkles className="size-4" />
               Busca inteligente
             </div>
-            <h2 className="mt-4 text-2xl font-semibold text-white sm:text-3xl">O que você procura?</h2>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505] sm:text-4xl">Encontre o imovel certo mais rapido</h2>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-white/38" />
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#9CA3AF]" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submitSearch()
                   }}
-                  placeholder="Apartamento moderno até 700 mil em Porto Alegre..."
-                  className="h-14 rounded-2xl border-white/10 bg-white/[0.05] pl-12 pr-4 text-base text-white placeholder:text-white/35"
+                  placeholder="Busque por bairro, tipo, cidade, faixa de preco ou caracteristicas"
+                  className="h-16 rounded-2xl border-black/[0.08] bg-[#f8faf8] pl-12 pr-4 text-base text-[#050505] placeholder:text-[#9CA3AF]"
                 />
               </div>
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-14 w-full rounded-2xl bg-[#00C853] px-6 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all duration-200 hover:bg-[#00E676] sm:w-auto"
+                className="h-16 w-full rounded-2xl bg-[#009b3a] px-7 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(0,155,58,0.16)] transition-all duration-200 hover:bg-[#008633] sm:w-auto"
               >
                 <Search className="size-4" />
                 Buscar
               </Button>
             </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   onClick={() => setSearch(suggestion)}
-                  className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-sm text-white/70 transition hover:border-[#00C853]/20 hover:bg-[#00C853]/10 hover:text-[#69F0AE]"
+                  className="rounded-full border border-black/[0.06] bg-[#f8faf8] px-3.5 py-2 text-sm text-[#5F6B7A] transition hover:border-[#009b3a]/16 hover:bg-[#eef9f1] hover:text-[#009b3a]"
                 >
                   {suggestion}
                 </button>
               ))}
             </div>
             {search.trim() ? (
-              <p className="mt-4 text-sm text-white/55">
-                {visibleProperties.length} imóvel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
+              <p className="mt-4 text-sm text-[#6B7280]">
+                {visibleProperties.length} imovel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
               </p>
             ) : null}
           </div>
         </section>
 
         {visibleProperties.length > 0 ? (
-          <section className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          <section className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
             {visibleProperties.map(({ property, matchLabel }) => (
               <article
                 key={property.id}
                 id={`imovel-${property.id}`}
-                className="min-w-0 overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(14,14,14,0.94))] shadow-[0_18px_36px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-white/[0.12]"
+                className="min-w-0 overflow-hidden rounded-[1.6rem] border border-black/[0.05] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.07)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(15,23,42,0.1)]"
               >
                 <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                  <div className="relative aspect-video overflow-hidden bg-white/[0.03]">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-[#eef2f0]">
                     {property.images[0]?.trim() ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover" />
                     ) : (
                       <CatalogImagePlaceholder />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
-                    <div className="absolute left-3 top-3 rounded-full border border-[#00C853]/20 bg-black/60 px-3 py-1 text-xs text-[#69F0AE] backdrop-blur">
+                    <div className="absolute left-4 top-4 rounded-full border border-white/80 bg-white/92 px-3 py-1 text-xs text-[#009b3a] shadow-sm backdrop-blur">
                       {matchLabel}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="break-words text-xl font-semibold tracking-tight text-white sm:text-2xl">{property.price || "Consulte valor"}</p>
                     </div>
                   </div>
                 </button>
 
-                <div className="grid gap-4 p-4">
+                <div className="grid gap-4 p-5">
                   <div>
-                    <h3 className="line-clamp-2 text-lg font-semibold text-white">{property.title}</h3>
-                    <p className="mt-1 flex items-center gap-2 text-sm text-white/50">
-                      <MapPin className="size-4 shrink-0 text-[#69F0AE]" />
+                    <h3 className="line-clamp-2 text-xl font-semibold tracking-tight text-[#050505]">{property.title}</h3>
+                    <p className="mt-2 flex items-center gap-2 text-sm text-[#6B7280]">
+                      <MapPin className="size-4 shrink-0 text-[#009b3a]" />
                       <span className="truncate">{property.location}</span>
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2.5 text-sm text-white/65">
+                  <p className="break-words text-2xl font-semibold tracking-tight text-[#050505]">{property.price || "Consulte valor"}</p>
+                  <div className="flex flex-wrap gap-2.5 text-sm text-[#5F6B7A]">
                     {property.bedrooms > 0 ? <Spec icon={Bed} value={property.bedrooms} /> : null}
                     {property.bathrooms > 0 ? <Spec icon={Bath} value={property.bathrooms} /> : null}
                     {property.parking > 0 ? <Spec icon={Car} value={property.parking} /> : null}
                   </div>
-                  <p className="line-clamp-2 text-sm leading-6 text-white/58">
+                  <p className="line-clamp-2 text-sm leading-6 text-[#6B7280]">
                     {getShortHighlight(property)}
                   </p>
                   <div className="flex gap-2">
                     <Button
                       type="button"
                       onClick={() => openLeadModal(property)}
-                      className="h-10 flex-1 rounded-full bg-[#25D366] text-sm font-semibold text-white hover:bg-[#2fe06f]"
+                      className="h-11 flex-1 rounded-full bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633]"
                     >
                       Tenho interesse
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => void shareUrl(`${catalogUrl}#imovel-${property.id}`, property.title, "Veja este imóvel")}
-                      className="h-10 w-10 rounded-full border border-white/[0.08] bg-white/[0.04] p-0 text-white/70 hover:bg-white/[0.08] hover:text-white"
+                      onClick={() => void shareUrl(`${catalogUrl}#imovel-${property.id}`, property.title, "Veja este imovel")}
+                      className="h-11 w-11 rounded-full border border-black/[0.06] bg-white p-0 text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]"
                     >
                       <Share2 className="size-4" />
                     </Button>
@@ -409,20 +407,20 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
             ))}
           </section>
         ) : (
-          <div className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.9))] px-6 py-12 text-center text-sm text-white/65">
-            Nenhum imóvel encontrado para essa busca.
+          <div className="rounded-[1.75rem] border border-black/[0.05] bg-white px-6 py-16 text-center text-sm text-[#6B7280] shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
+            Nenhum imovel encontrado para essa busca.
           </div>
         )}
       </div>
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
-        <DialogContent showCloseButton className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-5xl">
+        <DialogContent showCloseButton className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:max-w-5xl">
           {selectedProperty && (
             <div className="grid max-h-[92vh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
-              <div className="border-b border-white/[0.08] p-4 lg:border-b-0 lg:border-r lg:p-5">
+              <div className="border-b border-black/[0.06] p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
-                <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
-                <div className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03]">
+                <DialogDescription className="sr-only">Detalhes do imovel selecionado.</DialogDescription>
+                <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#f4f6f4]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={image} alt={selectedProperty.title} className="aspect-[1.15/1] max-h-[62vh] w-full object-cover sm:aspect-[1.2/1]" />
@@ -433,10 +431,10 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   )}
                   {selectedProperty.images.length > 1 ? (
                     <>
-                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className="absolute left-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm hover:bg-black/60">
+                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className="absolute left-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#050505] shadow-sm backdrop-blur-sm hover:bg-white">
                         <ChevronLeft className="size-5" />
                       </button>
-                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === selectedProperty.images.length - 1 ? 0 : current + 1)} className="absolute right-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm hover:bg-black/60">
+                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === selectedProperty.images.length - 1 ? 0 : current + 1)} className="absolute right-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#050505] shadow-sm backdrop-blur-sm hover:bg-white">
                         <ChevronRight className="size-5" />
                       </button>
                     </>
@@ -444,9 +442,9 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 </div>
               </div>
               <div className="flex min-w-0 flex-col p-5 lg:p-6">
-                <p className="break-words text-sm text-white/45">{selectedProperty.location}</p>
-                <h3 className="mt-2 break-words text-2xl font-semibold leading-tight text-white sm:text-3xl">{selectedProperty.title}</h3>
-                <p className="mt-4 break-words text-2xl font-bold text-white sm:text-3xl">{selectedProperty.price || "Consulte valor"}</p>
+                <p className="break-words text-sm text-[#6B7280]">{selectedProperty.location}</p>
+                <h3 className="mt-2 break-words text-2xl font-semibold leading-tight text-[#050505] sm:text-3xl">{selectedProperty.title}</h3>
+                <p className="mt-4 break-words text-2xl font-bold text-[#050505] sm:text-3xl">{selectedProperty.price || "Consulte valor"}</p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={`${selectedProperty.bedrooms} quartos`} /> : null}
                   {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={`${selectedProperty.bathrooms} banheiros`} /> : null}
@@ -454,16 +452,16 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 </div>
                 {selectedProperty.description ? (
                   <div className="mt-6">
-                    <p className="text-sm font-medium text-white/70">Descrição</p>
-                    <p className="mt-3 break-words text-sm leading-7 text-white/62">{selectedProperty.description}</p>
+                    <p className="text-sm font-medium text-[#374151]">Descricao</p>
+                    <p className="mt-3 break-words text-sm leading-7 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
                 <div className="mt-8 flex flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className="h-11 flex-1 rounded-full bg-[#25D366] text-base font-semibold text-white hover:bg-[#2fe06f]">
+                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className="h-11 flex-1 rounded-full bg-[#009b3a] text-base font-semibold text-white hover:bg-[#008633]">
                     <MessageCircle className="size-4" />
                     Tenho interesse
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className="h-11 rounded-full border border-white/[0.08] bg-white/[0.04] px-5 text-white/75 hover:bg-white/[0.08] hover:text-white">
+                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imovel")} className="h-11 rounded-full border border-black/[0.06] bg-white px-5 text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]">
                     <Share2 className="size-4" />
                     Compartilhar
                   </Button>
@@ -475,30 +473,30 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
       </Dialog>
 
       <Dialog open={!!leadDraft} onOpenChange={(open) => !open && setLeadDraft(null)}>
-        <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-lg">
+        <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-black/[0.05] bg-white text-[#1f2937] shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:max-w-lg">
           {leadDraft ? (
             <>
-              <DialogTitle className="text-2xl text-white">Gostou deste imóvel?</DialogTitle>
-              <DialogDescription className="text-white/58">
+              <DialogTitle className="text-2xl text-[#050505]">Gostou deste imovel?</DialogTitle>
+              <DialogDescription className="text-[#6B7280]">
                 Para falar com o corretor, me diga seu nome.
               </DialogDescription>
               <div className="grid gap-4 py-2">
                 <label className="grid gap-2">
-                  <span className="text-sm font-medium text-white/70">Nome</span>
-                  <Input value={leadDraft.name} onChange={(event) => setLeadDraft((current) => current ? { ...current, name: event.target.value } : current)} className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <span className="text-sm font-medium text-[#374151]">Nome</span>
+                  <Input value={leadDraft.name} onChange={(event) => setLeadDraft((current) => current ? { ...current, name: event.target.value } : current)} className="h-11 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm font-medium text-white/70">Telefone</span>
-                  <Input value={leadDraft.phone} onChange={(event) => setLeadDraft((current) => current ? { ...current, phone: event.target.value } : current)} className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <span className="text-sm font-medium text-[#374151]">Telefone</span>
+                  <Input value={leadDraft.phone} onChange={(event) => setLeadDraft((current) => current ? { ...current, phone: event.target.value } : current)} className="h-11 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm font-medium text-white/70">Mensagem</span>
-                  <Textarea value={leadDraft.message} onChange={(event) => setLeadDraft((current) => current ? { ...current, message: event.target.value } : current)} className="min-h-24 rounded-xl border-white/[0.08] bg-white/[0.04] text-white" />
+                  <span className="text-sm font-medium text-[#374151]">Mensagem</span>
+                  <Textarea value={leadDraft.message} onChange={(event) => setLeadDraft((current) => current ? { ...current, message: event.target.value } : current)} className="min-h-24 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
                 </label>
-                {leadFeedback ? <p className="text-sm text-[#69F0AE]">{leadFeedback}</p> : null}
+                {leadFeedback ? <p className="text-sm text-[#009b3a]">{leadFeedback}</p> : null}
               </div>
               <DialogFooter>
-                <Button type="button" onClick={submitLead} disabled={isSavingLead} className="h-11 w-full rounded-xl bg-[#25D366] text-base font-semibold text-white hover:bg-[#2fe06f] disabled:opacity-60">
+                <Button type="button" onClick={submitLead} disabled={isSavingLead} className="h-11 w-full rounded-xl bg-[#009b3a] text-base font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
                   {isSavingLead ? "Salvando..." : "Continuar no WhatsApp"}
                 </Button>
               </DialogFooter>
@@ -566,7 +564,7 @@ async function trackCatalogEvent({
       }),
     })
   } catch {
-    // Tracking não deve bloquear a experiência pública do catálogo.
+    // Tracking nao deve bloquear a experiencia publica do catalogo.
   }
 }
 
@@ -590,7 +588,7 @@ function analyzeSearch(rawSearch: string) {
         ? "Comercial"
         : ""
 
-  const features = ["patio", "churrasqueira", "condominio", "investir", "alto padrao"].filter((feature) =>
+  const features = ["frente mar", "investimento", "alto padrao", "casas", "apartamentos"].filter((feature) =>
     query.includes(feature),
   )
 
@@ -599,7 +597,7 @@ function analyzeSearch(rawSearch: string) {
     maxPrice,
     type,
     features,
-    intent: [type, maxPrice ? `até ${maxPrice}` : "", ...features].filter(Boolean).join(", ") || rawSearch.trim(),
+    intent: [type, maxPrice ? `ate ${maxPrice}` : "", ...features].filter(Boolean).join(", ") || rawSearch.trim(),
   }
 }
 
@@ -629,7 +627,7 @@ function rankProperties(properties: CatalogProperty[], analysis: ReturnType<type
       return {
         property,
         score,
-        matchLabel: score >= 12 ? "Match alto" : score >= 6 ? "Boa opção" : "Próximo do que você procura",
+        matchLabel: score >= 12 ? "Match alto" : score >= 6 ? "Boa opcao" : "Proximo do que voce procura",
       }
     })
     .filter((item) => !analysis.query || item.score > 0)
@@ -670,20 +668,20 @@ function getInitials(name: string) {
 
 function QuickMetric({ icon: Icon, label, value }: { icon: typeof Home; label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.04] p-4">
-      <div className="flex items-center gap-2 text-white/50">
-        <Icon className="size-4 text-[#69F0AE]" />
+    <div className="rounded-[1.35rem] border border-black/[0.06] bg-[#f8faf8] p-5">
+      <div className="flex items-center gap-2 text-[#6B7280]">
+        <Icon className="size-4 text-[#009b3a]" />
         <span className="text-sm">{label}</span>
       </div>
-      <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+      <p className="mt-3 text-2xl font-semibold tracking-tight text-[#050505]">{value}</p>
     </div>
   )
 }
 
 function Spec({ icon: Icon, value }: { icon: typeof Bed; value: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
-      <Icon className="size-4 text-[#69F0AE]" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-[#f8faf8] px-3 py-1.5">
+      <Icon className="size-4 text-[#009b3a]" />
       <span>{value}</span>
     </span>
   )
@@ -691,8 +689,8 @@ function Spec({ icon: Icon, value }: { icon: typeof Bed; value: number }) {
 
 function Feature({ icon: Icon, label }: { icon: typeof Bed; label: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/72">
-      <Icon className="size-4 text-[#69F0AE]" />
+    <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#f8faf8] px-3 py-1.5 text-sm text-[#5F6B7A]">
+      <Icon className="size-4 text-[#009b3a]" />
       <span>{label}</span>
     </div>
   )
@@ -700,9 +698,9 @@ function Feature({ icon: Icon, label }: { icon: typeof Bed; label: string }) {
 
 function CatalogImagePlaceholder() {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
-      <Building2 className="size-9 text-white/30" />
-      <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+    <div className="flex h-full w-full flex-col items-center justify-center bg-[#eef2f0] px-4 text-center">
+      <Building2 className="size-9 text-[#94A3B8]" />
+      <p className="mt-3 text-sm font-medium text-[#6B7280]">Sem imagem cadastrada</p>
     </div>
   )
 }
