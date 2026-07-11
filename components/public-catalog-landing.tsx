@@ -9,11 +9,14 @@ import {
   Car,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
+  Heart,
   Home,
   MapPin,
   MessageCircle,
   Search,
   Share2,
+  SlidersHorizontal,
   Sparkles,
 } from "lucide-react"
 
@@ -67,11 +70,12 @@ type LeadDraft = {
 
 const quickSuggestions = [
   "Alto padrao",
-  "Frente mar",
   "Casas",
-  "Apartamentos",
+  "Coberturas",
+  "Frente mar",
   "Investimento",
   "Ate R$ 1 milhao",
+  "Mais filtros",
 ]
 
 export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandingProps) {
@@ -218,8 +222,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f5f7f4] px-4 py-6 text-[#1f2937] sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl min-w-0 gap-8">
+    <main className="min-h-screen overflow-x-hidden bg-[#f8f5f1] px-4 py-6 text-[#1f2937] sm:px-6 lg:px-8 lg:py-8">
+      <div className="mx-auto grid max-w-[1360px] min-w-0 gap-8 lg:gap-10">
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
@@ -228,35 +232,30 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
           </div>
         ) : null}
 
-        <section className="overflow-hidden rounded-[1.9rem] border border-black/[0.05] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-          <div className="grid gap-10 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-10">
-            <div className="min-w-0">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <Avatar className="size-20 border border-black/[0.06] sm:size-24">
-                  <AvatarImage src={avatarUrl} alt={catalog.displayName} className="size-full object-cover object-center" />
-                  <AvatarFallback className="bg-[#eef9f1] text-xl font-semibold text-[#009b3a]">
-                    {getInitials(catalog.displayName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[#009b3a]">
-                    {kind === "broker" ? "Catalogo do corretor" : "Catalogo da imobiliaria"}
-                  </p>
-                  <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#050505] sm:text-4xl">
-                    {catalog.displayName || "Catalogo EME"}
-                  </h1>
-                  {creci ? <p className="mt-2 text-sm text-[#6B7280]">CRECI {creci}</p> : null}
-                </div>
-              </div>
+        <section className="overflow-hidden rounded-[2rem] border border-[#ebe3da] bg-white px-6 py-7 shadow-[0_18px_48px_rgba(15,23,42,0.06)] sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+          <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)_430px] lg:items-center">
+            <div className="flex justify-center lg:justify-start">
+              <Avatar className="size-32 border border-[#ece6de] shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:size-36">
+                <AvatarImage src={avatarUrl} alt={catalog.displayName} className="size-full object-cover object-center" />
+                <AvatarFallback className="bg-[#eef9f1] text-2xl font-semibold text-[#009b3a]">
+                  {getInitials(catalog.displayName)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
 
-              <p className="mt-8 max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[#050505] sm:text-5xl">
-                Um catalogo imobiliario premium, claro e direto para inspirar confianca.
+            <div className="min-w-0 text-center lg:text-left">
+              <p className="text-xs uppercase tracking-[0.28em] text-[#6a6a6a]">
+                {kind === "broker" ? "Catalogo do corretor" : "Catalogo da imobiliaria"}
               </p>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#6B7280] sm:text-base">
-                {catalog.description || "Veja imoveis selecionados e fale com o responsavel pelo atendimento."}
+              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#111111] sm:text-5xl">
+                {catalog.displayName || "Catalogo EME"}
+              </h1>
+              <p className="mt-4 text-lg text-[#5f5f5f]">
+                {catalog.description || "Corretor especialista em imoveis de alto padrao."}
               </p>
+              {creci ? <p className="mt-2 text-base text-[#707070]">CRECI {creci}</p> : null}
 
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Button
                   type="button"
                   onClick={() => {
@@ -271,7 +270,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                       catalogType: kind,
                     })
                   }}
-                  className="h-11 rounded-full bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
+                  className="h-12 rounded-full bg-[#3d9751] px-6 text-sm font-medium text-white shadow-[0_10px_24px_rgba(61,151,81,0.22)] hover:bg-[#347f46]"
                 >
                   <MessageCircle className="size-4" />
                   WhatsApp
@@ -280,7 +279,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   type="button"
                   variant="ghost"
                   onClick={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catalogo de imoveis")}
-                  className="h-11 rounded-full border border-black/[0.06] bg-white px-5 text-sm text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]"
+                  className="h-12 rounded-full border border-[#e6dfd7] bg-white px-6 text-sm font-medium text-[#2f2f2f] shadow-[0_6px_18px_rgba(15,23,42,0.04)] hover:bg-[#faf8f5]"
                 >
                   <Share2 className="size-4" />
                   Compartilhar
@@ -289,55 +288,59 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               </div>
             </div>
 
-            <div className="grid content-start gap-3">
-              <QuickMetric icon={Home} label="Imoveis" value={String(properties.length)} />
-              <QuickMetric icon={MapPin} label="Cidades atendidas" value={cities.length ? String(cities.length) : "A consultar"} />
-              <QuickMetric icon={Building2} label="Faixa de preco" value={priceRange} />
+            <div className="grid overflow-hidden rounded-[1.6rem] border border-[#eee6de] bg-white sm:grid-cols-3">
+              <MetricStat icon={Home} label="Imoveis" value={String(properties.length)} />
+              <MetricStat icon={MapPin} label="Cidades" value={cities.length ? String(cities.length) : "A consultar"} />
+              <MetricStat icon={CircleDollarSign} label="Faixa de preco" value={priceRange} />
             </div>
           </div>
         </section>
 
-        <section className="rounded-[1.9rem] border border-black/[0.05] bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.06)] sm:p-8">
-          <div className="mx-auto max-w-5xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/15 bg-[#eef9f1] px-3 py-1.5 text-sm text-[#009b3a]">
-              <Sparkles className="size-4" />
-              Busca inteligente
-            </div>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505] sm:text-4xl">Encontre o imovel certo mais rapido</h2>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#9CA3AF]" />
+        <section className="rounded-[2rem] border border-[#ebe3da] bg-white p-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:p-8 lg:p-12">
+          <div className="mx-auto max-w-none">
+            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2.3rem]">
+              Encontre seu proximo imovel
+            </h2>
+            <p className="mt-3 text-base text-[#6b6b6b]">
+              Busque por bairro, cidade ou caracteristica.
+            </p>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
+              <div className="relative min-w-0">
+                <Search className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-[#9a9a9a]" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submitSearch()
                   }}
-                  placeholder="Busque por bairro, tipo, cidade, faixa de preco ou caracteristicas"
-                  className="h-16 rounded-2xl border-black/[0.08] bg-[#f8faf8] pl-12 pr-4 text-base text-[#050505] placeholder:text-[#9CA3AF]"
+                  placeholder="Buscar por bairro, cidade ou caracteristica"
+                  className="h-16 rounded-[1.15rem] border-[#e8e1d8] bg-white pl-14 pr-4 text-base text-[#111111] placeholder:text-[#9a9a9a]"
                 />
               </div>
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-16 w-full rounded-2xl bg-[#009b3a] px-7 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(0,155,58,0.16)] transition-all duration-200 hover:bg-[#008633] sm:w-auto"
+                className="h-16 rounded-[1.15rem] bg-[#17181d] px-7 text-lg font-medium text-white hover:bg-[#111216]"
               >
-                <Search className="size-4" />
                 Buscar
               </Button>
             </div>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
+
+            <div className="mt-5 flex flex-wrap gap-3">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
-                  onClick={() => setSearch(suggestion)}
-                  className="rounded-full border border-black/[0.06] bg-[#f8faf8] px-3.5 py-2 text-sm text-[#5F6B7A] transition hover:border-[#009b3a]/16 hover:bg-[#eef9f1] hover:text-[#009b3a]"
+                  onClick={() => setSearch(suggestion === "Mais filtros" ? search : suggestion)}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#ebe3da] bg-white px-5 py-3 text-sm font-medium text-[#2f2f2f] shadow-[0_4px_14px_rgba(15,23,42,0.03)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
                 >
+                  {getSuggestionIcon(suggestion)}
                   {suggestion}
                 </button>
               ))}
             </div>
+
             {search.trim() ? (
               <p className="mt-4 text-sm text-[#6B7280]">
                 {visibleProperties.length} imovel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
@@ -347,65 +350,117 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
         </section>
 
         {visibleProperties.length > 0 ? (
-          <section className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
-            {visibleProperties.map(({ property, matchLabel }) => (
-              <article
-                key={property.id}
-                id={`imovel-${property.id}`}
-                className="min-w-0 overflow-hidden rounded-[1.6rem] border border-black/[0.05] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.07)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(15,23,42,0.1)]"
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#111111]">Imoveis em destaque</h2>
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                className="text-base font-medium text-[#202020] transition hover:text-[#009b3a]"
               >
-                <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                  <div className="relative aspect-[4/3] overflow-hidden bg-[#eef2f0]">
-                    {property.images[0]?.trim() ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <CatalogImagePlaceholder />
-                    )}
-                    <div className="absolute left-4 top-4 rounded-full border border-white/80 bg-white/92 px-3 py-1 text-xs text-[#009b3a] shadow-sm backdrop-blur">
-                      {matchLabel}
+                Ver todos
+              </button>
+            </div>
+
+            <section className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
+              {visibleProperties.map(({ property, matchLabel }) => (
+                <article
+                  key={property.id}
+                  id={`imovel-${property.id}`}
+                  className="min-w-0 overflow-hidden rounded-[1.7rem] border border-[#ebe3da] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.08)]"
+                >
+                  <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
+                    <div className="relative aspect-[1.95/1] overflow-hidden bg-[#eef2f0]">
+                      {property.images[0]?.trim() ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-500 hover:scale-[1.02]" />
+                      ) : (
+                        <CatalogImagePlaceholder />
+                      )}
+                      <div className="absolute left-4 top-4 rounded-full border border-white/90 bg-white px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-sm">
+                        {matchLabel}
+                      </div>
+                      <div className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)]">
+                        <Heart className="size-5" />
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className="grid gap-5 p-5 sm:p-6">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                      <div className="min-w-0">
+                        <h3 className="line-clamp-2 text-[1.85rem] font-semibold tracking-[-0.04em] text-[#111111]">
+                          {property.title}
+                        </h3>
+                        <p className="mt-2 flex items-center gap-2 text-sm text-[#757575]">
+                          <MapPin className="size-4 shrink-0 text-[#757575]" />
+                          <span className="truncate">{property.location}</span>
+                        </p>
+                      </div>
+
+                      <div className="sm:text-right">
+                        <p className="break-words text-[1.85rem] font-semibold tracking-[-0.04em] text-[#2f9c58]">
+                          {property.price || "Consulte valor"}
+                        </p>
+                        <p className="mt-1 text-sm text-[#7b7b7b]">{getShortHighlight(property)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-[#545454]">
+                      {property.bedrooms > 0 ? <InlineSpec icon={Bed} value={`${property.bedrooms} quartos`} /> : null}
+                      {property.parking > 0 ? <InlineSpec icon={Car} value={`${property.parking} vagas`} /> : null}
+                      {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={`${property.bathrooms} banheiros`} /> : null}
+                    </div>
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="inline-flex w-fit rounded-full border border-[#e7e0d8] bg-[#fbfaf8] px-3 py-1.5 text-xs font-medium text-[#636363]">
+                        {property.type}
+                      </span>
+                      <Button
+                        type="button"
+                        onClick={() => openLeadModal(property)}
+                        className="h-11 rounded-full border border-[#dbeadf] bg-white px-6 text-sm font-medium text-[#2f8f4f] shadow-none hover:bg-[#f3fbf5]"
+                      >
+                        <MessageCircle className="size-4" />
+                        Tenho interesse
+                      </Button>
                     </div>
                   </div>
-                </button>
+                </article>
+              ))}
+            </section>
 
-                <div className="grid gap-4 p-5">
+            <section className="rounded-[1.8rem] border border-[#e8e1d8] bg-white px-6 py-6 shadow-[0_14px_34px_rgba(15,23,42,0.04)] sm:px-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex size-14 items-center justify-center rounded-full border border-[#dceadf] bg-[#f4fbf6] text-[#3e9651]">
+                    <MessageCircle className="size-7" />
+                  </div>
                   <div>
-                    <h3 className="line-clamp-2 text-xl font-semibold tracking-tight text-[#050505]">{property.title}</h3>
-                    <p className="mt-2 flex items-center gap-2 text-sm text-[#6B7280]">
-                      <MapPin className="size-4 shrink-0 text-[#009b3a]" />
-                      <span className="truncate">{property.location}</span>
+                    <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#111111]">Nao encontrou o que procura?</h3>
+                    <p className="mt-1 text-base text-[#6b6b6b]">
+                      Fale comigo diretamente e receba opcoes exclusivas.
                     </p>
                   </div>
-                  <p className="break-words text-2xl font-semibold tracking-tight text-[#050505]">{property.price || "Consulte valor"}</p>
-                  <div className="flex flex-wrap gap-2.5 text-sm text-[#5F6B7A]">
-                    {property.bedrooms > 0 ? <Spec icon={Bed} value={property.bedrooms} /> : null}
-                    {property.bathrooms > 0 ? <Spec icon={Bath} value={property.bathrooms} /> : null}
-                    {property.parking > 0 ? <Spec icon={Car} value={property.parking} /> : null}
-                  </div>
-                  <p className="line-clamp-2 text-sm leading-6 text-[#6B7280]">
-                    {getShortHighlight(property)}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => openLeadModal(property)}
-                      className="h-11 flex-1 rounded-full bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633]"
-                    >
-                      Tenho interesse
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => void shareUrl(`${catalogUrl}#imovel-${property.id}`, property.title, "Veja este imovel")}
-                      className="h-11 w-11 rounded-full border border-black/[0.06] bg-white p-0 text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]"
-                    >
-                      <Share2 className="size-4" />
-                    </Button>
-                  </div>
                 </div>
-              </article>
-            ))}
-          </section>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    if (!catalog.whatsApp) {
+                      showFeedback("Contato indisponivel no momento")
+                      return
+                    }
+                    window.open(createWhatsAppUrl(catalog.whatsApp, `Ola, quero receber opcoes exclusivas do catalogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
+                  }}
+                  className="h-12 rounded-full border border-transparent bg-transparent px-0 text-lg font-medium text-[#3e9651] hover:bg-transparent hover:text-[#2f7c40]"
+                >
+                  Falar no WhatsApp
+                </Button>
+              </div>
+            </section>
+          </>
         ) : (
           <div className="rounded-[1.75rem] border border-black/[0.05] bg-white px-6 py-16 text-center text-sm text-[#6B7280] shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
             Nenhum imovel encontrado para essa busca.
@@ -627,7 +682,7 @@ function rankProperties(properties: CatalogProperty[], analysis: ReturnType<type
       return {
         property,
         score,
-        matchLabel: score >= 12 ? "Match alto" : score >= 6 ? "Boa opcao" : "Proximo do que voce procura",
+        matchLabel: score >= 12 ? "Destaque" : score >= 6 ? "Selecionado" : "Boa opcao",
       }
     })
     .filter((item) => !analysis.query || item.score > 0)
@@ -644,7 +699,7 @@ function normalizeText(value: string) {
 function getPriceRangeLabel(properties: CatalogProperty[]) {
   const prices = properties.map((property) => property.priceValue).filter((price) => price > 0)
   if (!prices.length) return "Consulte"
-  return `${formatCompactPrice(Math.min(...prices))} a ${formatCompactPrice(Math.max(...prices))}`
+  return `${formatCompactPrice(Math.min(...prices))} - ${formatCompactPrice(Math.max(...prices))}`
 }
 
 function formatCompactPrice(value: number) {
@@ -666,22 +721,22 @@ function getInitials(name: string) {
     .join("")
 }
 
-function QuickMetric({ icon: Icon, label, value }: { icon: typeof Home; label: string; value: string }) {
+function MetricStat({ icon: Icon, label, value }: { icon: typeof Home; label: string; value: string }) {
   return (
-    <div className="rounded-[1.35rem] border border-black/[0.06] bg-[#f8faf8] p-5">
-      <div className="flex items-center gap-2 text-[#6B7280]">
-        <Icon className="size-4 text-[#009b3a]" />
-        <span className="text-sm">{label}</span>
+    <div className="flex min-h-[154px] flex-col items-center justify-center gap-4 border-b border-[#eee6de] px-6 py-6 text-center last:border-b-0 sm:border-b-0 sm:border-r last:sm:border-r-0">
+      <div className="flex size-10 items-center justify-center rounded-full bg-[#f4faf5] text-[#3e9651]">
+        <Icon className="size-5" />
       </div>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-[#050505]">{value}</p>
+      <p className="text-[2rem] font-semibold tracking-[-0.04em] text-[#151515]">{value}</p>
+      <p className="text-base text-[#5f5f5f]">{label}</p>
     </div>
   )
 }
 
-function Spec({ icon: Icon, value }: { icon: typeof Bed; value: number }) {
+function InlineSpec({ icon: Icon, value }: { icon: typeof Bed; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-[#f8faf8] px-3 py-1.5">
-      <Icon className="size-4 text-[#009b3a]" />
+    <span className="inline-flex items-center gap-2 text-sm">
+      <Icon className="size-4 text-[#6a6a6a]" />
       <span>{value}</span>
     </span>
   )
@@ -703,4 +758,12 @@ function CatalogImagePlaceholder() {
       <p className="mt-3 text-sm font-medium text-[#6B7280]">Sem imagem cadastrada</p>
     </div>
   )
+}
+
+function getSuggestionIcon(suggestion: string) {
+  if (suggestion === "Mais filtros") return <SlidersHorizontal className="size-4 text-[#6a6a6a]" />
+  if (suggestion === "Ate R$ 1 milhao") return <CircleDollarSign className="size-4 text-[#6a6a6a]" />
+  if (suggestion === "Frente mar") return <Sparkles className="size-4 text-[#6a6a6a]" />
+  if (suggestion === "Investimento") return <Building2 className="size-4 text-[#6a6a6a]" />
+  return <Home className="size-4 text-[#6a6a6a]" />
 }
