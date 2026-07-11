@@ -13,6 +13,7 @@ import {
   Sparkles,
   Wand2,
 } from "lucide-react"
+import { z } from "zod"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProperties } from "@/components/use-broker-properties"
@@ -38,6 +39,10 @@ const stepLabels: Array<{ id: StudioStep; label: string }> = [
   { id: "approval", label: "Aprovacao" },
 ]
 
+const studioGenerationResponseSchema = z.object({
+  imageUrl: z.string().trim().url(),
+})
+
 export function BrokerStudioIaPage() {
   const { properties, isLoading } = useBrokerProperties()
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
@@ -46,6 +51,9 @@ export function BrokerStudioIaPage() {
   const [currentStep, setCurrentStep] = useState<StudioStep>("selection")
   const [resultVersion, setResultVersion] = useState(0)
   const [approvedVersion, setApprovedVersion] = useState<number | null>(null)
+  const [generatedImageUrl, setGeneratedImageUrl] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [generationError, setGenerationError] = useState("")
 
   const propertyOptions = useMemo(
     () => (properties.filter((property) => property.images.length > 0).length > 0
@@ -78,20 +86,8 @@ export function BrokerStudioIaPage() {
     }
   }, [availableImages, selectedImage, selectedProperty])
 
-  useEffect(() => {
-    if (currentStep !== "processing") return
-
-    const timeoutId = window.setTimeout(() => {
-      setResultVersion((current) => current + 1)
-      setApprovedVersion(null)
-      setCurrentStep("result")
-    }, 1600)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [currentStep])
-
   const canAdvanceToConfiguration = Boolean(selectedProperty)
-  const canProcess = Boolean(selectedProperty && selectedImage)
+  const canProcess = Boolean(selectedProperty && selectedImage) && !isSubmitting
   const selectedImageLabel = useMemo(() => {
     if (!selectedProperty || !selectedImage) return "Imagem nao selecionada"
     const index = availableImages.findIndex((image) => image === selectedImage)
@@ -103,6 +99,8 @@ export function BrokerStudioIaPage() {
     setSelectedImage("")
     setResultVersion(0)
     setApprovedVersion(null)
+    setGeneratedImageUrl("")
+    setGenerationError("")
     setCurrentStep("selection")
   }
 
@@ -110,6 +108,8 @@ export function BrokerStudioIaPage() {
     setSelectedImage(image)
     setResultVersion(0)
     setApprovedVersion(null)
+    setGeneratedImageUrl("")
+    setGenerationError("")
   }
 
   function goToConfiguration() {
@@ -117,9 +117,44 @@ export function BrokerStudioIaPage() {
     setCurrentStep("configuration")
   }
 
-  function startProcessing() {
+  async function startProcessing() {
     if (!canProcess) return
+    setGenerationError("")
     setCurrentStep("processing")
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch("/api/studio-ia/construction", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          propertyId: selectedPropertyId,
+          imageUrl: selectedImage,
+          style: selectedStyle,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as { error?: string; imageUrl?: string } | null
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Nao foi possivel gerar a imagem final do imovel.")
+      }
+
+      const parsed = studioGenerationResponseSchema.parse(data)
+      setGeneratedImageUrl(parsed.imageUrl)
+      setResultVersion((current) => current + 1)
+      setApprovedVersion(null)
+      setCurrentStep("result")
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a imagem final do imovel.")
+      setCurrentStep("configuration")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function approveResult() {
@@ -128,15 +163,18 @@ export function BrokerStudioIaPage() {
     setCurrentStep("approval")
   }
 
-  function generateAnotherVersion() {
+  async function generateAnotherVersion() {
     if (!canProcess) return
-    setCurrentStep("processing")
+    setApprovedVersion(null)
+    await startProcessing()
   }
 
   function restartFlow() {
     setCurrentStep("selection")
     setResultVersion(0)
     setApprovedVersion(null)
+    setGeneratedImageUrl("")
+    setGenerationError("")
   }
 
   const visualSummary = useMemo(
@@ -169,7 +207,7 @@ export function BrokerStudioIaPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Transformar obra em imovel pronto</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione um imovel, escolha a imagem de base, defina o estilo visual e acompanhe o processamento simulado ate a aprovacao do resultado.
+                Selecione um imovel, escolha a imagem de base, defina o estilo visual e acompanhe a geracao real ate a aprovacao do resultado.
               </p>
             </div>
             <Button
@@ -223,7 +261,7 @@ export function BrokerStudioIaPage() {
                   <div>
                     <p className="text-base font-semibold text-[#050505]">Transformar obra em imovel pronto</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      O resultado simulado parte de uma imagem real do imovel e projeta uma versao final no estilo escolhido.
+                      O resultado parte de uma imagem real do imovel e gera uma versao final no estilo escolhido.
                     </p>
                   </div>
                 </div>
@@ -341,13 +379,19 @@ export function BrokerStudioIaPage() {
                         </div>
                       </div>
 
+                      {generationError ? (
+                        <div className="rounded-[1.15rem] border border-[#d92d20]/12 bg-[#fff5f4] px-4 py-3 text-sm text-[#b42318]">
+                          {generationError}
+                        </div>
+                      ) : null}
+
                       <Button
                         type="button"
                         onClick={startProcessing}
                         disabled={!canProcess}
                         className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                       >
-                        Iniciar processamento simulado
+                        {isSubmitting ? "Gerando imagem final" : "Gerar imagem final"}
                         <Wand2 className="size-4" />
                       </Button>
                     </div>
@@ -375,7 +419,7 @@ export function BrokerStudioIaPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Imagem base</p>
                 <p className="mt-2 text-sm font-semibold text-[#050505]">{selectedImageLabel}</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                  O processamento continua totalmente simulado nesta etapa.
+                  A imagem selecionada e enviada como referencia visual para a geracao final.
                 </p>
               </div>
             </CardContent>
@@ -387,16 +431,16 @@ export function BrokerStudioIaPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Acompanhe o estado do processamento simulado e aprove a versao escolhida.
+                Acompanhe o estado da geracao e aprove a versao escolhida.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
                 <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
                   <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Processando transformacao visual</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando transformacao visual</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
-                    Simulando a criacao da versao pronta do imovel com estilo {selectedStyle.toLowerCase()}.
+                    Gerando a versao pronta do imovel com estilo {selectedStyle.toLowerCase()}.
                   </p>
                 </div>
               ) : currentStep === "result" || currentStep === "approval" ? (
@@ -425,19 +469,19 @@ export function BrokerStudioIaPage() {
 
                       <div>
                         <div className="flex items-center justify-between px-4 py-3">
-                          <p className="text-sm font-semibold text-[#050505]">Resultado simulado</p>
+                          <p className="text-sm font-semibold text-[#050505]">Resultado gerado</p>
                           <span className="rounded-full bg-[#009b3a] px-3 py-1 text-xs font-medium text-white">
                             Versao {resultVersion}
                           </span>
                         </div>
                         <div className="relative aspect-[4/3] bg-[#e7ecef]">
-                          {selectedImage ? (
+                          {generatedImageUrl ? (
                             <>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={selectedImage}
-                                alt="Resultado simulado do imovel"
-                                className="h-full w-full object-cover saturate-[1.08] contrast-[1.02] brightness-[1.03]"
+                                src={generatedImageUrl}
+                                alt="Resultado gerado do imovel"
+                                className="h-full w-full object-cover"
                               />
                               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.24),transparent_36%,rgba(0,0,0,0.14))]" />
                               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 py-4">
@@ -466,7 +510,7 @@ export function BrokerStudioIaPage() {
                         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                           {currentStep === "approval"
                             ? `A versao ${approvedVersion ?? resultVersion} foi aprovada no estilo ${selectedStyle.toLowerCase()}.`
-                            : "Revise a simulacao visual e escolha se deseja aprovar ou gerar outra versao."}
+                            : "Revise a geracao visual e escolha se deseja aprovar ou gerar outra versao."}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -510,7 +554,7 @@ export function BrokerStudioIaPage() {
                   <ImagePlus className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhum resultado gerado ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a simulacao visual desta transformacao.
+                    Avance pelas etapas de selecao e configuracao para iniciar a geracao visual desta transformacao.
                   </p>
                 </div>
               )}
@@ -564,21 +608,21 @@ function buildStatusItems(step: StudioStep) {
           : step === "configuration"
             ? "Configuracao"
             : step === "processing"
-              ? "Processamento simulado"
+              ? "Geracao em andamento"
               : step === "result"
                 ? "Resultado"
                 : "Aprovacao",
-      description: "O Studio mostra apenas a evolucao visual deste fluxo nesta etapa do produto.",
+      description: "O Studio executa apenas este fluxo de transformacao visual nesta etapa do produto.",
     },
     {
       title: "Integracoes",
-      value: "Nao conectadas",
-      description: "Luma, OpenAI e demais APIs continuam fora do escopo desta implementacao.",
+      value: "OpenAI + storage",
+      description: "A geracao final roda no servidor e salva a imagem resultante no storage do EME.",
     },
     {
       title: "Persistencia",
-      value: "Sem salvar em banco",
-      description: "Todas as decisoes e estados existem apenas na interface atual.",
+      value: "Sem alterar banco",
+      description: "A aprovacao continua na interface e a imagem gerada e persistida apenas no storage.",
     },
   ]
 }

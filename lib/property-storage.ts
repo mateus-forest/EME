@@ -62,6 +62,41 @@ async function uploadPropertyFile({
   return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${objectPath}`
 }
 
+async function uploadPropertyBuffer({
+  propertyId,
+  buffer,
+  folder,
+  extension,
+  contentType,
+}: {
+  propertyId: string
+  buffer: Buffer
+  folder: string
+  extension: string
+  contentType: string
+}) {
+  const config = getStorageConfig()
+  const objectPath = `${propertyId}/${folder}/${randomUUID()}${extension}`
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.anonKey,
+      "Content-Type": contentType,
+      "x-upsert": "false",
+    },
+    body: buffer,
+  })
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "")
+    console.error("[storage][properties] upload failed", { status: response.status, detail })
+    throw new Error("NÃ£o foi possÃ­vel enviar o arquivo para o Supabase Storage.")
+  }
+
+  return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${objectPath}`
+}
+
 export function isPropertyStorageUrl(url: string) {
   try {
     const config = getStorageConfig()
@@ -86,6 +121,17 @@ export async function savePropertyAudio(propertyId: string, file: File) {
     file,
     folder: "audio",
     extension: getAudioExtension(file),
+  })
+}
+
+export async function savePropertyGeneratedImage(propertyId: string, imageBuffer: Buffer, mimeType = "image/png") {
+  const extension = mimeType === "image/webp" ? ".webp" : mimeType === "image/jpeg" ? ".jpg" : ".png"
+  return uploadPropertyBuffer({
+    propertyId,
+    buffer: imageBuffer,
+    folder: "studio-ia",
+    extension,
+    contentType: mimeType,
   })
 }
 
