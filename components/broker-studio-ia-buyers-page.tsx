@@ -33,6 +33,8 @@ type BuyerStrategyPreview = {
   leads: string
 }
 
+type GenerationError = string | null
+
 const audienceOptions: AudienceProfile[] = ["Primeiro imovel", "Familia", "Investidor", "Alto padrao", "Imovel de praia", "Comercial"]
 const channelOptions: MainChannel[] = ["Instagram", "Facebook", "Google", "WhatsApp", "Portais imobiliarios"]
 
@@ -54,6 +56,7 @@ export function BrokerStudioIaBuyersPage() {
   const [approvedVersion, setApprovedVersion] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<BuyerStrategyPreview | null>(null)
+  const [generationError, setGenerationError] = useState<GenerationError>(null)
   const [approvedBlocks, setApprovedBlocks] = useState<Record<StrategyBlockKey, boolean>>({
     audience: false,
     strategy: false,
@@ -76,37 +79,6 @@ export function BrokerStudioIaBuyersPage() {
     }
   }, [propertyOptions, selectedPropertyId])
 
-  useEffect(() => {
-    if (currentStep !== "processing") return
-
-    const timeoutId = window.setTimeout(() => {
-      const nextVersion = resultVersion + 1
-      setPreview(buildBuyerStrategyPreview({
-        propertyTitle: selectedProperty?.title ?? "Imovel em destaque",
-        city: selectedProperty?.city ?? "sua cidade",
-        neighborhood: selectedProperty?.neighborhood ?? "bairro estrategico",
-        audience: selectedAudience,
-        channel: selectedChannel,
-        version: nextVersion,
-      }))
-      setResultVersion(nextVersion)
-      setApprovedVersion(null)
-      setApprovedBlocks({
-        audience: false,
-        strategy: false,
-        copy: false,
-        cta: false,
-        timeline: false,
-        reach: false,
-        leads: false,
-      })
-      setIsSubmitting(false)
-      setCurrentStep("result")
-    }, 1600)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [currentStep, resultVersion, selectedAudience, selectedChannel, selectedProperty])
-
   const canAdvanceToConfiguration = Boolean(selectedProperty)
   const canProcess = Boolean(selectedProperty) && !isSubmitting
   const approvedBlocksCount = Object.values(approvedBlocks).filter(Boolean).length
@@ -122,10 +94,68 @@ export function BrokerStudioIaBuyersPage() {
     setCurrentStep("configuration")
   }
 
-  function startProcessing() {
+  async function startProcessing() {
     if (!canProcess) return
+    const nextVersion = resultVersion + 1
+    await requestStrategyGeneration(nextVersion)
+  }
+
+  async function requestStrategyGeneration(nextVersion: number) {
+    if (!selectedProperty) return
+
+    setGenerationError(null)
     setIsSubmitting(true)
     setCurrentStep("processing")
+
+    try {
+      const response = await fetch("/api/studio-ia/buyers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          propertyId: selectedProperty.id,
+          audience: selectedAudience,
+          channel: selectedChannel,
+          version: nextVersion,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (BuyerStrategyPreview & { error?: string }) | null
+
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel gerar a estrategia para atrair compradores.")
+      }
+
+      setPreview({
+        audience: data.audience,
+        strategy: data.strategy,
+        copy: data.copy,
+        cta: data.cta,
+        timeline: data.timeline,
+        reach: data.reach,
+        leads: data.leads,
+      })
+      setResultVersion(nextVersion)
+      setApprovedVersion(null)
+      setApprovedBlocks({
+        audience: false,
+        strategy: false,
+        copy: false,
+        cta: false,
+        timeline: false,
+        reach: false,
+        leads: false,
+      })
+      setCurrentStep("result")
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a estrategia.")
+      setCurrentStep("configuration")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function toggleBlockApproval(block: StrategyBlockKey) {
@@ -141,11 +171,10 @@ export function BrokerStudioIaBuyersPage() {
     setCurrentStep("approval")
   }
 
-  function generateAnotherVersion() {
+  async function generateAnotherVersion() {
     if (!canProcess) return
     setApprovedVersion(null)
-    setCurrentStep("processing")
-    setIsSubmitting(true)
+    await requestStrategyGeneration(resultVersion + 1)
   }
 
   function restartFlow() {
@@ -157,6 +186,7 @@ export function BrokerStudioIaBuyersPage() {
     setResultVersion(0)
     setApprovedVersion(null)
     setPreview(null)
+    setGenerationError(null)
     setApprovedBlocks({
       audience: false,
       strategy: false,
@@ -192,7 +222,7 @@ export function BrokerStudioIaBuyersPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Atrair compradores</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione o imovel, defina o publico ideal, escolha o canal principal e gere uma estrategia simulada completa para atracao de interessados.
+                Selecione o imovel, defina o publico ideal, escolha o canal principal e gere uma estrategia real completa para atracao de interessados.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -236,7 +266,7 @@ export function BrokerStudioIaBuyersPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio reaproveita a mesma experiencia em etapas para evoluir depois para estrategia automatizada com IA.
+                O Studio reaproveita a mesma experiencia em etapas e agora gera o conteudo real no servidor para este fluxo.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -248,7 +278,7 @@ export function BrokerStudioIaBuyersPage() {
                   <div>
                     <p className="text-base font-semibold text-[#050505]">Atrair compradores</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      Organize publico, canal e mensagem principal para preparar a estrategia comercial do imovel.
+                      Organize publico, canal e mensagem principal para gerar uma estrategia comercial real do imovel.
                     </p>
                   </div>
                 </div>
@@ -372,6 +402,9 @@ export function BrokerStudioIaBuyersPage() {
                         {isSubmitting ? "Gerando estrategia" : "Gerar estrategia"}
                         <ArrowRight className="size-4" />
                       </Button>
+                      {generationError ? (
+                        <p className="text-sm text-[#D14343]">{generationError}</p>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="mt-3 text-sm text-[#6B7280]">Escolha um imovel primeiro para liberar a configuracao.</p>
@@ -409,14 +442,14 @@ export function BrokerStudioIaBuyersPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Revise a estrategia simulada, aprove cada bloco e finalize a versao quando estiver pronta.
+                Revise a estrategia gerada, aprove cada bloco e finalize a versao quando estiver pronta.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
                 <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
                   <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando estrategia simulada</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando estrategia com IA</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
                     Montando a estrategia para {selectedAudience.toLowerCase()} com foco principal em {selectedChannel.toLowerCase()}.
                   </p>
@@ -595,7 +628,7 @@ export function BrokerStudioIaBuyersPage() {
                   <ImagePlus className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma estrategia gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao simulada desta estrategia.
+                    Avance pelas etapas de selecao e configuracao para iniciar a geracao desta estrategia.
                   </p>
                 </div>
               )}
@@ -680,51 +713,6 @@ function InfoTile({ label, value }: { label: string; value: string }) {
   )
 }
 
-function buildBuyerStrategyPreview({
-  propertyTitle,
-  city,
-  neighborhood,
-  audience,
-  channel,
-  version,
-}: {
-  propertyTitle: string
-  city: string
-  neighborhood: string
-  audience: AudienceProfile
-  channel: MainChannel
-  version: number
-}): BuyerStrategyPreview {
-  return {
-    audience: `${audience} com interesse em ${propertyTitle} na regiao de ${neighborhood}`,
-    strategy: `Priorize uma comunicacao direcionada para ${audience.toLowerCase()} utilizando ${channel.toLowerCase()} como canal principal, com destaque para localizacao, percepcao de valor e oportunidade de contato rapido.`,
-    copy: `${propertyTitle} em ${city} pode ser apresentado com uma mensagem objetiva e comercial, destacando conveniencia, potencial de compra e diferenciais do ativo para atrair ${audience.toLowerCase()} desde a primeira interacao.`,
-    cta: channel === "WhatsApp" ? "Fale agora no WhatsApp e receba os detalhes" : "Clique para receber mais informacoes e agendar atendimento",
-    timeline: [
-      `Dia 1: publicar a primeira mensagem no canal ${channel.toLowerCase()} e validar resposta inicial.`,
-      "Dia 3: reforcar diferenciais e prova de oportunidade com nova rodada de divulgacao.",
-      `Dia 5: retargeting comercial com foco em conversao para ${audience.toLowerCase()}.`,
-    ],
-    reach: buildReachEstimate(channel, version),
-    leads: buildLeadEstimate(audience, version),
-  }
-}
-
-function buildReachEstimate(channel: MainChannel, version: number) {
-  if (channel === "Google") return `${1800 + version * 120} pessoas`
-  if (channel === "Instagram") return `${2400 + version * 150} pessoas`
-  if (channel === "Facebook") return `${1600 + version * 110} pessoas`
-  if (channel === "WhatsApp") return `${420 + version * 30} contatos`
-  return `${3100 + version * 180} visualizacoes`
-}
-
-function buildLeadEstimate(audience: AudienceProfile, version: number) {
-  if (audience === "Investidor") return `${18 + version} leads`
-  if (audience === "Alto padrao") return `${10 + version} leads`
-  if (audience === "Comercial") return `${12 + version} leads`
-  return `${22 + version} leads`
-}
-
 function stepOrder(step: StudioStep) {
   if (step === "selection") return 0
   if (step === "configuration") return 1
@@ -743,21 +731,21 @@ function buildStatusItems(step: StudioStep) {
           : step === "configuration"
             ? "Configuracao"
             : step === "processing"
-              ? "Geracao simulada"
+              ? "Geracao com IA"
               : step === "result"
                 ? "Resultado"
                 : "Aprovacao",
-      description: "O Studio reaproveita a mesma jornada por etapas para evoluir depois com geracao automatica de estrategia.",
+      description: "O Studio reaproveita a mesma jornada por etapas para manter consistencia e permitir novas versoes da estrategia.",
     },
     {
       title: "Integracoes",
-      value: "Simuladas",
-      description: "A estrategia ainda nao usa IA nem APIs externas. Todo o conteudo e montado localmente na interface.",
+      value: "OpenAI",
+      description: "Este fluxo gera a estrategia real no servidor com OpenAI, sem expor chaves no cliente.",
     },
     {
       title: "Persistencia",
       value: "Sem alterar banco",
-      description: "As aprovacoes e versoes desta estrategia existem apenas na sessao atual, preservando a arquitetura do portal.",
+      description: "As aprovacoes e versoes desta estrategia continuam apenas na sessao atual, preservando a arquitetura do portal.",
     },
   ]
 }

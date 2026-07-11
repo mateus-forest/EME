@@ -36,6 +36,8 @@ type OwnerStrategyPreview = {
   timeline: string[]
 }
 
+type GenerationError = string | null
+
 const goalOptions: CaptureGoal[] = [
   "Captar imovel para venda",
   "Captar imovel para locacao",
@@ -65,6 +67,7 @@ export function BrokerStudioIaOwnersPage() {
   const [approvedVersion, setApprovedVersion] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<OwnerStrategyPreview | null>(null)
+  const [generationError, setGenerationError] = useState<GenerationError>(null)
   const [approvedBlocks, setApprovedBlocks] = useState<Record<StrategyBlockKey, boolean>>({
     audience: false,
     approach: false,
@@ -85,21 +88,51 @@ export function BrokerStudioIaOwnersPage() {
     setCurrentStep("configuration")
   }
 
-  function startProcessing() {
+  async function startProcessing() {
     if (!canProcess) return
+    const nextVersion = resultVersion + 1
+    await requestStrategyGeneration(nextVersion)
+  }
+
+  async function requestStrategyGeneration(nextVersion: number) {
+    setGenerationError(null)
     setIsSubmitting(true)
     setCurrentStep("processing")
 
-    window.setTimeout(() => {
-      const nextVersion = resultVersion + 1
-      setPreview(buildOwnerStrategyPreview({
-        goal: selectedGoal,
-        city: city.trim(),
-        neighborhood: neighborhood.trim(),
-        radius: operationRadius.trim(),
-        ownerProfile: selectedOwnerProfile,
-        version: nextVersion,
-      }))
+    try {
+      const response = await fetch("/api/studio-ia/owners", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          goal: selectedGoal,
+          city: city.trim(),
+          neighborhood: neighborhood.trim(),
+          operationRadius: operationRadius.trim(),
+          ownerProfile: selectedOwnerProfile,
+          version: nextVersion,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (OwnerStrategyPreview & { error?: string }) | null
+
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel gerar a estrategia para captar proprietarios.")
+      }
+
+      setPreview({
+        audience: data.audience,
+        approach: data.approach,
+        adCopy: data.adCopy,
+        instagramCaption: data.instagramCaption,
+        videoScript: data.videoScript,
+        whatsappText: data.whatsappText,
+        cta: data.cta,
+        timeline: data.timeline,
+      })
       setApprovedBlocks({
         audience: false,
         approach: false,
@@ -112,9 +145,13 @@ export function BrokerStudioIaOwnersPage() {
       })
       setApprovedVersion(null)
       setResultVersion(nextVersion)
-      setIsSubmitting(false)
       setCurrentStep("result")
-    }, 1600)
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a estrategia.")
+      setCurrentStep("configuration")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function toggleBlockApproval(block: StrategyBlockKey) {
@@ -130,10 +167,10 @@ export function BrokerStudioIaOwnersPage() {
     setCurrentStep("approval")
   }
 
-  function generateAnotherVersion() {
+  async function generateAnotherVersion() {
     if (!canProcess) return
     setApprovedVersion(null)
-    startProcessing()
+    await requestStrategyGeneration(resultVersion + 1)
   }
 
   function restartFlow() {
@@ -141,6 +178,7 @@ export function BrokerStudioIaOwnersPage() {
     setResultVersion(0)
     setApprovedVersion(null)
     setPreview(null)
+    setGenerationError(null)
     setApprovedBlocks({
       audience: false,
       approach: false,
@@ -174,7 +212,7 @@ export function BrokerStudioIaOwnersPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Captar proprietarios</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Defina o objetivo de captacao, configure a regiao de atuacao e monte uma estrategia simulada completa para abordar proprietarios com mais precisao.
+                Defina o objetivo de captacao, configure a regiao de atuacao e gere uma estrategia real completa para abordar proprietarios com mais precisao.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -218,7 +256,7 @@ export function BrokerStudioIaOwnersPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio reaproveita a mesma arquitetura em etapas para facilitar a evolucao futura com geracao automatica de estrategia.
+                O Studio reaproveita a mesma arquitetura em etapas e agora gera o conteudo real no servidor para este fluxo.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -322,6 +360,9 @@ export function BrokerStudioIaOwnersPage() {
                       {isSubmitting ? "Gerando estrategia" : "Gerar estrategia"}
                       <ArrowRight className="size-4" />
                     </Button>
+                    {generationError ? (
+                      <p className="text-sm text-[#D14343]">{generationError}</p>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -356,14 +397,14 @@ export function BrokerStudioIaOwnersPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Revise a estrategia simulada, aprove cada bloco e finalize a versao quando estiver pronta.
+                Revise a estrategia gerada, aprove cada bloco e finalize a versao quando estiver pronta.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
                 <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
                   <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando estrategia simulada</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando estrategia com IA</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
                     Montando a abordagem para {selectedOwnerProfile.toLowerCase()} com foco em {selectedGoal.toLowerCase()}.
                   </p>
@@ -521,7 +562,7 @@ export function BrokerStudioIaOwnersPage() {
                   <Camera className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma estrategia gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao simulada desta estrategia.
+                    Avance pelas etapas de selecao e configuracao para iniciar a geracao desta estrategia.
                   </p>
                 </div>
               )}
@@ -627,43 +668,6 @@ function StepCard({ index, text }: { index: number; text: string }) {
   )
 }
 
-function buildOwnerStrategyPreview({
-  goal,
-  city,
-  neighborhood,
-  radius,
-  ownerProfile,
-  version,
-}: {
-  goal: CaptureGoal
-  city: string
-  neighborhood: string
-  radius: string
-  ownerProfile: OwnerProfile
-  version: number
-}): OwnerStrategyPreview {
-  return {
-    audience: `${ownerProfile} com ativo alinhado a ${goal.toLowerCase()} na regiao de ${neighborhood}`,
-    approach: `Priorize uma abordagem direta e consultiva para ${ownerProfile.toLowerCase()}, reforcando conhecimento local em ${city}, capacidade de operacao no raio de ${radius} e oportunidade de resultado rapido.`,
-    adCopy: `Atuacao especializada em ${goal.toLowerCase()} na regiao de ${neighborhood}. Apresente sua carteira, mostre proximidade com o mercado local e convide proprietarios a conhecerem uma proposta comercial clara e objetiva.`,
-    instagramCaption: `Se voce tem interesse em ${goal.toLowerCase()} em ${city}, nossa operacao esta preparada para atuar em ${neighborhood} e arredores com estrategia comercial, presenca digital e relacionamento ativo com compradores.`,
-    videoScript: [
-      `Abra o video apresentando sua especializacao em ${goal.toLowerCase()} e a forca da atuacao local em ${city}.`,
-      `Mostre como sua operacao trabalha no raio de ${radius} e porque isso acelera a captacao e a comercializacao.`,
-      `Feche convidando ${ownerProfile.toLowerCase()} a falar com voce para montar um plano comercial sob medida.`,
-    ],
-    whatsappText: `Oi! Estou ampliando minha atuacao em ${neighborhood}, ${city}, com foco em ${goal.toLowerCase()}. Se fizer sentido para voce, posso apresentar uma estrategia comercial objetiva para o seu imovel e explicar como atuo nessa regiao.`,
-    cta: ownerProfile === "Construtora" || ownerProfile === "Incorporadora"
-      ? "Agende uma reuniao comercial"
-      : "Fale comigo e avalie seu imovel",
-    timeline: [
-      `Dia 1: iniciar divulgacao institucional focada em ${goal.toLowerCase()} e posicionamento regional.`,
-      `Dia 3: reforcar proposta de valor para ${ownerProfile.toLowerCase()} com prova de atuacao em ${neighborhood}.`,
-      `Dia 5: follow-up comercial com CTA direto para reuniao, avaliacao ou conversa no WhatsApp. Versao ${version}.`,
-    ],
-  }
-}
-
 function stepOrder(step: StudioStep) {
   if (step === "selection") return 0
   if (step === "configuration") return 1
@@ -682,21 +686,21 @@ function buildStatusItems(step: StudioStep) {
           : step === "configuration"
             ? "Configuracao"
             : step === "processing"
-              ? "Geracao simulada"
+              ? "Geracao com IA"
               : step === "result"
                 ? "Resultado"
                 : "Aprovacao",
-      description: "O Studio reaproveita a mesma jornada por etapas para evoluir depois com geracao automatica de estrategia.",
+      description: "O Studio reaproveita a mesma jornada por etapas para manter consistencia e permitir novas versoes da estrategia.",
     },
     {
       title: "Integracoes",
-      value: "Simuladas",
-      description: "A estrategia ainda nao usa IA nem APIs externas. Todo o conteudo e montado localmente na interface.",
+      value: "OpenAI",
+      description: "Este fluxo gera a estrategia real no servidor com OpenAI, sem expor chaves no cliente.",
     },
     {
       title: "Persistencia",
       value: "Sem alterar banco",
-      description: "As aprovacoes e versoes desta estrategia existem apenas na sessao atual, preservando a arquitetura do portal.",
+      description: "As aprovacoes e versoes desta estrategia continuam apenas na sessao atual, preservando a arquitetura do portal.",
     },
   ]
 }
