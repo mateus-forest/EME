@@ -6,7 +6,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   BarChart3,
-  Bell,
   BookOpenText,
   Building2,
   CalendarDays,
@@ -16,17 +15,12 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
-  MessageCircle,
-  Plus,
-  Search,
   UserRound,
   UsersRound,
   type LucideIcon,
 } from "lucide-react"
 
-import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProfile } from "@/components/use-broker-profile"
-import { clearLegacyAuthState } from "@/lib/auth-client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -42,6 +36,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { clearLegacyAuthState } from "@/lib/auth-client"
 
 type MenuItem = {
   label: string
@@ -51,33 +46,33 @@ type MenuItem = {
 
 const menuSections: Array<{ label: string; items: MenuItem[] }> = [
   {
-    label: "INÍCIO",
+    label: "COS",
     items: [{ label: "COS", icon: LayoutDashboard, href: "/corretor" }],
   },
   {
     label: "CARTEIRA",
     items: [
       { label: "Clientes", icon: UserRound, href: "/corretor/clientes" },
-      { label: "Imóveis", icon: Building2, href: "/corretor/imoveis" },
+      { label: "Imoveis", icon: Building2, href: "/corretor/imoveis" },
     ],
   },
   {
     label: "VENDAS",
     items: [
-      { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
+      { label: "Catalogo", icon: BookOpenText, href: "/corretor/catalogo" },
       { label: "Leads", icon: UsersRound, href: "/corretor/leads" },
       { label: "Propostas", icon: FileText, href: "/corretor/documentos" },
     ],
   },
   {
-    label: "OPERAÇÃO",
+    label: "OPERACAO",
     items: [
       { label: "Compromissos", icon: CalendarDays, href: "/corretor/agenda" },
       { label: "Desempenho", icon: BarChart3, href: "/corretor/analytics" },
     ],
   },
   {
-    label: "CONFIGURAÇÕES",
+    label: "CONFIGURACOES",
     items: [
       { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
       { label: "Conta", icon: UserRound, href: "/corretor/conta" },
@@ -94,32 +89,13 @@ function buildOpenSections(pathname: string) {
   )
 }
 
-function normalizeDateLabel(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  }).format(date)
-}
-
-const cosMenuItems: MenuItem[] = [
-  { label: "Início", icon: LayoutDashboard, href: "/corretor" },
-  { label: "Conversas", icon: MessageCircle, href: "/corretor/leads" },
-  { label: "Histórico", icon: CalendarDays, href: "/corretor/agenda" },
-  { label: "Você", icon: UserRound, href: "/corretor/conta" },
-]
-
-export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "cos" }) {
+export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "default" | "cos" }) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useBrokerProfile()
-  const { historyNotifications, unreadCount } = useBrokerPaymentNotifications()
   const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar()
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => buildOpenSections(pathname))
   const collapsed = state === "collapsed"
-  const isCosVariant = variant === "cos"
   const initials = profile.fullName
     .split(" ")
     .filter(Boolean)
@@ -146,100 +122,18 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
   }
 
   function toggleSection(label: string) {
-    setOpenSections((current) => ({ ...current, [label]: !current[label] }))
+    setOpenSections((current) => {
+      const nextValue = !current[label]
+
+      return Object.fromEntries(
+        menuSections.map((section) => [section.label, section.label === label ? nextValue : false]),
+      )
+    })
   }
 
   useEffect(() => {
     setOpenSections(buildOpenSections(pathname))
   }, [pathname])
-
-  if (isCosVariant) {
-    const latestNotification = historyNotifications[0]
-
-    const sidebarInnerCos = (
-      <div className="flex h-full min-w-0 max-w-full flex-col border-r border-black/[0.06] bg-white">
-        <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-5">
-          <Link href="/" className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#111111]">
-            <SparkBadge />
-            COS
-          </Link>
-
-          <div className="flex items-center gap-3 text-[#6b7485]">
-            <button type="button" className="transition-colors hover:text-[#111111]" aria-label="Buscar">
-              <Search className="size-5" />
-            </button>
-            <button type="button" className="relative transition-colors hover:text-[#111111]" aria-label="Notificações">
-              <Bell className="size-5" />
-              {unreadCount > 0 ? <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-[#111111]" /> : null}
-            </button>
-            <Avatar className="size-9 border border-black/[0.08]">
-              <AvatarImage src={profile.photoUrl} alt={profile.fullName} />
-              <AvatarFallback className="bg-[#eef1f6] font-semibold text-[#111111]">{initials || "EM"}</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-
-        <div className="flex-1 px-4 py-4">
-          <Link
-            href="/corretor/novo-imovel"
-            className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-[#111111] text-white transition-colors hover:bg-black"
-            aria-label="Novo imóvel"
-          >
-            <Plus className="size-5" />
-          </Link>
-
-          <nav className="grid gap-1">
-            {cosMenuItems.map((item) => {
-              const active = pathname === item.href
-              const badge =
-                item.href === "/corretor/leads" && unreadCount > 0 ? String(unreadCount) : item.href === "/corretor/agenda" && latestNotification ? "1" : null
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center justify-between rounded-[1.6rem] px-4 py-3 text-[15px] transition-colors ${active ? "bg-[#f2f4f7] text-[#111111]" : "text-[#596579] hover:bg-[#f7f8fa] hover:text-[#111111]"}`}
-                >
-                  <span className="flex items-center gap-3">
-                    <item.icon className="size-[18px]" />
-                    {item.label}
-                  </span>
-                  {badge ? (
-                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#111111] px-2 py-0.5 text-xs font-semibold text-white">
-                      {badge}
-                    </span>
-                  ) : null}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-
-        <div className="px-4 pb-4 text-xs text-[#98A2B3]">
-          {latestNotification ? `Atualizado em ${normalizeDateLabel(latestNotification.date)}` : "Portal do corretor"}
-        </div>
-      </div>
-    )
-
-    if (isMobile) {
-      return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
-          <SheetContent
-            side="left"
-            className="w-[17rem] border-black/[0.06] bg-white p-0 text-[#050505] [&>button]:hidden"
-          >
-            <SheetHeader className="sr-only">
-              <SheetTitle>Portal do corretor</SheetTitle>
-              <SheetDescription>Navegação lateral do portal do corretor.</SheetDescription>
-            </SheetHeader>
-            {sidebarInnerCos}
-          </SheetContent>
-        </Sheet>
-      )
-    }
-
-    return <aside className="hidden w-[17rem] shrink-0 md:flex">{sidebarInnerCos}</aside>
-  }
 
   const sidebarInner = (
     <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.25rem] border border-black/[0.05] bg-white/92 shadow-[0_10px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl">
@@ -358,7 +252,7 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Portal do corretor</SheetTitle>
-            <SheetDescription>Navegação lateral do portal do corretor.</SheetDescription>
+            <SheetDescription>Navegacao lateral do portal do corretor.</SheetDescription>
           </SheetHeader>
           {sidebarInner}
         </SheetContent>
@@ -368,17 +262,9 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
 
   return (
     <aside
-      className={`hidden shrink-0 grow-0 basis-auto overflow-hidden md:flex transition-[width] duration-200 ease-linear ${collapsed ? "w-[var(--sidebar-width-icon)] min-w-[var(--sidebar-width-icon)] max-w-[var(--sidebar-width-icon)]" : "w-[var(--sidebar-width)] min-w-[var(--sidebar-width)] max-w-[var(--sidebar-width)]"}`}
+      className={`hidden shrink-0 grow-0 basis-auto overflow-hidden transition-[width] duration-200 ease-linear md:flex ${collapsed ? "w-[var(--sidebar-width-icon)] min-w-[var(--sidebar-width-icon)] max-w-[var(--sidebar-width-icon)]" : "w-[var(--sidebar-width)] min-w-[var(--sidebar-width)] max-w-[var(--sidebar-width)]"}`}
     >
       {sidebarInner}
     </aside>
-  )
-}
-
-function SparkBadge() {
-  return (
-    <span className="inline-flex size-4 items-center justify-center rounded-full border border-black text-[10px] font-bold leading-none">
-      C
-    </span>
   )
 }
