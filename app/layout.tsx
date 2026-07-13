@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Barlow } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
-import { PwaInstallPrompt } from '@/components/pwa-install-prompt'
 
 const barlow = Barlow({
   subsets: ['latin'],
@@ -57,7 +56,6 @@ export default function RootLayout({
     <html lang="pt-BR" className="dark">
       <body className={`${barlow.variable} font-sans antialiased bg-[#0B0B0B] text-white`}>
         {children}
-        <PwaInstallPrompt />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
