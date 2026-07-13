@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ImagePlus,
-  LoaderCircle,
   Megaphone,
   RefreshCcw,
   Users,
@@ -17,6 +16,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type AudienceProfile = "Primeiro imovel" | "Familia" | "Investidor" | "Alto padrao" | "Imovel de praia" | "Comercial"
@@ -292,7 +292,7 @@ export function BrokerStudioIaBuyersPage() {
                   </div>
 
                   {isLoading ? (
-                    <p className="mt-3 text-sm text-[#6B7280]">Carregando imoveis do corretor...</p>
+                    <EmeLoading compact message="Carregando imoveis do corretor..." className="mt-3" />
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
@@ -447,13 +447,11 @@ export function BrokerStudioIaBuyersPage() {
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
-                <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
-                  <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando estrategia com IA</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
-                    Montando a estrategia para {selectedAudience.toLowerCase()} com foco principal em {selectedChannel.toLowerCase()}.
-                  </p>
-                </div>
+                <EmeLoading
+                  message="Gerando estrategia com IA"
+                  description={`Montando a estrategia para ${selectedAudience.toLowerCase()} com foco principal em ${selectedChannel.toLowerCase()}.`}
+                  className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
+                />
               ) : currentStep === "result" || currentStep === "approval" ? (
                 <div className="grid gap-4">
                   <div className="grid gap-4 xl:grid-cols-2">

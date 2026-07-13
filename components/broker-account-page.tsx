@@ -6,6 +6,7 @@ import { Camera, CheckCircle2, LockKeyhole, ShieldCheck, UserRound } from "lucid
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -133,9 +134,7 @@ function AccountForm() {
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       {isLoading && (
-        <div className="rounded-[1.25rem] border border-black/[0.06] bg-white/80 px-4 py-3 text-sm text-[#5F6B7A]">
-          Carregando conta...
-        </div>
+        <EmeLoading compact message="Carregando conta..." />
       )}
 
       <section className="grid gap-3">

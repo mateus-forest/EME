@@ -5,6 +5,7 @@ import { CheckCircle2, Copy, Download, ExternalLink, FileText, Plus } from "luci
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { proposalHtmlToText } from "@/lib/proposal-template"
@@ -279,7 +280,7 @@ export function BrokerDocumentsPage() {
           <CardContent className="grid gap-3 p-5 pt-0">
             {feedback ? <p className="rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#009b3a]">{feedback}</p> : null}
             {isLoading ? (
-              <p className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">Carregando documentos...</p>
+              <EmeLoading compact message="Carregando documentos..." />
             ) : documents.length > 0 ? (
               documents.map((document) => (
                 <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`rounded-[1.25rem] border p-4 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/10" : "border-black/[0.06] bg-[#fbfbf8] hover:bg-[#f6f7f4]"}`}>

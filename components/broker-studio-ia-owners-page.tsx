@@ -7,13 +7,13 @@ import {
   Camera,
   CheckCircle2,
   ChevronLeft,
-  LoaderCircle,
   RefreshCcw,
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type CaptureGoal =
@@ -402,13 +402,11 @@ export function BrokerStudioIaOwnersPage() {
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
-                <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
-                  <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando estrategia com IA</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
-                    Montando a abordagem para {selectedOwnerProfile.toLowerCase()} com foco em {selectedGoal.toLowerCase()}.
-                  </p>
-                </div>
+                <EmeLoading
+                  message="Gerando estrategia com IA"
+                  description={`Montando a abordagem para ${selectedOwnerProfile.toLowerCase()} com foco em ${selectedGoal.toLowerCase()}.`}
+                  className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
+                />
               ) : currentStep === "result" || currentStep === "approval" ? (
                 <div className="grid gap-4">
                   <div className="grid gap-4 xl:grid-cols-2">

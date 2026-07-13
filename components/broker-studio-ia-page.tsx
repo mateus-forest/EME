@@ -8,7 +8,6 @@ import {
   Home,
   ImagePlus,
   ChevronLeft,
-  LoaderCircle,
   MessageCircle,
   RefreshCcw,
   Sparkles,
@@ -20,6 +19,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type StudioStyle = "Moderno" | "Minimalista" | "Alto padrao" | "Industrial" | "Classico"
@@ -288,7 +288,7 @@ export function BrokerStudioIaPage() {
                   </div>
 
                   {isLoading ? (
-                    <p className="mt-3 text-sm text-[#6B7280]">Carregando imoveis do corretor...</p>
+                    <EmeLoading compact message="Carregando imoveis do corretor..." className="mt-3" />
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
@@ -449,13 +449,11 @@ export function BrokerStudioIaPage() {
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
-                <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
-                  <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando transformacao visual</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
-                    Gerando a versao pronta do imovel com estilo {selectedStyle.toLowerCase()}.
-                  </p>
-                </div>
+                <EmeLoading
+                  message="Gerando transformacao visual"
+                  description={`Gerando a versao pronta do imovel com estilo ${selectedStyle.toLowerCase()}.`}
+                  className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
+                />
               ) : currentStep === "result" || currentStep === "approval" ? (
                 <div className="grid gap-4">
                   <div className="overflow-hidden rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8]">

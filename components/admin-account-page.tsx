@@ -7,6 +7,7 @@ import { AdminPageShell } from "@/components/admin-page-shell"
 import { useAdminProfile } from "@/components/use-admin-profile"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -112,9 +113,7 @@ function AccountForm() {
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       {isLoading && (
-        <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white/65">
-          Carregando conta...
-        </div>
+        <EmeLoading compact message="Carregando conta..." />
       )}
 
       {feedback && (

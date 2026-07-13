@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2, Clock, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -127,7 +128,7 @@ export function BrokerAgendaPage() {
           <CardContent className="grid gap-3 p-5 pt-0">
             {feedback ? <p className="rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#009b3a]">{feedback}</p> : null}
             {isLoading ? (
-              <p className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">Carregando agenda...</p>
+              <EmeLoading compact message="Carregando agenda..." />
             ) : events.length > 0 ? (
               events.map((event) => (
                 <div key={event.id} className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
