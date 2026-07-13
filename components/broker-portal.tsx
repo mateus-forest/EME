@@ -4,11 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
+  Bot,
   Building2,
   CalendarDays,
-  FileText,
   MessageCircle,
-  Search,
   Send,
   Sparkles,
   UsersRound,
@@ -127,37 +126,34 @@ export function BrokerPortal() {
   const contextMetrics = useMemo(
     () => [
       { label: "Clientes", value: totalLeads.toLocaleString("pt-BR") },
-      { label: "Operações", value: String(upcomingAppointmentsCount) },
-      { label: "Balanço", value: financialSummary.currentAmount.replace("R$", "").trim() || "0,00" },
-      { label: "Imóveis", value: String(publishedPropertiesCount) },
+      { label: "OperaÃ§Ãµes", value: String(upcomingAppointmentsCount) },
+      { label: "BalanÃ§o", value: financialSummary.currentAmount.replace("R$", "").trim() || "0,00" },
+      { label: "ImÃ³veis", value: String(publishedPropertiesCount) },
     ],
     [financialSummary.currentAmount, publishedPropertiesCount, totalLeads, upcomingAppointmentsCount],
   )
 
-  const contextFeed = useMemo(
-    () => historyNotifications.slice(0, 5),
-    [historyNotifications],
-  )
+  const contextFeed = useMemo(() => historyNotifications.slice(0, 5), [historyNotifications])
 
   const quickActions = [
     {
-      label: "Novo imóvel",
+      label: "PrÃ³ximo passo",
+      icon: Sparkles,
+      href: "/corretor/corretor-eme",
+    },
+    {
+      label: "Studio IA",
+      icon: Bot,
+      href: "/corretor/studio-ia",
+    },
+    {
+      label: "Novo imÃ³vel",
       icon: Building2,
       href: "/corretor/novo-imovel",
       onClick: hasReachedLimit ? () => setIsLimitModalOpen(true) : undefined,
     },
     {
-      label: "Buscar imóvel",
-      icon: Search,
-      onClick: () => searchInputRef.current?.focus(),
-    },
-    {
-      label: "Criar proposta",
-      icon: FileText,
-      href: "/corretor/documentos",
-    },
-    {
-      label: "Agendar visita",
+      label: "Compromissos",
       icon: CalendarDays,
       href: "/corretor/agenda",
     },
@@ -165,11 +161,7 @@ export function BrokerPortal() {
 
   return (
     <>
-      <BrokerPageShell
-        title="COS"
-        variant="cos"
-        contentClassName="overflow-hidden"
-      >
+      <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
         <section className="grid min-h-full w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="flex min-h-full items-start justify-center bg-[#f4f1eb] px-6 py-8 lg:px-12 lg:py-12">
             <div className="flex w-full max-w-5xl flex-col items-center">
@@ -182,9 +174,8 @@ export function BrokerPortal() {
               <p className="mt-2 text-center text-[15px] text-[#70809a]">O que voce deseja fazer hoje?</p>
 
               <div className="mt-8 flex flex-wrap justify-center gap-2.5">
-                {quickActions.map((action, index) => {
+                {quickActions.map((action) => {
                   const Icon = action.icon
-                  const labels = ["Sugerir ação", "Próximo passo", "Gravar reunião", "Suporte"]
                   const className =
                     "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[#d9dde5] bg-white px-5 text-sm font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb]"
 
@@ -192,7 +183,7 @@ export function BrokerPortal() {
                     return (
                       <button key={action.label} type="button" onClick={action.onClick} className={className}>
                         <Icon className="size-4 text-[#5e6d82]" />
-                        {labels[index] ?? action.label}
+                        {action.label}
                       </button>
                     )
                   }
@@ -200,7 +191,7 @@ export function BrokerPortal() {
                   return (
                     <Link key={action.label} href={action.href ?? "#"} className={className}>
                       <Icon className="size-4 text-[#5e6d82]" />
-                      {labels[index] ?? action.label}
+                      {action.label}
                     </Link>
                   )
                 })}
@@ -271,7 +262,7 @@ export function BrokerPortal() {
             <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-5">
               <h3 className="text-[1.05rem] font-semibold text-[#111111]">Contexto</h3>
               <NotificationCenter
-                title="Notificações do corretor"
+                title="NotificaÃ§Ãµes do corretor"
                 notifications={historyNotifications}
                 unreadCount={unreadCount}
                 onMarkAsRead={markAsRead}
