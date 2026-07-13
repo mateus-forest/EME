@@ -397,7 +397,7 @@ function HeroConversationMock() {
         <div className="flex min-h-[650px] items-center justify-end bg-[linear-gradient(180deg,#ffffff_0%,#fcfdfb_100%)] p-5 sm:p-7">
           <div className="relative h-full min-h-[590px] w-full max-w-[620px]">
             <Image
-              src="/images/landing-cos-reference.jpeg"
+              src="/images/landing-cos-reference-refined.png"
               alt="Tela real do COS no portal do corretor"
               fill
               priority
