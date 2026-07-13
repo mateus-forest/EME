@@ -31,6 +31,43 @@ type AgendaEventItem = {
   status: string
 }
 
+type AssistantCredits = {
+  balance: number
+  usedThisMonth: number
+}
+
+type AssistantBootstrapResponse = {
+  credits?: AssistantCredits
+  aiAssistantEnabled?: boolean
+  error?: string
+}
+
+type AssistantMessageResponse = {
+  response?: string
+  action?: string
+  actionStatus?: string
+  credits?: AssistantCredits
+  creditsUsed?: number
+  error?: string
+  confirmRequired?: boolean
+}
+
+type CosConversationItem = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  state: "ready" | "error"
+  action?: string | null
+  actionStatus?: string | null
+  confirmRequired?: boolean
+  sourceMessage?: string
+}
+
+type PendingConfirmation = {
+  action: string
+  sourceMessage: string
+}
+
 export function BrokerPortal() {
   const { properties } = useBrokerProperties()
   const { profile } = useBrokerProfile()
@@ -42,11 +79,17 @@ export function BrokerPortal() {
     archive,
     financialSummary,
   } = useBrokerPaymentNotifications()
-  const [search, setSearch] = useState("")
+  const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
   const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const normalizedSearch = search.trim().toLowerCase()
+  const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
+  const [assistantEnabled, setAssistantEnabled] = useState(true)
+  const [conversation, setConversation] = useState<CosConversationItem[]>([])
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null)
+  const [chatFeedback, setChatFeedback] = useState("")
+  const [isSending, setIsSending] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const chatViewportRef = useRef<HTMLDivElement>(null)
   const publishedPropertiesCount = useMemo(
     () => properties.filter((property) => property.status === "Publicado").length,
     [properties],
@@ -55,22 +98,6 @@ export function BrokerPortal() {
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
     publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
-
-  const featuredProperties = useMemo(
-    () =>
-      properties
-        .filter((property) => property.status === "Publicado")
-        .filter((property) =>
-          normalizedSearch
-            ? [property.title, property.city, property.neighborhood].some((field) =>
-                field.toLowerCase().includes(normalizedSearch),
-              )
-            : true,
-        )
-        .sort((first, second) => Number(second.views) - Number(first.views))
-        .slice(0, 3),
-    [properties, normalizedSearch],
-  )
 
   const totalLeads = useMemo(
     () => properties.reduce((sum, property) => sum + Number(property.leads || 0), 0),
@@ -87,31 +114,26 @@ export function BrokerPortal() {
       })
       .catch(() => null)
 
+    fetch("/api/assistant/eme", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as AssistantBootstrapResponse | null
+        if (!ignore && response.ok) {
+          if (data?.credits) setAssistantCredits(data.credits)
+          if (typeof data?.aiAssistantEnabled === "boolean") setAssistantEnabled(data.aiAssistantEnabled)
+        }
+      })
+      .catch(() => null)
+
     return () => {
       ignore = true
     }
   }, [])
 
   useEffect(() => {
-    const query = search.trim()
-    if (!query) return
-
-    const timeoutId = window.setTimeout(() => {
-      fetch("/api/brokers/analytics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({
-          query,
-          resultCount: featuredProperties.length,
-          source: "dashboard",
-        }),
-      }).catch(() => null)
-    }, 700)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [featuredProperties.length, search])
+    const viewport = chatViewportRef.current
+    if (!viewport) return
+    viewport.scrollTop = viewport.scrollHeight
+  }, [conversation, isSending])
 
   const brokerFirstName = useMemo(() => {
     const [firstName] = profile.fullName.trim().split(" ").filter(Boolean)
@@ -126,9 +148,9 @@ export function BrokerPortal() {
   const contextMetrics = useMemo(
     () => [
       { label: "Clientes", value: totalLeads.toLocaleString("pt-BR") },
-      { label: "OperaÃ§Ãµes", value: String(upcomingAppointmentsCount) },
-      { label: "BalanÃ§o", value: financialSummary.currentAmount.replace("R$", "").trim() || "0,00" },
-      { label: "ImÃ³veis", value: String(publishedPropertiesCount) },
+      { label: "Operacoes", value: String(upcomingAppointmentsCount) },
+      { label: "Balanco", value: financialSummary.currentAmount.replace("R$", "").trim() || "0,00" },
+      { label: "Imoveis", value: String(publishedPropertiesCount) },
     ],
     [financialSummary.currentAmount, publishedPropertiesCount, totalLeads, upcomingAppointmentsCount],
   )
@@ -137,7 +159,7 @@ export function BrokerPortal() {
 
   const quickActions = [
     {
-      label: "PrÃ³ximo passo",
+      label: "Proximo passo",
       icon: Sparkles,
       href: "/corretor/corretor-eme",
     },
@@ -147,7 +169,7 @@ export function BrokerPortal() {
       href: "/corretor/studio-ia",
     },
     {
-      label: "Novo imÃ³vel",
+      label: "Novo imovel",
       icon: Building2,
       href: "/corretor/novo-imovel",
       onClick: hasReachedLimit ? () => setIsLimitModalOpen(true) : undefined,
@@ -158,6 +180,148 @@ export function BrokerPortal() {
       href: "/corretor/agenda",
     },
   ]
+
+  const suggestedPrompts = [
+    "Buscar imovel: apartamento ate 900 mil em Porto Alegre",
+    "Minha agenda de amanha",
+    "Analisar financeiro",
+    "Minhas notificacoes",
+  ]
+
+  async function sendCosMessage(message: string, options?: { confirm?: boolean; action?: string; visibleMessage?: string }) {
+    const normalizedMessage = message.trim()
+    if (!normalizedMessage || isSending) return
+
+    if (!assistantEnabled) {
+      setChatFeedback("Ative o Assessor EME para conversar com o COS.")
+      return
+    }
+
+    if (assistantCredits.balance <= 0) {
+      setChatFeedback("Creditos insuficientes para usar o COS agora.")
+      return
+    }
+
+    const visibleMessage = options?.visibleMessage ?? normalizedMessage
+    setConversation((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: visibleMessage,
+        state: "ready",
+      },
+    ])
+    setIsSending(true)
+    setChatFeedback("")
+    setPrompt("")
+
+    try {
+      const response = await fetch("/api/assistant/eme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          message: normalizedMessage,
+          action: options?.action,
+          confirm: Boolean(options?.confirm),
+          source: "cos_home",
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as AssistantMessageResponse | null
+
+      if (data?.credits) setAssistantCredits(data.credits)
+      if (!response.ok) throw new Error(data?.error || "Nao foi possivel falar com o COS agora.")
+
+      const assistantMessage: CosConversationItem = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: data?.response || "Nao consegui responder agora.",
+        state: "ready",
+        action: data?.action ?? options?.action ?? null,
+        actionStatus: data?.actionStatus ?? "success",
+        confirmRequired: Boolean(data?.confirmRequired),
+        sourceMessage: normalizedMessage,
+      }
+
+      setConversation((current) => [...current, assistantMessage])
+
+      if (data?.confirmRequired && assistantMessage.action) {
+        setPendingConfirmation({
+          action: assistantMessage.action,
+          sourceMessage: normalizedMessage,
+        })
+        setChatFeedback("Confirmacao pendente para alterar dados.")
+      } else {
+        setPendingConfirmation(null)
+        setChatFeedback(
+          data?.creditsUsed
+            ? `${formatCosAction(data?.action || options?.action || "general")} -${data.creditsUsed} credito IA`
+            : "",
+        )
+      }
+    } catch (caughtError) {
+      const messageText =
+        caughtError instanceof Error ? caughtError.message : "Nao foi possivel falar com o COS agora."
+
+      setConversation((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: messageText,
+          state: "error",
+          actionStatus: "error",
+          sourceMessage: normalizedMessage,
+        },
+      ])
+      setChatFeedback(messageText)
+    } finally {
+      setIsSending(false)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedPrompt = prompt.trim()
+    if (!normalizedPrompt) {
+      setChatFeedback("Digite uma mensagem para o COS.")
+      return
+    }
+    await sendCosMessage(normalizedPrompt)
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingConfirmation) return
+    await sendCosMessage(pendingConfirmation.sourceMessage, {
+      confirm: true,
+      action: pendingConfirmation.action,
+      visibleMessage: "Confirmar",
+    })
+  }
+
+  function cancelPendingAction() {
+    setPendingConfirmation(null)
+    setConversation((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Tudo bem. Nao executei a alteracao.",
+        state: "ready",
+        actionStatus: "cancelled",
+      },
+    ])
+    setChatFeedback("Alteracao cancelada.")
+  }
+
+  function hydratePrompt(nextPrompt: string) {
+    setPrompt(nextPrompt)
+    window.setTimeout(() => inputRef.current?.focus(), 0)
+  }
 
   return (
     <>
@@ -208,7 +372,7 @@ export function BrokerPortal() {
                   </button>
                 </div>
                 <div className="mt-3 rounded-[1.8rem] bg-white px-8 py-6 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     {contextMetrics.map((item) => (
                       <div key={item.label} className="flex flex-col items-center justify-center text-center">
                         <UsersRound className="size-4 text-[#9aa8bd]" />
@@ -220,28 +384,129 @@ export function BrokerPortal() {
                 </div>
               </div>
 
-              <div className="mt-auto w-full max-w-[60rem] pt-10">
-                <form
-                  onSubmit={(event) => event.preventDefault()}
-                  className="flex items-center gap-3 rounded-full bg-white px-7 py-5 shadow-[0_10px_26px_rgba(15,23,42,0.06)]"
-                >
-                  <Input
-                    ref={searchInputRef}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Fale com o COS..."
-                    className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-[15px] text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
-                  />
-                  <MessageCircle className="size-5 text-[#9aa6b6]" />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="size-11 shrink-0 rounded-full bg-[#a7a7a7] text-white shadow-none hover:bg-[#8f8f8f]"
-                    aria-label="Enviar mensagem ao COS"
-                  >
-                    <Send className="size-4" />
-                  </Button>
-                </form>
+              <div className="mt-10 w-full max-w-[60rem]">
+                <div className="overflow-hidden rounded-[2rem] bg-white shadow-[0_16px_42px_rgba(15,23,42,0.08)]">
+                  <div className="border-b border-black/[0.05] px-6 py-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-[#111111]">Converse com o COS</p>
+                        <p className="mt-1 text-sm text-[#7a8798]">
+                          Consulte a operacao, busque imoveis ou confirme acoes ja suportadas pelo portal.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-[#7a8798]">
+                        <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1">
+                          {assistantEnabled ? "COS ativo" : "COS pausado"}
+                        </span>
+                        <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1">
+                          {assistantCredits.balance} creditos
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div ref={chatViewportRef} className="max-h-[24rem] space-y-4 overflow-y-auto px-6 py-5">
+                    {conversation.length === 0 ? (
+                      <div className="rounded-[1.5rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
+                        Posso ajudar com busca de imoveis, agenda, clientes, desempenho, financeiro, notificacoes e acoes operacionais com confirmacao.
+                      </div>
+                    ) : null}
+
+                    {conversation.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm ${
+                            item.role === "user"
+                              ? "bg-[#111111] text-white"
+                              : item.state === "error"
+                                ? "border border-red-500/15 bg-red-50 text-red-700"
+                                : "border border-black/[0.06] bg-[#fbfbf8] text-[#334155]"
+                          }`}
+                        >
+                          <p>{item.content}</p>
+                          {item.role === "assistant" && item.actionStatus ? (
+                            <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#8a97a8]">
+                              {formatCosStatus(item.actionStatus)}
+                            </p>
+                          ) : null}
+                          {item.confirmRequired && pendingConfirmation?.sourceMessage === item.sourceMessage ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                onClick={() => void confirmPendingAction()}
+                                disabled={isSending}
+                                className="h-9 rounded-full bg-[#111111] px-4 text-xs font-semibold text-white hover:bg-[#050505] disabled:opacity-60"
+                              >
+                                Confirmar
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={cancelPendingAction}
+                                disabled={isSending}
+                                className="h-9 rounded-full border border-black/[0.08] px-4 text-xs text-[#4B5563] hover:bg-white"
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+
+                    {isSending ? (
+                      <div className="flex justify-start">
+                        <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#6f7f97]">
+                          COS analisando...
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="border-t border-black/[0.05] px-6 py-5">
+                    <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3 rounded-full bg-[#fbfbf8] px-5 py-4">
+                        <MessageCircle className="size-5 text-[#9aa6b6]" />
+                        <Input
+                          ref={inputRef}
+                          value={prompt}
+                          onChange={(event) => setPrompt(event.target.value)}
+                          placeholder="Fale com o COS..."
+                          className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-[15px] text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
+                        />
+                        <Button
+                          type="submit"
+                          size="icon"
+                          disabled={isSending}
+                          className="size-11 shrink-0 rounded-full bg-[#111111] text-white shadow-none hover:bg-[#050505] disabled:opacity-60"
+                          aria-label="Enviar mensagem ao COS"
+                        >
+                          <Send className="size-4" />
+                        </Button>
+                      </div>
+
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-wrap gap-2">
+                          {suggestedPrompts.map((example) => (
+                            <button
+                              key={example}
+                              type="button"
+                              onClick={() => hydratePrompt(example)}
+                              className="rounded-full border border-black/[0.06] bg-white px-3 py-1.5 text-xs text-[#5f6d82] transition-colors hover:bg-[#f8f9fb]"
+                            >
+                              {example}
+                            </button>
+                          ))}
+                        </div>
+                        {chatFeedback ? <p className="text-sm text-[#009b3a]">{chatFeedback}</p> : null}
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
                 {hasReachedLimit ? (
                   <div className="mt-3 flex justify-center">
                     <Button
@@ -262,7 +527,7 @@ export function BrokerPortal() {
             <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-5">
               <h3 className="text-[1.05rem] font-semibold text-[#111111]">Contexto</h3>
               <NotificationCenter
-                title="NotificaÃ§Ãµes do corretor"
+                title="Notificacoes do corretor"
                 notifications={historyNotifications}
                 unreadCount={unreadCount}
                 onMarkAsRead={markAsRead}
@@ -351,4 +616,29 @@ function ClockBadge() {
       <ArrowRight className="size-3 rotate-90" />
     </span>
   )
+}
+
+function formatCosAction(action: string | null) {
+  if (!action) return "Acao do COS"
+  const normalized = action.toLowerCase()
+  if (normalized.includes("searchproperties")) return "Busca de imoveis"
+  if (normalized.includes("createpropertydraft")) return "Cadastro de imovel"
+  if (normalized.includes("createlead")) return "Cadastro de cliente"
+  if (normalized.includes("create_proposal")) return "Criacao de proposta"
+  if (normalized.includes("create_agenda_event")) return "Agendamento"
+  if (normalized.includes("list_agenda_events")) return "Consulta de agenda"
+  if (normalized.includes("getleadssummary") || normalized.includes("summarizelead")) return "Analise de clientes"
+  if (normalized.includes("analytics") || normalized.includes("catalog")) return "Consulta de desempenho"
+  if (normalized.includes("financial")) return "Analise financeira"
+  if (normalized.includes("notification")) return "Consulta de notificacoes"
+  return action.replace(/_/g, " ")
+}
+
+function formatCosStatus(status: string) {
+  if (status === "needs_confirmation") return "Aguardando confirmacao"
+  if (status === "processing") return "Em processamento"
+  if (status === "unsupported") return "Fora do escopo da Home"
+  if (status === "error") return "Erro"
+  if (status === "cancelled") return "Cancelado"
+  return "Concluido"
 }

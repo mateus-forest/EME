@@ -103,6 +103,49 @@ function shouldReturnActionResponse(action: AssessorAction) {
   ].includes(action)
 }
 
+const COS_HOME_ALLOWED_ACTIONS: AssessorAction[] = [
+  "general",
+  "searchProperties",
+  "createPropertyDraft",
+  "createLead",
+  "CREATE_PROPOSAL",
+  "CREATE_AGENDA_EVENT",
+  "LIST_AGENDA_EVENTS",
+  "getLeadsSummary",
+  "summarizeLead",
+  "getAnalyticsSummary",
+  "getCatalogSummary",
+  "analyzeCatalog",
+  "getFinancialSummary",
+  "createInternalNotification",
+]
+
+const COS_HOME_MUTATING_ACTIONS: AssessorAction[] = [
+  "createPropertyDraft",
+  "createLead",
+  "CREATE_PROPOSAL",
+  "CREATE_AGENDA_EVENT",
+]
+
+function isCosHomeSource(source: string) {
+  return source === "cos_home"
+}
+
+function buildCosHomeUnsupportedResponse() {
+  return [
+    "Na Home do COS eu posso ajudar com:",
+    "buscar imovel, cadastrar imovel, cadastrar cliente, criar proposta, agendar ou consultar compromissos, analisar clientes, consultar desempenho, analisar financeiro e consultar notificacoes.",
+  ].join("\n")
+}
+
+function buildCosHomeConfirmationResponse(action: AssessorAction) {
+  if (action === "createPropertyDraft") return "Encontrei um pedido para cadastrar um imovel em rascunho. Deseja confirmar?"
+  if (action === "createLead") return "Posso cadastrar ou atualizar este cliente agora. Deseja confirmar?"
+  if (action === "CREATE_PROPOSAL") return "Posso gerar esta proposta agora e salvar em Documentos. Deseja confirmar?"
+  if (action === "CREATE_AGENDA_EVENT") return "Posso criar este compromisso agora na sua agenda. Deseja confirmar?"
+  return `Posso executar "${getVisualActionLabel(action)}" agora. Deseja confirmar?`
+}
+
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
@@ -215,6 +258,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null)
   const message = cleanText(body?.message ?? body?.prompt, 3000)
+  const source = cleanText(body?.source, 80)
   let creditsUsed = 1
 
   if (!message) {
@@ -248,6 +292,76 @@ export async function POST(request: NextRequest) {
       pendingContext,
     })
     const action = resolvedInput.action as AssessorAction
+    const fromCosHome = isCosHomeSource(source)
+
+    if (fromCosHome && !COS_HOME_ALLOWED_ACTIONS.includes(action)) {
+      const brokerCredits = await getBrokerCredits(user.broker.id)
+      return NextResponse.json({
+        response: buildCosHomeUnsupportedResponse(),
+        action,
+        actionStatus: "unsupported",
+        creditsUsed: 0,
+        ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+      })
+    }
+
+    if (fromCosHome && COS_HOME_MUTATING_ACTIONS.includes(action) && !body?.confirm) {
+      const responseText = buildCosHomeConfirmationResponse(action)
+      const interactionMetadata = {
+        source: "portal_cos_home",
+        parsedIntent: action,
+        actionName: action,
+        brokerId: user.broker.id,
+        visualAction: getVisualActionLabel(action),
+        confirmationRequired: true,
+      } as Prisma.InputJsonObject
+
+      const [updatedBroker] = await Promise.all([
+        getBrokerCredits(user.broker.id),
+        prisma.aiAssistantInteraction.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            prompt: message,
+            response: responseText,
+            actionType: action,
+            creditsUsed: 0,
+            channel: "assessor_eme",
+            intent: action,
+            actionStatus: "needs_confirmation",
+            metadata: interactionMetadata,
+            errorMessage: null,
+          },
+        }),
+        prisma.emeMessage.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            channel: "assessor_eme",
+            direction: "broker_to_ai",
+            message,
+            response: responseText,
+            detectedIntent: action,
+            actionType: action,
+            actionStatus: "needs_confirmation",
+            metadata: interactionMetadata,
+            errorMessage: null,
+            creditsUsed: 0,
+          },
+        }),
+      ])
+
+      return NextResponse.json({
+        response: responseText,
+        action,
+        actionStatus: "needs_confirmation",
+        metadata: interactionMetadata,
+        creditsUsed: 0,
+        confirmRequired: true,
+        ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+      })
+    }
+
     creditsUsed = getEmeCreditCost(action)
 
     if (brokerState.aiCreditsBalance < creditsUsed) {
