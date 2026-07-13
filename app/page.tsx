@@ -9,7 +9,6 @@ import {
   ChartNoAxesCombined,
   Check,
   CirclePlay,
-  ClipboardList,
   FolderOpen,
   Grid2x2,
   House,
@@ -17,22 +16,16 @@ import {
   Megaphone,
   MessageCircleMore,
   NotebookTabs,
-  Search,
   Sparkles,
   TimerReset,
   Video,
 } from "lucide-react"
+import { LandingCosDemoSection } from "@/components/landing-cos-demo-section"
 
 type NavLink = {
   label: string
   href: string
   highlight?: boolean
-}
-
-type PromptAction = {
-  icon: typeof ImageIcon
-  label: string
-  active?: boolean
 }
 
 const navLinks: NavLink[] = [
@@ -98,14 +91,6 @@ const studioResources = [
     description: "Tudo organizado para você usar quando quiser.",
   },
 ] as const
-
-const promptActions: PromptAction[] = [
-  { icon: ImageIcon, label: "Criar anúncio", active: true },
-  { icon: Video, label: "Gerar vídeo" },
-  { icon: ClipboardList, label: "Criar catálogo" },
-  { icon: Search, label: "Procurar imóvel" },
-  { icon: Bot, label: "Conversar com o COS" },
-]
 
 const checklist = ["7 dias grátis", "Acesso completo", "Sem cartão de crédito", "Cancelamento fácil"] as const
 
@@ -285,52 +270,7 @@ export default function Home() {
         </section>
 
         <section className="px-2 py-20 lg:px-4">
-          <div className="mx-auto max-w-[980px] text-center">
-            <h2 className="text-[2.55rem] font-semibold tracking-[-0.055em] text-[#111111] sm:text-[3.45rem]">
-              Experimente o <span className="text-[#16a34a]">EME agora</span>
-            </h2>
-            <p className="mt-4 text-[1.05rem] text-[#68737d]">Faça uma solicitação e veja o EME trabalhando para você.</p>
-
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {promptActions.map((action) => {
-                const Icon = action.icon
-                return (
-                  <button
-                    key={action.label}
-                    type="button"
-                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${
-                      action.active
-                        ? "border-[#dceddf] bg-[#eef8f1] text-[#157945]"
-                        : "border-transparent bg-transparent text-[#39424a] hover:bg-white"
-                    }`}
-                  >
-                    <Icon className="size-4" />
-                    {action.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="mt-9 rounded-[28px] border border-black/[0.055] bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="flex h-[72px] flex-1 items-center rounded-[22px] border border-black/[0.055] bg-[#fdfdfb] px-6 text-left text-lg text-[#8b949c]">
-                  Descreva o imóvel para criar um anúncio incrível...
-                </div>
-                <Link
-                  href="/cadastro/corretor"
-                  className="inline-flex h-[72px] items-center justify-center gap-3 rounded-[22px] bg-[#16a34a] px-8 text-base font-medium text-white shadow-[0_16px_32px_rgba(22,163,74,0.2)] transition-all hover:bg-[#14803d]"
-                >
-                  Gerar com IA
-                  <Sparkles className="size-4" />
-                </Link>
-              </div>
-            </div>
-
-            <p className="mt-4 text-left text-[15px] text-[#6f7982] sm:text-center">
-              Exemplo: Apartamento 2 quartos, suíte, sacada gourmet, 1 vaga, condomínio com piscina em{" "}
-              <span className="font-medium text-[#16a34a]">Canoas.</span>
-            </p>
-          </div>
+          <LandingCosDemoSection />
         </section>
 
         <section
