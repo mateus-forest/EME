@@ -18,7 +18,6 @@ import {
   MessageCircleMore,
   NotebookTabs,
   Search,
-  Send,
   Sparkles,
   TimerReset,
   Video,
@@ -395,91 +394,16 @@ function HeroConversationMock() {
     <div className="relative mx-auto w-full max-w-[820px] lg:-mr-3">
       <div className="absolute inset-0 -z-10 rounded-[44px] bg-[radial-gradient(circle_at_top,rgba(22,163,74,0.12),transparent_36%)] blur-3xl" />
       <div className="overflow-hidden rounded-[32px] border border-black/[0.055] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.065)]">
-        <div className="grid min-h-[650px] grid-cols-[66px_minmax(0,1fr)] sm:grid-cols-[88px_minmax(0,1fr)]">
-          <div className="border-r border-black/[0.045] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdfb_100%)] px-3 py-6">
-            <div className="grid justify-center gap-4.5">
-              <SidebarPill active icon={House} />
-              <SidebarPill icon={Grid2x2} />
-              <SidebarPill icon={ClipboardList} />
-              <SidebarPill icon={TimerReset} />
-              <SidebarPill icon={MessageCircleMore} />
-              <SidebarPill icon={FolderOpen} />
-              <SidebarPill icon={NotebookTabs} />
-            </div>
-          </div>
-
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between border-b border-black/[0.045] px-5 py-4 sm:px-7">
-              <div className="flex items-center gap-3">
-                <button className="text-[#16a34a]">
-                  <ArrowRight className="size-4 rotate-180" />
-                </button>
-                <Image src="/placeholder-user.jpg" alt="COS" width={38} height={38} className="size-9 rounded-full object-cover" />
-                <div>
-                  <p className="text-sm font-medium text-[#121212]">COS</p>
-                  <p className="text-xs text-[#7f8a93]">Online</p>
-                </div>
-              </div>
-              <div className="text-[#98a1a9]">•••</div>
-            </div>
-
-            <div className="flex-1 space-y-6 bg-[linear-gradient(180deg,#ffffff_0%,#fdfefd_100%)] px-6 py-7 sm:px-8">
-              <ChatBubble align="right" dark>
-                Crie um anúncio para esse apartamento de 2 quartos, suíte e sacada gourmet.
-              </ChatBubble>
-
-              <div className="space-y-3">
-                <SystemLine text="Aqui está o anúncio:" />
-                <div className="max-w-[402px] rounded-[22px] border border-black/[0.055] bg-white p-3 shadow-[0_10px_20px_rgba(15,23,42,0.035)]">
-                  <div className="flex items-center gap-3">
-                    <Image src="/placeholder.jpg" alt="Apartamento" width={84} height={84} className="h-[84px] w-[94px] rounded-[18px] object-cover" />
-                    <div>
-                      <p className="font-medium text-[#161616]">Apartamento à venda</p>
-                      <p className="mt-1 text-sm leading-6 text-[#6f7982]">2 quartos, suíte e sacada gourmet</p>
-                      <p className="mt-1 text-sm leading-6 text-[#6f7982]">R$ 560.000,00 · Centro, Canoas/RS</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <ChatBubble align="right" dark>
-                Agora gere um vídeo para o Instagram.
-              </ChatBubble>
-
-              <div className="space-y-3">
-                <SystemLine text="Vídeo criado com sucesso!" />
-                <div className="relative max-w-[440px] overflow-hidden rounded-[24px] border border-black/[0.055] bg-[#e8ece8]">
-                  <Image src="/placeholder.jpg" alt="Vídeo do imóvel" width={640} height={336} className="h-44 w-full object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.62))] px-4 py-3 text-xs text-white">
-                    <span>0:45</span>
-                    <CirclePlay className="size-5 fill-white/90 text-white" />
-                    <span>0:45</span>
-                  </div>
-                </div>
-              </div>
-
-              <ChatBubble align="right" dark>
-                Agende uma visita para sábado às 10h.
-              </ChatBubble>
-
-              <SystemLine text="Visita agendada com sucesso!" />
-            </div>
-
-            <div className="border-t border-black/[0.045] px-5 py-4 sm:px-7">
-              <div className="flex items-center gap-3 rounded-[20px] border border-black/[0.065] bg-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
-                <input
-                  aria-label="Fale com o COS"
-                  placeholder="Fale com o COS..."
-                  className="w-full bg-transparent text-sm text-[#111111] outline-none placeholder:text-[#97a1aa]"
-                />
-                <button className="inline-flex size-9 items-center justify-center rounded-full border border-black/[0.06] text-[#8f99a1]">
-                  <Sparkles className="size-4" />
-                </button>
-                <button className="inline-flex size-10 items-center justify-center rounded-full bg-[#16a34a] text-white shadow-[0_12px_24px_rgba(22,163,74,0.18)]">
-                  <Send className="size-4" />
-                </button>
-              </div>
-            </div>
+        <div className="flex min-h-[650px] items-center justify-end bg-[linear-gradient(180deg,#ffffff_0%,#fcfdfb_100%)] p-5 sm:p-7">
+          <div className="relative h-full min-h-[590px] w-full max-w-[620px]">
+            <Image
+              src="/images/landing-cos-reference.jpeg"
+              alt="Tela real do COS no portal do corretor"
+              fill
+              priority
+              className="object-contain object-center"
+              sizes="(min-width: 1024px) 48vw, 100vw"
+            />
           </div>
         </div>
       </div>
@@ -569,53 +493,6 @@ function TrustItem({ label }: { label: string }) {
         <Check className="size-3" />
       </span>
       {label}
-    </div>
-  )
-}
-
-function SidebarPill({ icon: Icon, active = false }: { icon: typeof House; active?: boolean }) {
-  return (
-    <div
-      className={`inline-flex size-11 items-center justify-center rounded-2xl border ${
-        active
-          ? "border-[#dbeee1] bg-[#eef8f1] text-[#16a34a] shadow-[0_10px_20px_rgba(22,163,74,0.08)]"
-          : "border-transparent bg-white text-[#7c8690]"
-      }`}
-    >
-      <Icon className="size-5" />
-    </div>
-  )
-}
-
-function ChatBubble({
-  align,
-  children,
-  dark = false,
-}: {
-  align: "left" | "right"
-  children: React.ReactNode
-  dark?: boolean
-}) {
-  return (
-    <div className={`flex ${align === "right" ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[332px] rounded-[18px] px-4 py-3 text-sm leading-6 shadow-[0_8px_18px_rgba(15,23,42,0.06)] ${
-          dark ? "bg-[#101010] text-white" : "bg-white text-[#111111]"
-        }`}
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function SystemLine({ text }: { text: string }) {
-  return (
-    <div className="flex items-center gap-2 text-sm text-[#6b7680]">
-      <span className="inline-flex size-5 items-center justify-center rounded-full bg-[#ecf8f0] text-[#16a34a]">
-        <Bot className="size-3.5" />
-      </span>
-      {text}
     </div>
   )
 }
