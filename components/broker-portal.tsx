@@ -16,6 +16,7 @@ import {
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { NotificationCenter } from "@/components/notification-center"
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
@@ -68,6 +69,10 @@ type PendingConfirmation = {
   sourceMessage: string
 }
 
+type NextStepSuggestion =
+  | { label: string; message: string; focusOnly?: false }
+  | { label: string; focusOnly: true; message?: never }
+
 export function BrokerPortal() {
   const { properties } = useBrokerProperties()
   const { profile } = useBrokerProfile()
@@ -81,6 +86,7 @@ export function BrokerPortal() {
   } = useBrokerPaymentNotifications()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
+  const [isNextStepModalOpen, setIsNextStepModalOpen] = useState(false)
   const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
@@ -161,7 +167,7 @@ export function BrokerPortal() {
     {
       label: "Proximo passo",
       icon: Sparkles,
-      href: "/corretor/corretor-eme",
+      onClick: () => setIsNextStepModalOpen(true),
     },
     {
       label: "Studio IA",
@@ -186,6 +192,16 @@ export function BrokerPortal() {
     "Minha agenda de amanha",
     "Analisar financeiro",
     "Minhas notificacoes",
+  ]
+
+  const nextStepSuggestions: NextStepSuggestion[] = [
+    { label: "Ver proximos compromissos", message: "Minha agenda de amanha" },
+    { label: "Analisar carteira", message: "Analisar carteira" },
+    { label: "Revisar clientes", message: "Revisar clientes" },
+    { label: "Consultar desempenho", message: "Consultar desempenho" },
+    { label: "Analisar financeiro", message: "Analisar financeiro" },
+    { label: "Ver notificacoes", message: "Minhas notificacoes" },
+    { label: "Conversar com o COS", focusOnly: true },
   ]
 
   async function sendCosMessage(message: string, options?: { confirm?: boolean; action?: string; visibleMessage?: string }) {
@@ -321,6 +337,17 @@ export function BrokerPortal() {
   function hydratePrompt(nextPrompt: string) {
     setPrompt(nextPrompt)
     window.setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  async function handleNextStepSuggestion(selection: NextStepSuggestion) {
+    setIsNextStepModalOpen(false)
+
+    if (selection.focusOnly) {
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+      return
+    }
+
+    await sendCosMessage(selection.message, { visibleMessage: selection.label })
   }
 
   return (
@@ -589,6 +616,39 @@ export function BrokerPortal() {
       </BrokerPageShell>
 
       <BrokerFreePlanLimitModal open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen} />
+      <Dialog open={isNextStepModalOpen} onOpenChange={setIsNextStepModalOpen}>
+        <DialogContent className="max-w-xl rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
+          <div className="px-6 py-6">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold tracking-tight text-[#111111]">
+                Proximo passo com o COS
+              </DialogTitle>
+              <DialogDescription className="mt-2 text-sm leading-6 text-[#6B7280]">
+                Escolha uma sugestao inteligente para iniciar a conversa agora mesmo na Home.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-5 grid gap-3">
+              {nextStepSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.label}
+                  type="button"
+                  onClick={() => void handleNextStepSuggestion(suggestion)}
+                  className="flex items-center justify-between rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4 text-left transition-colors hover:bg-white hover:border-black/[0.1]"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-[#111111]">{suggestion.label}</p>
+                    <p className="mt-1 text-sm text-[#7B8491]">
+                      {suggestion.focusOnly ? "Fechar e continuar a conversa manualmente." : "Enviar essa sugestao para o COS."}
+                    </p>
+                  </div>
+                  <Sparkles className="size-4 shrink-0 text-[#7B8491]" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
