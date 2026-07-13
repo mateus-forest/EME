@@ -617,8 +617,8 @@ export function BrokerPortal() {
 
       <BrokerFreePlanLimitModal open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen} />
       <Dialog open={isNextStepModalOpen} onOpenChange={setIsNextStepModalOpen}>
-        <DialogContent className="max-w-xl rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
-          <div className="px-6 py-6">
+        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-xl overflow-hidden rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-h-[calc(100vh-4rem)]">
+          <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 py-6 sm:max-h-[calc(100vh-4rem)]">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold tracking-tight text-[#111111]">
                 Proximo passo com o COS
