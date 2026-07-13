@@ -10,6 +10,7 @@ import {
   Home,
   ImagePlus,
   Instagram,
+  LoaderCircle,
   PlayCircle,
   Sparkles,
   Video,
@@ -23,6 +24,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type StudioStep = "selection" | "checklist" | "operation" | "readiness"
 type CommercialFlowKey = "construction" | "instagram" | "video" | "buyers" | "owners"
+type PlanBlockKey = "strategy" | "audience" | "campaign" | "caption" | "cta" | "whatsapp" | "timeline" | "nextActions"
+
+type SellPropertyPlan = {
+  salesStrategy: string
+  recommendedAudience: string
+  mainCampaign: string
+  caption: string
+  cta: string
+  whatsappText: string
+  timeline: string[]
+  nextActions: string[]
+  applicableFlows: string[]
+}
 
 type CommercialFlow = {
   key: CommercialFlowKey
@@ -76,8 +90,9 @@ const commercialFlows: CommercialFlow[] = [
     key: "owners",
     title: "Captar proprietarios",
     description: "Amplie o potencial comercial do corretor com novos ativos e relacionamento.",
+    href: "/corretor/studio-ia/captar-proprietarios",
     icon: Home,
-    isAvailable: false,
+    isAvailable: true,
   },
 ]
 
@@ -85,12 +100,27 @@ export function BrokerStudioIaSellPropertyPage() {
   const { properties, isLoading } = useBrokerProperties()
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
   const [currentStep, setCurrentStep] = useState<StudioStep>("selection")
+  const [resultVersion, setResultVersion] = useState(0)
+  const [approvedVersion, setApprovedVersion] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [plan, setPlan] = useState<SellPropertyPlan | null>(null)
   const [completedFlows, setCompletedFlows] = useState<Record<CommercialFlowKey, boolean>>({
     construction: false,
     instagram: false,
     video: false,
     buyers: false,
     owners: false,
+  })
+  const [approvedBlocks, setApprovedBlocks] = useState<Record<PlanBlockKey, boolean>>({
+    strategy: false,
+    audience: false,
+    campaign: false,
+    caption: false,
+    cta: false,
+    whatsapp: false,
+    timeline: false,
+    nextActions: false,
   })
 
   const propertyOptions = useMemo(() => properties, [properties])
@@ -112,7 +142,8 @@ export function BrokerStudioIaSellPropertyPage() {
 
   const availableCompletedCount = availableFlows.filter((flow) => completedFlows[flow.key]).length
   const pendingFlowsCount = commercialFlows.filter((flow) => !completedFlows[flow.key]).length
-  const isReadyForOperation = availableCompletedCount === availableFlows.length
+  const approvedBlocksCount = Object.values(approvedBlocks).filter(Boolean).length
+  const isReadyForOperation = availableCompletedCount === availableFlows.length && approvedVersion === resultVersion && resultVersion > 0
 
   const visualSummary = useMemo(
     () => [
@@ -126,22 +157,15 @@ export function BrokerStudioIaSellPropertyPage() {
       },
       {
         label: "Ultima atualizacao",
-        value: buildLastUpdateLabel(availableCompletedCount),
+        value: approvedVersion ? `Versao ${approvedVersion} aprovada` : buildLastUpdateLabel(availableCompletedCount),
       },
     ],
-    [availableCompletedCount, availableFlows.length, selectedProperty],
+    [approvedVersion, availableCompletedCount, availableFlows.length, selectedProperty],
   )
 
   function handlePropertyChange(propertyId: string) {
     setSelectedPropertyId(propertyId)
-    setCurrentStep("selection")
-    setCompletedFlows({
-      construction: false,
-      instagram: false,
-      video: false,
-      buyers: false,
-      owners: false,
-    })
+    restartFlow()
   }
 
   function toggleFlowCompletion(flowKey: CommercialFlowKey) {
@@ -149,6 +173,86 @@ export function BrokerStudioIaSellPropertyPage() {
       ...current,
       [flowKey]: !current[flowKey],
     }))
+  }
+
+  function togglePlanBlock(block: PlanBlockKey) {
+    setApprovedBlocks((current) => ({
+      ...current,
+      [block]: !current[block],
+    }))
+  }
+
+  async function generateCommercialPlan(nextVersion: number) {
+    if (!selectedProperty) return
+
+    setGenerationError(null)
+    setIsSubmitting(true)
+    setCurrentStep("operation")
+
+    try {
+      const response = await fetch("/api/studio-ia/sell-property", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          propertyId: selectedProperty.id,
+          version: nextVersion,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (SellPropertyPlan & { error?: string }) | null
+
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel gerar o plano comercial consolidado.")
+      }
+
+      setPlan({
+        salesStrategy: data.salesStrategy,
+        recommendedAudience: data.recommendedAudience,
+        mainCampaign: data.mainCampaign,
+        caption: data.caption,
+        cta: data.cta,
+        whatsappText: data.whatsappText,
+        timeline: data.timeline,
+        nextActions: data.nextActions,
+        applicableFlows: data.applicableFlows,
+      })
+      setResultVersion(nextVersion)
+      setApprovedVersion(null)
+      setApprovedBlocks({
+        strategy: false,
+        audience: false,
+        campaign: false,
+        caption: false,
+        cta: false,
+        whatsapp: false,
+        timeline: false,
+        nextActions: false,
+      })
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar o plano comercial.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function startCommercialPlan() {
+    if (!selectedProperty) return
+    await generateCommercialPlan(resultVersion + 1)
+  }
+
+  async function generateAnotherVersion() {
+    if (!selectedProperty || isSubmitting) return
+    await generateCommercialPlan(resultVersion + 1)
+  }
+
+  function approvePlan() {
+    if (!plan || !resultVersion) return
+    setApprovedVersion(resultVersion)
+    setCurrentStep("readiness")
   }
 
   function restartFlow() {
@@ -159,6 +263,21 @@ export function BrokerStudioIaSellPropertyPage() {
       buyers: false,
       owners: false,
     })
+    setApprovedBlocks({
+      strategy: false,
+      audience: false,
+      campaign: false,
+      caption: false,
+      cta: false,
+      whatsapp: false,
+      timeline: false,
+      nextActions: false,
+    })
+    setPlan(null)
+    setGenerationError(null)
+    setIsSubmitting(false)
+    setResultVersion(0)
+    setApprovedVersion(null)
     setCurrentStep("selection")
   }
 
@@ -174,7 +293,7 @@ export function BrokerStudioIaSellPropertyPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Vender este imovel</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Centralize a preparacao comercial do imovel, acompanhe os fluxos disponiveis e organize a operacao antes de iniciar a divulgacao.
+                Centralize a preparacao comercial do imovel, acompanhe os fluxos disponiveis e gere um plano comercial consolidado antes de iniciar a divulgacao.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -218,7 +337,7 @@ export function BrokerStudioIaSellPropertyPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio organiza a venda do imovel em uma trilha unica, pronta para incorporar automacao futura.
+                O Studio organiza a venda do imovel em uma trilha unica e agora consolida o plano comercial real no servidor.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -334,6 +453,15 @@ export function BrokerStudioIaSellPropertyPage() {
                     Abrir Central de Operacao
                     <ArrowRight className="size-4" />
                   </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={startCommercialPlan}
+                    disabled={!selectedProperty || isSubmitting}
+                    className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60"
+                  >
+                    {isSubmitting ? "Gerando plano" : resultVersion > 0 ? "Gerar nova versao" : "Gerar plano comercial"}
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -359,7 +487,7 @@ export function BrokerStudioIaSellPropertyPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Central de Operacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Painel simulado para acompanhar o preparo comercial e os materiais gerados antes da operacao.
+                Painel para acompanhar o preparo comercial e revisar o plano consolidado antes da operacao.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -371,8 +499,8 @@ export function BrokerStudioIaSellPropertyPage() {
                 />
                 <InfoMetric
                   label="Materiais gerados"
-                  value={availableCompletedCount > 0 ? `${availableCompletedCount + 1}` : "1"}
-                  description="Contagem simulada considerando campanha, imagens e ativos comerciais."
+                  value={plan ? `${plan.applicableFlows.length + 1}` : availableCompletedCount > 0 ? `${availableCompletedCount + 1}` : "1"}
+                  description="Contagem de frentes comerciais consideradas no plano consolidado."
                 />
                 <InfoMetric
                   label="Fluxos concluidos"
@@ -386,8 +514,8 @@ export function BrokerStudioIaSellPropertyPage() {
                 />
                 <InfoMetric
                   label="Ultima atualizacao"
-                  value={buildLastUpdateLabel(availableCompletedCount)}
-                  description="Referencia simulada para a ultima revisao da operacao comercial."
+                  value={approvedVersion ? `Versao ${approvedVersion}` : resultVersion > 0 ? `Versao ${resultVersion}` : buildLastUpdateLabel(availableCompletedCount)}
+                  description="Referencia da ultima versao gerada ou aprovada dentro do orquestrador."
                 />
               </div>
 
@@ -398,20 +526,153 @@ export function BrokerStudioIaSellPropertyPage() {
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                       {isReadyForOperation
                         ? "Todos os fluxos disponiveis ja foram concluidos. O imovel pode avancar para prontidao comercial."
-                        : "Conclua os fluxos disponiveis para liberar a etapa final de prontidao."}
+                        : "Conclua os fluxos disponiveis e aprove o plano comercial para liberar a etapa final de prontidao."}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={() => setCurrentStep("readiness")}
-                    disabled={!isReadyForOperation}
-                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
-                  >
-                    Validar prontidao
-                    <ArrowRight className="size-4" />
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={startCommercialPlan}
+                      disabled={!selectedProperty || isSubmitting}
+                      className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60"
+                    >
+                      {isSubmitting ? "Gerando plano" : resultVersion > 0 ? "Gerar nova versao" : "Gerar plano"}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setCurrentStep("readiness")}
+                      disabled={!isReadyForOperation}
+                      className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
+                    >
+                      Validar prontidao
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
+
+              {generationError ? (
+                <div className="rounded-[1.15rem] border border-[#F3C7C7] bg-[#FFF7F7] px-4 py-3 text-sm text-[#B42318]">
+                  {generationError}
+                </div>
+              ) : null}
+
+              {isSubmitting ? (
+                <div className="flex min-h-[20rem] flex-col items-center justify-center rounded-[1.35rem] border border-[#009b3a]/18 bg-[#eef9f1] px-6 text-center">
+                  <LoaderCircle className="size-8 animate-spin text-[#009b3a]" />
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Gerando plano comercial com IA</p>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-[#5F6B7A]">
+                    Consolidando estrategia de venda, publico, campanha principal, cronograma e proximas acoes para este imovel.
+                  </p>
+                </div>
+              ) : plan ? (
+                <div className="grid gap-4">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <PlanPreviewCard
+                      title="Estrategia de venda"
+                      approved={approvedBlocks.strategy}
+                      onApprove={() => togglePlanBlock("strategy")}
+                      content={<ParagraphCard text={plan.salesStrategy} />}
+                    />
+                    <PlanPreviewCard
+                      title="Publico recomendado"
+                      approved={approvedBlocks.audience}
+                      onApprove={() => togglePlanBlock("audience")}
+                      content={<ParagraphCard text={plan.recommendedAudience} />}
+                    />
+                    <PlanPreviewCard
+                      title="Campanha principal"
+                      approved={approvedBlocks.campaign}
+                      onApprove={() => togglePlanBlock("campaign")}
+                      content={<ParagraphCard text={plan.mainCampaign} />}
+                    />
+                    <PlanPreviewCard
+                      title="Legenda"
+                      approved={approvedBlocks.caption}
+                      onApprove={() => togglePlanBlock("caption")}
+                      content={<ParagraphCard text={plan.caption} />}
+                    />
+                    <PlanPreviewCard
+                      title="CTA"
+                      approved={approvedBlocks.cta}
+                      onApprove={() => togglePlanBlock("cta")}
+                      content={
+                        <div className="rounded-[1.15rem] border border-black/[0.06] bg-white p-4">
+                          <div className="inline-flex rounded-full bg-[#009b3a] px-4 py-2 text-sm font-semibold text-white">
+                            {plan.cta}
+                          </div>
+                        </div>
+                      }
+                    />
+                    <PlanPreviewCard
+                      title="Texto para WhatsApp"
+                      approved={approvedBlocks.whatsapp}
+                      onApprove={() => togglePlanBlock("whatsapp")}
+                      content={<ParagraphCard text={plan.whatsappText} />}
+                    />
+                    <PlanPreviewCard
+                      title="Cronograma de divulgacao"
+                      approved={approvedBlocks.timeline}
+                      onApprove={() => togglePlanBlock("timeline")}
+                      content={<ListCard items={plan.timeline} prefix="Etapa" />}
+                    />
+                    <PlanPreviewCard
+                      title="Proximas acoes"
+                      approved={approvedBlocks.nextActions}
+                      onApprove={() => togglePlanBlock("nextActions")}
+                      content={<ListCard items={plan.nextActions} prefix="Acao" />}
+                    />
+                  </div>
+
+                  <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Fluxos orquestrados</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {plan.applicableFlows.map((flow) => (
+                        <span key={flow} className="rounded-full bg-[#eef9f1] px-3 py-1.5 text-sm text-[#009b3a]">
+                          {flow}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={`rounded-[1.25rem] border p-4 ${approvedVersion === resultVersion && resultVersion > 0 ? "border-[#009b3a]/22 bg-[#eef9f1]" : "border-black/[0.06] bg-[#fbfbf8]"}`}>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="text-base font-semibold text-[#050505]">
+                          {approvedVersion === resultVersion && resultVersion > 0 ? "Plano comercial aprovado" : "Plano comercial pronto para revisao"}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-[#6B7280]">
+                          {approvedVersion === resultVersion && resultVersion > 0
+                            ? `A versao ${approvedVersion} foi aprovada para conduzir a operacao comercial deste imovel.`
+                            : "Revise o plano consolidado, aprove os blocos desejados e finalize ou gere outra versao."}
+                        </p>
+                        <p className="mt-2 text-sm text-[#6B7280]">{approvedBlocksCount} de 8 blocos revisados</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {approvedVersion !== resultVersion || resultVersion === 0 ? (
+                          <Button
+                            type="button"
+                            onClick={approvePlan}
+                            className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]"
+                          >
+                            Aprovar plano
+                            <CheckCircle2 className="size-4" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={generateAnotherVersion}
+                          className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                        >
+                          Gerar nova versao
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {currentStep === "readiness" ? (
                 <div className="rounded-[1.35rem] border border-[#009b3a]/22 bg-[#eef9f1] p-5">
@@ -423,7 +684,7 @@ export function BrokerStudioIaSellPropertyPage() {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setCurrentStep("checklist")}
+                      onClick={() => setCurrentStep("operation")}
                       className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                     >
                       Abrir fluxo novamente
@@ -445,7 +706,7 @@ export function BrokerStudioIaSellPropertyPage() {
                   <Clock3 className="mx-auto size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Prontidao comercial em preparacao</p>
                   <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                    Conclua as acoes disponiveis do checklist para liberar a mensagem final deste orquestrador.
+                    Conclua as acoes disponiveis do checklist e aprove o plano comercial para liberar a mensagem final deste orquestrador.
                   </p>
                 </div>
               )}
@@ -457,7 +718,7 @@ export function BrokerStudioIaSellPropertyPage() {
               <CardTitle className="text-xl text-[#050505]">Estado atual</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-5 pt-0">
-              {buildStatusItems(currentStep, isReadyForOperation).map((item) => (
+              {buildStatusItems(currentStep, isReadyForOperation, approvedVersion === resultVersion && resultVersion > 0).map((item) => (
                 <div key={item.title} className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">{item.title}</p>
                   <p className="mt-2 text-sm font-semibold text-[#050505]">{item.value}</p>
@@ -564,6 +825,56 @@ function InfoMetric({ label, value, description }: { label: string; value: strin
   )
 }
 
+function PlanPreviewCard({
+  title,
+  approved,
+  onApprove,
+  content,
+}: {
+  title: string
+  approved: boolean
+  onApprove: () => void
+  content: React.ReactNode
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-[#050505]">{title}</p>
+        <Button
+          type="button"
+          variant={approved ? "default" : "ghost"}
+          onClick={onApprove}
+          className={approved
+            ? "h-9 rounded-xl bg-[#009b3a] px-3 text-sm font-semibold text-white hover:bg-[#008633]"
+            : "h-9 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"}
+        >
+          {approved ? "Aprovado" : "Aprovar"}
+        </Button>
+      </div>
+      {content}
+    </div>
+  )
+}
+
+function ParagraphCard({ text }: { text: string }) {
+  return <p className="rounded-[1.15rem] border border-black/[0.06] bg-white p-4 text-sm leading-6 text-[#5F6B7A]">{text}</p>
+}
+
+function ListCard({ items, prefix }: { items: string[]; prefix: string }) {
+  return (
+    <div className="grid gap-3">
+      {items.map((item, index) => (
+        <div key={`${prefix}-${index}-${item}`} className="rounded-[1rem] border border-black/[0.06] bg-white p-4">
+          <span className="rounded-full bg-[#eef9f1] px-2.5 py-1 text-[11px] font-medium text-[#009b3a]">
+            {prefix} {index + 1}
+          </span>
+          <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">{item}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function buildLastUpdateLabel(completedCount: number) {
   if (completedCount >= 2) return "Agora mesmo"
   if (completedCount === 1) return "Ha poucos minutos"
@@ -577,7 +888,7 @@ function stepOrder(step: StudioStep) {
   return 3
 }
 
-function buildStatusItems(step: StudioStep, isReadyForOperation: boolean) {
+function buildStatusItems(step: StudioStep, isReadyForOperation: boolean, isPlanApproved: boolean) {
   return [
     {
       title: "Etapa atual",
@@ -593,13 +904,13 @@ function buildStatusItems(step: StudioStep, isReadyForOperation: boolean) {
     },
     {
       title: "Integracoes",
-      value: "Fluxos conectados por navegacao",
-      description: "Os fluxos ja existentes abrem suas rotas proprias e os demais permanecem sinalizados como em breve.",
+      value: "OpenAI + fluxos existentes",
+      description: "O plano comercial e gerado no servidor com OpenAI e considera os fluxos do Studio IA ja implementados.",
     },
     {
       title: "Prontidao",
-      value: isReadyForOperation ? "Liberada" : "Em andamento",
-      description: "A etapa final e habilitada apenas quando todos os fluxos disponiveis forem marcados como concluidos.",
+      value: isReadyForOperation ? "Liberada" : isPlanApproved ? "Plano aprovado" : "Em andamento",
+      description: "A etapa final e habilitada apenas quando todos os fluxos disponiveis forem concluidos e o plano for aprovado.",
     },
   ]
 }
