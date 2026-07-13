@@ -151,17 +151,14 @@ export default function Home() {
       <div className="relative mx-auto max-w-[1320px] px-4 pb-20 pt-7 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-6 rounded-[26px] border border-black/[0.045] bg-white/92 px-5 py-3.5 shadow-[0_12px_40px_rgba(15,23,42,0.045)] backdrop-blur-xl sm:px-7">
           <Link href="/" className="flex items-center gap-3" aria-label="EME">
-            <div className="flex size-10 items-center justify-center rounded-[16px] bg-[#16a34a] shadow-[0_10px_22px_rgba(22,163,74,0.18)]">
-              <Image
-                src="/images/eme-logo-official.png"
-                alt="EME"
-                width={52}
-                height={52}
-                className="h-8 w-8 object-contain brightness-0 invert"
-                priority
-              />
-            </div>
-            <span className="text-[1.95rem] font-bold tracking-[-0.045em] text-[#16a34a]">EME</span>
+            <Image
+              src="/images/eme-logo-header-official.png"
+              alt="EME"
+              width={220}
+              height={84}
+              className="h-9 w-auto object-contain sm:h-10"
+              priority
+            />
           </Link>
 
           <nav className="hidden items-center gap-9 lg:flex">
@@ -393,18 +390,16 @@ function HeroConversationMock() {
   return (
     <div className="relative mx-auto w-full max-w-[820px] lg:-mr-3">
       <div className="absolute inset-0 -z-10 rounded-[44px] bg-[radial-gradient(circle_at_top,rgba(22,163,74,0.12),transparent_36%)] blur-3xl" />
-      <div className="overflow-hidden rounded-[32px] border border-black/[0.055] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.065)]">
-        <div className="flex min-h-[650px] items-center justify-end bg-[linear-gradient(180deg,#ffffff_0%,#fcfdfb_100%)] p-5 sm:p-7">
-          <div className="relative h-full min-h-[590px] w-full max-w-[620px]">
-            <Image
-              src="/images/landing-cos-reference-refined.png"
-              alt="Tela real do COS no portal do corretor"
-              fill
-              priority
-              className="object-contain object-center"
-              sizes="(min-width: 1024px) 48vw, 100vw"
-            />
-          </div>
+      <div className="flex min-h-[650px] items-center justify-center p-2 sm:p-4">
+        <div className="relative h-full min-h-[590px] w-full max-w-[620px] drop-shadow-[0_22px_46px_rgba(15,23,42,0.10)]">
+          <Image
+            src="/images/landing-cos-reference-refined.png"
+            alt="Tela real do COS no portal do corretor"
+            fill
+            priority
+            className="object-contain object-center"
+            sizes="(min-width: 1024px) 48vw, 100vw"
+          />
         </div>
       </div>
     </div>
