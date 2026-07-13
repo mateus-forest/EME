@@ -75,8 +75,9 @@ const commercialFlows: CommercialFlow[] = [
     key: "video",
     title: "Criar video do imovel",
     description: "Estruture a frente audiovisual da divulgacao comercial.",
+    href: "/corretor/studio-ia/criar-video-do-imovel",
     icon: Video,
-    isAvailable: false,
+    isAvailable: true,
   },
   {
     key: "buyers",

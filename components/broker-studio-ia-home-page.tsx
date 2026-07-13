@@ -46,7 +46,9 @@ const studioActions: StudioAction[] = [
     title: "Criar video do imovel",
     description: "Estruture a producao de um video comercial com foco em captacao de atencao e visitas.",
     icon: Video,
-    status: "Em breve",
+    href: "/corretor/studio-ia/criar-video-do-imovel",
+    cta: "Abrir fluxo",
+    status: "Disponivel",
   },
   {
     title: "Transformar obra em imovel pronto",
