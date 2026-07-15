@@ -1,127 +1,4 @@
-import { formatCurrencyBRLFromCents } from "./currency"
-
-type ProposalLead = {
-  name?: string | null
-  phone?: string | null
-  email?: string | null
-} | null
-
-type ProposalProperty = {
-  id?: string | null
-  publicCode?: number | null
-  title?: string | null
-  city?: string | null
-  neighborhood?: string | null
-  price?: number | null
-  purpose?: string | null
-  type?: string | null
-  area?: string | null
-  imageUrl?: string | null
-  bedrooms?: number | null
-  parkingSpots?: number | null
-} | null
-
-type ProposalBroker = {
-  name?: string | null
-  phone?: string | null
-  email?: string | null
-  city?: string | null
-  creci?: string | null
-  photoUrl?: string | null
-} | null
-
-function valueOrFallback(value?: string | number | null) {
-  if (value === 0) return "0"
-  return value ? String(value) : "Nao informado"
-}
-
-function escapeHtml(value?: string | number | null) {
-  return valueOrFallback(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-}
-
-function propertyPurposeLabel(purpose?: string | null) {
-  return purpose === "RENT" ? "Locacao" : "Venda"
-}
-
-function propertyTypeLabel(type?: string | null) {
-  if (type === "HOUSE") return "Casa"
-  if (type === "COMMERCIAL") return "Comercial"
-  if (type === "LAND") return "Terreno"
-  if (type === "OFFICE") return "Sala comercial"
-  if (type === "STORE") return "Loja"
-  if (type === "PENTHOUSE") return "Cobertura"
-  if (type === "APARTMENT") return "Apartamento"
-  return type || null
-}
-
-function initials(value?: string | null) {
-  const parts = valueOrFallback(value)
-    .split(/\s+/)
-    .filter((part) => part && part !== "Nao" && part !== "informado")
-  return (parts[0]?.[0] ?? "E") + (parts[1]?.[0] ?? "M")
-}
-
-function digitsOnly(value?: string | null) {
-  return (value || "").replace(/\D+/g, "")
-}
-
-function buildWhatsAppUrl(phone?: string | null) {
-  const digits = digitsOnly(phone)
-  if (!digits) return ""
-  return `https://wa.me/${digits}`
-}
-
-function buildQrCodeUrl(value: string) {
-  if (!value) return ""
-  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${encodeURIComponent(value)}`
-}
-
-function renderDataItem(label: string, value?: string | number | null, emphasis = false) {
-  return `
-    <div class="data-item ${emphasis ? "data-item-emphasis" : ""}">
-      <div class="data-label">${escapeHtml(label)}</div>
-      <div class="data-value">${escapeHtml(value)}</div>
-    </div>
-  `
-}
-
-export function buildProposalHtml(input: {
-  lead?: ProposalLead
-  property?: ProposalProperty
-  broker?: ProposalBroker
-  conditions?: {
-    entry?: string | null
-    installments?: string | null
-    paymentMethod?: string | null
-    notes?: string | null
-    validity?: string | null
-  } | string
-  notes?: string
-}) {
-  const property = input.property
-  const lead = input.lead
-  const broker = input.broker
-  const price = property?.price ? formatCurrencyBRLFromCents(property.price) : "Nao informado"
-  const generatedAt = new Date().toLocaleDateString("pt-BR")
-  const conditions = typeof input.conditions === "string" ? { notes: input.conditions } : input.conditions
-  const validity = conditions?.validity || "Nao informado"
-  const brokerName = valueOrFallback(broker?.name)
-  const leadName = valueOrFallback(lead?.name)
-  const purpose = propertyPurposeLabel(property?.purpose)
-  const propertyType = propertyTypeLabel(property?.type)
-  const brokerPhoto = broker?.photoUrl?.trim()
-  const propertyImage = property?.imageUrl?.trim()
-  const brokerWhatsappUrl = buildWhatsAppUrl(broker?.phone)
-  const brokerQrCodeUrl = buildQrCodeUrl(brokerWhatsappUrl)
-  const proposalOnlineUrl = ""
-  const proposalQrCodeUrl = buildQrCodeUrl(proposalOnlineUrl)
-  const finalNotes = conditions?.notes || input.notes || "Nao informado"
-
-  return `<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -669,7 +546,7 @@ export function buildProposalHtml(input: {
         </div>
         <div class="meta-card">
           <div class="meta-label">Data da proposta</div>
-          <div class="meta-value">${escapeHtml(generatedAt)}</div>
+          <div class="meta-value">15/07/2026</div>
         </div>
       </header>
 
@@ -683,26 +560,26 @@ export function buildProposalHtml(input: {
             </div>
 
             <div>
-              <p class="property-name">${escapeHtml(property?.title)}</p>
-              <div class="property-location">${escapeHtml(property?.neighborhood)}${property?.neighborhood && property?.city ? " • " : ""}${escapeHtml(property?.city)}</div>
+              <p class="property-name">Apartamento Panorama Jardim Europa</p>
+              <div class="property-location">Jardim Europa • Sao Paulo</div>
             </div>
 
             <div class="price-highlight">
               <div class="price-label">Valor do imovel</div>
-              <p class="price-value">${escapeHtml(price)}</p>
+              <p class="price-value">R$ 4.850.000,00</p>
               <div class="price-caption">Condição principal em destaque para orientar a decisao comercial desde o primeiro contato com a proposta.</div>
             </div>
 
             <div class="hero-badges">
-              <span class="badge badge-strong">${escapeHtml(purpose)}</span>
-              <span class="badge">${escapeHtml(propertyType)}</span>
-              <span class="badge">Codigo ${escapeHtml(property?.publicCode ?? property?.id)}</span>
+              <span class="badge badge-strong">Venda</span>
+              <span class="badge">Apartamento</span>
+              <span class="badge">Codigo 1842</span>
             </div>
           </div>
 
           <div class="hero-media">
             <div class="property-photo">
-              ${propertyImage ? `<img src="${escapeHtml(propertyImage)}" alt="${escapeHtml(property?.title)}" />` : `<div class="property-photo-empty">Imagem principal nao informada</div>`}
+              <img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="Apartamento Panorama Jardim Europa" />
             </div>
           </div>
         </section>
@@ -715,15 +592,60 @@ export function buildProposalHtml(input: {
                 <p class="section-subtitle">Os dados principais estao organizados de forma objetiva para valorizar o ativo sem excessos visuais.</p>
               </div>
               <div class="property-data-grid">
-                ${renderDataItem("Imovel", property?.title, true)}
-                ${renderDataItem("Codigo", property?.publicCode ?? property?.id)}
-                ${renderDataItem("Finalidade", purpose)}
-                ${renderDataItem("Tipo", propertyType)}
-                ${renderDataItem("Bairro", property?.neighborhood)}
-                ${renderDataItem("Cidade", property?.city)}
-                ${renderDataItem("Metragem", property?.area)}
-                ${renderDataItem("Dormitorios", property?.bedrooms)}
-                ${renderDataItem("Vagas", property?.parkingSpots)}
+                
+    <div class="data-item data-item-emphasis">
+      <div class="data-label">Imovel</div>
+      <div class="data-value">Apartamento Panorama Jardim Europa</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Codigo</div>
+      <div class="data-value">1842</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Finalidade</div>
+      <div class="data-value">Venda</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Tipo</div>
+      <div class="data-value">Apartamento</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Bairro</div>
+      <div class="data-value">Jardim Europa</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Cidade</div>
+      <div class="data-value">Sao Paulo</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Metragem</div>
+      <div class="data-value">248 m² privativos</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Dormitorios</div>
+      <div class="data-value">4</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Vagas</div>
+      <div class="data-value">3</div>
+    </div>
+  
               </div>
             </section>
 
@@ -733,13 +655,28 @@ export function buildProposalHtml(input: {
                 <p class="section-subtitle">Estrutura comercial apresentada com clareza para apoiar a analise e a negociacao.</p>
               </div>
               <div class="condition-grid">
-                ${renderDataItem("Entrada", conditions?.entry)}
-                ${renderDataItem("Parcelamento", conditions?.installments)}
-                ${renderDataItem("Forma de pagamento", conditions?.paymentMethod)}
+                
+    <div class="data-item ">
+      <div class="data-label">Entrada</div>
+      <div class="data-value">20% de entrada</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Parcelamento</div>
+      <div class="data-value">Saldo com financiamento bancario ou fluxo personalizado</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Forma de pagamento</div>
+      <div class="data-value">Pagamento a vista, financiamento ou composicao com recursos proprios</div>
+    </div>
+  
               </div>
               <div class="notes-block">
                 <div class="data-label">Observacoes finais</div>
-                <p class="notes-text">${escapeHtml(finalNotes)}</p>
+                <p class="notes-text">Valores e condicoes sujeitos a validacao documental, disponibilidade do imovel e aprovacao cadastral. Esta proposta foi organizada para facilitar a analise comercial e pode ser ajustada em comum acordo entre as partes.</p>
               </div>
             </section>
           </div>
@@ -751,9 +688,24 @@ export function buildProposalHtml(input: {
                 <p class="section-subtitle">Dados organizados para manter o atendimento personalizado e profissional.</p>
               </div>
               <div class="client-card">
-                ${renderDataItem("Nome", leadName, true)}
-                ${renderDataItem("Telefone", lead?.phone)}
-                ${renderDataItem("E-mail", lead?.email)}
+                
+    <div class="data-item data-item-emphasis">
+      <div class="data-label">Nome</div>
+      <div class="data-value">Mariana Costa</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">Telefone</div>
+      <div class="data-value">(11) 99876-5432</div>
+    </div>
+  
+                
+    <div class="data-item ">
+      <div class="data-label">E-mail</div>
+      <div class="data-value">mariana.costa@email.com</div>
+    </div>
+  
               </div>
             </section>
 
@@ -764,30 +716,30 @@ export function buildProposalHtml(input: {
               </div>
 
               <div class="broker-top">
-                <div class="broker-avatar">${brokerPhoto ? `<img src="${escapeHtml(brokerPhoto)}" alt="${escapeHtml(brokerName)}" />` : escapeHtml(initials(broker?.name))}</div>
+                <div class="broker-avatar"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&amp;fit=crop&amp;w=600&amp;q=80" alt="Aline Moreira" /></div>
                 <div>
                   <div class="broker-role">Atendimento EME</div>
-                  <div class="broker-name">${escapeHtml(brokerName)}</div>
-                  <div class="broker-creci">${escapeHtml(broker?.creci)}</div>
+                  <div class="broker-name">Aline Moreira</div>
+                  <div class="broker-creci">CRECI 123456-F</div>
                 </div>
               </div>
 
               <div class="broker-list">
                 <div class="broker-row">
                   <div class="broker-row-label">Telefone</div>
-                  <div class="broker-row-value">${escapeHtml(broker?.phone)}</div>
+                  <div class="broker-row-value">5511997654321</div>
                 </div>
                 <div class="broker-row">
                   <div class="broker-row-label">E-mail</div>
-                  <div class="broker-row-value">${escapeHtml(broker?.email)}</div>
+                  <div class="broker-row-value">aline.moreira@emeimoveis.com.br</div>
                 </div>
                 <div class="broker-row">
                   <div class="broker-row-label">Cidade</div>
-                  <div class="broker-row-value">${escapeHtml(broker?.city || property?.city)}</div>
+                  <div class="broker-row-value">Sao Paulo</div>
                 </div>
                 <div class="broker-row">
                   <div class="broker-row-label">CRECI</div>
-                  <div class="broker-row-value">${escapeHtml(broker?.creci)}</div>
+                  <div class="broker-row-value">CRECI 123456-F</div>
                 </div>
               </div>
             </section>
@@ -798,36 +750,23 @@ export function buildProposalHtml(input: {
           <div class="footer-grid">
             <div class="footer-column">
               <div class="footer-title">Validade da proposta</div>
-              <div class="footer-value">${escapeHtml(validity)}</div>
-              <div class="footer-note">${escapeHtml(finalNotes)}</div>
+              <div class="footer-value">7 dias corridos</div>
+              <div class="footer-note">Valores e condicoes sujeitos a validacao documental, disponibilidade do imovel e aprovacao cadastral. Esta proposta foi organizada para facilitar a analise comercial e pode ser ajustada em comum acordo entre as partes.</div>
             </div>
 
             <div class="footer-column">
               <div class="footer-title">Visualizar proposta online</div>
-              ${
-                proposalOnlineUrl
-                  ? `
-                <div class="qr-card">
-                  <div class="qr-box"><img src="${proposalQrCodeUrl}" alt="QR Code da proposta" /></div>
-                  <div class="footer-link">${escapeHtml(proposalOnlineUrl)}</div>
-                </div>
-              `
-                  : `<div class="qr-empty">Visualizacao online nao disponivel nesta geracao.</div>`
-              }
+              <div class="qr-empty">Visualizacao online nao disponivel nesta geracao.</div>
             </div>
 
             <div class="footer-column">
               <div class="footer-title">Falar com o corretor</div>
-              ${
-                brokerWhatsappUrl
-                  ? `
+              
                 <div class="qr-card">
-                  <div class="qr-box"><img src="${brokerQrCodeUrl}" alt="QR Code para falar com o corretor" /></div>
-                  <div class="footer-link">${escapeHtml(brokerWhatsappUrl)}</div>
+                  <div class="qr-box"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=https%3A%2F%2Fwa.me%2F5511997654321" alt="QR Code para falar com o corretor" /></div>
+                  <div class="footer-link">https://wa.me/5511997654321</div>
                 </div>
-              `
-                  : `<div class="qr-empty">Contato instantaneo indisponivel sem telefone do corretor.</div>`
-              }
+              
             </div>
           </div>
           <div class="signature-line">Documento comercial preparado pelo EME para uma apresentacao clara, elegante e profissional.</div>
@@ -836,17 +775,4 @@ export function buildProposalHtml(input: {
     </section>
   </main>
 </body>
-</html>`
-}
-
-export function proposalHtmlToText(html: string) {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, "\n")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim()
-}
+</html>
