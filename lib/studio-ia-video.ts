@@ -1,9 +1,9 @@
 import "server-only"
 
-import type OpenAI from "openai"
+import { randomUUID } from "node:crypto"
 
-import { getOpenAIClient } from "@/lib/openai-server"
-import { savePropertyGeneratedVideo } from "@/lib/property-storage"
+import { getLumaAIEnv } from "@/lib/env.server"
+import { savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
 import {
   studioVideoActionType,
   studioVideoDurations,
@@ -45,18 +45,57 @@ export type StudioVideoPropertyContext = {
 
 type ReferenceInput = { kind: "url"; url: string } | { kind: "file"; file: File }
 
-const formatSizeMap: Record<(typeof studioVideoFormats)[number], OpenAI.Videos.VideoSize> = {
-  "Reel vertical 9:16": "720x1280",
-  "Story vertical 9:16": "720x1280",
-  "Paisagem 16:9": "1280x720",
-  "Quadrado 1:1": "1024x1792",
+type LumaGenerationCreateRequest = {
+  prompt: string
+  model: string
+  resolution: "540p" | "720p" | "1080p"
+  duration: "5s" | "10s"
+  aspect_ratio: "9:16" | "16:9" | "1:1"
+  keyframes?: {
+    frame0?: {
+      type: "image"
+      url: string
+    }
+  }
 }
 
-const durationSecondsMap: Record<(typeof studioVideoDurations)[number], OpenAI.Videos.VideoSeconds> = {
-  "15 segundos": "12",
-  "30 segundos": "12",
-  "45 segundos": "12",
-  "60 segundos": "12",
+type LumaGeneration = {
+  id: string
+  state: string
+  failure_reason: string | null
+  created_at?: string
+  assets?: {
+    video?: string
+  }
+  version?: string
+  request?: {
+    prompt?: string
+    aspect_ratio?: string
+    loop?: boolean
+  }
+}
+
+const LUMA_API_BASE_URL = "https://api.lumalabs.ai/dream-machine/v1"
+
+const formatAspectRatioMap: Record<(typeof studioVideoFormats)[number], LumaGenerationCreateRequest["aspect_ratio"]> = {
+  "Reel vertical 9:16": "9:16",
+  "Story vertical 9:16": "9:16",
+  "Paisagem 16:9": "16:9",
+  "Quadrado 1:1": "1:1",
+}
+
+const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaGenerationCreateRequest["resolution"]> = {
+  "Reel vertical 9:16": "720p",
+  "Story vertical 9:16": "720p",
+  "Paisagem 16:9": "720p",
+  "Quadrado 1:1": "540p",
+}
+
+const durationMap: Record<(typeof studioVideoDurations)[number], LumaGenerationCreateRequest["duration"]> = {
+  "15 segundos": "10s",
+  "30 segundos": "10s",
+  "45 segundos": "10s",
+  "60 segundos": "10s",
 }
 
 const styleDirectionMap: Record<(typeof studioVideoStyles)[number], string> = {
@@ -75,6 +114,48 @@ const objectiveDirectionMap: Record<(typeof studioVideoObjectives)[number], stri
 
 function clipText(value: string, maxLength: number) {
   return value.trim().replace(/\s+/g, " ").slice(0, maxLength)
+}
+
+function getLumaAuthHeaders() {
+  const { apiKey } = getLumaAIEnv()
+
+  if (!apiKey) {
+    throw new Error("LUMAAI_API_KEY_NOT_CONFIGURED")
+  }
+
+  return {
+    accept: "application/json",
+    authorization: `Bearer ${apiKey}`,
+  }
+}
+
+async function parseLumaJsonResponse<T>(response: Response) {
+  const data = (await response.json().catch(() => null)) as T | { error?: string; detail?: string; message?: string } | null
+
+  if (!response.ok) {
+    const detail =
+      data && typeof data === "object"
+        ? "error" in data
+          ? data.error
+          : "detail" in data
+            ? data.detail
+            : "message" in data
+              ? data.message
+              : ""
+        : ""
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(detail || "LUMAAI_API_KEY_INVALID")
+    }
+
+    throw new Error(detail || `Luma AI retornou erro ${response.status}.`)
+  }
+
+  if (!data) {
+    throw new Error("Luma AI nao retornou resposta valida.")
+  }
+
+  return data as T
 }
 
 export function parseStudioVideoJobContent(content: string) {
@@ -140,38 +221,80 @@ function buildVideoPrompt(input: StudioVideoRequest, property?: StudioVideoPrope
   return [
     "Crie um video imobiliario comercial em portugues do Brasil.",
     `Formato final desejado: ${input.format}.`,
-    `Duracao solicitada no Studio IA: ${input.duration}.`,
+    `Duracao alvo no Studio IA: ${input.duration}. Use a duracao suportada mais proxima pela Luma mantendo o melhor resultado comercial possivel.`,
     `Objetivo comercial: ${input.objective}.`,
     `Estilo visual: ${input.style}. ${styleDirectionMap[input.style]}.`,
     `Direcao narrativa: ${objectiveDirectionMap[input.objective]}.`,
     property
       ? `Contexto do imovel: ${property.title}; tipo ${property.type}; finalidade ${property.purpose}; localizacao ${location}; preco ${property.price}; quartos ${property.bedrooms}; banheiros ${property.bathrooms}; vagas ${property.parkingSpots}.`
-      : "Use apenas as imagens enviadas como base do video.",
+      : "Use apenas a imagem enviada como base do video.",
     property?.description ? `Descricao atual do imovel: ${clipText(property.description, 500)}.` : "",
     "Nao inclua textos sobrepostos, legendas, logos, marcas d'agua ou interfaces.",
     "Mantenha aparencia fotografica realista, pronta para uso comercial imobiliario.",
-    "Preserve a coerencia arquitetonica do imovel e nao invente caracteristicas conflitantes com as imagens.",
+    "Preserve a coerencia arquitetonica do imovel e nao invente caracteristicas conflitantes com a imagem de referencia.",
+    "A imagem de referencia deve ser tratada como frame inicial e guia principal da cena.",
     input.additionalInstructions ? `Observacoes adicionais do corretor: ${input.additionalInstructions}.` : "",
   ]
     .filter(Boolean)
     .join("\n")
 }
 
+async function createLumaGeneration(payload: LumaGenerationCreateRequest) {
+  const response = await fetch(`${LUMA_API_BASE_URL}/generations`, {
+    method: "POST",
+    headers: {
+      ...getLumaAuthHeaders(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  })
+
+  return parseLumaJsonResponse<LumaGeneration>(response)
+}
+
+async function getLumaGeneration(generationId: string) {
+  const response = await fetch(`${LUMA_API_BASE_URL}/generations/${generationId}`, {
+    method: "GET",
+    headers: getLumaAuthHeaders(),
+    cache: "no-store",
+  })
+
+  return parseLumaJsonResponse<LumaGeneration>(response)
+}
+
+async function resolveReferenceImageUrl(referenceInput: ReferenceInput, propertyId?: string) {
+  if (referenceInput.kind === "url") {
+    return referenceInput.url
+  }
+
+  const referenceId = propertyId || randomUUID()
+  return saveStudioVideoReferenceImage(referenceId, referenceInput.file)
+}
+
 export function getStudioVideoProviderConfig() {
-  const provider = process.env.STUDIO_IA_VIDEO_PROVIDER?.trim().toLowerCase() || "openai"
+  const { apiKey, videoModel } = getLumaAIEnv()
 
   return {
-    provider,
-    isConfigured: provider === "openai" && Boolean(getOpenAIClient()),
+    provider: "lumaai",
+    model: videoModel,
+    isConfigured: Boolean(apiKey),
     estimatedCredits: studioVideoEstimatedCredits,
   }
 }
 
-function mapVideoStatus(status: OpenAI.Videos.Video["status"]): StudioVideoResult["generationStatus"] {
-  if (status === "completed") return "completed"
-  if (status === "failed") return "failed"
-  if (status === "in_progress") return "processing"
+function mapVideoStatus(state: string): StudioVideoResult["generationStatus"] {
+  if (state === "completed") return "completed"
+  if (state === "failed") return "failed"
+  if (state === "dreaming") return "processing"
   return "queued"
+}
+
+function mapVideoProgress(state: string) {
+  if (state === "completed") return 100
+  if (state === "dreaming") return 55
+  if (state === "failed") return 0
+  return 10
 }
 
 function createResultFromJob(requestId: string, job: StudioVideoJobContent): StudioVideoResult {
@@ -204,40 +327,35 @@ export async function generateStudioPropertyVideo({
     throw new Error("VIDEO_PROVIDER_NOT_CONFIGURED")
   }
 
-  if (config.provider !== "openai") {
-    throw new Error("VIDEO_PROVIDER_NOT_IMPLEMENTED")
-  }
-
-  const client = getOpenAIClient()
-  if (!client) {
-    throw new Error("VIDEO_PROVIDER_NOT_CONFIGURED")
-  }
-
   const prompt = buildVideoPrompt(input, property)
   const storyboard = buildStoryboard(input, property)
   const shotPlan = buildShotPlan(input, property)
   const script = buildScript(input, property)
-  const video = await client.videos.create({
-    model: "sora-2",
+  const requestPayload: LumaGenerationCreateRequest = {
     prompt,
-    seconds: durationSecondsMap[input.duration],
-    size: formatSizeMap[input.format],
-    input_reference:
-      referenceInput.kind === "file"
-        ? referenceInput.file
-        : {
-            image_url: referenceInput.url,
-          },
-  })
+    model: config.model,
+    resolution: formatResolutionMap[input.format],
+    duration: durationMap[input.duration],
+    aspect_ratio: formatAspectRatioMap[input.format],
+  }
 
+  const referenceImageUrl = await resolveReferenceImageUrl(referenceInput, property?.id)
+  requestPayload.keyframes = {
+    frame0: {
+      type: "image",
+      url: referenceImageUrl,
+    },
+  }
+
+  const generation = await createLumaGeneration(requestPayload)
   const jobContent: StudioVideoJobContent = {
     provider: config.provider,
-    providerVideoId: video.id,
+    providerVideoId: generation.id,
     estimatedCredits: config.estimatedCredits,
     propertyId: property?.id,
     propertyTitle: property?.title,
     propertyLocation: property?.location,
-    referenceImageUrls: input.referenceImageUrls,
+    referenceImageUrls: input.referenceImageUrls.length > 0 ? input.referenceImageUrls : [referenceImageUrl],
     uploadedImages: input.uploadedImages,
     format: input.format,
     duration: input.duration,
@@ -248,30 +366,26 @@ export async function generateStudioPropertyVideo({
     storyboard,
     script,
     shotPlan,
-    generationStatus: mapVideoStatus(video.status),
-    progress: Math.max(0, Math.min(100, video.progress || 0)),
+    generationStatus: mapVideoStatus(generation.state),
+    progress: mapVideoProgress(generation.state),
     creditsCharged: false,
     creditsRefunded: false,
+    errorMessage: generation.failure_reason ? clipText(generation.failure_reason, 400) : undefined,
   }
 
   return {
-    providerVideoId: video.id,
+    providerVideoId: generation.id,
     jobContent,
   }
 }
 
 export async function refreshStudioVideoJob(job: StudioVideoJobContent) {
-  const client = getOpenAIClient()
-  if (!client) {
-    throw new Error("VIDEO_PROVIDER_NOT_CONFIGURED")
-  }
-
-  const providerVideo = await client.videos.retrieve(job.providerVideoId)
-  const nextStatus = mapVideoStatus(providerVideo.status)
+  const generation = await getLumaGeneration(job.providerVideoId)
+  const nextStatus = mapVideoStatus(generation.state)
   let videoUrl = job.videoUrl
 
-  if (providerVideo.status === "completed" && !videoUrl) {
-    const response = await client.videos.downloadContent(providerVideo.id)
+  if (generation.state === "completed" && generation.assets?.video && !videoUrl) {
+    const response = await fetch(generation.assets.video, { cache: "no-store" })
     if (!response.ok) {
       throw new Error("VIDEO_DOWNLOAD_FAILED")
     }
@@ -283,9 +397,9 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent) {
   return {
     ...job,
     generationStatus: nextStatus,
-    progress: Math.max(0, Math.min(100, providerVideo.progress || (nextStatus === "completed" ? 100 : 0))),
+    progress: mapVideoProgress(generation.state),
     videoUrl,
-    errorMessage: providerVideo.error?.message ? clipText(providerVideo.error.message, 400) : job.errorMessage,
+    errorMessage: generation.failure_reason ? clipText(generation.failure_reason, 400) : job.errorMessage,
   } satisfies StudioVideoJobContent
 }
 

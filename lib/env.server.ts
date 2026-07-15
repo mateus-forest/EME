@@ -76,6 +76,13 @@ export function getOpenAIEnv() {
   }
 }
 
+export function getLumaAIEnv() {
+  return {
+    apiKey: readEnv("LUMAAI_API_KEY"),
+    videoModel: readEnv("LUMAAI_VIDEO_MODEL") || "ray-2",
+  }
+}
+
 export function getWhatsAppEnv() {
   const enabled = parseBoolean(readEnv("WHATSAPP_ENABLED"), false)
 

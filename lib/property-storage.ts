@@ -135,6 +135,19 @@ export async function savePropertyGeneratedImage(propertyId: string, imageBuffer
   })
 }
 
+export async function saveStudioVideoReferenceImage(referenceId: string, file: File) {
+  const mimeType = file.type || "image/jpeg"
+  const extension = mimeType === "image/webp" ? ".webp" : mimeType === "image/png" ? ".png" : ".jpg"
+
+  return uploadPropertyBuffer({
+    propertyId: referenceId,
+    buffer: Buffer.from(await file.arrayBuffer()),
+    folder: "studio-ia/references",
+    extension,
+    contentType: mimeType,
+  })
+}
+
 export async function savePropertyGeneratedVideo(propertyId: string, videoBuffer: Buffer, mimeType = "video/mp4") {
   const extension = mimeType === "video/webm" ? ".webm" : ".mp4"
   return uploadPropertyBuffer({

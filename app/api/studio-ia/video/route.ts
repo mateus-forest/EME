@@ -162,6 +162,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_NOT_CONFIGURED") {
+      return NextResponse.json(
+        { error: "A chave LUMAAI_API_KEY nao esta configurada para o fluxo de video do Studio IA." },
+        { status: 503 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_INVALID") {
+      return NextResponse.json(
+        { error: "A chave LUMAAI_API_KEY foi rejeitada pela Luma AI." },
+        { status: 502 },
+      )
+    }
+
     return NextResponse.json(
       { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao consultar o video." },
       { status: 500 },
@@ -266,7 +280,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          error: "A geracao de video do Studio IA ainda nao esta configurada neste ambiente.",
+          error: "A geracao de video do Studio IA requer a configuracao da LUMAAI_API_KEY neste ambiente.",
           estimatedCredits: config.estimatedCredits,
           providerConfigured: false,
         },
@@ -274,16 +288,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (caughtError instanceof Error && caughtError.message === "VIDEO_PROVIDER_NOT_IMPLEMENTED") {
-      const config = getStudioVideoProviderConfig()
-
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_NOT_CONFIGURED") {
       return NextResponse.json(
         {
-          error: `O provedor de video "${config.provider}" ainda nao foi integrado ao Studio IA.`,
-          estimatedCredits: config.estimatedCredits,
+          error: "A chave LUMAAI_API_KEY nao esta configurada para o fluxo de video do Studio IA.",
+          estimatedCredits: studioVideoEstimatedCredits,
+          providerConfigured: false,
+        },
+        { status: 503 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_INVALID") {
+      return NextResponse.json(
+        {
+          error: "A chave LUMAAI_API_KEY foi rejeitada pela Luma AI.",
+          estimatedCredits: studioVideoEstimatedCredits,
           providerConfigured: true,
         },
-        { status: 501 },
+        { status: 502 },
       )
     }
 
