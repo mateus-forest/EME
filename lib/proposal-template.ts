@@ -153,15 +153,16 @@ export function buildProposalHtml(input: {
       --sheet: #fffdfa;
       --sheet-soft: #f8f6f1;
       --surface: #f4f1ea;
-      --line: rgba(30, 42, 33, 0.08);
-      --line-soft: rgba(30, 42, 33, 0.05);
+      --line: rgba(30, 42, 33, 0.06);
+      --line-soft: rgba(30, 42, 33, 0.04);
       --text: #142018;
       --text-soft: #5f6f63;
       --text-muted: #8a958d;
       --green: #009b3a;
       --green-deep: #0b6b33;
       --green-soft: rgba(0, 155, 58, 0.08);
-      --shadow: 0 18px 54px rgba(23, 35, 27, 0.07);
+      --shadow: 0 18px 54px rgba(23, 35, 27, 0.06);
+      --card-shadow: 0 10px 26px rgba(23, 35, 27, 0.035);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
@@ -191,8 +192,8 @@ export function buildProposalHtml(input: {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 18px;
-      padding: 16px 24px;
+      gap: 16px;
+      padding: 14px 22px;
       border-bottom: 1px solid var(--line-soft);
       background: rgba(255,255,255,.78);
     }
@@ -202,7 +203,7 @@ export function buildProposalHtml(input: {
       gap: 12px;
     }
     .brand img {
-      width: 112px;
+      width: 106px;
       height: auto;
       display: block;
     }
@@ -212,22 +213,22 @@ export function buildProposalHtml(input: {
     }
     .eyebrow {
       color: var(--green-deep);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       letter-spacing: 0.2em;
       text-transform: uppercase;
     }
     .brand-subtitle {
       color: var(--text-soft);
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.5;
     }
     .meta-card {
-      min-width: 170px;
-      padding: 10px 14px;
+      min-width: 156px;
+      padding: 8px 12px;
       border: 1px solid var(--line-soft);
-      border-radius: 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(244,241,234,.92));
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(244,241,234,.9));
       text-align: right;
     }
     .meta-label {
@@ -240,78 +241,80 @@ export function buildProposalHtml(input: {
     .meta-value {
       margin-top: 4px;
       color: var(--text);
-      font-size: 14px;
-      font-weight: 650;
+      font-size: 13px;
+      font-weight: 600;
     }
     .content {
-      padding: 24px 28px 32px;
+      padding: 26px 30px 34px;
     }
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1.12fr) minmax(390px, 1fr);
-      gap: 24px;
+      gap: 28px;
       align-items: stretch;
     }
     .hero-copy {
       display: grid;
-      gap: 18px;
+      gap: 20px;
       align-content: start;
       padding-top: 4px;
     }
     .hero-title {
       margin: 0;
-      font-size: 24px;
-      line-height: 1.05;
-      font-weight: 600;
-      letter-spacing: -0.03em;
-      color: var(--text);
+      font-size: 18px;
+      line-height: 1.15;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--text-soft);
     }
     .property-name {
       margin: 6px 0 0;
-      font-size: 42px;
-      line-height: 0.98;
-      font-weight: 800;
+      font-size: 48px;
+      line-height: 0.94;
+      font-weight: 700;
       letter-spacing: -0.05em;
       color: var(--text);
+      max-width: 560px;
     }
     .property-location {
-      margin-top: 10px;
+      margin-top: 12px;
       color: var(--text-soft);
-      font-size: 15px;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: 450;
       line-height: 1.6;
     }
     .price-highlight {
       display: grid;
-      gap: 6px;
+      gap: 8px;
       width: fit-content;
-      min-width: 320px;
-      padding: 20px 22px;
-      border: 1px solid rgba(0, 155, 58, 0.10);
-      border-radius: 24px;
+      min-width: 340px;
+      padding: 22px 24px;
+      border: 1px solid rgba(0, 155, 58, 0.08);
+      border-radius: 26px;
       background:
-        linear-gradient(180deg, rgba(0, 155, 58, 0.05), rgba(255,255,255,0.98)),
+        linear-gradient(180deg, rgba(0, 155, 58, 0.035), rgba(255,255,255,0.99)),
         #ffffff;
+      box-shadow: var(--card-shadow);
     }
     .price-label {
-      color: rgba(11, 107, 51, 0.72);
-      font-size: 9px;
+      color: rgba(11, 107, 51, 0.6);
+      font-size: 8px;
       font-weight: 700;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
     }
     .price-value {
       margin: 0;
       color: var(--green-deep);
-      font-size: 44px;
-      line-height: 0.95;
-      font-weight: 800;
+      font-size: 46px;
+      line-height: 0.92;
+      font-weight: 700;
       letter-spacing: -0.06em;
     }
     .price-caption {
       color: var(--text-soft);
-      font-size: 12px;
-      line-height: 1.6;
+      font-size: 11px;
+      line-height: 1.65;
     }
     .hero-badges {
       display: flex;
@@ -321,13 +324,13 @@ export function buildProposalHtml(input: {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 7px 13px;
+      padding: 7px 12px;
       border-radius: 999px;
       background: #ffffff;
       border: 1px solid var(--line-soft);
       color: var(--text-soft);
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 10px;
+      font-weight: 600;
       letter-spacing: 0.03em;
     }
     .badge-strong {
@@ -336,13 +339,14 @@ export function buildProposalHtml(input: {
       border-color: rgba(0, 155, 58, 0.12);
     }
     .property-photo {
-      min-height: 460px;
-      border-radius: 26px;
+      min-height: 490px;
+      border-radius: 28px;
       overflow: hidden;
       background:
         linear-gradient(135deg, rgba(0, 155, 58, 0.08), rgba(244,241,234,0.9)),
         var(--surface);
       border: 1px solid var(--line-soft);
+      box-shadow: var(--card-shadow);
     }
     .property-photo img {
       width: 100%;
@@ -352,7 +356,7 @@ export function buildProposalHtml(input: {
     }
     .property-photo-empty {
       height: 100%;
-      min-height: 460px;
+      min-height: 490px;
       display: grid;
       place-items: center;
       color: var(--text-muted);
@@ -363,8 +367,8 @@ export function buildProposalHtml(input: {
     .section-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 320px;
-      gap: 26px;
-      margin-top: 26px;
+      gap: 28px;
+      margin-top: 30px;
     }
     .main-stack,
     .side-stack {
@@ -375,31 +379,31 @@ export function buildProposalHtml(input: {
     .section,
     .broker-card,
     .footer-panel {
-      border-radius: 24px;
-      background: rgba(255,255,255,.8);
+      border-radius: 26px;
+      background: rgba(255,255,255,.82);
       border: 1px solid var(--line);
     }
     .section {
-      padding: 22px 22px 20px;
+      padding: 24px 24px 22px;
     }
     .section-heading {
       display: grid;
       gap: 6px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
     .section-title {
       margin: 0;
-      font-size: 17px;
+      font-size: 16px;
       line-height: 1.2;
-      font-weight: 800;
+      font-weight: 650;
       letter-spacing: -0.02em;
       color: var(--text);
     }
     .section-subtitle {
       margin: 0;
       color: var(--text-soft);
-      font-size: 12px;
-      line-height: 1.6;
+      font-size: 11px;
+      line-height: 1.65;
     }
     .property-data-grid,
     .condition-grid {
@@ -414,21 +418,21 @@ export function buildProposalHtml(input: {
     }
     .data-label {
       color: var(--text-muted);
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
     }
     .data-value {
       color: var(--text);
-      font-size: 14px;
-      font-weight: 650;
+      font-size: 15px;
+      font-weight: 600;
       line-height: 1.45;
       overflow-wrap: anywhere;
     }
     .data-item-emphasis .data-value {
       color: var(--green-deep);
-      font-weight: 800;
+      font-weight: 700;
     }
     .highlights {
       margin-top: 18px;
@@ -455,15 +459,15 @@ export function buildProposalHtml(input: {
     .client-card {
       display: grid;
       gap: 10px;
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: linear-gradient(180deg, rgba(244,241,234,.82), rgba(255,255,255,.55));
+      padding: 15px 16px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(246,243,238,.9), rgba(255,255,255,.7));
     }
     .broker-card {
       display: grid;
       gap: 16px;
-      padding: 20px;
-      background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(244,241,234,.9));
+      padding: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(244,241,234,.88));
     }
     .broker-top {
       display: grid;
@@ -494,21 +498,21 @@ export function buildProposalHtml(input: {
       color: var(--text-muted);
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
     }
     .broker-name {
       margin: 6px 0 0;
-      font-size: 28px;
+      font-size: 26px;
       line-height: 1.08;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: -0.03em;
     }
     .broker-creci {
       margin-top: 8px;
       color: var(--green-deep);
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
     }
     .broker-list {
       display: grid;
@@ -522,14 +526,14 @@ export function buildProposalHtml(input: {
     }
     .broker-row-label {
       color: var(--text-muted);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
     }
     .broker-row-value {
       color: var(--text-soft);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
       line-height: 1.6;
       overflow-wrap: anywhere;
@@ -548,7 +552,7 @@ export function buildProposalHtml(input: {
     }
     .footer-panel {
       margin-top: 24px;
-      padding: 20px 22px 22px;
+      padding: 22px 24px 24px;
       background: linear-gradient(180deg, rgba(244,241,234,.94), rgba(255,255,255,.92));
     }
     .footer-grid {
@@ -564,15 +568,15 @@ export function buildProposalHtml(input: {
     }
     .footer-title {
       color: var(--text-muted);
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
     }
     .footer-value {
       color: var(--text);
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 17px;
+      font-weight: 650;
       line-height: 1.4;
     }
     .footer-note {
@@ -585,13 +589,17 @@ export function buildProposalHtml(input: {
       display: grid;
       gap: 10px;
       justify-items: start;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--line-soft);
     }
     .qr-box {
-      width: 118px;
-      height: 118px;
-      padding: 9px;
+      width: 116px;
+      height: 116px;
+      padding: 8px;
       border-radius: 16px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-soft);
       background: #ffffff;
       display: grid;
       place-items: center;
@@ -637,7 +645,7 @@ export function buildProposalHtml(input: {
       .meta-card { width: 100%; text-align: left; }
       .price-highlight { min-width: 0; width: 100%; }
       .property-photo,
-      .property-photo-empty { min-height: 300px; }
+      .property-photo-empty { min-height: 320px; }
       .broker-row { grid-template-columns: 1fr; gap: 4px; }
     }
     @page {
