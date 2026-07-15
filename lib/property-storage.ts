@@ -135,6 +135,17 @@ export async function savePropertyGeneratedImage(propertyId: string, imageBuffer
   })
 }
 
+export async function savePropertyGeneratedVideo(propertyId: string, videoBuffer: Buffer, mimeType = "video/mp4") {
+  const extension = mimeType === "video/webm" ? ".webm" : ".mp4"
+  return uploadPropertyBuffer({
+    propertyId,
+    buffer: videoBuffer,
+    folder: "studio-ia/videos",
+    extension,
+    contentType: mimeType,
+  })
+}
+
 export async function deletePropertyStorageFile(fileUrl: string) {
   let config: ReturnType<typeof getStorageConfig>
   try {

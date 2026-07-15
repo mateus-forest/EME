@@ -262,6 +262,60 @@ export async function consumeBrokerAiCredits({
   })
 }
 
+export async function refundBrokerAiCredits({
+  brokerId,
+  amount,
+  actionType,
+  description,
+  metadata,
+}: {
+  brokerId: string
+  amount: number
+  actionType: string
+  description: string
+  metadata?: Prisma.InputJsonObject
+}) {
+  const credits = Math.max(0, Math.trunc(amount))
+  if (credits === 0) {
+    return getBrokerAiCreditBalance(brokerId)
+  }
+
+  await ensureBrokerPlanAccount(brokerId)
+
+  return prisma.$transaction(async (tx) => {
+    const broker = await tx.broker.update({
+      where: { id: brokerId },
+      data: {
+        aiCreditsBalance: { increment: credits },
+        aiCreditsUsedThisMonth: { decrement: credits },
+        aiMonthlyUsage: { decrement: credits },
+        aiLastInteractionAt: new Date(),
+      },
+      select: {
+        aiCreditsBalance: true,
+        aiCreditsUsedThisMonth: true,
+      },
+    })
+
+    await tx.aiCreditTransaction.create({
+      data: {
+        brokerId,
+        type: "refund",
+        amount: credits,
+        balanceAfter: broker.aiCreditsBalance,
+        actionType,
+        description,
+        metadata,
+      },
+    })
+
+    return {
+      balance: broker.aiCreditsBalance,
+      usedThisMonth: broker.aiCreditsUsedThisMonth,
+    }
+  })
+}
+
 export async function registerExtraPackagePurchase({
   brokerId,
   packageKey,

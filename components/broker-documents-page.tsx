@@ -51,11 +51,29 @@ function isHtmlDocument(content: string) {
   return /<!doctype html|<html|<main|<section/i.test(content)
 }
 
+function isVideoDocument(document: BrokerDocument | null) {
+  return document?.type === "studio_ia_video"
+}
+
+function parseVideoDocumentContent(content: string) {
+  try {
+    const parsed = JSON.parse(content) as { videoUrl?: string }
+    return typeof parsed.videoUrl === "string" ? parsed.videoUrl : ""
+  } catch {
+    return ""
+  }
+}
+
 function statusLabel(status: string) {
   if (status === "signed") return "Assinado"
   if (status === "generated") return "Gerado"
   if (status === "archived") return "Arquivado"
   return "Rascunho"
+}
+
+function typeLabel(type: string) {
+  if (type === "studio_ia_video") return "Video"
+  return "Proposta"
 }
 
 function escapeHtml(value: string) {
@@ -214,6 +232,13 @@ export function BrokerDocumentsPage() {
 
   async function copyContent() {
     if (!selectedDocument) return
+    if (isVideoDocument(selectedDocument)) {
+      const videoUrl = parseVideoDocumentContent(selectedDocument.content)
+      await navigator.clipboard.writeText(videoUrl).catch(() => null)
+      setFeedback("Link do video copiado.")
+      return
+    }
+
     const content = isHtmlDocument(selectedDocument.content)
       ? proposalHtmlToText(selectedDocument.content)
       : selectedDocument.content
@@ -223,6 +248,17 @@ export function BrokerDocumentsPage() {
 
   async function openDocument(shouldPrint = false) {
     if (!selectedDocument) return
+    if (isVideoDocument(selectedDocument)) {
+      const videoUrl = parseVideoDocumentContent(selectedDocument.content)
+      if (!videoUrl) {
+        setFeedback("Nao foi possivel localizar o arquivo de video.")
+        return
+      }
+
+      window.open(videoUrl, "_blank", "noopener,noreferrer")
+      return
+    }
+
     const printableContent = isHtmlDocument(selectedDocument.content)
       ? selectedDocument.content
       : `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" /><title>${escapeHtml(selectedDocument.title)}</title><style>body{font-family:Arial,sans-serif;padding:32px;white-space:pre-wrap;color:#111}</style></head><body>${escapeHtml(selectedDocument.content)}</body></html>`
@@ -285,7 +321,7 @@ export function BrokerDocumentsPage() {
               documents.map((document) => (
                 <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`rounded-[1.25rem] border p-4 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/10" : "border-black/[0.06] bg-[#fbfbf8] hover:bg-[#f6f7f4]"}`}>
                   <p className="truncate font-semibold text-[#050505]">{document.title}</p>
-                  <p className="mt-1 text-sm text-[#6B7280]">{statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
+                  <p className="mt-1 text-sm text-[#6B7280]">{typeLabel(document.type)} · {statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
                 </button>
               ))
             ) : (
@@ -369,7 +405,13 @@ export function BrokerDocumentsPage() {
             <CardContent className="grid gap-4 p-5 pt-0">
               {selectedDocument ? (
                 <>
-                  {isHtmlDocument(selectedDocument.content) ? (
+                  {isVideoDocument(selectedDocument) ? (
+                    <video
+                      controls
+                      src={parseVideoDocumentContent(selectedDocument.content)}
+                      className="h-[520px] w-full rounded-[1.25rem] border border-black/[0.06] bg-black"
+                    />
+                  ) : isHtmlDocument(selectedDocument.content) ? (
                     <iframe
                       title={selectedDocument.title}
                       srcDoc={selectedDocument.content}
@@ -381,20 +423,24 @@ export function BrokerDocumentsPage() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <Button type="button" variant="ghost" onClick={() => void openDocument(false)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
                       <ExternalLink className="size-4" />
-                      Abrir
+                      {isVideoDocument(selectedDocument) ? "Abrir arquivo" : "Abrir"}
                     </Button>
-                    <Button type="button" variant="ghost" onClick={() => void openDocument(true)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
-                      <Download className="size-4" />
-                      Baixar PDF
-                    </Button>
+                    {isVideoDocument(selectedDocument) ? null : (
+                      <Button type="button" variant="ghost" onClick={() => void openDocument(true)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
+                        <Download className="size-4" />
+                        Baixar PDF
+                      </Button>
+                    )}
                     <Button type="button" variant="ghost" onClick={copyContent} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
                       <Copy className="size-4" />
-                      Copiar texto
+                      {isVideoDocument(selectedDocument) ? "Copiar link" : "Copiar texto"}
                     </Button>
-                    <Button type="button" variant="ghost" disabled={selectedDocument.status === "signed"} onClick={() => markSigned(selectedDocument.id)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
-                      <CheckCircle2 className="size-4" />
-                      {selectedDocument.status === "signed" ? "Assinado" : "Marcar assinado"}
-                    </Button>
+                    {isVideoDocument(selectedDocument) ? null : (
+                      <Button type="button" variant="ghost" disabled={selectedDocument.status === "signed"} onClick={() => markSigned(selectedDocument.id)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
+                        <CheckCircle2 className="size-4" />
+                        {selectedDocument.status === "signed" ? "Assinado" : "Marcar assinado"}
+                      </Button>
+                    )}
                   </div>
                 </>
               ) : (

@@ -57,6 +57,9 @@ export async function GET(request: NextRequest) {
     const documents = await prisma.brokerDocument.findMany({
       where: {
         brokerId: user.broker.id,
+        type: {
+          not: "studio_ia_video_job",
+        },
         ...(status && status !== "all" ? { status } : {}),
       },
       orderBy: { createdAt: "desc" },
