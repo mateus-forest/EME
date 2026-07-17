@@ -4,11 +4,10 @@ import {
   ArrowRight,
   BadgeCheck,
   Bot,
-  BriefcaseBusiness,
   Camera,
-  ChartNoAxesCombined,
   Check,
   CirclePlay,
+  Clock3,
   FolderOpen,
   Grid2x2,
   House,
@@ -17,10 +16,11 @@ import {
   MessageCircleMore,
   NotebookTabs,
   Sparkles,
-  TimerReset,
   Video,
 } from "lucide-react"
+
 import { LandingCosDemoSection } from "@/components/landing-cos-demo-section"
+import { LandingStudioMediaDemo } from "@/components/landing-studio-media-demo"
 
 type NavLink = {
   label: string
@@ -32,37 +32,9 @@ const navLinks: NavLink[] = [
   { label: "Recursos", href: "#recursos" },
   { label: "Studio IA", href: "#studio-ia", highlight: true },
   { label: "Como funciona", href: "#como-funciona" },
-  { label: "Para corretores", href: "#para-corretores" },
-  { label: "Preços", href: "#precos" },
+  { label: "Para corretores", href: "#studio-ia" },
+  { label: "Precos", href: "#precos" },
 ]
-
-const heroFeatures = [
-  {
-    icon: Grid2x2,
-    title: "Distribua mais",
-    description: "Anúncios prontos para portais, redes sociais e WhatsApp.",
-  },
-  {
-    icon: MessageCircleMore,
-    title: "Atenda melhor",
-    description: "Respostas inteligentes que encantam e convertem.",
-  },
-  {
-    icon: ChartNoAxesCombined,
-    title: "Venda mais",
-    description: "Propostas e negociações mais rápidas e profissionais.",
-  },
-  {
-    icon: BriefcaseBusiness,
-    title: "Tenha controle",
-    description: "Acompanhe clientes, visitas e resultados em um só lugar.",
-  },
-  {
-    icon: TimerReset,
-    title: "Ganhe tempo",
-    description: "Automatize tarefas chatas e foque no que realmente importa.",
-  },
-] as const
 
 const studioResources = [
   {
@@ -72,57 +44,57 @@ const studioResources = [
   },
   {
     icon: Video,
-    title: "Gerar vídeo",
-    description: "Vídeos verticais prontos para Instagram, Reels e TikTok.",
+    title: "Gerar video",
+    description: "Videos verticais prontos para Instagram, Reels e TikTok.",
   },
   {
     icon: NotebookTabs,
     title: "Textos prontos",
-    description: "Anúncios, descrições e legendas que vendem.",
+    description: "Anuncios, descricoes e legendas que vendem.",
   },
   {
     icon: Grid2x2,
     title: "Templates",
-    description: "Modelos prontos para cada ocasião e objetivo.",
+    description: "Modelos prontos para cada ocasiao e objetivo.",
   },
   {
     icon: FolderOpen,
     title: "Meus arquivos",
-    description: "Tudo organizado para você usar quando quiser.",
+    description: "Tudo organizado para voce usar quando quiser.",
   },
 ] as const
 
-const checklist = ["7 dias grátis", "Acesso completo", "Sem cartão de crédito", "Cancelamento fácil"] as const
+const checklist = ["7 dias gratis", "Acesso completo", "Sem cartao de credito", "Cancelamento facil"] as const
 
 const studioLandingActions = [
   {
-    title: "Vender este imóvel",
-    description: "Organize uma ação focada em conversão para apresentar o imóvel certo no momento certo.",
+    title: "Vender este imovel",
+    description: "Organize uma acao focada em conversao para apresentar o imovel certo no momento certo.",
     icon: House,
   },
   {
     title: "Criar campanha para Instagram",
-    description: "Monte uma campanha visual para publicar o imóvel com narrativa pronta para redes sociais.",
+    description: "Monte uma campanha visual para publicar o imovel com narrativa pronta para redes sociais.",
     icon: Megaphone,
   },
   {
-    title: "Criar vídeo do imóvel",
-    description: "Estruture a produção de um vídeo comercial com foco em captação de atenção e visitas.",
+    title: "Criar video do imovel",
+    description: "Estruture a producao de um video comercial com foco em captacao de atencao e visitas.",
     icon: Video,
   },
   {
-    title: "Transformar obra em imóvel pronto",
-    description: "Use uma imagem real da obra e gere uma versão pronta para venda com aprovação e novas versões.",
+    title: "Transformar obra em imovel pronto",
+    description: "Use uma imagem real da obra e gere uma versao pronta para venda com aprovacao e novas versoes.",
     icon: Sparkles,
   },
   {
     title: "Atrair compradores",
-    description: "Planeje a mensagem e os ganchos comerciais para aumentar interesse qualificado no imóvel.",
+    description: "Planeje a mensagem e os ganchos comerciais para aumentar interesse qualificado no imovel.",
     icon: MessageCircleMore,
   },
   {
-    title: "Captar proprietários",
-    description: "Estruture abordagens de captação para ampliar a carteira com foco no perfil certo.",
+    title: "Captar proprietarios",
+    description: "Estruture abordagens de captacao para ampliar a carteira com foco no perfil certo.",
     icon: Camera,
   },
 ] as const
@@ -179,7 +151,7 @@ export default function Home() {
 
         <section
           id="como-funciona"
-          className="grid items-center gap-14 px-2 pb-28 pt-16 lg:grid-cols-[minmax(0,0.88fr)_minmax(620px,1.12fr)] lg:px-4 lg:pt-20"
+          className="grid items-center gap-14 px-2 pb-24 pt-16 lg:grid-cols-[minmax(0,0.88fr)_minmax(620px,1.12fr)] lg:px-4 lg:pt-20"
         >
           <div className="max-w-[570px] pl-1 lg:pl-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#e3f2e7] bg-white/90 px-3 py-2 text-sm font-medium text-[#66716c] shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
@@ -195,7 +167,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-9 max-w-[34rem] text-[1.17rem] leading-[2.15rem] text-[#5f6b73]">
-              O EME entende, executa e entrega tudo que você precisa para{" "}
+              O EME entende, executa e entrega tudo que voce precisa para{" "}
               <span className="font-medium text-[#16a34a]">vender mais, distribuir mais</span> e{" "}
               <span className="font-medium text-[#16a34a]">atender melhor</span>. Em segundos.
             </p>
@@ -218,8 +190,8 @@ export default function Home() {
             </div>
 
             <div className="mt-11 flex flex-wrap gap-x-9 gap-y-3 text-sm font-medium text-[#5f6973]">
-              <TrustItem label="7 dias grátis" />
-              <TrustItem label="Sem cartão de crédito" />
+              <TrustItem label="7 dias gratis" />
+              <TrustItem label="Sem cartao de credito" />
               <TrustItem label="Acesso completo" />
             </div>
           </div>
@@ -228,36 +200,63 @@ export default function Home() {
         </section>
 
         <section
-          id="para-corretores"
-          className="grid gap-12 border-t border-black/[0.04] px-2 py-14 sm:grid-cols-2 lg:grid-cols-5 lg:px-4"
-        >
-          {heroFeatures.map((feature) => (
-            <FeatureCard key={feature.title} {...feature} />
-          ))}
-        </section>
-
-        <section
           id="studio-ia"
-          className="grid items-center gap-14 px-2 pb-14 pt-20 lg:grid-cols-[minmax(320px,0.4fr)_minmax(0,0.6fr)] lg:px-4"
+          className="grid items-center gap-12 px-2 pb-10 pt-6 lg:grid-cols-[minmax(360px,0.42fr)_minmax(0,0.58fr)] lg:px-4 lg:pt-12"
         >
-          <div className="max-w-[360px]">
-            <p className="text-sm font-medium text-[#16a34a]">Studio IA</p>
-            <h2 className="mt-5 text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.055em] text-[#111111] sm:text-[3.55rem]">
-              Crie, edite e publique. <span className="text-[#16a34a]">Tudo em um só lugar.</span>
+          <div className="max-w-[30rem]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#dceadf] bg-white/92 px-3 py-2 text-sm font-medium text-[#5f6973] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <span className="inline-flex size-7 items-center justify-center rounded-full bg-[#eef8f1] text-[#16a34a]">
+                <Bot className="size-4" />
+              </span>
+              Studio IA
+            </div>
+            <h2 className="mt-6 text-[2.7rem] font-semibold leading-[1.02] tracking-[-0.055em] text-[#111111] sm:text-[3.8rem]">
+              Crie imagens, videos e campanhas com um fluxo realmente pronto para vender.
             </h2>
-            <p className="mt-7 text-[1.08rem] leading-8 text-[#5f6973]">
-              Imagens, vídeos, textos e muito mais. O Studio IA do EME transforma ideias em resultados de verdade.
+            <p className="mt-6 text-[1.08rem] leading-8 text-[#5f6973]">
+              O Studio IA organiza cada objetivo comercial em uma experiencia clara, elegante e operacional. Voce
+              escolhe o resultado, o EME prepara o caminho para produzir, aprovar e publicar com menos atrito.
             </p>
-            <a
-              href="#recursos"
-              className="mt-10 inline-flex h-[58px] items-center justify-center gap-3 rounded-[20px] border border-black/[0.07] bg-white px-7 text-[15px] font-medium text-[#171717] shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-colors hover:bg-[#fafcf9]"
-            >
-              Ver todos os recursos do Studio IA
-              <ArrowRight className="size-4" />
-            </a>
+            <div className="mt-8 grid gap-3">
+              {[
+                "Escolha o objetivo comercial sem sair do mesmo ambiente.",
+                "Aprove o que foi gerado e mantenha o material salvo em Meus arquivos.",
+                "Crie pecas visuais com padrao premium para redes sociais e atendimento.",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-start gap-3 rounded-[22px] border border-black/[0.05] bg-white/88 px-4 py-4 shadow-[0_12px_26px_rgba(15,23,42,0.04)]"
+                >
+                  <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#eef8f1] text-[#16a34a]">
+                    <Check className="size-3.5" />
+                  </span>
+                  <p className="text-[15px] leading-7 text-[#4f5d67]">{item}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <Link
+                href="/cadastro/corretor"
+                className="inline-flex h-[58px] items-center justify-center gap-2 rounded-[20px] bg-[#16a34a] px-7 text-[15px] font-medium text-white shadow-[0_16px_32px_rgba(22,163,74,0.2)] transition-all hover:bg-[#14803d]"
+              >
+                Conhecer o Studio IA
+                <ArrowRight className="size-4" />
+              </Link>
+              <a
+                href="#recursos"
+                className="inline-flex h-[58px] items-center justify-center gap-3 rounded-[20px] border border-black/[0.07] bg-white px-7 text-[15px] font-medium text-[#171717] shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-colors hover:bg-[#fafcf9]"
+              >
+                Ver todos os recursos
+                <CirclePlay className="size-4" />
+              </a>
+            </div>
           </div>
 
           <StudioPreviewMock />
+        </section>
+
+        <section className="px-2 pb-16 pt-6 lg:px-4">
+          <LandingStudioMediaDemo />
         </section>
 
         <section
@@ -289,7 +288,7 @@ export default function Home() {
               ))}
             </div>
             <p className="max-w-[10rem] text-sm leading-6 text-[#5f6973]">
-              <span className="font-semibold text-[#111111]">+2.500 corretores</span> já estão vendendo mais com o EME
+              <span className="font-semibold text-[#111111]">+2.500 corretores</span> ja estao vendendo mais com o EME
             </p>
           </div>
 
@@ -348,49 +347,110 @@ function HeroConversationMock() {
 
 function StudioPreviewMock() {
   return (
-    <div className="relative">
-      <div className="absolute inset-0 -z-10 rounded-[44px] bg-[radial-gradient(circle_at_top_left,rgba(22,163,74,0.11),transparent_36%)] blur-3xl" />
-      <div className="overflow-hidden rounded-[30px] border border-black/[0.055] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.065)]">
-        <div className="bg-[linear-gradient(180deg,#fbfcfa_0%,#f7faf8_100%)] p-5 sm:p-7">
-          <div className="rounded-[28px] border border-black/[0.05] bg-white px-6 py-6 shadow-[0_18px_44px_rgba(15,23,42,0.045)] sm:px-7">
-            <div className="rounded-[22px] border border-black/[0.05] bg-[#fcfcfb] px-6 py-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-[#009b3a]">
-                <Bot className="size-3.5" />
-                Studio IA
+    <div className="relative mx-auto w-full max-w-[880px]">
+      <div className="absolute inset-0 -z-10 rounded-[48px] bg-[radial-gradient(circle_at_top_left,rgba(22,163,74,0.14),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.07),transparent_32%)] blur-3xl" />
+      <div className="overflow-hidden rounded-[34px] border border-black/[0.055] bg-[linear-gradient(180deg,#ffffff_0%,#f8faf7_100%)] p-4 shadow-[0_28px_90px_rgba(15,23,42,0.08)] sm:p-5">
+        <div className="rounded-[28px] border border-black/[0.05] bg-white/96 shadow-[0_18px_44px_rgba(15,23,42,0.045)]">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/[0.05] px-5 py-4 sm:px-6">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.26em] text-[#16a34a]">Workspace Studio IA</p>
+              <h3 className="mt-2 text-[1.45rem] font-semibold tracking-[-0.04em] text-[#050505]">
+                Fluxos orientados a resultado
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-[#dce9df] bg-[#f8fbf8] px-3 py-2 text-xs font-medium text-[#5f6973]">
+              <Clock3 className="size-3.5 text-[#16a34a]" />
+              Pronto para produzir
+            </div>
+          </div>
+
+          <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,0.67fr)_minmax(250px,0.33fr)]">
+            <div className="rounded-[24px] border border-black/[0.05] bg-[#fcfcfa] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-[#009b3a]">
+                  <Bot className="size-3.5" />
+                  Studio IA
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#7b8694]">
+                  <span className="inline-flex size-2 rounded-full bg-[#16a34a]" />
+                  6 fluxos ativos
+                </div>
               </div>
-              <h3 className="mt-5 text-[2rem] font-semibold tracking-[-0.04em] text-[#050505]">Ações orientadas a resultado</h3>
-              <p className="mt-3 max-w-[52rem] text-[15px] leading-7 text-[#667085]">
-                Escolha o objetivo comercial e siga para o fluxo certo. O Studio IA concentra as próximas automações do Portal do Corretor sem alterar sua operação atual.
-              </p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {studioLandingActions.map((action, index) => {
+                  const Icon = action.icon
+
+                  return (
+                    <div
+                      key={action.title}
+                      className={`rounded-[22px] border p-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)] ${
+                        index === 2
+                          ? "border-[#d9eadf] bg-[linear-gradient(180deg,#f6fbf7_0%,#ffffff_100%)]"
+                          : "border-black/[0.055] bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
+                          <Icon className="size-5" />
+                        </div>
+                        <span className="rounded-full bg-[#f4f6f4] px-2.5 py-1 text-[11px] font-medium text-[#64707d]">
+                          {index === 2 ? "Em destaque" : "Disponivel"}
+                        </span>
+                      </div>
+                      <p className="mt-5 text-[1.02rem] font-semibold text-[#050505]">{action.title}</p>
+                      <p className="mt-3 text-[13px] leading-6 text-[#667085]">{action.description}</p>
+                      <div
+                        className={`mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[16px] px-4 text-sm font-semibold ${
+                          index === 2
+                            ? "bg-[#16a34a] text-white shadow-[0_14px_26px_rgba(22,163,74,0.18)]"
+                            : "border border-black/[0.06] bg-[#fbfbf8] text-[#111111]"
+                        }`}
+                      >
+                        Abrir fluxo
+                        <ArrowRight className="size-4" />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {studioLandingActions.map((action) => {
-                const Icon = action.icon
-
-                return (
-                  <div key={action.title} className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.035)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-                        <Icon className="size-5" />
-                      </div>
-                      <span className="rounded-full bg-[#eef9f1] px-2.5 py-1 text-[11px] font-medium text-[#009b3a]">
-                        Disponível
-                      </span>
-                    </div>
-                    <p className="mt-5 text-[1.05rem] font-semibold text-[#050505]">{action.title}</p>
-                    <p className="mt-4 text-[13px] leading-6 text-[#667085]">{action.description}</p>
-                    <div className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[16px] bg-[#0b9f3d] px-4 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(11,159,61,0.18)]">
-                      Abrir fluxo
-                      <ArrowRight className="size-4" />
-                    </div>
+            <div className="grid gap-4">
+              <div className="rounded-[24px] border border-black/[0.055] bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.035)]">
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#7b8694]">Producao</p>
+                <p className="mt-3 text-[1.5rem] font-semibold tracking-[-0.04em] text-[#111111]">Aprovacoes e arquivos</p>
+                <p className="mt-3 text-sm leading-7 text-[#667085]">
+                  Materiais gerados, revisados e prontos para seguir para publicacao ou atendimento.
+                </p>
+              </div>
+              <div className="rounded-[24px] border border-[#dce9df] bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_100%)] p-5 shadow-[0_12px_28px_rgba(15,23,42,0.035)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-[#16a34a] text-white shadow-[0_12px_26px_rgba(22,163,74,0.2)]">
+                    <Sparkles className="size-5" />
                   </div>
-                )
-              })}
+                  <span className="rounded-full border border-[#dce9df] bg-white px-3 py-1 text-xs font-medium text-[#5f6973]">
+                    Meus arquivos
+                  </span>
+                </div>
+                <div className="mt-5 grid gap-3">
+                  <StudioPanelCard label="Imagem aprovada" value="Cena final pronta" />
+                  <StudioPanelCard label="Video exportado" value="MP4 vertical salvo" />
+                  <StudioPanelCard label="Legenda pronta" value="Publicar com CTA" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function StudioPanelCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[18px] border border-black/[0.05] bg-white/92 px-4 py-3">
+      <p className="text-xs uppercase tracking-[0.18em] text-[#7b8694]">{label}</p>
+      <p className="mt-1.5 text-sm font-semibold text-[#111111]">{value}</p>
     </div>
   )
 }
