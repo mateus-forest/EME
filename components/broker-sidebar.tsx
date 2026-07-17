@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronLeft,
   CreditCard,
+  History,
   LayoutDashboard,
   LogOut,
   UserRound,
@@ -74,6 +75,7 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     items: [
       { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
       { label: "Conta", icon: UserRound, href: "/corretor/conta" },
+      { label: "Historico", icon: History, href: "/corretor/historico" },
     ],
   },
 ]
