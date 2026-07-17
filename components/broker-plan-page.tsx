@@ -1,7 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ArrowUpRight, Bot, CalendarDays, ChartColumn, CheckCircle2, FileText, Globe, Headphones, Home, PackagePlus, Sparkles, WalletCards } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import {
+  ArrowUpRight,
+  Bot,
+  CalendarDays,
+  ChartColumn,
+  CheckCircle2,
+  FileText,
+  Globe,
+  Headphones,
+  Home,
+  PackagePlus,
+  Sparkles,
+  TriangleAlert,
+  Video,
+  WalletCards,
+} from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
@@ -69,22 +84,24 @@ const featureIcons: Record<string, typeof Home> = {
 }
 
 const featureLabels: Record<string, string> = {
-  catalog: "Catálogo online",
+  catalog: "Catalogo online",
   leads: "Leads",
   agenda: "Agenda",
   documents: "Propostas",
   financial: "Financeiro",
-  analytics: "Desempenho",
-  assessor_eme: "Assessor EME",
+  analytics: "Analytics",
+  assessor_eme: "COS e Studio IA",
   all: "Todas as funcionalidades",
 }
 
+const premiumFeatureOrder = ["assessor_eme", "analytics", "documents", "agenda", "catalog", "financial", "leads", "all"]
+
 function buildPlanHighlights(plan: PlanItem) {
   return [
-    `Até ${plan.propertyLimit} imóveis`,
-    plan.features.includes("all") ? "Todas as funcionalidades" : "Catálogo, leads, agenda, documentos, financeiro e analytics",
-    plan.features.includes("assessor_eme") ? "Assessor EME" : "",
-    `${plan.monthlyAiCredits} créditos IA/mês`,
+    `Ate ${plan.propertyLimit} imoveis`,
+    `${plan.monthlyAiCredits} creditos IA por mes`,
+    plan.features.includes("assessor_eme") ? "COS e Studio IA ativos" : "",
+    plan.features.includes("analytics") || plan.features.includes("all") ? "Analytics e desempenho" : "",
   ].filter(Boolean)
 }
 
@@ -101,6 +118,24 @@ function isPlanSnapshot(value: BrokerPlanSnapshot | { error?: string } | null): 
   return Boolean(value && "currentPlan" in value && "propertyLimits" in value && "credits" in value)
 }
 
+function getUsageWidth(used: number, total: number) {
+  if (!total) return "0%"
+  return `${Math.min(100, Math.round((used / total) * 100))}%`
+}
+
+function getUsageTone(ratio: number) {
+  if (ratio >= 0.9) return "text-[#d97706]"
+  if (ratio >= 0.75) return "text-[#b45309]"
+  return "text-[#009b3a]"
+}
+
+function getLimitMessage(remaining: number, label: string) {
+  if (remaining <= 0) return `Voce atingiu o limite de ${label}.`
+  if (remaining === 1) return `Falta 1 unidade para atingir o limite de ${label}.`
+  if (remaining <= 3) return `Faltam ${remaining} unidades para atingir o limite de ${label}.`
+  return ""
+}
+
 export function BrokerPlanPage() {
   const [upgradeFeedback, setUpgradeFeedback] = useState("")
   const [planSnapshot, setPlanSnapshot] = useState<BrokerPlanSnapshot | null>(null)
@@ -114,19 +149,50 @@ export function BrokerPlanPage() {
 
   const propertyLimits = planSnapshot?.propertyLimits
   const currentPlan = planSnapshot?.currentPlan
-  const hasReachedLimit = Boolean(propertyLimits && propertyLimits.remaining <= 0)
+  const propertyUsed = propertyLimits?.used ?? 0
+  const propertyTotal = propertyLimits?.totalLimit ?? 0
+  const propertyRemaining = propertyLimits?.remaining ?? 0
+  const propertyRatio = propertyTotal ? propertyUsed / propertyTotal : 0
   const propertyLimitLabel = propertyLimits
-    ? `${propertyLimits.used} usados / ${propertyLimits.totalLimit} disponíveis`
-    : "Carregando limite de imóveis"
-  const usageWidth = propertyLimits?.totalLimit
-    ? `${Math.min(100, Math.round((propertyLimits.used / propertyLimits.totalLimit) * 100))}%`
-    : "0%"
+    ? `${propertyUsed} usados / ${propertyTotal} disponiveis`
+    : "Carregando limite de imoveis"
+
+  const creditBalance = planSnapshot?.credits.balance ?? 0
+  const creditUsed = planSnapshot?.credits.usedThisMonth ?? 0
+  const creditMonthly = planSnapshot?.credits.monthlyCredits ?? 0
+  const creditRemaining = Math.max(0, creditBalance)
+  const creditRatio = creditMonthly ? Math.min(1, creditUsed / creditMonthly) : 0
+  const creditLimitLabel = planSnapshot
+    ? `${creditUsed} usados / ${creditMonthly} do plano`
+    : "Carregando creditos IA"
+
+  const hasReachedPropertyLimit = Boolean(propertyLimits && propertyRemaining <= 0)
+  const propertyUsageWidth = getUsageWidth(propertyUsed, propertyTotal)
+  const creditUsageWidth = getUsageWidth(creditUsed, creditMonthly || Math.max(creditUsed, 1))
+
   const planDisplayName = currentPlan?.name ?? "Carregando plano"
   const planStatus = currentPlan ? "Ativo na conta" : "Sincronizando"
   const planPrice = currentPlan?.price ?? "-"
   const planDescription = propertyLimits && currentPlan
-    ? `${propertyLimits.baseLimit} imóveis do plano + ${propertyLimits.extraLimit} extras = ${propertyLimits.totalLimit} disponíveis.`
+    ? `${propertyLimits.baseLimit} imoveis do plano + ${propertyLimits.extraLimit} extras = ${propertyLimits.totalLimit} disponiveis.`
     : "Carregando dados reais do plano."
+
+  const propertyLimitMessage = getLimitMessage(propertyRemaining, "imoveis")
+  const creditLimitMessage = getLimitMessage(Math.max(0, creditMonthly - creditUsed), "creditos IA do plano")
+
+  const includedFeatures = useMemo(() => {
+    const features = currentPlan?.features ?? []
+    return [...features].sort((first, second) => premiumFeatureOrder.indexOf(first) - premiumFeatureOrder.indexOf(second))
+  }, [currentPlan?.features])
+
+  const creditPackages = useMemo(
+    () => (planSnapshot?.packages ?? []).filter((item) => item.type === "credit"),
+    [planSnapshot?.packages],
+  )
+  const propertyPackages = useMemo(
+    () => (planSnapshot?.packages ?? []).filter((item) => item.type === "property"),
+    [planSnapshot?.packages],
+  )
 
   useEffect(() => {
     let ignore = false
@@ -134,11 +200,11 @@ export function BrokerPlanPage() {
     fetch("/api/brokers/plan", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as BrokerPlanSnapshot | { error?: string } | null
-        if (!response.ok || !isPlanSnapshot(data)) throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o plano.")
+        if (!response.ok || !isPlanSnapshot(data)) throw new Error(data && "error" in data ? data.error : "Nao foi possivel carregar o plano.")
         if (!ignore) setPlanSnapshot(data)
       })
       .catch((caughtError) => {
-        if (!ignore) setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o plano.")
+        if (!ignore) setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel carregar o plano.")
       })
       .finally(() => {
         if (!ignore) setIsPlanLoading(false)
@@ -159,10 +225,10 @@ export function BrokerPlanPage() {
         body: JSON.stringify({ title, message }),
       })
       const data = (await response.json().catch(() => null)) as { error?: string } | null
-      if (!response.ok) throw new Error(data?.error || "Não foi possível registrar a solicitação.")
-      setUpgradeFeedback("Solicitação registrada. O suporte EME dará continuidade.")
+      if (!response.ok) throw new Error(data?.error || "Nao foi possivel registrar a solicitacao.")
+      setUpgradeFeedback("Solicitacao registrada. O suporte EME dara continuidade.")
     } catch (caughtError) {
-      setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar a solicitação.")
+      setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel registrar a solicitacao.")
     }
   }
 
@@ -171,7 +237,7 @@ export function BrokerPlanPage() {
       title="Plano"
       notificationCenter={
         <NotificationCenter
-          title="Notificações do corretor"
+          title="Notificacoes do corretor"
           notifications={historyNotifications}
           unreadCount={unreadCount}
           onMarkAsRead={markAsRead}
@@ -181,303 +247,436 @@ export function BrokerPlanPage() {
       }
     >
       <div className="grid gap-5">
-        {hasReachedLimit && (
-          <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
-            Você atingiu o limite de imóveis do seu plano. Faça upgrade ou solicite um pacote de imóveis extras para continuar publicando.
+        {hasReachedPropertyLimit ? (
+          <div className="rounded-[1.2rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
+            Voce atingiu o limite de imoveis do seu plano. Faca upgrade ou solicite um pacote adicional para continuar publicando.
           </div>
-        )}
+        ) : null}
 
-        <section className="grid gap-4">
-          <ResponsiveCollapsibleSection title="Plano atual" defaultMobileOpen>
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardContent className="p-4 sm:p-5">
-              <div className="inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
-                Plano atual
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-[#050505]">{planDisplayName}</h2>
-                  <p className="mt-2 text-sm text-[#6B7280]">{planDescription}</p>
-                </div>
-
-                <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">Status comercial</p>
-                  <div className="mt-2 flex items-end gap-2">
-                    <p className="text-2xl font-semibold text-[#050505]">{planPrice}</p>
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-[34rem]">
+                  <div className="inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
+                    Plano ativo
                   </div>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1.5 text-sm text-[#009b3a]">
-                  <CheckCircle2 className="size-4" />
-                  {planStatus}
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => void registerCommercialRequest("Solicitação de plano", `${planDisplayName} - ${planPrice}`)}
-                  className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
-                >
-                  Solicitar plano
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          </ResponsiveCollapsibleSection>
-
-          <ResponsiveCollapsibleSection title="Informações da assinatura">
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">Informações da assinatura</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 p-6 pt-0">
-              <InfoBlock label="Plano atual" value={planDisplayName} />
-              <InfoBlock label="Limite base do plano" value={propertyLimits ? `${propertyLimits.baseLimit} imóveis` : "-"} />
-              <InfoBlock label="Imóveis extras permanentes" value={propertyLimits ? `${propertyLimits.extraLimit} imóveis` : "-"} />
-              <InfoBlock label="Limite total atual" value={propertyLimits ? `${propertyLimits.totalLimit} imóveis` : "-"} />
-              <InfoBlock label="Imóveis usados" value={propertyLimits ? `${propertyLimits.used} imóveis` : "-"} />
-              <InfoBlock label="Imóveis restantes" value={propertyLimits ? `${propertyLimits.remaining} imóveis` : "-"} />
-              <InfoBlock label="Status da assinatura" value={planStatus} />
-              <InfoBlock label="Créditos IA disponíveis" value={String(planSnapshot?.credits.balance ?? 0)} />
-              <InfoBlock label="Créditos IA do plano/mês" value={String(planSnapshot?.credits.monthlyCredits ?? 0)} />
-              <InfoBlock label="Créditos IA usados no mês" value={String(planSnapshot?.credits.usedThisMonth ?? 0)} />
-              <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 p-4">
-                <p className="text-sm text-[#009b3a]">
-                  Dados carregados do backend de planos, limites e créditos IA. Pagamento real ainda não foi integrado.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          </ResponsiveCollapsibleSection>
-        </section>
-
-        <ResponsiveCollapsibleSection title="Planos disponíveis" defaultMobileOpen>
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">Planos disponíveis</CardTitle>
-              <p className="text-sm text-[#6B7280]">Escolha o plano ideal para a fase atual da sua operação.</p>
-            </CardHeader>
-            <CardContent className="grid gap-4 p-6 pt-0 lg:grid-cols-3">
-              {(planSnapshot?.plans ?? []).map((plan) => (
-                <div
-                  key={plan.key}
-                  className="flex min-h-[360px] flex-col justify-between rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] p-5 transition-all hover:border-[#009b3a]/25 hover:bg-white/85"
-                >
-                  <div>
-                    <div className="inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#009b3a]">
-                      {plan.key === currentPlan?.key ? "Plano atual" : "Plano"}
-                    </div>
-                    <h3 className="mt-4 text-xl font-semibold text-[#050505]">{plan.name}</h3>
-                    <p className="mt-2 text-2xl font-semibold text-[#009b3a]">{plan.price}</p>
-                    <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">
-                      {plan.propertyLimit} imóveis no plano e {plan.monthlyAiCredits} créditos IA por mês.
-                    </p>
-
-                    <div className="mt-5 grid gap-3">
-                      {buildPlanHighlights(plan).map((highlight) => (
-                        <div key={highlight} className="flex items-start gap-2 text-sm text-[#5F6B7A]">
-                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
-                          <span>{highlight}</span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="mt-4 flex flex-wrap items-end gap-3">
+                    <h2 className="text-[1.9rem] font-semibold tracking-tight text-[#050505]">{planDisplayName}</h2>
+                    <span className="rounded-full border border-[#009b3a]/16 bg-[#eef9f1] px-3 py-1 text-sm font-medium text-[#009b3a]">
+                      {planStatus}
+                    </span>
                   </div>
+                  <p className="mt-2 text-sm leading-6 text-[#6B7280]">{planDescription}</p>
+                </div>
 
+                <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
+                  <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-left lg:min-w-[180px]">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">Plano</p>
+                    <p className="mt-2 text-2xl font-semibold text-[#050505]">{planPrice}</p>
+                  </div>
                   <Button
                     type="button"
-                    variant={plan.key === currentPlan?.key ? "ghost" : "default"}
-                    onClick={() => void registerCommercialRequest("Solicitação de plano", `${plan.name} - ${plan.price}`)}
-                    className={
-                      plan.key === currentPlan?.key
-                        ? "mt-6 h-10 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
-                        : "mt-6 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
-                    }
+                    onClick={() => void registerCommercialRequest("Solicitacao de plano", `${planDisplayName} - ${planPrice}`)}
+                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                   >
-                    {plan.key === currentPlan?.key ? "Plano atual" : "Solicitar plano"}
+                    Fazer upgrade
                   </Button>
                 </div>
-              ))}
-              {!isPlanLoading && !planSnapshot ? (
-                <p className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280] lg:col-span-3">
-                  Não foi possível carregar os planos agora.
-                </p>
-              ) : null}
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <CompactMetricCard label="Plano ativo" value={planDisplayName} caption={planStatus} />
+                <CompactMetricCard
+                  label="Imoveis"
+                  value={propertyLimits ? `${propertyUsed}/${propertyTotal}` : "-"}
+                  caption={propertyLimits ? `${propertyRemaining} disponiveis` : "Sincronizando"}
+                  toneClass={getUsageTone(propertyRatio)}
+                />
+                <CompactMetricCard
+                  label="Creditos IA"
+                  value={planSnapshot ? `${creditUsed}/${creditMonthly}` : "-"}
+                  caption={planSnapshot ? `${creditBalance} disponiveis` : "Sincronizando"}
+                  toneClass={getUsageTone(creditRatio)}
+                />
+                <CompactMetricCard label="Upgrade" value="Pro e Growth" caption="Mais Studio IA, COS e analytics" />
+              </div>
             </CardContent>
           </Card>
-        </ResponsiveCollapsibleSection>
 
-        <ResponsiveCollapsibleSection title="O que está incluso">
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">O que está incluso</CardTitle>
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardContent className="p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">Upgrade EME</p>
+              <h3 className="mt-3 text-[1.3rem] font-semibold tracking-tight text-[#050505]">
+                Mais velocidade para vender, publicar e analisar.
+              </h3>
+              <div className="mt-4 grid gap-3">
+                <UpgradeBenefit icon={Sparkles} title="Studio IA e videos" description="Mais folga para gerar conteudo visual pronto para venda." />
+                <UpgradeBenefit icon={Bot} title="COS com mais escala" description="Credito IA e uso assistido para manter a operacao fluindo." />
+                <UpgradeBenefit icon={ChartColumn} title="Analytics e desempenho" description="Mais visibilidade para ajustar a operacao com seguranca." />
+              </div>
+              <Button
+                type="button"
+                onClick={() =>
+                  void registerCommercialRequest(
+                    "Solicitacao de plano",
+                    "Corretor quer entender beneficios de upgrade para Studio IA, COS e analytics.",
+                  )
+                }
+                className="mt-5 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+              >
+                Quero evoluir meu plano
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl text-[#050505]">Uso atual</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-2">
-              {(currentPlan?.features ?? []).map((feature) => {
+            <CardContent className="grid gap-4 p-5 pt-0 md:grid-cols-2">
+              <UsageCard
+                label="Imoveis"
+                value={propertyLimitLabel}
+                progressWidth={propertyUsageWidth}
+                progressTone="bg-[#009b3a]"
+                helper={propertyLimitMessage || "Capacidade atual do plano e dos extras permanentes."}
+                alert={Boolean(propertyLimitMessage)}
+              />
+              <UsageCard
+                label="Creditos IA"
+                value={creditLimitLabel}
+                progressWidth={creditUsageWidth}
+                progressTone="bg-[#009b3a]"
+                helper={creditLimitMessage || "Acompanhe o consumo mensal de IA do seu plano atual."}
+                alert={Boolean(creditLimitMessage)}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl text-[#050505]">O que esta incluso</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-5 pt-0 sm:grid-cols-2">
+              {includedFeatures.map((feature) => {
                 const Icon = featureIcons[feature] ?? CheckCircle2
                 return (
-                <div
-                  key={feature}
-                  className="flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4"
-                >
-                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
-                    <Icon className="size-4.5" />
+                  <div
+                    key={feature}
+                    className="flex items-center gap-3 rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3.5"
+                  >
+                    <div className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+                      <Icon className="size-4.5" />
+                    </div>
+                    <p className="text-sm text-[#4B5563]">{featureLabels[feature] ?? feature}</p>
                   </div>
-                  <p className="text-sm text-[#4B5563]">{featureLabels[feature] ?? feature}</p>
-                </div>
                 )
               })}
               {currentPlan ? (
-                <div className="flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4">
-                  <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
-                    <Bot className="size-4.5" />
+                <div className="flex items-center gap-3 rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3.5">
+                  <div className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+                    <Sparkles className="size-4.5" />
                   </div>
-                  <p className="text-sm text-[#4B5563]">{currentPlan.monthlyAiCredits} créditos IA/mês</p>
+                  <p className="text-sm text-[#4B5563]">{currentPlan.monthlyAiCredits} creditos IA por mes</p>
                 </div>
               ) : null}
             </CardContent>
           </Card>
-
-        </ResponsiveCollapsibleSection>
-
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="grid gap-6">
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-[#050505]">Uso atual</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                  <p className="text-sm text-[#5F6B7A]">Imóveis cadastrados</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#050505]">{propertyLimitLabel}</p>
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f6f7f4]">
-                    <div className="h-full rounded-full bg-[#009b3a]" style={{ width: usageWidth }} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-[#050505]">Precisa de mais?</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <p className="text-sm leading-7 text-[#5F6B7A]">
-                  Solicite uma conversa com o suporte EME para ajustar plano, créditos ou capacidade de imóveis.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => void registerCommercialRequest("Solicitação de plano", "Corretor solicitou conversa sobre planos e pacotes EME.")}
-                  className="mt-5 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
-                >
-                  <Bot className="size-4" />
-                  Falar sobre planos
-                </Button>
-                {upgradeFeedback && <p className="mt-3 text-sm text-[#009b3a]">{upgradeFeedback}</p>}
-              </CardContent>
-            </Card>
-          </div>
         </section>
 
-        <ResponsiveCollapsibleSection title="Pacotes extras">
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-[#050505]">Pacotes extras</CardTitle>
-            <p className="text-sm text-[#6B7280]">
-              Pacotes extras são compra única. Créditos IA entram na carteira da conta e imóveis extras aumentam permanentemente o limite.
-            </p>
-          </CardHeader>
-          <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2 xl:grid-cols-3">
-            {(planSnapshot?.packages ?? []).map((item) => {
-              const Icon = item.type === "credit" ? Sparkles : PackagePlus
-              const description = item.type === "credit"
-                ? "Créditos IA adicionados à carteira da conta."
-                : "Aumenta permanentemente o limite de imóveis da conta."
-              return (
-              <div key={item.key} className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
-                    <Icon className="size-4.5" />
+        <ResponsiveCollapsibleSection title="Planos disponiveis" defaultMobileOpen>
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl text-[#050505]">Planos disponiveis</CardTitle>
+              <p className="text-sm text-[#6B7280]">Compare a fase atual da operacao com o que cada plano libera no portal.</p>
+            </CardHeader>
+            <CardContent className="grid gap-4 p-5 pt-0 lg:grid-cols-3">
+              {(planSnapshot?.plans ?? []).map((plan) => {
+                const isCurrent = plan.key === currentPlan?.key
+                const isRecommended = plan.key === "pro"
+
+                return (
+                  <div
+                    key={plan.key}
+                    className={`flex min-h-[320px] flex-col justify-between rounded-[1.3rem] border p-5 transition-all ${
+                      isRecommended
+                        ? "border-[#009b3a]/24 bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_100%)] shadow-[0_18px_36px_rgba(0,155,58,0.08)]"
+                        : "border-black/[0.06] bg-[#fbfbf8]"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#009b3a]">
+                          {isCurrent ? "Plano atual" : "Plano"}
+                        </span>
+                        {isRecommended ? (
+                          <span className="rounded-full bg-[#009b3a] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-white">
+                            Mais escolhido
+                          </span>
+                        ) : null}
+                      </div>
+                      <h3 className="mt-4 text-[1.25rem] font-semibold text-[#050505]">{plan.name}</h3>
+                      <p className="mt-2 text-[1.9rem] font-semibold text-[#009b3a]">{plan.price}</p>
+                      <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">
+                        {plan.propertyLimit} imoveis no plano e {plan.monthlyAiCredits} creditos IA por mes.
+                      </p>
+
+                      <div className="mt-5 grid gap-3">
+                        {buildPlanHighlights(plan).map((highlight) => (
+                          <div key={highlight} className="flex items-start gap-2 text-sm text-[#5F6B7A]">
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
+                            <span>{highlight}</span>
+                          </div>
+                        ))}
+                        <div className="flex items-start gap-2 text-sm text-[#5F6B7A]">
+                          <Video className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
+                          <span>{plan.monthlyAiCredits > 0 ? "Fluxos de video e Studio IA com mais folego de uso" : "Uso inicial para organizar a operacao"}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-[#5F6B7A]">
+                          <Bot className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
+                          <span>{plan.features.includes("assessor_eme") || plan.features.includes("all") ? "COS com mais capacidade operacional" : "Base do portal e estrutura essencial"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant={isCurrent ? "ghost" : "default"}
+                      onClick={() => void registerCommercialRequest("Solicitacao de plano", `${plan.name} - ${plan.price}`)}
+                      className={
+                        isCurrent
+                          ? "mt-6 h-10 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                          : "mt-6 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+                      }
+                    >
+                      {isCurrent ? "Plano atual" : "Solicitar upgrade"}
+                    </Button>
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-semibold text-[#050505]">{item.label}</h3>
-                    <p className="mt-1 text-sm font-medium text-[#009b3a]">{item.price}</p>
-                  </div>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-[#5F6B7A]">{description}</p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void registerCommercialRequest("Solicitar pacote", `${item.label} - ${item.price}`)}
-                  className="mt-5 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
-                >
-                  Solicitar pacote
-                </Button>
-              </div>
-              )
-            })}
-          </CardContent>
-        </Card>
+                )
+              })}
+              {!isPlanLoading && !planSnapshot ? (
+                <p className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280] lg:col-span-3">
+                  Nao foi possivel carregar os planos agora.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
         </ResponsiveCollapsibleSection>
 
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-[#fbfbf8] py-0">
-          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-6 text-[#5F6B7A]">
-              Créditos IA são adicionados à carteira da conta. Imóveis extras aumentam permanentemente o limite de imóveis. Pagamento real ainda não foi integrado.
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => void registerCommercialRequest("Contato com suporte", "Corretor solicitou atendimento de suporte pela página Plano.")}
-              className="h-10 shrink-0 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
-            >
-              <Headphones className="size-4" />
-              Falar com suporte
-            </Button>
+        <ResponsiveCollapsibleSection title="Pacotes extras">
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl text-[#050505]">Pacotes extras</CardTitle>
+              <p className="text-sm text-[#6B7280]">
+                Pacotes extras sao compra unica. Creditos IA entram na carteira da conta e imoveis extras aumentam permanentemente o limite.
+              </p>
+            </CardHeader>
+            <CardContent className="grid gap-5 p-5 pt-0 xl:grid-cols-2">
+              <PackageCategory
+                title="Creditos IA"
+                description="Amplie a capacidade do COS, do Studio IA e dos fluxos de geracao conforme a demanda da operacao."
+                items={creditPackages}
+                onRequest={registerCommercialRequest}
+              />
+              <PackageCategory
+                title="Capacidade adicional de imoveis"
+                description="Aumente o limite permanente da conta para sustentar mais publicacoes e crescimento de carteira."
+                items={propertyPackages}
+                onRequest={registerCommercialRequest}
+              />
+            </CardContent>
+          </Card>
+        </ResponsiveCollapsibleSection>
+
+        <Card className="rounded-[1.65rem] border-black/[0.06] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+          <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-[40rem]">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">Subir de nivel</p>
+              <h3 className="mt-2 text-[1.35rem] font-semibold text-[#050505]">
+                Destrave mais Studio IA, videos, COS e analytics para operar com mais margem.
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
+                Se sua carteira esta crescendo ou o limite esta proximo, o upgrade ajuda a manter publicacao, atendimento e geracao de conteudo sem interrupcao.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                type="button"
+                onClick={() =>
+                  void registerCommercialRequest(
+                    "Solicitacao de plano",
+                    "Corretor quer fazer upgrade e entender qual plano libera mais Studio IA, COS e analytics.",
+                  )
+                }
+                className="h-10 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+              >
+                Fazer upgrade do plano
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void registerCommercialRequest("Contato com suporte", "Corretor solicitou atendimento de suporte pela pagina Plano.")}
+                className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
+              >
+                <Headphones className="size-4" />
+                Falar com suporte
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <ResponsiveCollapsibleSection title="Histórico de créditos">
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-[#050505]">Histórico de créditos IA</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 p-6 pt-0">
-            {planSnapshot?.credits.history.length ? (
-              planSnapshot.credits.history.map((item) => (
-                <div key={item.id} className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm font-medium text-[#050505]">{item.description || item.actionType || "Movimento de créditos"}</p>
-                    <span className={item.amount >= 0 ? "text-sm font-semibold text-[#009b3a]" : "text-sm font-semibold text-[#4B5563]"}>
-                      {item.amount > 0 ? "+" : ""}{item.amount} crédito{Math.abs(item.amount) === 1 ? "" : "s"}
-                    </span>
+        {upgradeFeedback ? <p className="text-sm text-[#009b3a]">{upgradeFeedback}</p> : null}
+
+        <ResponsiveCollapsibleSection title="Historico de creditos">
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl text-[#050505]">Historico de creditos IA</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-5 pt-0">
+              {planSnapshot?.credits.history.length ? (
+                planSnapshot.credits.history.map((item) => (
+                  <div key={item.id} className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-medium text-[#050505]">{item.description || item.actionType || "Movimento de creditos"}</p>
+                      <span className={item.amount >= 0 ? "text-sm font-semibold text-[#009b3a]" : "text-sm font-semibold text-[#4B5563]"}>
+                        {item.amount > 0 ? "+" : ""}
+                        {item.amount} credito{Math.abs(item.amount) === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                      {formatHistoryDate(item.createdAt)} · Saldo apos movimento: {item.balanceAfter}
+                    </p>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                    {formatHistoryDate(item.createdAt)} · Saldo após movimento: {item.balanceAfter}
-                  </p>
+                ))
+              ) : (
+                <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                  <p className="text-sm text-[#6B7280]">Nenhuma movimentacao de creditos registrada ainda.</p>
                 </div>
-              ))
-            ) : (
-              <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-sm text-[#6B7280]">Nenhuma movimentação de créditos registrada ainda.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
         </ResponsiveCollapsibleSection>
       </div>
     </BrokerPageShell>
   )
 }
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
+function CompactMetricCard({
+  label,
+  value,
+  caption,
+  toneClass = "text-[#050505]",
+}: {
+  label: string
+  value: string
+  caption: string
+  toneClass?: string
+}) {
   return (
-    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-      <p className="text-sm text-[#6B7280]">{label}</p>
-      <p className="mt-2 text-base font-semibold text-[#050505]">{value}</p>
+    <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">{label}</p>
+      <p className={`mt-2 text-[1.45rem] font-semibold ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-sm text-[#6B7280]">{caption}</p>
     </div>
   )
 }
 
+function UsageCard({
+  label,
+  value,
+  progressWidth,
+  progressTone,
+  helper,
+  alert,
+}: {
+  label: string
+  value: string
+  progressWidth: string
+  progressTone: string
+  helper: string
+  alert?: boolean
+}) {
+  return (
+    <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-[#5F6B7A]">{label}</p>
+        {alert ? <TriangleAlert className="size-4 text-[#d97706]" /> : null}
+      </div>
+      <p className="mt-2 text-2xl font-semibold text-[#050505]">{value}</p>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#eef1ec]">
+        <div className={`h-full rounded-full ${progressTone}`} style={{ width: progressWidth }} />
+      </div>
+      <p className={`mt-3 text-sm leading-6 ${alert ? "text-[#b45309]" : "text-[#6B7280]"}`}>{helper}</p>
+    </div>
+  )
+}
 
+function UpgradeBenefit({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: typeof Sparkles
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-[1.15rem] border border-black/[0.06] bg-white/80 px-4 py-3.5">
+      <div className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+        <Icon className="size-4.5" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-[#050505]">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-[#6B7280]">{description}</p>
+      </div>
+    </div>
+  )
+}
 
+function PackageCategory({
+  title,
+  description,
+  items,
+  onRequest,
+}: {
+  title: string
+  description: string
+  items: PlanPackage[]
+  onRequest: (title: string, message: string) => Promise<void>
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <h3 className="text-base font-semibold text-[#050505]">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#6B7280]">{description}</p>
+      <div className="mt-4 grid gap-3">
+        {items.map((item) => {
+          const Icon = item.type === "credit" ? Sparkles : PackagePlus
+          return (
+            <div key={item.key} className="rounded-[1.1rem] border border-black/[0.06] bg-white/90 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+                  <Icon className="size-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-semibold text-[#050505]">{item.label}</h4>
+                  <p className="mt-1 text-sm font-medium text-[#009b3a]">{item.price}</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void onRequest("Solicitar pacote", `${item.label} - ${item.price}`)}
+                className="mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
+              >
+                Solicitar pacote
+              </Button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
