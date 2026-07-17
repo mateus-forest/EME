@@ -7,7 +7,6 @@ import {
   Camera,
   Check,
   CirclePlay,
-  Clock3,
   FolderOpen,
   Grid2x2,
   House,
@@ -201,36 +200,35 @@ export default function Home() {
 
         <section
           id="studio-ia"
-          className="grid items-center gap-12 px-2 pb-10 pt-6 lg:grid-cols-[minmax(360px,0.42fr)_minmax(0,0.58fr)] lg:px-4 lg:pt-12"
+          className="grid items-center gap-14 px-2 pb-10 pt-6 lg:grid-cols-[minmax(340px,0.4fr)_minmax(0,0.6fr)] lg:px-4 lg:pt-12"
         >
-          <div className="max-w-[30rem]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#dceadf] bg-white/92 px-3 py-2 text-sm font-medium text-[#5f6973] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              <span className="inline-flex size-7 items-center justify-center rounded-full bg-[#eef8f1] text-[#16a34a]">
-                <Bot className="size-4" />
-              </span>
-              Studio IA
+          <div className="max-w-[32rem]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#dce9df] bg-white/92 px-4 py-2 text-sm font-medium text-[#16a34a] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <Bot className="size-4" />
+              STUDIO IA
             </div>
-            <h2 className="mt-6 text-[2.7rem] font-semibold leading-[1.02] tracking-[-0.055em] text-[#111111] sm:text-[3.8rem]">
-              Crie imagens, videos e campanhas com um fluxo realmente pronto para vender.
+            <h2 className="mt-7 text-[2.8rem] font-semibold leading-[1.05] tracking-[-0.06em] text-[#111111] sm:text-[4rem]">
+              Studio IA do EME:
+              <br />
+              o atalho para resultados
+              <br />
+              que <span className="text-[#16a34a]">geram negocio.</span>
             </h2>
-            <p className="mt-6 text-[1.08rem] leading-8 text-[#5f6973]">
-              O Studio IA organiza cada objetivo comercial em uma experiencia clara, elegante e operacional. Voce
-              escolhe o resultado, o EME prepara o caminho para produzir, aprovar e publicar com menos atrito.
+            <p className="mt-7 max-w-[31rem] text-[1.08rem] leading-8 text-[#5f6973]">
+              Escolha o objetivo comercial e deixe a IA cuidar do resto. Do conteudo a estrategia, tudo em um so
+              lugar para voce vender mais, com mais agilidade.
             </p>
-            <div className="mt-8 grid gap-3">
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {[
-                "Escolha o objetivo comercial sem sair do mesmo ambiente.",
-                "Aprove o que foi gerado e mantenha o material salvo em Meus arquivos.",
-                "Crie pecas visuais com padrao premium para redes sociais e atendimento.",
+                "Fluxos prontos para gerar resultados",
+                "IA treinada para imobiliarias",
+                "Seus dados seguros e confidenciais",
               ].map((item) => (
-                <div
-                  key={item}
-                  className="flex items-start gap-3 rounded-[22px] border border-black/[0.05] bg-white/88 px-4 py-4 shadow-[0_12px_26px_rgba(15,23,42,0.04)]"
-                >
-                  <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#eef8f1] text-[#16a34a]">
-                    <Check className="size-3.5" />
+                <div key={item} className="flex items-start gap-3">
+                  <span className="mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#eef8f1] text-[#16a34a]">
+                    <Check className="size-4" />
                   </span>
-                  <p className="text-[15px] leading-7 text-[#4f5d67]">{item}</p>
+                  <p className="text-sm leading-6 text-[#4f5d67]">{item}</p>
                 </div>
               ))}
             </div>
@@ -347,110 +345,50 @@ function HeroConversationMock() {
 
 function StudioPreviewMock() {
   return (
-    <div className="relative mx-auto w-full max-w-[880px]">
-      <div className="absolute inset-0 -z-10 rounded-[48px] bg-[radial-gradient(circle_at_top_left,rgba(22,163,74,0.14),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.07),transparent_32%)] blur-3xl" />
-      <div className="overflow-hidden rounded-[34px] border border-black/[0.055] bg-[linear-gradient(180deg,#ffffff_0%,#f8faf7_100%)] p-4 shadow-[0_28px_90px_rgba(15,23,42,0.08)] sm:p-5">
-        <div className="rounded-[28px] border border-black/[0.05] bg-white/96 shadow-[0_18px_44px_rgba(15,23,42,0.045)]">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/[0.05] px-5 py-4 sm:px-6">
+    <div className="relative mx-auto w-full max-w-[920px]">
+      <div className="absolute inset-0 -z-10 rounded-[52px] bg-[radial-gradient(circle_at_center,rgba(22,163,74,0.13),transparent_34%)] blur-3xl" />
+      <div className="overflow-hidden rounded-[36px] border border-black/[0.055] bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfa_100%)] p-4 shadow-[0_28px_90px_rgba(15,23,42,0.08)] sm:p-5">
+        <div className="rounded-[30px] border border-black/[0.05] bg-white/96 px-5 py-5 shadow-[0_18px_44px_rgba(15,23,42,0.045)] sm:px-6 sm:py-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.26em] text-[#16a34a]">Workspace Studio IA</p>
-              <h3 className="mt-2 text-[1.45rem] font-semibold tracking-[-0.04em] text-[#050505]">
-                Fluxos orientados a resultado
-              </h3>
+              <p className="text-[0.95rem] font-semibold text-[#111111]">Escolha um fluxo para comecar</p>
+              <p className="mt-1 text-sm text-[#667085]">Acoes orientadas a resultado para o seu dia a dia.</p>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-[#dce9df] bg-[#f8fbf8] px-3 py-2 text-xs font-medium text-[#5f6973]">
-              <Clock3 className="size-3.5 text-[#16a34a]" />
-              Pronto para produzir
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[#dce9df] bg-white px-3 py-2 text-xs font-medium text-[#5f6973]">
+                15 creditos disponiveis
+              </span>
+              <span className="rounded-full bg-[#16a34a] px-4 py-2 text-xs font-semibold text-white">+ Novo fluxo</span>
             </div>
           </div>
 
-          <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,0.67fr)_minmax(250px,0.33fr)]">
-            <div className="rounded-[24px] border border-black/[0.05] bg-[#fcfcfa] p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-[#009b3a]">
-                  <Bot className="size-3.5" />
-                  Studio IA
-                </div>
-                <div className="flex items-center gap-2 text-xs text-[#7b8694]">
-                  <span className="inline-flex size-2 rounded-full bg-[#16a34a]" />
-                  6 fluxos ativos
-                </div>
-              </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {studioLandingActions.map((action, index) => {
-                  const Icon = action.icon
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {studioLandingActions.map((action) => {
+              const Icon = action.icon
 
-                  return (
-                    <div
-                      key={action.title}
-                      className={`rounded-[22px] border p-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)] ${
-                        index === 2
-                          ? "border-[#d9eadf] bg-[linear-gradient(180deg,#f6fbf7_0%,#ffffff_100%)]"
-                          : "border-black/[0.055] bg-white"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-                          <Icon className="size-5" />
-                        </div>
-                        <span className="rounded-full bg-[#f4f6f4] px-2.5 py-1 text-[11px] font-medium text-[#64707d]">
-                          {index === 2 ? "Em destaque" : "Disponivel"}
-                        </span>
-                      </div>
-                      <p className="mt-5 text-[1.02rem] font-semibold text-[#050505]">{action.title}</p>
-                      <p className="mt-3 text-[13px] leading-6 text-[#667085]">{action.description}</p>
-                      <div
-                        className={`mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[16px] px-4 text-sm font-semibold ${
-                          index === 2
-                            ? "bg-[#16a34a] text-white shadow-[0_14px_26px_rgba(22,163,74,0.18)]"
-                            : "border border-black/[0.06] bg-[#fbfbf8] text-[#111111]"
-                        }`}
-                      >
-                        Abrir fluxo
-                        <ArrowRight className="size-4" />
-                      </div>
+              return (
+                <article
+                  key={action.title}
+                  className="rounded-[24px] border border-black/[0.055] bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfa_100%)] p-5 shadow-[0_12px_26px_rgba(15,23,42,0.04)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex size-12 items-center justify-center rounded-2xl border border-[#009b3a]/14 bg-[#eef9f1] text-[#16a34a]">
+                      <Icon className="size-5" />
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="grid gap-4">
-              <div className="rounded-[24px] border border-black/[0.055] bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.035)]">
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#7b8694]">Producao</p>
-                <p className="mt-3 text-[1.5rem] font-semibold tracking-[-0.04em] text-[#111111]">Aprovacoes e arquivos</p>
-                <p className="mt-3 text-sm leading-7 text-[#667085]">
-                  Materiais gerados, revisados e prontos para seguir para publicacao ou atendimento.
-                </p>
-              </div>
-              <div className="rounded-[24px] border border-[#dce9df] bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_100%)] p-5 shadow-[0_12px_28px_rgba(15,23,42,0.035)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-[#16a34a] text-white shadow-[0_12px_26px_rgba(22,163,74,0.2)]">
-                    <Sparkles className="size-5" />
+                    <span className="rounded-full bg-[#eef9f1] px-2.5 py-1 text-[11px] font-medium text-[#16a34a]">
+                      Disponivel
+                    </span>
                   </div>
-                  <span className="rounded-full border border-[#dce9df] bg-white px-3 py-1 text-xs font-medium text-[#5f6973]">
-                    Meus arquivos
-                  </span>
-                </div>
-                <div className="mt-5 grid gap-3">
-                  <StudioPanelCard label="Imagem aprovada" value="Cena final pronta" />
-                  <StudioPanelCard label="Video exportado" value="MP4 vertical salvo" />
-                  <StudioPanelCard label="Legenda pronta" value="Publicar com CTA" />
-                </div>
-              </div>
-            </div>
+                  <p className="mt-6 max-w-[14ch] text-[1.1rem] font-semibold leading-8 text-[#111111]">{action.title}</p>
+                  <div className="mt-7 flex items-center justify-end text-[#16a34a]">
+                    <ArrowRight className="size-4" />
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function StudioPanelCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[18px] border border-black/[0.05] bg-white/92 px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-[#7b8694]">{label}</p>
-      <p className="mt-1.5 text-sm font-semibold text-[#111111]">{value}</p>
     </div>
   )
 }
