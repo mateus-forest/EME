@@ -202,8 +202,8 @@ export function BrokerStudioIaOwnersPage() {
 
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+      <div className="min-w-0 grid gap-4 sm:gap-5">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
@@ -230,7 +230,7 @@ export function BrokerStudioIaOwnersPage() {
           </div>
         </section>
 
-        <section className="grid gap-2 md:grid-cols-5">
+        <section className="studio-step-grid">
           {stepLabels.map((step, index) => {
             const isActive = step.id === currentStep
             const isComplete = stepOrder(step.id) < stepOrder(currentStep)
@@ -251,8 +251,8 @@ export function BrokerStudioIaOwnersPage() {
           })}
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
@@ -369,7 +369,7 @@ export function BrokerStudioIaOwnersPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resumo do fluxo</CardTitle>
             </CardHeader>
@@ -392,8 +392,8 @@ export function BrokerStudioIaOwnersPage() {
           </Card>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
@@ -567,7 +567,7 @@ export function BrokerStudioIaOwnersPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Estado atual</CardTitle>
             </CardHeader>

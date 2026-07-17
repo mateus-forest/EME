@@ -137,6 +137,49 @@
 }
 
 @layer utilities {
+  .pwa-safe-shell {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pwa-sticky-composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    background:
+      linear-gradient(180deg, rgba(244, 241, 235, 0), rgba(244, 241, 235, 0.78) 18%, rgba(244, 241, 235, 0.96) 40%, rgba(244, 241, 235, 1) 100%);
+    backdrop-filter: blur(14px);
+  }
+
+  .studio-step-grid {
+    display: grid;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .studio-step-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 767px) {
+    .studio-step-grid {
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(11rem, 1fr);
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      padding-bottom: 0.2rem;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .studio-step-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
   .eme-shimmer {
     position: relative;
     overflow: hidden;

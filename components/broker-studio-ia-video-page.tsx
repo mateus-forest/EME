@@ -353,8 +353,8 @@ export function BrokerStudioIaVideoPage() {
 
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+      <div className="min-w-0 grid gap-4 sm:gap-5">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
@@ -391,7 +391,7 @@ export function BrokerStudioIaVideoPage() {
           </div>
         </section>
 
-        <section className="grid gap-2 md:grid-cols-5">
+        <section className="studio-step-grid">
           {stepLabels.map((step, index) => {
             const isActive = step.id === currentStep
             const isComplete = videoStepOrder(step.id) < videoStepOrder(currentStep)
@@ -424,8 +424,8 @@ export function BrokerStudioIaVideoPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">
                 {currentStep === "selection" && "1. Escolha o imovel ou envie imagens"}
@@ -435,10 +435,10 @@ export function BrokerStudioIaVideoPage() {
                 {currentStep === "result" && "5. Video final pronto"}
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-5 p-5 pt-0">
+            <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
               {currentStep === "selection" ? (
                 <>
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="grid min-w-0 gap-4 lg:grid-cols-2">
                     <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Selecionar imovel</p>
                       <p className="mt-2 text-sm leading-6 text-[#6B7280]">
@@ -502,7 +502,7 @@ export function BrokerStudioIaVideoPage() {
                         </span>
                       </div>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {selectedProperty.images.map((imageUrl, index) => {
                           const selected = selectedReferenceImages.includes(imageUrl)
 
@@ -528,7 +528,7 @@ export function BrokerStudioIaVideoPage() {
                   {uploadedImages.length ? (
                     <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Uploads desta sessao</p>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {uploadedImages.map((image, index) => (
                           <div key={image.url} className="overflow-hidden rounded-[1rem] border border-black/[0.06] bg-white">
                             <div className="h-36 w-full bg-[#eef2f6]" style={{ backgroundImage: `url(${image.url})`, backgroundPosition: "center", backgroundSize: "cover" }} />
@@ -566,7 +566,7 @@ export function BrokerStudioIaVideoPage() {
 
               {currentStep === "configuration" ? (
                 <>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid min-w-0 gap-4 md:grid-cols-2">
                     <FieldCard label="Formato do video">
                       <Select value={format} onValueChange={(value) => setFormat(value as StudioVideoFormat)}>
                         <SelectTrigger className="w-full">
@@ -665,7 +665,7 @@ export function BrokerStudioIaVideoPage() {
 
               {currentStep === "review" ? (
                 <>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {summaryItems.map((item) => (
                       <div key={item.label} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">{item.label}</p>
@@ -751,11 +751,11 @@ export function BrokerStudioIaVideoPage() {
 
                   {generatedResult.videoUrl ? (
                     <div className="overflow-hidden rounded-[1.2rem] border border-black/[0.06] bg-black">
-                      <video src={generatedResult.videoUrl} controls className="h-full max-h-[540px] w-full" />
+                      <video src={generatedResult.videoUrl} controls className="h-full max-h-[540px] w-full object-contain" />
                     </div>
                   ) : null}
 
-                  <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="grid min-w-0 gap-4 xl:grid-cols-2">
                     <ResultListCard title="Storyboard" items={generatedResult.storyboard} />
                     <ResultListCard title="Plano de cenas" items={generatedResult.shotPlan} />
                   </div>
@@ -800,7 +800,7 @@ export function BrokerStudioIaVideoPage() {
           </Card>
 
           <div className="grid gap-4">
-            <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+            <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
               <CardHeader className="px-5 py-5">
                 <CardTitle className="text-xl text-[#050505]">Resumo rapido</CardTitle>
               </CardHeader>
@@ -814,7 +814,7 @@ export function BrokerStudioIaVideoPage() {
               </CardContent>
             </Card>
 
-            <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+            <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
               <CardHeader className="px-5 py-5">
                 <CardTitle className="text-xl text-[#050505]">Estado do fluxo</CardTitle>
               </CardHeader>

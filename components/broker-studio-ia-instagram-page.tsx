@@ -224,8 +224,8 @@ export function BrokerStudioIaInstagramPage() {
 
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+      <div className="min-w-0 grid gap-4 sm:gap-5">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
@@ -252,7 +252,7 @@ export function BrokerStudioIaInstagramPage() {
           </div>
         </section>
 
-        <section className="grid gap-2 md:grid-cols-5">
+        <section className="studio-step-grid">
           {stepLabels.map((step, index) => {
             const isActive = step.id === currentStep
             const isComplete = stepOrder(step.id) < stepOrder(currentStep)
@@ -273,15 +273,15 @@ export function BrokerStudioIaInstagramPage() {
           })}
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
                 O Studio usa a mesma experiencia em etapas e agora gera o conteudo real no servidor para este fluxo.
               </p>
             </CardHeader>
-            <CardContent className="grid gap-4 p-5 pt-0">
+            <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
               <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                 <div className="flex items-start gap-3">
                   <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-white text-[#009b3a]">
@@ -408,7 +408,7 @@ export function BrokerStudioIaInstagramPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resumo do fluxo</CardTitle>
             </CardHeader>
@@ -431,15 +431,15 @@ export function BrokerStudioIaInstagramPage() {
           </Card>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
                 Revise a campanha gerada, aprove cada peca e finalize a campanha quando estiver pronta.
               </p>
             </CardHeader>
-            <CardContent className="grid gap-4 p-5 pt-0">
+            <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
               {currentStep === "processing" ? (
                 <EmeLoading
                   message="Gerando campanha com IA"
@@ -448,7 +448,7 @@ export function BrokerStudioIaInstagramPage() {
                 />
               ) : currentStep === "result" || currentStep === "approval" ? (
                 <div className="grid gap-4">
-                  <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="grid min-w-0 gap-4 xl:grid-cols-2">
                     <PreviewCard
                       title="Post Feed"
                       approved={approvedItems.postFeed}
@@ -624,7 +624,7 @@ export function BrokerStudioIaInstagramPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+          <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Estado atual</CardTitle>
             </CardHeader>

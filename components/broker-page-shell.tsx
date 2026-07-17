@@ -72,7 +72,7 @@ export function BrokerPageShell({
         } as CSSProperties
       }
     >
-      <div className={`relative min-h-svh w-full overflow-hidden text-[#050505] ${isCosVariant ? "bg-[#f4f1eb]" : "bg-[#fbfbf8]"}`}>
+      <div className={`pwa-safe-shell relative min-h-svh w-full overflow-hidden text-[#050505] ${isCosVariant ? "bg-[#f4f1eb]" : "bg-[#fbfbf8]"}`}>
         {!isCosVariant ? (
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
         ) : null}

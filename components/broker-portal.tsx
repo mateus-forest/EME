@@ -215,9 +215,9 @@ export function BrokerPortal() {
   return (
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
-        <section className="grid min-h-full w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="flex min-h-full items-start justify-center bg-[#f4f1eb] px-6 py-8 lg:px-12 lg:py-12">
-            <div className="flex w-full max-w-5xl flex-col items-center">
+        <section className="grid min-h-full min-w-0 w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="flex min-h-full min-w-0 items-start justify-center bg-[#f4f1eb] px-4 py-6 sm:px-5 lg:px-10 lg:py-10">
+            <div className="flex w-full max-w-5xl min-w-0 flex-col items-center">
               <div className="flex size-7 items-center justify-center text-[#111111]">
                 <Sparkles className="size-4" />
               </div>
@@ -250,8 +250,8 @@ export function BrokerPortal() {
                 })}
               </div>
 
-              <div className="mt-8 w-full max-w-[60rem]">
-                <div className="flex items-center justify-between px-6 text-sm text-[#91a0b5]">
+              <div className="mt-7 w-full max-w-[60rem] min-w-0">
+                <div className="flex items-center justify-between px-4 text-sm text-[#91a0b5] sm:px-6">
                   <div className="flex items-center gap-2">
                     <Sparkles className="size-4" />
                     Atalhos inteligentes
@@ -260,7 +260,7 @@ export function BrokerPortal() {
                     Editar
                   </button>
                 </div>
-                <div className="mt-3 rounded-[1.8rem] bg-white px-8 py-6 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
+                <div className="mt-3 rounded-[1.8rem] bg-white px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:px-6 sm:py-6">
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     {contextMetrics.map((item) => (
                       <div key={item.label} className="flex flex-col items-center justify-center text-center">
@@ -273,9 +273,9 @@ export function BrokerPortal() {
                 </div>
               </div>
 
-              <div className="mt-10 w-full max-w-[60rem]">
-                <div className="overflow-hidden rounded-[2rem] bg-white shadow-[0_16px_42px_rgba(15,23,42,0.08)]">
-                  <div className="border-b border-black/[0.05] px-6 py-5">
+              <div className="mt-8 w-full max-w-[60rem] min-w-0">
+                <div className="flex min-h-[calc(100svh-9.5rem)] min-w-0 flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_16px_42px_rgba(15,23,42,0.08)] md:min-h-[40rem]">
+                  <div className="border-b border-black/[0.05] px-4 py-4 sm:px-6 sm:py-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         {showConversationTitle ? (
@@ -293,7 +293,7 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="max-h-[26rem] space-y-4 overflow-y-auto px-6 py-5">
+                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
                     {isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
                         Carregando conversa...
@@ -307,7 +307,7 @@ export function BrokerPortal() {
                           className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm ${
+                            className={`max-w-[92%] min-w-0 rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm sm:max-w-[85%] ${
                               item.role === "user"
                                 ? "bg-[#111111] text-white"
                                 : item.state === "error"
@@ -315,7 +315,7 @@ export function BrokerPortal() {
                                   : "border border-black/[0.06] bg-[#fbfbf8] text-[#334155]"
                             }`}
                           >
-                            <p>{item.content}</p>
+                            <p className="whitespace-pre-wrap break-words">{item.content}</p>
                             {item.role === "assistant" && item.actionStatus ? (
                               <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#8a97a8]">
                                 {formatCosStatus(item.actionStatus)}
@@ -348,7 +348,7 @@ export function BrokerPortal() {
 
                     {isSending ? (
                       <div className="flex justify-start">
-                        <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#6f7f97]">
+                        <div className="max-w-[92%] rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#6f7f97] sm:max-w-[85%]">
                           COS analisando...
                         </div>
                       </div>

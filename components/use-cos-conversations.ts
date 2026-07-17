@@ -79,7 +79,7 @@ export function useCosConversations({
   const [chatFeedback, setChatFeedback] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isConversationLoading, setIsConversationLoading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
 
   const loadConversations = useCallback(async () => {

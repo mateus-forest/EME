@@ -79,8 +79,8 @@ const studioActions: StudioAction[] = [
 export function BrokerStudioIaHomePage() {
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+      <div className="min-w-0 grid gap-4 sm:gap-5">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
@@ -95,13 +95,13 @@ export function BrokerStudioIaHomePage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {studioActions.map((action) => {
             const Icon = action.icon
             const isAvailable = Boolean(action.href)
 
             return (
-              <Card key={action.title} className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
+              <Card key={action.title} className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
                 <CardHeader className="px-5 py-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">

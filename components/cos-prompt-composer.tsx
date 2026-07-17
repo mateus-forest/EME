@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 type QuickAction = {
   label: string
@@ -28,7 +28,7 @@ type CosPromptComposerProps = {
   onNewConversation: () => Promise<void> | void
   quickActions: QuickAction[]
   disabled?: boolean
-  inputRef: RefObject<HTMLInputElement | null>
+  inputRef: RefObject<HTMLTextAreaElement | null>
   feedback?: string
 }
 
@@ -95,6 +95,14 @@ export function CosPromptComposer({
       recognitionRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    const textarea = inputRef.current
+    if (!textarea) return
+
+    textarea.style.height = "0px"
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`
+  }, [inputRef, prompt])
 
   async function handleMicToggle() {
     if (micState === "recording") {
@@ -172,15 +180,15 @@ export function CosPromptComposer({
   }
 
   return (
-    <div className="border-t border-black/[0.05] px-6 py-5">
+    <div className="pwa-sticky-composer border-t border-black/[0.05] px-3 pt-3 sm:px-4">
       <form
         onSubmit={(event) => {
           event.preventDefault()
           void onSubmit()
         }}
-        className="flex flex-col gap-3"
+        className="flex min-w-0 flex-col gap-2"
       >
-        <div className="flex items-center gap-3 rounded-full bg-[#fbfbf8] px-4 py-3">
+        <div className="flex min-w-0 items-end gap-2 rounded-[1.6rem] border border-black/[0.06] bg-[#fbfbf8] px-2.5 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.06)] sm:gap-3 sm:px-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -227,12 +235,18 @@ export function CosPromptComposer({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Input
+          <Textarea
             ref={inputRef}
+            rows={1}
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
+            onFocus={() => {
+              window.setTimeout(() => {
+                inputRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" })
+              }, 120)
+            }}
             placeholder="Fale com o COS..."
-            className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-[15px] text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
+            className="min-h-0 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[15px] leading-6 text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
           />
 
           <Button
@@ -260,8 +274,8 @@ export function CosPromptComposer({
           </Button>
         </div>
 
-        <div className="flex min-h-6 items-center justify-between gap-3">
-          <p className="text-sm text-[#6f7f97]">
+        <div className="flex min-h-6 items-center justify-between gap-3 px-1">
+          <p className={`text-xs leading-5 ${micState === "error" ? "text-[#b42318]" : "text-[#6f7f97]"}`}>
             {micState === "recording"
               ? "Gravando..."
               : micState === "processing"
