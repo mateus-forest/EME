@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 
 import { LandingCosDemoSection } from "@/components/landing-cos-demo-section"
+import { LandingReveal } from "@/components/landing-reveal"
 import { LandingStudioMediaDemo } from "@/components/landing-studio-media-demo"
 
 type NavLink = {
@@ -140,7 +141,7 @@ export default function Home() {
             </Link>
             <Link
               href="/cadastro"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[16px] bg-[#16a34a] px-5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d] sm:px-6"
+              className="landing-hover-button inline-flex h-10 items-center justify-center gap-2 rounded-[16px] bg-[#16a34a] px-5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d] sm:px-6"
             >
               Testar gratuitamente
               <ArrowRight className="size-4" />
@@ -148,10 +149,11 @@ export default function Home() {
           </div>
         </header>
 
-        <section
-          id="como-funciona"
-          className="grid items-center gap-10 px-2 pb-18 pt-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(560px,1.1fr)] lg:px-4 lg:pt-16"
-        >
+        <LandingReveal delayMs={20}>
+          <section
+            id="como-funciona"
+            className="grid items-center gap-10 px-2 pb-16 pt-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(560px,1.1fr)] lg:px-4 lg:pt-14"
+          >
           <div className="max-w-[540px] pl-1 lg:pl-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#e3f2e7] bg-white/90 px-3 py-1.5 text-[13px] font-medium text-[#66716c] shadow-[0_6px_18px_rgba(15,23,42,0.03)]">
               <span className="inline-flex items-center gap-1 rounded-full bg-[#edf8f0] px-2 py-0.5 text-[#16a34a]">
@@ -174,14 +176,14 @@ export default function Home() {
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/cadastro/corretor"
-                className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[18px] bg-[#16a34a] px-7 text-[14px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d]"
+                className="landing-hover-button inline-flex h-[52px] items-center justify-center gap-2 rounded-[18px] bg-[#16a34a] px-7 text-[14px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d]"
               >
                 Testar gratuitamente
                 <ArrowRight className="size-4" />
               </Link>
               <a
                 href="#studio-ia"
-                className="inline-flex h-[52px] items-center justify-center gap-3 rounded-[18px] border border-black/[0.07] bg-white px-7 text-[14px] font-medium text-[#171717] shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition-colors hover:bg-[#fafcf9]"
+                className="landing-hover-button inline-flex h-[52px] items-center justify-center gap-3 rounded-[18px] border border-black/[0.07] bg-white px-7 text-[14px] font-medium text-[#171717] shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition-colors hover:bg-[#fafcf9]"
               >
                 Ver o Studio IA
                 <CirclePlay className="size-4" />
@@ -196,12 +198,14 @@ export default function Home() {
           </div>
 
           <HeroConversationMock />
-        </section>
+          </section>
+        </LandingReveal>
 
-        <section
-          id="studio-ia"
-          className="grid items-center gap-10 px-2 pb-8 pt-4 lg:grid-cols-[minmax(320px,0.4fr)_minmax(0,0.6fr)] lg:px-4 lg:pt-8"
-        >
+        <LandingReveal delayMs={40}>
+          <section
+            id="studio-ia"
+            className="grid items-center gap-9 px-2 pb-7 pt-3 lg:grid-cols-[minmax(320px,0.4fr)_minmax(0,0.6fr)] lg:px-4 lg:pt-7"
+          >
           <div className="max-w-[30rem]">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#dce9df] bg-white/92 px-3.5 py-1.5 text-[13px] font-medium text-[#16a34a] shadow-[0_8px_18px_rgba(15,23,42,0.035)]">
               <Bot className="size-4" />
@@ -235,14 +239,14 @@ export default function Home() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/cadastro/corretor"
-                className="inline-flex h-[50px] items-center justify-center gap-2 rounded-[18px] bg-[#16a34a] px-6 text-[14px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d]"
+                className="landing-hover-button inline-flex h-[50px] items-center justify-center gap-2 rounded-[18px] bg-[#16a34a] px-6 text-[14px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d]"
               >
                 Conhecer o Studio IA
                 <ArrowRight className="size-4" />
               </Link>
               <a
                 href="#recursos"
-                className="inline-flex h-[50px] items-center justify-center gap-3 rounded-[18px] border border-black/[0.07] bg-white px-6 text-[14px] font-medium text-[#171717] shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition-colors hover:bg-[#fafcf9]"
+                className="landing-hover-button inline-flex h-[50px] items-center justify-center gap-3 rounded-[18px] border border-black/[0.07] bg-white px-6 text-[14px] font-medium text-[#171717] shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition-colors hover:bg-[#fafcf9]"
               >
                 Ver todos os recursos
                 <CirclePlay className="size-4" />
@@ -251,29 +255,37 @@ export default function Home() {
           </div>
 
           <StudioPreviewMock />
-        </section>
+          </section>
+        </LandingReveal>
 
-        <section className="px-2 pb-12 pt-4 lg:px-4">
-          <LandingStudioMediaDemo />
-        </section>
+        <LandingReveal delayMs={60}>
+          <section className="px-2 pb-10 pt-4 lg:px-4">
+            <LandingStudioMediaDemo />
+          </section>
+        </LandingReveal>
 
-        <section
-          id="recursos"
-          className="grid gap-8 border-b border-black/[0.04] px-2 pb-14 pt-6 sm:grid-cols-2 lg:grid-cols-5 lg:px-4"
-        >
+        <LandingReveal delayMs={80}>
+          <section
+            id="recursos"
+            className="grid gap-7 border-b border-black/[0.04] px-2 pb-12 pt-5 sm:grid-cols-2 lg:grid-cols-5 lg:px-4"
+          >
           {studioResources.map((resource) => (
             <FeatureCard key={resource.title} {...resource} iconBox />
           ))}
-        </section>
+          </section>
+        </LandingReveal>
 
-        <section className="px-2 py-14 lg:px-4">
-          <LandingCosDemoSection />
-        </section>
+        <LandingReveal delayMs={100}>
+          <section className="px-2 py-12 lg:px-4">
+            <LandingCosDemoSection />
+          </section>
+        </LandingReveal>
 
-        <section
-          id="precos"
-          className="grid items-center gap-8 rounded-[28px] border border-black/[0.04] bg-white/92 px-6 py-8 shadow-[0_12px_34px_rgba(15,23,42,0.045)] backdrop-blur xl:grid-cols-[200px_minmax(0,1fr)_300px_200px]"
-        >
+        <LandingReveal delayMs={120}>
+          <section
+            id="precos"
+            className="grid items-center gap-8 rounded-[28px] border border-black/[0.04] bg-white/92 px-6 py-7 shadow-[0_12px_34px_rgba(15,23,42,0.045)] backdrop-blur xl:grid-cols-[200px_minmax(0,1fr)_300px_200px]"
+          >
           <div className="flex items-center gap-4">
             <div className="flex -space-x-3">
               {["/placeholder-user.jpg", "/placeholder-user.jpg", "/placeholder-user.jpg"].map((src, index) => (
@@ -312,12 +324,13 @@ export default function Home() {
 
           <Link
             href="/cadastro/corretor"
-            className="inline-flex h-[50px] items-center justify-center gap-2 rounded-[18px] bg-[#16a34a] px-6 text-[15px] font-medium text-white shadow-[0_14px_26px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d]"
+            className="landing-hover-button inline-flex h-[50px] items-center justify-center gap-2 rounded-[18px] bg-[#16a34a] px-6 text-[15px] font-medium text-white shadow-[0_14px_26px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d]"
           >
             Testar gratuitamente
             <ArrowRight className="size-4" />
           </Link>
-        </section>
+          </section>
+        </LandingReveal>
       </div>
     </main>
   )
@@ -325,18 +338,30 @@ export default function Home() {
 
 function HeroConversationMock() {
   return (
-    <div className="relative mx-auto w-full max-w-[760px] lg:-mr-2">
+    <div className="landing-glow relative mx-auto w-full max-w-[760px] lg:-mr-2">
       <div className="absolute inset-0 -z-10 rounded-[40px] bg-[radial-gradient(circle_at_top,rgba(22,163,74,0.12),transparent_36%)] blur-3xl" />
       <div className="flex min-h-[560px] items-center justify-center p-2 sm:p-3">
-        <div className="relative h-full min-h-[510px] w-full max-w-[560px] drop-shadow-[0_18px_34px_rgba(15,23,42,0.085)]">
-          <Image
-            src="/images/landing-cos-reference-refined.png"
-            alt="Tela real do COS no portal do corretor"
-            fill
-            priority
-            className="object-contain object-center"
-            sizes="(min-width: 1024px) 48vw, 100vw"
-          />
+        <div className="landing-render-frame landing-float relative h-full min-h-[510px] w-full max-w-[560px] rounded-[28px] border border-white/70 bg-[linear-gradient(180deg,#ffffff_0%,#f8faf8_100%)] p-3 shadow-[0_22px_48px_rgba(15,23,42,0.11)]">
+          <div className="mb-3 flex items-center justify-between rounded-[18px] border border-black/[0.04] bg-white/92 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-[#16a34a]" />
+              <span className="size-2 rounded-full bg-[#d8e4da]" />
+              <span className="size-2 rounded-full bg-[#d8e4da]" />
+            </div>
+            <div className="rounded-full border border-[#dce9df] bg-[#f8fbf8] px-2.5 py-1 text-[10px] font-medium text-[#5f6973]">
+              COS ativo
+            </div>
+          </div>
+          <div className="relative h-full min-h-[450px] overflow-hidden rounded-[22px] border border-black/[0.04] bg-[#f8faf8]">
+            <Image
+              src="/images/landing-cos-reference-refined.png"
+              alt="Tela real do COS no portal do corretor"
+              fill
+              priority
+              className="object-cover object-top"
+              sizes="(min-width: 1024px) 48vw, 100vw"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -345,9 +370,9 @@ function HeroConversationMock() {
 
 function StudioPreviewMock() {
   return (
-    <div className="relative mx-auto w-full max-w-[860px]">
+    <div className="landing-glow relative mx-auto w-full max-w-[860px]">
       <div className="absolute inset-0 -z-10 rounded-[44px] bg-[radial-gradient(circle_at_center,rgba(22,163,74,0.11),transparent_34%)] blur-3xl" />
-      <div className="overflow-hidden rounded-[30px] border border-black/[0.05] bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfa_100%)] p-3.5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-4">
+      <div className="landing-render-frame overflow-hidden rounded-[30px] border border-black/[0.05] bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfa_100%)] p-3.5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-4">
         <div className="rounded-[24px] border border-black/[0.045] bg-white/96 px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.04)] sm:px-5 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -369,7 +394,7 @@ function StudioPreviewMock() {
               return (
                 <article
                   key={action.title}
-                  className="rounded-[20px] border border-black/[0.05] bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfa_100%)] p-4 shadow-[0_10px_20px_rgba(15,23,42,0.035)]"
+                  className="landing-hover-card rounded-[20px] border border-black/[0.05] bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfa_100%)] p-4 shadow-[0_10px_20px_rgba(15,23,42,0.035)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex size-10 items-center justify-center rounded-[18px] border border-[#009b3a]/14 bg-[#eef9f1] text-[#16a34a]">
@@ -407,7 +432,7 @@ function FeatureCard({
   return (
     <div className="max-w-[210px]">
       <div
-        className={`mb-5 inline-flex items-center justify-center rounded-2xl ${
+        className={`mb-4 inline-flex items-center justify-center rounded-2xl ${
           iconBox ? "size-10 rounded-[18px] bg-[#eef8f1] text-[#16a34a]" : "text-[#16a34a]"
         }`}
       >

@@ -133,7 +133,7 @@ export function LandingCosDemoSection() {
                 setSelectedMode(action.id)
                 setError(null)
               }}
-              className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors ${
+            className={`landing-hover-button inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors ${
                 isActive
                   ? "border-[#dceddf] bg-[#eef8f1] text-[#157945]"
                   : "border-transparent bg-transparent text-[#39424a] hover:bg-white"
@@ -165,7 +165,7 @@ export function LandingCosDemoSection() {
           <button
             type="submit"
             disabled={isSending}
-            className="inline-flex h-[62px] items-center justify-center gap-3 rounded-[18px] bg-[#16a34a] px-7 text-[15px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d] disabled:cursor-not-allowed disabled:bg-[#7fc999]"
+            className="landing-hover-button inline-flex h-[62px] items-center justify-center gap-3 rounded-[18px] bg-[#16a34a] px-7 text-[15px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d] disabled:cursor-not-allowed disabled:bg-[#7fc999]"
           >
             {isSending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
             {isSending ? "COS processando..." : "Gerar com IA"}
