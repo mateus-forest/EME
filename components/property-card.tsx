@@ -76,13 +76,13 @@ export function PropertyCard({
       onClick={onClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "flex h-full flex-col justify-between overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(14,14,14,0.94))] text-left shadow-[0_18px_36px_rgba(0,0,0,0.16)]",
+        "flex h-full flex-col justify-between overflow-hidden rounded-[1.6rem] border border-black/[0.06] bg-[linear-gradient(180deg,#fffefc,#f8f6f1)] text-left shadow-[0_18px_36px_rgba(15,23,42,0.08)]",
         interactive &&
-          "cursor-pointer transition-all hover:-translate-y-0.5 hover:border-[#00C853]/16 hover:shadow-[0_24px_50px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-[#00C853]/30",
+          "cursor-pointer transition-all hover:-translate-y-0.5 hover:border-[#009b3a]/18 hover:shadow-[0_24px_50px_rgba(15,23,42,0.12)] focus:outline-none focus:ring-2 focus:ring-[#009b3a]/20",
         className,
       )}
     >
-      <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full shrink-0 overflow-hidden bg-white/[0.03]">
+      <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full shrink-0 overflow-hidden bg-[#f3f4ee]">
         {currentImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -94,7 +94,7 @@ export function PropertyCard({
         ) : (
           <PropertyImagePlaceholder />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white via-white/55 to-transparent" />
 
         {(badges || imageActions) && (
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-3">
@@ -104,16 +104,16 @@ export function PropertyCard({
         )}
 
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <p className="text-[1.35rem] font-semibold tracking-tight text-white sm:text-2xl">{price}</p>
+          <p className="text-[1.35rem] font-semibold tracking-tight text-[#111111] sm:text-2xl">{price}</p>
         </div>
       </div>
 
       <div className={cn("flex flex-1 flex-col gap-4 p-4", contentClassName)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-white">{title}</h3>
-            <p className="mt-1 flex items-center gap-2 text-sm text-white/50">
-              <MapPin className="size-4 shrink-0 text-[#69F0AE]" />
+            <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-[#111111]">{title}</h3>
+            <p className="mt-1 flex items-center gap-2 text-sm text-[#6b7280]">
+              <MapPin className="size-4 shrink-0 text-[#009b3a]" />
               <span className="truncate">{location}</span>
             </p>
           </div>
@@ -121,7 +121,7 @@ export function PropertyCard({
           {status ? <PropertyStatusBadge status={status} tone={statusTone} /> : null}
         </div>
 
-        <div className="flex flex-wrap gap-2.5 text-sm text-white/65">
+        <div className="flex flex-wrap gap-2.5 text-sm text-[#5f6b7a]">
           <PropertySpec icon={Bed} value={bedrooms} />
           <PropertySpec icon={Bath} value={bathrooms} />
           <PropertySpec icon={Car} value={parking} />
@@ -132,10 +132,10 @@ export function PropertyCard({
             {metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5"
+                className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-3 py-2.5"
               >
-                <p className="text-xs text-white/40">{metric.label}</p>
-                <p className="mt-1.5 text-sm font-semibold text-white">{metric.value}</p>
+                <p className="text-xs text-[#8b95a1]">{metric.label}</p>
+                <p className="mt-1.5 text-sm font-semibold text-[#111111]">{metric.value}</p>
               </div>
             ))}
           </div>
@@ -156,8 +156,8 @@ function PropertySpec({
   value: number
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
-      <Icon className="size-4 text-[#69F0AE]" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1.5">
+      <Icon className="size-4 text-[#009b3a]" />
       <span>{value}</span>
     </span>
   )
@@ -165,9 +165,9 @@ function PropertySpec({
 
 function PropertyImagePlaceholder() {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-white/[0.03] px-4 text-center">
-      <Building2 className="size-9 text-white/30" />
-      <p className="mt-3 text-sm font-medium text-white/65">Sem imagem cadastrada</p>
+    <div className="flex h-full w-full flex-col items-center justify-center bg-[#f3f4ee] px-4 text-center">
+      <Building2 className="size-9 text-[#94a3b8]" />
+      <p className="mt-3 text-sm font-medium text-[#6b7280]">Sem imagem cadastrada</p>
     </div>
   )
 }
@@ -181,10 +181,10 @@ function PropertyStatusBadge({
 }) {
   const toneClassName =
     tone === "published"
-      ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]"
+      ? "border-[#009b3a]/20 bg-[#eef9f1] text-[#009b3a]"
       : tone === "draft"
-        ? "border-[#ffd54f]/20 bg-[#ffd54f]/10 text-[#ffe082]"
-        : "border-white/[0.08] bg-white/[0.05] text-white/65"
+        ? "border-[#f2d48f]/30 bg-[#fff8e8] text-[#a16207]"
+        : "border-black/[0.06] bg-[#f8faf8] text-[#5f6b7a]"
 
   return (
     <span className={cn("rounded-full border px-3 py-1 text-[11px] font-medium", toneClassName)}>

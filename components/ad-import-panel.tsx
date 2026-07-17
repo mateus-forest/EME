@@ -55,9 +55,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     try {
       const result = await extractPropertyAd({ adText, sourceUrl, notes, image })
       setDraft(result.draft)
-      setFeedback("Dados extraídos. Revise as informações antes de publicar.")
+      setFeedback("Dados extraidos. Revise as informacoes antes de publicar.")
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível extrair os dados do anúncio.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel extrair os dados do anuncio.")
     } finally {
       setIsExtracting(false)
     }
@@ -71,7 +71,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
     try {
       await confirmPropertyAdImport(draft)
-      setFeedback("Imóvel criado como rascunho.")
+      setFeedback("Imovel criado como rascunho.")
       setDraft(null)
       setAdText("")
       setSourceUrl("")
@@ -79,7 +79,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       setImage(null)
       await onImported()
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível criar o imóvel.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar o imovel.")
     } finally {
       setIsSaving(false)
     }
@@ -88,11 +88,11 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   const currentDraft = draft ?? emptyDraft
 
   return (
-    <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
       <div>
-        <h3 className="text-lg font-semibold text-white">Importar de anúncio</h3>
-        <p className="mt-1 text-sm leading-6 text-white/55">
-          Cole um anúncio, envie um print ou informe um link para a IA montar o imóvel automaticamente.
+        <h3 className="text-lg font-semibold text-[#111111]">Importar de anuncio</h3>
+        <p className="mt-1 text-sm leading-6 text-[#6B7280]">
+          Cole um anuncio, envie um print ou informe um link para a IA montar o imovel automaticamente.
         </p>
       </div>
 
@@ -101,21 +101,31 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           <Textarea
             value={adText}
             onChange={(event) => setAdText(event.target.value)}
-            placeholder="Cole aqui o texto do anúncio..."
-            className="min-h-32 rounded-[1.25rem] border-white/[0.08] bg-black/20 text-white placeholder:text-white/30"
+            placeholder="Cole aqui o texto do anuncio..."
+            className="min-h-32 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
           />
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-white/70">Link do anúncio</span>
+              <span className="text-sm font-medium text-[#5F6B7A]">Link do anuncio</span>
               <div className="relative">
-                <LinkIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-white/35" />
-                <Input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://..." className="h-10 rounded-xl border-white/[0.08] bg-black/20 pl-9 text-white placeholder:text-white/30" />
+                <LinkIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" />
+                <Input
+                  value={sourceUrl}
+                  onChange={(event) => setSourceUrl(event.target.value)}
+                  placeholder="https://..."
+                  className="h-10 rounded-xl border-black/[0.06] bg-white pl-9 text-[#111111] placeholder:text-[#9CA3AF]"
+                />
               </div>
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-white/70">Print ou imagem</span>
-              <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-3 text-sm text-white/70 hover:bg-white/[0.06]">
-                <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => setImage(event.target.files?.[0] ?? null)} />
+              <span className="text-sm font-medium text-[#5F6B7A]">Print ou imagem</span>
+              <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#5F6B7A] hover:bg-[#f8faf8]">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={(event) => setImage(event.target.files?.[0] ?? null)}
+                />
                 <ImagePlus className="size-4" />
                 {image ? image.name : "Selecionar imagem"}
               </span>
@@ -124,35 +134,48 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           <Textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Observações opcionais..."
-            className="min-h-20 rounded-[1.25rem] border-white/[0.08] bg-black/20 text-white placeholder:text-white/30"
+            placeholder="Observacoes opcionais..."
+            className="min-h-20 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
           />
-          <Button type="button" onClick={handleExtract} disabled={isExtracting} className="h-10 w-fit rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
+          <Button
+            type="button"
+            onClick={handleExtract}
+            disabled={isExtracting}
+            className="h-10 w-fit rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
+          >
             <Sparkles className="size-4" />
             {isExtracting ? "Extraindo..." : "Extrair dados com IA"}
           </Button>
         </div>
       ) : (
         <div className="grid gap-4">
-          <div className="rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-white/60">
-            Revise as informações antes de publicar.
+          <div className="rounded-[1rem] border border-black/[0.06] bg-white px-4 py-3 text-sm text-[#5F6B7A]">
+            Revise as informacoes antes de publicar.
             {[...currentDraft.lowConfidenceFields, ...currentDraft.missingFields].length > 0
               ? ` Campos para revisar: ${[...currentDraft.lowConfidenceFields, ...currentDraft.missingFields].join(", ")}.`
               : null}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <DraftField label="Título">
-              <Input value={currentDraft.title} onChange={(event) => updateDraft("title", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+            <DraftField label="Titulo">
+              <Input
+                value={currentDraft.title}
+                onChange={(event) => updateDraft("title", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
             </DraftField>
-            <DraftField label="Preço">
-              <Input value={currentDraft.price} onChange={(event) => updateDraft("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+            <DraftField label="Preco">
+              <Input
+                value={currentDraft.price}
+                onChange={(event) => updateDraft("price", formatCurrencyInput(event.target.value))}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
             </DraftField>
             <DraftField label="Tipo">
               <Select value={currentDraft.type} onValueChange={(value) => updateDraft("type", value as AdImportDraft["type"])}>
-                <SelectTrigger className="h-10 w-full rounded-xl border-white/[0.08] bg-black/20 text-white">
+                <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white text-[#111111]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-white/[0.08] bg-[#121212] text-white">
+                <SelectContent className="border-black/[0.06] bg-white text-[#111111]">
                   <SelectItem value="Apartamento">Apartamento</SelectItem>
                   <SelectItem value="Casa">Casa</SelectItem>
                   <SelectItem value="Comercial">Comercial</SelectItem>
@@ -160,13 +183,25 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               </Select>
             </DraftField>
             <DraftField label="Cidade">
-              <Input value={currentDraft.city} onChange={(event) => updateDraft("city", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+              <Input
+                value={currentDraft.city}
+                onChange={(event) => updateDraft("city", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
             </DraftField>
             <DraftField label="Bairro">
-              <Input value={currentDraft.neighborhood} onChange={(event) => updateDraft("neighborhood", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+              <Input
+                value={currentDraft.neighborhood}
+                onChange={(event) => updateDraft("neighborhood", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
             </DraftField>
             <DraftField label="Area">
-              <Input value={currentDraft.area} onChange={(event) => updateDraft("area", event.target.value)} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+              <Input
+                value={currentDraft.area}
+                onChange={(event) => updateDraft("area", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
             </DraftField>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -175,23 +210,53 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
             <NumberInput label="Vagas" value={currentDraft.parking} onChange={(value) => updateDraft("parking", value)} />
           </div>
           <DraftField label="Descricao">
-            <Textarea value={currentDraft.description} onChange={(event) => updateDraft("description", event.target.value)} className="min-h-28 rounded-[1.25rem] border-white/[0.08] bg-black/20 text-white" />
+            <Textarea
+              value={currentDraft.description}
+              onChange={(event) => updateDraft("description", event.target.value)}
+              className="min-h-28 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111]"
+            />
           </DraftField>
           <DraftField label="Caracteristicas">
-            <Input value={currentDraft.features.join(", ")} onChange={(event) => updateDraft("features", event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+            <Input
+              value={currentDraft.features.join(", ")}
+              onChange={(event) =>
+                updateDraft(
+                  "features",
+                  event.target.value
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                )
+              }
+              className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+            />
           </DraftField>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handleConfirm} disabled={isSaving} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isSaving}
+              className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
+            >
               {isSaving ? "Criando..." : "Confirmar criacao"}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setDraft(null)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDraft(null)}
+              className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#5F6B7A] hover:bg-[#f8faf8] hover:text-[#111111]"
+            >
               Voltar
             </Button>
           </div>
         </div>
       )}
 
-      {feedback ? <p className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
+      {feedback ? (
+        <p className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#009b3a]">
+          {feedback}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -199,7 +264,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 function DraftField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-2">
-      <span className="text-sm font-medium text-white/70">{label}</span>
+      <span className="text-sm font-medium text-[#5F6B7A]">{label}</span>
       {children}
     </label>
   )
@@ -208,7 +273,13 @@ function DraftField({ label, children }: { label: string; children: React.ReactN
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <DraftField label={label}>
-      <Input type="number" min={0} value={value} onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white" />
+      <Input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))}
+        className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+      />
     </DraftField>
   )
 }

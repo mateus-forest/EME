@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
@@ -68,6 +69,16 @@ type LeadDraft = {
   message: string
 }
 
+type CatalogAdvancedFilters = {
+  type: string
+  city: string
+  neighborhood: string
+  bedrooms: string
+  parking: string
+  maxPrice: string
+  feature: string
+}
+
 const quickSuggestions = [
   "Alto padrao",
   "Casas",
@@ -80,6 +91,16 @@ const quickSuggestions = [
 
 export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandingProps) {
   const [search, setSearch] = useState("")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [advancedFilters, setAdvancedFilters] = useState<CatalogAdvancedFilters>({
+    type: "",
+    city: "",
+    neighborhood: "",
+    bedrooms: "",
+    parking: "",
+    maxPrice: "",
+    feature: "",
+  })
   const [selectedProperty, setSelectedProperty] = useState<CatalogProperty | null>(null)
   const [leadDraft, setLeadDraft] = useState<LeadDraft | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -90,8 +111,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   const properties = useMemo(() => normalizeProperties(catalog), [catalog])
   const searchAnalysis = useMemo(() => analyzeSearch(search), [search])
   const visibleProperties = useMemo(
-    () => rankProperties(properties, searchAnalysis),
-    [properties, searchAnalysis],
+    () => rankProperties(properties, searchAnalysis, advancedFilters),
+    [advancedFilters, properties, searchAnalysis],
   )
   const publicPath =
     kind === "broker" ? `/catalogo/${catalog.slug || slug}` : `/catalogo/imobiliaria/${catalog.slug || slug}`
@@ -99,6 +120,10 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   const image = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
   const cities = useMemo(
     () => Array.from(new Set(properties.map((property) => property.city).filter(Boolean))),
+    [properties],
+  )
+  const neighborhoods = useMemo(
+    () => Array.from(new Set(properties.map((property) => property.neighborhood).filter(Boolean))).sort(),
     [properties],
   )
   const priceRange = getPriceRangeLabel(properties)
@@ -150,7 +175,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
 
   function submitSearch() {
     const query = search.trim()
-    if (!query) return
+    if (!query && !hasActiveAdvancedFilters(advancedFilters)) return
 
     void trackCatalogEvent({
       eventType: "catalog_search",
@@ -314,7 +339,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submitSearch()
                   }}
-                  placeholder="Buscar por bairro, cidade ou caracteristica"
+                  placeholder="Ex.: apartamento em Porto Alegre ate 900 mil com 2 quartos e vaga"
                   className="h-[4.4rem] rounded-[1.2rem] border-transparent bg-white pl-14 pr-4 text-base text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8]"
                 />
               </div>
@@ -332,7 +357,14 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 <button
                   key={suggestion}
                   type="button"
-                  onClick={() => setSearch(suggestion === "Mais filtros" ? search : suggestion)}
+                  onClick={() => {
+                    if (suggestion === "Mais filtros") {
+                      setShowAdvancedFilters((current) => !current)
+                      return
+                    }
+
+                    setSearch(suggestion)
+                  }}
                   className="inline-flex items-center gap-2 rounded-full border border-[#efe8df] bg-white px-5 py-3 text-sm font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
                 >
                   {getSuggestionIcon(suggestion)}
@@ -341,7 +373,121 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               ))}
             </div>
 
-            {search.trim() ? (
+            {showAdvancedFilters ? (
+              <div className="mt-5 grid gap-4 rounded-[1.4rem] border border-[#ece5dc] bg-[#fcfbf8] p-5 lg:grid-cols-4">
+                <FilterField label="Tipo">
+                  <select
+                    value={advancedFilters.type}
+                    onChange={(event) => setAdvancedFilters((current) => ({ ...current, type: event.target.value }))}
+                    className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
+                  >
+                    <option value="">Todos</option>
+                    <option value="Apartamento">Apartamento</option>
+                    <option value="Casa">Casa</option>
+                    <option value="Comercial">Comercial</option>
+                  </select>
+                </FilterField>
+                <FilterField label="Cidade">
+                  <select
+                    value={advancedFilters.city}
+                    onChange={(event) => setAdvancedFilters((current) => ({ ...current, city: event.target.value }))}
+                    className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
+                  >
+                    <option value="">Todas</option>
+                    {cities.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
+                    ))}
+                  </select>
+                </FilterField>
+                <FilterField label="Bairro">
+                  <select
+                    value={advancedFilters.neighborhood}
+                    onChange={(event) =>
+                      setAdvancedFilters((current) => ({ ...current, neighborhood: event.target.value }))
+                    }
+                    className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
+                  >
+                    <option value="">Todos</option>
+                    {neighborhoods.map((neighborhood) => (
+                      <option key={neighborhood} value={neighborhood}>
+                        {neighborhood}
+                      </option>
+                    ))}
+                  </select>
+                </FilterField>
+                <FilterField label="Preco maximo">
+                  <Input
+                    value={advancedFilters.maxPrice}
+                    onChange={(event) =>
+                      setAdvancedFilters((current) => ({ ...current, maxPrice: event.target.value }))
+                    }
+                    placeholder="900 mil"
+                    className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
+                  />
+                </FilterField>
+                <FilterField label="Dormitorios">
+                  <Input
+                    value={advancedFilters.bedrooms}
+                    onChange={(event) =>
+                      setAdvancedFilters((current) => ({ ...current, bedrooms: event.target.value }))
+                    }
+                    placeholder="2"
+                    className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
+                  />
+                </FilterField>
+                <FilterField label="Vagas">
+                  <Input
+                    value={advancedFilters.parking}
+                    onChange={(event) =>
+                      setAdvancedFilters((current) => ({ ...current, parking: event.target.value }))
+                    }
+                    placeholder="1"
+                    className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
+                  />
+                </FilterField>
+                <FilterField label="Caracteristicas">
+                  <Input
+                    value={advancedFilters.feature}
+                    onChange={(event) =>
+                      setAdvancedFilters((current) => ({ ...current, feature: event.target.value }))
+                    }
+                    placeholder="sacada, piscina, suite"
+                    className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
+                  />
+                </FilterField>
+                <div className="flex items-end gap-3">
+                  <Button
+                    type="button"
+                    onClick={submitSearch}
+                    className="h-11 rounded-xl bg-[#3d9751] px-5 text-sm font-medium text-white hover:bg-[#347f46]"
+                  >
+                    Aplicar filtros
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      setAdvancedFilters({
+                        type: "",
+                        city: "",
+                        neighborhood: "",
+                        bedrooms: "",
+                        parking: "",
+                        maxPrice: "",
+                        feature: "",
+                      })
+                    }
+                    className="h-11 rounded-xl border border-[#e6dfd7] bg-white px-5 text-sm font-medium text-[#2f2f2f] hover:bg-[#faf8f5]"
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {search.trim() || hasActiveAdvancedFilters(advancedFilters) ? (
               <p className="mt-4 text-sm text-[#6B7280]">
                 {visibleProperties.length} imovel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
               </p>
@@ -626,38 +772,49 @@ async function trackCatalogEvent({
 
 function analyzeSearch(rawSearch: string) {
   const query = normalizeText(rawSearch)
-  const maxPriceMatch = query.match(/ate\s*(\d+)\s*(mil|mi|milhao|milhoes)?/)
-  let maxPrice: number | null = null
-
-  if (maxPriceMatch) {
-    const amount = Number(maxPriceMatch[1])
-    if (Number.isFinite(amount)) {
-      maxPrice = amount * (maxPriceMatch[2]?.startsWith("mi") ? 1_000_000_00 : 1_000_00)
-    }
-  }
-
+  const searchTerms = buildSearchTerms(query)
+  const maxPrice = extractPriceValue(query)
+  const bedrooms = extractNumericIntent(query, ["quarto", "quartos", "dormitorio", "dormitorios"])
+  const parking = extractNumericIntent(query, ["vaga", "vagas", "garagem"])
   const type = query.includes("casa")
     ? "Casa"
-    : query.includes("apartamento") || query.includes("apto")
+    : query.includes("apartamento") || query.includes("apto") || query.includes("cobertura")
       ? "Apartamento"
-      : query.includes("comercial")
+      : query.includes("comercial") || query.includes("sala") || query.includes("loja")
         ? "Comercial"
         : ""
-
-  const features = ["frente mar", "investimento", "alto padrao", "casas", "apartamentos"].filter((feature) =>
-    query.includes(feature),
-  )
+  const features = [
+    "frente mar",
+    "alto padrao",
+    "investimento",
+    "suite",
+    "sacada",
+    "piscina",
+    "churrasqueira",
+    "academia",
+    "gourmet",
+  ].filter((feature) => query.includes(feature))
 
   return {
     query,
+    searchTerms,
     maxPrice,
+    bedrooms,
+    parking,
     type,
     features,
-    intent: [type, maxPrice ? `ate ${maxPrice}` : "", ...features].filter(Boolean).join(", ") || rawSearch.trim(),
+    intent:
+      [type, maxPrice ? `ate ${maxPrice}` : "", bedrooms ? `${bedrooms} quartos` : "", parking ? `${parking} vagas` : "", ...features]
+        .filter(Boolean)
+        .join(", ") || rawSearch.trim(),
   }
 }
 
-function rankProperties(properties: CatalogProperty[], analysis: ReturnType<typeof analyzeSearch>) {
+function rankProperties(
+  properties: CatalogProperty[],
+  analysis: ReturnType<typeof analyzeSearch>,
+  filters: CatalogAdvancedFilters,
+) {
   return properties
     .map((property) => {
       const haystack = normalizeText([
@@ -668,10 +825,13 @@ function rankProperties(properties: CatalogProperty[], analysis: ReturnType<type
         property.type,
         property.location,
       ].join(" "))
+      const compatible =
+        matchesNaturalLanguage(property, analysis, haystack) &&
+        matchesAdvancedFilters(property, filters, haystack)
       let score = 0
 
       if (!analysis.query) score += 2
-      for (const term of analysis.query.split(/\s+/).filter((term) => term.length > 2)) {
+      for (const term of analysis.searchTerms) {
         if (haystack.includes(term)) score += 2
       }
       if (analysis.type && property.type === analysis.type) score += 8
@@ -679,15 +839,85 @@ function rankProperties(properties: CatalogProperty[], analysis: ReturnType<type
       for (const feature of analysis.features) {
         if (haystack.includes(feature)) score += 5
       }
+      if (compatible && score === 0) score = 1
 
       return {
         property,
+        compatible,
         score,
         matchLabel: score >= 12 ? "Destaque" : score >= 6 ? "Selecionado" : "Boa opcao",
       }
     })
-    .filter((item) => !analysis.query || item.score > 0)
+    .filter((item) => item.compatible)
     .sort((first, second) => second.score - first.score || second.property.views - first.property.views)
+}
+
+function matchesNaturalLanguage(property: CatalogProperty, analysis: ReturnType<typeof analyzeSearch>, haystack: string) {
+  if (!analysis.query.trim()) return true
+
+  const searchableTerms = analysis.searchTerms
+
+  if (searchableTerms.length > 0 && searchableTerms.every((term) => !haystack.includes(term))) {
+    return false
+  }
+
+  if (analysis.type && property.type !== analysis.type) return false
+  if (analysis.maxPrice && property.priceValue > analysis.maxPrice) return false
+  if (analysis.bedrooms && property.bedrooms < analysis.bedrooms) return false
+  if (analysis.parking && property.parking < analysis.parking) return false
+  if (analysis.features.some((feature) => !haystack.includes(feature))) return false
+
+  return true
+}
+
+function matchesAdvancedFilters(property: CatalogProperty, filters: CatalogAdvancedFilters, haystack: string) {
+  if (filters.type && property.type !== filters.type) return false
+  if (filters.city && normalizeText(property.city) !== normalizeText(filters.city)) return false
+  if (filters.neighborhood && normalizeText(property.neighborhood) !== normalizeText(filters.neighborhood)) return false
+
+  const bedrooms = Number(filters.bedrooms)
+  if (Number.isFinite(bedrooms) && bedrooms > 0 && property.bedrooms < bedrooms) return false
+
+  const parking = Number(filters.parking)
+  if (Number.isFinite(parking) && parking > 0 && property.parking < parking) return false
+
+  const maxPrice = extractPriceValue(filters.maxPrice)
+  if (maxPrice && property.priceValue > maxPrice) return false
+
+  const featureTerms = normalizeText(filters.feature)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (featureTerms.some((feature) => !haystack.includes(feature))) return false
+
+  return true
+}
+
+function hasActiveAdvancedFilters(filters: CatalogAdvancedFilters) {
+  return Object.values(filters).some((value) => value.trim().length > 0)
+}
+
+function extractPriceValue(input: string) {
+  const match = normalizeText(input).match(/(\d+[.,]?\d*)\s*(milhoes|milhao|mi|mil)?/)
+  if (!match) return null
+
+  const amount = Number(match[1].replace(",", "."))
+  if (!Number.isFinite(amount)) return null
+
+  const unit = match[2] ?? ""
+  if (unit.startsWith("mi") || unit.startsWith("milhao")) return Math.round(amount * 1_000_000 * 100)
+  if (unit.startsWith("mil")) return Math.round(amount * 1_000 * 100)
+  return Math.round(amount * 100)
+}
+
+function extractNumericIntent(query: string, keywords: string[]) {
+  const pattern = new RegExp(`(\\d+)\\s*(?:${keywords.join("|")})`)
+  const match = query.match(pattern)
+  if (!match) return null
+
+  const value = Number(match[1])
+  return Number.isFinite(value) ? value : null
 }
 
 function normalizeText(value: string) {
@@ -695,6 +925,46 @@ function normalizeText(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+}
+
+function buildSearchTerms(query: string) {
+  const stopWords = new Set([
+    "a",
+    "as",
+    "ate",
+    "com",
+    "da",
+    "das",
+    "de",
+    "do",
+    "dos",
+    "e",
+    "em",
+    "mil",
+    "milhao",
+    "milhoes",
+    "mi",
+    "no",
+    "nos",
+    "na",
+    "nas",
+    "para",
+    "por",
+    "quarto",
+    "quartos",
+    "vaga",
+    "vagas",
+    "um",
+    "uma",
+  ])
+
+  return query
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 2)
+    .filter((term) => !stopWords.has(term))
+    .filter((term) => !/^\d+$/.test(term))
 }
 
 function getPriceRangeLabel(properties: CatalogProperty[]) {
@@ -777,4 +1047,13 @@ function getSuggestionIcon(suggestion: string) {
   if (suggestion === "Frente mar") return <Sparkles className="size-4 text-[#6a6a6a]" />
   if (suggestion === "Investimento") return <Building2 className="size-4 text-[#6a6a6a]" />
   return <Home className="size-4 text-[#6a6a6a]" />
+}
+
+function FilterField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm font-medium text-[#5f5f5f]">{label}</span>
+      {children}
+    </label>
+  )
 }

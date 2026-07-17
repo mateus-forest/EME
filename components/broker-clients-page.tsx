@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Clock3, FileText, MessageCircle, Phone, Search, Sparkles, Trophy, UsersRound } from "lucide-react"
+import { Clock3, FileText, MessageCircle, Phone, Search, Sparkles, Trash2, Trophy, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
@@ -92,6 +92,7 @@ export function BrokerClientsPage() {
   const [activeFilter, setActiveFilter] = useState<ClientFilterId>("all")
   const [selectedClient, setSelectedClient] = useState<LeadRecord | null>(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [isDeletingClient, setIsDeletingClient] = useState(false)
 
   useEffect(() => {
     let ignore = false
@@ -162,8 +163,36 @@ export function BrokerClientsPage() {
     }
   }
 
+  async function deleteClient(client: LeadRecord) {
+    if (!window.confirm(`Deseja excluir ${client.name || "este cliente"} da sua carteira?`)) return
+
+    setIsDeletingClient(true)
+    setFeedback("")
+
+    try {
+      const response = await fetch(`/api/leads/${client.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        cache: "no-store",
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Nao foi possivel excluir o cliente.")
+      }
+
+      setClients((current) => current.filter((item) => item.id !== client.id))
+      setSelectedClient((current) => (current?.id === client.id ? null : current))
+      setFeedback("Cliente removido da carteira.")
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel excluir o cliente.")
+    } finally {
+      setIsDeletingClient(false)
+    }
+  }
+
   return (
-    <BrokerPageShell title="Clientes" primaryActionLabel="Novo imovel" primaryActionHref="/corretor/novo-imovel">
+    <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionHref="/corretor/corretor-m">
       <div className="grid gap-5">
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -172,13 +201,13 @@ export function BrokerClientsPage() {
                 <Sparkles className="size-3.5" />
                 Relacionamento ativo
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Clientes como centro da operacao</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Clientes</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                Toda a entrada do funil fica organizada aqui com filtros, contexto e proximos passos, sem depender de uma area separada de leads.
+                Acompanhe contatos quentes, priorize retornos e transforme oportunidades em visitas, propostas e fechamento.
               </p>
             </div>
             <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
-              <Link href="/corretor/corretor-m">Priorizar com COS</Link>
+              <Link href="/corretor/corretor-m">Cadastrar com COS</Link>
             </Button>
           </div>
         </section>
@@ -272,6 +301,16 @@ export function BrokerClientsPage() {
                       Ver cliente
                     </Button>
                     <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={isDeletingClient}
+                      onClick={() => void deleteClient(client)}
+                      className="h-10 rounded-xl border border-red-200 bg-white px-4 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+                    >
+                      <Trash2 className="size-4" />
+                      Excluir
+                    </Button>
+                    <Button
                       asChild
                       variant="ghost"
                       className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
@@ -357,6 +396,16 @@ export function BrokerClientsPage() {
                   className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                 >
                   <Link href="/corretor/imoveis">Ver imoveis</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isDeletingClient}
+                  onClick={() => void deleteClient(selectedClient)}
+                  className="h-10 rounded-xl border border-red-200 bg-white px-4 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+                >
+                  <Trash2 className="size-4" />
+                  Excluir cliente
                 </Button>
               </div>
             </div>

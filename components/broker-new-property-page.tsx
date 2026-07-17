@@ -599,7 +599,7 @@ export function BrokerNewPropertyPage() {
                       <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
+                      <SelectContent className="border-black/[0.06] bg-white text-[#111111]">
                         <SelectItem value="Apartamento">Apartamento</SelectItem>
                         <SelectItem value="Casa">Casa</SelectItem>
                         <SelectItem value="Comercial">Comercial</SelectItem>
@@ -615,7 +615,7 @@ export function BrokerNewPropertyPage() {
                       <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
+                      <SelectContent className="border-black/[0.06] bg-white text-[#111111]">
                         <SelectItem value="Venda">Venda</SelectItem>
                         <SelectItem value="Locação">Locação</SelectItem>
                       </SelectContent>
@@ -626,7 +626,7 @@ export function BrokerNewPropertyPage() {
                       <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
+                      <SelectContent className="border-black/[0.06] bg-white text-[#111111]">
                         <SelectItem value="Publicado">Publicado</SelectItem>
                         <SelectItem value="Rascunho">Rascunho</SelectItem>
                       </SelectContent>

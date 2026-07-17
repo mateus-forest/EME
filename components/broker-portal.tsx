@@ -186,6 +186,9 @@ export function BrokerPortal() {
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
     [activeConversationId, conversations],
   )
+  const showConversationTitle = Boolean(
+    activeConversation?.title && activeConversation.title !== DEFAULT_COS_CONVERSATION_TITLE,
+  )
 
   async function handleSubmit(promptOverride?: string) {
     const normalizedPrompt = (promptOverride ?? prompt).trim()
@@ -275,9 +278,9 @@ export function BrokerPortal() {
                   <div className="border-b border-black/[0.05] px-6 py-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="text-[1.05rem] font-semibold text-[#111111]">
-                          {activeConversation?.title || DEFAULT_COS_CONVERSATION_TITLE}
-                        </p>
+                        {showConversationTitle ? (
+                          <p className="text-[1.05rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-[#7a8798]">
                         <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1">
@@ -294,12 +297,6 @@ export function BrokerPortal() {
                     {isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
                         Carregando conversa...
-                      </div>
-                    ) : null}
-
-                    {!isConversationLoading && conversation.length === 0 ? (
-                      <div className="rounded-[1.5rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
-                        Inicie uma nova conversa com o COS.
                       </div>
                     ) : null}
 
