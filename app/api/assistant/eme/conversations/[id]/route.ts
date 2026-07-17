@@ -18,6 +18,7 @@ type ConversationMessage = {
   actionStatus?: string | null
   confirmRequired?: boolean
   sourceMessage?: string
+  sourceInteractionId?: string
   createdAt: string
 }
 
@@ -53,10 +54,10 @@ function mapConversationMessages(rows: Array<{
   createdAt: Date
 }>): {
   messages: ConversationMessage[]
-  pendingConfirmation: { action: string; sourceMessage: string } | null
+  pendingConfirmation: { action: string; sourceMessage: string; sourceInteractionId: string } | null
 } {
   const messages: ConversationMessage[] = []
-  let pendingConfirmation: { action: string; sourceMessage: string } | null = null
+  let pendingConfirmation: { action: string; sourceMessage: string; sourceInteractionId: string } | null = null
 
   for (const row of rows) {
     const metadata = metadataRecord(row.metadata)
@@ -84,6 +85,7 @@ function mapConversationMessages(rows: Array<{
         actionStatus: row.actionStatus,
         confirmRequired,
         sourceMessage: row.message,
+        sourceInteractionId: row.id,
         createdAt,
       })
     }
@@ -92,6 +94,7 @@ function mapConversationMessages(rows: Array<{
       pendingConfirmation = {
         action: row.actionType,
         sourceMessage: row.message,
+        sourceInteractionId: row.id,
       }
     }
 

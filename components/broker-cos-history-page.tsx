@@ -100,8 +100,8 @@ export function BrokerCosHistoryPage() {
       .filter((group) => group.items.length > 0)
   }, [filteredConversations])
 
-  async function handleSubmit() {
-    const normalizedPrompt = prompt.trim()
+  async function handleSubmit(promptOverride?: string) {
+    const normalizedPrompt = (promptOverride ?? prompt).trim()
     if (!normalizedPrompt) {
       setChatFeedback("Digite uma mensagem para o COS.")
       return
@@ -258,7 +258,7 @@ export function BrokerCosHistoryPage() {
                         {formatCosStatus(item.actionStatus)}
                       </p>
                     ) : null}
-                    {item.confirmRequired && pendingConfirmation?.sourceMessage === item.sourceMessage ? (
+                    {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Button
                           type="button"

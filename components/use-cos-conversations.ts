@@ -25,12 +25,14 @@ export type CosConversationItem = {
   actionStatus?: string | null
   confirmRequired?: boolean
   sourceMessage?: string
+  sourceInteractionId?: string
   createdAt?: string
 }
 
 export type PendingConfirmation = {
   action: string
   sourceMessage: string
+  sourceInteractionId: string
 }
 
 type AssistantMessageResponse = {
@@ -239,15 +241,18 @@ export function useCosConversations({
         actionStatus: data?.actionStatus ?? "success",
         confirmRequired: Boolean(data?.confirmRequired),
         sourceMessage: normalizedMessage,
+        sourceInteractionId: "",
         createdAt: new Date().toISOString(),
       }
 
       setConversation((current) => [...current, assistantMessage])
 
       if (data?.confirmRequired && assistantMessage.action) {
+        assistantMessage.sourceInteractionId = assistantMessage.id
         setPendingConfirmation({
           action: assistantMessage.action,
           sourceMessage: normalizedMessage,
+          sourceInteractionId: assistantMessage.id,
         })
         setChatFeedback("Confirmacao pendente para alterar dados.")
       } else {

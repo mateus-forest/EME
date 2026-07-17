@@ -24,7 +24,7 @@ type QuickAction = {
 type CosPromptComposerProps = {
   prompt: string
   setPrompt: (value: string) => void
-  onSubmit: () => Promise<void> | void
+  onSubmit: (promptOverride?: string) => Promise<void> | void
   onNewConversation: () => Promise<void> | void
   quickActions: QuickAction[]
   disabled?: boolean
@@ -69,6 +69,14 @@ export function CosPromptComposer({
   const [micError, setMicError] = useState("")
   const recognitionRef = useRef<BrowserSpeechRecognitionInstance | null>(null)
   const promptBeforeMicRef = useRef("")
+  const micStateRef = useRef<"idle" | "recording" | "processing" | "error">("idle")
+  const micHadErrorRef = useRef(false)
+  const transcriptRef = useRef("")
+
+  function updateMicState(nextState: "idle" | "recording" | "processing" | "error") {
+    micStateRef.current = nextState
+    setMicState(nextState)
+  }
 
   const speechRecognitionCtor = useMemo(() => {
     if (typeof window === "undefined") return null
@@ -91,20 +99,22 @@ export function CosPromptComposer({
   async function handleMicToggle() {
     if (micState === "recording") {
       recognitionRef.current?.stop()
-      setMicState("processing")
+      updateMicState("processing")
       return
     }
 
     if (!speechRecognitionCtor) {
-      setMicState("error")
+      updateMicState("error")
       setMicError("Microfone indisponivel neste navegador.")
       return
     }
 
     try {
       promptBeforeMicRef.current = prompt
+      transcriptRef.current = ""
+      micHadErrorRef.current = false
       setMicError("")
-      setMicState("recording")
+      updateMicState("recording")
 
       const recognition = new speechRecognitionCtor() as BrowserSpeechRecognitionInstance
       recognition.continuous = false
@@ -122,38 +132,41 @@ export function CosPromptComposer({
         if (!normalized) return
 
         const nextPrompt = [promptBeforeMicRef.current.trim(), normalized].filter(Boolean).join(" ").trim()
+        transcriptRef.current = nextPrompt
         setPrompt(nextPrompt)
       }
 
-      recognition.onerror = () => {
-        setMicState("error")
-        setMicError(resolveMicErrorMessage("unknown"))
+      recognition.onerror = (event) => {
+        micHadErrorRef.current = true
+        updateMicState("error")
+        setMicError(resolveMicErrorMessage(event?.error ?? "unknown"))
       }
 
       recognition.onend = () => {
-        const finalPrompt = (inputRef.current?.value ?? "").trim()
-        if (micState === "error") return
+        recognitionRef.current = null
+        const finalPrompt = (inputRef.current?.value ?? transcriptRef.current).trim()
+        if (micHadErrorRef.current || micStateRef.current === "error") return
 
         if (!finalPrompt) {
-          setMicState("idle")
+          updateMicState("idle")
           return
         }
 
-        setMicState("processing")
+        updateMicState("processing")
         window.setTimeout(async () => {
           if (!promptBeforeMicRef.current.trim()) {
-            await onSubmit()
+            await onSubmit(finalPrompt)
           } else {
             setPrompt(finalPrompt)
           }
-          setMicState("idle")
-        }, 120)
+          updateMicState("idle")
+        }, 350)
       }
 
       recognitionRef.current = recognition
       recognition.start()
     } catch {
-      setMicState("error")
+      updateMicState("error")
       setMicError("Nao foi possivel iniciar a gravacao.")
     }
   }
