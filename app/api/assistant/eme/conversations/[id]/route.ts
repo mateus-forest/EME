@@ -1,0 +1,252 @@
+import { NextRequest, NextResponse } from "next/server"
+
+import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { cleanCosConversationTitle, DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
+import { UserRole } from "@/lib/prisma-enums"
+import { prisma } from "@/lib/prisma"
+
+type RouteContext = {
+  params: Promise<{ id: string }>
+}
+
+type ConversationMessage = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  state: "ready" | "error"
+  action?: string | null
+  actionStatus?: string | null
+  confirmRequired?: boolean
+  sourceMessage?: string
+  createdAt: string
+}
+
+function metadataRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
+function metadataText(metadata: Record<string, unknown>, key: string) {
+  return typeof metadata[key] === "string" ? metadata[key] as string : ""
+}
+
+function metadataBoolean(metadata: Record<string, unknown>, key: string) {
+  return metadata[key] === true
+}
+
+function serializeConversation(document: { id: string; title: string; createdAt: Date; updatedAt: Date }) {
+  return {
+    id: document.id,
+    title: document.title,
+    createdAt: document.createdAt.toISOString(),
+    updatedAt: document.updatedAt.toISOString(),
+    lastInteractionAt: document.updatedAt.toISOString(),
+  }
+}
+
+function mapConversationMessages(rows: Array<{
+  id: string
+  message: string
+  response: string | null
+  actionType: string | null
+  actionStatus: string | null
+  metadata: unknown
+  createdAt: Date
+}>): {
+  messages: ConversationMessage[]
+  pendingConfirmation: { action: string; sourceMessage: string } | null
+} {
+  const messages: ConversationMessage[] = []
+  let pendingConfirmation: { action: string; sourceMessage: string } | null = null
+
+  for (const row of rows) {
+    const metadata = metadataRecord(row.metadata)
+    const displayMessage = metadataText(metadata, "displayMessage") || row.message
+    const confirmRequired = metadataBoolean(metadata, "confirmationRequired") && row.actionStatus === "needs_confirmation"
+    const createdAt = row.createdAt.toISOString()
+
+    if (displayMessage) {
+      messages.push({
+        id: `${row.id}:user`,
+        role: "user",
+        content: displayMessage,
+        state: "ready",
+        createdAt,
+      })
+    }
+
+    if (row.response) {
+      messages.push({
+        id: `${row.id}:assistant`,
+        role: "assistant",
+        content: row.response,
+        state: row.actionStatus === "error" ? "error" : "ready",
+        action: row.actionType,
+        actionStatus: row.actionStatus,
+        confirmRequired,
+        sourceMessage: row.message,
+        createdAt,
+      })
+    }
+
+    if (confirmRequired && row.actionType) {
+      pendingConfirmation = {
+        action: row.actionType,
+        sourceMessage: row.message,
+      }
+    }
+
+    if (row.actionStatus === "cancelled" || row.actionStatus === "success" || row.actionStatus === "error") {
+      pendingConfirmation = null
+    }
+  }
+
+  return { messages, pendingConfirmation }
+}
+
+async function getConversationOrError(id: string) {
+  const { error, user } = await getAuthenticatedUser()
+  if (error || !user) return { error: error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 }), user: null, conversation: null }
+
+  const forbidden = ensureRole(user.role, [UserRole.BROKER])
+  if (forbidden) return { error: forbidden, user: null, conversation: null }
+  if (!user.broker) return { error: NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 }), user: null, conversation: null }
+
+  const conversation = await prisma.brokerDocument.findFirst({
+    where: {
+      id,
+      brokerId: user.broker.id,
+      type: "cos_conversation",
+      status: { not: "archived" },
+    },
+    select: { id: true, title: true, createdAt: true, updatedAt: true },
+  })
+
+  if (!conversation) {
+    return { error: NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 }), user: null, conversation: null }
+  }
+
+  return { error: null, user, conversation }
+}
+
+export async function GET(_request: NextRequest, context: RouteContext) {
+  const { id } = await context.params
+
+  try {
+    const resolved = await getConversationOrError(id)
+    if (resolved.error) return resolved.error
+    if (!resolved.conversation || !resolved.user?.broker) {
+      return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+    }
+
+    const rows = await prisma.emeMessage.findMany({
+      where: {
+        brokerId: resolved.user.broker.id,
+        channel: "assessor_eme",
+        metadata: {
+          path: ["conversationId"],
+          equals: id,
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        message: true,
+        response: true,
+        actionType: true,
+        actionStatus: true,
+        metadata: true,
+        createdAt: true,
+      },
+    })
+
+    const mapped = mapConversationMessages(rows)
+
+    return NextResponse.json({
+      conversation: serializeConversation(resolved.conversation),
+      messages: mapped.messages,
+      pendingConfirmation: mapped.pendingConfirmation,
+    })
+  } catch (caughtError) {
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+    }
+    return NextResponse.json({ error: "Nao foi possivel abrir a conversa." }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { id } = await context.params
+
+  try {
+    const resolved = await getConversationOrError(id)
+    if (resolved.error) return resolved.error
+    if (!resolved.conversation) {
+      return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+    }
+
+    const body = await request.json().catch(() => null)
+    const title = cleanCosConversationTitle(body?.title)
+
+    if (!title) {
+      return NextResponse.json({ error: "Informe um titulo para a conversa." }, { status: 400 })
+    }
+
+    const conversation = await prisma.brokerDocument.update({
+      where: { id: resolved.conversation.id },
+      data: { title: title || DEFAULT_COS_CONVERSATION_TITLE },
+      select: { id: true, title: true, createdAt: true, updatedAt: true },
+    })
+
+    return NextResponse.json({ conversation: serializeConversation(conversation) })
+  } catch (caughtError) {
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+    }
+    return NextResponse.json({ error: "Nao foi possivel renomear a conversa." }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const { id } = await context.params
+
+  try {
+    const resolved = await getConversationOrError(id)
+    if (resolved.error) return resolved.error
+    if (!resolved.conversation || !resolved.user?.broker) {
+      return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+    }
+
+    await prisma.$transaction([
+      prisma.emeMessage.deleteMany({
+        where: {
+          brokerId: resolved.user.broker.id,
+          channel: "assessor_eme",
+          metadata: {
+            path: ["conversationId"],
+            equals: id,
+          },
+        },
+      }),
+      prisma.aiAssistantInteraction.deleteMany({
+        where: {
+          brokerId: resolved.user.broker.id,
+          channel: "assessor_eme",
+          metadata: {
+            path: ["conversationId"],
+            equals: id,
+          },
+        },
+      }),
+      prisma.brokerDocument.delete({
+        where: { id: resolved.conversation.id },
+      }),
+    ])
+
+    return NextResponse.json({ deleted: true })
+  } catch (caughtError) {
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+    }
+    return NextResponse.json({ error: "Nao foi possivel excluir a conversa." }, { status: 500 })
+  }
+}

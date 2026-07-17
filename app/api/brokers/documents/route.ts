@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       where: {
         brokerId: user.broker.id,
         type: {
-          not: "studio_ia_video_job",
+          notIn: ["studio_ia_video_job", "cos_conversation"],
         },
         ...(status && status !== "all" ? { status } : {}),
       },

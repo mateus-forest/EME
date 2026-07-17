@@ -529,12 +529,13 @@ function metadataRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
 }
 
-export async function getPendingAssessorContext(brokerId: string): Promise<PendingAssessorContext | null> {
+export async function getPendingAssessorContext(brokerId: string, conversationId?: string | null): Promise<PendingAssessorContext | null> {
   const recent = await prisma.emeMessage.findFirst({
     where: {
       brokerId,
       channel: "assessor_eme",
       actionStatus: { in: ["processing", "needs_input"] },
+      ...(conversationId ? { metadata: { path: ["conversationId"], equals: conversationId } } : {}),
     },
     orderBy: { createdAt: "desc" },
     select: { actionType: true, metadata: true, createdAt: true },
