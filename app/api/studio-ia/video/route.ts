@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits, refundBrokerAiCredits } from "@/lib/eme-plan-service"
@@ -6,12 +7,14 @@ import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
 import {
   generateStudioPropertyVideo,
+  getStudioVideoEstimatedCredits,
   getStudioVideoProviderConfig,
   getStudioVideoResult,
   parseStudioVideoJobContent,
   refreshStudioVideoJob,
   studioVideoActionType,
-  studioVideoEstimatedCredits,
+  studioVideoDefaultDuration,
+  studioVideoInvalidDurationMessage,
   studioVideoRequestSchema,
   stringifyStudioVideoJobContent,
 } from "@/lib/studio-ia-video"
@@ -71,6 +74,17 @@ async function parseVideoRequestForm(request: NextRequest) {
     payload,
     uploadedFiles,
   }
+}
+
+function isDurationValidationError(caughtError: unknown) {
+  return (
+    (caughtError instanceof z.ZodError &&
+      caughtError.issues.some((issue) => issue.path.includes("duration"))) ||
+    caughtError instanceof Error &&
+    (caughtError.message === "STUDIO_VIDEO_DURATION_NOT_SUPPORTED" ||
+      caughtError.message === "LUMA_DURATION_NOT_SUPPORTED" ||
+      caughtError.message.includes(studioVideoInvalidDurationMessage))
+  )
 }
 
 async function resolveJobDocument(requestId: string, brokerId: string) {
@@ -215,7 +229,8 @@ export async function POST(request: NextRequest) {
         }
       : null
 
-    const credits = await hasBrokerAiCredits(user.broker.id, studioVideoEstimatedCredits)
+    const estimatedCredits = getStudioVideoEstimatedCredits(payload.duration)
+    const credits = await hasBrokerAiCredits(user.broker.id, estimatedCredits)
     if (!credits.allowed) {
       return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
     }
@@ -231,7 +246,7 @@ export async function POST(request: NextRequest) {
 
     await consumeBrokerAiCredits({
       brokerId: user.broker.id,
-      amount: studioVideoEstimatedCredits,
+      amount: estimatedCredits,
       actionType: studioVideoActionType,
       description: "Criar video do imovel no Studio IA",
       metadata: {
@@ -288,11 +303,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (isDurationValidationError(caughtError)) {
+      return NextResponse.json({ error: studioVideoInvalidDurationMessage }, { status: 400 })
+    }
+
     if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_NOT_CONFIGURED") {
       return NextResponse.json(
         {
           error: "A chave LUMAAI_API_KEY nao esta configurada para o fluxo de video do Studio IA.",
-          estimatedCredits: studioVideoEstimatedCredits,
+          estimatedCredits: getStudioVideoEstimatedCredits(studioVideoDefaultDuration),
           providerConfigured: false,
         },
         { status: 503 },
@@ -303,7 +322,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "A chave LUMAAI_API_KEY foi rejeitada pela Luma AI.",
-          estimatedCredits: studioVideoEstimatedCredits,
+          estimatedCredits: getStudioVideoEstimatedCredits(studioVideoDefaultDuration),
           providerConfigured: true,
         },
         { status: 502 },

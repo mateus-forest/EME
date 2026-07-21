@@ -6,22 +6,31 @@ import { getLumaAIEnv } from "@/lib/env.server"
 import { savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
 import {
   studioVideoActionType,
-  studioVideoDurations,
-  studioVideoEstimatedCredits,
+  studioVideoDefaultDuration,
   studioVideoFormats,
+  getStudioVideoDurationLabel,
+  getStudioVideoEstimatedCredits,
+  getStudioVideoProviderAcceptedDurations,
+  normalizeStudioVideoDuration,
   studioVideoJobContentSchema,
   studioVideoObjectives,
   studioVideoStyles,
+  studioVideoDurationAdjustedMessage,
+  studioVideoInvalidDurationMessage,
   type StudioVideoJobContent,
+  type StudioVideoDuration,
   type StudioVideoRequest,
   type StudioVideoResult,
 } from "@/lib/studio-ia-video-shared"
 
 export {
   studioVideoActionType,
-  studioVideoDurations,
-  studioVideoEstimatedCredits,
+  studioVideoDefaultDuration,
   studioVideoFormats,
+  getStudioVideoDurationLabel,
+  getStudioVideoEstimatedCredits,
+  studioVideoDurationAdjustedMessage,
+  studioVideoInvalidDurationMessage,
   studioVideoObjectives,
   studioVideoRequestSchema,
   studioVideoResultSchema,
@@ -49,7 +58,7 @@ type LumaGenerationCreateRequest = {
   prompt: string
   model: string
   resolution: "540p" | "720p" | "1080p"
-  duration: "5s" | "10s"
+  duration: "5s" | "9s"
   aspect_ratio: "9:16" | "16:9" | "1:1"
   keyframes?: {
     frame0?: {
@@ -91,13 +100,6 @@ const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaGener
   "Quadrado 1:1": "540p",
 }
 
-const durationMap: Record<(typeof studioVideoDurations)[number], LumaGenerationCreateRequest["duration"]> = {
-  "15 segundos": "10s",
-  "30 segundos": "10s",
-  "45 segundos": "10s",
-  "60 segundos": "10s",
-}
-
 const styleDirectionMap: Record<(typeof studioVideoStyles)[number], string> = {
   Cinematografico: "movimentos suaves de camera, composicao elegante, luz natural valorizada e acabamento premium",
   Minimalista: "visual limpo, ritmo sereno, enquadramentos objetivos e foco em arquitetura e amplitude",
@@ -114,6 +116,15 @@ const objectiveDirectionMap: Record<(typeof studioVideoObjectives)[number], stri
 
 function clipText(value: string, maxLength: number) {
   return value.trim().replace(/\s+/g, " ").slice(0, maxLength)
+}
+
+function sanitizeStudioVideoErrorMessage(message?: string | null) {
+  if (!message) return undefined
+  if (/(duration|9s|5s|seconds|segundos)/i.test(message)) {
+    return studioVideoInvalidDurationMessage
+  }
+
+  return "O provedor nao conseguiu concluir o video. Os creditos foram preservados."
 }
 
 function getLumaAuthHeaders() {
@@ -148,6 +159,10 @@ async function parseLumaJsonResponse<T>(response: Response) {
       throw new Error(detail || "LUMAAI_API_KEY_INVALID")
     }
 
+    if (detail && /(duration|9s|5s|seconds|segundos)/i.test(detail)) {
+      throw new Error("LUMA_DURATION_NOT_SUPPORTED")
+    }
+
     throw new Error(detail || `Luma AI retornou erro ${response.status}.`)
   }
 
@@ -159,7 +174,18 @@ async function parseLumaJsonResponse<T>(response: Response) {
 }
 
 export function parseStudioVideoJobContent(content: string) {
-  return studioVideoJobContentSchema.parse(JSON.parse(content))
+  const parsed = JSON.parse(content) as Record<string, unknown>
+  const normalizedDuration = normalizeStudioVideoDuration(parsed.duration)
+
+  return studioVideoJobContentSchema.parse({
+    ...parsed,
+    duration: normalizedDuration.duration,
+    noticeMessage: normalizedDuration.adjusted
+      ? studioVideoDurationAdjustedMessage
+      : typeof parsed.noticeMessage === "string"
+        ? parsed.noticeMessage
+        : undefined,
+  })
 }
 
 export function stringifyStudioVideoJobContent(content: StudioVideoJobContent) {
@@ -221,7 +247,7 @@ function buildVideoPrompt(input: StudioVideoRequest, property?: StudioVideoPrope
   return [
     "Crie um video imobiliario comercial em portugues do Brasil.",
     `Formato final desejado: ${input.format}.`,
-    `Duracao alvo no Studio IA: ${input.duration}. Use a duracao suportada mais proxima pela Luma mantendo o melhor resultado comercial possivel.`,
+    `Duracao final obrigatoria: ${getStudioVideoDurationLabel(input.duration)} (${input.duration}).`,
     `Objetivo comercial: ${input.objective}.`,
     `Estilo visual: ${input.style}. ${styleDirectionMap[input.style]}.`,
     `Direcao narrativa: ${objectiveDirectionMap[input.objective]}.`,
@@ -279,7 +305,7 @@ export function getStudioVideoProviderConfig() {
     provider: "lumaai",
     model: videoModel,
     isConfigured: Boolean(apiKey),
-    estimatedCredits: studioVideoEstimatedCredits,
+    estimatedCredits: getStudioVideoEstimatedCredits(studioVideoDefaultDuration),
   }
 }
 
@@ -306,11 +332,18 @@ function createResultFromJob(requestId: string, job: StudioVideoJobContent): Stu
     storyboard: job.storyboard,
     script: job.script,
     shotPlan: job.shotPlan,
+    duration: job.duration,
     videoUrl: job.videoUrl,
     fileSaved: Boolean(job.savedDocumentId),
     progress: job.progress,
     errorMessage: job.errorMessage,
+    noticeMessage: job.noticeMessage,
   }
+}
+
+function validateProviderDuration(duration: StudioVideoDuration, model: string) {
+  const acceptedDurations = getStudioVideoProviderAcceptedDurations(model)
+  return acceptedDurations.includes(duration)
 }
 
 export async function generateStudioPropertyVideo({
@@ -331,11 +364,16 @@ export async function generateStudioPropertyVideo({
   const storyboard = buildStoryboard(input, property)
   const shotPlan = buildShotPlan(input, property)
   const script = buildScript(input, property)
+
+  if (!validateProviderDuration(input.duration, config.model)) {
+    throw new Error("STUDIO_VIDEO_DURATION_NOT_SUPPORTED")
+  }
+
   const requestPayload: LumaGenerationCreateRequest = {
     prompt,
     model: config.model,
     resolution: formatResolutionMap[input.format],
-    duration: durationMap[input.duration],
+    duration: input.duration,
     aspect_ratio: formatAspectRatioMap[input.format],
   }
 
@@ -348,10 +386,18 @@ export async function generateStudioPropertyVideo({
   }
 
   const generation = await createLumaGeneration(requestPayload)
+  if (generation.failure_reason) {
+    console.error("[studio-ia][video][provider-failure]", {
+      provider: config.provider,
+      providerVideoId: generation.id,
+      failureReason: generation.failure_reason,
+    })
+  }
+
   const jobContent: StudioVideoJobContent = {
     provider: config.provider,
     providerVideoId: generation.id,
-    estimatedCredits: config.estimatedCredits,
+    estimatedCredits: getStudioVideoEstimatedCredits(input.duration),
     propertyId: property?.id,
     propertyTitle: property?.title,
     propertyLocation: property?.location,
@@ -370,7 +416,7 @@ export async function generateStudioPropertyVideo({
     progress: mapVideoProgress(generation.state),
     creditsCharged: false,
     creditsRefunded: false,
-    errorMessage: generation.failure_reason ? clipText(generation.failure_reason, 400) : undefined,
+    errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
   }
 
   return {
@@ -383,6 +429,14 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent) {
   const generation = await getLumaGeneration(job.providerVideoId)
   const nextStatus = mapVideoStatus(generation.state)
   let videoUrl = job.videoUrl
+
+  if (generation.failure_reason) {
+    console.error("[studio-ia][video][provider-failure]", {
+      provider: job.provider,
+      providerVideoId: job.providerVideoId,
+      failureReason: generation.failure_reason,
+    })
+  }
 
   if (generation.state === "completed" && generation.assets?.video && !videoUrl) {
     const response = await fetch(generation.assets.video, { cache: "no-store" })
@@ -399,7 +453,7 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent) {
     generationStatus: nextStatus,
     progress: mapVideoProgress(generation.state),
     videoUrl,
-    errorMessage: generation.failure_reason ? clipText(generation.failure_reason, 400) : job.errorMessage,
+    errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason) ?? job.errorMessage,
   } satisfies StudioVideoJobContent
 }
 

@@ -26,18 +26,21 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  studioVideoDurations,
-  studioVideoEstimatedCredits,
+  getStudioVideoDurationLabel,
+  getStudioVideoEstimatedCredits,
+  studioVideoDefaultDuration,
   studioVideoFormats,
+  studioVideoInvalidDurationMessage,
   studioVideoObjectives,
   studioVideoRequestSchema,
   studioVideoResultSchema,
+  studioVideoSelectableDurationOptions,
   studioVideoStyles,
 } from "@/lib/studio-ia-video-shared"
 
 type StudioVideoStep = "selection" | "configuration" | "review" | "processing" | "result"
 type StudioVideoFormat = (typeof studioVideoFormats)[number]
-type StudioVideoDuration = (typeof studioVideoDurations)[number]
+type StudioVideoDuration = (typeof studioVideoSelectableDurationOptions)[number]["value"]
 type StudioVideoObjective = (typeof studioVideoObjectives)[number]
 type StudioVideoStyle = (typeof studioVideoStyles)[number]
 type GeneratedVideoResult = z.infer<typeof studioVideoResultSchema>
@@ -64,13 +67,14 @@ export function BrokerStudioIaVideoPage() {
   const [selectedReferenceImages, setSelectedReferenceImages] = useState<string[]>([])
   const [uploadedImages, setUploadedImages] = useState<UploadPreview[]>([])
   const [format, setFormat] = useState<StudioVideoFormat>(studioVideoFormats[0])
-  const [duration, setDuration] = useState<StudioVideoDuration>(studioVideoDurations[1])
+  const [duration, setDuration] = useState<StudioVideoDuration>(studioVideoDefaultDuration)
   const [objective, setObjective] = useState<StudioVideoObjective>(studioVideoObjectives[0])
   const [style, setStyle] = useState<StudioVideoStyle>(studioVideoStyles[0])
   const [additionalInstructions, setAdditionalInstructions] = useState("")
   const [currentStep, setCurrentStep] = useState<StudioVideoStep>("selection")
   const [resultVersion, setResultVersion] = useState(0)
   const [generationError, setGenerationError] = useState("")
+  const [durationNotice, setDurationNotice] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingResult, setIsSavingResult] = useState(false)
   const [generatedResult, setGeneratedResult] = useState<GeneratedVideoResult | null>(null)
@@ -85,7 +89,7 @@ export function BrokerStudioIaVideoPage() {
     (selectedProperty && selectedReferenceImages.length > 0) || uploadedImages.length > 0,
   )
 
-  const estimatedCredits = generatedResult?.estimatedCredits ?? studioVideoEstimatedCredits
+  const estimatedCredits = generatedResult?.estimatedCredits ?? getStudioVideoEstimatedCredits(duration)
 
   useEffect(() => {
     uploadedImagesRef.current = uploadedImages
@@ -96,6 +100,12 @@ export function BrokerStudioIaVideoPage() {
       uploadedImagesRef.current.forEach((image) => URL.revokeObjectURL(image.url))
     }
   }, [])
+
+  useEffect(() => {
+    if (generatedResult?.noticeMessage) {
+      setDurationNotice(generatedResult.noticeMessage)
+    }
+  }, [generatedResult?.noticeMessage])
 
   useEffect(() => {
     if (!generatedResult?.requestId || currentStep !== "processing") return
@@ -152,6 +162,7 @@ export function BrokerStudioIaVideoPage() {
     const property = properties.find((item) => item.id === propertyId) ?? null
     setSelectedReferenceImages(property?.images[0] ? [property.images[0]] : [])
     setGenerationError("")
+    setDurationNotice("")
     setGeneratedResult(null)
     setResultVersion(0)
     setCurrentStep("selection")
@@ -164,6 +175,7 @@ export function BrokerStudioIaVideoPage() {
         : [...current, imageUrl].slice(0, 8)
     ))
     setGenerationError("")
+    setDurationNotice("")
     setGeneratedResult(null)
     setResultVersion(0)
   }
@@ -185,6 +197,7 @@ export function BrokerStudioIaVideoPage() {
     })
 
     setGenerationError("")
+    setDurationNotice("")
     setGeneratedResult(null)
     setResultVersion(0)
     event.target.value = ""
@@ -197,6 +210,7 @@ export function BrokerStudioIaVideoPage() {
       return current.filter((item) => item.url !== imageUrl)
     })
     setGenerationError("")
+    setDurationNotice("")
     setGeneratedResult(null)
     setResultVersion(0)
   }
@@ -226,6 +240,7 @@ export function BrokerStudioIaVideoPage() {
     }
 
     setGenerationError("")
+    setDurationNotice("")
     setCurrentStep("configuration")
   }
 
@@ -233,9 +248,15 @@ export function BrokerStudioIaVideoPage() {
     try {
       buildPayload()
       setGenerationError("")
+      setDurationNotice("")
       setCurrentStep("review")
     } catch (caughtError) {
-      const issue = caughtError instanceof z.ZodError ? caughtError.issues[0]?.message : null
+      const issue =
+        caughtError instanceof z.ZodError
+          ? caughtError.issues.some((item) => item.path.includes("duration"))
+            ? studioVideoInvalidDurationMessage
+            : caughtError.issues[0]?.message
+          : null
       setGenerationError(issue || "Revise os campos antes de continuar.")
     }
   }
@@ -248,6 +269,7 @@ export function BrokerStudioIaVideoPage() {
       uploadedImages.forEach((image) => formData.append("images", image.file))
 
       setGenerationError("")
+      setDurationNotice("")
       setCurrentStep("processing")
       setIsSubmitting(true)
 
@@ -315,17 +337,18 @@ export function BrokerStudioIaVideoPage() {
   function restartFlow() {
     uploadedImages.forEach((image) => URL.revokeObjectURL(image.url))
     setSelectedPropertyId("")
-    setSelectedReferenceImages([])
-    setUploadedImages([])
-    setFormat(studioVideoFormats[0])
-    setDuration(studioVideoDurations[1])
-    setObjective(studioVideoObjectives[0])
-    setStyle(studioVideoStyles[0])
-    setAdditionalInstructions("")
-    setCurrentStep("selection")
-    setResultVersion(0)
-    setGenerationError("")
-    setGeneratedResult(null)
+      setSelectedReferenceImages([])
+      setUploadedImages([])
+      setFormat(studioVideoFormats[0])
+      setDuration(studioVideoDefaultDuration)
+      setObjective(studioVideoObjectives[0])
+      setStyle(studioVideoStyles[0])
+      setAdditionalInstructions("")
+      setCurrentStep("selection")
+      setResultVersion(0)
+      setGenerationError("")
+      setDurationNotice("")
+      setGeneratedResult(null)
     setIsSubmitting(false)
     setIsSavingResult(false)
   }
@@ -334,13 +357,13 @@ export function BrokerStudioIaVideoPage() {
     () => [
       { label: "Imovel", value: selectedProperty?.title ?? "Nao selecionado" },
       { label: "Formato", value: format },
-      { label: "Duracao", value: duration },
+      { label: "Duracao", value: getStudioVideoDurationLabel(generatedResult?.duration ?? duration) },
       { label: "Objetivo", value: objective },
       { label: "Estilo", value: style },
       { label: "Referencias", value: `${selectedReferenceImages.length + uploadedImages.length} imagem(ns)` },
       { label: "Creditos IA", value: `${estimatedCredits} estimados` },
     ],
-    [duration, estimatedCredits, format, objective, selectedProperty, selectedReferenceImages.length, style, uploadedImages.length],
+    [duration, estimatedCredits, format, generatedResult?.duration, objective, selectedProperty, selectedReferenceImages.length, style, uploadedImages.length],
   )
 
   if (isLoading) {
@@ -421,6 +444,12 @@ export function BrokerStudioIaVideoPage() {
                 <p className="mt-1 leading-6">{generationError}</p>
               </div>
             </div>
+          </div>
+        ) : null}
+
+        {durationNotice ? (
+          <div className="rounded-[1.15rem] border border-[#dbe8df] bg-[#f8fdf9] px-4 py-3 text-sm text-[#4f6b59]">
+            {durationNotice}
           </div>
         ) : null}
 
@@ -588,13 +617,16 @@ export function BrokerStudioIaVideoPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {studioVideoDurations.map((item) => (
-                            <SelectItem key={item} value={item}>
-                              {item}
+                          {studioVideoSelectableDurationOptions.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="mt-3 text-sm leading-6 text-[#6B7280]">
+                        O modelo atual trabalha com duracao curta. O payload enviado usa exatamente <strong>9s</strong>.
+                      </p>
                     </FieldCard>
 
                     <FieldCard label="Objetivo">
@@ -726,6 +758,9 @@ export function BrokerStudioIaVideoPage() {
                         ? "Pedido em fila aguardando processamento."
                         : "Pedido em processamento no provedor de video."}
                     </p>
+                    <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                      Duracao confirmada: {getStudioVideoDurationLabel(generatedResult?.duration ?? duration)}.
+                    </p>
                     <p className="mt-3 text-sm font-semibold text-[#009b3a]">
                       Progresso: {generatedResult?.progress ?? 0}%
                     </p>
@@ -743,7 +778,7 @@ export function BrokerStudioIaVideoPage() {
                       <div>
                         <p className="font-semibold text-[#050505]">Video concluido pelo provedor</p>
                         <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                          Request ID: {generatedResult.requestId}. Status final: {generatedResult.generationStatus}.
+                          Request ID: {generatedResult.requestId}. Status final: {generatedResult.generationStatus}. Duracao: {getStudioVideoDurationLabel(generatedResult.duration)}.
                         </p>
                       </div>
                     </div>
@@ -832,7 +867,7 @@ export function BrokerStudioIaVideoPage() {
                 <StatusTile
                   title="Creditos IA"
                   description="Consumo validado antes do envio e protegido com estorno em caso de falha."
-                  value={`${estimatedCredits} estimados`}
+                  value={`${estimatedCredits} estimados para ${getStudioVideoDurationLabel(generatedResult?.duration ?? duration)}`}
                 />
                 <Button
                   type="button"

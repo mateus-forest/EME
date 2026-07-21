@@ -7,7 +7,27 @@ export const studioVideoFormats = [
   "Quadrado 1:1",
 ] as const
 
-export const studioVideoDurations = ["15 segundos", "30 segundos", "45 segundos", "60 segundos"] as const
+export const studioVideoLegacyDurations = ["15 segundos", "30 segundos", "45 segundos", "60 segundos"] as const
+
+export const studioVideoSelectableDurationOptions = [
+  {
+    value: "9s",
+    label: "9 segundos",
+    estimatedCredits: 90,
+  },
+] as const
+
+export const studioVideoSelectableDurations = studioVideoSelectableDurationOptions.map((item) => item.value) as ["9s"]
+export const studioVideoDefaultDuration = "9s" as const
+export const studioVideoDurationAdjustedMessage =
+  "A duração foi ajustada para 9 segundos, compatível com o modelo atual."
+export const studioVideoInvalidDurationMessage =
+  "A duração escolhida não é compatível com o gerador atual. Selecione uma opção disponível."
+
+const studioVideoProviderAcceptedDurationsByModel = {
+  "ray-2": ["5s", "9s"],
+  "ray-flash-2": ["9s"],
+} as const
 
 export const studioVideoObjectives = [
   "Atrair interessados",
@@ -23,7 +43,6 @@ export const studioVideoStyles = [
   "Dinamico comercial",
 ] as const
 
-export const studioVideoEstimatedCredits = 90
 export const studioVideoActionType = "studio_ia_video_generation"
 
 export const studioVideoUploadSchema = z.object({
@@ -32,13 +51,16 @@ export const studioVideoUploadSchema = z.object({
   size: z.number().int().min(1).max(25 * 1024 * 1024),
 })
 
+const studioVideoRequestDurationSchema = z.enum(studioVideoSelectableDurations)
+const studioVideoJobDurationSchema = z.enum(studioVideoSelectableDurations)
+
 export const studioVideoRequestSchema = z
   .object({
     propertyId: z.string().trim().min(1).max(191).optional(),
     referenceImageUrls: z.array(z.string().trim().url()).max(12).default([]),
     uploadedImages: z.array(studioVideoUploadSchema).max(12).default([]),
     format: z.enum(studioVideoFormats),
-    duration: z.enum(studioVideoDurations),
+    duration: studioVideoRequestDurationSchema,
     objective: z.enum(studioVideoObjectives),
     style: z.enum(studioVideoStyles),
     additionalInstructions: z.string().trim().max(600).default(""),
@@ -65,10 +87,12 @@ export const studioVideoResultSchema = z.object({
   storyboard: z.array(z.string().trim().min(1).max(220)).min(3).max(6),
   script: z.string().trim().min(1).max(2200),
   shotPlan: z.array(z.string().trim().min(1).max(180)).min(3).max(8),
+  duration: studioVideoRequestDurationSchema,
   videoUrl: z.string().trim().url().optional(),
   fileSaved: z.boolean().default(false),
   progress: z.number().min(0).max(100).default(0),
   errorMessage: z.string().trim().max(400).optional(),
+  noticeMessage: z.string().trim().max(200).optional(),
 })
 
 export const studioVideoJobContentSchema = z.object({
@@ -81,7 +105,7 @@ export const studioVideoJobContentSchema = z.object({
   referenceImageUrls: z.array(z.string().trim().url()).max(12).default([]),
   uploadedImages: z.array(studioVideoUploadSchema).max(12).default([]),
   format: z.enum(studioVideoFormats),
-  duration: z.enum(studioVideoDurations),
+  duration: studioVideoJobDurationSchema,
   objective: z.enum(studioVideoObjectives),
   style: z.enum(studioVideoStyles),
   additionalInstructions: z.string().trim().max(600).default(""),
@@ -96,8 +120,47 @@ export const studioVideoJobContentSchema = z.object({
   creditsCharged: z.boolean().default(false),
   creditsRefunded: z.boolean().default(false),
   errorMessage: z.string().trim().max(400).optional(),
+  noticeMessage: z.string().trim().max(200).optional(),
 })
 
+export type StudioVideoDuration = (typeof studioVideoSelectableDurations)[number]
 export type StudioVideoRequest = z.infer<typeof studioVideoRequestSchema>
 export type StudioVideoResult = z.infer<typeof studioVideoResultSchema>
 export type StudioVideoJobContent = z.infer<typeof studioVideoJobContentSchema>
+
+export function getStudioVideoDurationLabel(duration: StudioVideoDuration) {
+  return studioVideoSelectableDurationOptions.find((item) => item.value === duration)?.label ?? "9 segundos"
+}
+
+export function getStudioVideoEstimatedCredits(duration: StudioVideoDuration) {
+  return studioVideoSelectableDurationOptions.find((item) => item.value === duration)?.estimatedCredits ?? 90
+}
+
+export function getStudioVideoProviderAcceptedDurations(model: string) {
+  if (model in studioVideoProviderAcceptedDurationsByModel) {
+    return studioVideoProviderAcceptedDurationsByModel[model as keyof typeof studioVideoProviderAcceptedDurationsByModel]
+  }
+
+  return studioVideoSelectableDurations
+}
+
+export function isStudioVideoSelectableDuration(value: string): value is StudioVideoDuration {
+  return studioVideoSelectableDurations.includes(value as StudioVideoDuration)
+}
+
+export function normalizeStudioVideoDuration(value: unknown) {
+  if (typeof value !== "string") {
+    return { duration: studioVideoDefaultDuration, adjusted: false }
+  }
+
+  const normalized = value.trim()
+  if (isStudioVideoSelectableDuration(normalized)) {
+    return { duration: normalized, adjusted: false }
+  }
+
+  if (studioVideoLegacyDurations.includes(normalized as (typeof studioVideoLegacyDurations)[number])) {
+    return { duration: studioVideoDefaultDuration, adjusted: true }
+  }
+
+  return { duration: studioVideoDefaultDuration, adjusted: false }
+}
