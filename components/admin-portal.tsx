@@ -58,7 +58,7 @@ const emptyOverview: AdminOverview = {
     preparing: 0,
   },
   assessorEme: {
-    status: "Canal em preparação",
+    status: "Canal em preparacao",
     hasOfficialNumber: false,
   },
 }
@@ -88,28 +88,28 @@ export function AdminPortal() {
   }, [])
 
   return (
-    <AdminPageShell title="Admin EME" subtitle="Gestão da plataforma">
+    <AdminPageShell title="Admin EME" subtitle="Gestao da plataforma">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Corretores cadastrados" value={String(overview.brokers)} icon={UserRound} />
-        <MetricCard label="Imóveis cadastrados" value={String(overview.properties)} icon={Home} />
+        <MetricCard label="Imoveis cadastrados" value={String(overview.properties)} icon={Home} />
         <MetricCard label="Leads registrados" value={String(overview.leads)} icon={MessageCircle} />
         <MetricCard label="Receita prevista" value={formatCurrencyBRL(overview.revenue.predicted)} icon={BarChart3} />
-        <MetricCard label="Assinaturas" value={`${overview.subscriptions.active} ativas / ${overview.subscriptions.evaluation} avaliação`} icon={CreditCard} />
+        <MetricCard label="Assinaturas" value={`${overview.subscriptions.active} ativas / ${overview.subscriptions.evaluation} avaliacao`} icon={CreditCard} />
         <MetricCard label="Consumo IA" value={`${overview.ai.creditsUsedThisMonth} usados`} icon={Sparkles} />
-        <MetricCard label="Corretor EME" value={`${overview.corretorEme.active} ativas / ${overview.corretorEme.preparing} preparação`} icon={DatabaseZap} />
+        <MetricCard label="Corretor EME" value={`${overview.corretorEme.active} ativas / ${overview.corretorEme.preparing} preparacao`} icon={DatabaseZap} />
         <MetricCard label="Assessor EME" value={overview.assessorEme.status} icon={Bot} />
       </section>
 
       <section className="mt-6 grid gap-5 xl:grid-cols-2">
         <EmptyOperationalCard
           icon={ShieldCheck}
-          title="Operação focada em corretores"
-          description="O dashboard consolida corretores individuais, imóveis, leads, consumo de IA, assinaturas e canais EME sem fluxo de equipes no MVP."
+          title="Operacao focada em corretores"
+          description="O dashboard consolida corretores individuais, imoveis, leads, consumo de IA, assinaturas e canais EME sem abrir caminhos paralelos fora da operacao principal."
         />
         <EmptyOperationalCard
           icon={CreditCard}
-          title="Assinaturas e avaliação"
-          description={`${overview.subscriptions.total} registros no total: ${overview.subscriptions.active} ativos, ${overview.subscriptions.evaluation} em avaliação, ${overview.subscriptions.pending} pendentes e ${overview.subscriptions.canceled} cancelados.`}
+          title="Assinaturas e avaliacao"
+          description={`${overview.subscriptions.total} registros no total: ${overview.subscriptions.active} ativos, ${overview.subscriptions.evaluation} em avaliacao, ${overview.subscriptions.pending} pendentes e ${overview.subscriptions.canceled} cancelados.`}
         />
       </section>
     </AdminPageShell>
@@ -118,13 +118,13 @@ export function AdminPortal() {
 
 function MetricCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof DatabaseZap }) {
   return (
-    <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <Card className="rounded-[1.5rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
       <CardContent className="flex items-start justify-between gap-4 p-4">
         <div>
-          <p className="text-sm text-white/55">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-white">{value}</p>
+          <p className="text-sm text-[#6B7280]">{label}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-[#050505]">{value}</p>
         </div>
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
           <Icon className="size-5" />
         </div>
       </CardContent>
@@ -142,17 +142,17 @@ function EmptyOperationalCard({
   description: string
 }) {
   return (
-    <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
       <CardHeader className="px-6 py-5">
-        <CardTitle className="flex items-center gap-3 text-xl text-white">
-          <span className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+        <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
+          <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
             <Icon className="size-5" />
           </span>
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="px-6 pb-6 pt-0">
-        <p className="text-sm leading-7 text-white/58">{description}</p>
+        <p className="text-sm leading-7 text-[#5F6B7A]">{description}</p>
       </CardContent>
     </Card>
   )

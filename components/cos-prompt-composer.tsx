@@ -180,7 +180,7 @@ export function CosPromptComposer({
   }
 
   return (
-    <div className="pwa-sticky-composer border-t border-black/[0.05] px-3 pt-3 sm:px-4">
+    <div className="pwa-sticky-composer px-3 pt-3 sm:px-4">
       <form
         onSubmit={(event) => {
           event.preventDefault()

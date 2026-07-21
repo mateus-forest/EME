@@ -6,16 +6,13 @@ import { AdminPageShell } from "@/components/admin-page-shell"
 
 export function AdminAlertsPage() {
   return (
-    <AdminPageShell
-      title="Alertas"
-      subtitle="Acompanhe os principais pontos de atenção da plataforma"
-    >
-      <section className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] p-8 text-center shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+    <AdminPageShell title="Alertas" subtitle="Acompanhe os principais pontos de atenção da plataforma">
+      <section className="rounded-[1.75rem] border border-black/[0.06] bg-white p-8 text-center shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
           <CheckCircle2 className="size-6" />
         </div>
-        <h3 className="mt-4 text-2xl font-semibold text-white">Nenhum alerta operacional</h3>
-        <p className="mt-3 text-sm leading-7 text-white/55">
+        <h3 className="mt-4 text-2xl font-semibold text-[#111111]">Nenhum alerta operacional</h3>
+        <p className="mt-3 text-sm leading-7 text-[#6B7280]">
           Os alertas reais aparecerão aqui quando houver atividade operacional suficiente para monitoramento.
         </p>
       </section>

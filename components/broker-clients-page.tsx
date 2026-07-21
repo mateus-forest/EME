@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { useBrokerProperties } from "@/components/use-broker-properties"
 import type { LeadRecord } from "@/lib/lead-contract"
 
 type ClientFilterId =
@@ -86,13 +88,25 @@ const statusLabelOverrides: Record<LeadRecord["status"], string> = {
 }
 
 export function BrokerClientsPage() {
+  const { properties } = useBrokerProperties()
   const [clients, setClients] = useState<LeadRecord[]>([])
   const [feedback, setFeedback] = useState("")
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<ClientFilterId>("all")
   const [selectedClient, setSelectedClient] = useState<LeadRecord | null>(null)
+  const [isCreateClientOpen, setIsCreateClientOpen] = useState(false)
+  const [isCreatingClient, setIsCreatingClient] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeletingClient, setIsDeletingClient] = useState(false)
+  const [clientDraft, setClientDraft] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    propertyId: "none",
+    searchTerm: "",
+    intent: "",
+    message: "",
+  })
 
   useEffect(() => {
     let ignore = false
@@ -191,8 +205,48 @@ export function BrokerClientsPage() {
     }
   }
 
+  async function createClient() {
+    setIsCreatingClient(true)
+    setFeedback("")
+
+    try {
+      const response = await fetch("/api/brokers/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          ...clientDraft,
+          propertyId: clientDraft.propertyId === "none" ? "" : clientDraft.propertyId,
+        }),
+      })
+      const data = (await response.json().catch(() => null)) as { lead?: LeadRecord; error?: string } | null
+
+      if (!response.ok || !data?.lead) {
+        throw new Error(data?.error || "Nao foi possivel cadastrar o cliente.")
+      }
+
+      setClients((current) => [data.lead!, ...current])
+      setIsCreateClientOpen(false)
+      setClientDraft({
+        name: "",
+        email: "",
+        phone: "",
+        propertyId: "none",
+        searchTerm: "",
+        intent: "",
+        message: "",
+      })
+      setFeedback("Cliente cadastrado com sucesso.")
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel cadastrar o cliente.")
+    } finally {
+      setIsCreatingClient(false)
+    }
+  }
+
   return (
-    <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionHref="/corretor/corretor-m">
+    <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionOnClick={() => setIsCreateClientOpen(true)}>
       <div className="grid gap-5">
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -206,8 +260,12 @@ export function BrokerClientsPage() {
                 Acompanhe contatos quentes, priorize retornos e transforme oportunidades em visitas, propostas e fechamento.
               </p>
             </div>
-            <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
-              <Link href="/corretor/corretor-m">Cadastrar com COS</Link>
+            <Button
+              type="button"
+              onClick={() => setIsCreateClientOpen(true)}
+              className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+            >
+              + Novo cliente
             </Button>
           </div>
         </section>
@@ -412,7 +470,90 @@ export function BrokerClientsPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isCreateClientOpen} onOpenChange={setIsCreateClientOpen}>
+        <DialogContent className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[1.75rem] border-black/[0.06] bg-white/95 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:max-w-2xl">
+          <div className="grid gap-5">
+            <div>
+              <DialogTitle className="text-2xl text-[#050505]">Novo cliente</DialogTitle>
+              <DialogDescription className="mt-2 text-[#6B7280]">
+                Cadastre manualmente um cliente na sua carteira e continue o atendimento sem sair da lista.
+              </DialogDescription>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Nome">
+                <Input value={clientDraft.name} onChange={(event) => setClientDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Nome do cliente" className="h-11 rounded-xl" />
+              </Field>
+              <Field label="Telefone">
+                <Input value={clientDraft.phone} onChange={(event) => setClientDraft((current) => ({ ...current, phone: event.target.value }))} placeholder="(00) 00000-0000" className="h-11 rounded-xl" />
+              </Field>
+              <Field label="Email">
+                <Input value={clientDraft.email} onChange={(event) => setClientDraft((current) => ({ ...current, email: event.target.value }))} placeholder="cliente@email.com" className="h-11 rounded-xl" />
+              </Field>
+              <Field label="Imovel de interesse">
+                <Select value={clientDraft.propertyId} onValueChange={(value) => setClientDraft((current) => ({ ...current, propertyId: value }))}>
+                  <SelectTrigger className="h-11 rounded-xl">
+                    <SelectValue placeholder="Selecionar imovel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem imovel vinculado</SelectItem>
+                    {properties.map((property) => (
+                      <SelectItem key={property.id} value={property.id}>
+                        {property.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Busca">
+                <Input value={clientDraft.searchTerm} onChange={(event) => setClientDraft((current) => ({ ...current, searchTerm: event.target.value }))} placeholder="Ex.: apartamento com varanda" className="h-11 rounded-xl" />
+              </Field>
+              <Field label="Intencao">
+                <Input value={clientDraft.intent} onChange={(event) => setClientDraft((current) => ({ ...current, intent: event.target.value }))} placeholder="Ex.: compra para morar" className="h-11 rounded-xl" />
+              </Field>
+            </div>
+
+            <Field label="Observacoes">
+              <Textarea
+                value={clientDraft.message}
+                onChange={(event) => setClientDraft((current) => ({ ...current, message: event.target.value }))}
+                placeholder="Contexto da conversa, faixa de interesse, urgencia, origem do contato..."
+                className="min-h-28 rounded-[1.25rem]"
+              />
+            </Field>
+
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsCreateClientOpen(false)}
+                className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={isCreatingClient}
+                onClick={() => void createClient()}
+                className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:opacity-60"
+              >
+                {isCreatingClient ? "Salvando..." : "Cadastrar cliente"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </BrokerPageShell>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm text-[#6B7280]">{label}</span>
+      {children}
+    </label>
   )
 }
 

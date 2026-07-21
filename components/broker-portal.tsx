@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   Bot,
   Building2,
   CalendarDays,
+  CreditCard,
+  Eye,
+  EyeOff,
+  FileText,
   Sparkles,
   UsersRound,
 } from "lucide-react"
@@ -42,6 +48,20 @@ type NextStepSuggestion =
   | { label: string; message: string; focusOnly?: false }
   | { label: string; focusOnly: true; message?: never }
 
+type ShortcutDefinition = {
+  id: string
+  label: string
+  description: string
+  icon: typeof Sparkles
+  href?: string
+  onClick?: () => void
+}
+
+type StoredShortcutPreferences = {
+  order: string[]
+  hidden: string[]
+}
+
 export function BrokerPortal() {
   const { properties } = useBrokerProperties()
   const { profile } = useBrokerProfile()
@@ -56,9 +76,12 @@ export function BrokerPortal() {
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
   const [isNextStepModalOpen, setIsNextStepModalOpen] = useState(false)
+  const [isShortcutEditorOpen, setIsShortcutEditorOpen] = useState(false)
   const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
+  const [shortcutOrder, setShortcutOrder] = useState<string[]>([])
+  const [hiddenShortcutIds, setHiddenShortcutIds] = useState<string[]>([])
   const chatViewportRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -136,16 +159,6 @@ export function BrokerPortal() {
     [agendaEvents],
   )
 
-  const contextMetrics = useMemo(
-    () => [
-      { label: "Clientes", value: totalLeads.toLocaleString("pt-BR") },
-      { label: "Operacoes", value: String(upcomingAppointmentsCount) },
-      { label: "Balanco", value: financialSummary.currentAmount.replace("R$", "").trim() || "0,00" },
-      { label: "Imoveis", value: String(publishedPropertiesCount) },
-    ],
-    [financialSummary.currentAmount, publishedPropertiesCount, totalLeads, upcomingAppointmentsCount],
-  )
-
   const contextFeed = useMemo(() => historyNotifications.slice(0, 5), [historyNotifications])
 
   const quickActions = [
@@ -190,6 +203,108 @@ export function BrokerPortal() {
     activeConversation?.title && activeConversation.title !== DEFAULT_COS_CONVERSATION_TITLE,
   )
 
+  const shortcutDefinitions = useMemo<ShortcutDefinition[]>(
+    () => [
+      {
+        id: "clients",
+        label: "Clientes",
+        description: `${totalLeads.toLocaleString("pt-BR")} contato(s) em acompanhamento.`,
+        icon: UsersRound,
+        href: "/corretor/clientes",
+      },
+      {
+        id: "proposal",
+        label: "Criar proposta",
+        description: "Abra seus documentos e avance para a proposta comercial.",
+        icon: FileText,
+        href: "/corretor/documentos",
+      },
+      {
+        id: "today-agenda",
+        label: "Agenda de hoje",
+        description: `${upcomingAppointmentsCount} compromisso(s) no radar do dia.`,
+        icon: CalendarDays,
+        href: "/corretor/agenda",
+      },
+      {
+        id: "studio-ia",
+        label: "Studio IA",
+        description: "Ative fluxos prontos para imagem, video e captacao.",
+        icon: Bot,
+        href: "/corretor/studio-ia",
+      },
+      {
+        id: "new-property",
+        label: "Novo imovel",
+        description: hasReachedLimit
+          ? "Seu limite atual foi atingido. Veja o plano antes de cadastrar mais um."
+          : `${publishedPropertiesCount} imovel(is) publicado(s) neste momento.`,
+        icon: Building2,
+        href: "/corretor/novo-imovel",
+        onClick: hasReachedLimit ? () => setIsLimitModalOpen(true) : undefined,
+      },
+      {
+        id: "financial",
+        label: "Financeiro",
+        description: `${unreadCount} alerta(s) e seu saldo do dia em um unico lugar.`,
+        icon: CreditCard,
+        href: "/corretor/financeiro",
+      },
+    ],
+    [hasReachedLimit, publishedPropertiesCount, totalLeads, upcomingAppointmentsCount, unreadCount],
+  )
+
+  const visibleShortcutCards = useMemo(() => {
+    const orderedIds = shortcutOrder.length > 0 ? shortcutOrder : shortcutDefinitions.map((item) => item.id)
+    const definitionMap = new Map(shortcutDefinitions.map((item) => [item.id, item]))
+
+    return orderedIds
+      .map((id) => definitionMap.get(id))
+      .filter((item): item is ShortcutDefinition => Boolean(item))
+      .filter((item) => !hiddenShortcutIds.includes(item.id))
+      .slice(0, 4)
+  }, [hiddenShortcutIds, shortcutDefinitions, shortcutOrder])
+
+  const editableShortcutCards = useMemo(() => {
+    const orderedIds = shortcutOrder.length > 0 ? shortcutOrder : shortcutDefinitions.map((item) => item.id)
+    const definitionMap = new Map(shortcutDefinitions.map((item) => [item.id, item]))
+
+    return orderedIds.map((id) => definitionMap.get(id)).filter((item): item is ShortcutDefinition => Boolean(item))
+  }, [shortcutDefinitions, shortcutOrder])
+
+  useEffect(() => {
+    if (!profile.id || typeof window === "undefined") return
+
+    const stored = window.localStorage.getItem(getShortcutStorageKey(profile.id))
+    if (!stored) {
+      setShortcutOrder(shortcutDefinitions.map((item) => item.id))
+      setHiddenShortcutIds([])
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as StoredShortcutPreferences
+      const availableIds = new Set(shortcutDefinitions.map((item) => item.id))
+      const nextOrder = (parsed.order ?? []).filter((id) => availableIds.has(id))
+      const missing = shortcutDefinitions.map((item) => item.id).filter((id) => !nextOrder.includes(id))
+      setShortcutOrder([...nextOrder, ...missing])
+      setHiddenShortcutIds((parsed.hidden ?? []).filter((id) => availableIds.has(id)))
+    } catch {
+      setShortcutOrder(shortcutDefinitions.map((item) => item.id))
+      setHiddenShortcutIds([])
+    }
+  }, [profile.id, shortcutDefinitions])
+
+  useEffect(() => {
+    if (!profile.id || typeof window === "undefined" || shortcutOrder.length === 0) return
+
+    const payload: StoredShortcutPreferences = {
+      order: shortcutOrder,
+      hidden: hiddenShortcutIds,
+    }
+    window.localStorage.setItem(getShortcutStorageKey(profile.id), JSON.stringify(payload))
+  }, [hiddenShortcutIds, profile.id, shortcutOrder])
+
   async function handleSubmit(promptOverride?: string) {
     const normalizedPrompt = (promptOverride ?? prompt).trim()
     if (!normalizedPrompt) {
@@ -210,6 +325,22 @@ export function BrokerPortal() {
     }
 
     await sendCosMessage(selection.message, { visibleMessage: selection.label })
+  }
+
+  function moveShortcut(id: string, direction: "up" | "down") {
+    setShortcutOrder((current) => {
+      const next = current.length > 0 ? [...current] : shortcutDefinitions.map((item) => item.id)
+      const index = next.indexOf(id)
+      if (index < 0) return next
+      const targetIndex = direction === "up" ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= next.length) return next
+      ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
+      return next
+    })
+  }
+
+  function toggleShortcutVisibility(id: string) {
+    setHiddenShortcutIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
   }
 
   return (
@@ -256,19 +387,50 @@ export function BrokerPortal() {
                     <Sparkles className="size-4" />
                     Atalhos inteligentes
                   </div>
-                  <button type="button" className="transition-colors hover:text-[#111111]">
+                  <button
+                    type="button"
+                    onClick={() => setIsShortcutEditorOpen(true)}
+                    className="transition-colors hover:text-[#111111]"
+                  >
                     Editar
                   </button>
                 </div>
                 <div className="mt-3 rounded-[1.8rem] bg-white px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:px-6 sm:py-6">
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    {contextMetrics.map((item) => (
-                      <div key={item.label} className="flex flex-col items-center justify-center text-center">
-                        <UsersRound className="size-4 text-[#9aa8bd]" />
-                        <p className="mt-3 text-[2rem] font-semibold leading-none text-[#111111]">{item.value}</p>
-                        <p className="mt-1 text-sm text-[#6f7f97]">{item.label}</p>
-                      </div>
-                    ))}
+                    {visibleShortcutCards.map((item) => {
+                      const Icon = item.icon
+
+                      if (item.onClick) {
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={item.onClick}
+                            className="flex min-h-[9.5rem] flex-col rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-left transition-colors hover:bg-white"
+                          >
+                            <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-white text-[#009b3a]">
+                              <Icon className="size-4.5" />
+                            </span>
+                            <p className="mt-4 text-base font-semibold text-[#111111]">{item.label}</p>
+                            <p className="mt-2 text-sm leading-6 text-[#6f7f97]">{item.description}</p>
+                          </button>
+                        )
+                      }
+
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.href ?? "#"}
+                          className="flex min-h-[9.5rem] flex-col rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-left transition-colors hover:bg-white"
+                        >
+                          <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-white text-[#009b3a]">
+                            <Icon className="size-4.5" />
+                          </span>
+                          <p className="mt-4 text-base font-semibold text-[#111111]">{item.label}</p>
+                          <p className="mt-2 text-sm leading-6 text-[#6f7f97]">{item.description}</p>
+                        </Link>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -456,6 +618,71 @@ export function BrokerPortal() {
       </BrokerPageShell>
 
       <BrokerFreePlanLimitModal open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen} />
+      <Dialog open={isShortcutEditorOpen} onOpenChange={setIsShortcutEditorOpen}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-xl overflow-hidden rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-h-[calc(100vh-4rem)]">
+          <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 py-6 sm:max-h-[calc(100vh-4rem)]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold tracking-tight text-[#111111]">
+                Editar atalhos inteligentes
+              </DialogTitle>
+              <DialogDescription className="mt-2 text-sm leading-6 text-[#6B7280]">
+                Reordene os atalhos, escolha quais ficam visiveis na Home e mantenha o painel focado no que voce usa todos os dias.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-5 grid gap-3">
+              {editableShortcutCards.map((item, index) => {
+                const isHidden = hiddenShortcutIds.includes(item.id)
+                const Icon = item.icon
+
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4"
+                  >
+                    <span className="mt-0.5 flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-white text-[#009b3a]">
+                      <Icon className="size-4.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[#111111]">{item.label}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#7B8491]">{item.description}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={index === 0}
+                        onClick={() => moveShortcut(item.id, "up")}
+                        className="h-9 rounded-xl border border-black/[0.06] bg-white px-3 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-50"
+                      >
+                        <ArrowUp className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={index === editableShortcutCards.length - 1}
+                        onClick={() => moveShortcut(item.id, "down")}
+                        className="h-9 rounded-xl border border-black/[0.06] bg-white px-3 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-50"
+                      >
+                        <ArrowDown className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => toggleShortcutVisibility(item.id)}
+                        className="h-9 rounded-xl border border-black/[0.06] bg-white px-3 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                      >
+                        {isHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                        {isHidden ? "Mostrar" : "Ocultar"}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isNextStepModalOpen} onOpenChange={setIsNextStepModalOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-xl overflow-hidden rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-h-[calc(100vh-4rem)]">
           <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 py-6 sm:max-h-[calc(100vh-4rem)]">
@@ -491,6 +718,10 @@ export function BrokerPortal() {
       </Dialog>
     </>
   )
+}
+
+function getShortcutStorageKey(userId: string) {
+  return `eme-broker-portal-shortcuts:${userId}`
 }
 
 function ContextRow({

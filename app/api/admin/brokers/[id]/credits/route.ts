@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
   if (forbidden) return forbidden
@@ -14,11 +14,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   try {
     const { id } = await context.params
     const body = await request.json().catch(() => null)
-    const amount = Number(body?.amount)
-    const reason = typeof body?.reason === "string" && body.reason.trim() ? body.reason.trim().slice(0, 180) : "Bonificação administrativa"
+    const amount = Math.trunc(Number(body?.amount))
+    const reason =
+      typeof body?.reason === "string" && body.reason.trim()
+        ? body.reason.trim().slice(0, 180)
+        : "Bonificacao administrativa"
 
-    if (!Number.isFinite(amount) || amount === 0) {
-      return NextResponse.json({ error: "Informe uma quantidade válida de créditos." }, { status: 400 })
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: "Informe uma quantidade valida de creditos." }, { status: 400 })
     }
 
     const broker = await prisma.broker.findUnique({
@@ -26,46 +29,64 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       include: { user: true },
     })
 
-    if (!broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
+    if (!broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
 
-    const creditsAmount = Math.trunc(amount)
-    if (creditsAmount < 0 && broker.aiCreditsBalance < Math.abs(creditsAmount)) {
-      return NextResponse.json({ error: "O corretor não possui créditos suficientes para remover." }, { status: 400 })
-    }
-
-    const updated = await prisma.broker.update({
-      where: { id },
-      data: {
-        aiCreditsBalance: {
-          increment: creditsAmount,
+    const updated = await prisma.$transaction(async (tx) => {
+      const refreshedBroker = await tx.broker.update({
+        where: { id },
+        data: {
+          aiCreditsBalance: {
+            increment: amount,
+          },
         },
-      },
-      include: { user: true },
+        include: { user: true },
+      })
+
+      await Promise.all([
+        tx.aiCreditTransaction.create({
+          data: {
+            brokerId: broker.id,
+            type: "admin_bonus",
+            amount,
+            balanceAfter: refreshedBroker.aiCreditsBalance,
+            actionType: "admin_credit_bonus",
+            description: reason,
+            metadata: {
+              balanceBefore: broker.aiCreditsBalance,
+              balanceAfter: refreshedBroker.aiCreditsBalance,
+              adminUserId: user.id,
+              adminName: user.name,
+              brokerUserId: broker.userId,
+              brokerName: broker.user.name,
+              brokerEmail: broker.user.email,
+            },
+          },
+        }),
+        tx.aiAssistantInteraction.create({
+          data: {
+            userId: broker.userId,
+            brokerId: broker.id,
+            prompt: reason,
+            response: `Adicionados ${amount} creditos pelo admin.`,
+            actionType: "admin_credit_bonus",
+            creditsUsed: 0,
+            channel: "admin",
+            actionStatus: "completed",
+            metadata: { amount, reason, adminUserId: user.id, adminName: user.name },
+          },
+        }),
+        tx.notification.create({
+          data: {
+            userId: broker.userId,
+            title: "Creditos IA adicionados",
+            message: `${amount} credito(s). Motivo: ${reason}.`,
+            read: false,
+          },
+        }),
+      ])
+
+      return refreshedBroker
     })
-
-    await Promise.all([
-      prisma.aiAssistantInteraction.create({
-        data: {
-          userId: broker.userId,
-          brokerId: broker.id,
-          prompt: reason,
-          response: `${amount > 0 ? "Adicionados" : "Removidos"} ${Math.abs(creditsAmount)} créditos pelo admin.`,
-          actionType: amount > 0 ? "admin_credit_bonus" : "admin_credit_adjustment",
-          creditsUsed: 0,
-          channel: "admin",
-          actionStatus: "completed",
-          metadata: { amount: creditsAmount, reason, adminUserId: user.id },
-        },
-      }),
-      prisma.notification.create({
-        data: {
-          userId: broker.userId,
-          title: amount > 0 ? "Créditos IA adicionados" : "Créditos IA ajustados",
-          message: `${Math.abs(creditsAmount)} crédito(s). Motivo: ${reason}.`,
-          read: false,
-        },
-      }),
-    ])
 
     return NextResponse.json({
       broker: {
@@ -77,8 +98,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Serviço administrativo indisponível." }, { status: 503 })
+      return NextResponse.json({ error: "Servico administrativo indisponivel." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Não foi possível ajustar créditos." }, { status: 500 })
+
+    return NextResponse.json({ error: "Nao foi possivel bonificar creditos." }, { status: 500 })
   }
 }

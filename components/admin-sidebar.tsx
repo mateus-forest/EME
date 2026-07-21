@@ -40,7 +40,7 @@ import {
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
-  { label: "Usuários", icon: Users, href: "/admin/usuarios" },
+  { label: "Usuarios", icon: Users, href: "/admin/usuarios" },
   { label: "Corretores", icon: UserRound, href: "/admin/corretores" },
   { label: "Assessor EME", icon: Bot, href: "/admin/assessor-eme" },
   { label: "Corretor EME", icon: MessageCircle, href: "/admin/corretor-eme" },
@@ -78,11 +78,11 @@ export function AdminSidebar() {
       .join("") || "AE"
 
   const sidebarInner = (
-    <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(10,10,10,0.92))] shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-      <div className="flex items-center justify-between border-b border-white/[0.08] px-3 py-3">
+    <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#f9fbf9] shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <div className="flex items-center justify-between border-b border-black/[0.06] px-3 py-3">
         <Link
           href="/"
-          className={`flex min-w-0 items-center rounded-2xl border border-white/[0.08] bg-white/[0.04] transition-all ${collapsed && !isMobile ? "h-10 w-10 justify-center px-0" : "h-10 flex-1 px-3"}`}
+          className={`flex min-w-0 items-center rounded-2xl border border-black/[0.06] bg-white transition-all ${collapsed && !isMobile ? "h-10 w-10 justify-center px-0" : "h-10 flex-1 px-3"}`}
         >
           <Image
             src="/images/eme-logo.png"
@@ -98,7 +98,7 @@ export function AdminSidebar() {
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          className={`ml-2 rounded-xl border text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white ${collapsed && !isMobile ? "h-9 w-9 border-white/[0.08] bg-white/[0.04]" : "h-8 w-8 border-transparent bg-transparent"}`}
+          className={`ml-2 rounded-xl border text-[#7B8491] transition-colors hover:bg-white hover:text-[#050505] ${collapsed && !isMobile ? "h-9 w-9 border-black/[0.06] bg-white" : "h-8 w-8 border-transparent bg-transparent"}`}
         >
           <ChevronLeft className={`size-[15px] transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`} />
           <span className="sr-only">Recolher ou expandir menu</span>
@@ -113,7 +113,7 @@ export function AdminSidebar() {
                 asChild
                 isActive={item.href !== "#" && pathname === item.href}
                 tooltip={item.label}
-                className={`h-10 rounded-xl border border-transparent text-[15px] text-white/70 hover:border-white/[0.08] hover:bg-white/[0.06] hover:text-white data-[active=true]:border-[#00C853]/20 data-[active=true]:bg-[#00C853]/14 data-[active=true]:text-white ${collapsed && !isMobile ? "px-0" : "px-3"}`}
+                className={`h-10 rounded-xl border border-transparent text-[15px] text-[#5F6B7A] hover:border-black/[0.06] hover:bg-white hover:text-[#050505] data-[active=true]:border-[#009b3a]/18 data-[active=true]:bg-[#eef9f1] data-[active=true]:text-[#050505] ${collapsed && !isMobile ? "px-0" : "px-3"}`}
               >
                 <Link
                   href={item.href}
@@ -129,18 +129,18 @@ export function AdminSidebar() {
       </div>
 
       <div className="mt-auto px-3 pb-3">
-        <div className={`rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2 ${collapsed && !isMobile ? "px-1.5" : ""}`}>
+        <div className={`rounded-2xl border border-black/[0.06] bg-white p-2 ${collapsed && !isMobile ? "px-1.5" : ""}`}>
           <div className={`flex items-center gap-3 ${collapsed && !isMobile ? "justify-center" : ""}`}>
-            <Avatar className={`${collapsed && !isMobile ? "size-7" : "size-10"} shrink-0 border border-white/10 transition-all`}>
+            <Avatar className={`${collapsed && !isMobile ? "size-7" : "size-10"} shrink-0 border border-black/[0.06] transition-all`}>
               <AvatarImage src="/placeholder-user.jpg" alt={profile.name} />
-              <AvatarFallback className="bg-[#00C853]/15 font-semibold text-[#69F0AE]">
+              <AvatarFallback className="bg-[#eef9f1] font-semibold text-[#009b3a]">
                 {initials}
               </AvatarFallback>
             </Avatar>
 
             {(!collapsed || isMobile) && (
               <div className="min-w-0 max-w-[8.25rem] flex-1 overflow-hidden">
-                <p className="truncate text-sm font-medium text-white">{profile.name || "Admin"}</p>
+                <p className="truncate text-sm font-medium text-[#050505]">{profile.name || "Admin"}</p>
               </div>
             )}
 
@@ -149,7 +149,7 @@ export function AdminSidebar() {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
-                className="size-9 shrink-0 rounded-xl text-white/55 hover:bg-white/[0.08] hover:text-white"
+                className="size-9 shrink-0 rounded-xl text-[#7B8491] hover:bg-[#f5f7f5] hover:text-[#050505]"
               >
                 <LogOut className="size-4" />
                 <span className="sr-only">Logout</span>
@@ -166,11 +166,11 @@ export function AdminSidebar() {
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent
           side="left"
-          className="w-[18rem] border-white/[0.08] bg-[#0B0B0B] p-3 text-white [&>button]:hidden"
+          className="w-[18rem] border-black/[0.06] bg-[#f6f8f6] p-3 text-[#050505] [&>button]:hidden"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Admin EME</SheetTitle>
-            <SheetDescription>Navegação lateral do portal administrativo da EME.</SheetDescription>
+            <SheetDescription>Navegacao lateral do portal administrativo da EME.</SheetDescription>
           </SheetHeader>
           {sidebarInner}
         </SheetContent>

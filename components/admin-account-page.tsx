@@ -112,22 +112,26 @@ function AccountForm() {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
-      {isLoading && (
-        <EmeLoading compact message="Carregando conta..." />
-      )}
+      {isLoading ? <EmeLoading compact message="Carregando conta..." /> : null}
 
-      {feedback && (
-        <div className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-3 text-sm ${feedbackTone === "success" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-[#ff6b6b]/20 bg-[#ff6b6b]/10 text-[#ffb3b3]"}`}>
+      {feedback ? (
+        <div
+          className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-3 text-sm ${
+            feedbackTone === "success"
+              ? "border-[#cfe8d7] bg-[#eef9f1] text-[#0f7a35]"
+              : "border-[#f1c9c9] bg-[#fff5f5] text-[#b42318]"
+          }`}
+        >
           <CheckCircle2 className="size-4 shrink-0" />
           <span>{feedback}</span>
         </div>
-      )}
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-white">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+            <CardTitle className="flex items-center gap-3 text-xl text-[#111111]">
+              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
                 <UserRound className="size-4.5" />
               </span>
               Dados da conta
@@ -146,17 +150,17 @@ function AccountForm() {
                 error={errors.whatsApp}
                 placeholder="(11) 99999-9999"
               />
-              <p className="-mt-1 text-xs leading-5 text-white/45">
+              <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
                 Este número pode ser utilizado para comunicações internas e alertas da operação.
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-white">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
+            <CardTitle className="flex items-center gap-3 text-xl text-[#111111]">
+              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
                 <ShieldCheck className="size-4.5" />
               </span>
               Alterar senha
@@ -170,15 +174,19 @@ function AccountForm() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.9),rgba(14,14,14,0.86))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.14)] sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 text-sm text-white/55">
-          <span className="flex size-10 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-white/70">
+      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 text-sm text-[#6B7280]">
+          <span className="flex size-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white text-[#5F6B7A]">
             <LockKeyhole className="size-4" />
           </span>
           <p>Mantenha a conta administrativa atualizada para garantir segurança e comunicação operacional.</p>
         </div>
 
-        <Button type="submit" disabled={isSaving || isLoading} className="h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/20 transition-all hover:bg-[#00E676] hover:shadow-[#00C853]/30">
+        <Button
+          type="submit"
+          disabled={isSaving || isLoading}
+          className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/18 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/24"
+        >
           {isSaving ? "Salvando..." : "Salvar alterações"}
         </Button>
       </div>
@@ -209,7 +217,7 @@ type FieldProps = {
 function Field({ id, label, value, onChange, error, placeholder, type = "text" }: FieldProps) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id} className="text-sm font-medium text-white/70">
+      <Label htmlFor={id} className="text-sm font-medium text-[#4B5563]">
         {label}
       </Label>
       <Input
@@ -218,9 +226,9 @@ function Field({ id, label, value, onChange, error, placeholder, type = "text" }
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25 focus-visible:ring-[#00C853]/35"
+        className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9AA4B2] focus-visible:ring-[#009b3a]/25"
       />
-      {error && <p className="text-xs text-[#ff8a80]">{error}</p>}
+      {error ? <p className="text-xs text-[#b42318]">{error}</p> : null}
     </div>
   )
 }
