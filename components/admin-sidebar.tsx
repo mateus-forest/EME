@@ -13,10 +13,12 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  MessagesSquare,
   ShieldCheck,
   Sparkles,
   UserRound,
   Users,
+  Wand2,
 } from "lucide-react"
 
 import { clearAdminMockStorage } from "@/components/use-admin-data"
@@ -44,7 +46,10 @@ const menuItems = [
   { label: "Corretores", icon: UserRound, href: "/admin/corretores" },
   { label: "Assessor EME", icon: Bot, href: "/admin/assessor-eme" },
   { label: "Corretor EME", icon: MessageCircle, href: "/admin/corretor-eme" },
+  { label: "COS", icon: MessagesSquare, href: "/admin/cos" },
+  { label: "Studio IA", icon: Wand2, href: "/admin/studio-ia" },
   { label: "Consumo IA", icon: Sparkles, href: "/admin/consumo-ia" },
+  { label: "Bonificacoes", icon: Sparkles, href: "/admin/bonificacoes" },
   { label: "Custos", icon: Calculator, href: "/admin/custos" },
   { label: "Assinaturas", icon: CreditCard, href: "/admin/assinaturas" },
   { label: "Receita", icon: BarChart3, href: "/admin/receita" },

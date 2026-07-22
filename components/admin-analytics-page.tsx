@@ -1,80 +1,89 @@
 "use client"
 
-import { BarChart3, Building2, MessageCircle, Sparkles, UserRound } from "lucide-react"
+import { Activity, BarChart3, Building2, MessageCircle, Sparkles, TrendingUp, Users } from "lucide-react"
 
-import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
+import {
+  AdminDefinitionGrid,
+  AdminKpiList,
+  AdminMetricCard,
+  AdminMetricGrid,
+  AdminMiniChart,
+  AdminSurface,
+} from "@/components/admin-insights-ui"
 import { AdminPageShell } from "@/components/admin-page-shell"
-import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
-import { useAdminBrokers } from "@/components/use-admin-data"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAdminInsights } from "@/components/use-admin-insights"
+import { EmeLoading } from "@/components/ui/eme-loading"
 
 export function AdminAnalyticsPage() {
-  const [brokers] = useAdminBrokers()
-  const totalProperties = brokers.reduce((sum, broker) => sum + broker.activeProperties, 0)
-  const totalLeads = brokers.reduce((sum, broker) => sum + broker.leads, 0)
-  const totalCredits = brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0)
-  const activeBrokers = brokers.filter((broker) => broker.status === "Ativo").length
-  const hasData = brokers.length > 0
+  const { insights, isLoading, error } = useAdminInsights()
 
   return (
-    <AdminPageShell title="Analytics" subtitle="Indicadores gerais de uso e desempenho da plataforma">
-      <div className="grid gap-6">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Corretores" value={String(brokers.length)} icon={UserRound} />
-          <Metric label="Imóveis ativos" value={String(totalProperties)} icon={Building2} />
-          <Metric label="Leads registrados" value={String(totalLeads)} icon={MessageCircle} />
-          <Metric label="Créditos IA usados" value={String(totalCredits)} icon={Sparkles} />
-        </section>
+    <AdminPageShell title="Analytics" subtitle="Indicadores reais da plataforma para produto, operacao e crescimento">
+      {isLoading && !insights ? <EmeLoading message="Consolidando analytics..." /> : null}
+      {error ? <div className="mb-5 rounded-[1.25rem] border border-[#f3d4d4] bg-[#fff3f3] px-4 py-3 text-sm text-[#b42318]">{error}</div> : null}
 
-        <ResponsiveCollapsibleSection title="Analytics" defaultMobileOpen>
-          {hasData ? (
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-              <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-[#111111]">Resumo operacional</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-3">
-                <InfoBlock label="Corretores ativos" value={String(activeBrokers)} />
-                <InfoBlock label="Corretores em avaliação" value={String(brokers.filter((broker) => broker.plan === "Sem plano").length)} />
-                <InfoBlock
-                  label="Corretor EME em preparação"
-                  value={String(brokers.filter((broker) => broker.corretorEmeStatus === "Em preparação").length)}
-                />
-              </CardContent>
-            </Card>
-          ) : (
-            <AdminEmptyState
-              icon={BarChart3}
-              title="Analytics pronto para consolidar"
-              description="Assim que houver corretores, imóveis, leads e uso de IA, os indicadores consolidados aparecerão aqui."
-            >
-              <AdminStructureCards items={["Cards de uso da plataforma", "Indicadores de leads e catálogo", "Consumo IA consolidado"]} />
-            </AdminEmptyState>
-          )}
-        </ResponsiveCollapsibleSection>
-      </div>
-    </AdminPageShell>
-  )
-}
+      {insights ? (
+        <div className="grid gap-5">
+          <AdminMetricGrid>
+            <AdminMetricCard label="Usuarios ativos" value={String(insights.analytics.activeUsers)} icon={<Users className="size-5" />} />
+            <AdminMetricCard label="Imoveis ativos" value={String(insights.analytics.properties)} icon={<Building2 className="size-5" />} />
+            <AdminMetricCard label="Leads e clientes" value={String(insights.analytics.clients)} icon={<MessageCircle className="size-5" />} />
+            <AdminMetricCard label="Engajamento" value={insights.analytics.engagement == null ? "Sem base" : `${insights.analytics.engagement}`} icon={<Activity className="size-5" />} />
+          </AdminMetricGrid>
 
-function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof BarChart3 }) {
-  return (
-    <Card className="rounded-[1.5rem] border-black/[0.06] bg-white py-0 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-      <CardContent className="p-4">
-        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-          <Icon className="size-5" />
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+            <AdminSurface title="Indicadores principais" subtitle="Base consolidada da operação do portal.">
+              <AdminDefinitionGrid
+                columns={4}
+                items={[
+                  { label: "Clientes", value: String(insights.analytics.clients) },
+                  { label: "Propostas", value: String(insights.analytics.proposals) },
+                  { label: "Studio IA", value: String(insights.analytics.studioIa) },
+                  { label: "COS", value: String(insights.analytics.cos) },
+                  { label: "Videos", value: String(insights.analytics.videos) },
+                  { label: "Imagens", value: String(insights.analytics.images) },
+                  { label: "Conversoes", value: String(insights.analytics.conversions) },
+                  { label: "Vendas", value: String(insights.analytics.sales) },
+                ]}
+              />
+            </AdminSurface>
+
+            <AdminSurface title="Retencao e saude" subtitle="Sinais de recorrencia e profundidade de uso.">
+              <AdminDefinitionGrid
+                items={[
+                  { label: "Retencao", value: insights.analytics.retention == null ? "Sem base" : `${insights.analytics.retention}%` },
+                  { label: "Engajamento medio", value: insights.analytics.engagement == null ? "Sem base" : `${insights.analytics.engagement}` },
+                  { label: "Creditos usados", value: String(insights.aiConsumption.totalCreditsConsumed) },
+                  { label: "Saldo atual", value: String(insights.aiConsumption.currentBalance) },
+                ]}
+              />
+            </AdminSurface>
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-3">
+            <AdminMiniChart title="Uso do COS por dia" subtitle="Comandos e interacoes nos ultimos 7 dias." points={insights.cos.usageByDay} />
+            <AdminMiniChart title="Uso do Studio IA por dia" subtitle="Acoes de geracao nos ultimos 7 dias." points={insights.studioIa.generationByDay} />
+            <AdminMiniChart title="Receita ativa por mes" subtitle="Base de assinaturas ativas." points={insights.revenue.monthlySeries} />
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-2">
+            <AdminSurface title="Corretores com maior uso" subtitle="Quem mais movimenta o COS na rotina comercial.">
+              <AdminKpiList rows={insights.cos.usageByBroker} />
+            </AdminSurface>
+
+            <AdminSurface title="Recursos mais utilizados" subtitle="O que mais concentra consumo dentro do Studio IA.">
+              <AdminKpiList rows={insights.studioIa.consumptionByFeature} />
+            </AdminSurface>
+          </section>
+
+          <AdminMetricGrid>
+            <AdminMetricCard label="Crescimento" value={insights.revenue.growth == null ? "Sem base" : `${insights.revenue.growth}%`} icon={<TrendingUp className="size-5" />} tone="success" />
+            <AdminMetricCard label="COS" value={`${insights.cos.commandsExecuted} comandos`} icon={<MessageCircle className="size-5" />} />
+            <AdminMetricCard label="Studio IA" value={`${insights.studioIa.creditsUsed} créditos`} icon={<Sparkles className="size-5" />} />
+            <AdminMetricCard label="Plataforma" value="Operacional" icon={<BarChart3 className="size-5" />} tone="warning" />
+          </AdminMetricGrid>
         </div>
-        <p className="mt-4 text-sm text-[#6B7280]">{label}</p>
-        <p className="mt-2 text-2xl font-semibold text-[#111111]">{value}</p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-      <p className="text-sm text-[#6B7280]">{label}</p>
-      <p className="mt-2 text-base font-semibold text-[#111111]">{value}</p>
-    </div>
+      ) : null}
+    </AdminPageShell>
   )
 }
