@@ -180,7 +180,7 @@ export function CosPromptComposer({
   }
 
   return (
-    <div className="pwa-sticky-composer px-3 pt-3 sm:px-4">
+    <div className="pwa-sticky-composer px-0 pt-3 sm:px-0">
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -188,7 +188,7 @@ export function CosPromptComposer({
         }}
         className="flex min-w-0 flex-col gap-2"
       >
-        <div className="flex min-w-0 items-end gap-2 rounded-[1.6rem] border border-black/[0.06] bg-[#fbfbf8] px-2.5 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.06)] sm:gap-3 sm:px-3">
+        <div className="flex min-w-0 items-end gap-2 rounded-[1.75rem] border border-black/[0.07] bg-white/88 px-2.5 py-2 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:gap-3 sm:px-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -196,7 +196,7 @@ export function CosPromptComposer({
                 size="icon"
                 variant="ghost"
                 disabled={disabled}
-                className="size-10 shrink-0 rounded-full border border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60"
+                className="size-10 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60"
                 aria-label="Abrir acoes do COS"
               >
                 <Plus className="size-4" />
@@ -255,7 +255,7 @@ export function CosPromptComposer({
             variant="ghost"
             onClick={() => void handleMicToggle()}
             disabled={disabled}
-            className={`size-10 shrink-0 rounded-full border border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 ${
+            className={`size-10 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 ${
               micState === "recording" ? "border-[#009b3a]/30 bg-[#effaf3] text-[#009b3a]" : ""
             }`}
             aria-label="Gravar audio para o COS"

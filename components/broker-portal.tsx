@@ -51,7 +51,6 @@ type NextStepSuggestion =
 type ShortcutDefinition = {
   id: string
   label: string
-  description: string
   icon: typeof Sparkles
   href?: string
   onClick?: () => void
@@ -208,50 +207,29 @@ export function BrokerPortal() {
       {
         id: "clients",
         label: "Clientes",
-        description: `${totalLeads.toLocaleString("pt-BR")} contato(s) em acompanhamento.`,
         icon: UsersRound,
         href: "/corretor/clientes",
       },
       {
         id: "proposal",
         label: "Criar proposta",
-        description: "Abra seus documentos e avance para a proposta comercial.",
         icon: FileText,
         href: "/corretor/documentos",
       },
       {
         id: "today-agenda",
         label: "Agenda de hoje",
-        description: `${upcomingAppointmentsCount} compromisso(s) no radar do dia.`,
         icon: CalendarDays,
         href: "/corretor/agenda",
       },
       {
         id: "studio-ia",
         label: "Studio IA",
-        description: "Ative fluxos prontos para imagem, video e captacao.",
         icon: Bot,
         href: "/corretor/studio-ia",
       },
-      {
-        id: "new-property",
-        label: "Novo imovel",
-        description: hasReachedLimit
-          ? "Seu limite atual foi atingido. Veja o plano antes de cadastrar mais um."
-          : `${publishedPropertiesCount} imovel(is) publicado(s) neste momento.`,
-        icon: Building2,
-        href: "/corretor/novo-imovel",
-        onClick: hasReachedLimit ? () => setIsLimitModalOpen(true) : undefined,
-      },
-      {
-        id: "financial",
-        label: "Financeiro",
-        description: `${unreadCount} alerta(s) e seu saldo do dia em um unico lugar.`,
-        icon: CreditCard,
-        href: "/corretor/financeiro",
-      },
     ],
-    [hasReachedLimit, publishedPropertiesCount, totalLeads, upcomingAppointmentsCount, unreadCount],
+    [],
   )
 
   const visibleShortcutCards = useMemo(() => {
@@ -382,7 +360,7 @@ export function BrokerPortal() {
               </div>
 
               <div className="mt-7 w-full max-w-[60rem] min-w-0">
-                <div className="flex items-center justify-between px-4 text-sm text-[#91a0b5] sm:px-6">
+                <div className="flex items-center justify-between px-1 text-sm text-[#91a0b5] sm:px-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="size-4" />
                     Atalhos inteligentes
@@ -395,8 +373,7 @@ export function BrokerPortal() {
                     Editar
                   </button>
                 </div>
-                <div className="mt-3 rounded-[1.8rem] bg-white px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:px-6 sm:py-6">
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
                     {visibleShortcutCards.map((item) => {
                       const Icon = item.icon
 
@@ -406,58 +383,61 @@ export function BrokerPortal() {
                             key={item.id}
                             type="button"
                             onClick={item.onClick}
-                            className="flex min-h-[9.5rem] flex-col rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-left transition-colors hover:bg-white"
+                            className="group flex min-h-[5.75rem] flex-col justify-between rounded-[1.35rem] border border-black/[0.06] bg-white/88 p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
                           >
-                            <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-white text-[#009b3a]">
-                              <Icon className="size-4.5" />
+                            <span className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
+                              <Icon className="size-4" />
                             </span>
-                            <p className="mt-4 text-base font-semibold text-[#111111]">{item.label}</p>
-                            <p className="mt-2 text-sm leading-6 text-[#6f7f97]">{item.description}</p>
+                            <div className="mt-4 flex items-center justify-between gap-3">
+                              <p className="text-[0.98rem] font-semibold text-[#111111]">{item.label}</p>
+                              <ArrowRight className="size-4 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
+                            </div>
                           </button>
                         )
                       }
 
-                      return (
-                        <Link
-                          key={item.id}
-                          href={item.href ?? "#"}
-                          className="flex min-h-[9.5rem] flex-col rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-left transition-colors hover:bg-white"
-                        >
-                          <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-white text-[#009b3a]">
-                            <Icon className="size-4.5" />
-                          </span>
-                          <p className="mt-4 text-base font-semibold text-[#111111]">{item.label}</p>
-                          <p className="mt-2 text-sm leading-6 text-[#6f7f97]">{item.description}</p>
-                        </Link>
-                      )
+                        return (
+                          <Link
+                            key={item.id}
+                            href={item.href ?? "#"}
+                            className="group flex min-h-[5.75rem] flex-col justify-between rounded-[1.35rem] border border-black/[0.06] bg-white/88 p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
+                          >
+                            <span className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
+                              <Icon className="size-4" />
+                            </span>
+                            <div className="mt-4 flex items-center justify-between gap-3">
+                              <p className="text-[0.98rem] font-semibold text-[#111111]">{item.label}</p>
+                              <ArrowRight className="size-4 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
+                            </div>
+                          </Link>
+                        )
                     })}
                   </div>
-                </div>
               </div>
 
               <div className="mt-8 w-full max-w-[60rem] min-w-0">
-                <div className="flex min-h-[calc(100svh-9.5rem)] min-w-0 flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_16px_42px_rgba(15,23,42,0.08)] md:min-h-[40rem]">
-                  <div className="border-b border-black/[0.05] px-4 py-4 sm:px-6 sm:py-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
+                <div className="flex min-h-[calc(100svh-9.5rem)] min-w-0 flex-col md:min-h-[40rem]">
+                  <div className="flex flex-col gap-3 px-1 pb-4 sm:px-2">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
                         {showConversationTitle ? (
-                          <p className="text-[1.05rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
+                          <p className="truncate text-[1.02rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-[#7a8798]">
-                        <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1">
+                        <span className="rounded-full border border-black/[0.06] bg-white/78 px-3 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
                           {assistantEnabled ? "COS ativo" : "COS pausado"}
                         </span>
-                        <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1">
+                        <span className="rounded-full border border-black/[0.06] bg-white/78 px-3 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
                           {assistantCredits.balance} creditos
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2 sm:px-2">
                     {isConversationLoading ? (
-                      <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
+                      <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                         Carregando conversa...
                       </div>
                     ) : null}
@@ -474,7 +454,7 @@ export function BrokerPortal() {
                                 ? "bg-[#111111] text-white"
                                 : item.state === "error"
                                   ? "border border-red-500/15 bg-red-50 text-red-700"
-                                  : "border border-black/[0.06] bg-[#fbfbf8] text-[#334155]"
+                                  : "border border-black/[0.06] bg-white/82 text-[#334155] shadow-[0_14px_30px_rgba(15,23,42,0.04)]"
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{item.content}</p>
@@ -510,7 +490,7 @@ export function BrokerPortal() {
 
                     {isSending ? (
                       <div className="flex justify-start">
-                        <div className="max-w-[92%] rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#6f7f97] sm:max-w-[85%]">
+                        <div className="max-w-[92%] rounded-[1.5rem] border border-black/[0.06] bg-white/82 px-4 py-3 text-sm text-[#6f7f97] shadow-[0_14px_30px_rgba(15,23,42,0.04)] sm:max-w-[85%]">
                           COS analisando...
                         </div>
                       </div>
@@ -645,7 +625,6 @@ export function BrokerPortal() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-[#111111]">{item.label}</p>
-                      <p className="mt-1 text-sm leading-6 text-[#7B8491]">{item.description}</p>
                     </div>
                     <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                       <Button
