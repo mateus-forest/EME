@@ -6,16 +6,26 @@ import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCr
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
 import {
-  generateStudioPropertyVideo,
+  approveStudioVideoPreview,
+  buildStudioVideoRequestSignature,
+  createApprovedStudioVideoAnimation,
+  createInitialStudioVideoJob,
   getStudioVideoEstimatedCredits,
   getStudioVideoProviderConfig,
   getStudioVideoResult,
+  getStudioVideoStageCostSummary,
   parseStudioVideoJobContent,
   refreshStudioVideoJob,
+  regenerateStudioVideoPreview,
+  requiresTransformationPreview,
   studioVideoActionType,
   studioVideoDefaultDuration,
+  studioVideoFinalActionType,
   studioVideoInvalidDurationMessage,
+  studioVideoPreviewActionType,
+  studioVideoPreviewRegenerationActionType,
   studioVideoRequestSchema,
+  studioVideoTechnicalSpendLimits,
   stringifyStudioVideoJobContent,
 } from "@/lib/studio-ia-video"
 
@@ -29,6 +39,15 @@ const propertyInclude = {
   },
   agency: true,
 } as const
+
+const videoActionTypes = [
+  studioVideoActionType,
+  studioVideoPreviewActionType,
+  studioVideoPreviewRegenerationActionType,
+  studioVideoFinalActionType,
+] as const
+
+type PostAction = "create" | "regenerate-preview" | "create-video"
 
 async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
   const property = await prisma.property.findUnique({
@@ -51,6 +70,23 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   }
 
   return { error: null, property }
+}
+
+function mapPropertyContext(property: NonNullable<Awaited<ReturnType<typeof resolveAccessibleProperty>>["property"]>) {
+  return {
+    id: property.id,
+    title: property.title,
+    city: property.city,
+    neighborhood: property.neighborhood ?? "",
+    location: [property.neighborhood, property.city].filter(Boolean).join(", "),
+    type: property.type,
+    purpose: property.purpose,
+    price: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(property.price / 100),
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
+    parkingSpots: property.parkingSpots,
+    description: property.description ?? "",
+  }
 }
 
 function buildVideoTitle(propertyTitle?: string | null) {
@@ -80,10 +116,10 @@ function isDurationValidationError(caughtError: unknown) {
   return (
     (caughtError instanceof z.ZodError &&
       caughtError.issues.some((issue) => issue.path.includes("duration"))) ||
-    caughtError instanceof Error &&
-    (caughtError.message === "STUDIO_VIDEO_DURATION_NOT_SUPPORTED" ||
-      caughtError.message === "LUMA_DURATION_NOT_SUPPORTED" ||
-      caughtError.message.includes(studioVideoInvalidDurationMessage))
+    (caughtError instanceof Error &&
+      (caughtError.message === "STUDIO_VIDEO_DURATION_NOT_SUPPORTED" ||
+        caughtError.message === "LUMA_DURATION_NOT_SUPPORTED" ||
+        caughtError.message.includes(studioVideoInvalidDurationMessage)))
   )
 }
 
@@ -104,6 +140,193 @@ async function resolveJobDocument(requestId: string, brokerId: string) {
   }
 
   return { error: null, document }
+}
+
+async function findExistingJobBySignature(brokerId: string, requestSignature: string) {
+  const documents = await prisma.brokerDocument.findMany({
+    where: {
+      brokerId,
+      type: "studio_ia_video_job",
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+  })
+
+  for (const document of documents) {
+    try {
+      const job = parseStudioVideoJobContent(document.content)
+      if (
+        job.requestSignature === requestSignature &&
+        job.jobStage !== "failed"
+      ) {
+        return { document, job }
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return null
+}
+
+function buildTechnicalLimitPayload() {
+  return {
+    error:
+      "O limite tecnico de geracao deste fluxo foi atingido para esta conta. Tente novamente depois para evitar consumo indevido.",
+    technicalLimitReached: true,
+  }
+}
+
+async function getTechnicalSpendUsage(brokerId: string, startDate: Date) {
+  const usage = await prisma.aiCreditTransaction.aggregate({
+    _sum: {
+      amount: true,
+    },
+    where: {
+      brokerId,
+      type: "usage",
+      actionType: { in: [...videoActionTypes] },
+      createdAt: {
+        gte: startDate,
+      },
+    },
+  })
+
+  return Math.abs(usage._sum.amount ?? 0)
+}
+
+async function checkTechnicalSpendLimit(brokerId: string, additionalCredits: number) {
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const [dailyUsed, monthlyUsed] = await Promise.all([
+    getTechnicalSpendUsage(brokerId, startOfDay),
+    getTechnicalSpendUsage(brokerId, startOfMonth),
+  ])
+
+  const nextDaily = dailyUsed + additionalCredits
+  const nextMonthly = monthlyUsed + additionalCredits
+
+  return {
+    allowed:
+      nextDaily <= studioVideoTechnicalSpendLimits.dailyCredits &&
+      nextMonthly <= studioVideoTechnicalSpendLimits.monthlyCredits,
+    dailyUsed,
+    monthlyUsed,
+    nextDaily,
+    nextMonthly,
+  }
+}
+
+async function chargeStageCredits({
+  brokerId,
+  requestId,
+  job,
+}: {
+  brokerId: string
+  requestId: string
+  job: ReturnType<typeof parseStudioVideoJobContent>
+}): Promise<ReturnType<typeof parseStudioVideoJobContent>> {
+  const summary = getStudioVideoStageCostSummary(job)
+  if (summary.stageEstimatedCredits <= 0 || job.stageCreditsCharged >= summary.stageEstimatedCredits) {
+    return job
+  }
+
+  await consumeBrokerAiCredits({
+    brokerId,
+    amount: summary.stageEstimatedCredits,
+    actionType: summary.actionType,
+    description: summary.description,
+    metadata: {
+      requestId,
+      requestKind: job.requestKind,
+      activeStage: job.activeStage,
+      provider: job.provider,
+      providerImageId: job.providerImageId ?? null,
+      providerVideoId: job.providerVideoId ?? null,
+      providerModel: job.providerModel ?? null,
+      previewModel: job.previewModel ?? null,
+      format: job.format,
+      duration: job.duration,
+      objective: job.objective,
+      style: job.style,
+      transformation: job.transformation,
+      stageEstimatedCredits: summary.stageEstimatedCredits,
+      totalEstimatedCredits: job.estimatedCredits,
+      providerEstimatedCostUsd: job.metrics.estimatedProviderCostUsd ?? null,
+      providerActualCostUsd: job.metrics.actualProviderCostUsd ?? null,
+      retryCount: job.metrics.retryCount,
+    },
+  })
+
+  return {
+    ...job,
+    creditsCharged: true,
+    creditsRefunded: false,
+    stageCreditsCharged: summary.stageEstimatedCredits,
+    stageCreditsRefunded: 0,
+    metrics: {
+      ...job.metrics,
+      totalCreditsConsumed: job.metrics.totalCreditsConsumed + summary.stageEstimatedCredits,
+    },
+  }
+}
+
+async function refundStageCredits({
+  brokerId,
+  requestId,
+  job,
+}: {
+  brokerId: string
+  requestId: string
+  job: ReturnType<typeof parseStudioVideoJobContent>
+}): Promise<ReturnType<typeof parseStudioVideoJobContent>> {
+  const refundableCredits = Math.max(0, job.stageCreditsCharged - job.stageCreditsRefunded)
+  if (refundableCredits <= 0) {
+    return job
+  }
+
+  const summary = getStudioVideoStageCostSummary(job)
+  await refundBrokerAiCredits({
+    brokerId,
+    amount: refundableCredits,
+    actionType: summary.actionType,
+    description: `Estorno de ${summary.description.toLowerCase()} com falha`,
+    metadata: {
+      requestId,
+      requestKind: job.requestKind,
+      activeStage: job.activeStage,
+      providerImageId: job.providerImageId ?? null,
+      providerVideoId: job.providerVideoId ?? null,
+      retryCount: job.metrics.retryCount,
+    },
+  })
+
+  return {
+    ...job,
+    creditsRefunded: true,
+    stageCreditsRefunded: refundableCredits,
+    metrics: {
+      ...job.metrics,
+      totalCreditsRefunded: job.metrics.totalCreditsRefunded + refundableCredits,
+    },
+  }
+}
+
+async function updateJobDocument(documentId: string, job: ReturnType<typeof parseStudioVideoJobContent>) {
+  await prisma.brokerDocument.update({
+    where: { id: documentId },
+    data: {
+      content: stringifyStudioVideoJobContent(job),
+      status:
+        job.jobStage === "completed"
+          ? "generated"
+          : job.jobStage === "failed"
+            ? "archived"
+            : "draft",
+    },
+  })
 }
 
 export async function GET(request: NextRequest) {
@@ -127,39 +350,16 @@ export async function GET(request: NextRequest) {
 
     const currentJob = parseStudioVideoJobContent(jobDocument.document.content)
     const refreshedJob = await refreshStudioVideoJob(currentJob)
+    const finalJob: ReturnType<typeof parseStudioVideoJobContent> =
+      refreshedJob.jobStage === "failed"
+        ? await refundStageCredits({
+            brokerId: user.broker.id,
+            requestId,
+            job: refreshedJob,
+          })
+        : refreshedJob
 
-    let finalJob = refreshedJob
-
-    if (refreshedJob.generationStatus === "failed" && refreshedJob.creditsCharged && !refreshedJob.creditsRefunded) {
-      await refundBrokerAiCredits({
-        brokerId: user.broker.id,
-        amount: refreshedJob.estimatedCredits,
-        actionType: studioVideoActionType,
-        description: "Estorno de video do Studio IA com falha",
-        metadata: {
-          requestId,
-          providerVideoId: refreshedJob.providerVideoId,
-        },
-      })
-
-      finalJob = {
-        ...refreshedJob,
-        creditsRefunded: true,
-      }
-    }
-
-    await prisma.brokerDocument.update({
-      where: { id: jobDocument.document.id },
-      data: {
-        content: stringifyStudioVideoJobContent(finalJob),
-        status:
-          finalJob.generationStatus === "completed"
-            ? "generated"
-            : finalJob.generationStatus === "failed"
-              ? "archived"
-              : "draft",
-      },
-    })
+    await updateJobDocument(jobDocument.document.id, finalJob)
 
     const response = NextResponse.json(getStudioVideoResult(requestId, finalJob))
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -208,84 +408,172 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { payload, uploadedFiles } = await parseVideoRequestForm(request)
-    const accessible = payload.propertyId ? await resolveAccessibleProperty(payload.propertyId, user) : null
-    if (accessible?.error) return accessible.error
+    const contentType = request.headers.get("content-type") || ""
+    const requestBody = contentType.includes("multipart/form-data")
+      ? null
+      : ((await request.json().catch(() => null)) as { action?: PostAction; requestId?: string } | null)
+    const action: PostAction = contentType.includes("multipart/form-data")
+      ? "create"
+      : (requestBody?.action ?? "create")
 
-    const property = accessible?.property
-      ? {
-          id: accessible.property.id,
-          title: accessible.property.title,
-          city: accessible.property.city,
-          neighborhood: accessible.property.neighborhood ?? "",
-          location: [accessible.property.neighborhood, accessible.property.city].filter(Boolean).join(", "),
-          type: accessible.property.type,
-          purpose: accessible.property.purpose,
-          price: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(accessible.property.price / 100),
-          bedrooms: accessible.property.bedrooms,
-          bathrooms: accessible.property.bathrooms,
-          parkingSpots: accessible.property.parkingSpots,
-          description: accessible.property.description ?? "",
-        }
-      : null
+    if (action === "create") {
+      const { payload, uploadedFiles } = await parseVideoRequestForm(request)
+      const accessible = payload.propertyId ? await resolveAccessibleProperty(payload.propertyId, user) : null
+      if (accessible?.error) return accessible.error
 
-    const estimatedCredits = getStudioVideoEstimatedCredits({
-      duration: payload.duration,
-      objective: payload.objective,
-      transformation: payload.transformation,
-    })
-    const credits = await hasBrokerAiCredits(user.broker.id, estimatedCredits)
-    if (!credits.allowed) {
-      return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
-    }
+      const property = accessible?.property ? mapPropertyContext(accessible.property) : null
+      const signatureSeed = payload.referenceImageUrls[0] || payload.uploadedImages[0]?.name || payload.propertyId || "studio-video"
+      const requestSignature = buildStudioVideoRequestSignature(payload, signatureSeed)
+      const existingJob = await findExistingJobBySignature(user.broker.id, requestSignature)
 
-    const generation = await generateStudioPropertyVideo({
-      input: payload,
-      property,
-      referenceInput:
-        uploadedFiles[0]
-          ? { kind: "file", file: uploadedFiles[0] }
-          : { kind: "url", url: payload.referenceImageUrls[0]! },
-    })
+      if (existingJob) {
+        return NextResponse.json(getStudioVideoResult(existingJob.document.id, existingJob.job), { status: 202 })
+      }
 
-    await consumeBrokerAiCredits({
-      brokerId: user.broker.id,
-      amount: estimatedCredits,
-      actionType: studioVideoActionType,
-      description: "Criar video do imovel no Studio IA",
-      metadata: {
-        provider: generation.jobContent.provider,
-        providerVideoId: generation.providerVideoId,
-        propertyId: payload.propertyId ?? null,
-        format: payload.format,
+      const firstStageCredits = getStudioVideoEstimatedCredits({
         duration: payload.duration,
         objective: payload.objective,
-        style: payload.style,
         transformation: payload.transformation,
-        rhythm: payload.rhythm,
-        cameraMovement: payload.cameraMovement,
-      },
-    })
+        stage: requiresTransformationPreview(payload.transformation) ? "preview" : "direct",
+      })
 
-    const document = await prisma.brokerDocument.create({
-      data: {
+      const credits = await hasBrokerAiCredits(user.broker.id, firstStageCredits)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+
+      const spendLimit = await checkTechnicalSpendLimit(user.broker.id, firstStageCredits)
+      if (!spendLimit.allowed) {
+        return NextResponse.json(buildTechnicalLimitPayload(), { status: 429 })
+      }
+
+      const created = await createInitialStudioVideoJob({
+        input: payload,
+        property,
+        referenceInput:
+          uploadedFiles[0]
+            ? { kind: "file", file: uploadedFiles[0] }
+            : { kind: "url", url: payload.referenceImageUrls[0]! },
+      })
+
+      const document = await prisma.brokerDocument.create({
+        data: {
+          brokerId: user.broker.id,
+          propertyId: payload.propertyId ?? null,
+          type: "studio_ia_video_job",
+          title: buildVideoTitle(property?.title),
+          content: stringifyStudioVideoJobContent(created.jobContent),
+          status: "draft",
+        },
+      })
+
+      const chargedJob = await chargeStageCredits({
         brokerId: user.broker.id,
-        propertyId: payload.propertyId ?? null,
-        type: "studio_ia_video_job",
-        title: buildVideoTitle(property?.title),
-        content: stringifyStudioVideoJobContent({
-          ...generation.jobContent,
-          creditsCharged: true,
-        }),
-        status: "draft",
-      },
-    })
+        requestId: document.id,
+        job: created.jobContent,
+      })
 
-    const response = NextResponse.json(getStudioVideoResult(document.id, { ...generation.jobContent, creditsCharged: true }), {
-      status: 202,
-    })
-    response.headers.set("Cache-Control", "no-store, max-age=0")
-    return response
+      await updateJobDocument(document.id, chargedJob)
+
+      const response = NextResponse.json(getStudioVideoResult(document.id, chargedJob), { status: 202 })
+      response.headers.set("Cache-Control", "no-store, max-age=0")
+      return response
+    }
+
+    const requestId = typeof requestBody?.requestId === "string" ? requestBody.requestId.trim() : ""
+    if (!requestId) {
+      return NextResponse.json({ error: "Informe o requestId." }, { status: 400 })
+    }
+
+    const jobDocument = await resolveJobDocument(requestId, user.broker.id)
+    if (jobDocument.error || !jobDocument.document) return jobDocument.error
+
+    const currentJob = parseStudioVideoJobContent(jobDocument.document.content)
+
+    if (action === "regenerate-preview") {
+      if (currentJob.requestKind !== "transformation_pipeline") {
+        return NextResponse.json({ error: "Este fluxo nao utiliza previa mobiliada." }, { status: 409 })
+      }
+
+      if (currentJob.jobStage === "preview_processing") {
+        return NextResponse.json(getStudioVideoResult(requestId, currentJob), { status: 202 })
+      }
+
+      const stageCredits = getStudioVideoEstimatedCredits({
+        duration: currentJob.duration,
+        objective: currentJob.objective,
+        transformation: currentJob.transformation,
+        stage: "preview_regeneration",
+      })
+      const credits = await hasBrokerAiCredits(user.broker.id, stageCredits)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+
+      const spendLimit = await checkTechnicalSpendLimit(user.broker.id, stageCredits)
+      if (!spendLimit.allowed) {
+        return NextResponse.json(buildTechnicalLimitPayload(), { status: 429 })
+      }
+
+      const regeneratedJob = await regenerateStudioVideoPreview(currentJob)
+      await updateJobDocument(jobDocument.document.id, regeneratedJob)
+
+      const chargedJob = await chargeStageCredits({
+        brokerId: user.broker.id,
+        requestId,
+        job: regeneratedJob,
+      })
+
+      await updateJobDocument(jobDocument.document.id, chargedJob)
+
+      return NextResponse.json(getStudioVideoResult(requestId, chargedJob), { status: 202 })
+    }
+
+    if (action === "create-video") {
+      if (currentJob.requestKind !== "transformation_pipeline") {
+        return NextResponse.json({ error: "Este fluxo nao exige aprovacao de previa." }, { status: 409 })
+      }
+
+      if (currentJob.jobStage === "video_processing" || currentJob.jobStage === "completed") {
+        return NextResponse.json(getStudioVideoResult(requestId, currentJob), { status: 202 })
+      }
+
+      if (!currentJob.previewApproved) {
+        return NextResponse.json({ error: "Aprove a previa mobiliada antes de criar o video." }, { status: 409 })
+      }
+
+      const stageCredits = getStudioVideoEstimatedCredits({
+        duration: currentJob.duration,
+        objective: currentJob.objective,
+        transformation: currentJob.transformation,
+        stage: "video",
+        model: getStudioVideoProviderConfig().model,
+      })
+      const credits = await hasBrokerAiCredits(user.broker.id, stageCredits)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+
+      const spendLimit = await checkTechnicalSpendLimit(user.broker.id, stageCredits)
+      if (!spendLimit.allowed) {
+        return NextResponse.json(buildTechnicalLimitPayload(), { status: 429 })
+      }
+
+      const nextJob = await createApprovedStudioVideoAnimation(currentJob)
+      await updateJobDocument(jobDocument.document.id, nextJob)
+
+      const chargedJob = await chargeStageCredits({
+        brokerId: user.broker.id,
+        requestId,
+        job: nextJob,
+      })
+
+      await updateJobDocument(jobDocument.document.id, chargedJob)
+
+      return NextResponse.json(getStudioVideoResult(requestId, chargedJob), { status: 202 })
+    }
+
+    return NextResponse.json({ error: "Acao nao suportada para este fluxo." }, { status: 400 })
   } catch (caughtError) {
     console.error("[api][studio-ia][video][post] generation failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -323,6 +611,7 @@ export async function POST(request: NextRequest) {
             duration: studioVideoDefaultDuration,
             objective: "Atrair interessados",
             transformation: "Nenhuma",
+            stage: "direct",
           }),
           providerConfigured: false,
         },
@@ -338,6 +627,7 @@ export async function POST(request: NextRequest) {
             duration: studioVideoDefaultDuration,
             objective: "Atrair interessados",
             transformation: "Nenhuma",
+            stage: "direct",
           }),
           providerConfigured: true,
         },
@@ -368,6 +658,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => null)
+    const action = typeof body?.action === "string" ? body.action.trim() : "save-video"
     const requestId = typeof body?.requestId === "string" ? body.requestId.trim() : ""
     if (!requestId) {
       return NextResponse.json({ error: "Informe o requestId." }, { status: 400 })
@@ -377,7 +668,14 @@ export async function PATCH(request: NextRequest) {
     if (jobDocument.error || !jobDocument.document) return jobDocument.error
 
     const job = parseStudioVideoJobContent(jobDocument.document.content)
-    if (job.generationStatus !== "completed" || !job.videoUrl) {
+
+    if (action === "approve-preview") {
+      const approvedJob = approveStudioVideoPreview(job)
+      await updateJobDocument(jobDocument.document.id, approvedJob)
+      return NextResponse.json(getStudioVideoResult(requestId, approvedJob))
+    }
+
+    if (job.generationStatus !== "completed" || !job.videoUrl || job.jobStage !== "completed") {
       return NextResponse.json({ error: "O video ainda nao foi concluido." }, { status: 409 })
     }
 
@@ -393,29 +691,28 @@ export async function PATCH(request: NextRequest) {
         title: buildVideoTitle(job.propertyTitle),
         content: JSON.stringify({
           videoUrl: job.videoUrl,
+          previewImageUrl: job.previewImageUrl,
           provider: job.provider,
           providerVideoId: job.providerVideoId,
+          providerImageId: job.providerImageId,
           format: job.format,
           duration: job.duration,
           promptPreview: job.prompt,
+          previewPrompt: job.previewPrompt,
           style: job.style,
           objective: job.objective,
           transformation: job.transformation,
           rhythm: job.rhythm,
           cameraMovement: job.cameraMovement,
+          requestKind: job.requestKind,
         }),
         status: "generated",
       },
     })
 
-    await prisma.brokerDocument.update({
-      where: { id: jobDocument.document.id },
-      data: {
-        content: stringifyStudioVideoJobContent({
-          ...job,
-          savedDocumentId: savedDocument.id,
-        }),
-      },
+    await updateJobDocument(jobDocument.document.id, {
+      ...job,
+      savedDocumentId: savedDocument.id,
     })
 
     return NextResponse.json({ saved: true, savedDocumentId: savedDocument.id })

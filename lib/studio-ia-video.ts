@@ -1,63 +1,90 @@
 import "server-only"
 
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 
 import { getLumaAIEnv } from "@/lib/env.server"
-import { savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
+import { savePropertyGeneratedImage, savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
 import {
   studioVideoActionType,
+  studioVideoActiveStages,
   studioVideoCameraMovementConfig,
   studioVideoCameraMovementOptions,
   type StudioVideoCameraMovement,
   studioVideoDefaultDuration,
+  studioVideoDurationAdjustedMessage,
+  studioVideoFinalActionType,
   studioVideoFormats,
   getStudioVideoDurationLabel,
   getStudioVideoEstimatedCredits,
   getStudioVideoProviderAcceptedDurations,
+  getStudioVideoRequestKind,
+  getStudioVideoVideoStageCredits,
   normalizeStudioVideoDuration,
+  studioVideoInvalidDurationMessage,
   studioVideoJobContentSchema,
   studioVideoObjectiveConfig,
   studioVideoObjectiveGroups,
   studioVideoObjectives,
+  getStudioVideoPreviewCredits,
+  studioVideoPreviewActionType,
+  studioVideoPreviewImageModel,
+  studioVideoPreviewRegenerationActionType,
+  studioVideoPreviewVideoModel,
+  studioVideoRequestKinds,
+  studioVideoRequestSchema,
+  studioVideoResultSchema,
   studioVideoRhythmConfig,
   studioVideoRhythmOptions,
+  studioVideoSelectableDurationOptions,
   type StudioVideoRhythm,
   studioVideoStyles,
-  studioVideoDurationAdjustedMessage,
-  studioVideoInvalidDurationMessage,
   studioVideoStyleConfig,
+  studioVideoTechnicalSpendLimits,
   studioVideoTransformationConfig,
   studioVideoTransformationOptions,
   type StudioVideoTransformation,
-  type StudioVideoStyle,
-  type StudioVideoJobContent,
+  type StudioVideoActiveStage,
   type StudioVideoDuration,
+  type StudioVideoJobContent,
   type StudioVideoObjective,
   type StudioVideoRequest,
+  type StudioVideoRequestKind,
   type StudioVideoResult,
-  studioVideoRequestSchema,
-  studioVideoResultSchema,
+  type StudioVideoStyle,
+  requiresTransformationPreview,
 } from "@/lib/studio-ia-video-shared"
 
 export {
   studioVideoActionType,
+  studioVideoActiveStages,
+  studioVideoCameraMovementConfig,
   studioVideoCameraMovementOptions,
   studioVideoDefaultDuration,
+  studioVideoDurationAdjustedMessage,
+  studioVideoFinalActionType,
   studioVideoFormats,
   getStudioVideoDurationLabel,
   getStudioVideoEstimatedCredits,
+  studioVideoInvalidDurationMessage,
   studioVideoObjectiveConfig,
   studioVideoObjectiveGroups,
-  studioVideoDurationAdjustedMessage,
-  studioVideoInvalidDurationMessage,
   studioVideoObjectives,
-  studioVideoRhythmOptions,
+  studioVideoPreviewActionType,
+  studioVideoPreviewRegenerationActionType,
+  studioVideoPreviewVideoModel,
+  studioVideoRequestKinds,
   studioVideoRequestSchema,
   studioVideoResultSchema,
+  studioVideoRhythmConfig,
+  studioVideoRhythmOptions,
+  studioVideoSelectableDurationOptions,
   studioVideoStyles,
   studioVideoStyleConfig,
+  studioVideoTechnicalSpendLimits,
   studioVideoTransformationConfig,
   studioVideoTransformationOptions,
+  requiresTransformationPreview,
+  getStudioVideoRequestKind,
 } from "@/lib/studio-ia-video-shared"
 
 export type StudioVideoPropertyContext = {
@@ -77,17 +104,32 @@ export type StudioVideoPropertyContext = {
 
 type ReferenceInput = { kind: "url"; url: string } | { kind: "file"; file: File }
 
-type LumaGenerationCreateRequest = {
+type LumaVideoGenerationCreateRequest = {
   prompt: string
   model: string
   resolution: "540p" | "720p" | "1080p"
   duration: "5s" | "9s"
   aspect_ratio: "9:16" | "16:9" | "1:1"
+  loop?: boolean
   keyframes?: {
     frame0?: {
       type: "image"
       url: string
     }
+    frame1?: {
+      type: "image"
+      url: string
+    }
+  }
+}
+
+type LumaImageGenerationCreateRequest = {
+  prompt: string
+  model: string
+  aspect_ratio: "9:16" | "16:9" | "1:1"
+  modify_image_ref: {
+    url: string
+    weight: number
   }
 }
 
@@ -97,7 +139,8 @@ type LumaGeneration = {
   failure_reason: string | null
   created_at?: string
   assets?: {
-    video?: string
+    video?: string | null
+    image?: string | null
   }
   version?: string
   request?: {
@@ -107,16 +150,29 @@ type LumaGeneration = {
   }
 }
 
-const LUMA_API_BASE_URL = "https://api.lumalabs.ai/dream-machine/v1"
+type StudioVideoStageCostSummary = {
+  estimatedCredits: number
+  stageEstimatedCredits: number
+  actionType: string
+  description: string
+}
 
-const formatAspectRatioMap: Record<(typeof studioVideoFormats)[number], LumaGenerationCreateRequest["aspect_ratio"]> = {
+type StudioVideoPromptInput = Pick<
+  StudioVideoRequest,
+  "format" | "duration" | "objective" | "style" | "transformation" | "rhythm" | "cameraMovement" | "additionalInstructions"
+>
+
+const LUMA_API_BASE_URL = "https://api.lumalabs.ai/dream-machine/v1"
+const PREVIEW_QUALITY_DIFF_THRESHOLD = 0.065
+
+const formatAspectRatioMap: Record<(typeof studioVideoFormats)[number], LumaVideoGenerationCreateRequest["aspect_ratio"]> = {
   "Reel vertical 9:16": "9:16",
   "Story vertical 9:16": "9:16",
   "Paisagem 16:9": "16:9",
   "Quadrado 1:1": "1:1",
 }
 
-const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaGenerationCreateRequest["resolution"]> = {
+const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaVideoGenerationCreateRequest["resolution"]> = {
   "Reel vertical 9:16": "720p",
   "Story vertical 9:16": "720p",
   "Paisagem 16:9": "720p",
@@ -153,7 +209,7 @@ function sanitizeStudioVideoErrorMessage(message?: string | null) {
     return studioVideoInvalidDurationMessage
   }
 
-  return "O provedor nao conseguiu concluir o video. Os creditos foram preservados."
+  return "O provedor nao conseguiu concluir esta etapa. Os creditos foram preservados."
 }
 
 function getLumaAuthHeaders() {
@@ -202,38 +258,90 @@ async function parseLumaJsonResponse<T>(response: Response) {
   return data as T
 }
 
-export function parseStudioVideoJobContent(content: string) {
-  const parsed = JSON.parse(content) as Record<string, unknown>
-  const normalizedDuration = normalizeStudioVideoDuration(parsed.duration)
+async function createLumaVideoGeneration(payload: LumaVideoGenerationCreateRequest) {
+  const response = await fetch(`${LUMA_API_BASE_URL}/generations`, {
+    method: "POST",
+    headers: {
+      ...getLumaAuthHeaders(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  })
 
-  return studioVideoJobContentSchema.parse({
-    ...parsed,
-    duration: normalizedDuration.duration,
-    transformation:
-      typeof parsed.transformation === "string" && parsed.transformation in studioVideoTransformationConfig
-        ? parsed.transformation
-        : studioVideoTransformationOptions[0],
-    rhythm:
-      typeof parsed.rhythm === "string" && parsed.rhythm in studioVideoRhythmConfig
-        ? parsed.rhythm
-        : studioVideoRhythmOptions[1],
-    cameraMovement:
-      typeof parsed.cameraMovement === "string" && parsed.cameraMovement in studioVideoCameraMovementConfig
-        ? parsed.cameraMovement
-        : studioVideoCameraMovementOptions[3],
-    noticeMessage: normalizedDuration.adjusted
-      ? studioVideoDurationAdjustedMessage
-      : typeof parsed.noticeMessage === "string"
-        ? parsed.noticeMessage
-        : undefined,
+  return parseLumaJsonResponse<LumaGeneration>(response)
+}
+
+async function createLumaImageGeneration(payload: LumaImageGenerationCreateRequest) {
+  const response = await fetch(`${LUMA_API_BASE_URL}/generations/image`, {
+    method: "POST",
+    headers: {
+      ...getLumaAuthHeaders(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  })
+
+  return parseLumaJsonResponse<LumaGeneration>(response)
+}
+
+async function getLumaGeneration(generationId: string, stage: StudioVideoActiveStage) {
+  const suffix = stage === "preview" ? "image" : ""
+  const response = await fetch(
+    suffix ? `${LUMA_API_BASE_URL}/generations/${suffix}/${generationId}` : `${LUMA_API_BASE_URL}/generations/${generationId}`,
+    {
+      method: "GET",
+      headers: getLumaAuthHeaders(),
+      cache: "no-store",
+    },
+  )
+
+  return parseLumaJsonResponse<LumaGeneration>(response)
+}
+
+async function resolveReferenceImageUrl(referenceInput: ReferenceInput, propertyId?: string) {
+  if (referenceInput.kind === "url") {
+    return referenceInput.url
+  }
+
+  const referenceId = propertyId || randomUUID()
+  return saveStudioVideoReferenceImage(referenceId, referenceInput.file)
+}
+
+function createIsoNow() {
+  return new Date().toISOString()
+}
+
+function logStudioVideoMetric(event: string, payload: Record<string, unknown>) {
+  console.info(`[studio-ia][video][${event}]`, payload)
+}
+
+function hashObject(value: unknown) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex")
+}
+
+export function buildStudioVideoRequestSignature(input: StudioVideoRequest, sourceReferenceUrl: string) {
+  return hashObject({
+    propertyId: input.propertyId ?? null,
+    referenceImageUrls: input.referenceImageUrls,
+    uploadedImages: input.uploadedImages.map((item) => ({ name: item.name, size: item.size, type: item.type })),
+    sourceReferenceUrl:
+      input.referenceImageUrls[0] ||
+      input.uploadedImages[0]?.name ||
+      sourceReferenceUrl,
+    format: input.format,
+    duration: input.duration,
+    objective: input.objective,
+    style: input.style,
+    transformation: input.transformation,
+    rhythm: input.rhythm,
+    cameraMovement: input.cameraMovement,
+    additionalInstructions: input.additionalInstructions,
   })
 }
 
-export function stringifyStudioVideoJobContent(content: StudioVideoJobContent) {
-  return JSON.stringify(content)
-}
-
-function buildStoryboard(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
+function buildStoryboard(input: StudioVideoPromptInput, property?: StudioVideoPropertyContext | null) {
   const area = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ") || "localizacao do imovel"
   const objective = getObjectiveConfig(input.objective)
   const style = getStyleConfig(input.style)
@@ -245,11 +353,10 @@ function buildStoryboard(input: StudioVideoRequest, property?: StudioVideoProper
     `Ambientes internos guiados por ${clipText(objective.storyline, 120)}.`,
     `Transformacao principal: ${clipText(transformation.sceneDirection, 120)}.`,
     `Tratamento visual com ${clipText(style.visualDirection, 120)}.`,
-    `Encerramento com chamada para acao alinhada a ${clipText(objective.ctaDirection, 90)}.`,
-  ].slice(0, 5)
+  ]
 }
 
-function buildShotPlan(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
+function buildShotPlan(input: StudioVideoPromptInput, property?: StudioVideoPropertyContext | null) {
   const style = getStyleConfig(input.style)
   const transformation = getTransformationConfig(input.transformation)
   const cameraMovement = getCameraMovementConfig(input.cameraMovement)
@@ -260,11 +367,11 @@ function buildShotPlan(input: StudioVideoRequest, property?: StudioVideoProperty
     `Destaque para ${clipText(property?.type?.toLowerCase() || "ambientes principais", 80)} com foco em amplitude.`,
     `Detalhes de apoio reforcando ${clipText(style.cameraDirection, 120)}.`,
     `Momento de transformacao: ${clipText(transformation.sceneDirection, 120)}.`,
-    "Fechamento com cena mais aspiracional e CTA visual.",
+    "Fechamento com cena aspiracional e CTA visual.",
   ]
 }
 
-function buildScript(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
+function buildScript(input: StudioVideoPromptInput, property?: StudioVideoPropertyContext | null) {
   const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
   const objective = getObjectiveConfig(input.objective)
   const style = getStyleConfig(input.style)
@@ -300,7 +407,7 @@ function buildScript(input: StudioVideoRequest, property?: StudioVideoPropertyCo
   )
 }
 
-function buildVideoPrompt(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
+function buildDirectVideoPrompt(input: StudioVideoPromptInput, property?: StudioVideoPropertyContext | null) {
   const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
   const objective = getObjectiveConfig(input.objective)
   const style = getStyleConfig(input.style)
@@ -328,9 +435,7 @@ function buildVideoPrompt(input: StudioVideoRequest, property?: StudioVideoPrope
     `Direcao de camera complementar: ${style.cameraDirection}`,
     `Ritmo narrativo complementar: ${style.rhythmDirection}`,
     `CTA final: ${objective.ctaDirection}`,
-    objective.group === "Transformacao"
-      ? "A transformacao deve ser visivel durante a cena, com evolucao natural do ambiente e resultado final superior ao frame inicial."
-      : "Evite apenas aplicar zoom sobre imagem estatica; crie narrativa visual com progressao real e leitura espacial do ambiente.",
+    "Evite apenas aplicar zoom sobre imagem estatica; crie narrativa visual com progressao real e leitura espacial do ambiente.",
     input.transformation !== "Nenhuma"
       ? "Os elementos de transformacao devem aparecer de forma realista, com materiais, luz, decoracao e mobiliario coerentes com o imovel."
       : "Preserve fidelidade ao espaco original e valorize o que ja existe no ambiente.",
@@ -344,66 +449,137 @@ function buildVideoPrompt(input: StudioVideoRequest, property?: StudioVideoPrope
     .join("\n")
 }
 
-async function createLumaGeneration(payload: LumaGenerationCreateRequest) {
-  const response = await fetch(`${LUMA_API_BASE_URL}/generations`, {
-    method: "POST",
-    headers: {
-      ...getLumaAuthHeaders(),
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  })
+function buildTransformationPreviewPrompt(input: StudioVideoPromptInput, property?: StudioVideoPropertyContext | null) {
+  const objective = getObjectiveConfig(input.objective)
+  const style = getStyleConfig(input.style)
+  const transformation = getTransformationConfig(input.transformation)
+  const rhythm = getRhythmConfig(input.rhythm)
+  const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
 
-  return parseLumaJsonResponse<LumaGeneration>(response)
+  return [
+    "Preserve exatamente a arquitetura, perspectiva, paredes, janelas, portas, pilares, enquadramento, proporcoes e iluminacao natural da imagem original.",
+    "Nao altere a estrutura do imovel. Nao crie novas portas, janelas, lajes, escadas ou vistas externas. Nao deforme paredes e nao mude o angulo da camera.",
+    `Objetivo comercial: ${input.objective}. ${objective.promptBase}`,
+    `Transformacao principal: ${input.transformation}. ${transformation.promptDirection}`,
+    `Comportamento visual da transformacao: ${transformation.sceneDirection}`,
+    `Estilo visual: ${input.style}. ${style.visualDirection}`,
+    `Narrativa e atmosfera: ${style.narrativeDirection}`,
+    `Ritmo visual da composicao final: ${rhythm.promptDirection}`,
+    property
+      ? `Contexto do imovel: ${property.title}; tipo ${property.type}; finalidade ${property.purpose}; localizacao ${location}; preco ${property.price}.`
+      : "Use a foto enviada como unico guia estrutural da composicao.",
+    property?.description ? `Descricao do imovel: ${clipText(property.description, 500)}.` : "",
+    "Adicione apenas os elementos solicitados com realismo fotografico e proporcao correta.",
+    "Se o ambiente estiver vazio, mobiliario e decoracao devem parecer instalados de forma natural, sofisticada e comercialmente desejavel.",
+    "Se a solicitacao envolver obra ou acabamentos, finalize materiais, pintura, iluminacao, marcenaria, metais, revestimentos e decoracao sem alterar a estrutura real.",
+    "Entregue a cena final como foto imobiliaria premium, limpa, coerente e pronta para aprovacao comercial.",
+    input.additionalInstructions ? `Complemento do corretor: ${input.additionalInstructions}.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
-async function getLumaGeneration(generationId: string) {
-  const response = await fetch(`${LUMA_API_BASE_URL}/generations/${generationId}`, {
-    method: "GET",
-    headers: getLumaAuthHeaders(),
-    cache: "no-store",
-  })
+function buildTransformationVideoPrompt(input: StudioVideoPromptInput, property?: StudioVideoPropertyContext | null) {
+  const objective = getObjectiveConfig(input.objective)
+  const style = getStyleConfig(input.style)
+  const transformation = getTransformationConfig(input.transformation)
+  const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
 
-  return parseLumaJsonResponse<LumaGeneration>(response)
+  return [
+    "Crie um video imobiliario em portugues do Brasil baseado em frame inicial e frame final aprovados.",
+    `Duracao final obrigatoria: ${getStudioVideoDurationLabel(input.duration)} (${input.duration}).`,
+    `Objetivo principal: ${input.objective}. ${objective.promptBase}`,
+    `Estilo visual: ${input.style}. ${style.visualDirection}`,
+    `Transformacao continua: ${input.transformation}. ${transformation.promptDirection}`,
+    "Transformacao continua e realista do ambiente original para o ambiente completamente transformado mostrado no frame final.",
+    "Os moveis, acabamentos, iluminacao e elementos decorativos devem surgir progressivamente em suas posicoes finais com transicoes suaves e coerentes.",
+    "Preserve a arquitetura, perspectiva e enquadramento durante todo o video.",
+    "A camera permanece quase estatica, com apenas um movimento cinematografico muito sutil.",
+    "Nao fazer apenas zoom, pan, travelling ou orbit sobre a imagem original.",
+    "O principal acontecimento do video deve ser a transformacao do imovel.",
+    property
+      ? `Contexto do imovel: ${property.title}; tipo ${property.type}; finalidade ${property.purpose}; localizacao ${location}; preco ${property.price}.`
+      : "Use os quadros inicial e final como guia integral da cena.",
+    input.additionalInstructions ? `Complemento do corretor: ${input.additionalInstructions}.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
-async function resolveReferenceImageUrl(referenceInput: ReferenceInput, propertyId?: string) {
-  if (referenceInput.kind === "url") {
-    return referenceInput.url
+async function fetchBufferFromUrl(url: string) {
+  const response = await fetch(url, { cache: "no-store" })
+  if (!response.ok) {
+    throw new Error("Nao foi possivel acessar uma das imagens da geracao.")
   }
 
-  const referenceId = propertyId || randomUUID()
-  return saveStudioVideoReferenceImage(referenceId, referenceInput.file)
+  return Buffer.from(await response.arrayBuffer())
 }
 
-export function getStudioVideoProviderConfig() {
-  const { apiKey, videoModel } = getLumaAIEnv()
+async function compareImageDifference(referenceUrl: string, candidateUrl: string) {
+  const sharp = (await import("sharp")).default
+  const [referenceBuffer, candidateBuffer] = await Promise.all([
+    fetchBufferFromUrl(referenceUrl),
+    fetchBufferFromUrl(candidateUrl),
+  ])
 
-  return {
-    provider: "lumaai",
-    model: videoModel,
-    isConfigured: Boolean(apiKey),
-    estimatedCredits: getStudioVideoEstimatedCredits({
-      duration: studioVideoDefaultDuration,
-      objective: studioVideoObjectives[0],
-      transformation: studioVideoTransformationOptions[0],
-    }),
+  const [referencePixels, candidatePixels] = await Promise.all([
+    sharp(referenceBuffer).resize(48, 48, { fit: "fill" }).grayscale().raw().toBuffer(),
+    sharp(candidateBuffer).resize(48, 48, { fit: "fill" }).grayscale().raw().toBuffer(),
+  ])
+
+  let totalDifference = 0
+  for (let index = 0; index < referencePixels.length; index += 1) {
+    totalDifference += Math.abs(referencePixels[index]! - candidatePixels[index]!)
   }
+
+  return totalDifference / referencePixels.length / 255
 }
 
-function mapVideoStatus(state: string): StudioVideoResult["generationStatus"] {
+function mapProcessingStatus(state: string): StudioVideoResult["generationStatus"] {
   if (state === "completed") return "completed"
   if (state === "failed") return "failed"
   if (state === "dreaming") return "processing"
   return "queued"
 }
 
-function mapVideoProgress(state: string) {
+function mapProcessingProgress(state: string, activeStage: StudioVideoActiveStage) {
   if (state === "completed") return 100
-  if (state === "dreaming") return 55
   if (state === "failed") return 0
-  return 10
+  if (state === "dreaming") return activeStage === "preview" ? 48 : 68
+  return activeStage === "preview" ? 18 : 28
+}
+
+export function getStudioVideoStageCostSummary(job: StudioVideoJobContent): StudioVideoStageCostSummary {
+  if (job.requestKind === "transformation_pipeline") {
+    if (job.activeStage === "preview") {
+      const regeneration = job.metrics.previewAttempts > 1
+      return {
+        estimatedCredits: job.estimatedCredits,
+        stageEstimatedCredits: job.stageEstimatedCredits,
+        actionType: regeneration ? studioVideoPreviewRegenerationActionType : studioVideoPreviewActionType,
+        description: regeneration
+          ? "Regenerar previa transformada do Studio IA"
+          : "Criar previa transformada do Studio IA",
+      }
+    }
+
+    return {
+      estimatedCredits: job.estimatedCredits,
+      stageEstimatedCredits: job.stageEstimatedCredits,
+      actionType: studioVideoFinalActionType,
+      description:
+        job.providerModel === studioVideoPreviewVideoModel
+          ? "Criar video economico da transformacao no Studio IA"
+          : "Criar video final da transformacao no Studio IA",
+    }
+  }
+
+  return {
+    estimatedCredits: job.estimatedCredits,
+    stageEstimatedCredits: job.stageEstimatedCredits,
+    actionType: studioVideoActionType,
+    description: "Criar video do imovel no Studio IA",
+  }
 }
 
 function createResultFromJob(requestId: string, job: StudioVideoJobContent): StudioVideoResult {
@@ -411,7 +587,21 @@ function createResultFromJob(requestId: string, job: StudioVideoJobContent): Stu
     requestId,
     provider: job.provider,
     estimatedCredits: job.estimatedCredits,
+    stageEstimatedCredits: job.stageEstimatedCredits,
+    totalCreditsConsumed: job.metrics.totalCreditsConsumed,
     generationStatus: job.generationStatus,
+    requestKind: job.requestKind,
+    jobStage: job.jobStage,
+    activeStage: job.activeStage,
+    requiresPreviewApproval: job.requiresPreviewApproval,
+    previewApproved: job.previewApproved,
+    previewImageUrl: job.previewImageUrl,
+    previewPrompt: job.previewPrompt,
+    previewErrorMessage: job.previewErrorMessage,
+    previewQualityScore: job.metrics.qualityDifferenceScore,
+    canCreateVideo: job.requestKind === "transformation_pipeline" && job.previewApproved && job.jobStage === "preview_approved",
+    canRegeneratePreview:
+      job.requestKind === "transformation_pipeline" && (job.jobStage === "preview_ready" || job.jobStage === "failed"),
     storyboard: job.storyboard,
     script: job.script,
     shotPlan: job.shotPlan,
@@ -420,8 +610,11 @@ function createResultFromJob(requestId: string, job: StudioVideoJobContent): Stu
     videoUrl: job.videoUrl,
     fileSaved: Boolean(job.savedDocumentId),
     progress: job.progress,
+    providerModel: job.providerModel,
+    previewModel: job.previewModel,
     errorMessage: job.errorMessage,
     noticeMessage: job.noticeMessage,
+    technicalLimitReached: job.technicalLimitReached,
   }
 }
 
@@ -430,7 +623,195 @@ function validateProviderDuration(duration: StudioVideoDuration, model: string) 
   return acceptedDurations.includes(duration)
 }
 
-export async function generateStudioPropertyVideo({
+function incrementAttemptMetrics(job: StudioVideoJobContent, activeStage: StudioVideoActiveStage) {
+  if (activeStage === "preview") {
+    return {
+      ...job.metrics,
+      previewAttempts: job.metrics.previewAttempts + 1,
+      retryCount: job.metrics.retryCount + (job.metrics.previewAttempts > 0 ? 1 : 0),
+      stageStartedAt: createIsoNow(),
+    }
+  }
+
+  return {
+    ...job.metrics,
+    videoAttempts: job.metrics.videoAttempts + 1,
+    retryCount: job.metrics.retryCount + (job.metrics.videoAttempts > 0 ? 1 : 0),
+    stageStartedAt: createIsoNow(),
+  }
+}
+
+function baseJobContent({
+  input,
+  property,
+  sourceReferenceUrl,
+  requestKind,
+  prompt,
+  storyboard,
+  shotPlan,
+  script,
+  requestSignature,
+  providerModel,
+  previewModel,
+}: {
+  input: StudioVideoRequest
+  property?: StudioVideoPropertyContext | null
+  sourceReferenceUrl: string
+  requestKind: StudioVideoRequestKind
+  prompt: string
+  storyboard: string[]
+  shotPlan: string[]
+  script: string
+  requestSignature: string
+  providerModel?: string
+  previewModel?: string
+}) {
+  return {
+    provider: "lumaai",
+    estimatedCredits: requestKind === "transformation_pipeline"
+      ? getStudioVideoPreviewCredits()
+      : getStudioVideoEstimatedCredits({
+          duration: input.duration,
+          objective: input.objective,
+          transformation: input.transformation,
+          stage: "direct",
+        }),
+    stageEstimatedCredits: requestKind === "transformation_pipeline"
+      ? getStudioVideoPreviewCredits()
+      : getStudioVideoEstimatedCredits({
+          duration: input.duration,
+          objective: input.objective,
+          transformation: input.transformation,
+          stage: "direct",
+        }),
+    propertyId: property?.id,
+    propertyTitle: property?.title,
+    propertyLocation: property?.location,
+    referenceImageUrls: input.referenceImageUrls.length > 0 ? input.referenceImageUrls : [sourceReferenceUrl],
+    uploadedImages: input.uploadedImages,
+    sourceReferenceUrl,
+    requestKind,
+    jobStage: requestKind === "transformation_pipeline" ? "preview_processing" : "video_processing",
+    activeStage: requestKind === "transformation_pipeline" ? "preview" : "video",
+    requiresPreviewApproval: requestKind === "transformation_pipeline",
+    previewApproved: false,
+    format: input.format,
+    duration: input.duration,
+    objective: input.objective,
+    style: input.style,
+    transformation: input.transformation,
+    rhythm: input.rhythm,
+    cameraMovement: input.cameraMovement,
+    additionalInstructions: input.additionalInstructions,
+    prompt,
+    storyboard,
+    script,
+    shotPlan,
+    generationStatus: "queued" as const,
+    progress: 12,
+    creditsCharged: false,
+    creditsRefunded: false,
+    stageCreditsCharged: 0,
+    stageCreditsRefunded: 0,
+    providerModel,
+    previewModel,
+    requestSignature,
+    technicalLimitReached: false,
+    metrics: {
+      previewEstimatedCredits:
+        requestKind === "transformation_pipeline"
+          ? getStudioVideoPreviewCredits()
+          : 0,
+      previewRegenerationCredits: 0,
+      videoEstimatedCredits:
+        requestKind === "transformation_pipeline"
+          ? getStudioVideoVideoStageCredits(getLumaAIEnv().videoModel || studioVideoPreviewVideoModel)
+          : 0,
+      totalCreditsConsumed: 0,
+      totalCreditsRefunded: 0,
+      previewAttempts: 0,
+      videoAttempts: 0,
+      retryCount: 0,
+      stageStartedAt: createIsoNow(),
+    },
+  } satisfies StudioVideoJobContent
+}
+
+export function parseStudioVideoJobContent(content: string) {
+  const parsed = JSON.parse(content) as Record<string, unknown>
+  const normalizedDuration = normalizeStudioVideoDuration(parsed.duration)
+  const requestKind =
+    typeof parsed.requestKind === "string" && studioVideoRequestKinds.includes(parsed.requestKind as StudioVideoRequestKind)
+      ? (parsed.requestKind as StudioVideoRequestKind)
+      : getStudioVideoRequestKind(
+          typeof parsed.transformation === "string" && parsed.transformation in studioVideoTransformationConfig
+            ? (parsed.transformation as StudioVideoTransformation)
+            : "Nenhuma",
+        )
+  const activeStage =
+    typeof parsed.activeStage === "string" && studioVideoActiveStages.includes(parsed.activeStage as StudioVideoActiveStage)
+      ? (parsed.activeStage as StudioVideoActiveStage)
+      : requestKind === "transformation_pipeline" && !parsed.videoUrl
+        ? "preview"
+        : "video"
+  const derivedJobStage =
+    typeof parsed.jobStage === "string"
+      ? parsed.jobStage
+      : parsed.videoUrl
+        ? "completed"
+        : requestKind === "transformation_pipeline"
+          ? "preview_processing"
+          : "video_processing"
+
+  return studioVideoJobContentSchema.parse({
+    ...parsed,
+    duration: normalizedDuration.duration,
+    transformation:
+      typeof parsed.transformation === "string" && parsed.transformation in studioVideoTransformationConfig
+        ? parsed.transformation
+        : studioVideoTransformationOptions[0],
+    rhythm:
+      typeof parsed.rhythm === "string" && parsed.rhythm in studioVideoRhythmConfig
+        ? parsed.rhythm
+        : studioVideoRhythmOptions[1],
+    cameraMovement:
+      typeof parsed.cameraMovement === "string" && parsed.cameraMovement in studioVideoCameraMovementConfig
+        ? parsed.cameraMovement
+        : studioVideoCameraMovementOptions[3],
+    requestKind,
+    activeStage,
+    jobStage: derivedJobStage,
+    noticeMessage: normalizedDuration.adjusted
+      ? studioVideoDurationAdjustedMessage
+      : typeof parsed.noticeMessage === "string"
+        ? parsed.noticeMessage
+        : undefined,
+  })
+}
+
+export function stringifyStudioVideoJobContent(content: StudioVideoJobContent) {
+  return JSON.stringify(content)
+}
+
+export function getStudioVideoProviderConfig() {
+  const { apiKey, videoModel, previewVideoModel, imageModel } = getLumaAIEnv()
+
+  return {
+    provider: "lumaai",
+    model: videoModel,
+    previewVideoModel,
+    previewImageModel: imageModel || studioVideoPreviewImageModel,
+    isConfigured: Boolean(apiKey),
+    estimatedCredits: getStudioVideoEstimatedCredits({
+      duration: studioVideoDefaultDuration,
+      objective: studioVideoObjectives[0],
+      transformation: studioVideoTransformationOptions[0],
+      stage: "direct",
+    }),
+  }
+}
+
+export async function createInitialStudioVideoJob({
   input,
   property,
   referenceInput,
@@ -444,90 +825,418 @@ export async function generateStudioPropertyVideo({
     throw new Error("VIDEO_PROVIDER_NOT_CONFIGURED")
   }
 
-  const prompt = buildVideoPrompt(input, property)
+  const requestKind = getStudioVideoRequestKind(input.transformation)
+  const sourceReferenceUrl = await resolveReferenceImageUrl(referenceInput, property?.id)
+  const requestSignature = buildStudioVideoRequestSignature(input, sourceReferenceUrl)
   const storyboard = buildStoryboard(input, property)
   const shotPlan = buildShotPlan(input, property)
   const script = buildScript(input, property)
+
+  if (requestKind === "transformation_pipeline") {
+    const previewPrompt = buildTransformationPreviewPrompt(input, property)
+    const generation = await createLumaImageGeneration({
+      prompt: previewPrompt,
+      model: config.previewImageModel,
+      aspect_ratio: formatAspectRatioMap[input.format],
+      modify_image_ref: {
+        url: sourceReferenceUrl,
+        weight: 0.85,
+      },
+    })
+
+    const job = baseJobContent({
+      input,
+      property,
+      sourceReferenceUrl,
+      requestKind,
+      prompt: previewPrompt,
+      storyboard,
+      shotPlan,
+      script,
+      requestSignature,
+      providerModel: config.model,
+      previewModel: config.previewImageModel,
+    })
+
+    const nextJob: StudioVideoJobContent = {
+      ...job,
+      providerImageId: generation.id,
+      previewPrompt,
+      previewModel: config.previewImageModel,
+      generationStatus: mapProcessingStatus(generation.state),
+      progress: mapProcessingProgress(generation.state, "preview"),
+      stageEstimatedCredits: getStudioVideoPreviewCredits(),
+      metrics: {
+        ...incrementAttemptMetrics(job, "preview"),
+        previewEstimatedCredits: getStudioVideoPreviewCredits(),
+      },
+      previewErrorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
+      errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
+    }
+
+    logStudioVideoMetric("preview-created", {
+      brokerFlow: input.transformation,
+      model: config.previewImageModel,
+      stage: "preview",
+      providerJobId: generation.id,
+      duration: input.duration,
+      resolution: formatResolutionMap[input.format],
+      estimatedCredits: nextJob.stageEstimatedCredits,
+      actualProviderCostUsd: null,
+      retries: nextJob.metrics.retryCount,
+      requestKind,
+    })
+
+    return {
+      requestSignature,
+      jobContent: nextJob,
+    }
+  }
 
   if (!validateProviderDuration(input.duration, config.model)) {
     throw new Error("STUDIO_VIDEO_DURATION_NOT_SUPPORTED")
   }
 
-  const requestPayload: LumaGenerationCreateRequest = {
+  const prompt = buildDirectVideoPrompt(input, property)
+  const generation = await createLumaVideoGeneration({
     prompt,
     model: config.model,
     resolution: formatResolutionMap[input.format],
     duration: input.duration,
     aspect_ratio: formatAspectRatioMap[input.format],
-  }
-
-  const referenceImageUrl = await resolveReferenceImageUrl(referenceInput, property?.id)
-  requestPayload.keyframes = {
-    frame0: {
-      type: "image",
-      url: referenceImageUrl,
+    keyframes: {
+      frame0: {
+        type: "image",
+        url: sourceReferenceUrl,
+      },
     },
-  }
+  })
 
-  const generation = await createLumaGeneration(requestPayload)
-  if (generation.failure_reason) {
-    console.error("[studio-ia][video][provider-failure]", {
-      provider: config.provider,
-      providerVideoId: generation.id,
-      failureReason: generation.failure_reason,
-    })
-  }
-
-  const jobContent: StudioVideoJobContent = {
-    provider: config.provider,
-    providerVideoId: generation.id,
-    estimatedCredits: getStudioVideoEstimatedCredits({
-      duration: input.duration,
-      objective: input.objective,
-      transformation: input.transformation,
-    }),
-    propertyId: property?.id,
-    propertyTitle: property?.title,
-    propertyLocation: property?.location,
-    referenceImageUrls: input.referenceImageUrls.length > 0 ? input.referenceImageUrls : [referenceImageUrl],
-    uploadedImages: input.uploadedImages,
-    format: input.format,
-    duration: input.duration,
-    objective: input.objective,
-    style: input.style,
-    transformation: input.transformation,
-    rhythm: input.rhythm,
-    cameraMovement: input.cameraMovement,
-    additionalInstructions: input.additionalInstructions,
+  const job = baseJobContent({
+    input,
+    property,
+    sourceReferenceUrl,
+    requestKind,
     prompt,
     storyboard,
-    script,
     shotPlan,
-    generationStatus: mapVideoStatus(generation.state),
-    progress: mapVideoProgress(generation.state),
-    creditsCharged: false,
-    creditsRefunded: false,
+    script,
+    requestSignature,
+    providerModel: config.model,
+  })
+
+  const directCredits = getStudioVideoEstimatedCredits({
+    duration: input.duration,
+    objective: input.objective,
+    transformation: input.transformation,
+    stage: "direct",
+  })
+
+  const nextJob: StudioVideoJobContent = {
+    ...job,
+    providerVideoId: generation.id,
+    providerModel: config.model,
+    estimatedCredits: directCredits,
+    stageEstimatedCredits: directCredits,
+    generationStatus: mapProcessingStatus(generation.state),
+    progress: mapProcessingProgress(generation.state, "video"),
+    metrics: {
+      ...incrementAttemptMetrics(job, "video"),
+    },
     errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
   }
 
+  logStudioVideoMetric("video-created", {
+    brokerFlow: input.transformation,
+    model: config.model,
+    stage: "video",
+    providerJobId: generation.id,
+    duration: input.duration,
+    resolution: formatResolutionMap[input.format],
+    estimatedCredits: directCredits,
+    actualProviderCostUsd: null,
+    retries: nextJob.metrics.retryCount,
+    requestKind,
+  })
+
   return {
-    providerVideoId: generation.id,
-    jobContent,
+    requestSignature,
+    jobContent: nextJob,
   }
 }
 
-export async function refreshStudioVideoJob(job: StudioVideoJobContent) {
-  const generation = await getLumaGeneration(job.providerVideoId)
-  const nextStatus = mapVideoStatus(generation.state)
-  let videoUrl = job.videoUrl
+export async function regenerateStudioVideoPreview(job: StudioVideoJobContent) {
+  if (job.requestKind !== "transformation_pipeline" || !job.sourceReferenceUrl) {
+    throw new Error("STUDIO_VIDEO_PREVIEW_NOT_SUPPORTED")
+  }
+
+  const config = getStudioVideoProviderConfig()
+  const previewPrompt = buildTransformationPreviewPrompt(job, job.propertyId
+    ? {
+        id: job.propertyId,
+        title: job.propertyTitle || "",
+        city: "",
+        neighborhood: "",
+        location: job.propertyLocation || "",
+        type: "",
+        purpose: "",
+        price: "",
+        bedrooms: 0,
+        bathrooms: 0,
+        parkingSpots: 0,
+        description: "",
+      }
+    : null)
+
+  const generation = await createLumaImageGeneration({
+    prompt: previewPrompt,
+    model: config.previewImageModel,
+    aspect_ratio: formatAspectRatioMap[job.format],
+    modify_image_ref: {
+      url: job.sourceReferenceUrl,
+      weight: 0.85,
+    },
+  })
+
+  const nextJob: StudioVideoJobContent = {
+    ...job,
+    providerImageId: generation.id,
+    previewPrompt,
+    previewImageUrl: undefined,
+    previewApproved: false,
+    previewApprovedAt: undefined,
+    previewErrorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
+    providerVideoId: job.providerVideoId,
+    activeStage: "preview",
+    jobStage: "preview_processing",
+    generationStatus: mapProcessingStatus(generation.state),
+    progress: mapProcessingProgress(generation.state, "preview"),
+    stageEstimatedCredits: getStudioVideoEstimatedCredits({
+      duration: job.duration,
+      objective: job.objective,
+      transformation: job.transformation,
+      stage: "preview_regeneration",
+    }),
+    creditsRefunded: false,
+    stageCreditsRefunded: 0,
+    errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
+    metrics: {
+      ...incrementAttemptMetrics(job, "preview"),
+      previewRegenerationCredits: getStudioVideoEstimatedCredits({
+        duration: job.duration,
+        objective: job.objective,
+        transformation: job.transformation,
+        stage: "preview_regeneration",
+      }),
+      qualityDifferenceScore: undefined,
+      qualityDifferenceThreshold: PREVIEW_QUALITY_DIFF_THRESHOLD,
+    },
+  }
+
+  logStudioVideoMetric("preview-regenerated", {
+    brokerFlow: job.transformation,
+    model: config.previewImageModel,
+    stage: "preview",
+    providerJobId: generation.id,
+    duration: job.duration,
+    resolution: formatResolutionMap[job.format],
+    estimatedCredits: nextJob.stageEstimatedCredits,
+    actualProviderCostUsd: null,
+    retries: nextJob.metrics.retryCount,
+    requestKind: job.requestKind,
+  })
+
+  return nextJob
+}
+
+export function approveStudioVideoPreview(job: StudioVideoJobContent) {
+  if (job.requestKind !== "transformation_pipeline" || !job.previewImageUrl || job.jobStage !== "preview_ready") {
+    throw new Error("STUDIO_VIDEO_PREVIEW_NOT_READY")
+  }
+
+  return {
+    ...job,
+    previewApproved: true,
+    previewApprovedAt: createIsoNow(),
+    jobStage: "preview_approved",
+    generationStatus: "completed" as const,
+    progress: 100,
+    errorMessage: undefined,
+    previewErrorMessage: undefined,
+  } satisfies StudioVideoJobContent
+}
+
+export async function createApprovedStudioVideoAnimation(job: StudioVideoJobContent) {
+  if (job.requestKind !== "transformation_pipeline" || !job.previewApproved || !job.previewImageUrl || !job.sourceReferenceUrl) {
+    throw new Error("STUDIO_VIDEO_PREVIEW_APPROVAL_REQUIRED")
+  }
+
+  const config = getStudioVideoProviderConfig()
+  if (!validateProviderDuration(job.duration, config.model)) {
+    throw new Error("STUDIO_VIDEO_DURATION_NOT_SUPPORTED")
+  }
+
+  const prompt = buildTransformationVideoPrompt(job, job.propertyId
+    ? {
+        id: job.propertyId,
+        title: job.propertyTitle || "",
+        city: "",
+        neighborhood: "",
+        location: job.propertyLocation || "",
+        type: "",
+        purpose: "",
+        price: "",
+        bedrooms: 0,
+        bathrooms: 0,
+        parkingSpots: 0,
+        description: "",
+      }
+    : null)
+
+  const generation = await createLumaVideoGeneration({
+    prompt,
+    model: config.model,
+    resolution: formatResolutionMap[job.format],
+    duration: job.duration,
+    aspect_ratio: formatAspectRatioMap[job.format],
+    keyframes: {
+      frame0: {
+        type: "image",
+        url: job.sourceReferenceUrl,
+      },
+      frame1: {
+        type: "image",
+        url: job.previewImageUrl,
+      },
+    },
+  })
+
+  const stageEstimatedCredits = getStudioVideoEstimatedCredits({
+    duration: job.duration,
+    objective: job.objective,
+    transformation: job.transformation,
+    stage: "video",
+    model: config.model,
+  })
+
+  const nextJob: StudioVideoJobContent = {
+    ...job,
+    providerVideoId: generation.id,
+    providerModel: config.model,
+    prompt,
+    activeStage: "video",
+    jobStage: "video_processing",
+    generationStatus: mapProcessingStatus(generation.state),
+    progress: mapProcessingProgress(generation.state, "video"),
+    stageEstimatedCredits,
+    creditsRefunded: false,
+    stageCreditsRefunded: 0,
+    errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason),
+    metrics: {
+      ...incrementAttemptMetrics(job, "video"),
+    },
+  }
+
+  logStudioVideoMetric("video-created", {
+    brokerFlow: job.transformation,
+    model: config.model,
+    stage: "video",
+    providerJobId: generation.id,
+    duration: job.duration,
+    resolution: formatResolutionMap[job.format],
+    estimatedCredits: stageEstimatedCredits,
+    actualProviderCostUsd: null,
+    retries: nextJob.metrics.retryCount,
+    requestKind: job.requestKind,
+  })
+
+  return nextJob
+}
+
+export async function refreshStudioVideoJob(job: StudioVideoJobContent): Promise<StudioVideoJobContent> {
+  if (
+    job.jobStage !== "preview_processing" &&
+    job.jobStage !== "video_processing" &&
+    !(job.requestKind === "direct_video" && (job.generationStatus === "queued" || job.generationStatus === "processing"))
+  ) {
+    return job
+  }
+
+  const activeStage = job.jobStage === "preview_processing" ? "preview" : "video"
+  const providerJobId = activeStage === "preview" ? job.providerImageId : job.providerVideoId
+  if (!providerJobId) return job
+
+  const generation = await getLumaGeneration(providerJobId, activeStage)
 
   if (generation.failure_reason) {
-    console.error("[studio-ia][video][provider-failure]", {
+    logStudioVideoMetric("provider-failure", {
       provider: job.provider,
-      providerVideoId: job.providerVideoId,
+      activeStage,
+      providerJobId,
       failureReason: generation.failure_reason,
+      requestKind: job.requestKind,
     })
   }
+
+  if (activeStage === "preview") {
+    if (generation.state === "completed" && generation.assets?.image) {
+      const differenceScore = await compareImageDifference(job.sourceReferenceUrl || job.referenceImageUrls[0] || generation.assets.image, generation.assets.image)
+      if (differenceScore < PREVIEW_QUALITY_DIFF_THRESHOLD) {
+        return {
+          ...job,
+          generationStatus: "failed",
+          jobStage: "failed",
+          progress: 0,
+          previewErrorMessage:
+            "A previa ficou muito parecida com a imagem original. Aprove ou gere novamente somente quando a transformacao estiver visivel.",
+          errorMessage:
+            "A previa ficou muito parecida com a imagem original. Aprove ou gere novamente somente quando a transformacao estiver visivel.",
+          metrics: {
+            ...job.metrics,
+            qualityDifferenceScore: differenceScore,
+            qualityDifferenceThreshold: PREVIEW_QUALITY_DIFF_THRESHOLD,
+            stageCompletedAt: createIsoNow(),
+          },
+        } satisfies StudioVideoJobContent
+      }
+
+      const response = await fetch(generation.assets.image, { cache: "no-store" })
+      if (!response.ok) {
+        throw new Error("PREVIEW_DOWNLOAD_FAILED")
+      }
+
+      const contentType = response.headers.get("content-type")?.trim() || "image/png"
+      const arrayBuffer = await response.arrayBuffer()
+      const previewImageUrl = await savePropertyGeneratedImage(job.propertyId || job.providerImageId || providerJobId, Buffer.from(arrayBuffer), contentType)
+
+      return {
+        ...job,
+        previewImageUrl,
+        generationStatus: "completed",
+        jobStage: "preview_ready",
+        progress: 100,
+        previewErrorMessage: undefined,
+        errorMessage: undefined,
+        metrics: {
+          ...job.metrics,
+          qualityDifferenceScore: differenceScore,
+          qualityDifferenceThreshold: PREVIEW_QUALITY_DIFF_THRESHOLD,
+          stageCompletedAt: createIsoNow(),
+        },
+      } satisfies StudioVideoJobContent
+    }
+
+    return {
+      ...job,
+      generationStatus: mapProcessingStatus(generation.state),
+      jobStage: generation.state === "failed" ? "failed" : "preview_processing",
+      progress: mapProcessingProgress(generation.state, "preview"),
+      previewErrorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason) ?? job.previewErrorMessage,
+      errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason) ?? job.errorMessage,
+    } satisfies StudioVideoJobContent
+  }
+
+  let videoUrl = job.videoUrl
 
   if (generation.state === "completed" && generation.assets?.video && !videoUrl) {
     const response = await fetch(generation.assets.video, { cache: "no-store" })
@@ -536,15 +1245,22 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent) {
     }
 
     const arrayBuffer = await response.arrayBuffer()
-    videoUrl = await savePropertyGeneratedVideo(job.propertyId || job.providerVideoId, Buffer.from(arrayBuffer), "video/mp4")
+    videoUrl = await savePropertyGeneratedVideo(job.propertyId || job.providerVideoId || providerJobId, Buffer.from(arrayBuffer), "video/mp4")
   }
 
   return {
     ...job,
-    generationStatus: nextStatus,
-    progress: mapVideoProgress(generation.state),
+    generationStatus: mapProcessingStatus(generation.state),
+    jobStage: generation.state === "completed" ? "completed" : generation.state === "failed" ? "failed" : "video_processing",
+    progress: mapProcessingProgress(generation.state, "video"),
     videoUrl,
     errorMessage: sanitizeStudioVideoErrorMessage(generation.failure_reason) ?? job.errorMessage,
+    metrics: generation.state === "completed"
+      ? {
+          ...job.metrics,
+          stageCompletedAt: createIsoNow(),
+        }
+      : job.metrics,
   } satisfies StudioVideoJobContent
 }
 

@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   Clapperboard,
   Download,
+  ImagePlus,
   MessageCircle,
   RefreshCcw,
   Save,
@@ -28,6 +29,8 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   getStudioVideoDurationLabel,
   getStudioVideoEstimatedCredits,
+  getStudioVideoRequestKind,
+  requiresTransformationPreview,
   studioVideoCameraMovementConfig,
   studioVideoCameraMovementOptions,
   studioVideoDefaultDuration,
@@ -35,10 +38,11 @@ import {
   studioVideoInvalidDurationMessage,
   studioVideoObjectiveConfig,
   studioVideoObjectives,
-  studioVideoRhythmConfig,
-  studioVideoRhythmOptions,
+  studioVideoPreviewVideoModel,
   studioVideoRequestSchema,
   studioVideoResultSchema,
+  studioVideoRhythmConfig,
+  studioVideoRhythmOptions,
   studioVideoSelectableDurationOptions,
   studioVideoStyleConfig,
   studioVideoStyles,
@@ -46,7 +50,7 @@ import {
   studioVideoTransformationOptions,
 } from "@/lib/studio-ia-video-shared"
 
-type StudioVideoStep = "selection" | "configuration" | "review" | "processing" | "result"
+type StudioVideoStep = "selection" | "configuration" | "review" | "processing" | "preview" | "result"
 type StudioVideoFormat = (typeof studioVideoFormats)[number]
 type StudioVideoDuration = (typeof studioVideoSelectableDurationOptions)[number]["value"]
 type StudioVideoObjective = (typeof studioVideoObjectives)[number]
@@ -66,9 +70,10 @@ type UploadPreview = {
 
 const stepLabels: Array<{ id: StudioVideoStep; label: string }> = [
   { id: "selection", label: "Selecao" },
-  { id: "configuration", label: "Configuracao" },
-  { id: "review", label: "Resumo" },
+  { id: "configuration", label: "Briefing" },
+  { id: "review", label: "Revisao" },
   { id: "processing", label: "Geracao" },
+  { id: "preview", label: "Aprovacao" },
   { id: "result", label: "Resultado" },
 ]
 
@@ -91,6 +96,7 @@ export function BrokerStudioIaVideoPage() {
   const [durationNotice, setDurationNotice] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingResult, setIsSavingResult] = useState(false)
+  const [isApprovingPreview, setIsApprovingPreview] = useState(false)
   const [generatedResult, setGeneratedResult] = useState<GeneratedVideoResult | null>(null)
   const uploadedImagesRef = useRef<UploadPreview[]>([])
 
@@ -103,13 +109,76 @@ export function BrokerStudioIaVideoPage() {
     (selectedProperty && selectedReferenceImages.length > 0) || uploadedImages.length > 0,
   )
 
-  const estimatedCredits =
-    generatedResult?.estimatedCredits ??
-    getStudioVideoEstimatedCredits({
+  const selectedObjectiveConfig = studioVideoObjectiveConfig[objective]
+  const selectedStyleConfig = studioVideoStyleConfig[style]
+  const selectedTransformationConfig = studioVideoTransformationConfig[transformation]
+  const selectedRhythmConfig = studioVideoRhythmConfig[rhythm]
+  const selectedCameraMovementConfig = studioVideoCameraMovementConfig[cameraMovement]
+  const requiresPreviewFlow = requiresTransformationPreview(transformation)
+  const requestKind = getStudioVideoRequestKind(transformation)
+
+  const estimatedStageCredits = useMemo(() => {
+    if (generatedResult?.stageEstimatedCredits != null) {
+      return generatedResult.stageEstimatedCredits
+    }
+
+    if (requiresPreviewFlow) {
+      if (generatedResult?.previewApproved || currentStep === "preview") {
+        return getStudioVideoEstimatedCredits({
+          duration,
+          objective,
+          transformation,
+          stage: "video",
+          model: generatedResult?.providerModel || "ray-2",
+        })
+      }
+
+      return getStudioVideoEstimatedCredits({
+        duration,
+        objective,
+        transformation,
+        stage: "preview",
+      })
+    }
+
+    return getStudioVideoEstimatedCredits({
       duration,
       objective,
       transformation,
+      stage: "direct",
     })
+  }, [currentStep, duration, generatedResult?.previewApproved, generatedResult?.providerModel, generatedResult?.stageEstimatedCredits, objective, requiresPreviewFlow, transformation])
+
+  const totalEstimatedCredits = useMemo(() => {
+    if (generatedResult?.estimatedCredits != null) {
+      return generatedResult.estimatedCredits
+    }
+
+    if (requiresPreviewFlow) {
+      return getStudioVideoEstimatedCredits({
+        duration,
+        objective,
+        transformation,
+        stage: "preview",
+      }) +
+        getStudioVideoEstimatedCredits({
+          duration,
+          objective,
+          transformation,
+          stage: "video",
+          model: generatedResult?.providerModel || "ray-2",
+        })
+    }
+
+    return getStudioVideoEstimatedCredits({
+      duration,
+      objective,
+      transformation,
+      stage: "direct",
+    })
+  }, [duration, generatedResult?.estimatedCredits, generatedResult?.providerModel, objective, requiresPreviewFlow, transformation])
+
+  const sourcePreviewUrl = selectedReferenceImages[0] || uploadedImages[0]?.url || selectedProperty?.images[0] || ""
 
   useEffect(() => {
     uploadedImagesRef.current = uploadedImages
@@ -139,7 +208,7 @@ export function BrokerStudioIaVideoPage() {
         })
         const data = (await response.json().catch(() => null)) as (GeneratedVideoResult & { error?: string }) | null
         if (!response.ok || !data) {
-          throw new Error(data?.error || "Nao foi possivel atualizar o processamento do video.")
+          throw new Error(data?.error || "Nao foi possivel atualizar o processamento do fluxo.")
         }
 
         const parsed = studioVideoResultSchema.parse(data)
@@ -147,22 +216,33 @@ export function BrokerStudioIaVideoPage() {
 
         setGeneratedResult(parsed)
 
-        if (parsed.generationStatus === "completed") {
+        if (parsed.jobStage === "preview_ready" || parsed.jobStage === "preview_approved") {
+          setCurrentStep("preview")
+          setIsSubmitting(false)
+          setGenerationError(parsed.previewErrorMessage || "")
+          window.clearInterval(intervalId)
+          return
+        }
+
+        if (parsed.jobStage === "completed") {
           setCurrentStep("result")
           setIsSubmitting(false)
           setGenerationError("")
           window.clearInterval(intervalId)
+          return
         }
 
-        if (parsed.generationStatus === "failed") {
-          setCurrentStep("review")
+        if (parsed.jobStage === "failed") {
+          setCurrentStep(parsed.requestKind === "transformation_pipeline" ? "preview" : "review")
           setIsSubmitting(false)
-          setGenerationError(parsed.errorMessage || "O provedor nao conseguiu concluir o video. Os creditos foram preservados.")
+          setGenerationError(
+            parsed.previewErrorMessage || parsed.errorMessage || "O provedor nao conseguiu concluir esta etapa. Os creditos foram preservados.",
+          )
           window.clearInterval(intervalId)
         }
       } catch (caughtError) {
         if (cancelled) return
-        setCurrentStep("review")
+        setCurrentStep(generatedResult.requestKind === "transformation_pipeline" ? "preview" : "review")
         setIsSubmitting(false)
         setGenerationError(
           caughtError instanceof Error ? caughtError.message : "Nao foi possivel acompanhar a geracao do video.",
@@ -175,16 +255,13 @@ export function BrokerStudioIaVideoPage() {
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [currentStep, generatedResult?.requestId])
+  }, [currentStep, generatedResult?.requestId, generatedResult?.requestKind])
 
   function handlePropertyChange(propertyId: string) {
     setSelectedPropertyId(propertyId)
     const property = properties.find((item) => item.id === propertyId) ?? null
     setSelectedReferenceImages(property?.images[0] ? [property.images[0]] : [])
-    setGenerationError("")
-    setDurationNotice("")
-    setGeneratedResult(null)
-    setResultVersion(0)
+    resetGeneratedState()
     setCurrentStep("selection")
   }
 
@@ -194,10 +271,7 @@ export function BrokerStudioIaVideoPage() {
         ? current.filter((image) => image !== imageUrl)
         : [...current, imageUrl].slice(0, 8)
     ))
-    setGenerationError("")
-    setDurationNotice("")
-    setGeneratedResult(null)
-    setResultVersion(0)
+    resetGeneratedState()
   }
 
   function handleUploadedImages(event: ChangeEvent<HTMLInputElement>) {
@@ -216,10 +290,7 @@ export function BrokerStudioIaVideoPage() {
       return [...current, ...nextEntries]
     })
 
-    setGenerationError("")
-    setDurationNotice("")
-    setGeneratedResult(null)
-    setResultVersion(0)
+    resetGeneratedState()
     event.target.value = ""
   }
 
@@ -229,10 +300,7 @@ export function BrokerStudioIaVideoPage() {
       if (image) URL.revokeObjectURL(image.url)
       return current.filter((item) => item.url !== imageUrl)
     })
-    setGenerationError("")
-    setDurationNotice("")
-    setGeneratedResult(null)
-    setResultVersion(0)
+    resetGeneratedState()
   }
 
   function buildPayload() {
@@ -254,6 +322,16 @@ export function BrokerStudioIaVideoPage() {
       additionalInstructions,
       version: resultVersion + 1,
     })
+  }
+
+  function resetGeneratedState() {
+    setGenerationError("")
+    setDurationNotice("")
+    setGeneratedResult(null)
+    setResultVersion(0)
+    setIsSubmitting(false)
+    setIsSavingResult(false)
+    setIsApprovingPreview(false)
   }
 
   function goToConfiguration() {
@@ -304,25 +382,129 @@ export function BrokerStudioIaVideoPage() {
       })
 
       const data = (await response.json().catch(() => null)) as
-        | (GeneratedVideoResult & { error?: string; creditsBlocked?: boolean })
-        | { error?: string; estimatedCredits?: number; creditsBlocked?: boolean }
+        | (GeneratedVideoResult & { error?: string; creditsBlocked?: boolean; technicalLimitReached?: boolean })
+        | { error?: string }
         | null
 
       if (!response.ok || !data) {
-        throw new Error(data?.error || "Nao foi possivel preparar a geracao do video.")
+        throw new Error(data?.error || "Nao foi possivel iniciar o fluxo.")
       }
 
       const parsed = studioVideoResultSchema.parse(data)
       setGeneratedResult(parsed)
       setResultVersion(payload.version)
 
-      if (parsed.generationStatus === "completed") {
+      if (parsed.jobStage === "preview_ready" || parsed.jobStage === "preview_approved") {
+        setCurrentStep("preview")
+        setIsSubmitting(false)
+        return
+      }
+
+      if (parsed.jobStage === "completed") {
         setCurrentStep("result")
         setIsSubmitting(false)
       }
     } catch (caughtError) {
-      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel preparar a geracao do video.")
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel iniciar o fluxo.")
       setCurrentStep("review")
+      setIsSubmitting(false)
+    }
+  }
+
+  async function approvePreview() {
+    if (!generatedResult?.requestId) return
+
+    try {
+      setIsApprovingPreview(true)
+      setGenerationError("")
+      const response = await fetch("/api/studio-ia/video", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          requestId: generatedResult.requestId,
+          action: "approve-preview",
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (GeneratedVideoResult & { error?: string }) | null
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel aprovar a previa.")
+      }
+
+      setGeneratedResult(studioVideoResultSchema.parse(data))
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel aprovar a previa.")
+    } finally {
+      setIsApprovingPreview(false)
+    }
+  }
+
+  async function regeneratePreview() {
+    if (!generatedResult?.requestId) return
+
+    try {
+      setGenerationError("")
+      setCurrentStep("processing")
+      setIsSubmitting(true)
+      const response = await fetch("/api/studio-ia/video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          requestId: generatedResult.requestId,
+          action: "regenerate-preview",
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (GeneratedVideoResult & { error?: string }) | null
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel regenerar a previa.")
+      }
+
+      setGeneratedResult(studioVideoResultSchema.parse(data))
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel regenerar a previa.")
+      setCurrentStep("preview")
+      setIsSubmitting(false)
+    }
+  }
+
+  async function createTransformationVideo() {
+    if (!generatedResult?.requestId) return
+
+    try {
+      setGenerationError("")
+      setCurrentStep("processing")
+      setIsSubmitting(true)
+      const response = await fetch("/api/studio-ia/video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          requestId: generatedResult.requestId,
+          action: "create-video",
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as (GeneratedVideoResult & { error?: string }) | null
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Nao foi possivel criar o video da transformacao.")
+      }
+
+      setGeneratedResult(studioVideoResultSchema.parse(data))
+    } catch (caughtError) {
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar o video da transformacao.")
+      setCurrentStep("preview")
       setIsSubmitting(false)
     }
   }
@@ -341,7 +523,7 @@ export function BrokerStudioIaVideoPage() {
         },
         credentials: "include",
         cache: "no-store",
-        body: JSON.stringify({ requestId: generatedResult.requestId }),
+        body: JSON.stringify({ requestId: generatedResult.requestId, action: "save-video" }),
       })
 
       const data = (await response.json().catch(() => null)) as { saved?: boolean; error?: string } | null
@@ -360,8 +542,8 @@ export function BrokerStudioIaVideoPage() {
   function restartFlow() {
     uploadedImages.forEach((image) => URL.revokeObjectURL(image.url))
     setSelectedPropertyId("")
-      setSelectedReferenceImages([])
-      setUploadedImages([])
+    setSelectedReferenceImages([])
+    setUploadedImages([])
     setFormat(studioVideoFormats[0])
     setDuration(studioVideoDefaultDuration)
     setObjective(studioVideoObjectives[0])
@@ -370,13 +552,8 @@ export function BrokerStudioIaVideoPage() {
     setRhythm(studioVideoRhythmOptions[1])
     setCameraMovement(studioVideoCameraMovementOptions[3])
     setAdditionalInstructions("")
-      setCurrentStep("selection")
-      setResultVersion(0)
-      setGenerationError("")
-      setDurationNotice("")
-      setGeneratedResult(null)
-    setIsSubmitting(false)
-    setIsSavingResult(false)
+    setCurrentStep("selection")
+    resetGeneratedState()
   }
 
   const summaryItems = useMemo(
@@ -389,30 +566,29 @@ export function BrokerStudioIaVideoPage() {
       { label: "Transformacao", value: transformation },
       { label: "Ritmo", value: rhythm },
       { label: "Camera", value: cameraMovement },
-      { label: "Referencias", value: `${selectedReferenceImages.length + uploadedImages.length} imagem(ns)` },
-      { label: "Creditos IA", value: `${estimatedCredits} estimados` },
+      { label: "Modo", value: requestKind === "transformation_pipeline" ? "Previa + aprovacao + video" : "Video direto" },
+      { label: "Etapa atual", value: generatedResult?.jobStage ?? (requiresPreviewFlow ? "Previa mobiliada" : "Video final") },
+      { label: "Creditos desta etapa", value: `${estimatedStageCredits}` },
+      { label: "Total previsto", value: `${totalEstimatedCredits}` },
     ],
     [
       cameraMovement,
       duration,
-      estimatedCredits,
+      estimatedStageCredits,
       format,
       generatedResult?.duration,
+      generatedResult?.jobStage,
       objective,
+      requestKind,
+      requiresPreviewFlow,
       rhythm,
-      selectedProperty,
-      selectedReferenceImages.length,
+      selectedProperty?.title,
       style,
+      totalEstimatedCredits,
       transformation,
-      uploadedImages.length,
     ],
   )
 
-  const selectedObjectiveConfig = studioVideoObjectiveConfig[objective]
-  const selectedStyleConfig = studioVideoStyleConfig[style]
-  const selectedTransformationConfig = studioVideoTransformationConfig[transformation]
-  const selectedRhythmConfig = studioVideoRhythmConfig[rhythm]
-  const selectedCameraMovementConfig = studioVideoCameraMovementConfig[cameraMovement]
   const creativeBriefPreview = useMemo(
     () =>
       [
@@ -456,11 +632,11 @@ export function BrokerStudioIaVideoPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
                 <Video className="size-3.5" />
-                Provedor real integrado
+                Pipeline inteligente com Luma
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar video do imovel</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Escolha um imovel ou envie imagens, configure o briefing e acompanhe a fila do provedor ate o MP4 final.
+                O Studio IA agora separa transformacao em duas etapas: cria a previa mobiliada, aguarda sua aprovacao e so depois anima a cena.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -532,10 +708,11 @@ export function BrokerStudioIaVideoPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">
                 {currentStep === "selection" && "1. Escolha o imovel ou envie imagens"}
-                {currentStep === "configuration" && "2. Defina o briefing do video"}
-                {currentStep === "review" && "3. Revise antes da geracao"}
-                {currentStep === "processing" && "4. Fila e processamento do provedor"}
-                {currentStep === "result" && "5. Video final pronto"}
+                {currentStep === "configuration" && "2. Monte o briefing criativo"}
+                {currentStep === "review" && "3. Revise antes de enviar"}
+                {currentStep === "processing" && "4. Acompanhando a etapa atual"}
+                {currentStep === "preview" && "5. Aprove a previa transformada"}
+                {currentStep === "result" && "6. Video final pronto"}
               </CardTitle>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -575,7 +752,7 @@ export function BrokerStudioIaVideoPage() {
                     <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Enviar imagens</p>
                       <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                        Envie fotos do imovel para gerar o video mesmo sem selecionar um cadastro existente.
+                        Envie fotos do imovel para gerar o fluxo mesmo sem selecionar um cadastro existente.
                       </p>
 
                       <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[1rem] border border-dashed border-black/[0.08] bg-white px-4 py-8 text-center transition-colors hover:border-[#009b3a]/25 hover:bg-[#f8fdf9]">
@@ -597,7 +774,7 @@ export function BrokerStudioIaVideoPage() {
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Imagens do imovel</p>
                           <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                            Selecione as referencias. O provedor usa a principal como guia visual e o briefing aproveita o restante.
+                            Selecione a referencia principal que deve ser preservada na transformacao e no video.
                           </p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#4B5563]">
@@ -670,9 +847,9 @@ export function BrokerStudioIaVideoPage() {
               {currentStep === "configuration" ? (
                 <>
                   <div className="rounded-[1.2rem] border border-[#dbe8df] bg-[#f8fdf9] p-4">
-                    <p className="text-sm font-semibold text-[#050505]">Briefing criativo do vídeo</p>
+                    <p className="text-sm font-semibold text-[#050505]">Briefing criativo do video</p>
                     <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                      O EME combina objetivo, estilo, transformação, ritmo, câmera, contexto do imóvel e suas observações para montar automaticamente um prompt profissional para a Luma.
+                      O EME combina objetivo, estilo, transformacao, ritmo, camera, contexto do imovel e suas observacoes para montar automaticamente um prompt profissional para a Luma.
                     </p>
                   </div>
 
@@ -822,6 +999,15 @@ export function BrokerStudioIaVideoPage() {
                     />
                   </div>
 
+                  {requiresPreviewFlow ? (
+                    <div className="rounded-[1.2rem] border border-[#dbe8df] bg-[#f8fdf9] p-4">
+                      <p className="text-sm font-semibold text-[#050505]">Transformacao em duas etapas</p>
+                      <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
+                        Primeiro o EME cria uma previa transformada com {estimatedStageCredits} creditos. So depois da sua aprovacao a plataforma libera a animacao final com frame inicial e frame final.
+                      </p>
+                    </div>
+                  ) : null}
+
                   <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                     <p className="text-sm font-semibold text-[#050505]">Instrucoes adicionais do corretor</p>
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
@@ -831,7 +1017,7 @@ export function BrokerStudioIaVideoPage() {
                       value={additionalInstructions}
                       onChange={(event) => setAdditionalInstructions(event.target.value)}
                       maxLength={600}
-                      placeholder="Ex.: abrir com fachada, valorizar varanda gourmet, manter tom sofisticado e encerrar com CTA para visita."
+                      placeholder="Ex.: preservar a vista, usar mobiliario sofisticado, manter o ambiente claro e nao exagerar no movimento da camera."
                       className="mt-4 min-h-32"
                     />
                     <p className="mt-2 text-right text-xs text-[#98A2B3]">{additionalInstructions.length}/600</p>
@@ -851,7 +1037,7 @@ export function BrokerStudioIaVideoPage() {
                       onClick={goToReview}
                       className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
                     >
-                      Revisar antes de gerar
+                      Revisar antes de enviar
                     </Button>
                   </div>
                 </>
@@ -874,9 +1060,13 @@ export function BrokerStudioIaVideoPage() {
                         <Sparkles className="size-4.5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-[#050505]">Creditos validados antes do envio final</p>
+                        <p className="font-semibold text-[#050505]">
+                          {requiresPreviewFlow ? "Primeiro sera criada a previa transformada" : "Creditos validados antes do envio final"}
+                        </p>
                         <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                          O Studio IA verifica saldo antes de iniciar a geracao, calcula a complexidade do briefing e estorna o consumo se o provedor falhar.
+                          {requiresPreviewFlow
+                            ? "A etapa inicial gera uma imagem transformada, valida a diferenca em relacao ao original e so depois libera a animacao."
+                            : "O Studio IA verifica saldo antes de iniciar a geracao e estorna o consumo se o provedor falhar."}
                         </p>
                       </div>
                     </div>
@@ -888,9 +1078,11 @@ export function BrokerStudioIaVideoPage() {
                   </div>
 
                   <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                    <p className="text-sm font-semibold text-[#050505]">Observacoes finais</p>
+                    <p className="text-sm font-semibold text-[#050505]">Politica de custo desta execucao</p>
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                      {additionalInstructions.trim().length > 0 ? additionalInstructions : "Nenhuma instrucao adicional informada."}
+                      {requiresPreviewFlow
+                        ? `A previa mobiliada debita ${estimatedStageCredits} creditos nesta etapa. A animacao final sera cobrada somente depois da aprovacao da imagem.`
+                        : `O video sera criado em uma unica etapa com ${estimatedStageCredits} creditos estimados.`}
                     </p>
                   </div>
 
@@ -909,7 +1101,7 @@ export function BrokerStudioIaVideoPage() {
                       disabled={isSubmitting}
                       className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
                     >
-                      Iniciar geracao
+                      {requiresPreviewFlow ? "Criar previa mobiliada" : "Gerar video"}
                     </Button>
                   </div>
                 </>
@@ -917,22 +1109,126 @@ export function BrokerStudioIaVideoPage() {
 
               {currentStep === "processing" ? (
                 <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-6">
-                  <EmeLoading message="Enviando e acompanhando a geracao do video..." compact={false} />
+                  <EmeLoading
+                    message={
+                      generatedResult?.activeStage === "preview"
+                        ? "Gerando ambiente transformado para aprovacao..."
+                        : "Animando a transformacao e acompanhando o video..."
+                    }
+                    compact={false}
+                  />
                   <div className="mt-4 rounded-[1rem] border border-black/[0.06] bg-white p-4">
                     <p className="text-sm font-semibold text-[#050505]">Status atual do provedor</p>
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                      {generatedResult?.generationStatus === "queued"
-                        ? "Pedido em fila aguardando processamento."
-                        : "Pedido em processamento no provedor de video."}
+                      {generatedResult?.activeStage === "preview"
+                        ? "A Luma esta criando a imagem transformada com base na referencia original."
+                        : "A Luma esta animando a transicao entre o frame original e o frame final aprovado."}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                      Duracao confirmada: {getStudioVideoDurationLabel(generatedResult?.duration ?? duration)}.
+                      {generatedResult?.activeStage === "preview"
+                        ? "Etapa atual: Gerando ambiente mobiliado."
+                        : `Etapa atual: Criando video ${generatedResult?.providerModel === studioVideoPreviewVideoModel ? "economico" : "final"} da transformacao.`}
                     </p>
                     <p className="mt-3 text-sm font-semibold text-[#009b3a]">
                       Progresso: {generatedResult?.progress ?? 0}%
                     </p>
                   </div>
                 </div>
+              ) : null}
+
+              {currentStep === "preview" && generatedResult ? (
+                <>
+                  <div className="rounded-[1.2rem] border border-[#dbe8df] bg-[#f8fdf9] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 items-center justify-center rounded-2xl bg-[#eef9f1] text-[#009b3a]">
+                        <ImagePlus className="size-4.5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#050505]">
+                          {generatedResult.previewApproved ? "Previa aprovada para animacao" : "Previa transformada pronta para revisao"}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
+                          Compare a imagem original com a previa final. O video so sera criado depois da aprovacao.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <PreviewImageCard title="Imagem original" imageUrl={sourcePreviewUrl} emptyMessage="Nenhuma imagem original disponivel nesta sessao." />
+                    <PreviewImageCard title="Previa mobiliada" imageUrl={generatedResult.previewImageUrl} emptyMessage="A previa ainda nao foi gerada." />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <StatusTile
+                      title="Qualidade da previa"
+                      value={generatedResult.previewQualityScore != null ? `${Math.round(generatedResult.previewQualityScore * 100)}% de diferenca` : "Aguardando analise"}
+                      description="O backend compara a imagem original e a previa para evitar videos caros quando a transformacao nao ficou visivel."
+                    />
+                    <StatusTile
+                      title="Credito da proxima etapa"
+                      value={`${generatedResult.previewApproved ? getStudioVideoEstimatedCredits({
+                        duration,
+                        objective,
+                        transformation,
+                        stage: "video",
+                        model: generatedResult.providerModel || "ray-2",
+                      }) : getStudioVideoEstimatedCredits({
+                        duration,
+                        objective,
+                        transformation,
+                        stage: "preview_regeneration",
+                      })}`}
+                      description={generatedResult.previewApproved ? "Animacao final validada somente apos sua aprovacao." : "Regenerar a imagem custa apenas a etapa de previa."}
+                    />
+                  </div>
+
+                  {generatedResult.previewPrompt ? (
+                    <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                      <p className="text-sm font-semibold text-[#050505]">Prompt da previa</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#5F6B7A]">{generatedResult.previewPrompt}</p>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setCurrentStep("configuration")}
+                      className="h-11 rounded-xl border border-black/[0.06] bg-white px-5 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                    >
+                      Ajustar briefing
+                    </Button>
+                    {!generatedResult.previewApproved ? (
+                      <Button
+                        type="button"
+                        onClick={approvePreview}
+                        disabled={isApprovingPreview || !generatedResult.previewImageUrl}
+                        className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
+                      >
+                        {isApprovingPreview ? "Aprovando..." : "Aprovar previa"}
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={regeneratePreview}
+                      disabled={isSubmitting}
+                      className="h-11 rounded-xl border border-black/[0.06] bg-white px-5 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                    >
+                      <RefreshCcw className="size-4" />
+                      Gerar novamente
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={createTransformationVideo}
+                      disabled={isSubmitting || !generatedResult.previewApproved}
+                      className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
+                    >
+                      Animar transformacao
+                    </Button>
+                  </div>
+                </>
               ) : null}
 
               {currentStep === "result" && generatedResult ? (
@@ -950,6 +1246,13 @@ export function BrokerStudioIaVideoPage() {
                       </div>
                     </div>
                   </div>
+
+                  {(sourcePreviewUrl || generatedResult.previewImageUrl) ? (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <PreviewImageCard title="Frame inicial" imageUrl={sourcePreviewUrl} emptyMessage="Sem frame inicial disponivel." />
+                      <PreviewImageCard title="Frame final aprovado" imageUrl={generatedResult.previewImageUrl} emptyMessage="Sem frame final aprovado." />
+                    </div>
+                  ) : null}
 
                   {generatedResult.videoUrl ? (
                     <div className="overflow-hidden rounded-[1.2rem] border border-black/[0.06] bg-black">
@@ -1028,18 +1331,18 @@ export function BrokerStudioIaVideoPage() {
               <CardContent className="grid gap-3 p-5 pt-0">
                 <StatusTile
                   title="Disponibilidade"
-                  description="Fluxo operando com geracao assíncrona, exibicao final e opcao de salvar."
+                  description="Fluxo com previa estatica, aprovacao manual, animacao final e opcao de salvar."
                   value="Ativo"
                 />
                 <StatusTile
                   title="Geracao"
-                  description="Acompanhamento em fila, processamento, sucesso e falha com atualizacao automatica."
-                  value={generatedResult ? generatedResult.generationStatus : "Aguardando envio"}
+                  description="Acompanhamento em fila, processamento, aprovacao, sucesso e falha com polling controlado."
+                  value={generatedResult ? generatedResult.jobStage : "Aguardando envio"}
                 />
                 <StatusTile
                   title="Creditos IA"
-                  description="Consumo validado antes do envio e protegido com estorno em caso de falha."
-                  value={`${estimatedCredits} estimados para ${getStudioVideoDurationLabel(generatedResult?.duration ?? duration)}`}
+                  description="Consumo separado por etapa, validado antes da chamada e protegido com estorno em caso de falha."
+                  value={`${generatedResult?.totalCreditsConsumed ?? 0} consumidos / ${totalEstimatedCredits} previstos`}
                 />
                 <Button
                   type="button"
@@ -1103,6 +1406,31 @@ function StatusTile({ title, value, description }: { title: string; value: strin
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">{title}</p>
       <p className="mt-2 text-sm font-semibold text-[#050505]">{value}</p>
       <p className="mt-2 text-sm leading-6 text-[#6B7280]">{description}</p>
+    </div>
+  )
+}
+
+function PreviewImageCard({
+  title,
+  imageUrl,
+  emptyMessage,
+}: {
+  title: string
+  imageUrl?: string
+  emptyMessage: string
+}) {
+  return (
+    <div className="overflow-hidden rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8]">
+      <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
+        <p className="text-sm font-semibold text-[#050505]">{title}</p>
+      </div>
+      {imageUrl ? (
+        <div className="aspect-[4/3] w-full bg-[#eef2f6]" style={{ backgroundImage: `url(${imageUrl})`, backgroundPosition: "center", backgroundSize: "cover" }} />
+      ) : (
+        <div className="flex aspect-[4/3] items-center justify-center px-6 text-center text-sm leading-6 text-[#6B7280]">
+          {emptyMessage}
+        </div>
+      )}
     </div>
   )
 }

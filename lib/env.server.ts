@@ -80,6 +80,8 @@ export function getLumaAIEnv() {
   return {
     apiKey: readEnv("LUMAAI_API_KEY"),
     videoModel: readEnv("LUMAAI_VIDEO_MODEL") || "ray-2",
+    previewVideoModel: readEnv("LUMAAI_VIDEO_PREVIEW_MODEL") || "ray-flash-2",
+    imageModel: readEnv("LUMAAI_IMAGE_MODEL") || "photon-flash-1",
   }
 }
 
