@@ -25,7 +25,6 @@ import {
   studioVideoPreviewActionType,
   studioVideoPreviewRegenerationActionType,
   studioVideoRequestSchema,
-  studioVideoTechnicalSpendLimits,
   stringifyStudioVideoJobContent,
 } from "@/lib/studio-ia-video"
 
@@ -39,13 +38,6 @@ const propertyInclude = {
   },
   agency: true,
 } as const
-
-const videoActionTypes = [
-  studioVideoActionType,
-  studioVideoPreviewActionType,
-  studioVideoPreviewRegenerationActionType,
-  studioVideoFinalActionType,
-] as const
 
 type PostAction = "create" | "regenerate-preview" | "create-video"
 
@@ -142,6 +134,15 @@ async function resolveJobDocument(requestId: string, brokerId: string) {
   return { error: null, document }
 }
 
+function isSimultaneousJob(job: ReturnType<typeof parseStudioVideoJobContent>) {
+  return (
+    job.generationStatus !== "failed" &&
+    (job.jobStage === "queued" ||
+      job.jobStage === "preview_processing" ||
+      job.jobStage === "video_processing")
+  )
+}
+
 async function findExistingJobBySignature(brokerId: string, requestSignature: string) {
   const documents = await prisma.brokerDocument.findMany({
     where: {
@@ -155,10 +156,7 @@ async function findExistingJobBySignature(brokerId: string, requestSignature: st
   for (const document of documents) {
     try {
       const job = parseStudioVideoJobContent(document.content)
-      if (
-        job.requestSignature === requestSignature &&
-        job.jobStage !== "failed"
-      ) {
+      if (job.requestSignature === requestSignature && isSimultaneousJob(job)) {
         return { document, job }
       }
     } catch {
@@ -169,53 +167,11 @@ async function findExistingJobBySignature(brokerId: string, requestSignature: st
   return null
 }
 
-function buildTechnicalLimitPayload() {
+function buildConcurrentJobPayload() {
   return {
     error:
-      "O limite tecnico de geracao deste fluxo foi atingido para esta conta. Tente novamente depois para evitar consumo indevido.",
+      "Ja existe uma geracao deste video em andamento. Aguarde a etapa atual terminar antes de iniciar outra.",
     technicalLimitReached: true,
-  }
-}
-
-async function getTechnicalSpendUsage(brokerId: string, startDate: Date) {
-  const usage = await prisma.aiCreditTransaction.aggregate({
-    _sum: {
-      amount: true,
-    },
-    where: {
-      brokerId,
-      type: "usage",
-      actionType: { in: [...videoActionTypes] },
-      createdAt: {
-        gte: startDate,
-      },
-    },
-  })
-
-  return Math.abs(usage._sum.amount ?? 0)
-}
-
-async function checkTechnicalSpendLimit(brokerId: string, additionalCredits: number) {
-  const now = new Date()
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-
-  const [dailyUsed, monthlyUsed] = await Promise.all([
-    getTechnicalSpendUsage(brokerId, startOfDay),
-    getTechnicalSpendUsage(brokerId, startOfMonth),
-  ])
-
-  const nextDaily = dailyUsed + additionalCredits
-  const nextMonthly = monthlyUsed + additionalCredits
-
-  return {
-    allowed:
-      nextDaily <= studioVideoTechnicalSpendLimits.dailyCredits &&
-      nextMonthly <= studioVideoTechnicalSpendLimits.monthlyCredits,
-    dailyUsed,
-    monthlyUsed,
-    nextDaily,
-    nextMonthly,
   }
 }
 
@@ -427,7 +383,21 @@ export async function POST(request: NextRequest) {
       const existingJob = await findExistingJobBySignature(user.broker.id, requestSignature)
 
       if (existingJob) {
-        return NextResponse.json(getStudioVideoResult(existingJob.document.id, existingJob.job), { status: 202 })
+        console.info("[api][studio-ia][video][post] blocked-concurrent-create", {
+          brokerId: user.broker.id,
+          requestSignature,
+          existingRequestId: existingJob.document.id,
+          existingJobStage: existingJob.job.jobStage,
+          existingGenerationStatus: existingJob.job.generationStatus,
+        })
+
+        return NextResponse.json(
+          {
+            ...getStudioVideoResult(existingJob.document.id, existingJob.job),
+            ...buildConcurrentJobPayload(),
+          },
+          { status: 409 },
+        )
       }
 
       const firstStageCredits = getStudioVideoEstimatedCredits({
@@ -440,11 +410,6 @@ export async function POST(request: NextRequest) {
       const credits = await hasBrokerAiCredits(user.broker.id, firstStageCredits)
       if (!credits.allowed) {
         return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
-      }
-
-      const spendLimit = await checkTechnicalSpendLimit(user.broker.id, firstStageCredits)
-      if (!spendLimit.allowed) {
-        return NextResponse.json(buildTechnicalLimitPayload(), { status: 429 })
       }
 
       const created = await createInitialStudioVideoJob({
@@ -496,7 +461,20 @@ export async function POST(request: NextRequest) {
       }
 
       if (currentJob.jobStage === "preview_processing") {
-        return NextResponse.json(getStudioVideoResult(requestId, currentJob), { status: 202 })
+        console.info("[api][studio-ia][video][post] blocked-concurrent-preview-regeneration", {
+          brokerId: user.broker.id,
+          requestId,
+          jobStage: currentJob.jobStage,
+          generationStatus: currentJob.generationStatus,
+        })
+
+        return NextResponse.json(
+          {
+            ...getStudioVideoResult(requestId, currentJob),
+            ...buildConcurrentJobPayload(),
+          },
+          { status: 409 },
+        )
       }
 
       const stageCredits = getStudioVideoEstimatedCredits({
@@ -508,11 +486,6 @@ export async function POST(request: NextRequest) {
       const credits = await hasBrokerAiCredits(user.broker.id, stageCredits)
       if (!credits.allowed) {
         return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
-      }
-
-      const spendLimit = await checkTechnicalSpendLimit(user.broker.id, stageCredits)
-      if (!spendLimit.allowed) {
-        return NextResponse.json(buildTechnicalLimitPayload(), { status: 429 })
       }
 
       const regeneratedJob = await regenerateStudioVideoPreview(currentJob)
@@ -535,6 +508,23 @@ export async function POST(request: NextRequest) {
       }
 
       if (currentJob.jobStage === "video_processing" || currentJob.jobStage === "completed") {
+        if (currentJob.jobStage === "video_processing") {
+          console.info("[api][studio-ia][video][post] blocked-concurrent-video-create", {
+            brokerId: user.broker.id,
+            requestId,
+            jobStage: currentJob.jobStage,
+            generationStatus: currentJob.generationStatus,
+          })
+
+          return NextResponse.json(
+            {
+              ...getStudioVideoResult(requestId, currentJob),
+              ...buildConcurrentJobPayload(),
+            },
+            { status: 409 },
+          )
+        }
+
         return NextResponse.json(getStudioVideoResult(requestId, currentJob), { status: 202 })
       }
 
@@ -552,11 +542,6 @@ export async function POST(request: NextRequest) {
       const credits = await hasBrokerAiCredits(user.broker.id, stageCredits)
       if (!credits.allowed) {
         return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
-      }
-
-      const spendLimit = await checkTechnicalSpendLimit(user.broker.id, stageCredits)
-      if (!spendLimit.allowed) {
-        return NextResponse.json(buildTechnicalLimitPayload(), { status: 429 })
       }
 
       const nextJob = await createApprovedStudioVideoAnimation(currentJob)
