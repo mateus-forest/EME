@@ -6,6 +6,9 @@ import { getLumaAIEnv } from "@/lib/env.server"
 import { savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
 import {
   studioVideoActionType,
+  studioVideoCameraMovementConfig,
+  studioVideoCameraMovementOptions,
+  type StudioVideoCameraMovement,
   studioVideoDefaultDuration,
   studioVideoFormats,
   getStudioVideoDurationLabel,
@@ -13,28 +16,48 @@ import {
   getStudioVideoProviderAcceptedDurations,
   normalizeStudioVideoDuration,
   studioVideoJobContentSchema,
+  studioVideoObjectiveConfig,
+  studioVideoObjectiveGroups,
   studioVideoObjectives,
+  studioVideoRhythmConfig,
+  studioVideoRhythmOptions,
+  type StudioVideoRhythm,
   studioVideoStyles,
   studioVideoDurationAdjustedMessage,
   studioVideoInvalidDurationMessage,
+  studioVideoStyleConfig,
+  studioVideoTransformationConfig,
+  studioVideoTransformationOptions,
+  type StudioVideoTransformation,
+  type StudioVideoStyle,
   type StudioVideoJobContent,
   type StudioVideoDuration,
+  type StudioVideoObjective,
   type StudioVideoRequest,
   type StudioVideoResult,
+  studioVideoRequestSchema,
+  studioVideoResultSchema,
 } from "@/lib/studio-ia-video-shared"
 
 export {
   studioVideoActionType,
+  studioVideoCameraMovementOptions,
   studioVideoDefaultDuration,
   studioVideoFormats,
   getStudioVideoDurationLabel,
   getStudioVideoEstimatedCredits,
+  studioVideoObjectiveConfig,
+  studioVideoObjectiveGroups,
   studioVideoDurationAdjustedMessage,
   studioVideoInvalidDurationMessage,
   studioVideoObjectives,
+  studioVideoRhythmOptions,
   studioVideoRequestSchema,
   studioVideoResultSchema,
   studioVideoStyles,
+  studioVideoStyleConfig,
+  studioVideoTransformationConfig,
+  studioVideoTransformationOptions,
 } from "@/lib/studio-ia-video-shared"
 
 export type StudioVideoPropertyContext = {
@@ -100,18 +123,24 @@ const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaGener
   "Quadrado 1:1": "540p",
 }
 
-const styleDirectionMap: Record<(typeof studioVideoStyles)[number], string> = {
-  Cinematografico: "movimentos suaves de camera, composicao elegante, luz natural valorizada e acabamento premium",
-  Minimalista: "visual limpo, ritmo sereno, enquadramentos objetivos e foco em arquitetura e amplitude",
-  "Alto padrao": "apresentacao sofisticada, detalhes de luxo, atmosfera aspiracional e acabamento impecavel",
-  "Dinamico comercial": "edicao mais energica, cortes objetivos, foco comercial e linguagem visual de anuncio",
+function getObjectiveConfig(objective: StudioVideoObjective) {
+  return studioVideoObjectiveConfig[objective]
 }
 
-const objectiveDirectionMap: Record<(typeof studioVideoObjectives)[number], string> = {
-  "Atrair interessados": "priorize impacto inicial, melhores diferenciais e convite para contato imediato",
-  "Gerar visitas": "mostre fluidez de circulacao, conforto e beneficios que incentivem agendar visita",
-  "Apresentar o imovel": "organize a narrativa como tour objetivo e claro do imovel",
-  "Fortalecer a marca do corretor": "combine apresentacao do imovel com sensacao de atendimento profissional e confiavel",
+function getStyleConfig(style: StudioVideoStyle) {
+  return studioVideoStyleConfig[style]
+}
+
+function getTransformationConfig(transformation: StudioVideoTransformation) {
+  return studioVideoTransformationConfig[transformation]
+}
+
+function getRhythmConfig(rhythm: StudioVideoRhythm) {
+  return studioVideoRhythmConfig[rhythm]
+}
+
+function getCameraMovementConfig(cameraMovement: StudioVideoCameraMovement) {
+  return studioVideoCameraMovementConfig[cameraMovement]
 }
 
 function clipText(value: string, maxLength: number) {
@@ -180,6 +209,18 @@ export function parseStudioVideoJobContent(content: string) {
   return studioVideoJobContentSchema.parse({
     ...parsed,
     duration: normalizedDuration.duration,
+    transformation:
+      typeof parsed.transformation === "string" && parsed.transformation in studioVideoTransformationConfig
+        ? parsed.transformation
+        : studioVideoTransformationOptions[0],
+    rhythm:
+      typeof parsed.rhythm === "string" && parsed.rhythm in studioVideoRhythmConfig
+        ? parsed.rhythm
+        : studioVideoRhythmOptions[1],
+    cameraMovement:
+      typeof parsed.cameraMovement === "string" && parsed.cameraMovement in studioVideoCameraMovementConfig
+        ? parsed.cameraMovement
+        : studioVideoCameraMovementOptions[3],
     noticeMessage: normalizedDuration.adjusted
       ? studioVideoDurationAdjustedMessage
       : typeof parsed.noticeMessage === "string"
@@ -194,28 +235,42 @@ export function stringifyStudioVideoJobContent(content: StudioVideoJobContent) {
 
 function buildStoryboard(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
   const area = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ") || "localizacao do imovel"
+  const objective = getObjectiveConfig(input.objective)
+  const style = getStyleConfig(input.style)
+  const transformation = getTransformationConfig(input.transformation)
 
   return [
     `Abertura com fachada e contexto de ${clipText(area, 70)}.`,
-    `Entrada mostrando ${clipText(property?.title || "apresentacao principal do imovel", 80)} com foco em impacto visual.`,
-    `Ambientes internos destacando ${clipText(objectiveDirectionMap[input.objective], 110)}.`,
-    `Detalhes de valor como iluminacao, acabamento e sensacao de ${clipText(input.style.toLowerCase(), 70)}.`,
-    `Encerramento com chamada para acao alinhada a ${clipText(input.objective.toLowerCase(), 70)}.`,
+    `Entrada mostrando ${clipText(property?.title || "apresentacao principal do imovel", 80)} com foco em ${clipText(objective.commercialFocus, 90)}.`,
+    `Ambientes internos guiados por ${clipText(objective.storyline, 120)}.`,
+    `Transformacao principal: ${clipText(transformation.sceneDirection, 120)}.`,
+    `Tratamento visual com ${clipText(style.visualDirection, 120)}.`,
+    `Encerramento com chamada para acao alinhada a ${clipText(objective.ctaDirection, 90)}.`,
   ].slice(0, 5)
 }
 
 function buildShotPlan(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
+  const style = getStyleConfig(input.style)
+  const transformation = getTransformationConfig(input.transformation)
+  const cameraMovement = getCameraMovementConfig(input.cameraMovement)
+
   return [
     "Plano aberto da fachada ou vista principal.",
-    "Travelling de entrada conectando exterior e interior.",
+    clipText(cameraMovement.shotDirection, 150),
     `Destaque para ${clipText(property?.type?.toLowerCase() || "ambientes principais", 80)} com foco em amplitude.`,
-    `Detalhes de apoio reforcando o estilo ${clipText(input.style.toLowerCase(), 60)}.`,
+    `Detalhes de apoio reforcando ${clipText(style.cameraDirection, 120)}.`,
+    `Momento de transformacao: ${clipText(transformation.sceneDirection, 120)}.`,
     "Fechamento com cena mais aspiracional e CTA visual.",
   ]
 }
 
 function buildScript(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
   const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
+  const objective = getObjectiveConfig(input.objective)
+  const style = getStyleConfig(input.style)
+  const transformation = getTransformationConfig(input.transformation)
+  const rhythm = getRhythmConfig(input.rhythm)
+  const cameraMovement = getCameraMovementConfig(input.cameraMovement)
   const summary = [
     property?.title,
     property?.type,
@@ -231,8 +286,12 @@ function buildScript(input: StudioVideoRequest, property?: StudioVideoPropertyCo
     [
       `Video comercial no formato ${input.format}, com narrativa ${input.style.toLowerCase()} e objetivo de ${input.objective.toLowerCase()}.`,
       summary ? `Contexto principal: ${summary}.` : "",
-      `Direcao criativa: ${objectiveDirectionMap[input.objective]}.`,
-      `Tratamento visual: ${styleDirectionMap[input.style]}.`,
+      `Direcao criativa: ${objective.promptBase}.`,
+      `Tratamento visual: ${style.visualDirection}.`,
+      `Narrativa: ${style.narrativeDirection}.`,
+      `Transformacao: ${transformation.promptDirection}.`,
+      `Ritmo: ${rhythm.promptDirection}.`,
+      `Camera: ${cameraMovement.promptDirection}.`,
       input.additionalInstructions ? `Instrucoes extras: ${input.additionalInstructions}.` : "",
     ]
       .filter(Boolean)
@@ -243,18 +302,38 @@ function buildScript(input: StudioVideoRequest, property?: StudioVideoPropertyCo
 
 function buildVideoPrompt(input: StudioVideoRequest, property?: StudioVideoPropertyContext | null) {
   const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
+  const objective = getObjectiveConfig(input.objective)
+  const style = getStyleConfig(input.style)
+  const transformation = getTransformationConfig(input.transformation)
+  const rhythm = getRhythmConfig(input.rhythm)
+  const cameraMovement = getCameraMovementConfig(input.cameraMovement)
 
   return [
     "Crie um video imobiliario comercial em portugues do Brasil.",
     `Formato final desejado: ${input.format}.`,
     `Duracao final obrigatoria: ${getStudioVideoDurationLabel(input.duration)} (${input.duration}).`,
-    `Objetivo comercial: ${input.objective}.`,
-    `Estilo visual: ${input.style}. ${styleDirectionMap[input.style]}.`,
-    `Direcao narrativa: ${objectiveDirectionMap[input.objective]}.`,
+    `Objetivo principal: ${input.objective}. ${objective.promptBase}`,
+    `Categoria do objetivo: ${objective.group}.`,
+    `Foco comercial: ${objective.commercialFocus}.`,
+    `Estilo visual: ${input.style}. ${style.visualDirection}`,
+    `Narrativa: ${style.narrativeDirection}`,
+    `Ritmo: ${input.rhythm}. ${rhythm.promptDirection}`,
+    `Movimento de camera: ${input.cameraMovement}. ${cameraMovement.promptDirection}`,
+    `Transformacao desejada: ${input.transformation}. ${transformation.promptDirection}`,
+    `Comportamento da cena: ${transformation.sceneDirection}`,
     property
       ? `Contexto do imovel: ${property.title}; tipo ${property.type}; finalidade ${property.purpose}; localizacao ${location}; preco ${property.price}; quartos ${property.bedrooms}; banheiros ${property.bathrooms}; vagas ${property.parkingSpots}.`
       : "Use apenas a imagem enviada como base do video.",
     property?.description ? `Descricao atual do imovel: ${clipText(property.description, 500)}.` : "",
+    `Direcao de camera complementar: ${style.cameraDirection}`,
+    `Ritmo narrativo complementar: ${style.rhythmDirection}`,
+    `CTA final: ${objective.ctaDirection}`,
+    objective.group === "Transformacao"
+      ? "A transformacao deve ser visivel durante a cena, com evolucao natural do ambiente e resultado final superior ao frame inicial."
+      : "Evite apenas aplicar zoom sobre imagem estatica; crie narrativa visual com progressao real e leitura espacial do ambiente.",
+    input.transformation !== "Nenhuma"
+      ? "Os elementos de transformacao devem aparecer de forma realista, com materiais, luz, decoracao e mobiliario coerentes com o imovel."
+      : "Preserve fidelidade ao espaco original e valorize o que ja existe no ambiente.",
     "Nao inclua textos sobrepostos, legendas, logos, marcas d'agua ou interfaces.",
     "Mantenha aparencia fotografica realista, pronta para uso comercial imobiliario.",
     "Preserve a coerencia arquitetonica do imovel e nao invente caracteristicas conflitantes com a imagem de referencia.",
@@ -305,7 +384,11 @@ export function getStudioVideoProviderConfig() {
     provider: "lumaai",
     model: videoModel,
     isConfigured: Boolean(apiKey),
-    estimatedCredits: getStudioVideoEstimatedCredits(studioVideoDefaultDuration),
+    estimatedCredits: getStudioVideoEstimatedCredits({
+      duration: studioVideoDefaultDuration,
+      objective: studioVideoObjectives[0],
+      transformation: studioVideoTransformationOptions[0],
+    }),
   }
 }
 
@@ -333,6 +416,7 @@ function createResultFromJob(requestId: string, job: StudioVideoJobContent): Stu
     script: job.script,
     shotPlan: job.shotPlan,
     duration: job.duration,
+    promptPreview: job.prompt,
     videoUrl: job.videoUrl,
     fileSaved: Boolean(job.savedDocumentId),
     progress: job.progress,
@@ -397,7 +481,11 @@ export async function generateStudioPropertyVideo({
   const jobContent: StudioVideoJobContent = {
     provider: config.provider,
     providerVideoId: generation.id,
-    estimatedCredits: getStudioVideoEstimatedCredits(input.duration),
+    estimatedCredits: getStudioVideoEstimatedCredits({
+      duration: input.duration,
+      objective: input.objective,
+      transformation: input.transformation,
+    }),
     propertyId: property?.id,
     propertyTitle: property?.title,
     propertyLocation: property?.location,
@@ -407,6 +495,9 @@ export async function generateStudioPropertyVideo({
     duration: input.duration,
     objective: input.objective,
     style: input.style,
+    transformation: input.transformation,
+    rhythm: input.rhythm,
+    cameraMovement: input.cameraMovement,
     additionalInstructions: input.additionalInstructions,
     prompt,
     storyboard,

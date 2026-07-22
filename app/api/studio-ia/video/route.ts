@@ -229,7 +229,11 @@ export async function POST(request: NextRequest) {
         }
       : null
 
-    const estimatedCredits = getStudioVideoEstimatedCredits(payload.duration)
+    const estimatedCredits = getStudioVideoEstimatedCredits({
+      duration: payload.duration,
+      objective: payload.objective,
+      transformation: payload.transformation,
+    })
     const credits = await hasBrokerAiCredits(user.broker.id, estimatedCredits)
     if (!credits.allowed) {
       return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
@@ -255,7 +259,11 @@ export async function POST(request: NextRequest) {
         propertyId: payload.propertyId ?? null,
         format: payload.format,
         duration: payload.duration,
+        objective: payload.objective,
         style: payload.style,
+        transformation: payload.transformation,
+        rhythm: payload.rhythm,
+        cameraMovement: payload.cameraMovement,
       },
     })
 
@@ -311,7 +319,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "A chave LUMAAI_API_KEY nao esta configurada para o fluxo de video do Studio IA.",
-          estimatedCredits: getStudioVideoEstimatedCredits(studioVideoDefaultDuration),
+          estimatedCredits: getStudioVideoEstimatedCredits({
+            duration: studioVideoDefaultDuration,
+            objective: "Atrair interessados",
+            transformation: "Nenhuma",
+          }),
           providerConfigured: false,
         },
         { status: 503 },
@@ -322,7 +334,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "A chave LUMAAI_API_KEY foi rejeitada pela Luma AI.",
-          estimatedCredits: getStudioVideoEstimatedCredits(studioVideoDefaultDuration),
+          estimatedCredits: getStudioVideoEstimatedCredits({
+            duration: studioVideoDefaultDuration,
+            objective: "Atrair interessados",
+            transformation: "Nenhuma",
+          }),
           providerConfigured: true,
         },
         { status: 502 },
@@ -381,8 +397,12 @@ export async function PATCH(request: NextRequest) {
           providerVideoId: job.providerVideoId,
           format: job.format,
           duration: job.duration,
+          promptPreview: job.prompt,
           style: job.style,
           objective: job.objective,
+          transformation: job.transformation,
+          rhythm: job.rhythm,
+          cameraMovement: job.cameraMovement,
         }),
         status: "generated",
       },

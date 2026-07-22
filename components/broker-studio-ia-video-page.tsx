@@ -28,14 +28,22 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   getStudioVideoDurationLabel,
   getStudioVideoEstimatedCredits,
+  studioVideoCameraMovementConfig,
+  studioVideoCameraMovementOptions,
   studioVideoDefaultDuration,
   studioVideoFormats,
   studioVideoInvalidDurationMessage,
+  studioVideoObjectiveConfig,
   studioVideoObjectives,
+  studioVideoRhythmConfig,
+  studioVideoRhythmOptions,
   studioVideoRequestSchema,
   studioVideoResultSchema,
   studioVideoSelectableDurationOptions,
+  studioVideoStyleConfig,
   studioVideoStyles,
+  studioVideoTransformationConfig,
+  studioVideoTransformationOptions,
 } from "@/lib/studio-ia-video-shared"
 
 type StudioVideoStep = "selection" | "configuration" | "review" | "processing" | "result"
@@ -43,6 +51,9 @@ type StudioVideoFormat = (typeof studioVideoFormats)[number]
 type StudioVideoDuration = (typeof studioVideoSelectableDurationOptions)[number]["value"]
 type StudioVideoObjective = (typeof studioVideoObjectives)[number]
 type StudioVideoStyle = (typeof studioVideoStyles)[number]
+type StudioVideoTransformation = (typeof studioVideoTransformationOptions)[number]
+type StudioVideoRhythm = (typeof studioVideoRhythmOptions)[number]
+type StudioVideoCameraMovement = (typeof studioVideoCameraMovementOptions)[number]
 type GeneratedVideoResult = z.infer<typeof studioVideoResultSchema>
 
 type UploadPreview = {
@@ -70,6 +81,9 @@ export function BrokerStudioIaVideoPage() {
   const [duration, setDuration] = useState<StudioVideoDuration>(studioVideoDefaultDuration)
   const [objective, setObjective] = useState<StudioVideoObjective>(studioVideoObjectives[0])
   const [style, setStyle] = useState<StudioVideoStyle>(studioVideoStyles[0])
+  const [transformation, setTransformation] = useState<StudioVideoTransformation>(studioVideoTransformationOptions[0])
+  const [rhythm, setRhythm] = useState<StudioVideoRhythm>(studioVideoRhythmOptions[1])
+  const [cameraMovement, setCameraMovement] = useState<StudioVideoCameraMovement>(studioVideoCameraMovementOptions[3])
   const [additionalInstructions, setAdditionalInstructions] = useState("")
   const [currentStep, setCurrentStep] = useState<StudioVideoStep>("selection")
   const [resultVersion, setResultVersion] = useState(0)
@@ -89,7 +103,13 @@ export function BrokerStudioIaVideoPage() {
     (selectedProperty && selectedReferenceImages.length > 0) || uploadedImages.length > 0,
   )
 
-  const estimatedCredits = generatedResult?.estimatedCredits ?? getStudioVideoEstimatedCredits(duration)
+  const estimatedCredits =
+    generatedResult?.estimatedCredits ??
+    getStudioVideoEstimatedCredits({
+      duration,
+      objective,
+      transformation,
+    })
 
   useEffect(() => {
     uploadedImagesRef.current = uploadedImages
@@ -228,6 +248,9 @@ export function BrokerStudioIaVideoPage() {
       duration,
       objective,
       style,
+      transformation,
+      rhythm,
+      cameraMovement,
       additionalInstructions,
       version: resultVersion + 1,
     })
@@ -339,11 +362,14 @@ export function BrokerStudioIaVideoPage() {
     setSelectedPropertyId("")
       setSelectedReferenceImages([])
       setUploadedImages([])
-      setFormat(studioVideoFormats[0])
-      setDuration(studioVideoDefaultDuration)
-      setObjective(studioVideoObjectives[0])
-      setStyle(studioVideoStyles[0])
-      setAdditionalInstructions("")
+    setFormat(studioVideoFormats[0])
+    setDuration(studioVideoDefaultDuration)
+    setObjective(studioVideoObjectives[0])
+    setStyle(studioVideoStyles[0])
+    setTransformation(studioVideoTransformationOptions[0])
+    setRhythm(studioVideoRhythmOptions[1])
+    setCameraMovement(studioVideoCameraMovementOptions[3])
+    setAdditionalInstructions("")
       setCurrentStep("selection")
       setResultVersion(0)
       setGenerationError("")
@@ -360,10 +386,58 @@ export function BrokerStudioIaVideoPage() {
       { label: "Duracao", value: getStudioVideoDurationLabel(generatedResult?.duration ?? duration) },
       { label: "Objetivo", value: objective },
       { label: "Estilo", value: style },
+      { label: "Transformacao", value: transformation },
+      { label: "Ritmo", value: rhythm },
+      { label: "Camera", value: cameraMovement },
       { label: "Referencias", value: `${selectedReferenceImages.length + uploadedImages.length} imagem(ns)` },
       { label: "Creditos IA", value: `${estimatedCredits} estimados` },
     ],
-    [duration, estimatedCredits, format, generatedResult?.duration, objective, selectedProperty, selectedReferenceImages.length, style, uploadedImages.length],
+    [
+      cameraMovement,
+      duration,
+      estimatedCredits,
+      format,
+      generatedResult?.duration,
+      objective,
+      rhythm,
+      selectedProperty,
+      selectedReferenceImages.length,
+      style,
+      transformation,
+      uploadedImages.length,
+    ],
+  )
+
+  const selectedObjectiveConfig = studioVideoObjectiveConfig[objective]
+  const selectedStyleConfig = studioVideoStyleConfig[style]
+  const selectedTransformationConfig = studioVideoTransformationConfig[transformation]
+  const selectedRhythmConfig = studioVideoRhythmConfig[rhythm]
+  const selectedCameraMovementConfig = studioVideoCameraMovementConfig[cameraMovement]
+  const creativeBriefPreview = useMemo(
+    () =>
+      [
+        `Objetivo: ${objective}. ${selectedObjectiveConfig.promptBase}`,
+        `Estilo: ${style}. ${selectedStyleConfig.visualDirection}`,
+        `Transformacao: ${transformation}. ${selectedTransformationConfig.promptDirection}`,
+        `Ritmo: ${rhythm}. ${selectedRhythmConfig.promptDirection}`,
+        `Camera: ${cameraMovement}. ${selectedCameraMovementConfig.promptDirection}`,
+        additionalInstructions.trim() ? `Complemento do corretor: ${additionalInstructions.trim()}` : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    [
+      additionalInstructions,
+      cameraMovement,
+      objective,
+      rhythm,
+      selectedCameraMovementConfig.promptDirection,
+      selectedObjectiveConfig.promptBase,
+      selectedRhythmConfig.promptDirection,
+      selectedStyleConfig.visualDirection,
+      selectedTransformationConfig.promptDirection,
+      style,
+      transformation,
+    ],
   )
 
   if (isLoading) {
@@ -595,6 +669,13 @@ export function BrokerStudioIaVideoPage() {
 
               {currentStep === "configuration" ? (
                 <>
+                  <div className="rounded-[1.2rem] border border-[#dbe8df] bg-[#f8fdf9] p-4">
+                    <p className="text-sm font-semibold text-[#050505]">Briefing criativo do vídeo</p>
+                    <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
+                      O EME combina objetivo, estilo, transformação, ritmo, câmera, contexto do imóvel e suas observações para montar automaticamente um prompt profissional para a Luma.
+                    </p>
+                  </div>
+
                   <div className="grid min-w-0 gap-4 md:grid-cols-2">
                     <FieldCard label="Formato do video">
                       <Select value={format} onValueChange={(value) => setFormat(value as StudioVideoFormat)}>
@@ -628,8 +709,10 @@ export function BrokerStudioIaVideoPage() {
                         O modelo atual trabalha com duracao curta. O payload enviado usa exatamente <strong>9s</strong>.
                       </p>
                     </FieldCard>
+                  </div>
 
-                    <FieldCard label="Objetivo">
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <FieldCard label="Objetivo do video">
                       <Select value={objective} onValueChange={(value) => setObjective(value as StudioVideoObjective)}>
                         <SelectTrigger className="w-full">
                           <SelectValue />
@@ -642,9 +725,14 @@ export function BrokerStudioIaVideoPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="mt-3 text-sm font-medium text-[#111111]">{selectedObjectiveConfig.summary}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6B7280]">{selectedObjectiveConfig.promptBase}</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[#98A2B3]">
+                        Grupo: {selectedObjectiveConfig.group}
+                      </p>
                     </FieldCard>
 
-                    <FieldCard label="Estilo">
+                    <FieldCard label="Estilo cinematografico">
                       <Select value={style} onValueChange={(value) => setStyle(value as StudioVideoStyle)}>
                         <SelectTrigger className="w-full">
                           <SelectValue />
@@ -657,13 +745,87 @@ export function BrokerStudioIaVideoPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="mt-3 text-sm font-medium text-[#111111]">{selectedStyleConfig.summary}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6B7280]">{selectedStyleConfig.visualDirection}</p>
+                    </FieldCard>
+
+                    <FieldCard label="Tipo de transformacao">
+                      <Select value={transformation} onValueChange={(value) => setTransformation(value as StudioVideoTransformation)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {studioVideoTransformationOptions.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-3 text-sm font-medium text-[#111111]">{selectedTransformationConfig.summary}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6B7280]">{selectedTransformationConfig.promptDirection}</p>
                     </FieldCard>
                   </div>
 
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldCard label="Ritmo">
+                      <Select value={rhythm} onValueChange={(value) => setRhythm(value as StudioVideoRhythm)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {studioVideoRhythmOptions.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-3 text-sm font-medium text-[#111111]">{selectedRhythmConfig.summary}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6B7280]">{selectedRhythmConfig.promptDirection}</p>
+                    </FieldCard>
+
+                    <FieldCard label="Movimento de camera">
+                      <Select value={cameraMovement} onValueChange={(value) => setCameraMovement(value as StudioVideoCameraMovement)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {studioVideoCameraMovementOptions.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-3 text-sm font-medium text-[#111111]">{selectedCameraMovementConfig.summary}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6B7280]">{selectedCameraMovementConfig.promptDirection}</p>
+                    </FieldCard>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <CreativeDirectionCard
+                      title="Narrativa automatica"
+                      lines={[
+                        selectedObjectiveConfig.storyline,
+                        selectedStyleConfig.narrativeDirection,
+                        selectedTransformationConfig.sceneDirection,
+                      ]}
+                    />
+                    <CreativeDirectionCard
+                      title="Camera e ritmo"
+                      lines={[
+                        selectedStyleConfig.cameraDirection,
+                        selectedRhythmConfig.pacing,
+                        selectedCameraMovementConfig.shotDirection,
+                      ]}
+                    />
+                  </div>
+
                   <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                    <p className="text-sm font-semibold text-[#050505]">Instrucoes adicionais</p>
+                    <p className="text-sm font-semibold text-[#050505]">Instrucoes adicionais do corretor</p>
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                      Indique ritmo, destaques e observacoes comerciais que o video deve respeitar.
+                      Use este campo apenas para complementar o briefing montado automaticamente pelo EME.
                     </p>
                     <Textarea
                       value={additionalInstructions}
@@ -714,10 +876,15 @@ export function BrokerStudioIaVideoPage() {
                       <div>
                         <p className="font-semibold text-[#050505]">Creditos validados antes do envio final</p>
                         <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                          O Studio IA verifica saldo antes de iniciar a geracao e estorna o consumo se o provedor falhar.
+                          O Studio IA verifica saldo antes de iniciar a geracao, calcula a complexidade do briefing e estorna o consumo se o provedor falhar.
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                    <p className="text-sm font-semibold text-[#050505]">Briefing inteligente enviado para a Luma</p>
+                    <p className="mt-2 text-sm leading-7 text-[#5F6B7A]">{creativeBriefPreview}</p>
                   </div>
 
                   <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
@@ -798,6 +965,11 @@ export function BrokerStudioIaVideoPage() {
                   <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                     <p className="text-sm font-semibold text-[#050505]">Script de direcao</p>
                     <p className="mt-2 text-sm leading-7 text-[#5F6B7A]">{generatedResult.script}</p>
+                  </div>
+
+                  <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                    <p className="text-sm font-semibold text-[#050505]">Prompt final enviado</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#5F6B7A]">{generatedResult.promptPreview}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-3">
@@ -903,6 +1075,21 @@ function ResultListCard({ title, items }: { title: string; items: string[] }) {
         {items.map((item) => (
           <div key={item} className="rounded-[1rem] border border-black/[0.06] bg-white px-3 py-3 text-sm leading-6 text-[#5F6B7A]">
             {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CreativeDirectionCard({ title, lines }: { title: string; lines: string[] }) {
+  return (
+    <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+      <p className="text-sm font-semibold text-[#050505]">{title}</p>
+      <div className="mt-3 grid gap-2">
+        {lines.map((line) => (
+          <div key={line} className="rounded-[1rem] border border-black/[0.06] bg-white px-3 py-3 text-sm leading-6 text-[#5F6B7A]">
+            {line}
           </div>
         ))}
       </div>
