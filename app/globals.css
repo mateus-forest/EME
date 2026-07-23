@@ -294,6 +294,18 @@
   .eme-fade-in {
     animation: eme-fade-in 180ms ease-out;
   }
+
+  .text-brand-gradient {
+    background: linear-gradient(160deg, var(--brand-dark) 0%, var(--brand) 45%, var(--brand-light) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .bg-brand-gradient {
+    background: linear-gradient(150deg, var(--brand-dark) 0%, var(--brand) 50%, var(--brand-light) 100%);
+  }
 }
 
 @keyframes eme-fade-in {
