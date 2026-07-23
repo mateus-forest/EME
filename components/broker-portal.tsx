@@ -324,22 +324,27 @@ export function BrokerPortal() {
   return (
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
-        <section className="grid min-h-full min-w-0 w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="flex min-h-full min-w-0 items-start justify-center bg-[#f4f1eb] px-4 py-6 sm:px-5 lg:px-10 lg:py-10">
-            <div className="flex w-full max-w-5xl min-w-0 flex-col items-center">
-              <div className="flex size-7 items-center justify-center text-[#111111]">
+        <section className="grid h-full min-h-0 min-w-0 w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="flex min-h-0 min-w-0 items-stretch justify-center bg-[#f4f1eb] px-4 py-3 sm:px-5 lg:px-8 lg:py-4">
+            <div className="grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_1.5rem)] w-full max-w-5xl min-w-0 grid-rows-[auto_auto_auto_minmax(0,1fr)] items-start gap-3 sm:gap-3.5 lg:h-[calc(100dvh_-_2rem)]">
+              <div className="flex size-6 items-center justify-center text-[#111111]">
                 <Sparkles className="size-4" />
               </div>
-              <h2 className="mt-6 text-center text-[2.1rem] font-semibold tracking-tight text-[#111111]">
-                Ola, {brokerFirstName}
-              </h2>
-              <p className="mt-2 text-center text-[15px] text-[#70809a]">O que voce deseja fazer hoje?</p>
+              <div className="space-y-1">
+                <p className="text-center text-[0.92rem] font-medium text-[#6d7a8c]">
+                  COS pronto para apoiar voce, {brokerFirstName}
+                </p>
+                <h2 className="text-center text-[1.55rem] font-semibold tracking-tight text-[#111111] sm:text-[1.75rem]">
+                  O que vamos destravar agora?
+                </h2>
+                <p className="text-center text-[13px] text-[#70809a]">Sugestoes, atalhos e composer sempre visiveis na mesma tela.</p>
+              </div>
 
-              <div className="mt-8 flex flex-wrap justify-center gap-2.5">
+              <div className="flex flex-wrap justify-center gap-2">
                 {quickActions.map((action) => {
                   const Icon = action.icon
                   const className =
-                    "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[#d9dde5] bg-white px-5 text-sm font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb]"
+                    "inline-flex h-8.5 items-center justify-center gap-2 rounded-full border border-[#d9dde5] bg-white px-3.5 text-[13px] font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb]"
 
                   if (action.onClick) {
                     return (
@@ -359,10 +364,10 @@ export function BrokerPortal() {
                 })}
               </div>
 
-              <div className="mt-7 w-full max-w-[60rem] min-w-0">
+              <div className="w-full max-w-[44rem] min-w-0">
                 <div className="flex items-center justify-between px-1 text-sm text-[#91a0b5] sm:px-2">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="size-4" />
+                    <Sparkles className="size-3.5" />
                     Atalhos inteligentes
                   </div>
                   <button
@@ -373,7 +378,7 @@ export function BrokerPortal() {
                     Editar
                   </button>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div className="mt-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
                     {visibleShortcutCards.map((item) => {
                       const Icon = item.icon
 
@@ -383,14 +388,16 @@ export function BrokerPortal() {
                             key={item.id}
                             type="button"
                             onClick={item.onClick}
-                            className="group flex min-h-[5.75rem] flex-col justify-between rounded-[1.35rem] border border-black/[0.06] bg-white/88 p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
+                            className="group flex min-h-[4.2rem] flex-col justify-between rounded-[1.1rem] border border-black/[0.06] bg-white/88 p-3 text-left shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
                           >
-                            <span className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
-                              <Icon className="size-4" />
-                            </span>
-                            <div className="mt-4 flex items-center justify-between gap-3">
-                              <p className="text-[0.98rem] font-semibold text-[#111111]">{item.label}</p>
-                              <ArrowRight className="size-4 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex size-8 items-center justify-center rounded-xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
+                                <Icon className="size-4" />
+                              </span>
+                              <ArrowRight className="size-3.5 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
+                            </div>
+                            <div className="mt-2">
+                              <p className="text-[0.9rem] font-semibold text-[#111111]">{item.label}</p>
                             </div>
                           </button>
                         )
@@ -400,14 +407,16 @@ export function BrokerPortal() {
                           <Link
                             key={item.id}
                             href={item.href ?? "#"}
-                            className="group flex min-h-[5.75rem] flex-col justify-between rounded-[1.35rem] border border-black/[0.06] bg-white/88 p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
+                            className="group flex min-h-[4.2rem] flex-col justify-between rounded-[1.1rem] border border-black/[0.06] bg-white/88 p-3 text-left shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
                           >
-                            <span className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
-                              <Icon className="size-4" />
-                            </span>
-                            <div className="mt-4 flex items-center justify-between gap-3">
-                              <p className="text-[0.98rem] font-semibold text-[#111111]">{item.label}</p>
-                              <ArrowRight className="size-4 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex size-8 items-center justify-center rounded-xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
+                                <Icon className="size-4" />
+                              </span>
+                              <ArrowRight className="size-3.5 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
+                            </div>
+                            <div className="mt-2">
+                              <p className="text-[0.9rem] font-semibold text-[#111111]">{item.label}</p>
                             </div>
                           </Link>
                         )
@@ -415,13 +424,13 @@ export function BrokerPortal() {
                   </div>
               </div>
 
-              <div className="mt-8 w-full max-w-[60rem] min-w-0">
-                <div className="flex min-h-[calc(100svh-9.5rem)] min-w-0 flex-col md:min-h-[40rem]">
-                  <div className="flex flex-col gap-3 px-1 pb-4 sm:px-2">
+              <div className="min-h-0 w-full max-w-[44rem] min-w-0">
+                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto]">
+                  <div className="flex flex-col gap-2 px-1 pb-2 sm:px-2">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         {showConversationTitle ? (
-                          <p className="truncate text-[1.02rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
+                          <p className="truncate text-[0.98rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-[#7a8798]">
@@ -435,7 +444,7 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2 sm:px-2">
+                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-1.5 sm:px-2">
                     {isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                         Carregando conversa...
@@ -497,27 +506,29 @@ export function BrokerPortal() {
                     ) : null}
                   </div>
 
-                  <CosPromptComposer
-                    prompt={prompt}
-                    setPrompt={setPrompt}
-                    onSubmit={handleSubmit}
-                    onNewConversation={async () => {
-                      await createConversation()
-                    }}
-                    quickActions={[
-                      { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
-                      { label: "Minha agenda", message: "Minha agenda de amanha" },
-                      { label: "Analisar financeiro", message: "Analisar financeiro" },
-                      { label: "Ver notificacoes", message: "Minhas notificacoes" },
-                    ]}
-                    disabled={isSending || isConversationLoading}
-                    inputRef={inputRef}
-                    feedback={chatFeedback}
-                  />
+                  <div className="pt-2">
+                    <CosPromptComposer
+                      prompt={prompt}
+                      setPrompt={setPrompt}
+                      onSubmit={handleSubmit}
+                      onNewConversation={async () => {
+                        await createConversation()
+                      }}
+                      quickActions={[
+                        { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
+                        { label: "Minha agenda", message: "Minha agenda de amanha" },
+                        { label: "Analisar financeiro", message: "Analisar financeiro" },
+                        { label: "Ver notificacoes", message: "Minhas notificacoes" },
+                      ]}
+                      disabled={isSending || isConversationLoading}
+                      inputRef={inputRef}
+                      feedback={chatFeedback}
+                    />
+                  </div>
                 </div>
 
                 {hasReachedLimit ? (
-                  <div className="mt-3 flex justify-center">
+                  <div className="mt-2 flex justify-center">
                     <Button
                       type="button"
                       variant="ghost"
@@ -532,9 +543,9 @@ export function BrokerPortal() {
             </div>
           </div>
 
-          <aside className="hidden border-l border-black/[0.06] bg-white lg:flex lg:min-h-full lg:flex-col">
-            <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-5">
-              <h3 className="text-[1.05rem] font-semibold text-[#111111]">Contexto</h3>
+          <aside className="hidden min-h-0 border-l border-black/[0.06] bg-white lg:flex lg:flex-col">
+            <div className="flex shrink-0 items-center justify-between border-b border-black/[0.06] px-4 py-4">
+              <h3 className="text-[0.98rem] font-semibold text-[#111111]">Contexto</h3>
               <NotificationCenter
                 title="Notificacoes do corretor"
                 notifications={historyNotifications}
@@ -545,19 +556,19 @@ export function BrokerPortal() {
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               <div>
                 <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
                   <span className="text-[#9aa6b6]">$</span>
                   Financeiro
                 </div>
-                <div className="rounded-[1.7rem] bg-[#111111] px-5 py-4 text-white">
+                <div className="rounded-[1.35rem] bg-[#111111] px-4 py-3.5 text-white">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-sm">Saldo final</span>
-                    <span className="text-[1.05rem] font-semibold">{financialSummary.currentAmount}</span>
+                    <span className="text-[1rem] font-semibold">{financialSummary.currentAmount}</span>
                   </div>
                 </div>
-                <div className="mt-3 grid gap-2.5">
+                <div className="mt-2.5 grid gap-2">
                   <ContextRow label="Ganhos" value={financialSummary.currentAmount} valueClassName="text-[#16a34a]" />
                   <ContextRow
                     label="Gastos"
@@ -566,17 +577,17 @@ export function BrokerPortal() {
                   />
                   <ContextRow label="Saldo anterior" value={financialSummary.currentAmount} />
                 </div>
-                <p className="mt-3 text-sm text-[#91a0b5]">
+                <p className="mt-2.5 text-sm text-[#91a0b5]">
                   {historyNotifications.length} atividade(s) registrada(s) no workspace.
                 </p>
               </div>
 
-              <div className="mt-7">
-                <div className="mb-4 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
+              <div className="mt-5">
+                <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
                   <ClockBadge />
                   Atividades recentes
                 </div>
-                <div className="grid gap-5">
+                <div className="grid gap-4">
                   {contextFeed.length > 0 ? (
                     contextFeed.map((notification) => (
                       <div key={notification.id} className="flex gap-3">

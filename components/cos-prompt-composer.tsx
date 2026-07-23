@@ -180,7 +180,7 @@ export function CosPromptComposer({
   }
 
   return (
-    <div className="pwa-sticky-composer px-0 pt-3 sm:px-0">
+    <div className="pwa-sticky-composer mx-auto w-full max-w-[44rem] px-0 pt-2 sm:px-0">
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -188,7 +188,7 @@ export function CosPromptComposer({
         }}
         className="flex min-w-0 flex-col gap-2"
       >
-        <div className="flex min-w-0 items-end gap-2 rounded-[1.75rem] border border-black/[0.07] bg-white/88 px-2.5 py-2 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:gap-3 sm:px-3">
+        <div className="flex min-w-0 items-end gap-2 rounded-[1.55rem] border border-black/[0.07] bg-white/90 px-2 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:gap-2.5 sm:px-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -196,7 +196,7 @@ export function CosPromptComposer({
                 size="icon"
                 variant="ghost"
                 disabled={disabled}
-                className="size-10 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60"
+                className="size-9 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60"
                 aria-label="Abrir acoes do COS"
               >
                 <Plus className="size-4" />
@@ -246,7 +246,7 @@ export function CosPromptComposer({
               }, 120)
             }}
             placeholder="Fale com o COS..."
-            className="min-h-0 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[15px] leading-6 text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
+            className="min-h-0 max-h-36 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-[15px] leading-6 text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
           />
 
           <Button
@@ -255,7 +255,7 @@ export function CosPromptComposer({
             variant="ghost"
             onClick={() => void handleMicToggle()}
             disabled={disabled}
-            className={`size-10 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 ${
+            className={`size-9 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 ${
               micState === "recording" ? "border-[#009b3a]/30 bg-[#effaf3] text-[#009b3a]" : ""
             }`}
             aria-label="Gravar audio para o COS"
@@ -267,14 +267,14 @@ export function CosPromptComposer({
             type="submit"
             size="icon"
             disabled={disabled}
-            className="size-11 shrink-0 rounded-full bg-[#111111] text-white shadow-none hover:bg-[#050505] disabled:opacity-60"
+            className="size-10 shrink-0 rounded-full bg-[#111111] text-white shadow-none hover:bg-[#050505] disabled:opacity-60"
             aria-label="Enviar mensagem ao COS"
           >
             <Send className="size-4" />
           </Button>
         </div>
 
-        <div className="flex min-h-6 items-center justify-between gap-3 px-1">
+        <div className="flex min-h-5 items-center justify-between gap-3 px-1">
           <p className={`text-xs leading-5 ${micState === "error" ? "text-[#b42318]" : "text-[#6f7f97]"}`}>
             {micState === "recording"
               ? "Gravando..."

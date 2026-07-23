@@ -146,7 +146,7 @@ export function BrokerPageShell({
               </div>
             </header>
           ) : (
-            <div className="px-3 pt-3 md:hidden">
+            <div className="shrink-0 px-3 pt-3 pb-2 md:hidden">
               <SidebarTrigger className="h-9 w-9 rounded-xl border border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-white hover:text-[#050505]" />
             </div>
           )}
@@ -162,7 +162,7 @@ export function BrokerPageShell({
               }
             >
               <div
-                className={`h-full max-w-full overflow-x-hidden overflow-y-auto ${isCosVariant ? "px-0 py-0" : "px-4 py-5 sm:px-6 lg:px-8"} ${contentClassName ?? ""}`}
+                className={`h-full max-w-full overflow-x-hidden ${isCosVariant ? "overflow-y-hidden px-0 py-0" : "overflow-y-auto px-4 py-5 sm:px-6 lg:px-8"} ${contentClassName ?? ""}`}
               >
                 {children}
               </div>
