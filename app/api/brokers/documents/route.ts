@@ -54,12 +54,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const status = request.nextUrl.searchParams.get("status")
+    const type = cleanText(request.nextUrl.searchParams.get("type"), 40)
     const documents = await prisma.brokerDocument.findMany({
       where: {
         brokerId: user.broker.id,
-        type: {
-          notIn: ["studio_ia_video_job", "cos_conversation"],
-        },
+        ...(type
+          ? { type }
+          : {
+              type: {
+                notIn: ["studio_ia_video_job", "cos_conversation"],
+              },
+            }),
         ...(status && status !== "all" ? { status } : {}),
       },
       orderBy: { createdAt: "desc" },

@@ -94,8 +94,11 @@ function getVisualActionLabel(action: AssessorAction) {
   if (action === "LIST_AGENDA_EVENTS") return "Consulta de agenda"
   if (action === "MARK_AGENDA_DONE") return "Compromisso concluido"
   if (action === "CREATE_PROPOSAL") return "Proposta gerada"
+  if (action === "CREATE_CONTRACT") return "Contrato gerado"
   if (action === "LIST_DOCUMENTS") return "Consulta de documentos"
   if (action === "GET_DOCUMENT") return "Documento consultado"
+  if (action === "LIST_CONTRACTS") return "Consulta de contratos"
+  if (action === "GET_CONTRACT") return "Contrato consultado"
   return "Acao do Assessor"
 }
 
@@ -108,8 +111,11 @@ function shouldReturnActionResponse(action: AssessorAction) {
     "LIST_AGENDA_EVENTS",
     "MARK_AGENDA_DONE",
     "CREATE_PROPOSAL",
+    "CREATE_CONTRACT",
     "LIST_DOCUMENTS",
     "GET_DOCUMENT",
+    "LIST_CONTRACTS",
+    "GET_CONTRACT",
     "getFinancialSummary",
     "getAnalyticsSummary",
     "getCatalogSummary",
@@ -126,8 +132,11 @@ const COS_HOME_ALLOWED_ACTIONS: AssessorAction[] = [
   "createPropertyDraft",
   "createLead",
   "CREATE_PROPOSAL",
+  "CREATE_CONTRACT",
   "CREATE_AGENDA_EVENT",
   "LIST_AGENDA_EVENTS",
+  "LIST_CONTRACTS",
+  "GET_CONTRACT",
   "getLeadsSummary",
   "summarizeLead",
   "getAnalyticsSummary",
@@ -141,6 +150,7 @@ const COS_HOME_MUTATING_ACTIONS: AssessorAction[] = [
   "createPropertyDraft",
   "createLead",
   "CREATE_PROPOSAL",
+  "CREATE_CONTRACT",
   "CREATE_AGENDA_EVENT",
 ]
 
@@ -151,7 +161,7 @@ function isCosHomeSource(source: string) {
 function buildCosHomeUnsupportedResponse() {
   return [
     "Na Home do COS eu posso ajudar com:",
-    "buscar imovel, cadastrar imovel, cadastrar cliente, criar proposta, agendar ou consultar compromissos, analisar clientes, consultar desempenho, analisar financeiro e consultar notificacoes.",
+    "buscar imovel, cadastrar imovel, cadastrar cliente, criar proposta, criar contrato, abrir contratos, agendar ou consultar compromissos, analisar clientes, consultar desempenho, analisar financeiro e consultar notificacoes.",
   ].join("\n")
 }
 
@@ -159,6 +169,7 @@ function buildCosHomeConfirmationResponse(action: AssessorAction) {
   if (action === "createPropertyDraft") return "Encontrei um pedido para cadastrar um imovel em rascunho. Deseja confirmar?"
   if (action === "createLead") return "Posso cadastrar ou atualizar este cliente agora. Deseja confirmar?"
   if (action === "CREATE_PROPOSAL") return "Posso gerar esta proposta agora e salvar em Documentos. Deseja confirmar?"
+  if (action === "CREATE_CONTRACT") return "Posso gerar este contrato agora, salvar em Documentos e deixar como rascunho para revisao. Deseja confirmar?"
   if (action === "CREATE_AGENDA_EVENT") return "Posso criar este compromisso agora na sua agenda. Deseja confirmar?"
   return `Posso executar "${getVisualActionLabel(action)}" agora. Deseja confirmar?`
 }

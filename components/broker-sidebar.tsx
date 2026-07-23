@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronLeft,
   CreditCard,
+  FileSignature,
   History,
   LayoutDashboard,
   LogOut,
@@ -61,6 +62,13 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     items: [
       { label: "Catalogo", icon: BookOpenText, href: "/corretor/catalogo" },
       { label: "Studio IA", icon: Bot, href: "/corretor/studio-ia" },
+    ],
+  },
+  {
+    label: "DOCUMENTOS",
+    items: [
+      { label: "Propostas", icon: FileSignature, href: "/corretor/documentos" },
+      { label: "Contratos", icon: FileSignature, href: "/corretor/documentos/contratos" },
     ],
   },
   {

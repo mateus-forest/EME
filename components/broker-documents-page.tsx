@@ -123,7 +123,7 @@ export function BrokerDocumentsPage() {
     setIsLoading(true)
     setFeedback("")
     try {
-      const response = await fetch(`/api/brokers/documents?status=${nextStatus}`, { credentials: "include", cache: "no-store" })
+      const response = await fetch(`/api/brokers/documents?status=${nextStatus}&type=proposal`, { credentials: "include", cache: "no-store" })
       const data = (await response.json().catch(() => null)) as { documents?: BrokerDocument[]; error?: string } | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível carregar documentos.")
       setDocuments(data?.documents ?? [])

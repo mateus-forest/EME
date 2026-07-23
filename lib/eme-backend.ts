@@ -7,6 +7,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
 import { extractPropertyPublicCode, findPropertyByBrokerPublicCode, getNextPropertyPublicCode } from "@/lib/property-public-code"
+import { contractHtmlToText, createContractContent, parseContractContent, stringifyContractContent } from "@/lib/contract-template"
 import { buildProposalHtml, proposalHtmlToText } from "@/lib/proposal-template"
 
 export const assessorActions = [
@@ -26,8 +27,11 @@ export const assessorActions = [
   "LIST_AGENDA_EVENTS",
   "MARK_AGENDA_DONE",
   "CREATE_PROPOSAL",
+  "CREATE_CONTRACT",
   "LIST_DOCUMENTS",
   "GET_DOCUMENT",
+  "LIST_CONTRACTS",
+  "GET_CONTRACT",
 ] as const
 
 export type AssessorAction = (typeof assessorActions)[number]
@@ -49,8 +53,11 @@ const assessorActionRegistry: Record<AssessorAction, { visualAction: string; fut
   LIST_AGENDA_EVENTS: { visualAction: "Consulta de agenda", futureReady: true },
   MARK_AGENDA_DONE: { visualAction: "Compromisso concluído", futureReady: true },
   CREATE_PROPOSAL: { visualAction: "Proposta gerada", futureReady: true },
+  CREATE_CONTRACT: { visualAction: "Contrato gerado", futureReady: true },
   LIST_DOCUMENTS: { visualAction: "Consulta de documentos", futureReady: true },
   GET_DOCUMENT: { visualAction: "Documento consultado", futureReady: true },
+  LIST_CONTRACTS: { visualAction: "Consulta de contratos", futureReady: true },
+  GET_CONTRACT: { visualAction: "Contrato consultado", futureReady: true },
 }
 
 export function cleanText(value: unknown, maxLength: number) {
@@ -678,9 +685,12 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
   if (/\b(marcar|marque|concluir|feito|finalizar)\b/.test(normalized) && /\b(agenda|visita|lembrete|tarefa|compromisso)\b/.test(normalized)) return "MARK_AGENDA_DONE"
   if (/\b(quais|mostrar|mostre|listar|lista|ver)\b/.test(normalized) && /\b(agenda|visitas|lembretes|compromissos|tarefas)\b/.test(normalized)) return "LIST_AGENDA_EVENTS"
   if (/\b(agendar|agenda|lembrar|lembrete|visita|evento|tarefa)\b/.test(normalized)) return "CREATE_AGENDA_EVENT"
-  if (/\b(mostrar|mostre|listar|lista|documentos)\b/.test(normalized) && /\b(documento|documentos|proposta|propostas|contrato)\b/.test(normalized)) return "LIST_DOCUMENTS"
-  if (/\b(enviar|envie|abrir|me envie|ver)\b/.test(normalized) && /\b(documento|proposta|contrato)\b/.test(normalized)) return "GET_DOCUMENT"
-  if (/\b(gerar|gere|criar|crie|fazer|faca|cadastrar|cadastre)\b/.test(normalized) && /\b(proposta|documento|contrato)\b/.test(normalized)) return "CREATE_PROPOSAL"
+  if (/\b(mostrar|mostre|listar|lista|documentos)\b/.test(normalized) && /\b(documento|documentos|proposta|propostas)\b/.test(normalized)) return "LIST_DOCUMENTS"
+  if (/\b(enviar|envie|abrir|me envie|ver)\b/.test(normalized) && /\b(documento|proposta)\b/.test(normalized)) return "GET_DOCUMENT"
+  if (/\b(mostrar|mostre|listar|lista|ver)\b/.test(normalized) && /\b(contrato|contratos)\b/.test(normalized)) return "LIST_CONTRACTS"
+  if (/\b(enviar|envie|abrir|me envie|ver)\b/.test(normalized) && /\b(contrato|contratos)\b/.test(normalized)) return "GET_CONTRACT"
+  if (/\b(gerar|gere|criar|crie|fazer|faca|cadastrar|cadastre)\b/.test(normalized) && /\b(contrato|contratos)\b/.test(normalized)) return "CREATE_CONTRACT"
+  if (/\b(gerar|gere|criar|crie|fazer|faca|cadastrar|cadastre)\b/.test(normalized) && /\b(proposta|documento)\b/.test(normalized)) return "CREATE_PROPOSAL"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione)\b/.test(normalized) && /\b(imovel|imoveis|casa|apartamento|apto|terreno|sala|loja|cobertura)\b/.test(normalized)) return "createPropertyDraft"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b/.test(normalized) && /\d{10,13}/.test(normalized)) return "createLead"
   if (/\b(cadastrar|cadastre|criar|crie|salvar|salva|adicionar|adicione|incluir|inclua)\b.*\b(lead|contato|cliente)\b/.test(normalized)) return "createLead"
@@ -695,6 +705,9 @@ export function inferAssessorAction(message: string, requestedAction?: string): 
   if (normalized.includes("financeiro") || normalized.includes("comissao")) return "getFinancialSummary"
   if (normalized.includes("analytics") || normalized.includes("visualiz")) return "getAnalyticsSummary"
   if (normalized.includes("notificacao")) return "createInternalNotification"
+  if ((normalized.includes("contrato") || normalized.includes("contratos")) && (normalized.includes("criar") || normalized.includes("gerar") || normalized.includes("cadastar") || normalized.includes("cadastrar"))) return "CREATE_CONTRACT"
+  if ((normalized.includes("contrato") || normalized.includes("contratos")) && (normalized.includes("listar") || normalized.includes("lista") || normalized.includes("mostrar") || normalized.includes("mostre"))) return "LIST_CONTRACTS"
+  if ((normalized.includes("contrato") || normalized.includes("contratos")) && (normalized.includes("abrir") || normalized.includes("ver") || normalized.includes("enviar") || normalized.includes("envie"))) return "GET_CONTRACT"
   return "general"
 }
 
@@ -1129,6 +1142,139 @@ Revise e preencha os dados restantes antes de enviar.`,
     }
   }
 
+  if (action === "CREATE_CONTRACT") {
+    const normalized = normalizeForIntent(message)
+    const personName = extractPersonName(message)
+    const propertyReference = extractPropertyReference(message)
+    const contractKind =
+      normalized.includes("locacao comercial") || normalized.includes("aluguel comercial")
+        ? "Locacao comercial"
+        : normalized.includes("locacao") || normalized.includes("aluguel")
+          ? "Locacao residencial"
+          : normalized.includes("autorizacao")
+            ? "Autorizacao de venda"
+            : normalized.includes("exclusividade")
+              ? "Exclusividade"
+              : normalized.includes("visita")
+                ? "Termo de visita"
+                : normalized.includes("reserva")
+                  ? "Reserva"
+                  : normalized.includes("aditivo")
+                    ? "Aditivo"
+                    : normalized.includes("distrato")
+                      ? "Distrato"
+                      : "Compra e venda"
+
+    const [broker, matchingLeads] = await Promise.all([
+      prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true } } } }),
+      personName ? findLeadCandidates(brokerId, personName, 4) : [],
+    ])
+
+    if (matchingLeads.length > 1) {
+      return {
+        response: `Encontrei mais de um cliente com esse nome. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"}${leadItem.phone ? ` - ${leadItem.phone}` : ""}`).join("\n")}`,
+        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, contractKind, leadIds: matchingLeads.map((leadItem) => leadItem.id), propertyReference } },
+      }
+    }
+
+    const lead = matchingLeads[0] ?? null
+    if (!lead) {
+      return {
+        response: "Para qual cliente devo criar o contrato?",
+        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, contractKind, propertyReference } },
+      }
+    }
+
+    const propertyCandidates = await findProposalPropertyCandidates(brokerId, message, propertyReference, 4)
+    if (propertyCandidates.length > 1) {
+      return {
+        response: `Encontrei mais de um imovel. Qual devo usar no contrato?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.publicCode ? `Imovel ${item.publicCode} - ` : ""}${item.title} - ${item.city}`).join("\n")}`,
+        metadata: {
+          required: ["propertyChoice"],
+          noCharge: true,
+          parsedData: {
+            personName,
+            contractKind,
+            propertyReference,
+            propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
+          },
+        },
+      }
+    }
+
+    const resolvedProperty = propertyCandidates[0] ?? null
+    if (!resolvedProperty) {
+      return {
+        response: "Qual imovel devo vincular a este contrato?",
+        metadata: { required: ["property"], noCharge: true, parsedData: { personName, contractKind, leadId: lead.id, propertyReference } },
+        leadId: lead.id,
+      }
+    }
+
+    const content = createContractContent({
+      kind: contractKind,
+      title: `Contrato ${contractKind} - ${lead.name || resolvedProperty.title}`,
+      status: "draft",
+      authorName: broker?.user.name ?? "",
+      authorEmail: broker?.user.email ?? null,
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+      },
+      property: {
+        id: resolvedProperty.id,
+        publicCode: resolvedProperty.publicCode,
+        title: resolvedProperty.title,
+        city: resolvedProperty.city,
+        neighborhood: resolvedProperty.neighborhood,
+        type: resolvedProperty.type,
+        purpose: resolvedProperty.purpose,
+        price: resolvedProperty.price,
+        bedrooms: resolvedProperty.bedrooms,
+        parkingSpots: resolvedProperty.parkingSpots,
+      },
+      financial: {
+        amountCents: resolvedProperty.price,
+      },
+    })
+
+    const document = await prisma.brokerDocument.create({
+      data: {
+        brokerId,
+        leadId: lead.id,
+        propertyId: resolvedProperty.id,
+        type: "contract",
+        title: content.title,
+        content: stringifyContractContent(content),
+        status: "draft",
+      },
+    })
+
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: "Contrato criado",
+        message: `Contrato salvo como rascunho para ${lead.name || "cliente"} em Documentos > Contratos.`,
+        read: false,
+      },
+    })
+
+    return {
+      response: `Contrato criado em rascunho.\nCliente: ${lead.name || "Cliente"}\nImovel: ${resolvedProperty.publicCode ?? resolvedProperty.id}\nRevise, edite e exporte em Documentos > Contratos.`,
+      metadata: {
+        documentId: document.id,
+        leadId: lead.id,
+        propertyId: resolvedProperty.id,
+        parsedData: { personName, contractKind },
+        status: "draft",
+      },
+      leadId: lead.id,
+      propertyId: resolvedProperty.id,
+    }
+  }
+
   if (action === "LIST_DOCUMENTS" || action === "GET_DOCUMENT") {
     const personName = extractPersonName(message)
     const propertyReference = extractPropertyReference(message)
@@ -1166,6 +1312,52 @@ Revise e preencha os dados restantes antes de enviar.`,
       response: documents.length
         ? `Encontrei ${documents.length} documento${documents.length === 1 ? "" : "s"}:\n\n${documents.map((document) => `• ${document.title}${document.property?.title ? ` — ${document.property.title}` : ""}`).join("\n")}`
         : "Não encontrei documentos com esse filtro.",
+      metadata: { documentIds: documents.map((document) => document.id), resultsCount: documents.length, parsedData: { personName, propertyReference } },
+    }
+  }
+
+  if (action === "LIST_CONTRACTS" || action === "GET_CONTRACT") {
+    const personName = extractPersonName(message)
+    const propertyReference = extractPropertyReference(message)
+    const lead = personName
+      ? await prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, select: { id: true } })
+      : null
+    const property = propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
+      ? await prisma.property.findFirst({
+          where: {
+            brokerId,
+            OR: [
+              ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
+              ...(propertyReference.neighborhood ? [{ neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } }] : []),
+              ...(propertyReference.type ? [{ type: propertyReference.type }] : []),
+            ],
+          },
+          select: { id: true },
+          orderBy: { updatedAt: "desc" },
+        })
+      : null
+    const documents = await prisma.brokerDocument.findMany({
+      where: {
+        brokerId,
+        type: "contract",
+        ...(lead?.id ? { leadId: lead.id } : {}),
+        ...(property?.id ? { propertyId: property.id } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: action === "GET_CONTRACT" ? 1 : 5,
+      include: { property: { select: { title: true } }, lead: { select: { name: true } } },
+    })
+    if (action === "GET_CONTRACT") {
+      const document = documents[0]
+      return {
+        response: document ? `${document.title}\n\n${contractHtmlToText(parseContractContent(document.content).html).slice(0, 1200)}` : "Nao encontrei contratos com esse filtro.",
+        metadata: { documentId: document?.id ?? null, resultsCount: documents.length, parsedData: { personName, propertyReference } },
+      }
+    }
+    return {
+      response: documents.length
+        ? `Encontrei ${documents.length} contrato${documents.length === 1 ? "" : "s"}:\n\n${documents.map((document) => `- ${document.title}${document.property?.title ? ` - ${document.property.title}` : ""}`).join("\n")}`
+        : "Nao encontrei contratos com esse filtro.",
       metadata: { documentIds: documents.map((document) => document.id), resultsCount: documents.length, parsedData: { personName, propertyReference } },
     }
   }

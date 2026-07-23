@@ -15,6 +15,7 @@ export type EmeCreditActionKey =
   | "createInternalNotification"
   | "createPropertyDraft"
   | "CREATE_PROPOSAL"
+  | "CREATE_CONTRACT"
   | "getLeadsSummary"
   | "getAnalyticsSummary"
   | "analyzeCatalog"
@@ -23,6 +24,7 @@ export type EmeCreditActionKey =
   | "create_ad"
   | "generate_property_ai"
   | "generate_proposal_pdf"
+  | "generate_contract_pdf"
   | "smart_import_image"
   | "smart_import_print"
   | "smart_import_text"
@@ -117,6 +119,7 @@ export const EME_CREDIT_COSTS = {
   createInternalNotification: 1,
   createPropertyDraft: 2,
   CREATE_PROPOSAL: 2,
+  CREATE_CONTRACT: 2,
   getLeadsSummary: 2,
   getAnalyticsSummary: 2,
   analyzeCatalog: 2,
@@ -125,6 +128,7 @@ export const EME_CREDIT_COSTS = {
   create_ad: 3,
   generate_property_ai: 3,
   generate_proposal_pdf: 3,
+  generate_contract_pdf: 3,
   smart_import_image: 3,
   smart_import_print: 3,
   smart_import_text: 3,
