@@ -37,6 +37,7 @@ type CatalogKind = "broker" | "agency"
 
 type CatalogProperty = {
   id: string
+  publicCode?: number | null
   title: string
   location: string
   city: string
@@ -47,6 +48,7 @@ type CatalogProperty = {
   bathrooms: number
   parking: number
   type: string
+  purpose: string
   description: string
   images: string[]
   views: number
@@ -713,6 +715,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
 function normalizeProperties(catalog: PublicBrokerCatalogData | PublicAgencyCatalogData): CatalogProperty[] {
   return catalog.properties.map((property) => ({
     ...property,
+    publicCode: property.publicCode,
     images: property.images,
     leads: "leads" in property ? property.leads : property.interested,
     brokerName: "broker" in property ? property.broker.name : undefined,
@@ -770,41 +773,149 @@ async function trackCatalogEvent({
   }
 }
 
-function analyzeSearch(rawSearch: string) {
+type SearchFieldName =
+  | "title"
+  | "type"
+  | "purpose"
+  | "location"
+  | "neighborhood"
+  | "city"
+  | "description"
+  | "code"
+
+type SearchAnalysis = {
+  query: string
+  tokens: string[]
+  expandedTokens: string[]
+  maxPrice: number | null
+  bedrooms: number | null
+  parking: number | null
+  type: string
+  purpose: string
+  features: string[]
+  intent: string
+}
+
+type PropertySearchIndex = {
+  title: string
+  type: string
+  purpose: string
+  location: string
+  neighborhood: string
+  city: string
+  description: string
+  code: string
+  haystack: string
+  tokens: string[]
+}
+
+const SEARCH_FIELD_WEIGHTS: Record<SearchFieldName, number> = {
+  title: 12,
+  type: 11,
+  purpose: 8,
+  location: 6,
+  neighborhood: 9,
+  city: 8,
+  description: 5,
+  code: 7,
+}
+
+const FEATURE_KEYWORDS = [
+  "frente mar",
+  "alto padrao",
+  "investimento",
+  "suite",
+  "sacada",
+  "piscina",
+  "churrasqueira",
+  "academia",
+  "gourmet",
+  "condominio",
+  "jardim",
+  "jardins",
+] as const
+
+const TOKEN_SYNONYMS: Record<string, string[]> = {
+  sala: ["salas", "comercial", "escritorio", "escritorios", "office", "corporativa"],
+  comercial: ["sala", "salas", "escritorio", "escritorios", "loja", "corporativa"],
+  escritorio: ["escritorios", "sala", "comercial", "office"],
+  apartamento: ["apto", "apartamentos"],
+  apto: ["apartamento", "apartamentos"],
+  cobertura: ["coberturas", "penthouse"],
+  casa: ["casas", "residencia", "residencial"],
+  terrreno: ["terreno", "lote"],
+  jardim: ["jardins"],
+  jardins: ["jardim"],
+  locacao: ["aluguel", "alugar", "residencial", "comercial"],
+  venda: ["comprar", "compra"],
+  investimento: ["investidor", "renda"],
+}
+
+function buildPropertySearchIndex(property: CatalogProperty): PropertySearchIndex {
+  const index = {
+    title: normalizeText(property.title),
+    type: normalizeText(property.type),
+    purpose: normalizeText(property.purpose),
+    location: normalizeText(property.location),
+    neighborhood: normalizeText(property.neighborhood),
+    city: normalizeText(property.city),
+    description: normalizeText(property.description),
+    code: normalizeText(property.publicCode ? String(property.publicCode) : ""),
+  }
+
+  const haystack = normalizeText(
+    [
+      property.title,
+      property.type,
+      property.purpose,
+      property.location,
+      property.neighborhood,
+      property.city,
+      property.description,
+      property.publicCode ? `imovel ${property.publicCode}` : "",
+      property.bedrooms ? `${property.bedrooms} quartos` : "",
+      property.parking ? `${property.parking} vagas` : "",
+      property.price,
+    ].join(" "),
+  )
+
+  return {
+    ...index,
+    haystack,
+    tokens: buildSearchTerms(haystack),
+  }
+}
+
+function analyzeSearch(rawSearch: string): SearchAnalysis {
   const query = normalizeText(rawSearch)
-  const searchTerms = buildSearchTerms(query)
+  const tokens = buildSearchTerms(query)
+  const expandedTokens = Array.from(new Set(tokens.flatMap((token) => [token, ...expandToken(token)])))
   const maxPrice = extractPriceValue(query)
   const bedrooms = extractNumericIntent(query, ["quarto", "quartos", "dormitorio", "dormitorios"])
-  const parking = extractNumericIntent(query, ["vaga", "vagas", "garagem"])
-  const type = query.includes("casa")
-    ? "Casa"
-    : query.includes("apartamento") || query.includes("apto") || query.includes("cobertura")
-      ? "Apartamento"
-      : query.includes("comercial") || query.includes("sala") || query.includes("loja")
-        ? "Comercial"
-        : ""
-  const features = [
-    "frente mar",
-    "alto padrao",
-    "investimento",
-    "suite",
-    "sacada",
-    "piscina",
-    "churrasqueira",
-    "academia",
-    "gourmet",
-  ].filter((feature) => query.includes(feature))
+  const parking = extractNumericIntent(query, ["vaga", "vagas", "garagem", "garagens"])
+  const type = inferSearchType(query, expandedTokens)
+  const purpose = inferSearchPurpose(query)
+  const features = FEATURE_KEYWORDS.filter((feature) => query.includes(feature))
 
   return {
     query,
-    searchTerms,
+    tokens,
+    expandedTokens,
     maxPrice,
     bedrooms,
     parking,
     type,
+    purpose,
     features,
     intent:
-      [type, maxPrice ? `ate ${maxPrice}` : "", bedrooms ? `${bedrooms} quartos` : "", parking ? `${parking} vagas` : "", ...features]
+      [
+        type,
+        purpose,
+        maxPrice ? `ate ${maxPrice}` : "",
+        bedrooms ? `${bedrooms} quartos` : "",
+        parking ? `${parking} vagas` : "",
+        ...features,
+      ]
         .filter(Boolean)
         .join(", ") || rawSearch.trim(),
   }
@@ -812,68 +923,102 @@ function analyzeSearch(rawSearch: string) {
 
 function rankProperties(
   properties: CatalogProperty[],
-  analysis: ReturnType<typeof analyzeSearch>,
+  analysis: SearchAnalysis,
   filters: CatalogAdvancedFilters,
 ) {
   return properties
     .map((property) => {
-      const haystack = normalizeText([
-        property.title,
-        property.description,
-        property.city,
-        property.neighborhood,
-        property.type,
-        property.location,
-      ].join(" "))
+      const index = buildPropertySearchIndex(property)
       const compatible =
-        matchesNaturalLanguage(property, analysis, haystack) &&
-        matchesAdvancedFilters(property, filters, haystack)
-      let score = 0
-
-      if (!analysis.query) score += 2
-      for (const term of analysis.searchTerms) {
-        if (haystack.includes(term)) score += 2
-      }
-      if (analysis.type && property.type === analysis.type) score += 8
-      if (analysis.maxPrice && property.priceValue <= analysis.maxPrice) score += 7
-      for (const feature of analysis.features) {
-        if (haystack.includes(feature)) score += 5
-      }
-      if (compatible && score === 0) score = 1
+        matchesNaturalLanguage(property, analysis, index) &&
+        matchesAdvancedFilters(property, filters, index)
+      const score = calculatePropertyScore(property, analysis, index, compatible)
 
       return {
         property,
         compatible,
         score,
-        matchLabel: score >= 12 ? "Destaque" : score >= 6 ? "Selecionado" : "Boa opcao",
+        matchLabel: score >= 28 ? "Destaque" : score >= 16 ? "Selecionado" : "Boa opcao",
       }
     })
     .filter((item) => item.compatible)
     .sort((first, second) => second.score - first.score || second.property.views - first.property.views)
 }
 
-function matchesNaturalLanguage(property: CatalogProperty, analysis: ReturnType<typeof analyzeSearch>, haystack: string) {
-  if (!analysis.query.trim()) return true
+function calculatePropertyScore(
+  property: CatalogProperty,
+  analysis: SearchAnalysis,
+  index: PropertySearchIndex,
+  compatible: boolean,
+) {
+  let score = compatible ? 1 : 0
 
-  const searchableTerms = analysis.searchTerms
+  if (!analysis.query) score += 2
+  if (analysis.type && normalizeText(property.type) === normalizeText(analysis.type)) score += 18
+  if (analysis.purpose && normalizeText(property.purpose) === normalizeText(analysis.purpose)) score += 8
+  if (analysis.maxPrice && property.priceValue <= analysis.maxPrice) score += 6
+  if (analysis.bedrooms && property.bedrooms >= analysis.bedrooms) score += 5
+  if (analysis.parking && property.parking >= analysis.parking) score += 4
 
-  if (searchableTerms.length > 0 && searchableTerms.every((term) => !haystack.includes(term))) {
-    return false
+  for (const feature of analysis.features) {
+    if (index.haystack.includes(feature)) score += 7
   }
 
-  if (analysis.type && property.type !== analysis.type) return false
+  for (const token of analysis.expandedTokens) {
+    score += scoreTokenAcrossFields(token, index)
+  }
+
+  if (analysis.query && index.title.includes(analysis.query)) score += 14
+  if (analysis.query && index.type.includes(analysis.query)) score += 11
+  if (analysis.query && index.description.includes(analysis.query)) score += 5
+
+  return score
+}
+
+function scoreTokenAcrossFields(token: string, index: PropertySearchIndex) {
+  let score = 0
+
+  for (const [field, weight] of Object.entries(SEARCH_FIELD_WEIGHTS) as Array<[SearchFieldName, number]>) {
+    const value = index[field]
+    if (!value) continue
+    if (value === token) {
+      score += weight + 3
+      continue
+    }
+    if (value.includes(` ${token} `) || value.startsWith(`${token} `) || value.endsWith(` ${token}`)) {
+      score += weight + 1
+      continue
+    }
+    if (value.includes(token)) score += Math.max(2, Math.floor(weight / 2))
+  }
+
+  return score
+}
+
+function matchesNaturalLanguage(property: CatalogProperty, analysis: SearchAnalysis, index: PropertySearchIndex) {
+  if (!analysis.query.trim()) return true
   if (analysis.maxPrice && property.priceValue > analysis.maxPrice) return false
   if (analysis.bedrooms && property.bedrooms < analysis.bedrooms) return false
   if (analysis.parking && property.parking < analysis.parking) return false
-  if (analysis.features.some((feature) => !haystack.includes(feature))) return false
+  if (analysis.type && normalizeText(property.type) !== normalizeText(analysis.type)) return false
+  if (analysis.purpose && normalizeText(property.purpose) !== normalizeText(analysis.purpose)) return false
+  if (analysis.features.some((feature) => !index.haystack.includes(feature))) return false
 
-  return true
+  if (analysis.expandedTokens.length === 0) return true
+
+  const matchedTerms = analysis.tokens.filter((token) =>
+    [token, ...expandToken(token)].some((candidate) => index.haystack.includes(candidate)),
+  )
+
+  if (matchedTerms.length > 0) return true
+
+  return analysis.expandedTokens.some((token) => hasFuzzyTokenMatch(token, index.tokens))
 }
 
-function matchesAdvancedFilters(property: CatalogProperty, filters: CatalogAdvancedFilters, haystack: string) {
-  if (filters.type && property.type !== filters.type) return false
-  if (filters.city && normalizeText(property.city) !== normalizeText(filters.city)) return false
-  if (filters.neighborhood && normalizeText(property.neighborhood) !== normalizeText(filters.neighborhood)) return false
+function matchesAdvancedFilters(property: CatalogProperty, filters: CatalogAdvancedFilters, index: PropertySearchIndex) {
+  if (filters.type && normalizeText(property.type) !== normalizeText(filters.type)) return false
+  if (filters.city && !index.city.includes(normalizeText(filters.city))) return false
+  if (filters.neighborhood && !index.neighborhood.includes(normalizeText(filters.neighborhood))) return false
 
   const bedrooms = Number(filters.bedrooms)
   if (Number.isFinite(bedrooms) && bedrooms > 0 && property.bedrooms < bedrooms) return false
@@ -884,12 +1029,8 @@ function matchesAdvancedFilters(property: CatalogProperty, filters: CatalogAdvan
   const maxPrice = extractPriceValue(filters.maxPrice)
   if (maxPrice && property.priceValue > maxPrice) return false
 
-  const featureTerms = normalizeText(filters.feature)
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-
-  if (featureTerms.some((feature) => !haystack.includes(feature))) return false
+  const featureTerms = buildSearchTerms(normalizeText(filters.feature))
+  if (featureTerms.some((feature) => !index.haystack.includes(feature))) return false
 
   return true
 }
@@ -924,7 +1065,10 @@ function normalizeText(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[-_/.,;:()]+/g, " ")
     .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 function buildSearchTerms(query: string) {
@@ -954,6 +1098,8 @@ function buildSearchTerms(query: string) {
     "quartos",
     "vaga",
     "vagas",
+    "imovel",
+    "imoveis",
     "um",
     "uma",
   ])
@@ -961,10 +1107,76 @@ function buildSearchTerms(query: string) {
   return query
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
-    .map((term) => term.trim())
+    .map((term) => normalizeToken(term.trim()))
     .filter((term) => term.length > 2)
     .filter((term) => !stopWords.has(term))
     .filter((term) => !/^\d+$/.test(term))
+}
+
+function normalizeToken(term: string) {
+  const cleaned = normalizeText(term)
+  if (cleaned.endsWith("oes")) return `${cleaned.slice(0, -3)}ao`
+  if (cleaned.endsWith("ais")) return `${cleaned.slice(0, -3)}al`
+  if (cleaned.endsWith("eis")) return `${cleaned.slice(0, -3)}el`
+  if (cleaned.endsWith("res")) return cleaned.slice(0, -1)
+  if (cleaned.endsWith("s") && cleaned.length > 4) return cleaned.slice(0, -1)
+  return cleaned
+}
+
+function expandToken(token: string) {
+  const normalized = normalizeToken(token)
+  return (TOKEN_SYNONYMS[normalized] ?? []).map(normalizeToken)
+}
+
+function inferSearchType(query: string, tokens: string[]) {
+  if (query.includes("cobertura") || tokens.includes("cobertura")) return "Cobertura"
+  if (tokens.includes("casa")) return "Casa"
+  if (tokens.includes("terreno")) return "Terreno"
+  if (tokens.includes("loja")) return "Loja"
+  if (tokens.includes("sala") || tokens.includes("comercial") || tokens.includes("escritorio")) return "Sala Comercial"
+  if (tokens.includes("apartamento") || tokens.includes("apto")) return "Apartamento"
+  return ""
+}
+
+function inferSearchPurpose(query: string) {
+  if (query.includes("locacao") || query.includes("aluguel") || query.includes("alugar")) return "Locacao"
+  if (query.includes("venda") || query.includes("comprar") || query.includes("compra")) return "Venda"
+  return ""
+}
+
+function hasFuzzyTokenMatch(token: string, candidates: string[]) {
+  return candidates.some((candidate) => {
+    if (candidate === token) return true
+    if (candidate.includes(token) || token.includes(candidate)) return true
+    return levenshteinDistance(token, candidate) <= 2
+  })
+}
+
+function levenshteinDistance(source: string, target: string) {
+  if (source === target) return 0
+  if (!source.length) return target.length
+  if (!target.length) return source.length
+
+  const matrix = Array.from({ length: source.length + 1 }, (_, row) =>
+    Array.from({ length: target.length + 1 }, (_, column) => {
+      if (row === 0) return column
+      if (column === 0) return row
+      return 0
+    }),
+  )
+
+  for (let row = 1; row <= source.length; row += 1) {
+    for (let column = 1; column <= target.length; column += 1) {
+      const cost = source[row - 1] === target[column - 1] ? 0 : 1
+      matrix[row][column] = Math.min(
+        matrix[row - 1][column] + 1,
+        matrix[row][column - 1] + 1,
+        matrix[row - 1][column - 1] + cost,
+      )
+    }
+  }
+
+  return matrix[source.length][target.length]
 }
 
 function getPriceRangeLabel(properties: CatalogProperty[]) {

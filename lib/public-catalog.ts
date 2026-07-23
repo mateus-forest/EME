@@ -17,6 +17,7 @@ export type PublicBrokerCatalogProperty = {
   bathrooms: number
   parking: number
   type: string
+  purpose: string
   description: string
   images: string[]
   views: number
@@ -49,6 +50,7 @@ export type PublicAgencyCatalogProperty = {
   bathrooms: number
   parking: number
   type: string
+  purpose: string
   description: string
   status: "Publicado"
   views: number
@@ -89,7 +91,15 @@ function locationFromProperty(city: string, neighborhood: string | null) {
 function propertyTypeLabel(type: string) {
   if (type === "HOUSE") return "Casa"
   if (type === "COMMERCIAL") return "Comercial"
+  if (type === "LAND") return "Terreno"
+  if (type === "OFFICE") return "Sala Comercial"
+  if (type === "STORE") return "Loja"
+  if (type === "PENTHOUSE") return "Cobertura"
   return "Apartamento"
+}
+
+function propertyPurposeLabel(purpose: string) {
+  return purpose === "RENT" ? "Locacao" : "Venda"
 }
 
 export async function getPublicBrokerCatalogBySlug(slug: string): Promise<PublicBrokerCatalogData | null> {
@@ -152,6 +162,7 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
       bathrooms: property.bathrooms,
       parking: property.parkingSpots,
       type: propertyTypeLabel(property.type),
+      purpose: propertyPurposeLabel(property.purpose),
       description: property.description ?? "",
       images: getPropertyImages(Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [], property.id),
       views: property.viewsCount,
@@ -226,6 +237,7 @@ export async function getPublicAgencyCatalogBySlug(slug: string): Promise<Public
       bathrooms: property.bathrooms,
       parking: property.parkingSpots,
       type: propertyTypeLabel(property.type),
+      purpose: propertyPurposeLabel(property.purpose),
       description: property.description ?? "",
       status: "Publicado",
       views: property.viewsCount,
