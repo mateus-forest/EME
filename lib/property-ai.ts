@@ -1,7 +1,7 @@
 import { z } from "zod"
 
-import { getOpenAIClient } from "@/lib/openai-server"
 import { getOpenAIEnv } from "@/lib/env.server"
+import { getOpenAIClient } from "@/lib/openai-server"
 
 export const propertyGenerationSchema = z.object({
   title: z.string().trim().max(120).optional().default(""),
@@ -26,45 +26,42 @@ export type PropertyGenerationResult = z.infer<typeof propertyGenerationResultSc
 
 function buildPrompt(input: PropertyGenerationInput) {
   return [
-    "Dados do imóvel para anúncio:",
-    `Título atual: ${input.title || "Não informado"}`,
+    "Dados do imovel para anuncio:",
+    `Titulo atual: ${input.title || "Nao informado"}`,
     `Tipo: ${input.type}`,
     `Cidade: ${input.city}`,
     `Bairro: ${input.neighborhood}`,
-    `Preço: ${input.price}`,
+    `Preco: ${input.price}`,
     `Quartos: ${input.bedrooms}`,
     `Banheiros: ${input.bathrooms}`,
     `Vagas: ${input.parkingSpots}`,
-    `Descrição manual atual: ${input.description || "Nenhuma"}`,
+    `Descricao manual atual: ${input.description || "Nenhuma"}`,
     "",
     "Gere:",
-    "1. Uma descrição pronta para uso, clara, natural e comercial.",
-    "2. Um título sugerido curto e melhorado.",
-    "3. Até 3 highlights curtos.",
-    "Não invente dados que não foram fornecidos.",
+    "1. Uma descricao pronta para uso, clara, natural e comercial.",
+    "2. Um titulo sugerido curto e melhorado.",
+    "3. Ate 3 highlights curtos.",
+    "Nao invente dados que nao foram fornecidos.",
   ].join("\n")
 }
 
-function generateFallbackPropertyCopy(input: PropertyGenerationInput): PropertyGenerationResult {
-  const location = [input.neighborhood, input.city].filter((item) => item && item !== "Não informado").join(", ")
-  const specs = [
-    input.bedrooms ? `${input.bedrooms} dormitório${input.bedrooms === 1 ? "" : "s"}` : "",
-    input.bathrooms ? `${input.bathrooms} banheiro${input.bathrooms === 1 ? "" : "s"}` : "",
-    input.parkingSpots ? `${input.parkingSpots} vaga${input.parkingSpots === 1 ? "" : "s"}` : "",
-  ].filter(Boolean)
-  const suggestedTitle = input.title || `${input.type}${location ? ` em ${location}` : ""}`
-  const description = [
-    `${suggestedTitle} disponível para negociação.`,
-    location ? `Localização: ${location}.` : "",
-    specs.length ? `O imóvel conta com ${specs.join(", ")}.` : "",
-    input.price && input.price !== "Não informado" ? `Valor anunciado: ${input.price}.` : "",
-    input.description || "Revise os detalhes e complemente as informações antes de publicar.",
-  ].filter(Boolean).join(" ")
+function parseGeneratedJson(outputText: string) {
+  const normalized = outputText.trim()
 
-  return {
-    description,
-    suggestedTitle,
-    highlights: [input.type, location || "Cadastro revisável", specs[0] || "Pronto para revisar"].filter(Boolean).slice(0, 3),
+  if (!normalized) {
+    throw new Error("OPENAI_EMPTY_RESPONSE")
+  }
+
+  try {
+    return JSON.parse(normalized)
+  } catch {
+    const fencedMatch = normalized.match(/```(?:json)?\s*([\s\S]*?)```/i)
+
+    if (fencedMatch?.[1]) {
+      return JSON.parse(fencedMatch[1].trim())
+    }
+
+    throw new Error("OPENAI_INVALID_JSON")
   }
 }
 
@@ -72,16 +69,15 @@ export async function generatePropertyCopy(input: PropertyGenerationInput) {
   const client = getOpenAIClient()
 
   if (!client) {
-    console.warn("[property-ai] OpenAI disabled; using local fallback generation.")
-    return generateFallbackPropertyCopy(input)
+    throw new Error("OPENAI_DISABLED_OR_NOT_CONFIGURED")
   }
-  const { model } = getOpenAIEnv()
 
+  const { model } = getOpenAIEnv()
   const response = await client.responses.create({
     model,
     max_output_tokens: 500,
     instructions:
-      "Você é um especialista em criação de anúncios imobiliários no Brasil. Gere uma descrição clara, objetiva, profissional e persuasiva com base nos dados fornecidos. Destaque os diferenciais reais do imóvel, localização e praticidade. Não invente informações que não foram fornecidas.",
+      "Voce e um especialista em criacao de anuncios imobiliarios no Brasil. Gere uma descricao clara, objetiva, profissional e persuasiva com base nos dados fornecidos. Destaque os diferenciais reais do imovel, localizacao e praticidade. Nao invente informacoes que nao foram fornecidas.",
     input: buildPrompt(input),
     text: {
       format: {
@@ -94,18 +90,18 @@ export async function generatePropertyCopy(input: PropertyGenerationInput) {
           properties: {
             description: {
               type: "string",
-              description: "Descrição pronta para uso, em português do Brasil, com cerca de 80 a 140 palavras.",
+              description: "Descricao pronta para uso, em portugues do Brasil, com cerca de 80 a 140 palavras.",
             },
             suggestedTitle: {
               type: "string",
-              description: "Título curto e comercial, sem exageros irreais.",
+              description: "Titulo curto e comercial, sem exageros irreais.",
             },
             highlights: {
               type: "array",
               maxItems: 3,
               items: {
                 type: "string",
-                description: "Highlight curto do imóvel com até 8 palavras.",
+                description: "Highlight curto do imovel com ate 8 palavras.",
               },
             },
           },
@@ -115,7 +111,7 @@ export async function generatePropertyCopy(input: PropertyGenerationInput) {
     },
   })
 
-  const parsed = propertyGenerationResultSchema.parse(JSON.parse(response.output_text))
+  const parsed = propertyGenerationResultSchema.parse(parseGeneratedJson(response.output_text))
 
   return {
     description: parsed.description,

@@ -1,22 +1,37 @@
-import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
-import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
-import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
+import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import {
+  consumeBrokerAiCredits,
+  createInsufficientCreditsPayload,
+  hasBrokerAiCredits,
+  refundBrokerAiCredits,
+} from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { AD_IMPORT_MAX_IMAGE_BYTES, AD_IMPORT_MAX_TEXT_LENGTH, extractPropertyFromAd } from "@/lib/property-ad-import"
+import { UserRole } from "@/lib/prisma-enums"
 
 export const dynamic = "force-dynamic"
+
+async function fileToDataUrl(file: File) {
+  const contentType = file.type || "image/jpeg"
+  const arrayBuffer = await file.arrayBuffer()
+  return `data:${contentType};base64,${Buffer.from(arrayBuffer).toString("base64")}`
+}
 
 export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
   if (forbidden) return forbidden
+
+  let creditsConsumed = false
+  let creditsUsed = 0
+  let actionType = "smart_import_text"
 
   try {
     const formData = await request.formData()
@@ -24,10 +39,11 @@ export async function POST(request: NextRequest) {
     const sourceUrl = typeof formData.get("sourceUrl") === "string" ? String(formData.get("sourceUrl")).trim() : ""
     const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
     const image = formData.get("image")
-    const actionType = image instanceof File && image.size > 0 ? "smart_import_image" : "smart_import_text"
-    const creditsUsed = getEmeCreditCost(actionType)
+    const hasImage = image instanceof File && image.size > 0
+    actionType = hasImage ? "smart_import_image" : "smart_import_text"
+    creditsUsed = getEmeCreditCost(actionType)
 
-    if (image instanceof File && image.size > 0) {
+    if (hasImage) {
       const validImage = ["image/jpeg", "image/png", "image/webp"].includes(image.type)
       if (!validImage) {
         return NextResponse.json({ error: "Envie uma imagem JPG, PNG ou WebP." }, { status: 400 })
@@ -36,24 +52,17 @@ export async function POST(request: NextRequest) {
       if (image.size > AD_IMPORT_MAX_IMAGE_BYTES) {
         return NextResponse.json({ error: "A imagem deve ter ate 5 MB." }, { status: 400 })
       }
-
-      if (!adText && !sourceUrl && !notes) {
-        return NextResponse.json(
-          { error: "Extracao por imagem sera ativada quando a IA visual estiver configurada." },
-          { status: 501 },
-        )
-      }
     }
 
-    if (!adText && !sourceUrl && !notes) {
+    if (!adText && !sourceUrl && !notes && !hasImage) {
       return NextResponse.json(
-        { error: "Cole o texto do anúncio, informe um link ou adicione observações para extrair os dados." },
+        { error: "Cole o texto do anuncio, informe um link, envie um print ou adicione observacoes para extrair os dados." },
         { status: 400 },
       )
     }
 
     if (adText.length > AD_IMPORT_MAX_TEXT_LENGTH) {
-      return NextResponse.json({ error: "O texto do anúncio deve ter até 12.000 caracteres." }, { status: 400 })
+      return NextResponse.json({ error: "O texto do anuncio deve ter ate 12.000 caracteres." }, { status: 400 })
     }
 
     if (user.role === UserRole.BROKER && user.broker) {
@@ -63,36 +72,114 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const draft = await extractPropertyFromAd({ adText, sourceUrl, notes })
+    const draft = await extractPropertyFromAd({
+      adText,
+      sourceUrl,
+      notes,
+      imageDataUrl: hasImage ? await fileToDataUrl(image) : "",
+    })
+
     if (user.role === UserRole.BROKER && user.broker) {
       await consumeBrokerAiCredits({
         brokerId: user.broker.id,
         amount: creditsUsed,
         actionType,
-        description: actionType === "smart_import_image" ? "Importação inteligente por imagem" : "Importação inteligente por texto livre",
+        description: hasImage ? "Importacao inteligente por imagem" : "Importacao inteligente por anuncio",
         metadata: {
           source: "api/properties/import/ad/extract",
-          hasImage: image instanceof File && image.size > 0,
+          hasImage,
           hasSourceUrl: Boolean(sourceUrl),
           hasNotes: Boolean(notes),
         },
       })
+      creditsConsumed = true
     }
+
     const response = NextResponse.json({ draft })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {
-    console.error("[api][properties][import][ad][extract] failed", {
-      message: caughtError instanceof Error ? caughtError.message : "unknown",
-    })
-
-    const isOpenAIUnavailable =
-      caughtError instanceof Error && caughtError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")
-
-    if (isOpenAIUnavailable) {
-      return NextResponse.json({ error: "A importação inteligente precisa da IA ativada." }, { status: 503 })
+    if (creditsConsumed && user.role === UserRole.BROKER && user.broker) {
+      try {
+        await refundBrokerAiCredits({
+          brokerId: user.broker.id,
+          amount: creditsUsed,
+          actionType,
+          description: "Estorno automatico por falha na importacao inteligente",
+          metadata: {
+            source: "api/properties/import/ad/extract",
+          },
+        })
+      } catch (refundError) {
+        console.error("[api][properties][import][ad][extract][refund-failed]", {
+          brokerId: user.broker.id,
+          message: refundError instanceof Error ? refundError.message : "unknown",
+        })
+      }
     }
 
-    return NextResponse.json({ error: "Não foi possível extrair os dados do anúncio." }, { status: 500 })
+    console.error("[api][properties][import][ad][extract] failed", {
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+      stack: caughtError instanceof Error ? caughtError.stack : undefined,
+    })
+
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")) {
+      return NextResponse.json({ error: "A importacao inteligente com IA nao esta configurada neste ambiente." }, { status: 503 })
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_INVALID")) {
+      return NextResponse.json({ error: "Informe um link valido para tentar a importacao pelo anuncio." }, { status: 400 })
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_BLOCKED")) {
+      return NextResponse.json(
+        { error: "O site do anuncio bloqueou a leitura automatica. Cole o texto do anuncio ou envie um print para continuar." },
+        { status: 403 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_UNREACHABLE")) {
+      return NextResponse.json(
+        { error: "Nao foi possivel acessar esse link no momento. Verifique a URL ou tente com o texto do anuncio." },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_FETCH_FAILED")) {
+      return NextResponse.json(
+        { error: "Nao foi possivel ler o conteudo desse link. Tente novamente ou use o texto do anuncio." },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("AD_IMPORT_EMPTY_INPUT")) {
+      return NextResponse.json(
+        { error: "Nao encontramos informacoes suficientes para montar a previa. Envie mais contexto antes de tentar novamente." },
+        { status: 400 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
+      return NextResponse.json(
+        { error: "A IA nao retornou uma previa valida do imovel. Tente novamente em instantes." },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_INVALID_JSON")) {
+      return NextResponse.json(
+        { error: "A resposta da IA veio em um formato invalido. Tente novamente em instantes." },
+        { status: 502 },
+      )
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json(
+        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { status: 503 },
+      )
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel extrair os dados do anuncio." }, { status: 500 })
   }
 }

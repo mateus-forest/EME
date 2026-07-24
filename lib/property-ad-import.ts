@@ -34,21 +34,169 @@ export type AdImportInput = {
   adText: string
   sourceUrl: string
   notes: string
+  imageDataUrl?: string
+}
+
+type SourceUrlContext = {
+  finalUrl: string
+  title: string
+  description: string
+  text: string
+  images: string[]
 }
 
 function sanitizeInput(value: string, maxLength: number) {
   return value.replace(/\s+/g, " ").trim().slice(0, maxLength)
 }
 
-function buildPrompt(input: AdImportInput) {
+function parseGeneratedJson(outputText: string) {
+  const normalized = outputText.trim()
+
+  if (!normalized) {
+    throw new Error("OPENAI_EMPTY_RESPONSE")
+  }
+
+  try {
+    return JSON.parse(normalized)
+  } catch {
+    const fencedMatch = normalized.match(/```(?:json)?\s*([\s\S]*?)```/i)
+    if (fencedMatch?.[1]) {
+      return JSON.parse(fencedMatch[1].trim())
+    }
+
+    throw new Error("OPENAI_INVALID_JSON")
+  }
+}
+
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+}
+
+function stripHtml(html: string) {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function extractMetaContent(html: string, property: string) {
+  const pattern = new RegExp(
+    `<meta[^>]+(?:property|name)=["']${property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+    "i",
+  )
+  return decodeHtmlEntities(pattern.exec(html)?.[1] ?? "").trim()
+}
+
+function extractTitle(html: string) {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+  return decodeHtmlEntities(titleMatch?.[1] ?? "").replace(/\s+/g, " ").trim()
+}
+
+function extractImageUrls(html: string, baseUrl: string) {
+  const urls = new Set<string>()
+  const addUrl = (candidate: string) => {
+    try {
+      const resolved = new URL(candidate, baseUrl)
+      if (/^https?:$/i.test(resolved.protocol)) {
+        urls.add(resolved.toString())
+      }
+    } catch {
+      return
+    }
+  }
+
+  const ogImage = extractMetaContent(html, "og:image")
+  if (ogImage) addUrl(ogImage)
+
+  const imgPattern = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+  let match: RegExpExecArray | null
+  while ((match = imgPattern.exec(html))) {
+    if (match[1]) addUrl(match[1])
+    if (urls.size >= 8) break
+  }
+
+  return Array.from(urls).slice(0, 8)
+}
+
+async function fetchSourceUrlContext(sourceUrl: string): Promise<SourceUrlContext | null> {
+  if (!sourceUrl) return null
+
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(sourceUrl)
+  } catch {
+    throw new Error("SOURCE_URL_INVALID")
+  }
+
+  if (!/^https?:$/i.test(parsedUrl.protocol)) {
+    throw new Error("SOURCE_URL_INVALID")
+  }
+
+  const response = await fetch(parsedUrl, {
+    cache: "no-store",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; EME Catalog Import/1.0)",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    },
+  }).catch((error) => {
+    console.error("[property-ad-import][source-url][network-failed]", {
+      sourceUrl,
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    return null
+  })
+
+  if (!response) {
+    throw new Error("SOURCE_URL_UNREACHABLE")
+  }
+
+  if ([401, 403, 429].includes(response.status)) {
+    throw new Error("SOURCE_URL_BLOCKED")
+  }
+
+  if (!response.ok) {
+    throw new Error("SOURCE_URL_FETCH_FAILED")
+  }
+
+  const html = await response.text()
+  const text = stripHtml(html).slice(0, 8000)
+  return {
+    finalUrl: response.url || sourceUrl,
+    title: extractTitle(html).slice(0, 200),
+    description: extractMetaContent(html, "description").slice(0, 400),
+    text,
+    images: extractImageUrls(html, response.url || sourceUrl),
+  }
+}
+
+function buildPrompt(input: AdImportInput, sourceContext: SourceUrlContext | null) {
   return [
     "Extraia dados imobiliarios do material fornecido.",
     "Nao invente dados ausentes. Quando houver duvida, deixe o campo vazio e inclua o nome do campo em lowConfidenceFields ou missingFields.",
     "Nunca marque como pronto se faltar titulo, cidade, bairro ou preco.",
+    "Use imagens apenas para confirmar o que estiver visivel e real.",
     "",
     `Texto do anuncio: ${input.adText || "Nao informado"}`,
-    `Link de referencia: ${input.sourceUrl || "Nao informado"}`,
+    `Link informado: ${input.sourceUrl || "Nao informado"}`,
     `Observacoes do usuario: ${input.notes || "Nenhuma"}`,
+    "",
+    `Titulo da pagina: ${sourceContext?.title || "Nao informado"}`,
+    `Descricao da pagina: ${sourceContext?.description || "Nao informado"}`,
+    `URL final analisada: ${sourceContext?.finalUrl || "Nao informado"}`,
+    `Texto extraido da pagina: ${sourceContext?.text || "Nao informado"}`,
+    `Imagens encontradas na pagina: ${(sourceContext?.images ?? []).join(", ") || "Nenhuma"}`,
   ].join("\n")
 }
 
@@ -79,15 +227,47 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     adText: sanitizeInput(input.adText, AD_IMPORT_MAX_TEXT_LENGTH),
     sourceUrl: sanitizeInput(input.sourceUrl, 500),
     notes: sanitizeInput(input.notes, 1000),
+    imageDataUrl: input.imageDataUrl?.trim() || "",
+  }
+
+  const sourceContext = await fetchSourceUrlContext(sanitizedInput.sourceUrl)
+  const hasAnyContent = Boolean(
+    sanitizedInput.adText ||
+      sanitizedInput.notes ||
+      sanitizedInput.imageDataUrl ||
+      sourceContext?.text ||
+      sourceContext?.images.length,
+  )
+
+  if (!hasAnyContent) {
+    throw new Error("AD_IMPORT_EMPTY_INPUT")
   }
 
   const { model } = getOpenAIEnv()
+  const inputParts: Array<
+    | { type: "input_text"; text: string }
+    | { type: "input_image"; image_url: string; detail: "high" }
+  > = [{ type: "input_text", text: buildPrompt(sanitizedInput, sourceContext) }]
+
+  if (sanitizedInput.imageDataUrl) {
+    inputParts.push({
+      type: "input_image",
+      image_url: sanitizedInput.imageDataUrl,
+      detail: "high",
+    })
+  }
+
   const response = await client.responses.create({
     model,
     max_output_tokens: 900,
     instructions:
       "Voce e um especialista em cadastro de imoveis no Brasil. Extraia dados de anuncios imobiliarios com cautela, em portugues do Brasil, sem inventar informacoes. Retorne apenas JSON valido conforme o schema.",
-    input: buildPrompt(sanitizedInput),
+    input: [
+      {
+        role: "user",
+        content: inputParts,
+      },
+    ],
     text: {
       format: {
         type: "json_schema",
@@ -143,11 +323,15 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     },
   })
 
-  const parsed = adImportDraftSchema.parse(JSON.parse(response.output_text))
+  const parsed = adImportDraftSchema.parse(parseGeneratedJson(response.output_text))
+  const mergedImages = Array.from(
+    new Set([...(parsed.images ?? []), ...(sourceContext?.images ?? [])].filter(Boolean)),
+  ).slice(0, 8)
 
   return normalizeDraft({
     ...parsed,
-    sourceUrl: parsed.sourceUrl || sanitizedInput.sourceUrl,
+    images: mergedImages,
+    sourceUrl: parsed.sourceUrl || sourceContext?.finalUrl || sanitizedInput.sourceUrl,
     notes: [parsed.notes, sanitizedInput.notes].filter(Boolean).join(" | "),
   })
 }

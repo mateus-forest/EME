@@ -37,6 +37,18 @@ export type PublicBrokerCatalogData = {
   brokerId: string
 }
 
+export type PublicCatalogLoadState =
+  | {
+      status: "ready"
+      catalog: PublicBrokerCatalogData
+    }
+  | {
+      status: "missing_slug" | "catalog_not_found" | "broker_without_catalog" | "incomplete_data" | "service_unavailable"
+      message: string
+    }
+
+type PublicCatalogErrorStatus = Exclude<PublicCatalogLoadState["status"], "ready">
+
 export type PublicAgencyCatalogProperty = {
   id: string
   publicCode: number | null
@@ -149,7 +161,7 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
     description: broker.description ?? `Confira os imóveis publicados por ${broker.user.name}.`,
     creci: broker.creci ?? "",
     whatsApp: broker.user.phone ?? broker.phone ?? "",
-    properties: broker.properties.map((property) => ({
+    properties: broker.properties.map((property: any) => ({
       id: property.id,
       publicCode: property.publicCode ?? null,
       title: property.title,
@@ -170,6 +182,108 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
       brokerId: property.brokerId,
       agencyId: property.agencyId,
     })),
+  }
+}
+
+function buildCatalogUnavailableState(
+  status: PublicCatalogErrorStatus,
+  slug: string,
+): Exclude<PublicCatalogLoadState, { status: "ready"; catalog: PublicBrokerCatalogData }> {
+  if (status === "missing_slug") {
+    return {
+      status,
+      message: "O link do catálogo está incompleto. Confira o endereço e tente novamente.",
+    }
+  }
+
+  if (status === "catalog_not_found") {
+    return {
+      status,
+      message: "Não encontramos este catálogo público. Verifique o link ou peça um novo acesso ao corretor.",
+    }
+  }
+
+  if (status === "broker_without_catalog") {
+    return {
+      status,
+      message: "Este corretor ainda não publicou um catálogo público disponível.",
+    }
+  }
+
+  if (status === "incomplete_data") {
+    return {
+      status,
+      message: "Este catálogo ainda não está pronto para compartilhamento. Tente novamente em instantes.",
+    }
+  }
+
+  console.error("[public-catalog][broker][load-failed]", {
+    slug,
+    status,
+  })
+
+  return {
+    status,
+    message: "O catálogo está temporariamente indisponível. Tente novamente em alguns instantes.",
+  }
+}
+
+function isCompleteBrokerCatalog(catalog: PublicBrokerCatalogData | null) {
+  return Boolean(
+    catalog?.slug?.trim() &&
+      catalog.displayName?.trim() &&
+      Array.isArray(catalog.properties),
+  )
+}
+
+export async function getPublicBrokerCatalogPageState(slug: string): Promise<PublicCatalogLoadState> {
+  const normalizedSlug = slug.trim()
+
+  if (!normalizedSlug) {
+    return buildCatalogUnavailableState("missing_slug", normalizedSlug)
+  }
+
+  try {
+    const catalog = await getPublicBrokerCatalogBySlug(normalizedSlug)
+
+    if (!catalog) {
+      const broker = await prisma.broker.findUnique({
+        where: {
+          catalogSlug: normalizedSlug,
+        },
+        select: {
+          id: true,
+        },
+      })
+
+      return buildCatalogUnavailableState(
+        broker ? "broker_without_catalog" : "catalog_not_found",
+        normalizedSlug,
+      )
+    }
+
+    if (!isCompleteBrokerCatalog(catalog)) {
+      console.error("[public-catalog][broker][incomplete-data]", {
+        slug: normalizedSlug,
+        hasDisplayName: Boolean(catalog.displayName?.trim()),
+        hasCatalogSlug: Boolean(catalog.slug?.trim()),
+        propertiesCount: catalog.properties.length,
+      })
+      return buildCatalogUnavailableState("incomplete_data", normalizedSlug)
+    }
+
+    return {
+      status: "ready",
+      catalog,
+    }
+  } catch (error) {
+    console.error("[public-catalog][broker][exception]", {
+      slug: normalizedSlug,
+      message: error instanceof Error ? error.message : "unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
+    return buildCatalogUnavailableState("service_unavailable", normalizedSlug)
   }
 }
 
@@ -224,7 +338,7 @@ export async function getPublicAgencyCatalogBySlug(slug: string): Promise<Public
     logoUrl: agency.logoUrl ?? "",
     description: agency.description ?? `Imóveis publicados por ${agency.name}. Atendimento com ${agency.ownerUser.name}.`,
     whatsApp: agency.phone ?? agency.ownerUser.phone ?? "",
-    properties: agency.properties.map((property) => ({
+    properties: agency.properties.map((property: any) => ({
       id: property.id,
       publicCode: property.publicCode ?? null,
       title: property.title,

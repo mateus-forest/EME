@@ -1,22 +1,28 @@
-import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 import { ZodError } from "zod"
 
-import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
-import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
+import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import {
+  consumeBrokerAiCredits,
+  createInsufficientCreditsPayload,
+  hasBrokerAiCredits,
+  refundBrokerAiCredits,
+} from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
+import { UserRole } from "@/lib/prisma-enums"
 import { generatePropertyCopy, propertyGenerationSchema } from "@/lib/property-ai"
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now()
   let stage = "auth"
   let payloadForLog: unknown = null
+  let creditsConsumed = false
   const actionType = "generate_property_ai"
   const creditsUsed = getEmeCreditCost(actionType)
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const roleError = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -26,12 +32,14 @@ export async function POST(request: NextRequest) {
     stage = "parse_payload"
     const payload = await request.json().catch(() => null)
     payloadForLog = payload
+
     console.info("[api][ai][generate-property][stage]", {
       stage,
       userId: user.id,
       role: user.role,
       hasPayload: Boolean(payload),
     })
+
     const input = propertyGenerationSchema.parse({
       title: payload?.title,
       type: payload?.type,
@@ -60,6 +68,7 @@ export async function POST(request: NextRequest) {
       city: input.city,
       hasDescription: Boolean(input.description),
     })
+
     const result = await generatePropertyCopy(input)
 
     if (user.role === UserRole.BROKER && user.broker) {
@@ -68,7 +77,7 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker.id,
         amount: creditsUsed,
         actionType,
-        description: "Criar anúncio com IA",
+        description: "Criar anuncio com IA",
         metadata: {
           source: "api/ai/generate-property",
           title: input.title,
@@ -76,6 +85,7 @@ export async function POST(request: NextRequest) {
           city: input.city,
         },
       })
+      creditsConsumed = true
     }
 
     console.info("[api][ai][generate-property][success]", {
@@ -84,17 +94,43 @@ export async function POST(request: NextRequest) {
       elapsedMs: Date.now() - startedAt,
       resultKeys: Object.keys(result),
     })
+
     return NextResponse.json(result)
-  } catch (error) {
-    if (error instanceof ZodError) {
+  } catch (caughtError) {
+    if (creditsConsumed && user.role === UserRole.BROKER && user.broker) {
+      try {
+        await refundBrokerAiCredits({
+          brokerId: user.broker.id,
+          amount: creditsUsed,
+          actionType,
+          description: "Estorno automatico por falha na geracao com IA",
+          metadata: {
+            source: "api/ai/generate-property",
+            stage,
+          },
+        })
+      } catch (refundError) {
+        console.error("[api][ai][generate-property][refund-failed]", {
+          userId: user.id,
+          stage,
+          elapsedMs: Date.now() - startedAt,
+          message: refundError instanceof Error ? refundError.message : "unknown",
+        })
+      }
+    }
+
+    if (caughtError instanceof ZodError) {
       console.error("[api][ai][generate-property][validation-failed]", {
         stage,
         userId: user.id,
         elapsedMs: Date.now() - startedAt,
-        issues: error.issues,
+        issues: caughtError.issues,
         payload: payloadForLog,
       })
-      return NextResponse.json({ error: "Payload inválido para geração de anúncio." }, { status: 400 })
+      return NextResponse.json(
+        { error: "Preencha os dados obrigatorios do imovel antes de gerar o anuncio com IA." },
+        { status: 400 },
+      )
     }
 
     console.error("[api][ai][generate-property] failed", {
@@ -102,20 +138,38 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       elapsedMs: Date.now() - startedAt,
       payload: payloadForLog,
-      message: error instanceof Error ? error.message : "unknown",
-      stack: error instanceof Error ? error.stack : undefined,
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+      stack: caughtError instanceof Error ? caughtError.stack : undefined,
     })
 
-    const isOpenAIUnavailable =
-      error instanceof Error && error.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")
-
-    if (isOpenAIUnavailable) {
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")) {
       return NextResponse.json(
-        { error: "A integração de IA ainda não está habilitada neste ambiente." },
+        { error: "A geracao com IA nao esta configurada neste ambiente." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Não foi possível gerar o anúncio com IA no momento." }, { status: 500 })
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
+      return NextResponse.json(
+        { error: "A IA nao retornou um anuncio valido. Tente novamente em instantes." },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_INVALID_JSON")) {
+      return NextResponse.json(
+        { error: "A resposta da IA veio em um formato invalido. Tente novamente em instantes." },
+        { status: 502 },
+      )
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json(
+        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { status: 503 },
+      )
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel gerar o anuncio com IA no momento." }, { status: 500 })
   }
 }

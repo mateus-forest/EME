@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ImagePlus, LinkIcon, Sparkles } from "lucide-react"
 
 import type { AdImportDraft } from "@/lib/property-ad-import"
-import { confirmPropertyAdImport, extractPropertyAd } from "@/lib/property-ad-import-client"
+import { confirmPropertyAdImport, extractPropertyAd, getPropertyImportCapabilities } from "@/lib/property-ad-import-client"
 import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,12 +42,39 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   const [feedback, setFeedback] = useState("")
   const [isExtracting, setIsExtracting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [aiImportEnabled, setAiImportEnabled] = useState(true)
+  const [aiImportReason, setAiImportReason] = useState("")
+
+  useEffect(() => {
+    let isMounted = true
+
+    void getPropertyImportCapabilities()
+      .then((capabilities) => {
+        if (!isMounted) return
+        setAiImportEnabled(capabilities.aiImportEnabled)
+        setAiImportReason(capabilities.aiImportReason)
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setAiImportEnabled(false)
+        setAiImportReason("Nao foi possivel validar os recursos de importacao neste ambiente.")
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   function updateDraft<K extends keyof AdImportDraft>(field: K, value: AdImportDraft[K]) {
     setDraft((current) => (current ? { ...current, [field]: value } : current))
   }
 
   async function handleExtract() {
+    if (!aiImportEnabled) {
+      setFeedback(aiImportReason || "A importacao inteligente nao esta disponivel neste ambiente.")
+      return
+    }
+
     setIsExtracting(true)
     setFeedback("")
     setDraft(null)
@@ -140,12 +167,15 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           <Button
             type="button"
             onClick={handleExtract}
-            disabled={isExtracting}
+            disabled={isExtracting || !aiImportEnabled}
             className="h-10 w-fit rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
           >
             <Sparkles className="size-4" />
             {isExtracting ? "Extraindo..." : "Extrair dados com IA"}
           </Button>
+          {!aiImportEnabled && aiImportReason ? (
+            <p className="text-sm text-[#9B6B00]">{aiImportReason}</p>
+          ) : null}
         </div>
       ) : (
         <div className="grid gap-4">

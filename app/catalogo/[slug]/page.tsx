@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
 
 import { BrokerPublicCatalog } from "@/components/broker-public-catalog"
+import { PublicCatalogUnavailable } from "@/components/public-catalog-unavailable"
 import { buildBrokerCatalogMetadata } from "@/lib/public-catalog-metadata"
-import { getPublicBrokerCatalogBySlug } from "@/lib/public-catalog"
+import { getPublicBrokerCatalogPageState } from "@/lib/public-catalog"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -12,26 +12,32 @@ type CatalogPageProps = {
   params: Promise<{
     slug: string
   }>
+  searchParams?: Promise<{
+    from?: string
+  }>
 }
 
 export async function generateMetadata({ params }: CatalogPageProps): Promise<Metadata> {
   const { slug } = await params
-  const catalog = slug ? await getPublicBrokerCatalogBySlug(slug) : null
-  return buildBrokerCatalogMetadata(slug, catalog)
+  const state = slug ? await getPublicBrokerCatalogPageState(slug) : null
+  return buildBrokerCatalogMetadata(slug, state?.status === "ready" ? state.catalog : null)
 }
 
-export default async function PublicCatalogPage({ params }: CatalogPageProps) {
+export default async function PublicCatalogPage({ params, searchParams }: CatalogPageProps) {
   const { slug } = await params
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const fromPortal = resolvedSearchParams?.from === "portal"
+  const state = await getPublicBrokerCatalogPageState(slug ?? "")
 
-  if (!slug) {
-    notFound()
+  if (state.status !== "ready") {
+    return (
+      <PublicCatalogUnavailable
+        title="Catálogo indisponível"
+        message={state.message}
+        fromPortal={fromPortal}
+      />
+    )
   }
 
-  const catalog = await getPublicBrokerCatalogBySlug(slug)
-
-  if (!catalog) {
-    notFound()
-  }
-
-  return <BrokerPublicCatalog slug={slug} initialCatalog={catalog} />
+  return <BrokerPublicCatalog slug={slug} initialCatalog={state.catalog} />
 }

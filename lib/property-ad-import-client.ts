@@ -1,6 +1,11 @@
 import type { AdImportDraft } from "@/lib/property-ad-import"
 import type { PropertyApiItem } from "@/lib/property-contract"
 
+export type PropertyImportCapabilities = {
+  aiImportEnabled: boolean
+  aiImportReason: string
+}
+
 async function parseAdImportResponse<T>(response: Response, fallback: string) {
   const data = (await response.json().catch(() => null)) as ({ error?: string } & T) | null
 
@@ -46,5 +51,16 @@ export async function confirmPropertyAdImport(draft: AdImportDraft) {
       body: JSON.stringify({ draft }),
     }),
     "Nao foi possivel criar o imovel a partir do anuncio.",
+  )
+}
+
+export async function getPropertyImportCapabilities() {
+  return parseAdImportResponse<PropertyImportCapabilities>(
+    await fetch("/api/properties/import/capabilities", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    }),
+    "Nao foi possivel verificar os recursos de importacao.",
   )
 }

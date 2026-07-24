@@ -2,14 +2,13 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 
 import { ImageResponse } from "next/og"
-import { notFound } from "next/navigation"
 
 import {
   getBrokerCatalogPreferredVisualSource,
   getBrokerCatalogTitle,
   PREMIUM_FALLBACK_IMAGE_PATH,
 } from "@/lib/public-catalog-metadata"
-import { getPublicBrokerCatalogBySlug } from "@/lib/public-catalog"
+import { getPublicBrokerCatalogPageState } from "@/lib/public-catalog"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -57,18 +56,16 @@ async function resolveImageDataUrl(source: string, fallbackDataUrl: string) {
 
 export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
   const { slug } = await params
-  const catalog = slug ? await getPublicBrokerCatalogBySlug(slug) : null
-
-  if (!catalog) {
-    notFound()
-  }
-
   const fallbackImageDataUrl = await fileToDataUrl(PREMIUM_FALLBACK_IMAGE_PATH)
   const emeLogoDataUrl = await fileToDataUrl("/images/eme-logo-official.png")
+  const state = slug ? await getPublicBrokerCatalogPageState(slug) : null
+  const catalog = state?.status === "ready" ? state.catalog : null
   const selectedImageSource = getBrokerCatalogPreferredVisualSource(catalog)
   const selectedImageDataUrl = await resolveImageDataUrl(selectedImageSource, fallbackImageDataUrl)
   const title = getBrokerCatalogTitle(catalog)
-  const description = catalog.description?.trim() || "Selecao publica de imoveis com atendimento direto pelo corretor."
+  const description =
+    catalog?.description?.trim() || "Selecao publica de imoveis com atendimento direto pelo corretor."
+  const displayName = catalog?.displayName?.trim() || "EME"
 
   return new ImageResponse(
     (
@@ -174,7 +171,7 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
             >
               <img
                 src={selectedImageDataUrl}
-                alt={catalog.displayName}
+                alt={displayName}
                 width={360}
                 height={410}
                 style={{
@@ -209,7 +206,7 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
                   lineHeight: 1.1,
                 }}
               >
-                {catalog.displayName}
+                {displayName}
               </span>
             </div>
           </div>
@@ -242,16 +239,16 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
               >
                 Catalogo de imoveis
               </span>
-              <h1
-                style={{
-                  margin: 0,
+                <h1
+                  style={{
+                    margin: 0,
                   fontSize: 64,
                   lineHeight: 1,
                   letterSpacing: "-0.05em",
                   color: "#101418",
                 }}
               >
-                {catalog.displayName}
+                {displayName}
               </h1>
               <p
                 style={{

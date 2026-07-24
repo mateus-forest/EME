@@ -17,6 +17,16 @@ export type XmlImportReport = {
   failed: Array<{ title: string; reason: string }>
 }
 
+type PreviewXmlInput =
+  | {
+      file: File
+      sourceUrl?: never
+    }
+  | {
+      file?: never
+      sourceUrl: string
+    }
+
 async function parseImportResponse<T>(response: Response, fallback: string) {
   const data = (await response.json().catch(() => null)) as ({ error?: string } & T) | null
 
@@ -27,9 +37,10 @@ async function parseImportResponse<T>(response: Response, fallback: string) {
   return data as T
 }
 
-export async function previewPropertyXml(file: File) {
+export async function previewPropertyXml(input: PreviewXmlInput) {
   const formData = new FormData()
-  formData.append("file", file)
+  if (input.file) formData.append("file", input.file)
+  if (input.sourceUrl) formData.append("sourceUrl", input.sourceUrl)
 
   return parseImportResponse<{ properties: ParsedXmlProperty[]; summary: XmlImportSummary }>(
     await fetch("/api/properties/import/xml/preview", {

@@ -79,6 +79,7 @@ export function BrokerNewPropertyPage() {
   const [xmlReport, setXmlReport] = useState<XmlImportReport | null>(null)
   const [isAnalyzingXml, setIsAnalyzingXml] = useState(false)
   const [isImportingXml, setIsImportingXml] = useState(false)
+  const [xmlSourceUrl, setXmlSourceUrl] = useState("")
 
   const totalPropertiesCount = useMemo(() => properties.length, [properties])
   const billingBypassEnabled = isBillingBypassEnabled()
@@ -146,7 +147,31 @@ export function BrokerNewPropertyPage() {
     setXmlReport(null)
 
     try {
-      const result = await previewPropertyXml(file)
+      const result = await previewPropertyXml({ file })
+      setXmlPreview(result.properties)
+      setXmlSummary(result.summary)
+      setPublishFeedback("XML analisado. Revise os imóveis antes de importar.")
+    } catch (caughtError) {
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
+    } finally {
+      setIsAnalyzingXml(false)
+    }
+  }
+
+  async function handleXmlImportUrl() {
+    if (!xmlSourceUrl.trim()) {
+      setPublishFeedback("Informe a URL do XML para analisar antes de importar.")
+      return
+    }
+
+    setIsAnalyzingXml(true)
+    setPublishFeedback("")
+    setXmlPreview([])
+    setXmlSummary(null)
+    setXmlReport(null)
+
+    try {
+      const result = await previewPropertyXml({ sourceUrl: xmlSourceUrl.trim() })
       setXmlPreview(result.properties)
       setXmlSummary(result.summary)
       setPublishFeedback("XML analisado. Revise os imóveis antes de importar.")
@@ -241,8 +266,13 @@ export function BrokerNewPropertyPage() {
       return
     }
 
-    if (!description.trim() && selectedFiles.length === 0 && !audioFile) {
-      setPublishFeedback("Envie uma descrição, foto ou áudio para a IA montar o anúncio.")
+    if (!description.trim()) {
+      setPublishFeedback("Adicione uma descrição do imóvel antes de gerar o anúncio com IA.")
+      return
+    }
+
+    if (!city.trim() || !neighborhood.trim() || !price.trim()) {
+      setPublishFeedback("Informe cidade, bairro e valor para gerar um anúncio coerente com IA.")
       return
     }
 
@@ -257,9 +287,9 @@ export function BrokerNewPropertyPage() {
         title,
         type: propertyType,
         purpose: propertyPurpose,
-        city: city || "Não informado",
-        neighborhood: neighborhood || "Não informado",
-        price: price || "Não informado",
+        city,
+        neighborhood,
+        price,
         bedrooms,
         bathrooms,
         parkingSpots: parking,
@@ -280,19 +310,7 @@ export function BrokerNewPropertyPage() {
       setHasGenerated(true)
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : ""
-      console.error("[broker-new-property][generate-ai] failed", {
-        title,
-        propertyType,
-        city,
-        neighborhood,
-        hasDescription: Boolean(description.trim()),
-        message: message || "unknown",
-      })
-      setPublishFeedback(
-        message.toLowerCase().includes("ia ainda")
-          ? "A geração com IA ainda não está ativada."
-          : "Não foi possível gerar o anúncio com IA. Tente novamente em instantes.",
-      )
+      setPublishFeedback(message || "Não foi possível gerar o anúncio com IA. Tente novamente em instantes.")
     } finally {
       setIsGenerating(false)
     }
@@ -430,7 +448,10 @@ export function BrokerNewPropertyPage() {
               setCreationMode(null)
               setPublishFeedback("")
             }}
+            xmlSourceUrl={xmlSourceUrl}
+            onXmlSourceUrlChange={setXmlSourceUrl}
             onXmlImport={handleXmlImport}
+            onXmlImportUrl={handleXmlImportUrl}
             onConfirmImport={handleConfirmXmlImport}
           />
         ) : (
@@ -863,7 +884,10 @@ function ImportPropertyPanel({
   isImporting,
   onImported,
   onBack,
+  xmlSourceUrl,
+  onXmlSourceUrlChange,
   onXmlImport,
+  onXmlImportUrl,
   onConfirmImport,
 }: {
   feedback: string
@@ -874,7 +898,10 @@ function ImportPropertyPanel({
   isImporting: boolean
   onImported: () => void | Promise<void>
   onBack: () => void
+  xmlSourceUrl: string
+  onXmlSourceUrlChange: (value: string) => void
   onXmlImport: (files: FileList | null) => void | Promise<void>
+  onXmlImportUrl: () => void | Promise<void>
   onConfirmImport: () => void | Promise<void>
 }) {
   return (
@@ -899,10 +926,29 @@ function ImportPropertyPanel({
           <p className="mt-2 text-sm leading-6 text-[#6B7280]">Envie um arquivo XML de imóveis para revisar antes de importar.</p>
         </label>
         <div className="min-h-48 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
-          <Sparkles className="size-8 text-[#009b3a]" />
-          <h3 className="mt-5 text-lg font-semibold text-[#050505]">Importar de anúncio</h3>
-          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole texto, informe um link ou envie um print para extrair com IA.</p>
+          <Upload className="size-8 text-[#009b3a]" />
+          <h3 className="mt-5 text-lg font-semibold text-[#050505]">Importar XML por URL</h3>
+          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole o link do XML para gerar uma prévia antes da importação.</p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <Input
+              value={xmlSourceUrl}
+              onChange={(event) => onXmlSourceUrlChange(event.target.value)}
+              placeholder="https://.../imoveis.xml"
+              className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => void onXmlImportUrl()}
+              className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+            >
+              Analisar URL
+            </Button>
+          </div>
         </div>
+      </div>
+      <div className="mt-4 rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
+        Importação por anúncio: texto livre, link e print/imagem geram uma prévia revisável antes de salvar.
       </div>
       <AdImportPanel onImported={onImported} />
       {isAnalyzing ? <p className="mt-5 text-sm text-[#6B7280]">Analisando XML...</p> : null}
