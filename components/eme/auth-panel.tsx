@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState, type FormEvent, type InputHTMLAttributes } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import { X } from "lucide-react"
+
+import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
 
 export type AuthMode = "login" | "signup"
 
@@ -15,7 +18,15 @@ export function AuthPanel({
   onModeChange: (m: AuthMode) => void
   onClose: () => void
 }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const isLogin = mode === "login"
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -24,6 +35,108 @@ export function AuthPanel({
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
+
+  useEffect(() => {
+    setError("")
+  }, [mode])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setError("")
+
+    if (isLogin) {
+      const payload = {
+        email: email.trim().toLowerCase(),
+        password,
+      }
+
+      if (!payload.email || !payload.password) {
+        setError("Email e senha sao obrigatorios.")
+        setIsSubmitting(false)
+        return
+      }
+
+      try {
+        clearLegacyAuthState()
+
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        })
+
+        const data = (await response.json().catch(() => null)) as
+          | { user: AuthenticatedUser }
+          | { error?: string }
+          | null
+
+        if (!response.ok || !data || !("user" in data)) {
+          setError(data && "error" in data && data.error ? data.error : "Nao foi possivel entrar agora.")
+          return
+        }
+
+        const next = searchParams.get("next")
+        const fallbackRoute = getDefaultRouteByRole(data.user.role)
+        const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
+
+        router.push(targetRoute)
+        return
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+
+    const trimmedName = name.trim()
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!trimmedName || !normalizedEmail || !password) {
+      setError("Nome, email e senha sao obrigatorios.")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError("As senhas nao coincidem.")
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
+      clearLegacyAuthState()
+
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          role: "BROKER",
+          name: trimmedName,
+          email: normalizedEmail,
+          password,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as
+        | { user: AuthenticatedUser }
+        | { error?: string }
+        | null
+
+      if (!response.ok || !data || !("user" in data)) {
+        setError(data && "error" in data && data.error ? data.error : "Nao foi possivel criar sua conta agora.")
+        return
+      }
+
+      router.push(getDefaultRouteByRole(data.user.role))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[70]">
@@ -80,24 +193,56 @@ export function AuthPanel({
                   </p>
                 </div>
 
-                <form className="mt-7 flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
-                  {!isLogin && <Field label="Nome" type="text" autoComplete="name" placeholder="Seu nome completo" />}
-                  <Field label="Email" type="email" autoComplete="email" placeholder="voce@email.com" />
+                <form className="mt-7 flex flex-col gap-3" onSubmit={handleSubmit}>
+                  {!isLogin && (
+                    <Field
+                      label="Nome"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Seu nome completo"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                    />
+                  )}
+                  <Field
+                    label="Email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@email.com"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
                   <Field
                     label="Senha"
                     type="password"
                     autoComplete={isLogin ? "current-password" : "new-password"}
                     placeholder="........"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
                   />
                   {!isLogin && (
-                    <Field label="Confirmar senha" type="password" autoComplete="new-password" placeholder="........" />
+                    <Field
+                      label="Confirmar senha"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="........"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                    />
                   )}
+
+                  {error ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+                      {error}
+                    </div>
+                  ) : null}
 
                   <button
                     type="submit"
+                    disabled={isSubmitting}
                     className="eme-gradient mt-2 w-full rounded-full py-3 text-[14px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-12px_rgba(28,120,60,0.65)] transition-[transform,filter] duration-200 ease-out hover:-translate-y-0.5"
                   >
-                    {isLogin ? "Entrar" : "Criar conta"}
+                    {isSubmitting ? (isLogin ? "Entrando..." : "Criando conta...") : isLogin ? "Entrar" : "Criar conta"}
                   </button>
                 </form>
 
@@ -140,7 +285,7 @@ export function AuthPanel({
 function Field({
   label,
   ...props
-}: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-[12.5px] font-medium tracking-tight text-foreground/60">{label}</span>

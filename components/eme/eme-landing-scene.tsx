@@ -10,7 +10,15 @@ import { LandingHeader } from "@/components/eme/landing-header"
 import { OrbitStage } from "@/components/eme/orbit-stage"
 import { emeModules } from "@/lib/eme-modules"
 
-export function EmeLandingScene() {
+export function EmeLandingScene({
+  authMode,
+  onAuthModeChange,
+  onAuthClose,
+}: {
+  authMode: AuthMode | null
+  onAuthModeChange: (mode: AuthMode) => void
+  onAuthClose: () => void
+}) {
   const mainRef = useRef<HTMLElement>(null)
   const cursorRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -27,14 +35,13 @@ export function EmeLandingScene() {
     setSelected({ id, el })
   }
 
-  const [authMode, setAuthMode] = useState<AuthMode | null>(null)
   const authOpenRef = useRef(false)
   authOpenRef.current = authMode != null
 
   const openAuth = (mode: AuthMode) => {
     setSelected(null)
     setActiveId(null)
-    setAuthMode(mode)
+    onAuthModeChange(mode)
   }
 
   const orbitTarget = useMotionValue(0)
@@ -155,7 +162,7 @@ export function EmeLandingScene() {
 
       <AnimatePresence>
         {authMode && (
-          <AuthPanel mode={authMode} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />
+          <AuthPanel mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
         )}
       </AnimatePresence>
 

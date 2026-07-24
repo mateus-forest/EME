@@ -22,7 +22,15 @@ function ringDelta(d: number) {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-export function EmeMobileExperience() {
+export function EmeMobileExperience({
+  authMode,
+  onAuthModeChange,
+  onAuthClose,
+}: {
+  authMode: AuthMode | null
+  onAuthModeChange: (mode: AuthMode) => void
+  onAuthClose: () => void
+}) {
   const surfaceRef = useRef<HTMLDivElement>(null)
   const position = useMotionValue(START_INDEX)
   const spring = useSpring(position, { stiffness: 240, damping: 30, mass: 0.9 })
@@ -35,8 +43,6 @@ export function EmeMobileExperience() {
 
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
   const selectedModule = selected ? emeModules.find((m) => m.id === selected.id) : undefined
-  const [authMode, setAuthMode] = useState<AuthMode | null>(null)
-
   const frozenRef = useRef(false)
   frozenRef.current = selected != null || authMode != null
 
@@ -107,7 +113,6 @@ export function EmeMobileExperience() {
 
   const openModule = (id: string, el: HTMLElement) => {
     if (movedRef.current > 8) return
-    setAuthMode(null)
     setSelected({ id, el })
   }
 
@@ -118,7 +123,7 @@ export function EmeMobileExperience() {
     >
       <CoastalCityBackground />
 
-      <MobileHeader authOpen={authMode != null} onEntrar={() => setAuthMode("login")} />
+      <MobileHeader authOpen={authMode != null} onEntrar={() => onAuthModeChange("login")} />
 
       <div
         ref={surfaceRef}
@@ -218,7 +223,7 @@ export function EmeMobileExperience() {
 
       <AnimatePresence>
         {authMode && (
-          <AuthPanel mode={authMode} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />
+          <AuthPanel mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
         )}
       </AnimatePresence>
     </main>

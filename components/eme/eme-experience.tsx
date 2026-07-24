@@ -4,8 +4,17 @@ import { useEffect, useState } from "react"
 
 import { EmeLandingScene } from "@/components/eme/eme-landing-scene"
 import { EmeMobileExperience } from "@/components/eme/eme-mobile-experience"
+import type { AuthMode } from "@/components/eme/auth-panel"
 
-export function EmeExperience() {
+export function EmeExperience({
+  authMode,
+  onAuthModeChange,
+  onAuthClose,
+}: {
+  authMode: AuthMode | null
+  onAuthModeChange: (mode: AuthMode) => void
+  onAuthClose: () => void
+}) {
   const [device, setDevice] = useState<"desktop" | "mobile" | null>(null)
 
   useEffect(() => {
@@ -20,5 +29,9 @@ export function EmeExperience() {
     return <div className="h-[100svh] w-full bg-background" />
   }
 
-  return device === "mobile" ? <EmeMobileExperience /> : <EmeLandingScene />
+  return device === "mobile" ? (
+    <EmeMobileExperience authMode={authMode} onAuthModeChange={onAuthModeChange} onAuthClose={onAuthClose} />
+  ) : (
+    <EmeLandingScene authMode={authMode} onAuthModeChange={onAuthModeChange} onAuthClose={onAuthClose} />
+  )
 }
