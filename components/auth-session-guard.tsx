@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { clearLegacyAuthState, fetchCurrentUser, getDefaultRouteByRole, type AuthRole } from "@/lib/auth-client"
+import { EmeLoading } from "@/components/ui/eme-loading"
 
 export function AuthSessionGuard({
   allowedRole,
@@ -62,9 +63,10 @@ export function AuthSessionGuard({
 
   if (!isAuthorized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0B0B] px-6 text-center text-sm text-white/55">
-        {sessionError || "Verificando acesso..."}
-      </div>
+      <EmeLoading
+        message="Preparando seu EME"
+        description={sessionError || "Verificando seu acesso..."}
+      />
     )
   }
 
