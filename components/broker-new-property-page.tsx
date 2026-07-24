@@ -94,8 +94,16 @@ export function BrokerNewPropertyPage() {
   const previewLocation = [neighborhood.trim(), city.trim()].filter(Boolean).join(", ")
   const hasPreviewData = Boolean(title.trim() || price.trim() || previewLocation || description.trim() || previewImages[0])
 
-  function validateManualProperty() {
-    if (!title.trim() || !city.trim() || !neighborhood.trim() || !price.trim()) {
+  function buildFallbackTitle() {
+    const location = [neighborhood.trim(), city.trim()].filter(Boolean).join(", ")
+    const baseTitle = propertyType === "Sala comercial" ? "Sala comercial" : propertyType
+    return [baseTitle, location ? `em ${location}` : ""].filter(Boolean).join(" ").trim()
+  }
+
+  function validateManualProperty(titleOverride?: string) {
+    const resolvedTitle = titleOverride?.trim() || title.trim()
+
+    if (!resolvedTitle || !city.trim() || !neighborhood.trim() || !price.trim()) {
       setPublishFeedback("Preencha título, cidade, bairro e valor para cadastrar o imóvel manualmente.")
       return false
     }
@@ -264,8 +272,8 @@ export function BrokerNewPropertyPage() {
         setDescription(generated.description)
       }
 
-      if (!title.trim() && generated.suggestedTitle) {
-        setTitle(generated.suggestedTitle)
+      if (!title.trim()) {
+        setTitle(generated.suggestedTitle?.trim() || buildFallbackTitle())
       }
 
       setAiHighlights(generated.highlights)
@@ -305,8 +313,14 @@ export function BrokerNewPropertyPage() {
     setPublishFeedback("")
 
     try {
-      if (!validateManualProperty()) {
+      const resolvedTitle = title.trim() || (creationMode === "ai" ? buildFallbackTitle() : "")
+
+      if (!validateManualProperty(resolvedTitle)) {
         return
+      }
+
+      if (!title.trim() && resolvedTitle) {
+        setTitle(resolvedTitle)
       }
 
       const createdProperty = await addProperty({
@@ -315,7 +329,7 @@ export function BrokerNewPropertyPage() {
         tipo: propertyType,
         corretorId: "",
         imobiliariaId: null,
-        title,
+        title: resolvedTitle,
         city,
         neighborhood,
         location: `${neighborhood}, ${city}`,

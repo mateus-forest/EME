@@ -9,7 +9,8 @@ import {
   Bot,
   Building2,
   CalendarDays,
-  CreditCard,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   EyeOff,
   FileText,
@@ -19,10 +20,8 @@ import {
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
-import { NotificationCenter } from "@/components/notification-center"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
@@ -65,17 +64,11 @@ export function BrokerPortal() {
   const { properties } = useBrokerProperties()
   const { profile } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
-  const {
-    historyNotifications,
-    unreadCount,
-    markAsRead,
-    archive,
-    financialSummary,
-  } = useBrokerPaymentNotifications()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
   const [isNextStepModalOpen, setIsNextStepModalOpen] = useState(false)
   const [isShortcutEditorOpen, setIsShortcutEditorOpen] = useState(false)
+  const [isShortcutRailExpanded, setIsShortcutRailExpanded] = useState(false)
   const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
@@ -101,6 +94,7 @@ export function BrokerPortal() {
     assistantEnabled,
     assistantCredits,
     setAssistantCredits,
+    source: "cos_home",
   })
 
   const publishedPropertiesCount = useMemo(
@@ -111,11 +105,6 @@ export function BrokerPortal() {
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
     publishedPropertiesCount >= (subscription.propertyLimit ?? 3)
-
-  const totalLeads = useMemo(
-    () => properties.reduce((sum, property) => sum + Number(property.leads || 0), 0),
-    [properties],
-  )
 
   useEffect(() => {
     let ignore = false
@@ -152,13 +141,6 @@ export function BrokerPortal() {
     const [firstName] = profile.fullName.trim().split(" ").filter(Boolean)
     return firstName || "Corretor"
   }, [profile.fullName])
-
-  const upcomingAppointmentsCount = useMemo(
-    () => agendaEvents.filter((event) => event.status !== "cancelled").length,
-    [agendaEvents],
-  )
-
-  const contextFeed = useMemo(() => historyNotifications.slice(0, 5), [historyNotifications])
 
   const quickActions = [
     {
@@ -324,109 +306,133 @@ export function BrokerPortal() {
   return (
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
-        <section className="grid h-full min-h-0 min-w-0 w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_19rem]">
-          <div className="flex min-h-0 min-w-0 items-stretch justify-center bg-[#f4f1eb] px-4 py-2.5 sm:px-5 lg:px-7 lg:py-3">
-            <div className="grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_1rem)] w-full max-w-[56rem] min-w-0 grid-rows-[auto_auto_auto_minmax(0,1fr)] items-start gap-2.5 sm:gap-3 lg:h-[calc(100dvh_-_1.5rem)]">
-              <div className="flex size-5 items-center justify-center justify-self-center text-[#111111]">
+        <section className="flex h-full min-h-0 min-w-0 w-full bg-[#f4f1eb]">
+          <aside
+            className={`hidden min-h-0 shrink-0 border-r border-black/[0.05] bg-white/65 px-2 py-3 backdrop-blur lg:flex lg:flex-col ${
+              isShortcutRailExpanded ? "w-56" : "w-20"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setIsShortcutRailExpanded((current) => !current)}
+              className="flex h-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white text-[#5e6d82] transition-colors hover:bg-white"
+            >
+              {isShortcutRailExpanded ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+            </button>
+
+            <div className="mt-3 flex-1 space-y-2">
+              {visibleShortcutCards.map((item) => {
+                const Icon = item.icon
+                const content = (
+                  <>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
+                      <Icon className="size-4" />
+                    </span>
+                    {isShortcutRailExpanded ? (
+                      <>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#1f2937]">{item.label}</span>
+                        <ArrowRight className="size-3.5 text-[#9aa6b6]" />
+                      </>
+                    ) : null}
+                  </>
+                )
+
+                const className =
+                  "flex w-full items-center gap-3 rounded-[1.25rem] border border-transparent px-1.5 py-1.5 text-left transition-all hover:border-black/[0.06] hover:bg-white/90"
+
+                if (item.onClick) {
+                  return (
+                    <button key={item.id} type="button" onClick={item.onClick} className={className}>
+                      {content}
+                    </button>
+                  )
+                }
+
+                return (
+                  <Link key={item.id} href={item.href ?? "#"} className={className}>
+                    {content}
+                  </Link>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsShortcutEditorOpen(true)}
+              className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-white px-2 py-2 text-left text-[#5e6d82] transition-colors hover:text-[#111111]"
+            >
+              <span className="flex size-9 items-center justify-center rounded-2xl border border-black/[0.06] bg-[#fbfbf8]">
                 <Sparkles className="size-4" />
-              </div>
-              <div className="space-y-1 text-center">
-                <p className="text-[0.88rem] font-medium text-[#6d7a8c]">
-                  COS pronto para apoiar voce, {brokerFirstName}
-                </p>
-                <h2 className="text-[1.35rem] font-semibold tracking-tight text-[#111111] sm:text-[1.55rem]">
-                  O que vamos destravar agora?
-                </h2>
-                <p className="text-[12px] text-[#70809a]">Tudo visivel na primeira tela, com foco direto na conversa.</p>
-              </div>
+              </span>
+              {isShortcutRailExpanded ? <span className="text-sm font-medium">Editar atalhos</span> : null}
+            </button>
+          </aside>
 
-              <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-                {quickActions.map((action) => {
-                  const Icon = action.icon
-                  const className =
-                    "inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-[#d9dde5] bg-white px-3 text-[12px] font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb] sm:h-8.5 sm:px-3.5 sm:text-[13px]"
+          <div className="flex min-h-0 min-w-0 flex-1 justify-center px-4 py-2.5 sm:px-5 lg:px-7 lg:py-3">
+            <div className="grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_1rem)] w-full max-w-[72rem] min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3 lg:h-[calc(100dvh_-_1.5rem)]">
+              <div className="space-y-3 pt-1 text-center">
+                <div className="mx-auto flex size-6 items-center justify-center rounded-full bg-white/80 text-[#111111] shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+                  <Sparkles className="size-3.5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[0.82rem] font-medium text-[#6d7a8c]">COS ao seu lado, {brokerFirstName}</p>
+                  <h2 className="text-[1.2rem] font-semibold tracking-tight text-[#111111] sm:text-[1.45rem]">
+                    O que vamos destravar agora?
+                  </h2>
+                </div>
 
-                  if (action.onClick) {
+                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                  {quickActions.map((action) => {
+                    const Icon = action.icon
+                    const className =
+                      "inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-[#d9dde5] bg-white px-3 text-[12px] font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb] sm:h-8.5 sm:px-3.5 sm:text-[13px]"
+
+                    if (action.onClick) {
+                      return (
+                        <button key={action.label} type="button" onClick={action.onClick} className={className}>
+                          <Icon className="size-4 text-[#5e6d82]" />
+                          {action.label}
+                        </button>
+                      )
+                    }
+
                     return (
-                      <button key={action.label} type="button" onClick={action.onClick} className={className}>
+                      <Link key={action.label} href={action.href ?? "#"} className={className}>
                         <Icon className="size-4 text-[#5e6d82]" />
                         {action.label}
-                      </button>
+                      </Link>
                     )
-                  }
-
-                  return (
-                    <Link key={action.label} href={action.href ?? "#"} className={className}>
-                      <Icon className="size-4 text-[#5e6d82]" />
-                      {action.label}
-                    </Link>
-                  )
-                })}
-              </div>
-
-              <div className="w-full max-w-[44rem] min-w-0 justify-self-center">
-                <div className="flex items-center justify-between px-1 text-[13px] text-[#91a0b5] sm:px-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="size-3.5" />
-                    Atalhos inteligentes
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsShortcutEditorOpen(true)}
-                    className="transition-colors hover:text-[#111111]"
-                  >
-                    Editar
-                  </button>
+                  })}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-                    {visibleShortcutCards.map((item) => {
-                      const Icon = item.icon
 
-                      if (item.onClick) {
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={item.onClick}
-                            className="group flex min-h-[3.7rem] flex-col justify-between rounded-[1rem] border border-black/[0.06] bg-white/90 p-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="flex size-7 items-center justify-center rounded-xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
-                                <Icon className="size-3.5" />
-                              </span>
-                              <ArrowRight className="size-3 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
-                            </div>
-                            <div className="mt-1.5">
-                              <p className="text-[0.84rem] font-semibold text-[#111111]">{item.label}</p>
-                            </div>
-                          </button>
-                        )
-                      }
+                <div className="flex flex-wrap justify-center gap-2 lg:hidden">
+                  {visibleShortcutCards.map((item) => {
+                    const Icon = item.icon
+                    const className =
+                      "inline-flex h-10 items-center gap-2 rounded-full border border-black/[0.06] bg-white px-3 text-[12px] font-medium text-[#2f3a4d] shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
 
-                        return (
-                          <Link
-                            key={item.id}
-                            href={item.href ?? "#"}
-                            className="group flex min-h-[3.7rem] flex-col justify-between rounded-[1rem] border border-black/[0.06] bg-white/90 p-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-black/[0.1] hover:bg-white"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="flex size-7 items-center justify-center rounded-xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
-                                <Icon className="size-3.5" />
-                              </span>
-                              <ArrowRight className="size-3 text-[#9aa6b6] transition-transform group-hover:translate-x-0.5" />
-                            </div>
-                            <div className="mt-1.5">
-                              <p className="text-[0.84rem] font-semibold text-[#111111]">{item.label}</p>
-                            </div>
-                          </Link>
-                        )
-                    })}
-                  </div>
+                    if (item.onClick) {
+                      return (
+                        <button key={item.id} type="button" onClick={item.onClick} className={className}>
+                          <Icon className="size-4 text-[#009b3a]" />
+                          {item.label}
+                        </button>
+                      )
+                    }
+
+                    return (
+                      <Link key={item.id} href={item.href ?? "#"} className={className}>
+                        <Icon className="size-4 text-[#009b3a]" />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
 
-              <div className="min-h-0 w-full max-w-[44rem] min-w-0 justify-self-center">
-                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto]">
-                  <div className="flex flex-col gap-1.5 px-1 pb-1.5 sm:px-2">
+              <div className="min-h-0 w-full max-w-[58rem] min-w-0 justify-self-center">
+                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-[2rem] border border-white/40 bg-white/[0.14] px-1 py-1">
+                  <div className="flex flex-col gap-1.5 px-2 pb-1.5 pt-1 sm:px-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         {showConversationTitle ? (
@@ -434,10 +440,10 @@ export function BrokerPortal() {
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#7a8798]">
-                        <span className="rounded-full border border-black/[0.06] bg-white/78 px-2.5 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+                        <span className="rounded-full border border-black/[0.06] bg-white/82 px-2.5 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
                           {assistantEnabled ? "COS ativo" : "COS pausado"}
                         </span>
-                        <span className="rounded-full border border-black/[0.06] bg-white/78 px-2.5 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+                        <span className="rounded-full border border-black/[0.06] bg-white/82 px-2.5 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
                           {assistantCredits.balance} creditos
                         </span>
                       </div>
@@ -472,7 +478,7 @@ export function BrokerPortal() {
                                 {formatCosStatus(item.actionStatus)}
                               </p>
                             ) : null}
-                          {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
+                            {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <Button
                                   type="button"
@@ -542,69 +548,6 @@ export function BrokerPortal() {
               </div>
             </div>
           </div>
-
-          <aside className="hidden min-h-0 border-l border-black/[0.06] bg-white lg:flex lg:flex-col">
-            <div className="flex shrink-0 items-center justify-between border-b border-black/[0.06] px-3.5 py-3.5">
-              <h3 className="text-[0.94rem] font-semibold text-[#111111]">Contexto</h3>
-              <NotificationCenter
-                title="Notificacoes do corretor"
-                notifications={historyNotifications}
-                unreadCount={unreadCount}
-                onMarkAsRead={markAsRead}
-                onArchive={archive}
-                tone="light"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3.5 py-3.5">
-              <div>
-                <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
-                  <span className="text-[#9aa6b6]">$</span>
-                  Financeiro
-                </div>
-                <div className="rounded-[1.2rem] bg-[#111111] px-3.5 py-3 text-white">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm">Saldo final</span>
-                    <span className="text-[1rem] font-semibold">{financialSummary.currentAmount}</span>
-                  </div>
-                </div>
-                <div className="mt-2 grid gap-1.5">
-                  <ContextRow label="Ganhos" value={financialSummary.currentAmount} valueClassName="text-[#16a34a]" />
-                  <ContextRow
-                    label="Gastos"
-                    value={financialSummary.valueOpen ?? "R$ 0,00"}
-                    valueClassName="text-[#ef4444]"
-                  />
-                  <ContextRow label="Saldo anterior" value={financialSummary.currentAmount} />
-                </div>
-                <p className="mt-2.5 text-sm text-[#91a0b5]">
-                  {historyNotifications.length} atividade(s) registrada(s) no workspace.
-                </p>
-              </div>
-
-              <div className="mt-4">
-                <div className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold text-[#111111]">
-                  <ClockBadge />
-                  Atividades recentes
-                </div>
-                <div className="grid gap-3">
-                  {contextFeed.length > 0 ? (
-                    contextFeed.map((notification) => (
-                      <div key={notification.id} className="flex gap-3">
-                        <span className="mt-2 size-2 shrink-0 rounded-full bg-[#4c83ff]" />
-                        <div>
-                          <p className="text-[15px] text-[#24324a]">{notification.title.toLowerCase()}</p>
-                          <p className="mt-1 text-sm text-[#91a0b5]">{notification.date}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-[#91a0b5]">Sem atividades recentes.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </aside>
         </section>
       </BrokerPageShell>
 
@@ -712,31 +655,6 @@ export function BrokerPortal() {
 
 function getShortcutStorageKey(userId: string) {
   return `eme-broker-portal-shortcuts:${userId}`
-}
-
-function ContextRow({
-  label,
-  value,
-  valueClassName = "text-[#40516d]",
-}: {
-  label: string
-  value: string
-  valueClassName?: string
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-[1.5rem] bg-[#f8f8f8] px-4 py-4">
-      <span className="text-sm text-[#7d8aa0]">{label}</span>
-      <span className={`text-[0.95rem] font-semibold ${valueClassName}`}>{value}</span>
-    </div>
-  )
-}
-
-function ClockBadge() {
-  return (
-    <span className="inline-flex size-5 items-center justify-center rounded-full border border-[#b6c0d0] text-[#8b98ab]">
-      <ArrowRight className="size-3 rotate-90" />
-    </span>
-  )
 }
 
 function formatCosStatus(status: string) {

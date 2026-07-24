@@ -64,6 +64,7 @@ type UseCosConversationsOptions = {
   assistantCredits: AssistantCredits
   setAssistantCredits: Dispatch<SetStateAction<AssistantCredits>>
   autoOpenLatest?: boolean
+  source?: "cos_home" | "portal"
 }
 
 export function useCosConversations({
@@ -71,6 +72,7 @@ export function useCosConversations({
   assistantCredits,
   setAssistantCredits,
   autoOpenLatest = true,
+  source = "portal",
 }: UseCosConversationsOptions) {
   const [conversation, setConversation] = useState<CosConversationItem[]>([])
   const [conversations, setConversations] = useState<CosConversationSummary[]>([])
@@ -219,7 +221,7 @@ export function useCosConversations({
           action: options?.action,
           confirm: Boolean(options?.confirm),
           cancel: Boolean(options?.cancel),
-          source: "cos_home",
+          source,
           conversationId: activeConversationId || undefined,
         }),
       })
@@ -287,7 +289,7 @@ export function useCosConversations({
       setIsSending(false)
       window.setTimeout(() => inputRef.current?.focus(), 0)
     }
-  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, setAssistantCredits])
+  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, setAssistantCredits, source])
 
   const confirmPendingAction = useCallback(async () => {
     if (!pendingConfirmation) return
