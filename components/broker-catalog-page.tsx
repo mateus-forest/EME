@@ -296,11 +296,11 @@ export function BrokerCatalogPage() {
                           </div>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto">
+                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
                             <Copy className="size-4" />
                             {copyFeedback ? "Link copiado" : "Copiar link"}
                           </Button>
-                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto">
+                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
                             <PencilLine className="size-4" />
                             Abrir link
                           </Button>
@@ -339,16 +339,16 @@ export function BrokerCatalogPage() {
                   <Link2 className="size-4 shrink-0 text-[#8B95A1]" />
                   <p className="min-w-0 truncate text-base font-medium text-[#050505]">{catalogUrl}</p>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
                     <Copy className="size-4" />
                     {copyFeedback ? "Link copiado" : "Copiar link"}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                  <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
                     <PencilLine className="size-4" />
                     Abrir link
                   </Button>
-                  <Button asChild className="h-9 rounded-full bg-[#25D366] px-4 text-sm font-semibold text-[#050505] hover:bg-[#2fe06f]">
+                  <Button asChild className="h-9 w-full rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#050505] hover:bg-[#2fe06f] sm:w-auto sm:rounded-full">
                     <a href={catalogWhatsAppUrl} target="_blank" rel="noreferrer">
                       <MessageCircle className="size-4" />
                       Enviar no WhatsApp

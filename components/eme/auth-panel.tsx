@@ -151,7 +151,7 @@ export function AuthPanel({
       />
 
       <div
-        className="absolute top-1/2 flex w-full -translate-y-1/2 justify-center px-4 sm:inset-x-auto sm:right-8 sm:w-auto sm:justify-end sm:px-0 lg:right-14"
+        className="absolute top-1/2 flex w-full -translate-y-1/2 justify-center px-3 sm:inset-x-auto sm:right-8 sm:w-auto sm:justify-end sm:px-0 lg:right-14"
         style={{
           paddingLeft: "max(1rem, env(safe-area-inset-left))",
           paddingRight: "max(1rem, env(safe-area-inset-right))",
@@ -164,7 +164,7 @@ export function AuthPanel({
           exit={{ x: 72, opacity: 0, filter: "blur(10px)" }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="relative overflow-hidden rounded-[30px] border border-white/40 bg-white/50 px-9 py-8 shadow-[0_26px_70px_-54px_rgba(20,52,36,0.4)] backdrop-blur-3xl sm:px-12 sm:py-9">
+          <div className="relative overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.94)] px-5 py-6 shadow-[0_26px_70px_-54px_rgba(20,52,36,0.4)] backdrop-blur-xl sm:rounded-[30px] sm:px-10 sm:py-8 sm:bg-[rgba(255,255,255,0.9)] sm:px-12 sm:py-9">
             <button
               type="button"
               aria-label="Fechar"
@@ -182,18 +182,18 @@ export function AuthPanel({
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.32, ease: "easeOut" }}
               >
-                <div className="pr-6">
-                  <h2 className="text-pretty text-[26px] font-semibold leading-tight tracking-tight text-foreground sm:text-[28px]">
+                <div className="pr-8 sm:pr-6">
+                  <h2 className="text-pretty text-[23px] font-semibold leading-tight tracking-tight text-foreground sm:text-[28px]">
                     {isLogin ? "Bem-vindo de volta." : "Comece a vender mais."}
                   </h2>
-                  <p className="mt-2.5 text-pretty text-[14px] leading-relaxed text-foreground/55">
+                  <p className="mt-2 text-pretty text-[13px] leading-relaxed text-foreground/70 sm:mt-2.5 sm:text-[14px]">
                     {isLogin
                       ? "Continue para acessar o seu Sistema Operacional."
                       : "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliario."}
                   </p>
                 </div>
 
-                <form className="mt-7 flex flex-col gap-3" onSubmit={handleSubmit}>
+                <form className="mt-6 flex flex-col gap-3 sm:mt-7" onSubmit={handleSubmit}>
                   {!isLogin && (
                     <Field
                       label="Nome"
@@ -255,7 +255,7 @@ export function AuthPanel({
                     </div>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-center gap-3 rounded-full border border-foreground/12 bg-white/60 py-2.5 text-[14px] font-medium tracking-tight text-foreground/80 transition-colors duration-200 hover:bg-white"
+                    className="flex w-full items-center justify-center gap-3 rounded-full border border-foreground/12 bg-white py-2.5 text-[14px] font-medium tracking-tight text-foreground/85 transition-colors duration-200 hover:bg-white"
                     >
                       <GoogleMark />
                       Continuar com Google
@@ -263,7 +263,7 @@ export function AuthPanel({
                   </>
                 )}
 
-                <p className="mt-6 text-center text-[13.5px] text-foreground/55">
+                <p className="mt-5 text-center text-[13px] text-foreground/65 sm:mt-6 sm:text-[13.5px]">
                   {isLogin ? "Ainda nao possui uma conta? " : "Ja possui uma conta? "}
                   <button
                     type="button"
@@ -288,10 +288,10 @@ function Field({
 }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-medium tracking-tight text-foreground/60">{label}</span>
+      <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">{label}</span>
       <input
         {...props}
-        className="w-full rounded-2xl border border-foreground/12 bg-white/70 px-4 py-2.5 text-[14px] text-foreground outline-none transition-[border-color,box-shadow] duration-300 ease-out placeholder:text-foreground/30 focus:border-eme focus:shadow-[0_0_0_3px_rgba(31,143,78,0.12)]"
+        className="w-full rounded-2xl border border-foreground/15 bg-white px-4 py-2.5 text-[14px] text-foreground outline-none transition-[border-color,box-shadow] duration-300 ease-out placeholder:text-foreground/35 focus:border-eme focus:shadow-[0_0_0_3px_rgba(31,143,78,0.12)]"
       />
     </label>
   )

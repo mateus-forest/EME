@@ -163,8 +163,8 @@ export function AgencyCatalogPage() {
                     <label className="grid gap-2">
                       <span className="text-sm font-medium text-white/70">Link do catálogo</span>
                       <div className="flex min-w-0 flex-col gap-3">
-                        <div className="flex min-w-0 items-stretch gap-2">
-                          <div className="flex h-10 shrink-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/45">
+                        <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row">
+                          <div className="flex h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/45 sm:w-auto sm:shrink-0">
                             <Link2 className="size-4 text-white/40" />
                             <span>/catalogo/imobiliaria/</span>
                           </div>
@@ -179,12 +179,12 @@ export function AgencyCatalogPage() {
                             />
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!draftSettings.slug}>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto sm:rounded-full" disabled={!draftSettings.slug}>
                             <Copy className="size-4" />
                             {copyFeedback ? "Link copiado" : "Copiar link"}
                           </Button>
-                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white" disabled={!draftSettings.slug}>
+                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white sm:w-auto sm:rounded-full" disabled={!draftSettings.slug}>
                             <ExternalLink className="size-4" />
                             Abrir catálogo
                           </Button>

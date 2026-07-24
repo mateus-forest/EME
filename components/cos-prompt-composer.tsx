@@ -180,7 +180,7 @@ export function CosPromptComposer({
   }
 
   return (
-    <div className="pwa-sticky-composer mx-auto w-full max-w-[44rem] px-0 pt-2 sm:px-0">
+    <div className="pwa-sticky-composer mx-auto w-full max-w-[44rem] px-0 pt-1 sm:px-0">
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -188,7 +188,7 @@ export function CosPromptComposer({
         }}
         className="flex min-w-0 flex-col gap-2"
       >
-        <div className="flex min-w-0 items-end gap-2 rounded-[1.55rem] border border-black/[0.07] bg-white/90 px-2 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:gap-2.5 sm:px-2.5">
+        <div className="flex min-w-0 items-end gap-2 rounded-[1.35rem] border border-black/[0.07] bg-white px-2 py-2 shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

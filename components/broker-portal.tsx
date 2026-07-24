@@ -166,7 +166,6 @@ export function BrokerPortal() {
       href: "/corretor/agenda",
     },
   ]
-
   const nextStepSuggestions: NextStepSuggestion[] = [
     { label: "Ver proximos compromissos", message: "Minha agenda de amanha" },
     { label: "Analisar carteira", message: "Analisar carteira" },
@@ -176,6 +175,7 @@ export function BrokerPortal() {
     { label: "Ver notificacoes", message: "Minhas notificacoes" },
     { label: "Conversar com o COS", focusOnly: true },
   ]
+  const primaryCosSuggestions = nextStepSuggestions.slice(0, 3)
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
@@ -315,70 +315,35 @@ export function BrokerPortal() {
             } as CSSProperties
           }
         >
-          <div className="flex min-h-0 min-w-0 flex-1 px-4 py-2.5 sm:px-5 lg:px-7 lg:py-3 lg:pr-[calc(var(--cos-shortcut-rail-width)+1.75rem)]">
-            <div className="mx-auto grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_1rem)] w-full max-w-[58rem] min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)]">
-              <div className="space-y-3 pt-1 text-center">
+          <div className="flex min-h-0 min-w-0 flex-1 px-3 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-0 sm:px-5 lg:px-7 lg:py-3 lg:pr-[calc(var(--cos-shortcut-rail-width)+1.75rem)]">
+            <div className="mx-auto grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_0.35rem)] w-full max-w-[58rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)] lg:grid-rows-[auto_minmax(0,1fr)]">
+              <div className="space-y-2 pt-0 text-center sm:pt-1">
                 <div className="mx-auto flex size-6 items-center justify-center rounded-full bg-white/80 text-[#111111] shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                   <Sparkles className="size-3.5" />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[0.82rem] font-medium text-[#6d7a8c]">COS ao seu lado, {brokerFirstName}</p>
-                  <h2 className="text-[1.2rem] font-semibold tracking-tight text-[#111111] sm:text-[1.45rem]">
+                <div className="space-y-0.5">
+                  <p className="text-[0.8rem] font-medium text-[#6d7a8c]">Ola, {brokerFirstName}</p>
+                  <h2 className="text-[1.02rem] font-semibold tracking-tight text-[#111111] sm:text-[1.25rem]">
                     O que vamos destravar agora?
                   </h2>
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-                  {quickActions.map((action) => {
-                    const Icon = action.icon
-                    const className =
-                      "inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-[#d9dde5] bg-white px-3 text-[12px] font-medium text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb] sm:h-8.5 sm:px-3.5 sm:text-[13px]"
-
-                    if (action.onClick) {
-                      return (
-                        <button key={action.label} type="button" onClick={action.onClick} className={className}>
-                          <Icon className="size-4 text-[#5e6d82]" />
-                          {action.label}
-                        </button>
-                      )
-                    }
-
-                    return (
-                      <Link key={action.label} href={action.href ?? "#"} className={className}>
-                        <Icon className="size-4 text-[#5e6d82]" />
-                        {action.label}
-                      </Link>
-                    )
-                  })}
-                </div>
-
-                <div className="flex flex-wrap justify-center gap-2 lg:hidden">
-                  {visibleShortcutCards.map((item) => {
-                    const Icon = item.icon
-                    const className =
-                      "inline-flex h-10 items-center gap-2 rounded-full border border-black/[0.06] bg-white px-3 text-[12px] font-medium text-[#2f3a4d] shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
-
-                    if (item.onClick) {
-                      return (
-                        <button key={item.id} type="button" onClick={item.onClick} className={className}>
-                          <Icon className="size-4 text-[#009b3a]" />
-                          {item.label}
-                        </button>
-                      )
-                    }
-
-                    return (
-                      <Link key={item.id} href={item.href ?? "#"} className={className}>
-                        <Icon className="size-4 text-[#009b3a]" />
-                        {item.label}
-                      </Link>
-                    )
-                  })}
+                  {primaryCosSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.label}
+                      type="button"
+                      onClick={() => void handleNextStepSuggestion(suggestion)}
+                      className="inline-flex min-h-8 max-w-full items-center justify-center rounded-full border border-[#d9dde5] bg-white px-3 py-1.5 text-center text-[11.5px] font-medium leading-tight text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb] sm:text-[12.5px]"
+                    >
+                      {suggestion.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div className="min-h-0 w-full max-w-[58rem] min-w-0 justify-self-center">
-                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-[2rem] border border-white/40 bg-white/[0.14] px-1 py-1">
+                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-[1.7rem] border border-black/[0.05] bg-white/55 px-1 py-1 shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
                   <div className="flex flex-col gap-1.5 px-2 pb-1.5 pt-1 sm:px-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -459,7 +424,7 @@ export function BrokerPortal() {
                     ) : null}
                   </div>
 
-                  <div className="pt-1.5">
+                  <div className="pt-1">
                     <CosPromptComposer
                       prompt={prompt}
                       setPrompt={setPrompt}
@@ -472,6 +437,14 @@ export function BrokerPortal() {
                         { label: "Minha agenda", message: "Minha agenda de amanha" },
                         { label: "Analisar financeiro", message: "Analisar financeiro" },
                         { label: "Ver notificacoes", message: "Minhas notificacoes" },
+                        ...visibleShortcutCards.map((item) => ({
+                          label: item.label,
+                          onSelect: item.onClick
+                            ? () => item.onClick?.()
+                            : () => {
+                                if (item.href) window.location.href = item.href
+                              },
+                        })),
                       ]}
                       disabled={isSending || isConversationLoading}
                       inputRef={inputRef}

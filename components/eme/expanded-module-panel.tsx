@@ -69,7 +69,7 @@ export function ExpandedModulePanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-[65]" onClick={handleClose} aria-hidden />
+      <div className="fixed inset-0 z-[65] bg-[rgba(14,18,22,0.78)] backdrop-blur-[4px]" onClick={handleClose} aria-hidden />
 
       <motion.section
         role="dialog"
