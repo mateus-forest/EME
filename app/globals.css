@@ -77,6 +77,10 @@
 @theme inline {
   --font-sans: 'Barlow', 'Barlow Fallback', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-eme: var(--eme);
+  --color-eme-dark: var(--eme-dark);
+  --color-eme-soft: var(--eme-soft);
+  --color-graphite: var(--graphite);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -137,6 +141,27 @@
 }
 
 @layer utilities {
+  .eme-ambient-light {
+    animation: eme-ambient-light 22s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+
+  .eme-card:hover {
+    --hv: 1;
+  }
+
+  .eme-gradient {
+    background-image: linear-gradient(180deg, #226214 0%, #00c853 100%);
+  }
+
+  .eme-gradient:hover {
+    filter: brightness(1.06);
+  }
+
+  .eme-gradient:active {
+    filter: brightness(0.96);
+  }
+
   .pwa-safe-shell {
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -317,6 +342,21 @@
   }
 }
 
+@keyframes eme-ambient-light {
+  0% {
+    transform: translate3d(-7%, -3%, 0) scale(1.04);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate3d(7%, 4%, 0) scale(1.12);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(-7%, -3%, 0) scale(1.04);
+    opacity: 0.45;
+  }
+}
+
 @keyframes eme-shimmer {
   100% {
     transform: translateX(100%);
@@ -335,7 +375,8 @@
 @media (prefers-reduced-motion: reduce) {
   body,
   .eme-shimmer::after,
-  .landing-float {
+  .landing-float,
+  .eme-ambient-light {
     animation: none;
   }
 
