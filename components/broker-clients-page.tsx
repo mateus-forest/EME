@@ -91,6 +91,7 @@ export function BrokerClientsPage() {
   const { properties } = useBrokerProperties()
   const [clients, setClients] = useState<LeadRecord[]>([])
   const [feedback, setFeedback] = useState("")
+  const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("error")
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<ClientFilterId>("all")
   const [selectedClient, setSelectedClient] = useState<LeadRecord | null>(null)
@@ -111,14 +112,17 @@ export function BrokerClientsPage() {
   useEffect(() => {
     let ignore = false
 
-    fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
+      fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[]; error?: string } | null
         if (!response.ok) throw new Error(data?.error || "Nao foi possivel carregar seus clientes.")
         if (!ignore) setClients(data?.leads ?? [])
       })
       .catch((error) => {
-        if (!ignore) setFeedback(error instanceof Error ? error.message : "Nao foi possivel carregar seus clientes.")
+        if (!ignore) {
+          setFeedbackTone("error")
+          setFeedback(error instanceof Error ? error.message : "Nao foi possivel carregar seus clientes.")
+        }
       })
 
     return () => {
@@ -171,6 +175,7 @@ export function BrokerClientsPage() {
       setClients((current) => current.map((item) => (item.id === data.lead?.id ? data.lead : item)))
       setSelectedClient(data.lead)
     } catch (caughtError) {
+      setFeedbackTone("error")
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel atualizar o status do cliente.")
     } finally {
       setIsUpdatingStatus(false)
@@ -197,8 +202,10 @@ export function BrokerClientsPage() {
 
       setClients((current) => current.filter((item) => item.id !== client.id))
       setSelectedClient((current) => (current?.id === client.id ? null : current))
+      setFeedbackTone("success")
       setFeedback("Cliente removido da carteira.")
     } catch (caughtError) {
+      setFeedbackTone("error")
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel excluir o cliente.")
     } finally {
       setIsDeletingClient(false)
@@ -226,7 +233,10 @@ export function BrokerClientsPage() {
         throw new Error(data?.error || "Nao foi possivel cadastrar o cliente.")
       }
 
-      setClients((current) => [data.lead!, ...current])
+      setClients((current) => {
+        const nextClients = current.filter((item) => item.id !== data.lead!.id)
+        return [data.lead!, ...nextClients]
+      })
       setIsCreateClientOpen(false)
       setClientDraft({
         name: "",
@@ -237,8 +247,10 @@ export function BrokerClientsPage() {
         intent: "",
         message: "",
       })
+      setFeedbackTone("success")
       setFeedback("Cliente cadastrado com sucesso.")
     } catch (caughtError) {
+      setFeedbackTone("error")
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel cadastrar o cliente.")
     } finally {
       setIsCreatingClient(false)
@@ -321,7 +333,13 @@ export function BrokerClientsPage() {
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
           {feedback ? (
-            <div className="rounded-[1.25rem] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+            <div
+              className={`rounded-[1.25rem] px-4 py-3 text-sm ${
+                feedbackTone === "success"
+                  ? "border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#0b7a33]"
+                  : "border border-red-500/20 bg-red-500/10 text-red-700"
+              }`}
+            >
               {feedback}
             </div>
           ) : filteredClients.length > 0 ? (

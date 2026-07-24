@@ -307,69 +307,9 @@ export function BrokerPortal() {
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
         <section className="flex h-full min-h-0 min-w-0 w-full bg-[#f4f1eb]">
-          <aside
-            className={`hidden min-h-0 shrink-0 border-r border-black/[0.05] bg-white/65 px-2 py-3 backdrop-blur lg:flex lg:flex-col ${
-              isShortcutRailExpanded ? "w-56" : "w-20"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setIsShortcutRailExpanded((current) => !current)}
-              className="flex h-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white text-[#5e6d82] transition-colors hover:bg-white"
-            >
-              {isShortcutRailExpanded ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
-            </button>
-
-            <div className="mt-3 flex-1 space-y-2">
-              {visibleShortcutCards.map((item) => {
-                const Icon = item.icon
-                const content = (
-                  <>
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
-                      <Icon className="size-4" />
-                    </span>
-                    {isShortcutRailExpanded ? (
-                      <>
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#1f2937]">{item.label}</span>
-                        <ArrowRight className="size-3.5 text-[#9aa6b6]" />
-                      </>
-                    ) : null}
-                  </>
-                )
-
-                const className =
-                  "flex w-full items-center gap-3 rounded-[1.25rem] border border-transparent px-1.5 py-1.5 text-left transition-all hover:border-black/[0.06] hover:bg-white/90"
-
-                if (item.onClick) {
-                  return (
-                    <button key={item.id} type="button" onClick={item.onClick} className={className}>
-                      {content}
-                    </button>
-                  )
-                }
-
-                return (
-                  <Link key={item.id} href={item.href ?? "#"} className={className}>
-                    {content}
-                  </Link>
-                )
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsShortcutEditorOpen(true)}
-              className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-white px-2 py-2 text-left text-[#5e6d82] transition-colors hover:text-[#111111]"
-            >
-              <span className="flex size-9 items-center justify-center rounded-2xl border border-black/[0.06] bg-[#fbfbf8]">
-                <Sparkles className="size-4" />
-              </span>
-              {isShortcutRailExpanded ? <span className="text-sm font-medium">Editar atalhos</span> : null}
-            </button>
-          </aside>
-
           <div className="flex min-h-0 min-w-0 flex-1 justify-center px-4 py-2.5 sm:px-5 lg:px-7 lg:py-3">
-            <div className="grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_1rem)] w-full max-w-[72rem] min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3 lg:h-[calc(100dvh_-_1.5rem)]">
+            <div className="grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_1rem)] w-full max-w-[72rem] min-w-0 gap-3 lg:h-[calc(100dvh_-_1.5rem)] lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid min-h-0 min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3">
               <div className="space-y-3 pt-1 text-center">
                 <div className="mx-auto flex size-6 items-center justify-center rounded-full bg-white/80 text-[#111111] shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                   <Sparkles className="size-3.5" />
@@ -546,6 +486,68 @@ export function BrokerPortal() {
                   </div>
                 ) : null}
               </div>
+              </div>
+
+              <aside
+                className={`hidden min-h-0 shrink-0 self-stretch rounded-[1.75rem] border border-black/[0.05] bg-white/65 px-2 py-3 backdrop-blur lg:flex lg:flex-col ${
+                  isShortcutRailExpanded ? "w-56" : "w-20"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsShortcutRailExpanded((current) => !current)}
+                  className="flex h-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white text-[#5e6d82] transition-colors hover:bg-white"
+                >
+                  {isShortcutRailExpanded ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+                </button>
+
+                <div className="mt-3 flex-1 space-y-2">
+                  {visibleShortcutCards.map((item) => {
+                    const Icon = item.icon
+                    const content = (
+                      <>
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-[#f5fbf7] text-[#009b3a]">
+                          <Icon className="size-4" />
+                        </span>
+                        {isShortcutRailExpanded ? (
+                          <>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#1f2937]">{item.label}</span>
+                            <ArrowRight className="size-3.5 text-[#9aa6b6]" />
+                          </>
+                        ) : null}
+                      </>
+                    )
+
+                    const className =
+                      "flex w-full items-center gap-3 rounded-[1.25rem] border border-transparent px-1.5 py-1.5 text-left transition-all hover:border-black/[0.06] hover:bg-white/90"
+
+                    if (item.onClick) {
+                      return (
+                        <button key={item.id} type="button" onClick={item.onClick} className={className}>
+                          {content}
+                        </button>
+                      )
+                    }
+
+                    return (
+                      <Link key={item.id} href={item.href ?? "#"} className={className}>
+                        {content}
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsShortcutEditorOpen(true)}
+                  className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-black/[0.06] bg-white px-2 py-2 text-left text-[#5e6d82] transition-colors hover:text-[#111111]"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-2xl border border-black/[0.06] bg-[#fbfbf8]">
+                    <Sparkles className="size-4" />
+                  </span>
+                  {isShortcutRailExpanded ? <span className="text-sm font-medium">Editar atalhos</span> : null}
+                </button>
+              </aside>
             </div>
           </div>
         </section>
