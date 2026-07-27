@@ -1,12 +1,11 @@
-import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceAgencyOperationalAccess, enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
 import { adImportDraftSchema, type AdImportDraft } from "@/lib/property-ad-import"
-import { parsePriceInput, serializeProperty } from "@/lib/property-contract"
+import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { getNextPropertyPublicCode } from "@/lib/property-public-code"
-import { mapXmlPropertyType } from "@/lib/property-xml-import"
+import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
 const propertyInclude = {
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -53,10 +52,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const draft = adImportDraftSchema.parse(body?.draft)
     const price = parsePriceInput(draft.price)
+    const propertyType = mapPropertyType(draft.type)
 
-    if (!draft.title || !draft.city || !draft.neighborhood || price === null) {
+    if (!draft.title || !draft.city || !draft.neighborhood || price === null || !propertyType) {
       return NextResponse.json(
-        { error: "Revise título, cidade, bairro e preço antes de criar o imóvel." },
+        { error: "Revise titulo, cidade, bairro, preco e tipo antes de criar o imovel." },
         { status: 400 },
       )
     }
@@ -77,7 +77,12 @@ export async function POST(request: NextRequest) {
 
     if (!broker) {
       return NextResponse.json(
-        { error: user.role === UserRole.AGENCY ? "Cadastre ou vincule um corretor antes de criar imóveis." : "Corretor não encontrado para esta conta." },
+        {
+          error:
+            user.role === UserRole.AGENCY
+              ? "Cadastre ou vincule um corretor antes de criar imoveis."
+              : "Corretor nao encontrado para esta conta.",
+        },
         { status: 400 },
       )
     }
@@ -103,7 +108,7 @@ export async function POST(request: NextRequest) {
         bedrooms: draft.bedrooms,
         bathrooms: draft.bathrooms,
         parkingSpots: draft.parking,
-        type: mapXmlPropertyType(draft.type),
+        type: propertyType,
         status: "DRAFT",
         published: false,
         imageUrls: draft.images.slice(0, 6),
@@ -123,11 +128,11 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Não foi possível criar o imóvel a partir do anúncio." }, { status: 500 })
+    return NextResponse.json({ error: "Nao foi possivel criar o imovel a partir do anuncio." }, { status: 500 })
   }
 }

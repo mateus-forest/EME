@@ -159,16 +159,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (caughtError instanceof Error && caughtError.message.includes("AD_IMPORT_PREVIEW_EMPTY")) {
+      return NextResponse.json(
+        {
+          error:
+            "A IA analisou o material, mas nao encontrou dados suficientes para montar uma previa editavel. Envie mais texto, um print mais legivel ou um anuncio mais completo.",
+        },
+        { status: 422 },
+      )
+    }
+
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
       return NextResponse.json(
-        { error: "A IA nao retornou uma previa valida do imovel. Tente novamente em instantes." },
+        { error: "A IA nao retornou conteudo suficiente para a previa do imovel. Tente novamente em instantes." },
         { status: 502 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_INVALID_JSON")) {
       return NextResponse.json(
-        { error: "A resposta da IA veio em um formato invalido. Tente novamente em instantes." },
+        { error: "A resposta da IA veio em um formato invalido, mas nenhum dado recuperavel foi encontrado. Tente novamente em instantes." },
         { status: 502 },
       )
     }

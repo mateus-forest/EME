@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { ImagePlus, LinkIcon, Sparkles } from "lucide-react"
 
-import type { AdImportDraft } from "@/lib/property-ad-import"
+import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import"
 import { confirmPropertyAdImport, extractPropertyAd, getPropertyImportCapabilities } from "@/lib/property-ad-import-client"
 import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
@@ -206,9 +206,11 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-black/[0.06] bg-white text-[#111111]">
-                  <SelectItem value="Apartamento">Apartamento</SelectItem>
-                  <SelectItem value="Casa">Casa</SelectItem>
-                  <SelectItem value="Comercial">Comercial</SelectItem>
+                  {propertyImportTypeOptions.map((typeOption) => (
+                    <SelectItem key={typeOption} value={typeOption}>
+                      {typeOption}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </DraftField>

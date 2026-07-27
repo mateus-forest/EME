@@ -1,3 +1,4 @@
+import { mapPropertyType, type PropertyApiItem } from "@/lib/property-contract"
 import type { PropertyType } from "@/lib/prisma-enums"
 
 export const XML_IMPORT_MAX_BYTES = 5 * 1024 * 1024
@@ -9,7 +10,7 @@ export type ParsedXmlProperty = {
   title: string
   description: string
   price: string
-  type: "Apartamento" | "Casa" | "Comercial"
+  type: PropertyApiItem["type"]
   city: string
   neighborhood: string
   address: string
@@ -26,18 +27,18 @@ export type ParsedXmlProperty = {
 type AliasMap = Record<string, string[]>
 
 const fieldAliases: AliasMap = {
-  title: ["title", "titulo", "título", "nome", "headline", "referencia", "referência"],
-  description: ["description", "descricao", "descrição", "detalhes", "observacao", "observação"],
-  price: ["price", "valor", "valorvenda", "saleprice", "preco", "preço"],
+  title: ["title", "titulo", "tÃ­tulo", "nome", "headline", "referencia", "referÃªncia"],
+  description: ["description", "descricao", "descriÃ§Ã£o", "detalhes", "observacao", "observaÃ§Ã£o"],
+  price: ["price", "valor", "valorvenda", "saleprice", "preco", "preÃ§o"],
   type: ["type", "tipo", "tipoimovel", "tipoImovel", "propertytype"],
   city: ["city", "cidade"],
   neighborhood: ["neighborhood", "bairro", "district"],
-  address: ["address", "endereco", "endereço", "logradouro"],
-  bedrooms: ["bedrooms", "quartos", "dormitorios", "dormitórios", "suites", "suítes"],
+  address: ["address", "endereco", "endereÃ§o", "logradouro"],
+  bedrooms: ["bedrooms", "quartos", "dormitorios", "dormitÃ³rios", "suites", "suÃ­tes"],
   bathrooms: ["bathrooms", "banheiros", "wc"],
   parking: ["parking", "vagas", "garagens", "garage"],
-  area: ["area", "areautil", "áreautil", "areaUtil", "area_total", "areatotal"],
-  externalRef: ["externalid", "externalId", "codigo", "código", "referencia", "referência", "ref", "idexterno"],
+  area: ["area", "areautil", "Ã¡reautil", "areaUtil", "area_total", "areatotal"],
+  externalRef: ["externalid", "externalId", "codigo", "cÃ³digo", "referencia", "referÃªncia", "ref", "idexterno"],
 }
 
 const imageAliases = ["images", "image", "fotos", "foto", "url", "imageurl", "imageUrl", "imagem"]
@@ -141,8 +142,14 @@ function normalizePrice(value: string) {
 
 function normalizeType(value: string): ParsedXmlProperty["type"] {
   const normalized = normalizeKey(value)
+
   if (normalized.includes("casa") || normalized.includes("house")) return "Casa"
-  if (normalized.includes("comercial") || normalized.includes("loja") || normalized.includes("sala")) return "Comercial"
+  if (normalized.includes("terreno") || normalized.includes("lote") || normalized.includes("land")) return "Terreno"
+  if (normalized.includes("cobertura") || normalized.includes("penthouse")) return "Cobertura"
+  if (normalized.includes("loja") || normalized.includes("store")) return "Loja"
+  if (normalized.includes("salacomercial") || normalized.includes("office") || normalized.includes("escritorio")) return "Sala comercial"
+  if (normalized.includes("comercial")) return "Comercial"
+
   return "Apartamento"
 }
 
@@ -192,7 +199,7 @@ function parseNode(nodeXml: string): ParsedXmlProperty {
     area: findTagValue(nodeXml, fieldAliases.area),
     images: findImages(nodeXml),
     externalRef: findTagValue(nodeXml, fieldAliases.externalRef),
-    status: issues.length === 0 ? "ready" : issues.length <= 2 ? "needs_review" : "invalid",
+    status: issues.length === 0 ? "ready" : "needs_review",
     issues,
   }
 }
@@ -209,7 +216,5 @@ export function parsePropertiesXml(xml: string) {
 }
 
 export function mapXmlPropertyType(value: ParsedXmlProperty["type"]): PropertyType {
-  if (value === "Casa") return "HOUSE"
-  if (value === "Comercial") return "COMMERCIAL"
-  return "APARTMENT"
+  return mapPropertyType(value) ?? "APARTMENT"
 }

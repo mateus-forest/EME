@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
+import { mapXmlPropertyToAdImportDraft } from "@/lib/property-ad-import"
 import { parsePropertiesXml, XML_IMPORT_MAX_BYTES } from "@/lib/property-xml-import"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       properties,
+      drafts: properties.map(mapXmlPropertyToAdImportDraft),
       summary: {
         total: properties.length,
         ready: properties.filter((property) => property.status === "ready").length,

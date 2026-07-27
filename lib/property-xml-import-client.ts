@@ -1,4 +1,5 @@
 import type { ParsedXmlProperty } from "@/lib/property-xml-import"
+import type { AdImportDraft } from "@/lib/property-ad-import"
 import type { PropertyApiItem } from "@/lib/property-contract"
 
 export type XmlImportSummary = {
@@ -42,7 +43,7 @@ export async function previewPropertyXml(input: PreviewXmlInput) {
   if (input.file) formData.append("file", input.file)
   if (input.sourceUrl) formData.append("sourceUrl", input.sourceUrl)
 
-  return parseImportResponse<{ properties: ParsedXmlProperty[]; summary: XmlImportSummary }>(
+  return parseImportResponse<{ properties: ParsedXmlProperty[]; drafts: AdImportDraft[]; summary: XmlImportSummary }>(
     await fetch("/api/properties/import/xml/preview", {
       method: "POST",
       credentials: "include",
