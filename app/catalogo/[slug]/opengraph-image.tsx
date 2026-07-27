@@ -3,12 +3,12 @@ import path from "node:path"
 
 import { ImageResponse } from "next/og"
 
+import { getPublicBrokerCatalogPageState } from "@/lib/public-catalog"
 import {
   getBrokerCatalogPreferredVisualSource,
   getBrokerCatalogTitle,
   PREMIUM_FALLBACK_IMAGE_PATH,
 } from "@/lib/public-catalog-metadata"
-import { getPublicBrokerCatalogPageState } from "@/lib/public-catalog"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -76,8 +76,7 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
           display: "flex",
           position: "relative",
           overflow: "hidden",
-          background:
-            "linear-gradient(135deg, #f8f5ef 0%, #f3efe7 52%, #ebe5da 100%)",
+          background: "linear-gradient(135deg, #f8f5ef 0%, #f3efe7 52%, #ebe5da 100%)",
           color: "#111111",
           fontFamily: "Arial, sans-serif",
         }}
@@ -239,9 +238,9 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
               >
                 Catalogo de imoveis
               </span>
-                <h1
-                  style={{
-                    margin: 0,
+              <h1
+                style={{
+                  margin: 0,
                   fontSize: 64,
                   lineHeight: 1,
                   letterSpacing: "-0.05em",

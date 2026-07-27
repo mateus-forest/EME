@@ -1,7 +1,7 @@
 import { CatalogOwnerType, PropertyStatus } from "@/lib/prisma-enums"
 
-import { getPropertyImage, getPropertyImages } from "@/lib/property-media"
 import { formatCurrencyFromCents } from "@/lib/property-contract"
+import { getPropertyImage, getPropertyImages } from "@/lib/property-media"
 import { prisma } from "@/lib/prisma"
 
 export type PublicBrokerCatalogProperty = {
@@ -43,7 +43,12 @@ export type PublicCatalogLoadState =
       catalog: PublicBrokerCatalogData
     }
   | {
-      status: "missing_slug" | "catalog_not_found" | "broker_without_catalog" | "incomplete_data" | "service_unavailable"
+      status:
+        | "missing_slug"
+        | "catalog_not_found"
+        | "broker_without_catalog"
+        | "incomplete_data"
+        | "service_unavailable"
       message: string
     }
 
@@ -176,7 +181,10 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
       type: propertyTypeLabel(property.type),
       purpose: propertyPurposeLabel(property.purpose),
       description: property.description ?? "",
-      images: getPropertyImages(Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [], property.id),
+      images: getPropertyImages(
+        Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [],
+        property.id,
+      ),
       views: property.viewsCount,
       interested: property._count.leads,
       brokerId: property.brokerId,
@@ -229,11 +237,7 @@ function buildCatalogUnavailableState(
 }
 
 function isCompleteBrokerCatalog(catalog: PublicBrokerCatalogData | null) {
-  return Boolean(
-    catalog?.slug?.trim() &&
-      catalog.displayName?.trim() &&
-      Array.isArray(catalog.properties),
-  )
+  return Boolean(catalog?.slug?.trim() && catalog.displayName?.trim() && Array.isArray(catalog.properties))
 }
 
 export async function getPublicBrokerCatalogPageState(slug: string): Promise<PublicCatalogLoadState> {
@@ -358,8 +362,14 @@ export async function getPublicAgencyCatalogBySlug(slug: string): Promise<Public
       leads: property._count.leads,
       brokerId: property.brokerId,
       agencyId: property.agencyId,
-      image: getPropertyImage(Array.isArray(property.imageUrls) ? (property.imageUrls[0] as string | undefined) : undefined, property.id),
-      images: getPropertyImages(Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [], property.id),
+      image: getPropertyImage(
+        Array.isArray(property.imageUrls) ? (property.imageUrls[0] as string | undefined) : undefined,
+        property.id,
+      ),
+      images: getPropertyImages(
+        Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [],
+        property.id,
+      ),
       broker: {
         name: property.broker.user.name,
         initials: getInitials(property.broker.user.name),
