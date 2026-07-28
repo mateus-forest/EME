@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { createHash } from "node:crypto"
 
 import type { PublicBrokerCatalogData } from "@/lib/public-catalog"
 
@@ -40,8 +41,14 @@ export function getBrokerCatalogCanonicalUrl(slug: string) {
   return toAbsoluteCatalogUrl(`/catalogo/${slug}`)
 }
 
-export function getBrokerCatalogOgImageUrl(slug: string) {
-  return toAbsoluteCatalogUrl(`/api/catalogs/broker/${slug}/og-image`)
+function buildOgImageVersion(catalog?: PublicBrokerCatalogData | null) {
+  const source = catalog?.photoUrl?.trim() || "fallback"
+  return createHash("sha1").update(source).digest("hex").slice(0, 12)
+}
+
+export function getBrokerCatalogOgImageUrl(slug: string, catalog?: PublicBrokerCatalogData | null) {
+  const version = buildOgImageVersion(catalog)
+  return toAbsoluteCatalogUrl(`/api/catalogs/broker/${slug}/og-image?v=${version}`)
 }
 
 export function normalizeImageSource(value: string | null | undefined) {
@@ -70,7 +77,7 @@ export function buildBrokerCatalogMetadata(slug: string, catalog?: PublicBrokerC
   const title = getBrokerCatalogTitle(catalog)
   const description = getCatalogDescription(catalog)
   const canonicalUrl = getBrokerCatalogCanonicalUrl(slug)
-  const imageUrl = getBrokerCatalogOgImageUrl(slug)
+  const imageUrl = getBrokerCatalogOgImageUrl(slug, catalog)
 
   return {
     title,
