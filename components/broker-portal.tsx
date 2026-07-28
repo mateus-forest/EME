@@ -6,6 +6,8 @@ import {
   Bot,
   Building2,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   FileText,
   Home,
@@ -71,6 +73,7 @@ export function BrokerPortal() {
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [contracts, setContracts] = useState<ContractRecord[]>([])
   const [commissionPercent, setCommissionPercent] = useState(6)
+  const [isOperationHealthExpanded, setIsOperationHealthExpanded] = useState(false)
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
   const chatViewportRef = useRef<HTMLDivElement>(null)
@@ -300,6 +303,8 @@ export function BrokerPortal() {
     ].filter((item): item is string => Boolean(item))
   }, [agendaEvents, contracts, documents, leads, properties, todayKey])
 
+  const visiblePendingCount = operationPendingItems.length
+
   return (
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
@@ -480,86 +485,96 @@ export function BrokerPortal() {
               )}
             </div>
 
-            <aside className="hidden lg:block">
-              <div className="sticky top-6 rounded-[2rem] border border-black/[0.06] bg-white/82 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#8a97a8]">Painel contextual</p>
-                <h2 className="mt-3 text-[1.35rem] font-semibold tracking-[-0.03em] text-[#111111]">
-                  Saude da operacao
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">
-                  Este painel ja nasce preparado para trocar de contexto conforme a conversa com o COS.
-                </p>
+            <aside className="hidden lg:flex lg:min-h-full lg:flex-col lg:justify-end">
+              <div className="sticky bottom-6 ml-auto w-full max-w-[17rem] rounded-[1.6rem] border border-black/[0.06] bg-white/82 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => setIsOperationHealthExpanded((current) => !current)}
+                  className="flex w-full items-start justify-between gap-3 text-left"
+                  aria-expanded={isOperationHealthExpanded}
+                  aria-controls="operation-health-panel"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8a97a8]">
+                      Saude da operacao
+                    </p>
+                    <p className="mt-2 text-[1.8rem] font-semibold tracking-[-0.05em] text-[#111111]">
+                      {operationHealth}%
+                    </p>
+                  </div>
+                  <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#667085]">
+                    {isOperationHealthExpanded ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+                  </span>
+                </button>
 
-                <div className="mt-6 rounded-[1.5rem] border border-black/[0.05] bg-[#fbfbf8] p-4">
-                  <div className="flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-[#667085]">Sua operacao</p>
-                      <p className="mt-1 text-[2.1rem] font-semibold tracking-[-0.05em] text-[#111111]">
-                        {operationHealth}%
-                      </p>
+                <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
+                  <div className="h-full rounded-full bg-[#009b3a] transition-all duration-300" style={{ width: `${operationHealth}%` }} />
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[#667085]">
+                  <span>{visiblePendingCount} pendencia{visiblePendingCount === 1 ? "" : "s"}</span>
+                  <span className="rounded-full bg-[#edf8f1] px-2.5 py-1 font-medium text-[#0d7a39]">
+                    {commissionPercent}% base
+                  </span>
+                </div>
+
+                <div
+                  id="operation-health-panel"
+                  className={`overflow-hidden transition-all duration-300 ease-out ${
+                    isOperationHealthExpanded ? "mt-4 max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="space-y-2 border-t border-black/[0.06] pt-4">
+                    {operationIndicators.map((item) => {
+                      const Icon = item.icon
+
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex items-center justify-between gap-3 rounded-[1rem] bg-[#fbfbf8] px-3 py-2.5"
+                        >
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-[#f5fbf7] text-[#009b3a]">
+                              <Icon className="size-3.5" />
+                            </span>
+                            <span className="truncate text-sm font-medium text-[#111111]">{item.label}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-[#111111]">{item.score}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mt-4 border-t border-black/[0.06] pt-4">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="size-4 text-[#9a6b00]" />
+                      <p className="text-sm font-semibold text-[#111111]">Pendencias</p>
                     </div>
-                    <span className="rounded-full bg-[#edf8f1] px-3 py-1 text-xs font-medium text-[#0d7a39]">
-                      {commissionPercent}% comissao base
-                    </span>
-                  </div>
-                  <div className="mt-4 h-2 rounded-full bg-black/[0.06]">
-                    <div
-                      className="h-full rounded-full bg-[#009b3a]"
-                      style={{ width: `${operationHealth}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-2">
-                  {operationIndicators.map((item) => {
-                    const Icon = item.icon
-
-                    return (
-                      <div
-                        key={item.label}
-                        className="flex items-center justify-between gap-3 rounded-[1.2rem] border border-black/[0.05] bg-white/72 px-3.5 py-3"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#f5fbf7] text-[#009b3a]">
-                            <Icon className="size-4" />
-                          </span>
-                          <span className="truncate text-sm font-medium text-[#111111]">{item.label}</span>
+                    <div className="mt-3 space-y-2">
+                      {operationPendingItems.length > 0 ? (
+                        operationPendingItems.slice(0, 5).map((item) => (
+                          <div key={item} className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
+                            <span className="mt-2 size-1.5 rounded-full bg-[#c28a00]" />
+                            <span>{item}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
+                          <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
+                          <span>Nenhuma pendencia critica detectada agora.</span>
                         </div>
-                        <span className="text-sm font-semibold text-[#111111]">{item.score}%</span>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )}
+                    </div>
 
-                <div className="mt-6 border-t border-black/[0.06] pt-5">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="size-4 text-[#9a6b00]" />
-                    <p className="text-sm font-semibold text-[#111111]">Pendencias</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void handleSubmit("Me mostre as pendencias da operacao")}
+                      className="mt-4 h-9 w-full rounded-full border border-black/[0.06] bg-white px-4 text-sm text-[#111111] hover:bg-white"
+                    >
+                      Ver detalhes
+                    </Button>
                   </div>
-                  <div className="mt-3 space-y-2.5">
-                    {operationPendingItems.length > 0 ? (
-                      operationPendingItems.slice(0, 5).map((item) => (
-                        <div key={item} className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
-                          <span className="mt-2 size-1.5 rounded-full bg-[#c28a00]" />
-                          <span>{item}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
-                        <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
-                        <span>Nenhuma pendencia critica detectada agora.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void handleSubmit("Me mostre as pendencias da operacao")}
-                    className="mt-4 h-10 rounded-full border border-black/[0.06] bg-white px-4 text-sm text-[#111111] hover:bg-white"
-                  >
-                    Ver detalhes
-                  </Button>
                 </div>
               </div>
             </aside>
