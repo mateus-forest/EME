@@ -11,7 +11,6 @@ import {
 } from "@/lib/public-catalog-metadata"
 
 export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
 export const contentType = "image/png"
 export const size = {
   width: 1200,
