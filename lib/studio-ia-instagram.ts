@@ -1,9 +1,12 @@
 import "server-only"
 
+import { zodTextFormat } from "openai/helpers/zod"
 import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+
+const OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED = "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED"
 
 export const studioInstagramGoals = [
   "Venda",
@@ -69,7 +72,7 @@ function buildInstagramPrompt(input: StudioInstagramRequest, property: StudioIns
     "Crie uma campanha imobiliaria pronta para Instagram em portugues do Brasil.",
     `Objetivo da campanha: ${input.goal}.`,
     `Identidade visual da campanha: ${input.identity}.`,
-    `Versao solicitada: ${input.version}. Gere uma abordagem nova e diferente das versoes anteriores, mantendo coerencia comercial.`,
+    `Versao solicitada: ${input.version}. Gere uma abordagem nova e coerente com o contexto do imovel.`,
     "",
     "Contexto do imovel:",
     `Titulo: ${property.title}`,
@@ -87,8 +90,8 @@ function buildInstagramPrompt(input: StudioInstagramRequest, property: StudioIns
     "",
     "Orientacoes:",
     "Nao invente informacoes factuais que nao estejam no contexto do imovel.",
-    "Escreva com tom comercial, sofisticado e objetivo, apropriado para um corretor de imoveis no Brasil.",
-    "Faça o texto parecer pronto para publicacao, sem mencionar IA, prompt, algoritmo ou bastidores.",
+    "Escreva com tom comercial, sofisticado, objetivo e conciso, apropriado para um corretor de imoveis no Brasil.",
+    "Entregue somente o conteudo final da campanha, pronto para publicacao.",
     "Quando faltar algum detalhe, seja elegante e generico sem afirmar caracteristicas nao fornecidas.",
     "As hashtags devem comecar com # e ser relevantes ao imovel, objetivo, cidade ou mercado imobiliario.",
   ].join("\n")
@@ -107,59 +110,29 @@ export async function generateInstagramCampaign(
   const { model } = getOpenAIEnv()
   const response = await client.responses.create({
     model,
-    max_output_tokens: 1400,
+    max_output_tokens: 2200,
+    reasoning: {
+      effort: "minimal",
+    },
     instructions:
-      "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Entregue campanhas claras, comerciais e prontas para revisao final pelo corretor, sempre em portugues do Brasil.",
+      "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Responda apenas com o JSON do schema solicitado, sem texto adicional, sempre em portugues do Brasil.",
     input: buildInstagramPrompt(input, property),
     text: {
-      format: {
-        type: "json_schema",
-        name: "studio_ia_instagram_campaign",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            postFeed: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                title: { type: "string" },
-                highlight: { type: "string" },
-                support: { type: "string" },
-              },
-              required: ["title", "highlight", "support"],
-            },
-            story: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                kicker: { type: "string" },
-                line1: { type: "string" },
-                line2: { type: "string" },
-              },
-              required: ["kicker", "line1", "line2"],
-            },
-            carousel: {
-              type: "array",
-              minItems: 3,
-              maxItems: 3,
-              items: { type: "string" },
-            },
-            caption: { type: "string" },
-            cta: { type: "string" },
-            hashtags: {
-              type: "array",
-              minItems: 4,
-              maxItems: 8,
-              items: { type: "string" },
-            },
-          },
-          required: ["postFeed", "story", "carousel", "caption", "cta", "hashtags"],
-        },
-      },
+      verbosity: "low",
+      format: zodTextFormat(studioInstagramResultSchema, "studio_ia_instagram_campaign"),
     },
   })
+
+  if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
+    console.error("[studio-ia][instagram][openai-response-truncated]", {
+      message: OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED,
+      status: response.status,
+      incompleteDetails: response.incomplete_details,
+      rawResponseText: typeof response.output_text === "string" ? response.output_text.slice(0, 6000) : "",
+      responseOutput: JSON.stringify(response.output ?? []).slice(0, 6000),
+    })
+    throw new Error(OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED)
+  }
 
   const parsed = studioInstagramResultSchema.parse(JSON.parse(response.output_text))
   return {

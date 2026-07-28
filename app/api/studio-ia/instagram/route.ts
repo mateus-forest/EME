@@ -115,6 +115,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (caughtError instanceof Error && caughtError.message === "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED") {
+      return NextResponse.json(
+        { error: "A resposta da OpenAI foi interrompida antes de concluir a campanha. Ajuste aplicado, tente novamente." },
+        { status: 502 },
+      )
+    }
+
     return NextResponse.json(
       { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao gerar a campanha do Studio IA." },
       { status: 500 },
