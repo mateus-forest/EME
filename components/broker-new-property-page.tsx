@@ -904,6 +904,20 @@ function ImportPropertyPanel({
   onXmlImportUrl: () => void | Promise<void>
   onConfirmImport: () => void | Promise<void>
 }) {
+  void feedback
+  void preview
+  void summary
+  void report
+  void isAnalyzing
+  void isImporting
+  void xmlSourceUrl
+  void onXmlSourceUrlChange
+  void onXmlImport
+  void onXmlImportUrl
+  void onConfirmImport
+  void XmlImportPreview
+  void ImportStatusBadge
+
   return (
     <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -911,57 +925,16 @@ function ImportPropertyPanel({
           <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Importar imóveis</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Escolha uma origem</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
-            Envie um arquivo XML de imóveis para revisar antes de importar.
+            Use XML, URL de XML, link do anúncio ou imagem para chegar sempre na mesma prévia revisável.
           </p>
         </div>
         <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
           Voltar
         </Button>
       </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <label className="min-h-48 cursor-pointer rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5 transition-colors hover:border-[#009b3a]/30 hover:bg-[#009b3a]/[0.06]">
-          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
-          <Upload className="size-8 text-[#009b3a]" />
-          <h3 className="mt-5 text-lg font-semibold text-[#050505]">Importar XML</h3>
-          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Envie um arquivo XML de imóveis para revisar antes de importar.</p>
-        </label>
-        <div className="min-h-48 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
-          <Upload className="size-8 text-[#009b3a]" />
-          <h3 className="mt-5 text-lg font-semibold text-[#050505]">Importar XML por URL</h3>
-          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole o link do XML para gerar uma prévia antes da importação.</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <Input
-              value={xmlSourceUrl}
-              onChange={(event) => onXmlSourceUrlChange(event.target.value)}
-              placeholder="https://.../imoveis.xml"
-              className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => void onXmlImportUrl()}
-              className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
-            >
-              Analisar URL
-            </Button>
-          </div>
-        </div>
+      <div className="mt-6">
+        <AdImportPanel onImported={onImported} />
       </div>
-      <div className="mt-4 rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
-        Importação por anúncio: texto livre, link e print/imagem geram uma prévia revisável antes de salvar.
-      </div>
-      <AdImportPanel onImported={onImported} />
-      {isAnalyzing ? <p className="mt-5 text-sm text-[#6B7280]">Analisando XML...</p> : null}
-      {summary ? (
-        <XmlImportPreview
-          preview={preview}
-          summary={summary}
-          report={report}
-          isImporting={isImporting}
-          onConfirmImport={onConfirmImport}
-        />
-      ) : null}
-      {feedback ? <p className="mt-5 rounded-[1rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">{feedback}</p> : null}
     </section>
   )
 }

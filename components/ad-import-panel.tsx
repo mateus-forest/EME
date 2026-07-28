@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ImagePlus, LinkIcon, Sparkles } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { FileCode2, ImagePlus, LinkIcon, Sparkles, Upload } from "lucide-react"
 
-import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import-shared"
 import { confirmPropertyAdImport, extractPropertyAd, getPropertyImportCapabilities } from "@/lib/property-ad-import-client"
+import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import-shared"
+import { previewPropertyXml } from "@/lib/property-xml-import-client"
 import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,12 +34,24 @@ const emptyDraft: AdImportDraft = {
   status: "needs_review",
 }
 
+type DraftEntry = {
+  id: string
+  draft: AdImportDraft
+}
+
+function buildDraftEntries(drafts: AdImportDraft[]) {
+  return drafts.map((draft, index) => ({
+    id: `${draft.title || "imovel"}-${index}`,
+    draft,
+  }))
+}
+
 export function AdImportPanel({ onImported }: { onImported: () => void | Promise<void> }) {
-  const [adText, setAdText] = useState("")
+  const [xmlSourceUrl, setXmlSourceUrl] = useState("")
   const [sourceUrl, setSourceUrl] = useState("")
-  const [notes, setNotes] = useState("")
   const [image, setImage] = useState<File | null>(null)
-  const [draft, setDraft] = useState<AdImportDraft | null>(null)
+  const [draftEntries, setDraftEntries] = useState<DraftEntry[]>([])
+  const [selectedDraftId, setSelectedDraftId] = useState("")
   const [feedback, setFeedback] = useState("")
   const [isExtracting, setIsExtracting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -65,8 +78,85 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     }
   }, [])
 
+  const draft = useMemo(
+    () => draftEntries.find((entry) => entry.id === selectedDraftId)?.draft ?? null,
+    [draftEntries, selectedDraftId],
+  )
+
+  function resetInputs() {
+    setXmlSourceUrl("")
+    setSourceUrl("")
+    setImage(null)
+  }
+
+  function clearFlow() {
+    setDraftEntries([])
+    setSelectedDraftId("")
+    resetInputs()
+  }
+
+  function applyDrafts(drafts: AdImportDraft[], message: string) {
+    const entries = buildDraftEntries(drafts)
+    setDraftEntries(entries)
+    setSelectedDraftId(entries[0]?.id ?? "")
+    setFeedback(message)
+  }
+
   function updateDraft<K extends keyof AdImportDraft>(field: K, value: AdImportDraft[K]) {
-    setDraft((current) => (current ? { ...current, [field]: value } : current))
+    setDraftEntries((current) =>
+      current.map((entry) => (entry.id === selectedDraftId ? { ...entry, draft: { ...entry.draft, [field]: value } } : entry)),
+    )
+  }
+
+  async function handleXmlImport(files: FileList | null) {
+    const file = files?.[0]
+    if (!file) return
+
+    const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
+    if (!isXml) {
+      setFeedback("Envie um arquivo XML valido para revisar antes de importar.")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedback("O XML deve ter ate 5 MB.")
+      return
+    }
+
+    setIsExtracting(true)
+    setFeedback("")
+    setDraftEntries([])
+    setSelectedDraftId("")
+
+    try {
+      const result = await previewPropertyXml({ file })
+      applyDrafts(result.drafts, result.drafts.length > 1 ? "XML analisado. Revise e salve um imovel por vez." : "XML analisado. Revise as informacoes antes de salvar.")
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+    } finally {
+      setIsExtracting(false)
+    }
+  }
+
+  async function handleXmlImportUrl() {
+    if (!xmlSourceUrl.trim()) {
+      setFeedback("Informe a URL do XML para analisar antes de importar.")
+      return
+    }
+
+    setIsExtracting(true)
+    setFeedback("")
+    setDraftEntries([])
+    setSelectedDraftId("")
+
+    try {
+      const result = await previewPropertyXml({ sourceUrl: xmlSourceUrl.trim() })
+      applyDrafts(result.drafts, result.drafts.length > 1 ? "XML analisado. Revise e salve um imovel por vez." : "XML analisado. Revise as informacoes antes de salvar.")
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+    } finally {
+      setIsExtracting(false)
+    }
   }
 
   async function handleExtract() {
@@ -75,14 +165,19 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       return
     }
 
+    if (!sourceUrl.trim() && !image) {
+      setFeedback("Informe o link do anuncio, envie uma imagem ou use XML para iniciar a extracao.")
+      return
+    }
+
     setIsExtracting(true)
     setFeedback("")
-    setDraft(null)
+    setDraftEntries([])
+    setSelectedDraftId("")
 
     try {
-      const result = await extractPropertyAd({ adText, sourceUrl, notes, image })
-      setDraft(result.draft)
-      setFeedback("Dados extraidos. Revise as informacoes antes de publicar.")
+      const result = await extractPropertyAd({ sourceUrl: sourceUrl.trim(), image })
+      applyDrafts([result.draft], "Dados extraidos. Revise as informacoes antes de salvar.")
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel extrair os dados do anuncio.")
     } finally {
@@ -98,12 +193,13 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
     try {
       await confirmPropertyAdImport(draft)
-      setFeedback("Imovel criado como rascunho.")
-      setDraft(null)
-      setAdText("")
-      setSourceUrl("")
-      setNotes("")
-      setImage(null)
+      const remainingEntries = draftEntries.filter((entry) => entry.id !== selectedDraftId)
+      setDraftEntries(remainingEntries)
+      setSelectedDraftId(remainingEntries[0]?.id ?? "")
+      setFeedback(remainingEntries.length > 0 ? "Imovel salvo. Revise o proximo item antes de confirmar." : "Imovel criado como rascunho.")
+      if (remainingEntries.length === 0) {
+        resetInputs()
+      }
       await onImported()
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar o imovel.")
@@ -113,78 +209,133 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   }
 
   const currentDraft = draft ?? emptyDraft
+  const fieldsToReview = [...currentDraft.lowConfidenceFields, ...currentDraft.missingFields]
 
   return (
     <div className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
       <div>
-        <h3 className="text-lg font-semibold text-[#111111]">Importar de anuncio</h3>
+        <h3 className="text-lg font-semibold text-[#111111]">Importar imovel</h3>
         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-          Cole um anuncio, envie um print ou informe um link para a IA montar o imovel automaticamente.
+          XML, URL de XML, link do anuncio e print/imagem alimentam a mesma previa revisavel antes do cadastro.
         </p>
       </div>
 
       {!draft ? (
-        <div className="grid gap-4">
-          <Textarea
-            value={adText}
-            onChange={(event) => setAdText(event.target.value)}
-            placeholder="Cole aqui o texto do anuncio..."
-            className="min-h-32 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-2">
-              <span className="text-sm font-medium text-[#5F6B7A]">Link do anuncio</span>
-              <div className="relative">
-                <LinkIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" />
-                <Input
-                  value={sourceUrl}
-                  onChange={(event) => setSourceUrl(event.target.value)}
-                  placeholder="https://..."
-                  className="h-10 rounded-xl border-black/[0.06] bg-white pl-9 text-[#111111] placeholder:text-[#9CA3AF]"
-                />
+        <div className="grid gap-5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <label className="grid min-h-44 cursor-pointer gap-3 rounded-[1.5rem] border border-black/[0.06] bg-white p-5 transition-colors hover:border-[#009b3a]/30 hover:bg-[#009b3a]/[0.05]">
+              <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void handleXmlImport(event.target.files)} />
+              <Upload className="size-8 text-[#009b3a]" />
+              <div>
+                <h4 className="text-lg font-semibold text-[#111111]">Importar XML</h4>
+                <p className="mt-2 text-sm leading-6 text-[#6B7280]">Upload do XML para leitura, extracao e previa antes do salvamento.</p>
               </div>
             </label>
-            <label className="grid gap-2">
-              <span className="text-sm font-medium text-[#5F6B7A]">Print ou imagem</span>
-              <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#5F6B7A] hover:bg-[#f8faf8]">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  onChange={(event) => setImage(event.target.files?.[0] ?? null)}
-                />
-                <ImagePlus className="size-4" />
-                {image ? image.name : "Selecionar imagem"}
-              </span>
-            </label>
+            <div className="grid min-h-44 gap-3 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
+              <FileCode2 className="size-8 text-[#009b3a]" />
+              <div>
+                <h4 className="text-lg font-semibold text-[#111111]">Importar XML por URL</h4>
+                <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole a URL do XML e gere a mesma previa revisavel.</p>
+              </div>
+              <Input
+                value={xmlSourceUrl}
+                onChange={(event) => setXmlSourceUrl(event.target.value)}
+                placeholder="https://.../imoveis.xml"
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void handleXmlImportUrl()}
+                disabled={isExtracting}
+                className="h-10 w-fit rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60"
+              >
+                {isExtracting ? "Analisando..." : "Analisar XML"}
+              </Button>
+            </div>
           </div>
-          <Textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Observacoes opcionais..."
-            className="min-h-20 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-          />
-          <Button
-            type="button"
-            onClick={handleExtract}
-            disabled={isExtracting || !aiImportEnabled}
-            className="h-10 w-fit rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
-          >
-            <Sparkles className="size-4" />
-            {isExtracting ? "Extraindo..." : "Extrair dados com IA"}
-          </Button>
-          {!aiImportEnabled && aiImportReason ? (
-            <p className="text-sm text-[#9B6B00]">{aiImportReason}</p>
-          ) : null}
+
+          <div className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
+            <div>
+              <h4 className="text-lg font-semibold text-[#111111]">Importar anuncio</h4>
+              <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                Use o link do anuncio, uma foto, um print ou uma captura de tela para extrair os dados com IA.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-medium text-[#5F6B7A]">Link do anuncio</span>
+                <div className="relative">
+                  <LinkIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" />
+                  <Input
+                    value={sourceUrl}
+                    onChange={(event) => setSourceUrl(event.target.value)}
+                    placeholder="https://..."
+                    className="h-10 rounded-xl border-black/[0.06] bg-white pl-9 text-[#111111] placeholder:text-[#9CA3AF]"
+                  />
+                </div>
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-medium text-[#5F6B7A]">Imagem ou print</span>
+                <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#5F6B7A] hover:bg-[#f8faf8]">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(event) => setImage(event.target.files?.[0] ?? null)}
+                  />
+                  <ImagePlus className="size-4" />
+                  {image ? image.name : "Selecionar imagem"}
+                </span>
+              </label>
+            </div>
+            <Button
+              type="button"
+              onClick={handleExtract}
+              disabled={isExtracting || !aiImportEnabled}
+              className="h-10 w-fit rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
+            >
+              <Sparkles className="size-4" />
+              {isExtracting ? "Extraindo..." : "Extrair dados com IA"}
+            </Button>
+            {!aiImportEnabled && aiImportReason ? <p className="text-sm text-[#9B6B00]">{aiImportReason}</p> : null}
+          </div>
         </div>
       ) : (
         <div className="grid gap-4">
+          {draftEntries.length > 1 ? (
+            <div className="grid gap-3 rounded-[1rem] border border-black/[0.06] bg-white p-4">
+              <div>
+                <p className="text-sm font-medium text-[#111111]">Previa revisavel</p>
+                <p className="mt-1 text-sm text-[#6B7280]">Selecione o item que deseja revisar e salvar agora.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {draftEntries.map((entry, index) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => setSelectedDraftId(entry.id)}
+                    className={`rounded-[1rem] border px-3 py-3 text-left transition-colors ${
+                      entry.id === selectedDraftId
+                        ? "border-[#009b3a]/35 bg-[#009b3a]/10"
+                        : "border-black/[0.06] bg-[#fbfbf8] hover:border-[#009b3a]/20"
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-[#111111]">{entry.draft.title || `Imovel ${index + 1}`}</p>
+                    <p className="mt-1 text-xs text-[#6B7280]">
+                      {[entry.draft.neighborhood, entry.draft.city].filter(Boolean).join(", ") || "Localizacao pendente"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="rounded-[1rem] border border-black/[0.06] bg-white px-4 py-3 text-sm text-[#5F6B7A]">
-            Revise as informacoes antes de publicar.
-            {[...currentDraft.lowConfidenceFields, ...currentDraft.missingFields].length > 0
-              ? ` Campos para revisar: ${[...currentDraft.lowConfidenceFields, ...currentDraft.missingFields].join(", ")}.`
-              : null}
+            Revise as informacoes antes de salvar.
+            {fieldsToReview.length > 0 ? ` Campos para revisar: ${fieldsToReview.join(", ")}.` : null}
           </div>
+
           <div className="grid gap-3 md:grid-cols-2">
             <DraftField label="Titulo">
               <Input
@@ -235,12 +386,28 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
                 className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
               />
             </DraftField>
+            <DraftField label="Endereco">
+              <Input
+                value={currentDraft.address}
+                onChange={(event) => updateDraft("address", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
+            </DraftField>
+            <DraftField label="Link de origem">
+              <Input
+                value={currentDraft.sourceUrl}
+                onChange={(event) => updateDraft("sourceUrl", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
+            </DraftField>
           </div>
+
           <div className="grid gap-3 sm:grid-cols-3">
-            <NumberInput label="Quartos" value={currentDraft.bedrooms} onChange={(value) => updateDraft("bedrooms", value)} />
+            <NumberInput label="Dormitorios" value={currentDraft.bedrooms} onChange={(value) => updateDraft("bedrooms", value)} />
             <NumberInput label="Banheiros" value={currentDraft.bathrooms} onChange={(value) => updateDraft("bathrooms", value)} />
-            <NumberInput label="Vagas" value={currentDraft.parking} onChange={(value) => updateDraft("parking", value)} />
+            <NumberInput label="Garagens" value={currentDraft.parking} onChange={(value) => updateDraft("parking", value)} />
           </div>
+
           <DraftField label="Descricao">
             <Textarea
               value={currentDraft.description}
@@ -248,6 +415,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               className="min-h-28 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111]"
             />
           </DraftField>
+
           <DraftField label="Caracteristicas">
             <Input
               value={currentDraft.features.join(", ")}
@@ -263,6 +431,34 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
             />
           </DraftField>
+
+          <DraftField label="Fotos encontradas">
+            <Textarea
+              value={currentDraft.images.join("\n")}
+              onChange={(event) =>
+                updateDraft(
+                  "images",
+                  event.target.value
+                    .split(/\r?\n/)
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                )
+              }
+              placeholder="Uma URL por linha"
+              className="min-h-24 rounded-[1.25rem] border-black/[0.06] bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+            />
+          </DraftField>
+
+          {currentDraft.notes ? (
+            <DraftField label="Referencia">
+              <Input
+                value={currentDraft.notes}
+                onChange={(event) => updateDraft("notes", event.target.value)}
+                className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
+              />
+            </DraftField>
+          ) : null}
+
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -270,12 +466,12 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               disabled={isSaving}
               className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
             >
-              {isSaving ? "Criando..." : "Confirmar criacao"}
+              {isSaving ? "Salvando..." : "Salvar imovel"}
             </Button>
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setDraft(null)}
+              onClick={clearFlow}
               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#5F6B7A] hover:bg-[#f8faf8] hover:text-[#111111]"
             >
               Voltar

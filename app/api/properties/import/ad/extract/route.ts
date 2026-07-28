@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const adText = typeof formData.get("adText") === "string" ? String(formData.get("adText")).trim() : ""
     const sourceUrl = typeof formData.get("sourceUrl") === "string" ? String(formData.get("sourceUrl")).trim() : ""
-    const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
     const image = formData.get("image")
     const hasImage = image instanceof File && image.size > 0
     actionType = hasImage ? "smart_import_image" : "smart_import_text"
@@ -54,9 +53,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!adText && !sourceUrl && !notes && !hasImage) {
+    if (!adText && !sourceUrl && !hasImage) {
       return NextResponse.json(
-        { error: "Cole o texto do anuncio, informe um link, envie um print ou adicione observacoes para extrair os dados." },
+        { error: "Informe um link do anuncio ou envie uma imagem para extrair os dados." },
         { status: 400 },
       )
     }
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
     const draft = await extractPropertyFromAd({
       adText,
       sourceUrl,
-      notes,
+      notes: "",
       imageDataUrl: hasImage ? await fileToDataUrl(image) : "",
     })
 
@@ -89,7 +88,6 @@ export async function POST(request: NextRequest) {
           source: "api/properties/import/ad/extract",
           hasImage,
           hasSourceUrl: Boolean(sourceUrl),
-          hasNotes: Boolean(notes),
         },
       })
       creditsConsumed = true
@@ -133,21 +131,21 @@ export async function POST(request: NextRequest) {
 
     if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_BLOCKED")) {
       return NextResponse.json(
-        { error: "O site do anuncio bloqueou a leitura automatica. Cole o texto do anuncio ou envie um print para continuar." },
+        { error: "O site do anuncio bloqueou a leitura automatica. Envie um print ou uma captura de tela para continuar." },
         { status: 403 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_UNREACHABLE")) {
       return NextResponse.json(
-        { error: "Nao foi possivel acessar esse link no momento. Verifique a URL ou tente com o texto do anuncio." },
+        { error: "Nao foi possivel acessar esse link no momento. Verifique a URL ou tente com uma imagem do anuncio." },
         { status: 502 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message.includes("SOURCE_URL_FETCH_FAILED")) {
       return NextResponse.json(
-        { error: "Nao foi possivel ler o conteudo desse link. Tente novamente ou use o texto do anuncio." },
+        { error: "Nao foi possivel ler o conteudo desse link. Tente novamente ou use uma imagem do anuncio." },
         { status: 502 },
       )
     }
@@ -163,7 +161,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "A IA analisou o material, mas nao encontrou dados suficientes para montar uma previa editavel. Envie mais texto, um print mais legivel ou um anuncio mais completo.",
+            "A IA analisou o material, mas nao encontrou dados suficientes para montar uma previa editavel. Envie um print mais legivel ou um anuncio mais completo.",
         },
         { status: 422 },
       )

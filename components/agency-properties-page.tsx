@@ -1005,55 +1005,26 @@ function AgencyImportPanel({
   onXmlImportUrl: () => void | Promise<void>
   onConfirmImport: () => void | Promise<void>
 }) {
+  void feedback
+  void preview
+  void summary
+  void report
+  void isAnalyzing
+  void isImporting
+  void xmlSourceUrl
+  void onXmlSourceUrlChange
+  void onXmlImport
+  void onXmlImportUrl
+  void onConfirmImport
+  void AgencyXmlImportPreview
+  void AgencyImportStatusBadge
+
   return (
     <div className="mt-6 grid gap-4">
       <Button type="button" variant="ghost" onClick={onBack} className="h-10 w-fit rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
         Voltar
       </Button>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <label className="min-h-44 cursor-pointer rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-[#00C853]/30 hover:bg-[#00C853]/[0.06]">
-          <input type="file" accept=".xml,text/xml,application/xml" className="sr-only" onChange={(event) => void onXmlImport(event.target.files)} />
-          <Upload className="size-8 text-[#69F0AE]" />
-          <h3 className="mt-5 text-lg font-semibold text-white">Importar XML</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Envie um arquivo XML de imoveis para revisar antes de importar.</p>
-        </label>
-        <div className="min-h-44 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
-          <Upload className="size-8 text-[#69F0AE]" />
-          <h3 className="mt-5 text-lg font-semibold text-white">Importar XML por URL</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">Cole o link do XML para gerar uma previa antes da importacao.</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <Input
-              value={xmlSourceUrl}
-              onChange={(event) => onXmlSourceUrlChange(event.target.value)}
-              placeholder="https://.../imoveis.xml"
-              className="h-10 rounded-xl border-white/[0.08] bg-black/20 text-white placeholder:text-white/35"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => void onXmlImportUrl()}
-              className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white"
-            >
-              Analisar URL
-            </Button>
-          </div>
-        </div>
-      </div>
-      <div className="rounded-[1rem] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white/65">
-        Importacao por anuncio: texto livre, link e print/imagem geram uma previa revisavel antes de salvar.
-      </div>
       <AdImportPanel onImported={onImported} />
-      {isAnalyzing ? <p className="text-sm text-white/55">Analisando XML...</p> : null}
-      {summary ? (
-        <AgencyXmlImportPreview
-          preview={preview}
-          summary={summary}
-          report={report}
-          isImporting={isImporting}
-          onConfirmImport={onConfirmImport}
-        />
-      ) : null}
-      {feedback ? <p className="rounded-[1rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">{feedback}</p> : null}
     </div>
   )
 }
