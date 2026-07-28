@@ -45,11 +45,11 @@ export function AdminPageShell({
         } as CSSProperties
       }
     >
-      <div className="pwa-safe-shell relative min-h-screen overflow-hidden bg-[#f6f8f6] text-[#050505]">
+      <div className="pwa-safe-shell relative min-h-screen overflow-hidden bg-[#f3f0ea] text-[#050505] sm:bg-[#f6f8f6]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,155,58,0.10),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_30%)]" />
 
         <div className="relative z-0 flex min-h-screen flex-col">
-          <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/88 backdrop-blur-2xl">
+          <header className="sticky top-0 z-20 border-b border-black/[0.05] bg-[#f3f0ea]/94 backdrop-blur-2xl sm:border-black/[0.06] sm:bg-white/88">
             <div className="px-4 py-3 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
                 <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
@@ -112,11 +112,11 @@ export function AdminPageShell({
             </div>
           </header>
 
-          <div className="flex min-h-0 flex-1 gap-3 px-3 py-3 sm:px-4 lg:px-5">
+          <div className="flex min-h-0 flex-1 gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5">
             <AdminSidebar />
 
-            <main className="min-w-0 flex-1 overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-white/92 shadow-[0_22px_50px_rgba(15,23,42,0.08)]">
-              <div className="h-full max-w-full overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
+            <main className="min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none sm:rounded-[1.75rem] sm:border sm:border-black/[0.06] sm:bg-white/92 sm:shadow-[0_22px_50px_rgba(15,23,42,0.08)]">
+              <div className="h-full max-w-full overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
                 {children}
               </div>
             </main>

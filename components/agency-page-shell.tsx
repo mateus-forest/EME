@@ -68,11 +68,11 @@ export function AgencyPageShell({
         } as CSSProperties
       }
     >
-      <div className="relative min-h-screen overflow-hidden bg-[#0B0B0B] text-white">
+      <div className="relative min-h-screen overflow-hidden bg-[#0f1111] text-white sm:bg-[#0B0B0B]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
 
         <div className="relative z-0 flex min-h-screen flex-col">
-          <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-[linear-gradient(180deg,rgba(15,15,15,0.94),rgba(11,11,11,0.9))] backdrop-blur-2xl">
+          <header className="sticky top-0 z-20 border-b border-white/[0.05] bg-[#0f1111]/94 backdrop-blur-2xl sm:border-white/[0.08] sm:bg-[linear-gradient(180deg,rgba(15,15,15,0.94),rgba(11,11,11,0.9))]">
             <div className="px-4 py-3 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
                 <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
@@ -141,11 +141,11 @@ export function AgencyPageShell({
             </div>
           </header>
 
-          <div className="flex min-h-0 flex-1 gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:gap-6 lg:px-7 lg:py-7">
+          <div className="flex min-h-0 flex-1 gap-0 px-0 py-0 sm:gap-5 sm:px-6 sm:py-6 lg:gap-6 lg:px-7 lg:py-7">
             <AgencySidebar />
 
-            <main className="min-w-0 flex-1 overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(15,15,15,0.88),rgba(11,11,11,0.78))] shadow-[0_22px_50px_rgba(0,0,0,0.16)]">
-              <div className="h-full overflow-y-auto px-5 py-6 sm:px-7 sm:py-7 lg:px-10 lg:py-8">{children}</div>
+            <main className="min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none sm:rounded-[1.75rem] sm:border sm:border-white/[0.08] sm:bg-[linear-gradient(180deg,rgba(15,15,15,0.88),rgba(11,11,11,0.78))] sm:shadow-[0_22px_50px_rgba(0,0,0,0.16)]">
+              <div className="h-full overflow-y-auto px-4 py-4 sm:px-7 sm:py-7 lg:px-10 lg:py-8">{children}</div>
             </main>
           </div>
         </div>

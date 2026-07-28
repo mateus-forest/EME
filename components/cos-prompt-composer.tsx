@@ -186,19 +186,19 @@ export function CosPromptComposer({
           event.preventDefault()
           void onSubmit()
         }}
-        className="flex min-w-0 flex-col gap-2"
+        className="flex min-w-0 flex-col gap-1.5"
       >
-        <div className="flex min-w-0 items-end gap-2 rounded-[1.35rem] border border-black/[0.07] bg-white px-2 py-2 shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
+        <div className="flex min-w-0 items-end gap-2 rounded-[1.2rem] border border-black/[0.06] bg-white/94 px-2 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:rounded-[1.35rem] sm:border-black/[0.07] sm:bg-white sm:shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                disabled={disabled}
-                className="size-9 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60"
-                aria-label="Abrir acoes do COS"
-              >
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={disabled}
+            className="size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8]"
+            aria-label="Abrir acoes do COS"
+          >
                 <Plus className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -255,7 +255,7 @@ export function CosPromptComposer({
             variant="ghost"
             onClick={() => void handleMicToggle()}
             disabled={disabled}
-            className={`size-9 shrink-0 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 ${
+            className={`size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8] ${
               micState === "recording" ? "border-[#009b3a]/30 bg-[#effaf3] text-[#009b3a]" : ""
             }`}
             aria-label="Gravar audio para o COS"
@@ -274,7 +274,7 @@ export function CosPromptComposer({
           </Button>
         </div>
 
-        <div className="flex min-h-5 items-center justify-between gap-3 px-1">
+        <div className="hidden min-h-5 items-center justify-between gap-3 px-1 sm:flex">
           <p className={`text-xs leading-5 ${micState === "error" ? "text-[#b42318]" : "text-[#6f7f97]"}`}>
             {micState === "recording"
               ? "Gravando..."

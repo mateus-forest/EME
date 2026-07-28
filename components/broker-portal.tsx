@@ -175,7 +175,11 @@ export function BrokerPortal() {
     { label: "Ver notificacoes", message: "Minhas notificacoes" },
     { label: "Conversar com o COS", focusOnly: true },
   ]
-  const primaryCosSuggestions = nextStepSuggestions.slice(0, 3)
+  const primaryCosSuggestions = [
+    { label: "Proximos compromissos", message: "Me mostre meus proximos compromissos" },
+    { label: "Revisar clientes", message: "Revisar clientes" },
+    { label: "Analisar carteira", message: "Analisar carteira" },
+  ] satisfies NextStepSuggestion[]
   const isConversationEmpty = !isConversationLoading && conversation.length === 0
 
   const activeConversation = useMemo(
@@ -318,24 +322,16 @@ export function BrokerPortal() {
         >
           <div className="flex min-h-0 min-w-0 flex-1 px-0 pb-0 pt-0 sm:px-5 lg:px-7 lg:py-3 lg:pr-[calc(var(--cos-shortcut-rail-width)+1.75rem)]">
             <div className="mx-auto grid h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[58rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-1 sm:gap-2 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)] lg:grid-rows-[auto_minmax(0,1fr)]">
-              <div className="space-y-1 px-3 pt-0 text-center sm:space-y-2 sm:px-0 sm:pt-1">
-                <div className="mx-auto flex size-6 items-center justify-center rounded-full bg-white/80 text-[#111111] shadow-[0_8px_20px_rgba(15,23,42,0.04)] sm:size-6">
-                  <Sparkles className="size-3.5" />
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[0.8rem] font-medium text-[#6d7a8c]">Ola, {brokerFirstName}</p>
-                  <h2 className="text-[1.02rem] font-semibold tracking-tight text-[#111111] sm:text-[1.25rem]">
-                    O que vamos destravar agora?
-                  </h2>
-                </div>
+              <div className="space-y-2 px-4 pt-2 text-left sm:space-y-2 sm:px-0 sm:pt-1 sm:text-center">
+                <p className="text-[0.98rem] font-medium text-[#111111] sm:text-[0.8rem] sm:text-[#6d7a8c]">Ola, {brokerFirstName}.</p>
 
-                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0 sm:gap-2">
                   {primaryCosSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.label}
                       type="button"
                       onClick={() => void handleNextStepSuggestion(suggestion)}
-                      className="inline-flex min-h-8 max-w-full items-center justify-center rounded-full border border-[#d9dde5] bg-white px-3 py-1.5 text-center text-[11.5px] font-medium leading-tight text-[#2f3a4d] transition-colors hover:bg-[#f8f9fb] sm:text-[12.5px]"
+                      className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-white/82 px-3.5 py-1.5 text-center text-[12px] font-medium leading-tight text-[#2f3a4d] transition-colors hover:bg-white sm:max-w-full sm:border-[#d9dde5] sm:bg-white sm:text-[12.5px] sm:hover:bg-[#f8f9fb]"
                     >
                       {suggestion.label}
                     </button>
@@ -344,15 +340,11 @@ export function BrokerPortal() {
               </div>
 
               <div className="min-h-0 w-full max-w-[58rem] min-w-0 justify-self-center">
-                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-none border-0 bg-transparent px-0 py-0 shadow-none sm:rounded-[1.7rem] sm:border sm:border-black/[0.05] sm:bg-white/55 sm:px-1 sm:py-1 sm:shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
-                  <div className="flex flex-col gap-1.5 px-3 pb-1.5 pt-1 sm:px-3">
+                <div className="grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] rounded-none border-0 bg-transparent px-0 py-0 shadow-none sm:grid-rows-[auto_minmax(0,1fr)_auto] sm:rounded-[1.7rem] sm:border sm:border-black/[0.05] sm:bg-white/55 sm:px-1 sm:py-1 sm:shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
+                  <div className="hidden flex-col gap-1.5 px-3 pb-1.5 pt-1 sm:flex sm:px-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        {showConversationTitle ? (
-                          <p className="truncate text-[0.92rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
-                        ) : (
-                          <p className="text-[0.92rem] font-semibold text-[#111111] sm:hidden">Conversa com o COS</p>
-                        )}
+                        {showConversationTitle ? <p className="truncate text-[0.92rem] font-semibold text-[#111111]">{activeConversation?.title}</p> : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#7a8798]">
                         <span className="rounded-full border border-black/[0.06] bg-white/82 px-2.5 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
@@ -372,29 +364,7 @@ export function BrokerPortal() {
                       </div>
                     ) : null}
 
-                    {isConversationEmpty ? (
-                      <div className="flex min-h-full flex-col justify-center gap-4 pb-2 pt-1">
-                        <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/82 px-5 py-5 text-left shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
-                          <p className="text-sm font-semibold text-[#111111]">Pronto para conversar</p>
-                          <p className="mt-2 text-sm leading-6 text-[#6f7f97]">
-                            Comece com uma pergunta direta ou toque em uma sugestao para destravar sua proxima acao.
-                          </p>
-                        </div>
-
-                        <div className="grid gap-2 sm:hidden">
-                          {primaryCosSuggestions.map((suggestion) => (
-                            <button
-                              key={`mobile-${suggestion.label}`}
-                              type="button"
-                              onClick={() => void handleNextStepSuggestion(suggestion)}
-                              className="rounded-[1.15rem] border border-black/[0.06] bg-white/82 px-4 py-3 text-left text-sm font-medium text-[#2f3a4d] shadow-[0_10px_24px_rgba(15,23,42,0.03)]"
-                            >
-                              {suggestion.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
+                    {isConversationEmpty ? <div className="min-h-full" /> : null}
 
                     {!isConversationLoading &&
                       conversation.map((item) => (

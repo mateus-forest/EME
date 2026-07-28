@@ -249,8 +249,8 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f8f5f1] px-4 py-6 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto grid max-w-[1360px] min-w-0 gap-10 lg:gap-12">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12">
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
