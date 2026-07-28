@@ -11,19 +11,17 @@ export function CoastalCityBackground() {
         }}
       >
         <Image
-          src="/balneario-camboriu.svg"
+          src="/images/eme-landing-hero-2026-07-28.png"
           alt=""
           fill
           priority
           unoptimized
           sizes="100vw"
-          className="scale-105 object-cover object-center opacity-90 blur-[2px]"
+          className="scale-[1.06] object-cover object-[58%_50%] sm:object-[60%_50%] 2xl:object-center"
         />
       </div>
 
-      <div className="absolute inset-0 bg-background/35" />
-      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_38%,transparent_0%,transparent_40%,var(--background)_92%)]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/80" />
+      <div className="absolute inset-0 bg-white/8" />
     </div>
   )
 }
