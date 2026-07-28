@@ -183,7 +183,7 @@ export function BrokerAgendaPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0">
           <CardHeader className="gap-4 px-5 py-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-start">
               <div className="min-w-0">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
                   <CalendarDays className="size-5 text-[#009b3a]" />
@@ -194,9 +194,12 @@ export function BrokerAgendaPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:w-auto">
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
                 {metrics.map((item) => (
-                  <div key={item.label} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-3 py-2">
+                  <div
+                    key={item.label}
+                    className="min-w-0 rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-3 py-2"
+                  >
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#7B8491]">{item.label}</p>
                     <p className={`mt-1 text-sm font-semibold ${item.tone}`}>{item.value}</p>
                   </div>
