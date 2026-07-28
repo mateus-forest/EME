@@ -26,6 +26,7 @@ import type {
   PublicBrokerCatalogData,
 } from "@/lib/public-catalog"
 import { createPublicLead } from "@/lib/lead-client"
+import { buildAgencyCatalogPath, buildAgencyCatalogUrl, buildBrokerCatalogPath, buildBrokerCatalogUrl } from "@/lib/public-catalog-url"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -117,8 +118,9 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
     [advancedFilters, properties, searchAnalysis],
   )
   const publicPath =
-    kind === "broker" ? `/catalogo/${catalog.slug || slug}` : `/catalogo/imobiliaria/${catalog.slug || slug}`
-  const catalogUrl = typeof window === "undefined" ? publicPath : `${window.location.origin}${publicPath}`
+    kind === "broker" ? buildBrokerCatalogPath(catalog.slug || slug) : buildAgencyCatalogPath(catalog.slug || slug)
+  const catalogUrl =
+    kind === "broker" ? buildBrokerCatalogUrl(catalog.slug || slug) : buildAgencyCatalogUrl(catalog.slug || slug)
   const image = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
   const cities = useMemo(
     () => Array.from(new Set(properties.map((property) => property.city).filter(Boolean))),

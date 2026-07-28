@@ -2,36 +2,19 @@ import type { Metadata } from "next"
 import { createHash } from "node:crypto"
 
 import type { PublicBrokerCatalogData } from "@/lib/public-catalog"
+import { buildBrokerCatalogUrl, toPublicWebUrl } from "@/lib/public-catalog-url"
 
 const DEFAULT_CATALOG_DESCRIPTION =
   "Encontre imoveis disponiveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
 
 export const PREMIUM_FALLBACK_IMAGE_PATH = "/images/catalogo-eme.png"
-const PUBLIC_APP_FALLBACK_URL = "https://www.meueme.com"
-
-function trimTrailingSlash(value: string) {
-  return value.replace(/\/+$/, "")
-}
 
 export function getAppBaseUrl() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (appUrl) return trimTrailingSlash(appUrl)
-
-  if (process.env.NODE_ENV === "production") {
-    return PUBLIC_APP_FALLBACK_URL
-  }
-
-  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
-  if (productionUrl) return trimTrailingSlash(`https://${productionUrl.replace(/^https?:\/\//i, "")}`)
-
-  const vercelUrl = process.env.VERCEL_URL?.trim()
-  if (vercelUrl) return trimTrailingSlash(`https://${vercelUrl}`)
-
-  return "http://localhost:3000"
+  return "https://www.meueme.com"
 }
 
 export function toAbsoluteCatalogUrl(pathname: string) {
-  return new URL(pathname, getAppBaseUrl()).toString()
+  return toPublicWebUrl(pathname)
 }
 
 export function getCatalogDescription(catalog?: PublicBrokerCatalogData | null) {
@@ -43,7 +26,7 @@ export function getBrokerCatalogTitle(catalog?: PublicBrokerCatalogData | null) 
 }
 
 export function getBrokerCatalogCanonicalUrl(slug: string) {
-  return toAbsoluteCatalogUrl(`/catalogo/${slug}`)
+  return buildBrokerCatalogUrl(slug)
 }
 
 function buildOgImageVersion(catalog?: PublicBrokerCatalogData | null) {

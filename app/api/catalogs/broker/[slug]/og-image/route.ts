@@ -60,11 +60,13 @@ function getInitials(name: string) {
 }
 
 function buildOgImageElement(input: {
+  title: string
+  description: string
   brokerName: string
   brokerPhoto: string | null
   brokerInitials: string
 }) {
-  const { brokerName, brokerPhoto, brokerInitials } = input
+  const { title, description, brokerName, brokerPhoto, brokerInitials } = input
 
   const photoNode = brokerPhoto
     ? React.createElement("img", {
@@ -86,11 +88,11 @@ function buildOgImageElement(input: {
           alignItems: "center",
           justifyContent: "center",
           background:
-            "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,255,255,0.62) 38%, rgba(233,244,236,0.96) 100%)",
+            "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,255,255,0.72) 38%, rgba(233,244,236,1) 100%)",
           color: "#0f8b3e",
-          fontSize: 88,
+          fontSize: 112,
           fontWeight: 800,
-          letterSpacing: -3,
+          letterSpacing: -4,
         },
         text(brokerInitials),
       )
@@ -100,52 +102,109 @@ function buildOgImageElement(input: {
       width: "100%",
       height: "100%",
       display: "flex",
-      position: "relative",
-      alignItems: "center",
-      justifyContent: "center",
-      background:
-        "radial-gradient(circle at 18% 22%, rgba(0,155,58,0.12), transparent 24%), radial-gradient(circle at 82% 78%, rgba(0,155,58,0.08), transparent 26%), linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%)",
+      background: "#ffffff",
       color: "#050505",
       fontFamily: "sans-serif",
     },
     div(
       {
-        width: 420,
-        height: 420,
+        width: "48%",
+        height: "100%",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 999,
         overflow: "hidden",
         background: brokerPhoto
-          ? "rgba(255,255,255,0.98)"
-          : "linear-gradient(135deg, rgba(0,155,58,0.12), rgba(15,23,42,0.04))",
-        border: "14px solid rgba(255,255,255,0.96)",
-        boxShadow: "0 30px 90px rgba(15,23,42,0.14)",
+          ? "#eef3ef"
+          : "linear-gradient(135deg, rgba(0,155,58,0.16), rgba(15,23,42,0.05))",
       },
       photoNode,
     ),
     div(
       {
-        position: "absolute",
-        right: 42,
-        bottom: 34,
+        width: "52%",
+        height: "100%",
         display: "flex",
-        alignItems: "center",
-        gap: 10,
-        color: "rgba(15,23,42,0.42)",
-        fontSize: 24,
-        fontWeight: 700,
-        letterSpacing: -0.4,
+        flexDirection: "column",
+        justifyContent: "center",
+        padding: "58px 60px",
+        background:
+          "radial-gradient(circle at 16% 18%, rgba(0,155,58,0.08), transparent 24%), linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%)",
       },
+      div(
+        {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          color: "#0f8b3e",
+          fontSize: 22,
+          fontWeight: 700,
+          letterSpacing: 1.6,
+          textTransform: "uppercase",
+        },
+        div({
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          background: "#009b3a",
+          display: "flex",
+        }),
+        text("EME"),
+      ),
       div({
-        width: 12,
-        height: 12,
+        width: 108,
+        height: 4,
+        marginTop: 28,
         borderRadius: 999,
         background: "#009b3a",
         display: "flex",
       }),
-      text("EME"),
+      React.createElement(
+        "span",
+        {
+          style: {
+            marginTop: 28,
+            fontSize: 56,
+            lineHeight: 1.08,
+            fontWeight: 800,
+            letterSpacing: -2.2,
+            color: "#050505",
+            display: "flex",
+          },
+        },
+        title,
+      ),
+      React.createElement(
+        "span",
+        {
+          style: {
+            marginTop: 18,
+            fontSize: 26,
+            lineHeight: 1.42,
+            fontWeight: 500,
+            color: "#5b6774",
+            display: "flex",
+          },
+        },
+        description,
+      ),
+      div(
+        {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginTop: 34,
+          color: "#6b7280",
+          fontSize: 24,
+          fontWeight: 600,
+        },
+        div({
+          width: 12,
+          height: 12,
+          borderRadius: 999,
+          background: "#dce8df",
+          display: "flex",
+        }),
+        text("www.meueme.com"),
+      ),
     ),
   )
 }
@@ -166,11 +225,17 @@ export async function GET(_request: NextRequest, { params }: OgImageRouteContext
   })
 
   const brokerName = broker?.user.name?.trim() || "EME"
+  const description =
+    broker?.description?.trim() ||
+    "Encontre imoveis disponiveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
+  const title = brokerName ? `Catalogo de imoveis | ${brokerName}` : "Catalogo de imoveis | EME"
   const brokerPhoto = await resolveBrokerPhotoDataUrl(broker?.user.photoUrl ?? "")
   const brokerInitials = getInitials(brokerName)
 
   return new ImageResponse(
     buildOgImageElement({
+      title,
+      description,
       brokerName,
       brokerPhoto,
       brokerInitials,

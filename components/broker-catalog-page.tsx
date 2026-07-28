@@ -28,6 +28,7 @@ import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { compressImageToDataUrl } from "@/lib/client-image"
 import { getPropertyImages } from "@/lib/property-media"
+import { buildBrokerCatalogPath, buildBrokerCatalogUrl } from "@/lib/public-catalog-url"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -84,10 +85,9 @@ export function BrokerCatalogPage() {
 
   const catalogUrl = useMemo(() => {
     if (!draftSettings.slug) return ""
-    const origin = typeof window === "undefined" ? "" : window.location.origin
-    return `${origin}/catalogo/${draftSettings.slug}`
+    return buildBrokerCatalogUrl(draftSettings.slug)
   }, [draftSettings.slug])
-  const catalogInternalUrl = useMemo(() => `/catalogo/${draftSettings.slug}?from=portal`, [draftSettings.slug])
+  const catalogInternalUrl = useMemo(() => `${buildBrokerCatalogPath(draftSettings.slug)}?from=portal`, [draftSettings.slug])
   const currentImage = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
   const needsMore = (selectedProperty?.description.length ?? 0) > 180
   const shortDescription = selectedProperty?.description.slice(0, 180)
