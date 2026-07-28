@@ -69,7 +69,7 @@ export function AgencyPageShell({
       }
     >
       <div className="relative min-h-screen overflow-hidden bg-[#0f1111] text-white sm:bg-[#0B0B0B]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
 
         <div className="relative z-0 flex min-h-screen flex-col">
           <header className="sticky top-0 z-20 border-b border-white/[0.05] bg-[#0f1111]/94 backdrop-blur-2xl sm:border-white/[0.08] sm:bg-[linear-gradient(180deg,rgba(15,15,15,0.94),rgba(11,11,11,0.9))]">

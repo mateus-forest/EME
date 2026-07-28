@@ -191,14 +191,14 @@ export function CosPromptComposer({
         <div className="flex min-w-0 items-end gap-2 rounded-[1.2rem] border border-black/[0.06] bg-white/94 px-2 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:rounded-[1.35rem] sm:border-black/[0.07] sm:bg-white sm:shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            disabled={disabled}
-            className="size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8]"
-            aria-label="Abrir acoes do COS"
-          >
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                disabled={disabled}
+                className="size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8]"
+                aria-label="Abrir acoes do COS"
+              >
                 <Plus className="size-4" />
               </Button>
             </DropdownMenuTrigger>

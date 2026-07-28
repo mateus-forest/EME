@@ -46,7 +46,7 @@ export function AdminPageShell({
       }
     >
       <div className="pwa-safe-shell relative min-h-screen overflow-hidden bg-[#f3f0ea] text-[#050505] sm:bg-[#f6f8f6]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,155,58,0.10),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(0,155,58,0.10),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_30%)]" />
 
         <div className="relative z-0 flex min-h-screen flex-col">
           <header className="sticky top-0 z-20 border-b border-black/[0.05] bg-[#f3f0ea]/94 backdrop-blur-2xl sm:border-black/[0.06] sm:bg-white/88">

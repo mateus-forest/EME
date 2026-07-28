@@ -321,17 +321,17 @@ export function BrokerPortal() {
           }
         >
           <div className="flex min-h-0 min-w-0 flex-1 px-0 pb-0 pt-0 sm:px-5 lg:px-7 lg:py-3 lg:pr-[calc(var(--cos-shortcut-rail-width)+1.75rem)]">
-            <div className="mx-auto grid h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[58rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-1 sm:gap-2 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)] lg:grid-rows-[auto_minmax(0,1fr)]">
-              <div className="space-y-2 px-4 pt-2 text-left sm:space-y-2 sm:px-0 sm:pt-1 sm:text-center">
+            <div className="mx-auto flex h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[58rem] min-w-0 flex-col gap-1 sm:gap-2 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)]">
+              <div className="shrink-0 space-y-2 px-4 pt-2 text-center sm:space-y-2 sm:px-0 sm:pt-1">
                 <p className="text-[0.98rem] font-medium text-[#111111] sm:text-[0.8rem] sm:text-[#6d7a8c]">Ola, {brokerFirstName}.</p>
 
-                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0 sm:gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
                   {primaryCosSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.label}
                       type="button"
                       onClick={() => void handleNextStepSuggestion(suggestion)}
-                      className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-white/82 px-3.5 py-1.5 text-center text-[12px] font-medium leading-tight text-[#2f3a4d] transition-colors hover:bg-white sm:max-w-full sm:border-[#d9dde5] sm:bg-white sm:text-[12.5px] sm:hover:bg-[#f8f9fb]"
+                      className="inline-flex min-h-8 items-center justify-center rounded-full border border-black/[0.06] bg-white/82 px-2.5 py-1 text-center text-[11px] font-medium leading-tight text-[#2f3a4d] transition-colors hover:bg-white sm:max-w-full sm:min-h-9 sm:border-[#d9dde5] sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-[12.5px] sm:hover:bg-[#f8f9fb]"
                     >
                       {suggestion.label}
                     </button>
@@ -339,8 +339,8 @@ export function BrokerPortal() {
                 </div>
               </div>
 
-              <div className="min-h-0 w-full max-w-[58rem] min-w-0 justify-self-center">
-                <div className="grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] rounded-none border-0 bg-transparent px-0 py-0 shadow-none sm:grid-rows-[auto_minmax(0,1fr)_auto] sm:rounded-[1.7rem] sm:border sm:border-black/[0.05] sm:bg-white/55 sm:px-1 sm:py-1 sm:shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
+              <div className="min-h-0 flex-1 w-full max-w-[58rem] min-w-0">
+                <div className="flex h-full min-h-0 min-w-0 flex-col rounded-none border-0 bg-transparent px-0 py-0 shadow-none sm:grid sm:grid-rows-[auto_minmax(0,1fr)_auto] sm:rounded-[1.7rem] sm:border sm:border-black/[0.05] sm:bg-white/55 sm:px-1 sm:py-1 sm:shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
                   <div className="hidden flex-col gap-1.5 px-3 pb-1.5 pt-1 sm:flex sm:px-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -357,14 +357,14 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-1 sm:px-2">
+                  <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-1 sm:px-2">
                     {isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                         Carregando conversa...
                       </div>
                     ) : null}
 
-                    {isConversationEmpty ? <div className="min-h-full" /> : null}
+                    {isConversationEmpty ? <div className="flex-1" /> : null}
 
                     {!isConversationLoading &&
                       conversation.map((item) => (
@@ -421,7 +421,7 @@ export function BrokerPortal() {
                     ) : null}
                   </div>
 
-                  <div className="pt-1 px-2 pb-2 sm:px-0 sm:pb-0">
+                  <div className="mt-auto px-2 pb-2 pt-1 sm:px-0 sm:pb-0">
                     <CosPromptComposer
                       prompt={prompt}
                       setPrompt={setPrompt}

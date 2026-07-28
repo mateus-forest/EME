@@ -74,12 +74,12 @@ export function BrokerPageShell({
     >
       <div className={`pwa-safe-shell relative min-h-svh w-full overflow-hidden text-[#050505] ${isCosVariant ? "bg-[#f4f1eb]" : "bg-[#f6f2eb] sm:bg-[#fbfbf8]"}`}>
         {!isCosVariant ? (
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
+          <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
         ) : null}
 
         <div className="relative z-0 flex min-h-svh w-full flex-col">
           {!isCosVariant ? (
-            <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/86 backdrop-blur-2xl">
+            <header className="sticky top-0 z-20 border-b border-transparent bg-[#f6f2eb]/96 backdrop-blur-2xl sm:border-black/[0.06] sm:bg-white/86">
               <div className="px-4 py-3 sm:px-6 lg:px-8">
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
                   <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
@@ -151,7 +151,7 @@ export function BrokerPageShell({
             </div>
           )}
 
-          <div className={`flex min-h-0 flex-1 ${isCosVariant ? "gap-0 px-0 py-0" : "gap-3 px-3 py-3 sm:px-4 lg:px-5"}`}>
+          <div className={`flex min-h-0 flex-1 ${isCosVariant ? "gap-0 px-0 py-0" : "gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5"}`}>
             <BrokerSidebar variant={isCosVariant ? "cos" : "default"} />
 
             <main
