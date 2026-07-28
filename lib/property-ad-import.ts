@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"

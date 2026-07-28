@@ -43,22 +43,35 @@ function getPoolTimeout() {
   return 5_000
 }
 
-const pool =
-  globalForPrisma.pool ??
-  new Pool({
-    connectionString: getDatabaseUrl(),
-    max: getPoolMax(),
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: getPoolTimeout(),
-    allowExitOnIdle: true,
-  })
+function getPool() {
+  if (!globalForPrisma.pool) {
+    globalForPrisma.pool = new Pool({
+      connectionString: getDatabaseUrl(),
+      max: getPoolMax(),
+      idleTimeoutMillis: 5_000,
+      connectionTimeoutMillis: getPoolTimeout(),
+      allowExitOnIdle: true,
+    })
+  }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    adapter: new PrismaPg(pool),
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  })
+  return globalForPrisma.pool
+}
 
-globalForPrisma.prisma = prisma
-globalForPrisma.pool = pool
+function getPrismaClient() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient({
+      adapter: new PrismaPg(getPool()),
+      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    })
+  }
+
+  return globalForPrisma.prisma
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient()
+    const value = Reflect.get(client, prop)
+    return typeof value === "function" ? value.bind(client) : value
+  },
+}) as PrismaClient

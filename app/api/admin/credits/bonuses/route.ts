@@ -8,7 +8,19 @@ function cleanQuery(value: string | null) {
   return value?.trim().slice(0, 120) ?? ""
 }
 
-type BonusTransaction = Awaited<ReturnType<typeof prisma.aiCreditTransaction.findMany>>[number]
+const bonusTransactionInclude = {
+  broker: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  },
+} as const
 
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
@@ -34,19 +46,7 @@ export async function GET(request: NextRequest) {
             }
           : {}),
       },
-      include: {
-        broker: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-      },
+      include: bonusTransactionInclude,
       orderBy: {
         createdAt: "desc",
       },
@@ -54,18 +54,36 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      bonuses: transactions.map((transaction: BonusTransaction) => {
+      bonuses: transactions.map((transaction) => {
         const metadata =
           transaction.metadata && typeof transaction.metadata === "object"
             ? (transaction.metadata as Record<string, unknown>)
             : {}
+        const brokerUser = transaction.broker?.user
+
+        if (!brokerUser) {
+          return {
+            id: transaction.id,
+            brokerId: transaction.brokerId,
+            userId: "",
+            userName: "",
+            userEmail: "",
+            amount: transaction.amount,
+            balanceBefore: Number(metadata.balanceBefore ?? 0),
+            balanceAfter: transaction.balanceAfter,
+            reason: transaction.description ?? "",
+            adminUserId: typeof metadata.adminUserId === "string" ? metadata.adminUserId : "",
+            adminName: typeof metadata.adminName === "string" ? metadata.adminName : "",
+            createdAt: transaction.createdAt.toISOString(),
+          }
+        }
 
         return {
           id: transaction.id,
           brokerId: transaction.brokerId,
-          userId: transaction.broker.user.id,
-          userName: transaction.broker.user.name,
-          userEmail: transaction.broker.user.email,
+          userId: brokerUser.id,
+          userName: brokerUser.name,
+          userEmail: brokerUser.email,
           amount: transaction.amount,
           balanceBefore: Number(metadata.balanceBefore ?? 0),
           balanceAfter: transaction.balanceAfter,
