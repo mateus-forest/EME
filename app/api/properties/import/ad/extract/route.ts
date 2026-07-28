@@ -169,6 +169,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (caughtError instanceof Error && caughtError.message.includes("OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED")) {
+      return NextResponse.json(
+        {
+          error: "A resposta estruturada da IA foi truncada por limite de tokens antes da conclusao da previa.",
+          code: "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED",
+        },
+        { status: 502 },
+      )
+    }
+
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
       return NextResponse.json(
         { error: "A IA nao retornou conteudo suficiente para a previa do imovel. Tente novamente em instantes." },

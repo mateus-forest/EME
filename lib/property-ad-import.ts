@@ -27,6 +27,8 @@ export type AdImportInput = {
   imageDataUrl?: string
 }
 
+const OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED = "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED"
+
 type SourceUrlContext = {
   finalUrl: string
   title: string
@@ -504,6 +506,23 @@ function extractStructuredResponsePayload(response: {
   return extractedText ? parseGeneratedJson(extractedText) : null
 }
 
+function isTruncatedStructuredOutputResponse(response: {
+  status?: string
+  incomplete_details?: { reason?: string | null } | null
+  output_text?: string
+  output_parsed?: unknown
+  parsed?: unknown
+  output?: unknown
+}) {
+  return (
+    response.status === "incomplete" &&
+    response.incomplete_details?.reason === "max_output_tokens" &&
+    !response.output_text &&
+    !response.output_parsed &&
+    !response.parsed
+  )
+}
+
 function normalizePriceValue(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     return formatCurrencyBRLFromCents(Math.round(value * 100), { showCents: false })
@@ -868,6 +887,8 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     outputParsed: (response as { output_parsed?: unknown }).output_parsed,
     parsed: (response as { parsed?: unknown }).parsed,
     content: (response as { content?: unknown }).content,
+    status: response.status,
+    incompleteDetails: response.incomplete_details,
     finishReason:
       (response as { finish_reason?: string }).finish_reason ??
       (response as { status?: string }).status ??
@@ -875,6 +896,21 @@ export async function extractPropertyFromAd(input: AdImportInput) {
   })
 
   try {
+    if (isTruncatedStructuredOutputResponse(response)) {
+      console.error("[property-ad-import][openai-response-truncated]", {
+        message: OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED,
+        sourceUrl: sanitizedInput.sourceUrl,
+        sourceWarningCode: sourceLookup.warningCode,
+        status: response.status,
+        incompleteDetails: response.incomplete_details,
+        outputParsed: (response as { output_parsed?: unknown }).output_parsed,
+        parsed: (response as { parsed?: unknown }).parsed,
+        rawResponseText: typeof response.output_text === "string" ? response.output_text.slice(0, 6000) : "",
+        responseOutput: JSON.stringify(response.output ?? []).slice(0, 6000),
+      })
+      throw new Error(OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED)
+    }
+
     const parsedJson = extractStructuredResponsePayload(response)
     if (!parsedJson) {
       throw new Error("OPENAI_EMPTY_RESPONSE")
