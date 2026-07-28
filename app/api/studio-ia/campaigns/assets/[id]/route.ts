@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from "next/server"
+
+import { getAuthenticatedUser } from "@/lib/auth-route"
+import { updateStudioCampaignAssetStatus, type StudioCampaignAssetStatus } from "@/lib/studio-campaigns"
+import { UserRole } from "@/lib/prisma-enums"
+
+export const dynamic = "force-dynamic"
+
+function readStatus(value: unknown): StudioCampaignAssetStatus | null {
+  if (typeof value !== "string") return null
+  const normalized = value.trim().toUpperCase()
+  return ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "PUBLISHED", "FAILED"].includes(normalized)
+    ? (normalized as StudioCampaignAssetStatus)
+    : null
+}
+
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { error, user } = await getAuthenticatedUser()
+
+  if (error || !user) {
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  }
+
+  if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
+    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+  }
+
+  const body = await request.json().catch(() => null)
+  const status = readStatus(body?.status)
+  if (!status) {
+    return NextResponse.json({ error: "Status invalido." }, { status: 400 })
+  }
+
+  try {
+    const { id } = await context.params
+    const campaign = await updateStudioCampaignAssetStatus(user, id, status)
+    return NextResponse.json({ campaign })
+  } catch (error) {
+    if (error instanceof Error && error.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
+      return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel atualizar o asset." }, { status: 500 })
+  }
+}

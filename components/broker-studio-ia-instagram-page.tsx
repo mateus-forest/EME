@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
@@ -17,6 +18,7 @@ import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
+import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type CampaignGoal = "Venda" | "Captacao" | "Lancamento" | "Alto padrao" | "Investimento" | "Aluguel"
@@ -62,6 +64,15 @@ const previewItemLabels: Array<{ key: CampaignItemKey; label: string }> = [
   { key: "hashtags", label: "Hashtags" },
 ]
 
+const instagramAssetKeyMap: Record<CampaignItemKey, string> = {
+  postFeed: "post_feed",
+  story: "story",
+  carousel: "carousel",
+  caption: "caption",
+  cta: "cta",
+  hashtags: "hashtags",
+}
+
 export function BrokerStudioIaInstagramPage() {
   const { properties, isLoading } = useBrokerProperties()
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
@@ -73,6 +84,7 @@ export function BrokerStudioIaInstagramPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<CampaignPreview | null>(null)
   const [generationError, setGenerationError] = useState<GenerationError>(null)
+  const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [approvedItems, setApprovedItems] = useState<Record<CampaignItemKey, boolean>>({
     postFeed: false,
     story: false,
@@ -88,15 +100,69 @@ export function BrokerStudioIaInstagramPage() {
     [propertyOptions, selectedPropertyId],
   )
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selectedPropertyId && propertyOptions[0]) {
       setSelectedPropertyId(propertyOptions[0].id)
     }
   }, [propertyOptions, selectedPropertyId])
 
+  useEffect(() => {
+    if (!selectedPropertyId) return
+    let ignore = false
+
+    studioCampaignsClient
+      .getLatest("INSTAGRAM", selectedPropertyId)
+      .then((storedCampaign) => {
+        if (!storedCampaign || ignore) return
+        applyStoredCampaign(storedCampaign)
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [selectedPropertyId])
+
   const canAdvanceToConfiguration = Boolean(selectedProperty)
   const canProcess = Boolean(selectedProperty) && !isSubmitting
   const approvedItemsCount = Object.values(approvedItems).filter(Boolean).length
+
+  function buildApprovalMap(storedCampaign: StudioCampaignRecord) {
+    return {
+      postFeed: storedCampaign.assets.find((asset) => asset.assetKey === "post_feed")?.status === "APPROVED",
+      story: storedCampaign.assets.find((asset) => asset.assetKey === "story")?.status === "APPROVED",
+      carousel: storedCampaign.assets.find((asset) => asset.assetKey === "carousel")?.status === "APPROVED",
+      caption: storedCampaign.assets.find((asset) => asset.assetKey === "caption")?.status === "APPROVED",
+      cta: storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.status === "APPROVED",
+      hashtags: storedCampaign.assets.find((asset) => asset.assetKey === "hashtags")?.status === "APPROVED",
+    }
+  }
+
+  function applyStoredCampaign(storedCampaign: StudioCampaignRecord) {
+    const postFeed = storedCampaign.assets.find((asset) => asset.assetKey === "post_feed")?.content as CampaignPreview["postFeed"] | undefined
+    const story = storedCampaign.assets.find((asset) => asset.assetKey === "story")?.content as CampaignPreview["story"] | undefined
+    const carousel = storedCampaign.assets.find((asset) => asset.assetKey === "carousel")?.content as string[] | undefined
+    const caption = storedCampaign.assets.find((asset) => asset.assetKey === "caption")?.content as string | undefined
+    const cta = storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.content as string | undefined
+    const hashtags = storedCampaign.assets.find((asset) => asset.assetKey === "hashtags")?.content as string[] | undefined
+
+    if (postFeed && story && carousel && caption && cta && hashtags) {
+      setPreview({ postFeed, story, carousel, caption, cta, hashtags })
+    }
+
+    setCampaign(storedCampaign)
+    if (storedCampaign.goal) {
+      setSelectedGoal(storedCampaign.goal as CampaignGoal)
+    }
+    if (storedCampaign.visualIdentity) {
+      setSelectedIdentity(storedCampaign.visualIdentity as VisualIdentity)
+    }
+    setResultVersion(storedCampaign.version)
+    setApprovedVersion(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? storedCampaign.version : null)
+    setApprovedItems(buildApprovalMap(storedCampaign))
+    setCurrentStep(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? "approval" : "result")
+  }
 
   function handlePropertyChange(propertyId: string) {
     setSelectedPropertyId(propertyId)
@@ -138,7 +204,7 @@ export function BrokerStudioIaInstagramPage() {
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as (CampaignPreview & { error?: string }) | null
+      const data = (await response.json().catch(() => null)) as (CampaignPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
         throw new Error(data?.error || "Nao foi possivel gerar a campanha para Instagram.")
@@ -152,6 +218,9 @@ export function BrokerStudioIaInstagramPage() {
         cta: data.cta,
         hashtags: data.hashtags,
       })
+      if (data.campaign) {
+        setCampaign(data.campaign)
+      }
       setResultVersion(nextVersion)
       setApprovedVersion(null)
       setApprovedItems({
@@ -171,17 +240,31 @@ export function BrokerStudioIaInstagramPage() {
     }
   }
 
-  function toggleItemApproval(item: CampaignItemKey) {
-    setApprovedItems((current) => ({
-      ...current,
-      [item]: !current[item],
-    }))
+  async function toggleItemApproval(item: CampaignItemKey) {
+    if (!campaign) return
+    const assetKey = instagramAssetKeyMap[item]
+    const asset = campaign.assets.find((entry) => entry.assetKey === assetKey)
+    if (!asset) return
+
+    try {
+      const nextCampaign = await studioCampaignsClient.updateAssetStatus(
+        asset.id,
+        approvedItems[item] ? "PENDING_REVIEW" : "APPROVED",
+      )
+      applyStoredCampaign(nextCampaign)
+    } catch {
+      return
+    }
   }
 
-  function approveCampaign() {
-    if (!resultVersion) return
-    setApprovedVersion(resultVersion)
-    setCurrentStep("approval")
+  async function approveCampaign() {
+    if (!campaign || !resultVersion) return
+    try {
+      const approvedCampaign = await studioCampaignsClient.approveCampaign(campaign.id)
+      applyStoredCampaign(approvedCampaign)
+    } catch {
+      return
+    }
   }
 
   async function generateAnotherVersion() {
@@ -196,6 +279,7 @@ export function BrokerStudioIaInstagramPage() {
   }
 
   function resetResultState() {
+    setCampaign(null)
     setResultVersion(0)
     setApprovedVersion(null)
     setPreview(null)

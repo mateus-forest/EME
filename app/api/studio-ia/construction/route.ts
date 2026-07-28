@@ -3,7 +3,9 @@ import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { getOpenAIEnv } from "@/lib/env.server"
 import { prisma } from "@/lib/prisma"
+import { createStudioCampaign } from "@/lib/studio-campaigns"
 import {
   generateConstructionToListingImage,
   studioConstructionRequestSchema,
@@ -87,7 +89,39 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await generateConstructionToListingImage(payload)
-    const response = NextResponse.json(result, { status: 201 })
+    const { model } = getOpenAIEnv()
+    const campaign = await createStudioCampaign(user, {
+      kind: "CONSTRUCTION",
+      status: "PENDING_REVIEW",
+      goal: "Transformar obra em imovel pronto",
+      visualIdentity: payload.style,
+      version: 1,
+      provider: "openai",
+      model,
+      sourceRoute: "/api/studio-ia/construction",
+      propertyId: accessible.property.id,
+      metadata: {
+        sourceImageUrl: payload.imageUrl,
+        propertyTitle: accessible.property.title,
+      },
+      assets: [
+        {
+          assetKey: "construction_image",
+          label: "Imagem final",
+          type: "IMAGE",
+          provider: "openai",
+          model,
+          fileUrl: result.imageUrl,
+          thumbnailUrl: result.imageUrl,
+          status: "PENDING_REVIEW",
+          content: {
+            sourceImageUrl: payload.imageUrl,
+            style: payload.style,
+          },
+        },
+      ],
+    })
+    const response = NextResponse.json({ ...result, campaign }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

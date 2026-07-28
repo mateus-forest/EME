@@ -644,6 +644,7 @@ export const studioVideoJobContentSchema = z.object({
   provider: z.string().trim().min(1),
   providerVideoId: z.string().trim().min(1).optional(),
   providerImageId: z.string().trim().min(1).optional(),
+  campaignId: z.string().trim().min(1).optional(),
   estimatedCredits: z.number().int().min(0),
   stageEstimatedCredits: z.number().int().min(0).default(0),
   propertyId: z.string().trim().min(1).optional(),

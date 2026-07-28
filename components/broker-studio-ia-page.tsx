@@ -20,6 +20,7 @@ import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
+import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type StudioStyle = "Moderno" | "Minimalista" | "Alto padrao" | "Industrial" | "Classico"
@@ -55,6 +56,7 @@ export function BrokerStudioIaPage() {
   const [generatedImageUrl, setGeneratedImageUrl] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [generationError, setGenerationError] = useState("")
+  const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
 
   const propertyOptions = useMemo(
     () => (properties.filter((property) => property.images.length > 0).length > 0
@@ -78,6 +80,32 @@ export function BrokerStudioIaPage() {
       setSelectedPropertyId(propertyOptions[0].id)
     }
   }, [propertyOptions, selectedPropertyId])
+
+  useEffect(() => {
+    if (!selectedPropertyId) return
+    let ignore = false
+
+    studioCampaignsClient
+      .getLatest("CONSTRUCTION", selectedPropertyId)
+      .then((storedCampaign) => {
+        if (!storedCampaign || ignore) return
+        const asset = storedCampaign.assets.find((entry) => entry.assetKey === "construction_image")
+        if (!asset?.fileUrl) return
+        setCampaign(storedCampaign)
+        setGeneratedImageUrl(asset.fileUrl)
+        setResultVersion(storedCampaign.version)
+        setApprovedVersion(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? storedCampaign.version : null)
+        if (storedCampaign.visualIdentity) {
+          setSelectedStyle(storedCampaign.visualIdentity as StudioStyle)
+        }
+        setCurrentStep(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? "approval" : "result")
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [selectedPropertyId])
 
   useEffect(() => {
     if (!selectedProperty) return
@@ -139,14 +167,15 @@ export function BrokerStudioIaPage() {
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as { error?: string; imageUrl?: string } | null
+      const data = (await response.json().catch(() => null)) as { error?: string; imageUrl?: string; campaign?: StudioCampaignRecord } | null
 
-      if (!response.ok) {
+      if (!response.ok || !data) {
         throw new Error(data?.error || "Nao foi possivel gerar a imagem final do imovel.")
       }
 
       const parsed = studioGenerationResponseSchema.parse(data)
       setGeneratedImageUrl(parsed.imageUrl)
+      if (data.campaign) setCampaign(data.campaign)
       setResultVersion((current) => current + 1)
       setApprovedVersion(null)
       setCurrentStep("result")
@@ -158,9 +187,11 @@ export function BrokerStudioIaPage() {
     }
   }
 
-  function approveResult() {
-    if (!resultVersion) return
-    setApprovedVersion(resultVersion)
+  async function approveResult() {
+    if (!campaign || !resultVersion) return
+    const nextCampaign = await studioCampaignsClient.approveCampaign(campaign.id)
+    setCampaign(nextCampaign)
+    setApprovedVersion(nextCampaign.version)
     setCurrentStep("approval")
   }
 
@@ -171,6 +202,7 @@ export function BrokerStudioIaPage() {
   }
 
   function restartFlow() {
+    setCampaign(null)
     setCurrentStep("selection")
     setResultVersion(0)
     setApprovedVersion(null)

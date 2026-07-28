@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 
 import { UserRole } from "@/lib/prisma-enums"
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
+import { createStudioCampaign } from "@/lib/studio-campaigns"
 import {
   generateInstagramCampaign,
   studioInstagramRequestSchema,
@@ -93,7 +96,81 @@ export async function POST(request: NextRequest) {
       status: propertyStatusLabel(property.status),
     })
 
-    const response = NextResponse.json(result, { status: 201 })
+    const { model } = getOpenAIEnv()
+    const campaign = await createStudioCampaign(user, {
+      kind: "INSTAGRAM",
+      status: "PENDING_REVIEW",
+      goal: payload.goal,
+      visualIdentity: payload.identity,
+      version: payload.version,
+      provider: "openai",
+      model,
+      sourceRoute: "/api/studio-ia/instagram",
+      propertyId: property.id,
+      metadata: {
+        propertyTitle: property.title,
+        city: property.city,
+        neighborhood: property.neighborhood,
+      },
+      assets: [
+        {
+          assetKey: "post_feed",
+          label: "Post feed",
+          type: "COPY",
+          provider: "openai",
+          model,
+          status: "PENDING_REVIEW",
+          content: result.postFeed as Prisma.InputJsonValue,
+        },
+        {
+          assetKey: "story",
+          label: "Story",
+          type: "STORY",
+          provider: "openai",
+          model,
+          status: "PENDING_REVIEW",
+          content: result.story as Prisma.InputJsonValue,
+        },
+        {
+          assetKey: "carousel",
+          label: "Carrossel",
+          type: "CAROUSEL",
+          provider: "openai",
+          model,
+          status: "PENDING_REVIEW",
+          content: result.carousel as Prisma.InputJsonValue,
+        },
+        {
+          assetKey: "caption",
+          label: "Legenda",
+          type: "COPY",
+          provider: "openai",
+          model,
+          status: "PENDING_REVIEW",
+          content: result.caption,
+        },
+        {
+          assetKey: "cta",
+          label: "CTA",
+          type: "COPY",
+          provider: "openai",
+          model,
+          status: "PENDING_REVIEW",
+          content: result.cta,
+        },
+        {
+          assetKey: "hashtags",
+          label: "Hashtags",
+          type: "COPY",
+          provider: "openai",
+          model,
+          status: "PENDING_REVIEW",
+          content: result.hashtags as Prisma.InputJsonValue,
+        },
+      ],
+    })
+
+    const response = NextResponse.json({ ...result, campaign }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

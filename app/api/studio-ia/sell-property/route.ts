@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 
 import { UserRole } from "@/lib/prisma-enums"
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
+import { createStudioCampaign } from "@/lib/studio-campaigns"
 import {
   generateSellPropertyPlan,
   studioSellPropertyRequestSchema,
@@ -107,7 +110,34 @@ export async function POST(request: NextRequest) {
       likelyUnderConstruction: detectConstructionScenario(property),
     })
 
-    const response = NextResponse.json(result, { status: 201 })
+    const { model } = getOpenAIEnv()
+    const campaign = await createStudioCampaign(user, {
+      kind: "SELL_PROPERTY",
+      status: "PENDING_REVIEW",
+      goal: "Vender este imovel",
+      visualIdentity: propertyTypeLabel(property.type),
+      version: payload.version,
+      provider: "openai",
+      model,
+      sourceRoute: "/api/studio-ia/sell-property",
+      propertyId: property.id,
+      metadata: {
+        propertyTitle: property.title,
+        applicableFlows: result.applicableFlows,
+      },
+      assets: [
+        { assetKey: "strategy", label: "Estrategia", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.salesStrategy },
+        { assetKey: "audience", label: "Publico", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.recommendedAudience },
+        { assetKey: "campaign", label: "Campanha principal", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.mainCampaign },
+        { assetKey: "caption", label: "Legenda", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.caption },
+        { assetKey: "cta", label: "CTA", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.cta },
+        { assetKey: "whatsapp", label: "WhatsApp", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.whatsappText },
+        { assetKey: "timeline", label: "Timeline", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.timeline as Prisma.InputJsonValue },
+        { assetKey: "next_actions", label: "Proximas acoes", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.nextActions as Prisma.InputJsonValue },
+      ],
+    })
+
+    const response = NextResponse.json({ ...result, campaign }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

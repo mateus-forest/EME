@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 
 import { UserRole } from "@/lib/prisma-enums"
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
+import { createStudioCampaign } from "@/lib/studio-campaigns"
 import { generateBuyerStrategy, studioBuyerRequestSchema } from "@/lib/studio-ia-buyers"
 
 export const dynamic = "force-dynamic"
@@ -90,7 +93,33 @@ export async function POST(request: NextRequest) {
       status: propertyStatusLabel(property.status),
     })
 
-    const response = NextResponse.json(result, { status: 201 })
+    const { model } = getOpenAIEnv()
+    const campaign = await createStudioCampaign(user, {
+      kind: "BUYERS",
+      status: "PENDING_REVIEW",
+      goal: payload.audience,
+      visualIdentity: payload.channel,
+      version: payload.version,
+      provider: "openai",
+      model,
+      sourceRoute: "/api/studio-ia/buyers",
+      propertyId: property.id,
+      metadata: {
+        channel: payload.channel,
+        propertyTitle: property.title,
+      },
+      assets: [
+        { assetKey: "audience", label: "Publico", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.audience },
+        { assetKey: "strategy", label: "Estrategia", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.strategy },
+        { assetKey: "copy", label: "Copy", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.copy },
+        { assetKey: "cta", label: "CTA", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.cta },
+        { assetKey: "timeline", label: "Timeline", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.timeline as Prisma.InputJsonValue },
+        { assetKey: "reach", label: "Alcance", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.reach },
+        { assetKey: "leads", label: "Leads", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.leads },
+      ],
+    })
+
+    const response = NextResponse.json({ ...result, campaign }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

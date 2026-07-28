@@ -1,6 +1,7 @@
 "use client"
+/* eslint-disable react-hooks/exhaustive-deps */
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -14,6 +15,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
+import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type CaptureGoal =
@@ -68,6 +70,7 @@ export function BrokerStudioIaOwnersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<OwnerStrategyPreview | null>(null)
   const [generationError, setGenerationError] = useState<GenerationError>(null)
+  const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [approvedBlocks, setApprovedBlocks] = useState<Record<StrategyBlockKey, boolean>>({
     audience: false,
     approach: false,
@@ -82,6 +85,62 @@ export function BrokerStudioIaOwnersPage() {
   const canAdvanceToConfiguration = Boolean(selectedGoal)
   const canProcess = Boolean(city.trim() && neighborhood.trim() && operationRadius.trim() && selectedOwnerProfile) && !isSubmitting
   const approvedBlocksCount = Object.values(approvedBlocks).filter(Boolean).length
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let ignore = false
+
+    studioCampaignsClient
+      .getLatest("OWNERS")
+      .then((storedCampaign) => {
+        if (!storedCampaign || ignore) return
+        applyStoredCampaign(storedCampaign)
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  function buildApprovalMap(storedCampaign: StudioCampaignRecord) {
+    return {
+      audience: storedCampaign.assets.find((asset) => asset.assetKey === "audience")?.status === "APPROVED",
+      approach: storedCampaign.assets.find((asset) => asset.assetKey === "approach")?.status === "APPROVED",
+      adCopy: storedCampaign.assets.find((asset) => asset.assetKey === "ad_copy")?.status === "APPROVED",
+      instagram: storedCampaign.assets.find((asset) => asset.assetKey === "instagram")?.status === "APPROVED",
+      video: storedCampaign.assets.find((asset) => asset.assetKey === "video")?.status === "APPROVED",
+      whatsapp: storedCampaign.assets.find((asset) => asset.assetKey === "whatsapp")?.status === "APPROVED",
+      cta: storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.status === "APPROVED",
+      timeline: storedCampaign.assets.find((asset) => asset.assetKey === "timeline")?.status === "APPROVED",
+    }
+  }
+
+  function applyStoredCampaign(storedCampaign: StudioCampaignRecord) {
+    const metadata = (storedCampaign.metadata ?? {}) as { city?: string; neighborhood?: string; operationRadius?: string }
+    const nextPreview = {
+      audience: (storedCampaign.assets.find((asset) => asset.assetKey === "audience")?.content as string) ?? "",
+      approach: (storedCampaign.assets.find((asset) => asset.assetKey === "approach")?.content as string) ?? "",
+      adCopy: (storedCampaign.assets.find((asset) => asset.assetKey === "ad_copy")?.content as string) ?? "",
+      instagramCaption: (storedCampaign.assets.find((asset) => asset.assetKey === "instagram")?.content as string) ?? "",
+      videoScript: (storedCampaign.assets.find((asset) => asset.assetKey === "video")?.content as string[]) ?? [],
+      whatsappText: (storedCampaign.assets.find((asset) => asset.assetKey === "whatsapp")?.content as string) ?? "",
+      cta: (storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.content as string) ?? "",
+      timeline: (storedCampaign.assets.find((asset) => asset.assetKey === "timeline")?.content as string[]) ?? [],
+    }
+
+    if (nextPreview.audience) setPreview(nextPreview)
+    setCampaign(storedCampaign)
+    if (storedCampaign.goal) setSelectedGoal(storedCampaign.goal as CaptureGoal)
+    if (storedCampaign.visualIdentity) setSelectedOwnerProfile(storedCampaign.visualIdentity as OwnerProfile)
+    if (metadata.city) setCity(metadata.city)
+    if (metadata.neighborhood) setNeighborhood(metadata.neighborhood)
+    if (metadata.operationRadius) setOperationRadius(metadata.operationRadius)
+    setResultVersion(storedCampaign.version)
+    setApprovedVersion(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? storedCampaign.version : null)
+    setApprovedBlocks(buildApprovalMap(storedCampaign))
+    setCurrentStep(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? "approval" : "result")
+  }
 
   function goToConfiguration() {
     if (!canAdvanceToConfiguration) return
@@ -117,7 +176,7 @@ export function BrokerStudioIaOwnersPage() {
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as (OwnerStrategyPreview & { error?: string }) | null
+      const data = (await response.json().catch(() => null)) as (OwnerStrategyPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
         throw new Error(data?.error || "Nao foi possivel gerar a estrategia para captar proprietarios.")
@@ -133,6 +192,7 @@ export function BrokerStudioIaOwnersPage() {
         cta: data.cta,
         timeline: data.timeline,
       })
+      if (data.campaign) setCampaign(data.campaign)
       setApprovedBlocks({
         audience: false,
         approach: false,
@@ -154,17 +214,22 @@ export function BrokerStudioIaOwnersPage() {
     }
   }
 
-  function toggleBlockApproval(block: StrategyBlockKey) {
-    setApprovedBlocks((current) => ({
-      ...current,
-      [block]: !current[block],
-    }))
+  async function toggleBlockApproval(block: StrategyBlockKey) {
+    if (!campaign) return
+    const assetKey = block === "adCopy" ? "ad_copy" : block
+    const asset = campaign.assets.find((entry) => entry.assetKey === assetKey)
+    if (!asset) return
+    const nextCampaign = await studioCampaignsClient.updateAssetStatus(
+      asset.id,
+      approvedBlocks[block] ? "PENDING_REVIEW" : "APPROVED",
+    )
+    applyStoredCampaign(nextCampaign)
   }
 
-  function approveStrategy() {
-    if (!resultVersion) return
-    setApprovedVersion(resultVersion)
-    setCurrentStep("approval")
+  async function approveStrategy() {
+    if (!campaign || !resultVersion) return
+    const nextCampaign = await studioCampaignsClient.approveCampaign(campaign.id)
+    applyStoredCampaign(nextCampaign)
   }
 
   async function generateAnotherVersion() {
@@ -174,6 +239,7 @@ export function BrokerStudioIaOwnersPage() {
   }
 
   function restartFlow() {
+    setCampaign(null)
     setCurrentStep("selection")
     setResultVersion(0)
     setApprovedVersion(null)

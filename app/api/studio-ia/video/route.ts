@@ -6,6 +6,12 @@ import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCr
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
 import {
+  createStudioCampaign,
+  updateStudioCampaignAssetStatus,
+  updateStudioCampaignById,
+  upsertStudioCampaignAssetByKey,
+} from "@/lib/studio-campaigns"
+import {
   approveStudioVideoPreview,
   buildStudioVideoRequestSignature,
   createApprovedStudioVideoAnimation,
@@ -276,6 +282,137 @@ async function updateJobDocument(documentId: string, job: ReturnType<typeof pars
   })
 }
 
+function getStudioCampaignUser(user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
+  return {
+    id: user.id,
+    role: user.role,
+    broker: user.broker ? { id: user.broker.id } : null,
+    ownedAgency: user.ownedAgency ? { id: user.ownedAgency.id } : null,
+  }
+}
+
+async function syncStudioVideoCampaign(input: {
+  user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>
+  requestId: string
+  job: ReturnType<typeof parseStudioVideoJobContent>
+}) {
+  const { user, requestId, job } = input
+  if (!job.campaignId) return
+
+  const metadata = {
+    requestId,
+    requestKind: job.requestKind,
+    activeStage: job.activeStage,
+    jobStage: job.jobStage,
+    generationStatus: job.generationStatus,
+    format: job.format,
+    duration: job.duration,
+    objective: job.objective,
+    style: job.style,
+    transformation: job.transformation,
+    rhythm: job.rhythm,
+    cameraMovement: job.cameraMovement,
+    technicalLimitReached: job.technicalLimitReached,
+    savedDocumentId: job.savedDocumentId ?? null,
+    sourceReferenceUrl: job.sourceReferenceUrl ?? null,
+    providerImageId: job.providerImageId ?? null,
+    providerVideoId: job.providerVideoId ?? null,
+    previewApproved: job.previewApproved,
+    previewApprovedAt: job.previewApprovedAt ?? null,
+    progress: job.progress,
+  }
+
+  const baseStatus =
+    job.jobStage === "failed"
+      ? "FAILED"
+      : job.jobStage === "completed"
+        ? "PENDING_REVIEW"
+        : job.jobStage === "preview_ready" || job.jobStage === "preview_approved"
+          ? "PENDING_REVIEW"
+          : "PROCESSING"
+
+  await updateStudioCampaignById({
+    campaignId: job.campaignId,
+    status: baseStatus,
+    provider: job.provider,
+    model: job.providerModel ?? job.previewModel ?? null,
+    prompt: job.prompt,
+    promptRevised: job.previewPrompt ?? null,
+    metadata,
+  })
+
+  if (job.requestKind === "transformation_pipeline" && job.previewImageUrl) {
+    await upsertStudioCampaignAssetByKey({
+      campaignId: job.campaignId,
+      asset: {
+        assetKey: "preview_image",
+        label: "Previa de transformacao",
+        type: "IMAGE",
+        prompt: job.previewPrompt ?? job.prompt,
+        promptRevised: job.previewPrompt ?? null,
+        provider: job.provider,
+        model: job.previewModel ?? null,
+        fileUrl: job.previewImageUrl,
+        thumbnailUrl: job.previewImageUrl,
+        status:
+          job.jobStage === "failed"
+            ? "FAILED"
+            : job.previewApproved
+              ? "APPROVED"
+              : "PENDING_REVIEW",
+        approvedAt: job.previewApprovedAt ?? null,
+        metadata,
+      },
+      campaignStatus:
+        job.jobStage === "failed"
+          ? "FAILED"
+          : job.previewApproved
+            ? job.videoUrl
+              ? "PENDING_REVIEW"
+              : "PROCESSING"
+            : "PENDING_REVIEW",
+    })
+  }
+
+  if (job.videoUrl) {
+    await upsertStudioCampaignAssetByKey({
+      campaignId: job.campaignId,
+      asset: {
+        assetKey: "video_final",
+        label: "Video final",
+        type: "VIDEO",
+        prompt: job.prompt,
+        promptRevised: job.previewPrompt ?? null,
+        provider: job.provider,
+        model: job.providerModel ?? null,
+        fileUrl: job.videoUrl,
+        thumbnailUrl: job.previewImageUrl ?? null,
+        status: job.jobStage === "failed" ? "FAILED" : "PENDING_REVIEW",
+        metadata,
+      },
+      campaignStatus: job.jobStage === "failed" ? "FAILED" : "PENDING_REVIEW",
+    })
+  }
+
+  if (job.jobStage === "failed" && !job.previewImageUrl && !job.videoUrl) {
+    await upsertStudioCampaignAssetByKey({
+      campaignId: job.campaignId,
+      asset: {
+        assetKey: "video_request",
+        label: "Solicitacao de video",
+        type: "VIDEO",
+        prompt: job.prompt,
+        promptRevised: job.previewPrompt ?? null,
+        provider: job.provider,
+        model: job.providerModel ?? job.previewModel ?? null,
+        status: "FAILED",
+        metadata,
+      },
+      campaignStatus: "FAILED",
+    })
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
@@ -307,6 +444,11 @@ export async function GET(request: NextRequest) {
         : refreshedJob
 
     await updateJobDocument(jobDocument.id, finalJob)
+    await syncStudioVideoCampaign({
+      user,
+      requestId,
+      job: finalJob,
+    })
 
     const response = NextResponse.json(getStudioVideoResult(requestId, finalJob))
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -412,13 +554,61 @@ export async function POST(request: NextRequest) {
             : { kind: "url", url: payload.referenceImageUrls[0]! },
       })
 
+      const campaign = await createStudioCampaign(getStudioCampaignUser(user), {
+        kind: "VIDEO",
+        status: "PROCESSING",
+        goal: payload.objective,
+        visualIdentity: payload.style,
+        version: payload.version,
+        provider: created.jobContent.provider,
+        model: created.jobContent.providerModel ?? created.jobContent.previewModel ?? null,
+        prompt: created.jobContent.prompt,
+        promptRevised: created.jobContent.previewPrompt ?? null,
+        sourceRoute: "/api/studio-ia/video",
+        propertyId: payload.propertyId ?? null,
+        metadata: {
+          requestKind: created.jobContent.requestKind,
+          format: payload.format,
+          duration: payload.duration,
+          objective: payload.objective,
+          style: payload.style,
+          transformation: payload.transformation,
+          rhythm: payload.rhythm,
+          cameraMovement: payload.cameraMovement,
+          referenceImageUrls: created.jobContent.referenceImageUrls,
+          uploadedImages: payload.uploadedImages,
+        },
+        assets: [
+          {
+            assetKey: "video_request",
+            label: "Solicitacao de video",
+            type: "VIDEO",
+            prompt: created.jobContent.prompt,
+            promptRevised: created.jobContent.previewPrompt ?? null,
+            provider: created.jobContent.provider,
+            model: created.jobContent.providerModel ?? created.jobContent.previewModel ?? null,
+            status: "DRAFT",
+            metadata: {
+              requestKind: created.jobContent.requestKind,
+              format: payload.format,
+              duration: payload.duration,
+            },
+          },
+        ],
+      })
+
+      const jobWithCampaign = {
+        ...created.jobContent,
+        campaignId: campaign.id,
+      } satisfies ReturnType<typeof parseStudioVideoJobContent>
+
       const document = await prisma.brokerDocument.create({
         data: {
           brokerId: user.broker.id,
           propertyId: payload.propertyId ?? null,
           type: "studio_ia_video_job",
           title: buildVideoTitle(property?.title),
-          content: stringifyStudioVideoJobContent(created.jobContent),
+          content: stringifyStudioVideoJobContent(jobWithCampaign),
           status: "draft",
         },
       })
@@ -426,10 +616,15 @@ export async function POST(request: NextRequest) {
       const chargedJob = await chargeStageCredits({
         brokerId: user.broker.id,
         requestId: document.id,
-        job: created.jobContent,
+        job: jobWithCampaign,
       })
 
       await updateJobDocument(document.id, chargedJob)
+      await syncStudioVideoCampaign({
+        user,
+        requestId: document.id,
+        job: chargedJob,
+      })
 
       const response = NextResponse.json(getStudioVideoResult(document.id, chargedJob), { status: 202 })
       response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -489,6 +684,11 @@ export async function POST(request: NextRequest) {
       })
 
       await updateJobDocument(jobDocument.id, chargedJob)
+      await syncStudioVideoCampaign({
+        user,
+        requestId,
+        job: chargedJob,
+      })
 
       return NextResponse.json(getStudioVideoResult(requestId, chargedJob), { status: 202 })
     }
@@ -545,6 +745,11 @@ export async function POST(request: NextRequest) {
       })
 
       await updateJobDocument(jobDocument.id, chargedJob)
+      await syncStudioVideoCampaign({
+        user,
+        requestId,
+        job: chargedJob,
+      })
 
       return NextResponse.json(getStudioVideoResult(requestId, chargedJob), { status: 202 })
     }
@@ -648,6 +853,30 @@ export async function PATCH(request: NextRequest) {
     if (action === "approve-preview") {
       const approvedJob = approveStudioVideoPreview(job)
       await updateJobDocument(jobDocument.id, approvedJob)
+      await syncStudioVideoCampaign({
+        user,
+        requestId,
+        job: approvedJob,
+      })
+
+      if (approvedJob.campaignId && approvedJob.previewImageUrl) {
+        const previewCampaign = await prisma.studioCampaign.findUnique({
+          where: { id: approvedJob.campaignId },
+          select: {
+            assets: {
+              where: { assetKey: "preview_image" },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        })
+
+        const previewAssetId = previewCampaign?.assets[0]?.id
+        if (previewAssetId) {
+          await updateStudioCampaignAssetStatus(getStudioCampaignUser(user), previewAssetId, "APPROVED")
+        }
+      }
+
       return NextResponse.json(getStudioVideoResult(requestId, approvedJob))
     }
 
@@ -690,6 +919,22 @@ export async function PATCH(request: NextRequest) {
       ...job,
       savedDocumentId: savedDocument.id,
     })
+
+    if (job.campaignId) {
+      await updateStudioCampaignById({
+        campaignId: job.campaignId,
+        metadata: {
+          requestId,
+          savedDocumentId: savedDocument.id,
+          requestKind: job.requestKind,
+          format: job.format,
+          duration: job.duration,
+          objective: job.objective,
+          style: job.style,
+          transformation: job.transformation,
+        },
+      })
+    }
 
     return NextResponse.json({ saved: true, savedDocumentId: savedDocument.id })
   } catch (caughtError) {

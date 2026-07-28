@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
+import { getOpenAIEnv } from "@/lib/env.server"
 import { UserRole } from "@/lib/prisma-enums"
+import { createStudioCampaign } from "@/lib/studio-campaigns"
 import { generateOwnerStrategy, studioOwnerRequestSchema } from "@/lib/studio-ia-owners"
 
 export const dynamic = "force-dynamic"
@@ -21,7 +24,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const payload = studioOwnerRequestSchema.parse(body)
     const result = await generateOwnerStrategy(payload)
-    const response = NextResponse.json(result, { status: 201 })
+    const { model } = getOpenAIEnv()
+    const campaign = await createStudioCampaign(user, {
+      kind: "OWNERS",
+      status: "PENDING_REVIEW",
+      goal: payload.goal,
+      visualIdentity: payload.ownerProfile,
+      version: payload.version,
+      provider: "openai",
+      model,
+      sourceRoute: "/api/studio-ia/owners",
+      metadata: {
+        city: payload.city,
+        neighborhood: payload.neighborhood,
+        operationRadius: payload.operationRadius,
+      },
+      assets: [
+        { assetKey: "audience", label: "Publico", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.audience },
+        { assetKey: "approach", label: "Abordagem", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.approach },
+        { assetKey: "ad_copy", label: "Anuncio", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.adCopy },
+        { assetKey: "instagram", label: "Instagram", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.instagramCaption },
+        { assetKey: "video", label: "Roteiro de video", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.videoScript as unknown as Prisma.InputJsonValue },
+        { assetKey: "whatsapp", label: "WhatsApp", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.whatsappText },
+        { assetKey: "cta", label: "CTA", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.cta },
+        { assetKey: "timeline", label: "Timeline", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.timeline as unknown as Prisma.InputJsonValue },
+      ],
+    })
+    const response = NextResponse.json({ ...result, campaign }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

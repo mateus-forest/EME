@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -21,6 +22,7 @@ import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
+import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
 
 type StudioStep = "selection" | "checklist" | "operation" | "readiness"
 type CommercialFlowKey = "construction" | "instagram" | "video" | "buyers" | "owners"
@@ -106,6 +108,7 @@ export function BrokerStudioIaSellPropertyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [plan, setPlan] = useState<SellPropertyPlan | null>(null)
+  const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [completedFlows, setCompletedFlows] = useState<Record<CommercialFlowKey, boolean>>({
     construction: false,
     instagram: false,
@@ -130,11 +133,29 @@ export function BrokerStudioIaSellPropertyPage() {
     [propertyOptions, selectedPropertyId],
   )
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selectedPropertyId && propertyOptions[0]) {
       setSelectedPropertyId(propertyOptions[0].id)
     }
   }, [propertyOptions, selectedPropertyId])
+
+  useEffect(() => {
+    if (!selectedPropertyId) return
+    let ignore = false
+
+    studioCampaignsClient
+      .getLatest("SELL_PROPERTY", selectedPropertyId)
+      .then((storedCampaign) => {
+        if (!storedCampaign || ignore) return
+        applyStoredCampaign(storedCampaign)
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [selectedPropertyId])
 
   const availableFlows = useMemo(
     () => commercialFlows.filter((flow) => flow.isAvailable),
@@ -145,6 +166,40 @@ export function BrokerStudioIaSellPropertyPage() {
   const pendingFlowsCount = commercialFlows.filter((flow) => !completedFlows[flow.key]).length
   const approvedBlocksCount = Object.values(approvedBlocks).filter(Boolean).length
   const isReadyForOperation = availableCompletedCount === availableFlows.length && approvedVersion === resultVersion && resultVersion > 0
+
+  function buildApprovalMap(storedCampaign: StudioCampaignRecord) {
+    return {
+      strategy: storedCampaign.assets.find((asset) => asset.assetKey === "strategy")?.status === "APPROVED",
+      audience: storedCampaign.assets.find((asset) => asset.assetKey === "audience")?.status === "APPROVED",
+      campaign: storedCampaign.assets.find((asset) => asset.assetKey === "campaign")?.status === "APPROVED",
+      caption: storedCampaign.assets.find((asset) => asset.assetKey === "caption")?.status === "APPROVED",
+      cta: storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.status === "APPROVED",
+      whatsapp: storedCampaign.assets.find((asset) => asset.assetKey === "whatsapp")?.status === "APPROVED",
+      timeline: storedCampaign.assets.find((asset) => asset.assetKey === "timeline")?.status === "APPROVED",
+      nextActions: storedCampaign.assets.find((asset) => asset.assetKey === "next_actions")?.status === "APPROVED",
+    }
+  }
+
+  function applyStoredCampaign(storedCampaign: StudioCampaignRecord) {
+    const metadata = (storedCampaign.metadata ?? {}) as { applicableFlows?: string[] }
+    const nextPlan = {
+      salesStrategy: (storedCampaign.assets.find((asset) => asset.assetKey === "strategy")?.content as string) ?? "",
+      recommendedAudience: (storedCampaign.assets.find((asset) => asset.assetKey === "audience")?.content as string) ?? "",
+      mainCampaign: (storedCampaign.assets.find((asset) => asset.assetKey === "campaign")?.content as string) ?? "",
+      caption: (storedCampaign.assets.find((asset) => asset.assetKey === "caption")?.content as string) ?? "",
+      cta: (storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.content as string) ?? "",
+      whatsappText: (storedCampaign.assets.find((asset) => asset.assetKey === "whatsapp")?.content as string) ?? "",
+      timeline: (storedCampaign.assets.find((asset) => asset.assetKey === "timeline")?.content as string[]) ?? [],
+      nextActions: (storedCampaign.assets.find((asset) => asset.assetKey === "next_actions")?.content as string[]) ?? [],
+      applicableFlows: metadata.applicableFlows ?? [],
+    }
+    if (nextPlan.salesStrategy) setPlan(nextPlan)
+    setCampaign(storedCampaign)
+    setResultVersion(storedCampaign.version)
+    setApprovedVersion(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? storedCampaign.version : null)
+    setApprovedBlocks(buildApprovalMap(storedCampaign))
+    setCurrentStep(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? "readiness" : "operation")
+  }
 
   const visualSummary = useMemo(
     () => [
@@ -176,11 +231,16 @@ export function BrokerStudioIaSellPropertyPage() {
     }))
   }
 
-  function togglePlanBlock(block: PlanBlockKey) {
-    setApprovedBlocks((current) => ({
-      ...current,
-      [block]: !current[block],
-    }))
+  async function togglePlanBlock(block: PlanBlockKey) {
+    if (!campaign) return
+    const assetKey = block === "nextActions" ? "next_actions" : block
+    const asset = campaign.assets.find((entry) => entry.assetKey === assetKey)
+    if (!asset) return
+    const nextCampaign = await studioCampaignsClient.updateAssetStatus(
+      asset.id,
+      approvedBlocks[block] ? "PENDING_REVIEW" : "APPROVED",
+    )
+    applyStoredCampaign(nextCampaign)
   }
 
   async function generateCommercialPlan(nextVersion: number) {
@@ -204,7 +264,7 @@ export function BrokerStudioIaSellPropertyPage() {
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as (SellPropertyPlan & { error?: string }) | null
+      const data = (await response.json().catch(() => null)) as (SellPropertyPlan & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
         throw new Error(data?.error || "Nao foi possivel gerar o plano comercial consolidado.")
@@ -221,6 +281,7 @@ export function BrokerStudioIaSellPropertyPage() {
         nextActions: data.nextActions,
         applicableFlows: data.applicableFlows,
       })
+      if (data.campaign) setCampaign(data.campaign)
       setResultVersion(nextVersion)
       setApprovedVersion(null)
       setApprovedBlocks({
@@ -250,13 +311,14 @@ export function BrokerStudioIaSellPropertyPage() {
     await generateCommercialPlan(resultVersion + 1)
   }
 
-  function approvePlan() {
-    if (!plan || !resultVersion) return
-    setApprovedVersion(resultVersion)
-    setCurrentStep("readiness")
+  async function approvePlan() {
+    if (!campaign || !plan || !resultVersion) return
+    const nextCampaign = await studioCampaignsClient.approveCampaign(campaign.id)
+    applyStoredCampaign(nextCampaign)
   }
 
   function restartFlow() {
+    setCampaign(null)
     setCompletedFlows({
       construction: false,
       instagram: false,

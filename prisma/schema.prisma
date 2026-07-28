@@ -56,6 +56,49 @@ enum BillingUserSubscriptionStatus {
   ACTIVE
 }
 
+enum StudioCampaignWorkspaceType {
+  BROKER
+  AGENCY
+}
+
+enum StudioCampaignKind {
+  INSTAGRAM
+  BUYERS
+  OWNERS
+  SELL_PROPERTY
+  CONSTRUCTION
+  VIDEO
+}
+
+enum StudioCampaignStatus {
+  DRAFT
+  PROCESSING
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  FAILED
+}
+
+enum StudioCampaignAssetType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  STORY
+  REEL
+  COPY
+  THUMBNAIL
+}
+
+enum StudioCampaignAssetStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  FAILED
+}
+
 enum BrokerAccountStatus {
   PENDING
   ACTIVE
@@ -90,6 +133,7 @@ model User {
   leads                Lead[]
   aiAssistantInteractions AiAssistantInteraction[]
   emeMessages          EmeMessage[]
+  studioCampaigns      StudioCampaign[]
 }
 
 model Broker {
@@ -122,6 +166,7 @@ model Broker {
   corretorEmeConfig BrokerEmeConfig?
   financialConfig BrokerFinancialConfig?
   emeMessages EmeMessage[]
+  studioCampaigns StudioCampaign[]
 }
 
 model Agency {
@@ -139,6 +184,7 @@ model Agency {
   properties  Property[]
   leads       Lead[]
   catalogEvents CatalogEvent[]
+  studioCampaigns StudioCampaign[]
 }
 
 model Property {
@@ -171,6 +217,7 @@ model Property {
   emeMessages  EmeMessage[]
   agendaEvents AgendaEvent[]
   documents    BrokerDocument[]
+  studioCampaigns StudioCampaign[]
 
   @@unique([brokerId, publicCode])
 }
@@ -331,6 +378,64 @@ model BrokerDocument {
   @@index([brokerId, status])
   @@index([leadId])
   @@index([propertyId])
+}
+
+model StudioCampaign {
+  id             String                   @id @default(cuid())
+  workspaceType  StudioCampaignWorkspaceType
+  kind           StudioCampaignKind
+  status         StudioCampaignStatus     @default(DRAFT)
+  goal           String?
+  visualIdentity String?
+  version        Int                      @default(1)
+  provider       String?
+  model          String?
+  prompt         String?
+  promptRevised  String?
+  sourceRoute    String?
+  metadata       Json?
+  brokerId       String?
+  agencyId       String?
+  propertyId     String?
+  createdByUserId String
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  broker         Broker?                  @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  agency         Agency?                  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  property       Property?                @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  createdByUser  User                     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  assets         StudioCampaignAsset[]
+
+  @@index([brokerId, kind, createdAt])
+  @@index([agencyId, kind, createdAt])
+  @@index([propertyId, kind, createdAt])
+  @@index([createdByUserId, createdAt])
+  @@index([workspaceType, kind, createdAt])
+}
+
+model StudioCampaignAsset {
+  id            String                   @id @default(cuid())
+  campaignId    String
+  assetKey      String
+  label         String?
+  type          StudioCampaignAssetType
+  prompt        String?
+  promptRevised String?
+  provider      String?
+  model         String?
+  fileUrl       String?
+  thumbnailUrl  String?
+  status        StudioCampaignAssetStatus @default(DRAFT)
+  approvedAt    DateTime?
+  content       Json?
+  metadata      Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  campaign      StudioCampaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, assetKey])
+  @@index([campaignId, status])
+  @@index([type, createdAt])
 }
 
 model Catalog {

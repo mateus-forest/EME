@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
@@ -17,6 +18,7 @@ import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
+import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type AudienceProfile = "Primeiro imovel" | "Familia" | "Investidor" | "Alto padrao" | "Imovel de praia" | "Comercial"
@@ -57,6 +59,7 @@ export function BrokerStudioIaBuyersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<BuyerStrategyPreview | null>(null)
   const [generationError, setGenerationError] = useState<GenerationError>(null)
+  const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [approvedBlocks, setApprovedBlocks] = useState<Record<StrategyBlockKey, boolean>>({
     audience: false,
     strategy: false,
@@ -73,15 +76,66 @@ export function BrokerStudioIaBuyersPage() {
     [propertyOptions, selectedPropertyId],
   )
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selectedPropertyId && propertyOptions[0]) {
       setSelectedPropertyId(propertyOptions[0].id)
     }
   }, [propertyOptions, selectedPropertyId])
 
+  useEffect(() => {
+    if (!selectedPropertyId) return
+    let ignore = false
+
+    studioCampaignsClient
+      .getLatest("BUYERS", selectedPropertyId)
+      .then((storedCampaign) => {
+        if (!storedCampaign || ignore) return
+        applyStoredCampaign(storedCampaign)
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [selectedPropertyId])
+
   const canAdvanceToConfiguration = Boolean(selectedProperty)
   const canProcess = Boolean(selectedProperty) && !isSubmitting
   const approvedBlocksCount = Object.values(approvedBlocks).filter(Boolean).length
+
+  function buildApprovalMap(storedCampaign: StudioCampaignRecord) {
+    return {
+      audience: storedCampaign.assets.find((asset) => asset.assetKey === "audience")?.status === "APPROVED",
+      strategy: storedCampaign.assets.find((asset) => asset.assetKey === "strategy")?.status === "APPROVED",
+      copy: storedCampaign.assets.find((asset) => asset.assetKey === "copy")?.status === "APPROVED",
+      cta: storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.status === "APPROVED",
+      timeline: storedCampaign.assets.find((asset) => asset.assetKey === "timeline")?.status === "APPROVED",
+      reach: storedCampaign.assets.find((asset) => asset.assetKey === "reach")?.status === "APPROVED",
+      leads: storedCampaign.assets.find((asset) => asset.assetKey === "leads")?.status === "APPROVED",
+    }
+  }
+
+  function applyStoredCampaign(storedCampaign: StudioCampaignRecord) {
+    const nextPreview = {
+      audience: (storedCampaign.assets.find((asset) => asset.assetKey === "audience")?.content as string) ?? "",
+      strategy: (storedCampaign.assets.find((asset) => asset.assetKey === "strategy")?.content as string) ?? "",
+      copy: (storedCampaign.assets.find((asset) => asset.assetKey === "copy")?.content as string) ?? "",
+      cta: (storedCampaign.assets.find((asset) => asset.assetKey === "cta")?.content as string) ?? "",
+      timeline: (storedCampaign.assets.find((asset) => asset.assetKey === "timeline")?.content as string[]) ?? [],
+      reach: (storedCampaign.assets.find((asset) => asset.assetKey === "reach")?.content as string) ?? "",
+      leads: (storedCampaign.assets.find((asset) => asset.assetKey === "leads")?.content as string) ?? "",
+    }
+
+    if (nextPreview.audience) setPreview(nextPreview)
+    setCampaign(storedCampaign)
+    if (storedCampaign.goal) setSelectedAudience(storedCampaign.goal as AudienceProfile)
+    if (storedCampaign.visualIdentity) setSelectedChannel(storedCampaign.visualIdentity as MainChannel)
+    setResultVersion(storedCampaign.version)
+    setApprovedVersion(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? storedCampaign.version : null)
+    setApprovedBlocks(buildApprovalMap(storedCampaign))
+    setCurrentStep(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? "approval" : "result")
+  }
 
   function handlePropertyChange(propertyId: string) {
     setSelectedPropertyId(propertyId)
@@ -123,7 +177,7 @@ export function BrokerStudioIaBuyersPage() {
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as (BuyerStrategyPreview & { error?: string }) | null
+      const data = (await response.json().catch(() => null)) as (BuyerStrategyPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
         throw new Error(data?.error || "Nao foi possivel gerar a estrategia para atrair compradores.")
@@ -138,6 +192,7 @@ export function BrokerStudioIaBuyersPage() {
         reach: data.reach,
         leads: data.leads,
       })
+      if (data.campaign) setCampaign(data.campaign)
       setResultVersion(nextVersion)
       setApprovedVersion(null)
       setApprovedBlocks({
@@ -158,17 +213,22 @@ export function BrokerStudioIaBuyersPage() {
     }
   }
 
-  function toggleBlockApproval(block: StrategyBlockKey) {
-    setApprovedBlocks((current) => ({
-      ...current,
-      [block]: !current[block],
-    }))
+  async function toggleBlockApproval(block: StrategyBlockKey) {
+    if (!campaign) return
+    const asset = campaign.assets.find((entry) => entry.assetKey === block)
+    if (!asset) return
+
+    const nextCampaign = await studioCampaignsClient.updateAssetStatus(
+      asset.id,
+      approvedBlocks[block] ? "PENDING_REVIEW" : "APPROVED",
+    )
+    applyStoredCampaign(nextCampaign)
   }
 
-  function approveStrategy() {
-    if (!resultVersion) return
-    setApprovedVersion(resultVersion)
-    setCurrentStep("approval")
+  async function approveStrategy() {
+    if (!campaign || !resultVersion) return
+    const nextCampaign = await studioCampaignsClient.approveCampaign(campaign.id)
+    applyStoredCampaign(nextCampaign)
   }
 
   async function generateAnotherVersion() {
@@ -183,6 +243,7 @@ export function BrokerStudioIaBuyersPage() {
   }
 
   function resetResultState() {
+    setCampaign(null)
     setResultVersion(0)
     setApprovedVersion(null)
     setPreview(null)
