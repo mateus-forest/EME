@@ -90,6 +90,7 @@ const studioCampaignInclude = {
       title: true,
       city: true,
       neighborhood: true,
+      imageUrls: true,
     },
   },
   assets: {
@@ -122,6 +123,11 @@ function resolveWorkspace(user: AuthenticatedStudioUser): WorkspaceRef {
 function toNullableString(value?: string | null) {
   const normalized = value?.trim()
   return normalized ? normalized : null
+}
+
+function parseStringArray(value: Prisma.JsonValue | null | undefined) {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
 }
 
 function normalizeAssetStatus(value?: StudioCampaignAssetStatus): StudioCampaignAssetStatus {
@@ -187,6 +193,8 @@ function serializeCampaign(
   campaign: Prisma.StudioCampaignGetPayload<{ include: typeof studioCampaignInclude }>,
 ) {
   const primaryAsset =
+    campaign.assets.find((asset) => asset.assetKey === "post_feed") ??
+    campaign.assets.find((asset) => asset.assetKey === "story") ??
     campaign.assets.find((asset) => asset.thumbnailUrl || asset.fileUrl) ??
     campaign.assets[0] ??
     null
@@ -215,6 +223,7 @@ function serializeCampaign(
           title: campaign.property.title,
           city: campaign.property.city,
           neighborhood: campaign.property.neighborhood,
+          imageUrls: parseStringArray(campaign.property.imageUrls as Prisma.JsonValue | null),
         }
       : null,
     primaryAsset: primaryAsset

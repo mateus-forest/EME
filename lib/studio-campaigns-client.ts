@@ -57,6 +57,7 @@ export type StudioCampaignRecord = {
     title: string
     city: string
     neighborhood: string | null
+    imageUrls: string[]
   } | null
   primaryAsset: {
     id: string

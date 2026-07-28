@@ -13,6 +13,7 @@ import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, pro
 import { prisma } from "@/lib/prisma"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
 import {
+  buildInstagramPrompt,
   generateInstagramCampaign,
   studioInstagramRequestSchema,
 } from "@/lib/studio-ia-instagram"
@@ -85,6 +86,21 @@ export async function POST(request: NextRequest) {
 
     const property = accessible.property
     const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
+    const prompt = buildInstagramPrompt(payload, {
+      id: property.id,
+      title: property.title,
+      city: property.city,
+      neighborhood: property.neighborhood ?? "",
+      location,
+      type: propertyTypeLabel(property.type),
+      purpose: propertyPurposeLabel(property.purpose),
+      price: formatCurrencyFromCents(property.price),
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      parkingSpots: property.parkingSpots,
+      description: property.description ?? "",
+      status: propertyStatusLabel(property.status),
+    })
     const result = await generateInstagramCampaign(payload, {
       id: property.id,
       title: property.title,
@@ -110,22 +126,31 @@ export async function POST(request: NextRequest) {
       version: payload.version,
       provider: "openai",
       model,
+      prompt,
       sourceRoute: "/api/studio-ia/instagram",
       propertyId: property.id,
       metadata: {
         propertyTitle: property.title,
         city: property.city,
         neighborhood: property.neighborhood,
+        propertyImageUrl: Array.isArray(property.imageUrls)
+          ? property.imageUrls.find((image): image is string => typeof image === "string" && image.trim().length > 0) ?? null
+          : null,
       },
       assets: [
         {
           assetKey: "post_feed",
           label: "Post feed",
-          type: "COPY",
+          type: "IMAGE",
           provider: "openai",
           model,
           status: "PENDING_REVIEW",
           content: result.postFeed as Prisma.InputJsonValue,
+          metadata: {
+            format: "instagram_post_feed",
+            goal: payload.goal,
+            identity: payload.identity,
+          } as Prisma.InputJsonValue,
         },
         {
           assetKey: "story",
@@ -135,6 +160,11 @@ export async function POST(request: NextRequest) {
           model,
           status: "PENDING_REVIEW",
           content: result.story as Prisma.InputJsonValue,
+          metadata: {
+            format: "instagram_story",
+            goal: payload.goal,
+            identity: payload.identity,
+          } as Prisma.InputJsonValue,
         },
         {
           assetKey: "carousel",
@@ -144,6 +174,10 @@ export async function POST(request: NextRequest) {
           model,
           status: "PENDING_REVIEW",
           content: result.carousel as Prisma.InputJsonValue,
+          metadata: {
+            format: "instagram_carousel",
+            slideCount: result.carousel.length,
+          } as Prisma.InputJsonValue,
         },
         {
           assetKey: "caption",
@@ -153,6 +187,9 @@ export async function POST(request: NextRequest) {
           model,
           status: "PENDING_REVIEW",
           content: result.caption,
+          metadata: {
+            format: "instagram_caption",
+          } as Prisma.InputJsonValue,
         },
         {
           assetKey: "cta",
@@ -162,6 +199,9 @@ export async function POST(request: NextRequest) {
           model,
           status: "PENDING_REVIEW",
           content: result.cta,
+          metadata: {
+            format: "instagram_cta",
+          } as Prisma.InputJsonValue,
         },
         {
           assetKey: "hashtags",
@@ -171,6 +211,9 @@ export async function POST(request: NextRequest) {
           model,
           status: "PENDING_REVIEW",
           content: result.hashtags as Prisma.InputJsonValue,
+          metadata: {
+            format: "instagram_hashtags",
+          } as Prisma.InputJsonValue,
         },
       ],
     })

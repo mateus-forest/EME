@@ -33,12 +33,19 @@ import {
 } from "@/lib/studio-campaigns-client"
 import {
   extractTextFromAsset,
+  getAssetActionLabels,
+  getAssetDownloadDescriptor,
+  getAssetOpenDescriptor,
+  getAssetPreviewSource,
   formatStudioCampaignAssetType,
   formatStudioCampaignDate,
   formatStudioCampaignKind,
   formatStudioCampaignStatus,
   getCampaignCoverUrl,
   getCampaignPropertyLabel,
+  getStudioCampaignWorkspacePath,
+  isPreviewableAsset,
+  isVisualAsset,
   getStudioStatusTone,
 } from "@/lib/studio-campaigns-ui"
 import { cn } from "@/lib/utils"
@@ -62,10 +69,6 @@ function StatusPill({ status }: { status: StudioCampaignRecord["status"] | Studi
   )
 }
 
-function isVisualAsset(asset: AssetRecord) {
-  return Boolean(asset.fileUrl) && (asset.type === "IMAGE" || asset.type === "THUMBNAIL" || asset.type === "VIDEO")
-}
-
 function getAssetDisplayText(asset: AssetRecord) {
   const text = extractTextFromAsset(asset)
   return text || "Sem conteudo textual adicional."
@@ -78,6 +81,20 @@ async function copyText(value: string, fallbackMessage: string) {
   }
 
   await navigator.clipboard.writeText(normalized)
+}
+
+function triggerDownload(href: string, filename?: string) {
+  const anchor = document.createElement("a")
+  anchor.href = href
+  if (filename) anchor.download = filename
+  anchor.target = "_blank"
+  anchor.rel = "noreferrer"
+  anchor.click()
+}
+
+function openDescriptor(descriptor: ReturnType<typeof getAssetOpenDescriptor>) {
+  if (!descriptor) return
+  window.open(descriptor.src, "_blank", "noopener,noreferrer")
 }
 
 export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: string }) {
@@ -169,6 +186,18 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
     }
   }
 
+  function handleOpenAsset(asset: AssetRecord) {
+    if (!campaign) return
+    openDescriptor(getAssetOpenDescriptor(campaign, asset))
+  }
+
+  function handleDownloadAsset(asset: AssetRecord) {
+    if (!campaign) return
+    const descriptor = getAssetDownloadDescriptor(campaign, asset)
+    if (!descriptor) return
+    triggerDownload(descriptor.src, descriptor.filename)
+  }
+
   return (
     <BrokerPageShell title="Biblioteca">
       <div className="grid gap-5">
@@ -227,22 +256,19 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
 
         {campaign ? (
           <>
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
               <Card className="overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
-                <div className="aspect-[1.9/1] overflow-hidden border-b border-black/[0.05] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
-                  {getCampaignCoverUrl(campaign) ? (
-                    <img src={getCampaignCoverUrl(campaign)!} alt={campaign.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <div className="flex size-18 items-center justify-center rounded-[1.75rem] border border-[#009b3a]/12 bg-white/80 text-[#009b3a]">
-                        <BookOpen className="size-8" />
-                      </div>
-                    </div>
-                  )}
+                <div className="relative aspect-[1.85/1] overflow-hidden border-b border-black/[0.05] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
+                  <img src={getCampaignCoverUrl(campaign)} alt={campaign.title} className="h-full w-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-6 py-6 text-white">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/78">{formatStudioCampaignKind(campaign.kind)}</p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-tight">{campaign.title}</h3>
+                    <p className="mt-2 max-w-2xl text-sm text-white/82">{getCampaignPropertyLabel(campaign)}</p>
+                  </div>
                 </div>
                 <CardContent className="grid gap-4 p-5">
                   <div className="flex flex-wrap gap-2">
-                    {["Versoes", "Historico", "Publicacao", "Favoritos", "Compartilhamento", "Colecoes"].map((item) => (
+                    {["Versoes", "Historico", "Prompts", "Downloads", "Biblioteca", "Colecoes"].map((item) => (
                       <span key={item} className="rounded-full border border-black/[0.06] bg-[#f9fafb] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#7b8491]">
                         {item}
                       </span>
@@ -252,26 +278,35 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                     <InfoBlock label="Tipo" value={formatStudioCampaignKind(campaign.kind)} />
                     <InfoBlock label="Status" value={formatStudioCampaignStatus(campaign.status)} />
                     <InfoBlock label="Imovel" value={getCampaignPropertyLabel(campaign)} />
-                    <InfoBlock label="Rota" value={campaign.sourceRoute || "Nao informada"} />
+                    <InfoBlock label="Assets" value={`${campaign.assets.length} salvos`} />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
-                <CardContent className="grid gap-4 p-5">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">Prompt utilizado</p>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#44505f]">{campaignPrompt}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid gap-4">
+                <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
+                  <CardContent className="grid gap-4 p-5">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">Prompt utilizado</p>
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#44505f]">{campaignPrompt}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
+                  <CardContent className="grid gap-3 p-5">
+                    <InfoBlock label="Provider" value={campaign.provider || "Nao informado"} />
+                    <InfoBlock label="Modelo" value={campaign.model || "Nao informado"} />
+                    <InfoBlock label="Rota" value={campaign.sourceRoute || "Nao informada"} />
+                  </CardContent>
+                </Card>
+              </div>
             </section>
 
             <section className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-2xl font-semibold tracking-tight text-[#050505]">Assets da campanha</h3>
-                  <p className="mt-2 text-sm text-[#667085]">Cada asset pode ser revisado, aprovado individualmente e mantido no historico do Studio IA.</p>
+                  <p className="mt-2 text-sm text-[#667085]">Assets organizados como biblioteca premium, com visualizacao, abertura, download e acoes por tipo.</p>
                 </div>
               </div>
 
@@ -291,8 +326,11 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                     <AssetCard
                       key={asset.id}
                       asset={asset}
+                      campaign={campaign}
                       isUpdating={isUpdating === asset.id}
                       onPreview={() => setPreviewAsset(asset)}
+                      onOpen={() => handleOpenAsset(asset)}
+                      onDownload={() => handleDownloadAsset(asset)}
                       onApprove={() => handleAssetStatus(asset.id, "APPROVED")}
                       onReject={() => handleAssetStatus(asset.id, "REJECTED")}
                       onDelete={() => handleDeleteAsset(asset)}
@@ -318,11 +356,15 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                 </DialogDescription>
               </DialogHeader>
 
-              {previewAsset.fileUrl ? (
-                previewAsset.type === "VIDEO" ? (
+              {campaign && getAssetPreviewSource(campaign, previewAsset) ? (
+                previewAsset.type === "VIDEO" && previewAsset.fileUrl ? (
                   <video src={previewAsset.fileUrl} controls className="max-h-[60vh] w-full rounded-[1.25rem] bg-black" />
                 ) : (
-                  <img src={previewAsset.fileUrl} alt={previewAsset.label || "Asset"} className="max-h-[60vh] w-full rounded-[1.25rem] object-contain bg-[#f8faf8]" />
+                  <img
+                    src={getAssetPreviewSource(campaign, previewAsset) || ""}
+                    alt={previewAsset.label || "Asset"}
+                    className="max-h-[60vh] w-full rounded-[1.25rem] object-contain bg-[#f8faf8]"
+                  />
                 )
               ) : (
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbfa] p-4 text-sm leading-6 whitespace-pre-wrap text-[#44505f]">
@@ -357,8 +399,11 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function AssetCard({
   asset,
+  campaign,
   isUpdating,
   onPreview,
+  onOpen,
+  onDownload,
   onApprove,
   onReject,
   onDelete,
@@ -366,8 +411,11 @@ function AssetCard({
   onCopyPrompt,
 }: {
   asset: AssetRecord
+  campaign: StudioCampaignRecord
   isUpdating: boolean
   onPreview: () => void
+  onOpen: () => void
+  onDownload: () => void
   onApprove: () => void
   onReject: () => void
   onDelete: () => void
@@ -375,6 +423,17 @@ function AssetCard({
   onCopyPrompt: () => void
 }) {
   const textPreview = getAssetDisplayText(asset)
+  const previewSrc = getAssetPreviewSource(campaign, asset)
+  const actionLabels = getAssetActionLabels(asset)
+  const canPreview = isPreviewableAsset(campaign, asset)
+  const canOpen = Boolean(getAssetOpenDescriptor(campaign, asset))
+  const canDownload = Boolean(getAssetDownloadDescriptor(campaign, asset)) && asset.type !== "COPY" && asset.type !== "CAROUSEL"
+  const canCopyText = Boolean(textPreview.trim())
+  const canCopyPrompt = Boolean((asset.promptRevised || asset.prompt || "").trim())
+  const regenerateBasePath = getStudioCampaignWorkspacePath(campaign.kind)
+  const regenerateHref = regenerateBasePath
+    ? `${regenerateBasePath}?propertyId=${encodeURIComponent(campaign.propertyId ?? "")}&campaignId=${encodeURIComponent(campaign.id)}&assetKey=${encodeURIComponent(asset.assetKey)}`
+    : null
 
   return (
     <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/92 py-0">
@@ -400,13 +459,13 @@ function AssetCard({
       </div>
 
       <CardContent className="grid gap-4 p-5">
-        {isVisualAsset(asset) ? (
+        {isVisualAsset(campaign, asset) && previewSrc ? (
           <button
             type="button"
             onClick={onPreview}
             className="overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f9faf9] text-left"
           >
-            {asset.type === "VIDEO" ? (
+            {asset.type === "VIDEO" && asset.fileUrl ? (
               <div className="relative flex aspect-[1.5/1] items-center justify-center bg-[#111111] text-white">
                 {asset.thumbnailUrl ? (
                   <img src={asset.thumbnailUrl} alt={asset.label || "Preview do asset"} className="absolute inset-0 h-full w-full object-cover opacity-80" />
@@ -416,7 +475,7 @@ function AssetCard({
                 </div>
               </div>
             ) : (
-              <img src={asset.thumbnailUrl || asset.fileUrl || ""} alt={asset.label || "Preview do asset"} className="aspect-[1.5/1] w-full object-cover" />
+              <img src={previewSrc} alt={asset.label || "Preview do asset"} className="aspect-[1.5/1] w-full object-cover" />
             )}
           </button>
         ) : (
@@ -427,12 +486,16 @@ function AssetCard({
         )}
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <ActionButton icon={Eye} label="Visualizar" onClick={onPreview} />
-          <ActionLink icon={ArrowUpRight} label="Abrir" href={asset.fileUrl} disabled={!asset.fileUrl} />
-          <ActionLink icon={Download} label="Baixar" href={asset.fileUrl} disabled={!asset.fileUrl} download />
-          <ActionButton icon={Copy} label="Copiar legenda" onClick={onCopyCaption} />
-          <ActionButton icon={Copy} label="Copiar prompt" onClick={onCopyPrompt} />
-          <ActionButton icon={RefreshCcw} label="Regenerar" onClick={() => undefined} disabled />
+          <ActionButton icon={Eye} label="Visualizar" onClick={onPreview} disabled={!canPreview} />
+          <ActionButton icon={ArrowUpRight} label={actionLabels.open} onClick={onOpen} disabled={!canOpen} />
+          <ActionButton icon={Download} label={actionLabels.download} onClick={onDownload} disabled={!canDownload} />
+          <ActionButton icon={Copy} label={actionLabels.copy} onClick={onCopyCaption} disabled={!canCopyText} />
+          <ActionButton icon={Copy} label={actionLabels.prompt} onClick={onCopyPrompt} disabled={!canCopyPrompt} />
+          {regenerateHref ? (
+            <ActionLink icon={RefreshCcw} label="Regenerar" href={regenerateHref} />
+          ) : (
+            <ActionButton icon={RefreshCcw} label="Regenerar" onClick={() => undefined} disabled />
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">

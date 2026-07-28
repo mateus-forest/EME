@@ -67,7 +67,7 @@ export type StudioInstagramPropertyContext = {
   status: string
 }
 
-function buildInstagramPrompt(input: StudioInstagramRequest, property: StudioInstagramPropertyContext) {
+export function buildInstagramPrompt(input: StudioInstagramRequest, property: StudioInstagramPropertyContext) {
   return [
     "Crie uma campanha imobiliaria pronta para Instagram em portugues do Brasil.",
     `Objetivo da campanha: ${input.goal}.`,
