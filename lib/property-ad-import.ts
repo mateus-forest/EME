@@ -880,21 +880,6 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     },
   })
 
-  console.info("[property-ad-import][openai-response]", {
-    response,
-    output: response.output,
-    outputText: response.output_text,
-    outputParsed: (response as { output_parsed?: unknown }).output_parsed,
-    parsed: (response as { parsed?: unknown }).parsed,
-    content: (response as { content?: unknown }).content,
-    status: response.status,
-    incompleteDetails: response.incomplete_details,
-    finishReason:
-      (response as { finish_reason?: string }).finish_reason ??
-      (response as { status?: string }).status ??
-      (response as { incomplete_details?: { reason?: string } }).incomplete_details?.reason,
-  })
-
   try {
     if (isTruncatedStructuredOutputResponse(response)) {
       console.error("[property-ad-import][openai-response-truncated]", {
