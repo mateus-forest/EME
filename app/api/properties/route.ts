@@ -4,6 +4,7 @@ import {
   NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { parseEntityDocuments } from "@/lib/legal-entities"
 import { enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
 import { mapPropertyPurpose, mapPropertyStatus, mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { getNextPropertyPublicCode } from "@/lib/property-public-code"
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
     const propertyType = mapPropertyType(body?.type)
     const purpose = mapPropertyPurpose(body?.purpose)
     const statusPayload = mapPropertyStatus(body?.status ?? (body?.published ? "Publicado" : "Rascunho"))
+    const ownerName = typeof body?.ownerName === "string" ? body.ownerName.trim().slice(0, 160) : ""
+    const legalData = normalizePropertyLegalData(body?.legal)
+    const documentsData = normalizeDocuments(body?.documents)
     const images = Array.isArray(body?.images)
       ? body.images.filter((image: unknown): image is string => typeof image === "string").slice(0, 6)
       : []
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
         price,
         city,
         neighborhood,
+        ownerName: ownerName || null,
         bedrooms,
         bathrooms,
         parkingSpots,
@@ -84,6 +89,8 @@ export async function POST(request: NextRequest) {
         status: statusPayload.status,
         published: statusPayload.published,
         imageUrls: images,
+        legalData,
+        documentsData,
         brokerId: user.broker.id,
         agencyId: null,
       },
@@ -116,4 +123,48 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Erro interno ao criar imóvel." }, { status: 500 })
   }
+}
+
+function cleanText(value: unknown, maxLength: number) {
+  if (typeof value !== "string") return ""
+  return value.trim().slice(0, maxLength)
+}
+
+function normalizePropertyLegalData(value: unknown) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return {
+    code: cleanText(source.code, 64),
+    registryNumber: cleanText(source.registryNumber, 64),
+    registryOffice: cleanText(source.registryOffice, 160),
+    registryBook: cleanText(source.registryBook, 64),
+    registryPage: cleanText(source.registryPage, 64),
+    municipalRegistration: cleanText(source.municipalRegistration, 64),
+    taxRegistration: cleanText(source.taxRegistration, 64),
+    cep: cleanText(source.cep, 16),
+    street: cleanText(source.street, 160),
+    number: cleanText(source.number, 24),
+    complement: cleanText(source.complement, 120),
+    district: cleanText(source.district, 120),
+    city: cleanText(source.city, 120),
+    state: cleanText(source.state, 32),
+    privateArea: cleanText(source.privateArea, 64),
+    totalArea: cleanText(source.totalArea, 64),
+    idealFraction: cleanText(source.idealFraction, 64),
+    condominiumName: cleanText(source.condominiumName, 160),
+    condominiumFee: cleanText(source.condominiumFee, 64),
+    iptuValue: cleanText(source.iptuValue, 64),
+    additionalFees: cleanText(source.additionalFees, 120),
+    legalNotes: cleanText(source.legalNotes, 1200),
+  }
+}
+
+function normalizeDocuments(value: unknown) {
+  return parseEntityDocuments(value).map((document) => ({
+    ...document,
+    label: cleanText(document.label, 64),
+    name: cleanText(document.name, 160),
+    url: cleanText(document.url, 5_000),
+    mimeType: cleanText(document.mimeType, 120),
+    uploadedAt: cleanText(document.uploadedAt, 64) || new Date().toISOString(),
+  }))
 }

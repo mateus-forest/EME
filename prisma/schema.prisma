@@ -196,6 +196,7 @@ model Property {
   price        Int
   city         String
   neighborhood String?
+  ownerName    String?
   bedrooms     Int            @default(0)
   bathrooms    Int            @default(0)
   parkingSpots Int            @default(0)
@@ -204,6 +205,8 @@ model Property {
   status       PropertyStatus @default(DRAFT)
   published    Boolean        @default(false)
   imageUrls    Json?
+  legalData    Json?
+  documentsData Json?
   viewsCount   Int            @default(0)
   leadsCount   Int            @default(0)
   brokerId     String
@@ -549,12 +552,16 @@ model Lead {
   name       String?
   email      String?
   phone      String?
+  whatsapp   String?
   message    String?
   catalogSlug String?
   searchTerm String?
   intent     String?
   source     String
   status     LeadStatus @default(NEW)
+  legalData  Json?
+  addressData Json?
+  documentsData Json?
   propertyId String?
   brokerId   String?
   agencyId   String?

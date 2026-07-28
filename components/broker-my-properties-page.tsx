@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -10,6 +10,9 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties, type BrokerProperty as Property } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
+import { formatCep, lookupCep } from "@/lib/cep"
+import { subscribeEntitySync } from "@/lib/entity-sync"
+import type { EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { getPropertyImage } from "@/lib/property-media"
 import { formatCurrencyInput } from "@/lib/currency"
@@ -29,6 +32,7 @@ type EditableProperty = {
   title: string
   city: string
   neighborhood: string
+  ownerName: string
   price: string
   images: string[]
   bedrooms: number
@@ -39,9 +43,14 @@ type EditableProperty = {
   purpose: Property["purpose"]
   description: string
   audioUrl: string
+  legal: PropertyLegalData
+  documents: EntityDocumentRecord[]
+  completion: Property["completion"]
 }
 
-export function BrokerMyPropertiesPage() {
+const propertyDocumentLabels = ["Matrícula", "Escritura", "IPTU", "Planta", "Convenção", "Outros"]
+
+export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyId?: string }) {
   const router = useRouter()
   const { profile } = useBrokerProfile()
   const {
@@ -66,6 +75,7 @@ export function BrokerMyPropertiesPage() {
   const [saveFeedback, setSaveFeedback] = useState("")
   const [listFeedback, setListFeedback] = useState("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
   const publishedPropertiesCount = useMemo(() => properties.filter((property) => property.status === "Publicado").length, [properties])
   const hasReachedLimit =
@@ -96,6 +106,23 @@ export function BrokerMyPropertiesPage() {
   const hasActiveFilters =
     normalizedSearch.length > 0 || statusFilters.length < 2 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
 
+  useEffect(() => {
+    if (!initialPropertyId || !properties.length) return
+    const property = properties.find((item) => item.id === initialPropertyId)
+    if (property) openEditModal(property)
+  }, [initialPropertyId, openEditModal, properties])
+
+  useEffect(() => {
+    const unsubscribe = subscribeEntitySync((message) => {
+      if (message.type === "property" && initialPropertyId && editingProperty?.id === initialPropertyId) {
+        const nextProperty = properties.find((item) => item.id === initialPropertyId)
+        if (nextProperty) openEditModal(nextProperty)
+      }
+    })
+
+    return unsubscribe
+  }, [editingProperty?.id, initialPropertyId, openEditModal, properties])
+
   function clearFilters() {
     setSearch("")
     setStatusFilters(["Publicado", "Rascunho"])
@@ -107,12 +134,14 @@ export function BrokerMyPropertiesPage() {
     onChange(current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
   }
 
-  function openEditModal(property: Property) {
+  const openEditModal = useCallback((property: Property) => {
+    router.push(`/corretor/imoveis/${property.id}`)
     setEditingProperty({
       id: property.id,
       title: property.title,
       city: property.city,
       neighborhood: property.neighborhood,
+      ownerName: property.ownerName,
       price: property.price,
       images: [...property.images],
       bedrooms: property.bedrooms,
@@ -123,15 +152,19 @@ export function BrokerMyPropertiesPage() {
       purpose: property.purpose,
       description: property.description,
       audioUrl: property.audioUrl,
+      legal: property.legal,
+      documents: property.documents,
+      completion: property.completion,
     })
     setSaveFeedback("")
     setAiHighlights([])
     setIsEditModalOpen(true)
-  }
+  }, [router])
 
   function closeEditModal(open: boolean) {
     setIsEditModalOpen(open)
     if (!open) {
+      router.push("/corretor/imoveis")
       setTimeout(() => {
         setEditingProperty(null)
         setSaveFeedback("")
@@ -142,6 +175,20 @@ export function BrokerMyPropertiesPage() {
 
   function updateField<K extends keyof EditableProperty>(field: K, value: EditableProperty[K]) {
     setEditingProperty((current) => (current ? { ...current, [field]: value } : current))
+  }
+
+  function updateLegalField<K extends keyof PropertyLegalData>(field: K, value: PropertyLegalData[K]) {
+    setEditingProperty((current) =>
+      current
+        ? {
+            ...current,
+            legal: {
+              ...current.legal,
+              [field]: value,
+            },
+          }
+        : current,
+    )
   }
 
   async function addPropertyPhotos(files: FileList | null) {
@@ -194,6 +241,7 @@ export function BrokerMyPropertiesPage() {
         title: updatedProperty.title,
         city: updatedProperty.city,
         neighborhood: updatedProperty.neighborhood,
+        ownerName: updatedProperty.ownerName,
         price: updatedProperty.price,
         images: [...updatedProperty.images],
         bedrooms: updatedProperty.bedrooms,
@@ -204,6 +252,9 @@ export function BrokerMyPropertiesPage() {
         purpose: updatedProperty.purpose,
         description: updatedProperty.description,
         audioUrl: updatedProperty.audioUrl,
+        legal: updatedProperty.legal,
+        documents: updatedProperty.documents,
+        completion: updatedProperty.completion,
       })
       setSaveFeedback("Alterações salvas com sucesso")
     } catch (caughtError) {
@@ -305,6 +356,59 @@ export function BrokerMyPropertiesPage() {
     } catch (caughtError) {
       setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
     }
+  }
+
+  async function applyPropertyCep() {
+    if (!editingProperty) return
+    setIsLoadingCep(true)
+
+    try {
+      const result = await lookupCep(editingProperty.legal.cep)
+      setEditingProperty((current) =>
+        current
+          ? {
+              ...current,
+              legal: {
+                ...current.legal,
+                cep: result.cep,
+                street: result.street,
+                complement: current.legal.complement || result.complement,
+                district: result.district,
+                city: result.city,
+                state: result.state,
+              },
+            }
+          : current,
+      )
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel localizar o CEP.")
+    } finally {
+      setIsLoadingCep(false)
+    }
+  }
+
+  async function addPropertyDocuments(label: string, files: FileList | null) {
+    if (!editingProperty || !files?.length) return
+
+    const nextDocuments = await Promise.all(
+      Array.from(files).map(async (file) => ({
+        id: crypto.randomUUID(),
+        label,
+        name: file.name,
+        mimeType: file.type,
+        uploadedAt: new Date().toISOString(),
+        url: await readFileAsDataUrl(file),
+      })),
+    )
+
+    setEditingProperty((current) =>
+      current
+        ? {
+            ...current,
+            documents: [...current.documents, ...nextDocuments],
+          }
+        : current,
+    )
   }
 
   const publishToggleChecked = useMemo(() => editingProperty?.status === "Publicado", [editingProperty])
@@ -554,6 +658,70 @@ export function BrokerMyPropertiesPage() {
                         <Field label="Vagas"><CounterInput value={editingProperty.parking} onChange={(value) => updateField("parking", value)} /></Field>
                         <Field label="Cidade"><Input value={editingProperty.city} onChange={(event) => updateField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Bairro"><Input value={editingProperty.neighborhood} onChange={(event) => updateField("neighborhood", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="ProprietÃ¡rio"><Input value={editingProperty.ownerName} onChange={(event) => updateField("ownerName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                      </div>
+                    </section>
+
+                    <section className="grid gap-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-[#050505]">Cadastro jurÃ­dico</h3>
+                          <p className="mt-1 text-sm text-[#6B7280]">O contrato consome matrÃ­cula, cartÃ³rio, endereÃ§o e Ã¡reas diretamente daqui.</p>
+                        </div>
+                        <div className="rounded-[1rem] border border-black/[0.06] bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-[#8B95A1]">Cadastro</p>
+                          <p className="mt-1 text-2xl font-semibold text-[#050505]">{editingProperty.completion.score}%</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-[180px_auto]">
+                        <Field label="CEP">
+                          <div className="flex gap-2">
+                            <Input value={editingProperty.legal.cep} onChange={(event) => updateLegalField("cep", formatCep(event.target.value))} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                            <Button type="button" variant="ghost" onClick={() => void applyPropertyCep()} disabled={isLoadingCep} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563]">
+                              {isLoadingCep ? "Buscando..." : "Buscar CEP"}
+                            </Button>
+                          </div>
+                        </Field>
+                        <Field label="Rua"><Input value={editingProperty.legal.street} onChange={(event) => updateLegalField("street", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <Field label="NÃºmero"><Input value={editingProperty.legal.number} onChange={(event) => updateLegalField("number", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Complemento"><Input value={editingProperty.legal.complement} onChange={(event) => updateLegalField("complement", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Bairro jurÃ­dico"><Input value={editingProperty.legal.district} onChange={(event) => updateLegalField("district", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Estado"><Input value={editingProperty.legal.state} onChange={(event) => updateLegalField("state", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Cidade jurÃ­dica"><Input value={editingProperty.legal.city} onChange={(event) => updateLegalField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="MatrÃ­cula"><Input value={editingProperty.legal.registryNumber} onChange={(event) => updateLegalField("registryNumber", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="CartÃ³rio"><Input value={editingProperty.legal.registryOffice} onChange={(event) => updateLegalField("registryOffice", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Livro"><Input value={editingProperty.legal.registryBook} onChange={(event) => updateLegalField("registryBook", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Folha"><Input value={editingProperty.legal.registryPage} onChange={(event) => updateLegalField("registryPage", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Cadastro municipal"><Input value={editingProperty.legal.municipalRegistration} onChange={(event) => updateLegalField("municipalRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="InscriÃ§Ã£o imobiliÃ¡ria"><Input value={editingProperty.legal.taxRegistration} onChange={(event) => updateLegalField("taxRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="IPTU"><Input value={editingProperty.legal.iptuValue} onChange={(event) => updateLegalField("iptuValue", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Ãrea privativa"><Input value={editingProperty.legal.privateArea} onChange={(event) => updateLegalField("privateArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Ãrea total"><Input value={editingProperty.legal.totalArea} onChange={(event) => updateLegalField("totalArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="FraÃ§Ã£o ideal"><Input value={editingProperty.legal.idealFraction} onChange={(event) => updateLegalField("idealFraction", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="CondomÃ­nio"><Input value={editingProperty.legal.condominiumName} onChange={(event) => updateLegalField("condominiumName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Taxa de condomÃ­nio"><Input value={editingProperty.legal.condominiumFee} onChange={(event) => updateLegalField("condominiumFee", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Taxas adicionais"><Input value={editingProperty.legal.additionalFees} onChange={(event) => updateLegalField("additionalFees", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                      </div>
+
+                      <Field label="ObservaÃ§Ãµes jurÃ­dicas">
+                        <Textarea value={editingProperty.legal.legalNotes} onChange={(event) => updateLegalField("legalNotes", event.target.value)} className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505]" />
+                      </Field>
+
+                      <div className="grid gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          {propertyDocumentLabels.map((label) => (
+                            <label key={label} className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-3 py-2 text-sm text-[#4B5563]">
+                              <input type="file" accept="image/*,.pdf" className="sr-only" onChange={(event) => void addPropertyDocuments(label, event.target.files)} />
+                              <ImagePlus className="size-4" />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+                        <PropertyDocumentsList documents={editingProperty.documents} />
                       </div>
                     </section>
 
@@ -681,4 +849,35 @@ function CounterInput({ value, onChange }: { value: number; onChange: (value: nu
       <Button type="button" variant="ghost" size="icon" onClick={() => onChange(value + 1)} className="size-7 rounded-lg text-[#5F6B7A] hover:bg-white hover:text-[#050505]">+</Button>
     </div>
   )
+}
+
+function PropertyDocumentsList({ documents }: { documents: EntityDocumentRecord[] }) {
+  if (!documents.length) {
+    return <p className="text-sm text-[#8B95A1]">Nenhum documento anexado ainda.</p>
+  }
+
+  return (
+    <div className="grid gap-2">
+      {documents.map((document) => (
+        <a
+          key={document.id}
+          href={document.url}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-xl border border-black/[0.06] bg-white px-3 py-2 text-sm text-[#4B5563]"
+        >
+          {document.label}: {document.name}
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error("NÃ£o foi possÃ­vel ler o arquivo selecionado."))
+    reader.readAsDataURL(file)
+  })
 }

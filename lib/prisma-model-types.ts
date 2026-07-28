@@ -64,6 +64,7 @@ export type Property = {
   price: number
   city: string
   neighborhood: string | null
+  ownerName: string | null
   bedrooms: number
   bathrooms: number
   parkingSpots: number
@@ -72,6 +73,8 @@ export type Property = {
   status: PropertyStatus
   published: boolean
   imageUrls: unknown
+  legalData: unknown
+  documentsData: unknown
   viewsCount: number
   leadsCount: number
   brokerId: string
@@ -104,12 +107,16 @@ export type Lead = {
   name: string | null
   email: string | null
   phone: string | null
+  whatsapp: string | null
   message: string | null
   catalogSlug: string | null
   searchTerm: string | null
   intent: string | null
   source: string
   status: LeadStatus
+  legalData: unknown
+  addressData: unknown
+  documentsData: unknown
   propertyId: string | null
   brokerId: string | null
   agencyId: string | null

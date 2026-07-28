@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
+import { subscribeEntitySync } from "@/lib/entity-sync"
 import {
   createContractContent,
   type ContractStatus,
@@ -236,24 +237,28 @@ function buildPlaceholderMap(input: {
   const commission = draft.commissionPercent ? `${formatPercentInput(draft.commissionPercent)}%` : ""
 
   return {
-    VENDEDOR: "",
+    VENDEDOR: property?.ownerName || "",
     VENDEDOR_CPF_CNPJ: "",
     VENDEDOR_RG: "",
     VENDEDOR_ESTADO_CIVIL: "",
     VENDEDOR_PROFISSAO: "",
     VENDEDOR_NACIONALIDADE: "",
-    VENDEDOR_ENDERECO: "",
+    VENDEDOR_ENDERECO: [property?.legal.street, property?.legal.number, property?.legal.district, property?.legal.city]
+      .filter(Boolean)
+      .join(", "),
     VENDEDOR_TELEFONE: "",
     VENDEDOR_EMAIL: "",
     COMPRADOR: lead?.name || "",
-    COMPRADOR_CPF_CNPJ: "",
-    COMPRADOR_RG: "",
-    COMPRADOR_ESTADO_CIVIL: "",
-    COMPRADOR_PROFISSAO: "",
-    COMPRADOR_NACIONALIDADE: "",
-    COMPRADOR_ENDERECO: "",
+    COMPRADOR_CPF_CNPJ: lead?.identification.cpfCnpj || "",
+    COMPRADOR_RG: lead?.identification.rg || "",
+    COMPRADOR_ESTADO_CIVIL: lead?.identification.maritalStatus || "",
+    COMPRADOR_PROFISSAO: lead?.identification.profession || "",
+    COMPRADOR_NACIONALIDADE: lead?.identification.nationality || "",
+    COMPRADOR_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
+      .filter(Boolean)
+      .join(", "),
     COMPRADOR_EMAIL: lead?.email || "",
-    COMPRADOR_TELEFONE: lead?.phone || "",
+    COMPRADOR_TELEFONE: lead?.whatsApp || lead?.phone || "",
     CORRETOR: broker?.name || "",
     CORRETOR_EMAIL: broker?.email || "",
     CORRETOR_TELEFONE: broker?.phone || "",
@@ -263,16 +268,16 @@ function buildPlaceholderMap(input: {
     CODIGO_INTERNO: property?.publicCode ? String(property.publicCode) : "",
     TIPO_IMOVEL: property?.type || "",
     FINALIDADE: property?.purpose || "",
-    IMOVEL_ENDERECO: "",
+    IMOVEL_ENDERECO: [property?.legal.street, property?.legal.number, property?.legal.complement].filter(Boolean).join(", "),
     BAIRRO: property?.neighborhood || "",
-    CIDADE: property?.city || "",
-    ESTADO: "",
-    CEP: "",
-    MATRICULA: "",
-    CARTORIO_REGISTRO: "",
-    INSCRICAO_IMOBILIARIA: "",
-    AREA_PRIVATIVA: "",
-    AREA_TOTAL: "",
+    CIDADE: property?.legal.city || property?.city || "",
+    ESTADO: property?.legal.state || "",
+    CEP: property?.legal.cep || "",
+    MATRICULA: property?.legal.registryNumber || "",
+    CARTORIO_REGISTRO: property?.legal.registryOffice || "",
+    INSCRICAO_IMOBILIARIA: property?.legal.taxRegistration || "",
+    AREA_PRIVATIVA: property?.legal.privateArea || "",
+    AREA_TOTAL: property?.legal.totalArea || "",
     VAGAS: typeof property?.parkingSpots === "number" ? String(property.parkingSpots) : "",
     BENFEITORIAS: "",
     UNIDADE_COMPLEMENTO: "",
@@ -353,37 +358,39 @@ function buildWorkspaceSections(input: {
     {
       key: "client",
       title: "Cliente",
-      route: "/corretor/clientes",
+      route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
       actionLabel: "Editar cliente",
       summary: lead?.name || "Selecione um cliente para compor o contrato.",
       items: [
         { label: "Nome", value: lead?.name || "" },
-        { label: "Telefone", value: lead?.phone || "" },
+        { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
         { label: "E-mail", value: lead?.email || "" },
-        { label: "CPF", value: "" },
-        { label: "RG", value: "" },
-        { label: "Estado civil", value: "" },
-        { label: "Profissao", value: "" },
-        { label: "Endereco", value: "" },
+        { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+        { label: "RG", value: lead?.identification.rg || "" },
+        { label: "Estado civil", value: lead?.identification.maritalStatus || "" },
+        { label: "Regime de bens", value: lead?.identification.propertyRegime || "" },
+        { label: "Nacionalidade", value: lead?.identification.nationality || "" },
+        { label: "Profissao", value: lead?.identification.profession || "" },
+        { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
       ],
     },
     {
       key: "property",
       title: "Imovel",
-      route: "/corretor/imoveis",
+      route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
       actionLabel: "Editar imovel",
       summary: property?.title || "Selecione um imovel para alimentar o documento.",
       items: [
         { label: "Titulo", value: property?.title || "" },
-        { label: "Cidade", value: property?.city || "" },
+        { label: "Cidade", value: property?.legal.city || property?.city || "" },
         { label: "Bairro", value: property?.neighborhood || "" },
         { label: "Valor anunciado", value: property?.formattedPrice || "" },
-        { label: "Matricula", value: "" },
-        { label: "Area privativa", value: "" },
-        { label: "Cartorio", value: "" },
-        { label: "CEP", value: "" },
-        { label: "Endereco", value: "" },
-        { label: "Proprietario / vendedor", value: "" },
+        { label: "Matricula", value: property?.legal.registryNumber || "" },
+        { label: "Area privativa", value: property?.legal.privateArea || "" },
+        { label: "Cartorio", value: property?.legal.registryOffice || "" },
+        { label: "CEP", value: property?.legal.cep || "" },
+        { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+        { label: "Proprietario / vendedor", value: property?.ownerName || "" },
       ],
     },
     {
@@ -735,6 +742,32 @@ export function BrokerContractsPage() {
   const [amountCustomized, setAmountCustomized] = useState(false)
   const [commissionCustomized, setCommissionCustomized] = useState(false)
 
+  const loadEntitySources = useCallback(async () => {
+    const [leadsResponse, propertiesResponse, brokerResponse, financialResponse] = await Promise.all([
+      fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" }).then((response) =>
+        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
+      ),
+      fetch("/api/properties/me", { credentials: "include", cache: "no-store" }).then((response) =>
+        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
+      ),
+      fetch("/api/brokers/me", { credentials: "include", cache: "no-store" }).then((response) =>
+        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
+      ),
+      fetch("/api/brokers/financial", { credentials: "include", cache: "no-store" }).then((response) =>
+        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
+      ),
+    ])
+
+    if (leadsResponse.ok) setLeads((leadsResponse.data?.leads ?? []) as LeadRecord[])
+    if (propertiesResponse.ok) setProperties((propertiesResponse.data?.properties ?? []) as PropertyApiItem[])
+    if (brokerResponse.ok) setBrokerProfile((brokerResponse.data?.profile ?? null) as BrokerProfile | null)
+    if (financialResponse.ok) {
+      setFinancialConfig({
+        commissionPercent: Number(financialResponse.data?.config?.commissionPercent) || DEFAULT_COMMISSION_PERCENT,
+      })
+    }
+  }, [])
+
   const selectedContract = useMemo(
     () => contractsList.find((item) => item.id === selectedId) ?? null,
     [contractsList, selectedId],
@@ -786,38 +819,20 @@ export function BrokerContractsPage() {
   useEffect(() => {
     let ignore = false
 
-    Promise.all([
-      fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" }).then((response) =>
-        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
-      ),
-      fetch("/api/properties/me", { credentials: "include", cache: "no-store" }).then((response) =>
-        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
-      ),
-      fetch("/api/brokers/me", { credentials: "include", cache: "no-store" }).then((response) =>
-        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
-      ),
-      fetch("/api/brokers/financial", { credentials: "include", cache: "no-store" }).then((response) =>
-        response.json().catch(() => null).then((data) => ({ ok: response.ok, data })),
-      ),
-    ])
-      .then(([leadsResponse, propertiesResponse, brokerResponse, financialResponse]) => {
-        if (ignore) return
-        if (leadsResponse.ok) setLeads((leadsResponse.data?.leads ?? []) as LeadRecord[])
-        if (propertiesResponse.ok) setProperties((propertiesResponse.data?.properties ?? []) as PropertyApiItem[])
-        if (brokerResponse.ok) setBrokerProfile((brokerResponse.data?.profile ?? null) as BrokerProfile | null)
-        if (financialResponse.ok) {
-          setFinancialConfig({
-            commissionPercent:
-              Number(financialResponse.data?.config?.commissionPercent) || DEFAULT_COMMISSION_PERCENT,
-          })
-        }
-      })
-      .catch(() => null)
+    loadEntitySources().catch(() => null)
+
+    const unsubscribeEntitySync = subscribeEntitySync((message) => {
+      if (ignore) return
+      if (message.type === "lead" || message.type === "property" || message.type === "broker") {
+        loadEntitySources().catch(() => null)
+      }
+    })
 
     return () => {
       ignore = true
+      unsubscribeEntitySync()
     }
-  }, [])
+  }, [loadEntitySources])
 
   useEffect(() => {
     if (!isDialogOpen) return

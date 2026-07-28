@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
+import type { CompletionSummary, EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { getPropertyImages } from "@/lib/property-media"
 
 export type BrokerPropertyType = "Apartamento" | "Casa" | "Comercial" | "Terreno" | "Sala comercial" | "Loja" | "Cobertura"
@@ -19,6 +21,7 @@ export type BrokerProperty = {
   city: string
   neighborhood: string
   location: string
+  ownerName: string
   priceValue: number
   price: string
   images: string[]
@@ -33,6 +36,9 @@ export type BrokerProperty = {
   purpose: BrokerPropertyPurpose
   description: string
   audioUrl: string
+  legal: PropertyLegalData
+  documents: EntityDocumentRecord[]
+  completion: CompletionSummary
 }
 
 type BrokerPropertyInput = Omit<BrokerProperty, "id" | "publicCode" | "published" | "priceValue"> & {
@@ -50,6 +56,7 @@ type PropertyApiItem = {
   city: string
   neighborhood: string
   location: string
+  ownerName: string
   bedrooms: number
   bathrooms: number
   parkingSpots: number
@@ -63,6 +70,9 @@ type PropertyApiItem = {
   brokerId: string
   agencyId: string | null
   audioUrl: string
+  legal: PropertyLegalData
+  documents: EntityDocumentRecord[]
+  completion: CompletionSummary
 }
 
 const PROPERTIES_UPDATED_EVENT = "eme-broker-properties-updated"
@@ -80,6 +90,7 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     city: property.city,
     neighborhood: property.neighborhood,
     location: property.location,
+    ownerName: property.ownerName,
     priceValue: property.price,
     price: property.formattedPrice,
     images: getPropertyImages(property.images, property.id),
@@ -94,6 +105,9 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     purpose: property.purpose,
     description: property.description,
     audioUrl: property.audioUrl,
+    legal: property.legal,
+    documents: property.documents,
+    completion: property.completion,
   }
 }
 
@@ -163,8 +177,17 @@ export function useBrokerProperties() {
       refreshProperties().catch(() => null)
     }
 
+    const unsubscribeEntitySync = subscribeEntitySync((message) => {
+      if (message.type === "property") {
+        refreshProperties().catch(() => null)
+      }
+    })
+
     window.addEventListener(PROPERTIES_UPDATED_EVENT, syncProperties)
-    return () => window.removeEventListener(PROPERTIES_UPDATED_EVENT, syncProperties)
+    return () => {
+      window.removeEventListener(PROPERTIES_UPDATED_EVENT, syncProperties)
+      unsubscribeEntitySync()
+    }
   }, [refreshProperties])
 
   async function addProperty(property: BrokerPropertyInput) {
@@ -199,6 +222,7 @@ export function useBrokerProperties() {
 
     setProperties((current) => [created, ...current])
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: created }))
+    dispatchEntitySync({ type: "property", entityId: created.id })
     return created
   }
 
@@ -216,6 +240,7 @@ export function useBrokerProperties() {
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: "property", entityId: id })
     return updated
   }
 
@@ -229,6 +254,7 @@ export function useBrokerProperties() {
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: "property", entityId: id })
     return updated
   }
 
@@ -263,6 +289,7 @@ export function useBrokerProperties() {
 
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: "property", entityId: id })
     return updated
   }
 
@@ -281,6 +308,7 @@ export function useBrokerProperties() {
 
     setProperties((current) => current.filter((property) => property.id !== id))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: { id } }))
+    dispatchEntitySync({ type: "property", entityId: id })
   }
 
   async function uploadPropertyAudio(id: string, file: File) {
@@ -297,6 +325,7 @@ export function useBrokerProperties() {
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: "property", entityId: id })
     return updated
   }
 
@@ -310,6 +339,7 @@ export function useBrokerProperties() {
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: "property", entityId: id })
     return updated
   }
 
@@ -334,6 +364,7 @@ export function useBrokerProperties() {
 
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
     window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: "property", entityId: id })
     return updated
   }
 

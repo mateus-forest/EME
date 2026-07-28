@@ -6,6 +6,7 @@ import {
   NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { parseEntityDocuments } from "@/lib/legal-entities"
 import { mapPropertyPurpose, mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
@@ -30,6 +31,7 @@ type PropertyUpdateData = {
   description?: string | null
   city?: string
   neighborhood?: string
+  ownerName?: string | null
   price?: number
   bedrooms?: number
   bathrooms?: number
@@ -37,6 +39,8 @@ type PropertyUpdateData = {
   type?: PropertyType
   purpose?: string
   imageUrls?: string[]
+  legalData?: Record<string, string>
+  documentsData?: Array<Record<string, string>>
 }
 
 async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
@@ -89,6 +93,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (typeof body?.description === "string") data.description = body.description.trim() || null
     if (typeof body?.city === "string") data.city = body.city.trim()
     if (typeof body?.neighborhood === "string") data.neighborhood = body.neighborhood.trim()
+    if (typeof body?.ownerName === "string") data.ownerName = body.ownerName.trim() || null
 
     if (body?.price !== undefined) {
       const price = parsePriceInput(body.price)
@@ -138,6 +143,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       data.imageUrls = body.images.filter((image: unknown): image is string => typeof image === "string").slice(0, 6)
     }
 
+    if (body?.legal !== undefined) {
+      data.legalData = normalizePropertyLegalData(body.legal)
+    }
+
+    if (body?.documents !== undefined) {
+      data.documentsData = normalizeDocuments(body.documents)
+    }
+
     const property = await prisma.property.update({
       where: { id: accessible.property.id },
       data,
@@ -161,6 +174,50 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     return NextResponse.json({ error: "Erro interno ao atualizar imóvel." }, { status: 500 })
   }
+}
+
+function cleanText(value: unknown, maxLength: number) {
+  if (typeof value !== "string") return ""
+  return value.trim().slice(0, maxLength)
+}
+
+function normalizePropertyLegalData(value: unknown) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return {
+    code: cleanText(source.code, 64),
+    registryNumber: cleanText(source.registryNumber, 64),
+    registryOffice: cleanText(source.registryOffice, 160),
+    registryBook: cleanText(source.registryBook, 64),
+    registryPage: cleanText(source.registryPage, 64),
+    municipalRegistration: cleanText(source.municipalRegistration, 64),
+    taxRegistration: cleanText(source.taxRegistration, 64),
+    cep: cleanText(source.cep, 16),
+    street: cleanText(source.street, 160),
+    number: cleanText(source.number, 24),
+    complement: cleanText(source.complement, 120),
+    district: cleanText(source.district, 120),
+    city: cleanText(source.city, 120),
+    state: cleanText(source.state, 32),
+    privateArea: cleanText(source.privateArea, 64),
+    totalArea: cleanText(source.totalArea, 64),
+    idealFraction: cleanText(source.idealFraction, 64),
+    condominiumName: cleanText(source.condominiumName, 160),
+    condominiumFee: cleanText(source.condominiumFee, 64),
+    iptuValue: cleanText(source.iptuValue, 64),
+    additionalFees: cleanText(source.additionalFees, 120),
+    legalNotes: cleanText(source.legalNotes, 1200),
+  }
+}
+
+function normalizeDocuments(value: unknown) {
+  return parseEntityDocuments(value).map((document) => ({
+    ...document,
+    label: cleanText(document.label, 64),
+    name: cleanText(document.name, 160),
+    url: cleanText(document.url, 5_000),
+    mimeType: cleanText(document.mimeType, 120),
+    uploadedAt: cleanText(document.uploadedAt, 64) || new Date().toISOString(),
+  }))
 }
 
 export async function DELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {

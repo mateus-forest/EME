@@ -2,6 +2,21 @@ import type { Agency, Broker, Lead, Property } from "@/lib/prisma-model-types"
 import {
   LeadStatus,
   UserRole } from "@/lib/prisma-enums"
+import {
+  computeLeadCompletion,
+  defaultLeadAddress,
+  defaultLeadIdentification,
+  defaultLeadLegalData,
+  parseEntityDocuments,
+  parseLeadAddress,
+  parseLeadIdentification,
+  parseLeadLegalData,
+  type CompletionSummary,
+  type EntityDocumentRecord,
+  type LeadAddress,
+  type LeadIdentification,
+  type LeadLegalData,
+} from "@/lib/legal-entities"
 
 const leadStatuses = ["NEW", "CONTACTED", "NEGOTIATING", "WON", "LOST", "ARCHIVED"] as const
 
@@ -19,6 +34,7 @@ export type LeadRecord = {
   name: string
   email: string
   phone: string
+  whatsApp: string
   message: string
   catalogSlug: string
   searchTerm: string
@@ -32,6 +48,11 @@ export type LeadRecord = {
   brokerName: string
   agencyId: string | null
   agencyName: string
+  identification: LeadIdentification
+  address: LeadAddress
+  legal: LeadLegalData
+  documents: EntityDocumentRecord[]
+  completion: CompletionSummary
   createdAt: string
   updatedAt: string
 }
@@ -59,11 +80,24 @@ export function leadSourceLabel(source: string) {
 }
 
 export function serializeLead(lead: LeadWithRelations): LeadRecord {
+  const identification = parseLeadIdentification(lead.legalData)
+  const address = parseLeadAddress(lead.addressData)
+  const legal = parseLeadLegalData(lead.legalData)
+  const documents = parseEntityDocuments(lead.documentsData)
+  const completion = computeLeadCompletion({
+    name: lead.name ?? "",
+    email: lead.email ?? "",
+    phone: lead.whatsapp ?? lead.phone ?? "",
+    identification,
+    address,
+  })
+
   return {
     id: lead.id,
     name: lead.name ?? "",
     email: lead.email ?? "",
     phone: lead.phone ?? "",
+    whatsApp: lead.whatsapp ?? lead.phone ?? "",
     message: lead.message ?? "",
     catalogSlug: lead.catalogSlug ?? "",
     searchTerm: lead.searchTerm ?? "",
@@ -77,6 +111,11 @@ export function serializeLead(lead: LeadWithRelations): LeadRecord {
     brokerName: lead.broker?.user.name ?? "",
     agencyId: lead.agencyId,
     agencyName: lead.agency?.name ?? "",
+    identification: identification ?? defaultLeadIdentification,
+    address: address ?? defaultLeadAddress,
+    legal: legal ?? defaultLeadLegalData,
+    documents,
+    completion,
     createdAt: lead.createdAt.toISOString(),
     updatedAt: lead.updatedAt.toISOString(),
   }

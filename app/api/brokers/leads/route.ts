@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { leadInclude, serializeLead } from "@/lib/lead-contract"
+import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
@@ -68,9 +69,14 @@ export async function POST(request: NextRequest) {
     const name = cleanText(body?.name, 120)
     const email = cleanText(body?.email, 160).toLowerCase()
     const phone = cleanText(body?.phone, 40)
+    const whatsApp = cleanText(body?.whatsApp, 40) || phone
     const message = cleanText(body?.message, 800)
     const searchTerm = cleanText(body?.searchTerm, 240)
     const intent = cleanText(body?.intent, 120)
+    const identification = normalizeLeadIdentification(body?.identification)
+    const address = normalizeLeadAddress(body?.address)
+    const legal = normalizeLeadLegal(body?.legal)
+    const documents = normalizeDocuments(body?.documents)
 
     if (!name && !email && !phone) {
       return NextResponse.json(
@@ -119,9 +125,16 @@ export async function POST(request: NextRequest) {
             name: name || existingLead.name,
             email: email || existingLead.email,
             phone: phone || existingLead.phone,
+            whatsapp: whatsApp || existingLead.whatsapp || existingLead.phone,
             message: message || existingLead.message || null,
             searchTerm: searchTerm || existingLead.searchTerm || null,
             intent: intent || existingLead.intent || null,
+            legalData: {
+              ...identification,
+              ...legal,
+            },
+            addressData: address,
+            documentsData: documents,
             propertyId: property?.id ?? existingLead.propertyId ?? null,
             source: "manual",
             userId: user.id,
@@ -134,9 +147,16 @@ export async function POST(request: NextRequest) {
             name: name || null,
             email: email || null,
             phone: phone || null,
+            whatsapp: whatsApp || phone || null,
             message: message || (property ? `Cliente vinculado ao imovel ${property.title}` : null),
             searchTerm: searchTerm || null,
             intent: intent || null,
+            legalData: {
+              ...identification,
+              ...legal,
+            },
+            addressData: address,
+            documentsData: documents,
             source: "manual",
             propertyId: property?.id ?? null,
             brokerId: user.broker.id,
@@ -183,6 +203,54 @@ export async function POST(request: NextRequest) {
 function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return ""
   return value.trim().slice(0, maxLength)
+}
+
+function normalizeLeadIdentification(value: unknown) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return {
+    cpfCnpj: cleanText(source.cpfCnpj, 32),
+    rg: cleanText(source.rg, 32),
+    issuingAuthority: cleanText(source.issuingAuthority, 64),
+    issueDate: cleanText(source.issueDate, 32),
+    nationality: cleanText(source.nationality, 64),
+    birthPlace: cleanText(source.birthPlace, 64),
+    maritalStatus: cleanText(source.maritalStatus, 64),
+    propertyRegime: cleanText(source.propertyRegime, 64),
+    profession: cleanText(source.profession, 96),
+  }
+}
+
+function normalizeLeadAddress(value: unknown) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return {
+    cep: cleanText(source.cep, 16),
+    street: cleanText(source.street, 160),
+    number: cleanText(source.number, 24),
+    complement: cleanText(source.complement, 120),
+    district: cleanText(source.district, 120),
+    city: cleanText(source.city, 120),
+    state: cleanText(source.state, 32),
+  }
+}
+
+function normalizeLeadLegal(value: unknown) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return {
+    legalRepresentative: cleanText(source.legalRepresentative, 160),
+    powerOfAttorney: cleanText(source.powerOfAttorney, 160),
+    legalNotes: cleanText(source.legalNotes, 1200),
+  }
+}
+
+function normalizeDocuments(value: unknown) {
+  return parseEntityDocuments(value).map((document) => ({
+    ...document,
+    label: cleanText(document.label, 64),
+    name: cleanText(document.name, 160),
+    url: cleanText(document.url, 5_000),
+    mimeType: cleanText(document.mimeType, 120),
+    uploadedAt: cleanText(document.uploadedAt, 64) || new Date().toISOString(),
+  }))
 }
 
 function leadListErrorMessage(error: unknown) {

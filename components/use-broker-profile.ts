@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
+
 export type BrokerProfile = {
   id: string
   brokerId: string
@@ -103,10 +105,17 @@ export function useBrokerProfile() {
       refreshProfile().catch(() => null)
     }
 
+    const unsubscribeEntitySync = subscribeEntitySync((message) => {
+      if (message.type === "broker") {
+        refreshProfile().catch(() => null)
+      }
+    })
+
     window.addEventListener(PROFILE_UPDATED_EVENT, syncProfile)
 
     return () => {
       window.removeEventListener(PROFILE_UPDATED_EVENT, syncProfile)
+      unsubscribeEntitySync()
     }
   }, [refreshProfile])
 
@@ -172,6 +181,7 @@ export function useBrokerProfile() {
 
     setProfileState(nextProfile)
     window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT, { detail: nextProfile }))
+    dispatchEntitySync({ type: "broker", entityId: nextProfile.brokerId })
     return nextProfile
   }
 

@@ -3,6 +3,14 @@ import {
   PropertyStatus,
   PropertyType } from "@/lib/prisma-enums"
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
+import {
+  computePropertyCompletion,
+  parseEntityDocuments,
+  parsePropertyLegalData,
+  type CompletionSummary,
+  type EntityDocumentRecord,
+  type PropertyLegalData,
+} from "@/lib/legal-entities"
 
 type PropertyContractUser = {
   name: string
@@ -29,6 +37,7 @@ export type PropertyApiItem = {
   city: string
   neighborhood: string
   location: string
+  ownerName: string
   bedrooms: number
   bathrooms: number
   parkingSpots: number
@@ -46,6 +55,9 @@ export type PropertyApiItem = {
     name: string
     initials: string
   }
+  legal: PropertyLegalData
+  documents: EntityDocumentRecord[]
+  completion: CompletionSummary
   createdAt: string
   updatedAt: string
 }
@@ -125,7 +137,16 @@ export function serializeProperty(property: PropertyWithRelations): PropertyApiI
     ? property.imageUrls.filter((image): image is string => typeof image === "string")
     : []
 
-  const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
+  const legal = parsePropertyLegalData(property.legalData)
+  const documents = parseEntityDocuments(property.documentsData)
+  const location = [legal.street || property.neighborhood, legal.city || property.city].filter(Boolean).join(", ")
+  const ownerName = property.ownerName ?? ""
+  const completion = computePropertyCompletion({
+    title: property.title,
+    ownerName,
+    price: formatCurrencyFromCents(property.price),
+    legal,
+  })
 
   return {
     id: property.id,
@@ -138,6 +159,7 @@ export function serializeProperty(property: PropertyWithRelations): PropertyApiI
     city: property.city,
     neighborhood: property.neighborhood ?? "",
     location,
+    ownerName,
     bedrooms: property.bedrooms,
     bathrooms: property.bathrooms,
     parkingSpots: property.parkingSpots,
@@ -155,6 +177,9 @@ export function serializeProperty(property: PropertyWithRelations): PropertyApiI
       name: property.broker.user.name,
       initials: getInitials(property.broker.user.name),
     },
+    legal,
+    documents,
+    completion,
     createdAt: property.createdAt.toISOString(),
     updatedAt: property.updatedAt.toISOString(),
   }
