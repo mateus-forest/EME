@@ -79,6 +79,33 @@ Para ativar:
 
 Se desativada, o endpoint de IA retorna erro amigavel sem expor chave.
 
+## Fluxo de validacao em clone local
+
+Em clones locais usados para desenvolvimento, as variaveis sensiveis de producao nao sao compartilhadas.
+
+Isso inclui, por exemplo:
+
+- `OPENAI_API_KEY`
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- outros secrets do ambiente da Vercel
+
+Nesses casos, o fluxo esperado e:
+
+- desenvolvimento e correcoes no codigo;
+- validacao local por `lint`, `tsc --noEmit`, `build` e analise estatica;
+- instrumentacao temporaria de logs quando necessario;
+- deploy e testes reais feitos apenas no ambiente configurado;
+- analise posterior dos logs de producao para continuar a investigacao.
+
+Para integracoes externas indisponiveis no clone local, use sempre este status no relatorio:
+
+- Corrigido em codigo
+- Validado localmente (lint, build, tipagem e analise estatica)
+- Pendente de validacao em producao (OpenAI/Vercel)
+
+Nao considerar integracoes externas como validadas apenas com execucao local quando o ambiente depender de secrets ausentes.
+
 ## WhatsApp
 
 Preparado para configuracao futura:

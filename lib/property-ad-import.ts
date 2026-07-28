@@ -425,22 +425,86 @@ export function parseGeneratedJson(outputText: string) {
   throw new Error("OPENAI_INVALID_JSON")
 }
 
-function extractResponseText(response: {
-  output_text?: string
-  output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>
-}) {
-  if (typeof response.output_text === "string" && response.output_text.trim()) {
-    return response.output_text.trim()
+function collectResponseStrings(value: unknown, bucket: string[]) {
+  if (!value) return
+
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (trimmed) bucket.push(trimmed)
+    return
   }
 
-  const extracted = response.output
-    ?.flatMap((item) => item.content ?? [])
-    .filter((content) => content.type === "output_text" && typeof content.text === "string")
-    .map((content) => content.text?.trim() ?? "")
-    .filter(Boolean)
-    .join("\n")
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectResponseStrings(item, bucket))
+    return
+  }
 
-  return extracted?.trim() || ""
+  if (typeof value !== "object") return
+
+  const candidate = value as Record<string, unknown>
+  ;["text", "value", "output_text", "content", "message"].forEach((key) => {
+    if (key in candidate) {
+      collectResponseStrings(candidate[key], bucket)
+    }
+  })
+}
+
+function extractStructuredResponsePayload(response: {
+  output_text?: string
+  output_parsed?: unknown
+  parsed?: unknown
+  content?: unknown
+  output?: Array<{
+    type?: string
+    parsed?: unknown
+    output_parsed?: unknown
+    content?: Array<{
+      type?: string
+      text?: string
+      value?: string
+      parsed?: unknown
+      output_parsed?: unknown
+    }>
+  }>
+}) {
+  if (response.output_parsed && typeof response.output_parsed === "object") {
+    return response.output_parsed
+  }
+
+  if (response.parsed && typeof response.parsed === "object") {
+    return response.parsed
+  }
+
+  for (const item of response.output ?? []) {
+    if (item.output_parsed && typeof item.output_parsed === "object") {
+      return item.output_parsed
+    }
+
+    if (item.parsed && typeof item.parsed === "object") {
+      return item.parsed
+    }
+
+    for (const content of item.content ?? []) {
+      if (content.output_parsed && typeof content.output_parsed === "object") {
+        return content.output_parsed
+      }
+
+      if (content.parsed && typeof content.parsed === "object") {
+        return content.parsed
+      }
+    }
+  }
+
+  const textCandidates: string[] = []
+  if (typeof response.output_text === "string" && response.output_text.trim()) {
+    textCandidates.push(response.output_text.trim())
+  }
+
+  collectResponseStrings(response.content, textCandidates)
+  collectResponseStrings(response.output, textCandidates)
+
+  const extractedText = Array.from(new Set(textCandidates.filter(Boolean))).join("\n").trim()
+  return extractedText ? parseGeneratedJson(extractedText) : null
 }
 
 function normalizePriceValue(value: unknown) {
@@ -796,10 +860,24 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     },
   })
 
-  const rawResponseText = extractResponseText(response)
+  console.info("[property-ad-import][openai-response]", {
+    response,
+    output: response.output,
+    outputText: response.output_text,
+    outputParsed: (response as { output_parsed?: unknown }).output_parsed,
+    parsed: (response as { parsed?: unknown }).parsed,
+    content: (response as { content?: unknown }).content,
+    finishReason:
+      (response as { finish_reason?: string }).finish_reason ??
+      (response as { status?: string }).status ??
+      (response as { incomplete_details?: { reason?: string } }).incomplete_details?.reason,
+  })
 
   try {
-    const parsedJson = parseGeneratedJson(rawResponseText)
+    const parsedJson = extractStructuredResponsePayload(response)
+    if (!parsedJson) {
+      throw new Error("OPENAI_EMPTY_RESPONSE")
+    }
     const parsedList = adImportModelResponseListSchema.parse(parsedJson)
     const normalizedDrafts = parsedList.drafts
       .map((draft) =>
@@ -822,7 +900,10 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       message: error instanceof Error ? error.message : "unknown",
       sourceUrl: sanitizedInput.sourceUrl,
       sourceWarningCode: sourceLookup.warningCode,
-      rawResponseText: rawResponseText.slice(0, 6000),
+      rawResponseText: typeof response.output_text === "string" ? response.output_text.slice(0, 6000) : "",
+      outputParsed: (response as { output_parsed?: unknown }).output_parsed,
+      parsed: (response as { parsed?: unknown }).parsed,
+      content: (response as { content?: unknown }).content,
       responseOutput: JSON.stringify(response.output ?? []).slice(0, 6000),
     })
     throw error
