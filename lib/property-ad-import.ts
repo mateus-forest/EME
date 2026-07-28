@@ -284,15 +284,12 @@ function buildPrompt(input: AdImportInput, sourceContext: SourceUrlContext | nul
           : "Nao informado"
 
   return [
-    "Extraia dados imobiliarios do material fornecido.",
-    "Retorne sempre um objeto JSON com a chave drafts.",
-    "Cada item em drafts representa um unico imovel identificado no material.",
-    "Se houver apenas um imovel, retorne drafts com um item.",
+    "Extraia imoveis do material fornecido.",
+    "Cada item de drafts deve representar um unico imovel identificado.",
     "Se houver varios imoveis visiveis, retorne um item por imovel.",
-    "Nao invente dados ausentes. Quando houver duvida, deixe o campo vazio e inclua o nome do campo em lowConfidenceFields ou missingFields.",
-    "Use imagens apenas para confirmar o que estiver visivel e real.",
-    "Se houver pouco contexto, devolva previas parciais com status needs_review.",
-    "Nunca falhe por dados incompletos. Preencha o que conseguir e deixe o restante vazio.",
+    "Nao invente dados ausentes. Quando houver duvida, deixe o campo vazio.",
+    "Use lowConfidenceFields e missingFields para sinalizar incerteza ou ausencia.",
+    "Se houver pouco contexto, ainda assim retorne drafts parciais com status needs_review.",
     "",
     `Texto do anuncio: ${input.adText || "Nao informado"}`,
     `Link informado: ${input.sourceUrl || "Nao informado"}`,
@@ -786,9 +783,12 @@ export async function extractPropertyFromAd(input: AdImportInput) {
 
   const response = await client.responses.create({
     model,
-    max_output_tokens: 900,
+    max_output_tokens: 2200,
+    reasoning: {
+      effort: "minimal",
+    },
     instructions:
-      "Voce e um especialista em cadastro de imoveis no Brasil. Extraia dados de anuncios imobiliarios com cautela, em portugues do Brasil, sem inventar informacoes. Retorne sempre um objeto JSON valido com a chave drafts, mesmo quando houver dados parciais ou varios imoveis na mesma imagem.",
+      "Extraia dados de anuncios imobiliarios no Brasil e responda apenas com o JSON do schema solicitado, sem texto adicional.",
     input: [
       {
         role: "user",
@@ -796,6 +796,7 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       },
     ],
     text: {
+      verbosity: "low",
       format: {
         type: "json_schema",
         name: "property_ad_import",
