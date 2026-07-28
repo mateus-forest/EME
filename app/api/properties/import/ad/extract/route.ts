@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const adText = typeof formData.get("adText") === "string" ? String(formData.get("adText")).trim() : ""
     const sourceUrl = typeof formData.get("sourceUrl") === "string" ? String(formData.get("sourceUrl")).trim() : ""
+    const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
     const image = formData.get("image")
     const hasImage = image instanceof File && image.size > 0
     actionType = hasImage ? "smart_import_image" : "smart_import_text"
@@ -53,9 +54,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!adText && !sourceUrl && !hasImage) {
+    if (!adText && !sourceUrl && !notes && !hasImage) {
       return NextResponse.json(
-        { error: "Informe um link do anuncio ou envie uma imagem para extrair os dados." },
+        { error: "Informe um link, envie uma imagem ou escreva algum contexto para extrair os dados." },
         { status: 400 },
       )
     }
@@ -71,10 +72,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const draft = await extractPropertyFromAd({
+    const drafts = await extractPropertyFromAd({
       adText,
       sourceUrl,
-      notes: "",
+      notes,
       imageDataUrl: hasImage ? await fileToDataUrl(image) : "",
     })
 
@@ -88,12 +89,13 @@ export async function POST(request: NextRequest) {
           source: "api/properties/import/ad/extract",
           hasImage,
           hasSourceUrl: Boolean(sourceUrl),
+          hasNotes: Boolean(notes),
         },
       })
       creditsConsumed = true
     }
 
-    const response = NextResponse.json({ draft })
+    const response = NextResponse.json({ drafts })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

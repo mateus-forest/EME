@@ -64,6 +64,12 @@ const adImportModelResponseSchema = z
   })
   .passthrough()
 
+const adImportModelResponseListSchema = z
+  .object({
+    drafts: z.array(adImportModelResponseSchema).default([]),
+  })
+  .passthrough()
+
 function sanitizeInput(value: string, maxLength: number) {
   return value.replace(/\s+/g, " ").trim().slice(0, maxLength)
 }
@@ -279,10 +285,14 @@ function buildPrompt(input: AdImportInput, sourceContext: SourceUrlContext | nul
 
   return [
     "Extraia dados imobiliarios do material fornecido.",
-    "Retorne um objeto JSON mesmo quando os dados estiverem parciais.",
+    "Retorne sempre um objeto JSON com a chave drafts.",
+    "Cada item em drafts representa um unico imovel identificado no material.",
+    "Se houver apenas um imovel, retorne drafts com um item.",
+    "Se houver varios imoveis visiveis, retorne um item por imovel.",
     "Nao invente dados ausentes. Quando houver duvida, deixe o campo vazio e inclua o nome do campo em lowConfidenceFields ou missingFields.",
     "Use imagens apenas para confirmar o que estiver visivel e real.",
-    "Se houver pouco contexto, devolva uma previa parcial com status needs_review.",
+    "Se houver pouco contexto, devolva previas parciais com status needs_review.",
+    "Nunca falhe por dados incompletos. Preencha o que conseguir e deixe o restante vazio.",
     "",
     `Texto do anuncio: ${input.adText || "Nao informado"}`,
     `Link informado: ${input.sourceUrl || "Nao informado"}`,
@@ -714,7 +724,7 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     model,
     max_output_tokens: 900,
     instructions:
-      "Voce e um especialista em cadastro de imoveis no Brasil. Extraia dados de anuncios imobiliarios com cautela, em portugues do Brasil, sem inventar informacoes. Retorne sempre um objeto JSON valido mesmo quando houver dados parciais.",
+      "Voce e um especialista em cadastro de imoveis no Brasil. Extraia dados de anuncios imobiliarios com cautela, em portugues do Brasil, sem inventar informacoes. Retorne sempre um objeto JSON valido com a chave drafts, mesmo quando houver dados parciais ou varios imoveis na mesma imagem.",
     input: [
       {
         role: "user",
@@ -730,27 +740,57 @@ export async function extractPropertyFromAd(input: AdImportInput) {
           type: "object",
           additionalProperties: false,
           properties: {
-            title: { type: "string" },
-            description: { type: "string" },
-            price: { type: "string" },
-            type: { type: "string", enum: propertyImportTypeOptions },
-            city: { type: "string" },
-            neighborhood: { type: "string" },
-            address: { type: "string" },
-            bedrooms: { type: ["number", "string"] },
-            bathrooms: { type: ["number", "string"] },
-            parking: { type: ["number", "string"] },
-            area: { type: "string" },
-            features: { type: ["array", "string"], items: { type: "string" } },
-            tags: { type: ["array", "string"], items: { type: "string" } },
-            images: { type: ["array", "string"], items: { type: "string" } },
-            sourceUrl: { type: "string" },
-            notes: { type: "string" },
-            lowConfidenceFields: { type: ["array", "string"], items: { type: "string" } },
-            missingFields: { type: ["array", "string"], items: { type: "string" } },
-            status: { type: "string", enum: ["ready", "needs_review", "invalid"] },
+            drafts: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  price: { type: "string" },
+                  type: { type: "string", enum: propertyImportTypeOptions },
+                  city: { type: "string" },
+                  neighborhood: { type: "string" },
+                  address: { type: "string" },
+                  bedrooms: { type: "string" },
+                  bathrooms: { type: "string" },
+                  parking: { type: "string" },
+                  area: { type: "string" },
+                  features: { type: "array", items: { type: "string" } },
+                  tags: { type: "array", items: { type: "string" } },
+                  images: { type: "array", items: { type: "string" } },
+                  sourceUrl: { type: "string" },
+                  notes: { type: "string" },
+                  lowConfidenceFields: { type: "array", items: { type: "string" } },
+                  missingFields: { type: "array", items: { type: "string" } },
+                  status: { type: "string", enum: ["ready", "needs_review", "invalid"] },
+                },
+                required: [
+                  "title",
+                  "description",
+                  "price",
+                  "type",
+                  "city",
+                  "neighborhood",
+                  "address",
+                  "bedrooms",
+                  "bathrooms",
+                  "parking",
+                  "area",
+                  "features",
+                  "tags",
+                  "images",
+                  "sourceUrl",
+                  "notes",
+                  "lowConfidenceFields",
+                  "missingFields",
+                  "status",
+                ],
+              },
+            },
           },
-          required: [],
+          required: ["drafts"],
         },
       },
     },
@@ -760,18 +800,23 @@ export async function extractPropertyFromAd(input: AdImportInput) {
 
   try {
     const parsedJson = parseGeneratedJson(rawResponseText)
-    const normalizedDraft = normalizeAdImportDraft(parsedJson, {
-      sourceUrl: sourceContext?.finalUrl || sanitizedInput.sourceUrl,
-      notes: sanitizedInput.notes,
-      sourceImages: sourceContext?.images ?? [],
-      sourceWarningCode: sourceLookup.warningCode,
-    })
+    const parsedList = adImportModelResponseListSchema.parse(parsedJson)
+    const normalizedDrafts = parsedList.drafts
+      .map((draft) =>
+        normalizeAdImportDraft(draft, {
+          sourceUrl: sourceContext?.finalUrl || sanitizedInput.sourceUrl,
+          notes: sanitizedInput.notes,
+          sourceImages: sourceContext?.images ?? [],
+          sourceWarningCode: sourceLookup.warningCode,
+        }),
+      )
+      .filter((draft) => draft.status !== "invalid")
 
-    if (normalizedDraft.status === "invalid") {
+    if (normalizedDrafts.length === 0) {
       throw new Error("AD_IMPORT_PREVIEW_EMPTY")
     }
 
-    return normalizedDraft
+    return normalizedDrafts
   } catch (error) {
     console.error("[property-ad-import][parse-failed]", {
       message: error instanceof Error ? error.message : "unknown",

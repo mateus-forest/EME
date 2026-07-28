@@ -17,14 +17,18 @@ async function parseAdImportResponse<T>(response: Response, fallback: string) {
 }
 
 export async function extractPropertyAd(input: {
+  adText?: string
   sourceUrl?: string
+  notes?: string
   image: File | null
 }) {
   const formData = new FormData()
+  if (input.adText) formData.append("adText", input.adText)
   if (input.sourceUrl) formData.append("sourceUrl", input.sourceUrl)
+  if (input.notes) formData.append("notes", input.notes)
   if (input.image) formData.append("image", input.image)
 
-  return parseAdImportResponse<{ draft: AdImportDraft }>(
+  return parseAdImportResponse<{ drafts: AdImportDraft[] }>(
     await fetch("/api/properties/import/ad/extract", {
       method: "POST",
       credentials: "include",

@@ -52,6 +52,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   const [image, setImage] = useState<File | null>(null)
   const [draftEntries, setDraftEntries] = useState<DraftEntry[]>([])
   const [selectedDraftId, setSelectedDraftId] = useState("")
+  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([])
   const [feedback, setFeedback] = useState("")
   const [isExtracting, setIsExtracting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -92,6 +93,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   function clearFlow() {
     setDraftEntries([])
     setSelectedDraftId("")
+    setSelectedDraftIds([])
     resetInputs()
   }
 
@@ -99,7 +101,12 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     const entries = buildDraftEntries(drafts)
     setDraftEntries(entries)
     setSelectedDraftId(entries[0]?.id ?? "")
+    setSelectedDraftIds(entries.map((entry) => entry.id))
     setFeedback(message)
+  }
+
+  function toggleDraftSelection(id: string) {
+    setSelectedDraftIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
   }
 
   function updateDraft<K extends keyof AdImportDraft>(field: K, value: AdImportDraft[K]) {
@@ -127,6 +134,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     setFeedback("")
     setDraftEntries([])
     setSelectedDraftId("")
+    setSelectedDraftIds([])
 
     try {
       const result = await previewPropertyXml({ file })
@@ -148,6 +156,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     setFeedback("")
     setDraftEntries([])
     setSelectedDraftId("")
+    setSelectedDraftIds([])
 
     try {
       const result = await previewPropertyXml({ sourceUrl: xmlSourceUrl.trim() })
@@ -174,10 +183,16 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     setFeedback("")
     setDraftEntries([])
     setSelectedDraftId("")
+    setSelectedDraftIds([])
 
     try {
       const result = await extractPropertyAd({ sourceUrl: sourceUrl.trim(), image })
-      applyDrafts([result.draft], "Dados extraidos. Revise as informacoes antes de salvar.")
+      applyDrafts(
+        result.drafts,
+        result.drafts.length > 1
+          ? "Varios imoveis foram identificados. Escolha quais deseja cadastrar e revise cada previa."
+          : "Dados extraidos. Revise as informacoes antes de salvar.",
+      )
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel extrair os dados do anuncio.")
     } finally {
@@ -203,6 +218,41 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       await onImported()
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar o imovel.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleConfirmSelected() {
+    const selectedEntries = draftEntries.filter((entry) => selectedDraftIds.includes(entry.id))
+    if (selectedEntries.length === 0) {
+      setFeedback("Selecione pelo menos um imovel para cadastrar.")
+      return
+    }
+
+    setIsSaving(true)
+    setFeedback("")
+
+    try {
+      for (const entry of selectedEntries) {
+        await confirmPropertyAdImport(entry.draft)
+      }
+
+      const remainingEntries = draftEntries.filter((entry) => !selectedDraftIds.includes(entry.id))
+      setDraftEntries(remainingEntries)
+      setSelectedDraftId(remainingEntries[0]?.id ?? "")
+      setSelectedDraftIds(remainingEntries.map((entry) => entry.id))
+      setFeedback(
+        remainingEntries.length > 0
+          ? "Imoveis selecionados salvos. Revise os demais antes de confirmar."
+          : "Imoveis selecionados criados como rascunho.",
+      )
+      if (remainingEntries.length === 0) {
+        resetInputs()
+      }
+      await onImported()
+    } catch (caughtError) {
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar os imoveis selecionados.")
     } finally {
       setIsSaving(false)
     }
@@ -311,21 +361,29 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {draftEntries.map((entry, index) => (
-                  <button
+                  <div
                     key={entry.id}
-                    type="button"
-                    onClick={() => setSelectedDraftId(entry.id)}
-                    className={`rounded-[1rem] border px-3 py-3 text-left transition-colors ${
+                    className={`rounded-[1rem] border px-3 py-3 transition-colors ${
                       entry.id === selectedDraftId
                         ? "border-[#009b3a]/35 bg-[#009b3a]/10"
-                        : "border-black/[0.06] bg-[#fbfbf8] hover:border-[#009b3a]/20"
+                        : "border-black/[0.06] bg-[#fbfbf8]"
                     }`}
                   >
-                    <p className="text-sm font-medium text-[#111111]">{entry.draft.title || `Imovel ${index + 1}`}</p>
-                    <p className="mt-1 text-xs text-[#6B7280]">
-                      {[entry.draft.neighborhood, entry.draft.city].filter(Boolean).join(", ") || "Localizacao pendente"}
-                    </p>
-                  </button>
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedDraftIds.includes(entry.id)}
+                        onChange={() => toggleDraftSelection(entry.id)}
+                        className="mt-0.5 size-4 rounded border-black/[0.12]"
+                      />
+                      <button type="button" onClick={() => setSelectedDraftId(entry.id)} className="min-w-0 flex-1 text-left">
+                        <p className="text-sm font-medium text-[#111111]">{entry.draft.title || `Imovel ${index + 1}`}</p>
+                        <p className="mt-1 text-xs text-[#6B7280]">
+                          {[entry.draft.neighborhood, entry.draft.city].filter(Boolean).join(", ") || "Localizacao pendente"}
+                        </p>
+                      </button>
+                    </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -460,6 +518,16 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           ) : null}
 
           <div className="flex flex-wrap gap-2">
+            {draftEntries.length > 1 ? (
+              <Button
+                type="button"
+                onClick={handleConfirmSelected}
+                disabled={isSaving || selectedDraftIds.length === 0}
+                className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
+              >
+                {isSaving ? "Salvando..." : `Salvar selecionados (${selectedDraftIds.length})`}
+              </Button>
+            ) : null}
             <Button
               type="button"
               onClick={handleConfirm}
