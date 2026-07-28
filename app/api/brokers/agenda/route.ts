@@ -18,6 +18,11 @@ function normalizeDate(value: unknown) {
   return date
 }
 
+function normalizeOptionalId(value: unknown) {
+  const normalized = cleanText(value, 80)
+  return normalized || null
+}
+
 function serializeAgendaEvent(event: {
   id: string
   title: string
@@ -150,13 +155,40 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const id = cleanText(body?.id, 80)
-    const status = agendaStatuses.includes(body?.status) ? body.status : "done"
     if (!id) return NextResponse.json({ error: "Informe o compromisso." }, { status: 400 })
 
-    await prisma.agendaEvent.updateMany({
+    const existingEvent = await prisma.agendaEvent.findFirst({
       where: { id, brokerId: user.broker.id },
-      data: { status },
     })
+    if (!existingEvent) return NextResponse.json({ error: "Compromisso nÃ£o encontrado." }, { status: 404 })
+
+    const nextStatus = agendaStatuses.includes(body?.status) ? body.status : existingEvent.status
+    const nextTitle = cleanText(body?.title, 160) || existingEvent.title
+    const nextType = agendaTypes.includes(body?.type) ? body.type : existingEvent.type
+    const nextDate = body?.date ? normalizeDate(body.date) : existingEvent.date
+    const nextTime = body?.time === "" ? null : cleanText(body?.time, 20) || existingEvent.time
+    const nextNotes = body?.notes === "" ? null : cleanText(body?.notes, 600) || existingEvent.notes
+    const nextLeadId = Object.prototype.hasOwnProperty.call(body ?? {}, "leadId")
+      ? normalizeOptionalId(body?.leadId)
+      : existingEvent.leadId
+    const nextPropertyId = Object.prototype.hasOwnProperty.call(body ?? {}, "propertyId")
+      ? normalizeOptionalId(body?.propertyId)
+      : existingEvent.propertyId
+
+    await prisma.agendaEvent.update({
+      where: { id },
+      data: {
+        title: nextTitle,
+        type: nextType,
+        date: nextDate,
+        time: nextTime,
+        notes: nextNotes,
+        status: nextStatus,
+        leadId: nextLeadId,
+        propertyId: nextPropertyId,
+      },
+    })
+
     const event = await prisma.agendaEvent.findFirst({
       where: { id, brokerId: user.broker.id },
       include: {
