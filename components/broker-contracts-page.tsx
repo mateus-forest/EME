@@ -89,6 +89,26 @@ type CommercialFieldDefinition = {
   examples?: string[]
 }
 
+type WorkspaceEntityKey = "client" | "property" | "broker" | "agency"
+
+type WorkspaceEntityItem = {
+  label: string
+  value: string
+}
+
+type WorkspaceEntitySection = {
+  key: WorkspaceEntityKey
+  title: string
+  route: string
+  actionLabel: string
+  summary: string
+  items: WorkspaceEntityItem[]
+}
+
+type WorkspaceEntityStatus = WorkspaceEntityItem & {
+  done: boolean
+}
+
 const DEFAULT_COMMISSION_PERCENT = 6
 
 const emptyDraft: ContractDraft = {
@@ -188,8 +208,12 @@ function withDocumentBase(html: string) {
     <base href="${origin}/" />
     <style>
       .contract-preview-empty {
-        color: rgba(95,108,99,0.72);
-        font-style: italic;
+        display: inline-flex;
+        width: 100%;
+        min-width: 96px;
+        min-height: 1.2em;
+        border-bottom: 1px solid rgba(16,33,23,0.14);
+        opacity: 0.66;
       }
       .document-brand__logo-image {
         height: 34px;
@@ -212,36 +236,170 @@ function buildPlaceholderMap(input: {
   const commission = draft.commissionPercent ? `${formatPercentInput(draft.commissionPercent)}%` : ""
 
   return {
+    VENDEDOR: "",
+    VENDEDOR_CPF_CNPJ: "",
+    VENDEDOR_RG: "",
+    VENDEDOR_ESTADO_CIVIL: "",
+    VENDEDOR_PROFISSAO: "",
+    VENDEDOR_NACIONALIDADE: "",
+    VENDEDOR_ENDERECO: "",
+    VENDEDOR_TELEFONE: "",
+    VENDEDOR_EMAIL: "",
     COMPRADOR: lead?.name || "",
+    COMPRADOR_CPF_CNPJ: "",
+    COMPRADOR_RG: "",
+    COMPRADOR_ESTADO_CIVIL: "",
+    COMPRADOR_PROFISSAO: "",
+    COMPRADOR_NACIONALIDADE: "",
+    COMPRADOR_ENDERECO: "",
     COMPRADOR_EMAIL: lead?.email || "",
     COMPRADOR_TELEFONE: lead?.phone || "",
     CORRETOR: broker?.name || "",
     CORRETOR_EMAIL: broker?.email || "",
     CORRETOR_TELEFONE: broker?.phone || "",
     CORRETOR_CRECI: broker?.creci || "",
+    IMOBILIARIA: "",
     IMOVEL: property?.title || "",
     CODIGO_INTERNO: property?.publicCode ? String(property.publicCode) : "",
     TIPO_IMOVEL: property?.type || "",
     FINALIDADE: property?.purpose || "",
+    IMOVEL_ENDERECO: "",
     BAIRRO: property?.neighborhood || "",
     CIDADE: property?.city || "",
+    ESTADO: "",
+    CEP: "",
+    MATRICULA: "",
+    CARTORIO_REGISTRO: "",
+    INSCRICAO_IMOBILIARIA: "",
+    AREA_PRIVATIVA: "",
+    AREA_TOTAL: "",
+    VAGAS: typeof property?.parkingSpots === "number" ? String(property.parkingSpots) : "",
+    BENFEITORIAS: "",
+    UNIDADE_COMPLEMENTO: "",
+    ESTADO_IMOVEL: property?.description || "",
     VALOR: amount,
+    ENTRADA: "",
+    PARCELAS: "",
+    BANCO_FINANCIAMENTO: "",
+    FGTS: "",
+    RECURSOS_PROPRIOS: "",
+    ARRAS_VALOR: "",
     COMISSAO: commission,
+    RESPONSAVEL_COMISSAO: "",
+    FORMA_PAGAMENTO_COMISSAO: "",
+    MOMENTO_COMISSAO: "",
+    FORMA_ENTREGA_POSSE: "",
+    CONDICAO_ENTREGA: "",
     DATA_POSSE: draft.endDate || "",
     DATA_ASSINATURA: draft.validity || "",
     PRAZO_ESCRITURA: draft.startDate || "",
     PRAZO_REGISTRO: draft.dueDate || "",
+    RESP_ITBI: "",
+    OBS_ITBI: "",
+    RESP_ESCRITURA: "",
+    OBS_ESCRITURA: "",
+    RESP_REGISTRO: "",
+    OBS_REGISTRO: "",
+    RESP_CERTIDOES: "",
+    OBS_CERTIDOES: "",
+    RESP_BANCARIAS: "",
+    OBS_BANCARIAS: "",
+    RESP_CONDOMINIO: "",
+    OBS_CONDOMINIO: "",
+    RESP_IPTU: "",
+    OBS_IPTU: "",
+    RESP_OUTRAS_TAXAS: "",
+    OBS_OUTRAS_TAXAS: "",
+    OBS_TRIBUTOS_DESPESAS: "",
+    OUTRAS_CONDICOES_SUSPENSIVAS: "",
+    MULTA_INADIMPLEMENTO: "",
+    JUROS_INADIMPLEMENTO: "",
+    INDICE_CORRECAO: "",
+    CANAL_PRIVACIDADE: "",
+    CORRETOR_ENDERECO: "",
+    PLATAFORMA_ASSINATURA: "",
+    COMARCA: "",
+    LOCAL_ASSINATURA: "",
+    ASSINATURA_VENDEDOR: "",
+    ASSINATURA_COMPRADOR: "",
+    ASSINATURA_CORRETOR: "",
+    TESTEMUNHA_1: "",
+    TESTEMUNHA_1_CPF: "",
+    ASSINATURA_TESTEMUNHA_1: "",
+    TESTEMUNHA_2: "",
+    TESTEMUNHA_2_CPF: "",
+    ASSINATURA_TESTEMUNHA_2: "",
     CRONOGRAMA_OBSERVACOES: draft.additionalConditions || "",
   } satisfies Record<string, string>
 }
 
 function replaceTechnicalPlaceholders(html: string, values: Record<string, string>) {
-  const fallback = '<span class="contract-preview-empty">Nao informado</span>'
+  const fallback = '<span class="contract-preview-empty" aria-hidden="true"></span>'
   return html.replace(/{{([A-Z0-9_]+)}}/g, (_match, key: string) => {
     const value = values[key]
     if (!value?.trim()) return fallback
     return escapeHtml(value.trim())
   })
+}
+
+function buildWorkspaceSections(input: {
+  lead: LeadRecord | null
+  property: PropertyApiItem | null
+  broker: BrokerProfile | null
+}) {
+  const { lead, property, broker } = input
+
+  return [
+    {
+      key: "client",
+      title: "Cliente",
+      route: "/corretor/clientes",
+      actionLabel: "Editar cliente",
+      summary: lead?.name || "Selecione um cliente para compor o contrato.",
+      items: [
+        { label: "Nome", value: lead?.name || "" },
+        { label: "Telefone", value: lead?.phone || "" },
+        { label: "E-mail", value: lead?.email || "" },
+        { label: "CPF", value: "" },
+        { label: "RG", value: "" },
+        { label: "Estado civil", value: "" },
+        { label: "Profissao", value: "" },
+        { label: "Endereco", value: "" },
+      ],
+    },
+    {
+      key: "property",
+      title: "Imovel",
+      route: "/corretor/imoveis",
+      actionLabel: "Editar imovel",
+      summary: property?.title || "Selecione um imovel para alimentar o documento.",
+      items: [
+        { label: "Titulo", value: property?.title || "" },
+        { label: "Cidade", value: property?.city || "" },
+        { label: "Bairro", value: property?.neighborhood || "" },
+        { label: "Valor anunciado", value: property?.formattedPrice || "" },
+        { label: "Matricula", value: "" },
+        { label: "Area privativa", value: "" },
+        { label: "Cartorio", value: "" },
+        { label: "CEP", value: "" },
+        { label: "Endereco", value: "" },
+        { label: "Proprietario / vendedor", value: "" },
+      ],
+    },
+    {
+      key: "broker",
+      title: "Corretor",
+      route: "/corretor/conta",
+      actionLabel: "Editar corretor",
+      summary: broker?.name || "Dados do corretor ainda nao carregados.",
+      items: [
+        { label: "Nome", value: broker?.name || "" },
+        { label: "CRECI", value: broker?.creci || "" },
+        { label: "Telefone", value: broker?.phone || "" },
+        { label: "E-mail", value: broker?.email || "" },
+      ],
+    },
+  ] satisfies WorkspaceEntitySection[]
 }
 
 function buildPreviewHtml(input: {
@@ -495,7 +653,7 @@ function PreviewInfo({
   return (
     <div className="rounded-2xl border border-black/[0.05] bg-[#fbfbf8] p-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[#8B95A1]">{label}</p>
-      <p className="mt-2 text-sm font-medium text-[#050505]">{value || "Nao informado"}</p>
+      <p className="mt-2 text-sm font-medium text-[#050505]">{value || "—"}</p>
     </div>
   )
 }
@@ -721,20 +879,64 @@ export function BrokerContractsPage() {
       ? "Comissao preenchida automaticamente pela configuracao do corretor."
       : "Comissao padrao do sistema."
 
-  const validationItems = useMemo(() => {
+  const workspaceSections = useMemo(() => {
+    return buildWorkspaceSections({
+      lead: selectedLead,
+      property: selectedProperty,
+      broker: brokerProfile,
+    }).map((section) => {
+      const items = section.items.map((item) => ({
+        ...item,
+        done: Boolean(item.value.trim()),
+      }))
+
+      return {
+        ...section,
+        items,
+        completedCount: items.filter((item) => item.done).length,
+        pendingCount: items.filter((item) => !item.done).length,
+      }
+    })
+  }, [brokerProfile, selectedLead, selectedProperty])
+
+  const pendingSummary = useMemo(() => {
+    const pendingCount = workspaceSections.reduce((total, section) => total + section.pendingCount, 0)
+    const completedCount = workspaceSections.reduce((total, section) => total + section.completedCount, 0)
+    return { pendingCount, completedCount }
+  }, [workspaceSections])
+
+  const negotiationChecks = useMemo(() => {
     return [
-      { label: "Modelo selecionado", done: Boolean(draft.kind), detail: draft.kind || "Nao informado" },
-      { label: "Cliente vinculado", done: Boolean(selectedLead), detail: selectedLead?.name || "Nao selecionado" },
-      { label: "Imovel vinculado", done: Boolean(selectedProperty), detail: selectedProperty?.title || "Nao selecionado" },
-      { label: "Valor comercial", done: Boolean(draft.amount), detail: draft.amount || "Nao informado" },
+      {
+        label: "Modelo",
+        detail: draft.kind,
+        done: Boolean(draft.kind),
+      },
+      {
+        label: "Cliente",
+        detail: selectedLead?.name || "Selecione um cliente",
+        done: Boolean(selectedLead),
+      },
+      {
+        label: "Imovel",
+        detail: selectedProperty?.title || "Selecione um imovel",
+        done: Boolean(selectedProperty),
+      },
+      {
+        label: "Valor negociado",
+        detail: draft.amount || "Defina a condicao comercial",
+        done: Boolean(draft.amount.trim()),
+      },
       {
         label: "Comissao",
+        detail:
+          parsePercentInput(draft.commissionPercent) !== null
+            ? `${formatPercentInput(draft.commissionPercent)}%`
+            : "Defina a comissao",
         done: parsePercentInput(draft.commissionPercent) !== null,
-        detail: draft.commissionPercent ? `${formatPercentInput(draft.commissionPercent)}%` : "Nao informado",
       },
-      { label: "Dados do corretor", done: Boolean(brokerProfile), detail: brokerProfile?.name || "Nao carregado" },
     ]
-  }, [brokerProfile, draft.amount, draft.commissionPercent, draft.kind, selectedLead, selectedProperty])
+  }, [draft.amount, draft.commissionPercent, draft.kind, selectedLead, selectedProperty])
 
   function openCreateDialog() {
     setEditingId(null)
@@ -780,6 +982,10 @@ export function BrokerContractsPage() {
     popup.document.write(html)
     popup.document.close()
     popup.focus()
+  }
+
+  function openWorkspaceRoute(route: string) {
+    window.open(route, "_blank", "noopener,noreferrer")
   }
 
   async function saveContract() {
@@ -1184,7 +1390,7 @@ export function BrokerContractsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-[#050505]">Propriedades do contrato</p>
-                    <p className="text-sm text-[#6B7280]">Menos cadastro, mais confirmacao.</p>
+                    <p className="text-sm text-[#6B7280]">O contrato consome dados do cliente, do imovel e do corretor.</p>
                   </div>
                   <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">
                     Editor
@@ -1205,7 +1411,7 @@ export function BrokerContractsPage() {
                         setTitleCustomized(Boolean(event.target.value.trim()))
                         updateDraftField("title", event.target.value)
                       }}
-                      placeholder="Titulo do contrato"
+                      placeholder="Titulo da negociacao"
                       className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
                     />
                   </label>
@@ -1280,7 +1486,9 @@ export function BrokerContractsPage() {
               <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
                 <div>
                   <p className="text-sm font-semibold text-[#050505]">Condicoes comerciais</p>
-                  <p className="text-sm text-[#6B7280]">Campos dinamicos com IDs estaveis para o COS.</p>
+                  <p className="text-sm text-[#6B7280]">
+                    Somente os dados especificos desta negociacao ficam no contrato. O restante vem das entidades.
+                  </p>
                 </div>
 
                 <div className="grid gap-4">
@@ -1409,15 +1617,88 @@ export function BrokerContractsPage() {
             <div className="grid content-start gap-4">
               <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
                 <div>
-                  <p className="text-sm font-semibold text-[#050505]">Pendencias e validacoes</p>
-                  <p className="text-sm text-[#6B7280]">O sistema destaca o que ainda precisa de confirmacao.</p>
+                  <p className="text-sm font-semibold text-[#050505]">Pendencias das entidades</p>
+                  <p className="text-sm text-[#6B7280]">
+                    {pendingSummary.pendingCount
+                      ? `Faltam ${pendingSummary.pendingCount} informacoes nas fontes oficiais.`
+                      : "Todas as fontes principais estao completas para este contrato."}
+                  </p>
                 </div>
 
                 <div className="grid gap-3">
-                  {validationItems.map((item) => (
+                  {workspaceSections.map((section) => (
+                    <div
+                      key={section.key}
+                      className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-[#050505]">{section.title}</p>
+                          <p className="mt-1 text-sm text-[#6B7280]">{section.summary}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => openWorkspaceRoute(section.route)}
+                          className="h-9 rounded-xl border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
+                        >
+                          {section.actionLabel}
+                        </Button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-[#edf7ef] px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[#009b3a]">
+                          {section.completedCount} completos
+                        </span>
+                        {section.pendingCount ? (
+                          <span className="rounded-full bg-[#fff4dc] px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[#c58917]">
+                            {section.pendingCount} pendentes
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-4 grid gap-2">
+                        {section.items.map((item) => (
+                          <button
+                            key={`${section.key}-${item.label}`}
+                            type="button"
+                            onClick={() => openWorkspaceRoute(section.route)}
+                            className="flex items-center justify-between rounded-[0.95rem] border border-black/[0.05] bg-white px-3 py-2 text-left transition hover:border-[#009b3a]/18 hover:bg-[#f8fbf8]"
+                          >
+                            <span className="text-sm text-[#050505]">{item.label}</span>
+                            <span className="inline-flex items-center gap-2 text-xs text-[#6B7280]">
+                              {item.done ? (
+                                <>
+                                  <CheckCircle2 className="size-3.5 text-[#009b3a]" />
+                                  Completo
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="size-3.5 text-[#c58917]" />
+                                  Pendente
+                                </>
+                              )}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
+                <div>
+                  <p className="text-sm font-semibold text-[#050505]">Workspace da negociacao</p>
+                  <p className="text-sm text-[#6B7280]">Centro limpo para revisar o documento e direita reservada para pendencias, comentarios e COS.</p>
+                </div>
+
+                <div className="rounded-[1rem] border border-black/[0.05] bg-[#fbfbf8] p-4 text-sm leading-6 text-[#5F6B7A]">
+                  O preview nunca mostra placeholders tecnicos nem “Nao informado”. Quando faltar dado estrutural, a pendencia aparece aqui e a correcao acontece na entidade de origem.
+                </div>
+                <div className="grid gap-2">
+                  {negotiationChecks.map((item) => (
                     <div
                       key={item.label}
-                      className={`rounded-[1rem] border p-3 ${
+                      className={`rounded-[1rem] border px-3 py-2 ${
                         item.done ? "border-[#009b3a]/15 bg-[#eff8f1]" : "border-[#f0dcb1] bg-[#fffaf0]"
                       }`}
                     >
@@ -1435,19 +1716,8 @@ export function BrokerContractsPage() {
                     </div>
                   ))}
                 </div>
-              </section>
-
-              <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
-                <div>
-                  <p className="text-sm font-semibold text-[#050505]">Comentarios do editor</p>
-                  <p className="text-sm text-[#6B7280]">O corretor confirma informacoes; o sistema faz o trabalho pesado.</p>
-                </div>
-
-                <div className="rounded-[1rem] border border-black/[0.05] bg-[#fbfbf8] p-4 text-sm leading-6 text-[#5F6B7A]">
-                  O preview nunca mostra placeholders tecnicos. Quando faltarem dados reais, o documento exibe um estado neutro e continua editavel.
-                </div>
                 <div className="rounded-[1rem] border border-dashed border-black/[0.08] bg-[#fcfcfa] p-4 text-sm leading-6 text-[#6B7280]">
-                  Futuro painel do COS: sugestoes de clausulas, validacoes juridicas, comentarios contextuais e preenchimento automatico dos campos comerciais por tipo de contrato.
+                  Futuro painel do COS: comentarios contextuais, validacoes juridicas e abertura orientada das entidades que ainda precisarem de complemento.
                 </div>
               </section>
             </div>
