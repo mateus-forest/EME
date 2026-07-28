@@ -2,6 +2,7 @@ import "server-only"
 
 import type { Prisma } from "@prisma/client"
 
+import { deletePropertyStorageFile } from "@/lib/property-storage"
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -83,6 +84,14 @@ export type StudioCampaignDraft = {
 }
 
 const studioCampaignInclude = {
+  property: {
+    select: {
+      id: true,
+      title: true,
+      city: true,
+      neighborhood: true,
+    },
+  },
   assets: {
     orderBy: {
       createdAt: "asc" as const,
@@ -131,9 +140,57 @@ function deriveCampaignStatus(assets: Array<{ status: StudioCampaignAssetStatus 
   return "DRAFT"
 }
 
+function formatCampaignKindLabel(kind: StudioCampaignKind) {
+  const labels: Record<StudioCampaignKind, string> = {
+    INSTAGRAM: "Instagram",
+    BUYERS: "Atrair compradores",
+    OWNERS: "Captacao",
+    SELL_PROPERTY: "Venda",
+    CONSTRUCTION: "Construcao",
+    VIDEO: "Video",
+  }
+
+  return labels[kind]
+}
+
+function readKindFromSearch(value: string): StudioCampaignKind | undefined {
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) return undefined
+
+  if (normalized.includes("instagram")) return "INSTAGRAM"
+  if (normalized.includes("video")) return "VIDEO"
+  if (normalized.includes("comprador")) return "BUYERS"
+  if (normalized.includes("capta")) return "OWNERS"
+  if (normalized.includes("venda")) return "SELL_PROPERTY"
+  if (normalized.includes("constru") || normalized.includes("obra")) return "CONSTRUCTION"
+  return undefined
+}
+
+function deriveCampaignTitle(
+  campaign: Pick<Prisma.StudioCampaignGetPayload<{ include: typeof studioCampaignInclude }>, "kind" | "goal" | "property" | "assets">,
+) {
+  const explicitGoal = campaign.goal?.trim()
+  if (explicitGoal) return explicitGoal
+
+  const firstLabeledAsset = campaign.assets.find((asset) => asset.label?.trim())
+  if (firstLabeledAsset?.label) return firstLabeledAsset.label
+
+  const propertyTitle = campaign.property?.title?.trim()
+  if (propertyTitle) {
+    return `${formatCampaignKindLabel(campaign.kind)} | ${propertyTitle}`
+  }
+
+  return formatCampaignKindLabel(campaign.kind)
+}
+
 function serializeCampaign(
   campaign: Prisma.StudioCampaignGetPayload<{ include: typeof studioCampaignInclude }>,
 ) {
+  const primaryAsset =
+    campaign.assets.find((asset) => asset.thumbnailUrl || asset.fileUrl) ??
+    campaign.assets[0] ??
+    null
+
   return {
     id: campaign.id,
     workspaceType: campaign.workspaceType,
@@ -143,6 +200,7 @@ function serializeCampaign(
     kind: campaign.kind,
     status: campaign.status,
     goal: campaign.goal,
+    title: deriveCampaignTitle(campaign),
     visualIdentity: campaign.visualIdentity,
     version: campaign.version,
     provider: campaign.provider,
@@ -151,6 +209,24 @@ function serializeCampaign(
     promptRevised: campaign.promptRevised,
     sourceRoute: campaign.sourceRoute,
     metadata: campaign.metadata,
+    property: campaign.property
+      ? {
+          id: campaign.property.id,
+          title: campaign.property.title,
+          city: campaign.property.city,
+          neighborhood: campaign.property.neighborhood,
+        }
+      : null,
+    primaryAsset: primaryAsset
+      ? {
+          id: primaryAsset.id,
+          assetKey: primaryAsset.assetKey,
+          type: primaryAsset.type,
+          fileUrl: primaryAsset.fileUrl,
+          thumbnailUrl: primaryAsset.thumbnailUrl,
+          status: primaryAsset.status,
+        }
+      : null,
     createdByUserId: campaign.createdByUserId,
     createdAt: campaign.createdAt.toISOString(),
     updatedAt: campaign.updatedAt.toISOString(),
@@ -240,22 +316,83 @@ export async function getLatestStudioCampaign(
 
 export async function listStudioCampaigns(
   user: AuthenticatedStudioUser,
-  filters?: { kind?: StudioCampaignKind; propertyId?: string | null; limit?: number },
+  filters?: {
+    kind?: StudioCampaignKind
+    propertyId?: string | null
+    status?: StudioCampaignStatus
+    assetType?: StudioCampaignAssetType
+    query?: string | null
+    page?: number
+    limit?: number
+  },
 ) {
   const workspace = resolveWorkspace(user)
-  const campaigns = await prisma.studioCampaign.findMany({
-    where: {
-      kind: filters?.kind,
-      propertyId: filters?.propertyId ?? undefined,
-      brokerId: workspace.brokerId ?? undefined,
-      agencyId: workspace.agencyId ?? undefined,
-    },
-    orderBy: { createdAt: "desc" },
-    take: filters?.limit ?? 30,
-    include: studioCampaignInclude,
-  })
+  const normalizedQuery = filters?.query?.trim()
+  const inferredKind = normalizedQuery ? readKindFromSearch(normalizedQuery) : undefined
+  const where: Prisma.StudioCampaignWhereInput = {
+    kind: filters?.kind,
+    status: filters?.status,
+    propertyId: filters?.propertyId ?? undefined,
+    brokerId: workspace.brokerId ?? undefined,
+    agencyId: workspace.agencyId ?? undefined,
+    assets: filters?.assetType
+      ? {
+          some: {
+            type: filters.assetType,
+          },
+        }
+      : undefined,
+    OR: normalizedQuery
+      ? [
+          {
+            goal: {
+              contains: normalizedQuery,
+              mode: "insensitive",
+            },
+          },
+          {
+            property: {
+              is: {
+                title: {
+                  contains: normalizedQuery,
+                  mode: "insensitive",
+                },
+              },
+            },
+          },
+          inferredKind
+            ? {
+                kind: inferredKind,
+              }
+            : undefined,
+        ].filter(Boolean) as Prisma.StudioCampaignWhereInput[]
+      : undefined,
+  }
 
-  return campaigns.map(serializeCampaign)
+  const take = filters?.limit ?? 24
+  const page = Math.max(1, filters?.page ?? 1)
+  const skip = (page - 1) * take
+
+  const [campaigns, total] = await prisma.$transaction([
+    prisma.studioCampaign.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
+      include: studioCampaignInclude,
+    }),
+    prisma.studioCampaign.count({ where }),
+  ])
+
+  return {
+    campaigns: campaigns.map(serializeCampaign),
+    pagination: {
+      page,
+      limit: take,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / take)),
+    },
+  }
 }
 
 export async function getStudioCampaignById(user: AuthenticatedStudioUser, campaignId: string) {
@@ -286,11 +423,6 @@ export async function updateStudioCampaignAssetStatus(
         agencyId: workspace.agencyId ?? undefined,
       },
     },
-    include: {
-      campaign: {
-        include: studioCampaignInclude,
-      },
-    },
   })
 
   if (!asset) {
@@ -318,6 +450,51 @@ export async function updateStudioCampaignAssetStatus(
 
   const savedCampaign = await prisma.studioCampaign.update({
     where: { id: refreshedCampaign.id },
+    data: {
+      status: nextStatus,
+    },
+    include: studioCampaignInclude,
+  })
+
+  return serializeCampaign(savedCampaign)
+}
+
+export async function deleteStudioCampaignAsset(user: AuthenticatedStudioUser, assetId: string) {
+  const workspace = resolveWorkspace(user)
+  const asset = await prisma.studioCampaignAsset.findFirst({
+    where: {
+      id: assetId,
+      campaign: {
+        brokerId: workspace.brokerId ?? undefined,
+        agencyId: workspace.agencyId ?? undefined,
+      },
+    },
+  })
+
+  if (!asset) {
+    throw new Error("STUDIO_CAMPAIGN_ASSET_NOT_FOUND")
+  }
+
+  if (asset.fileUrl) {
+    await deletePropertyStorageFile(asset.fileUrl)
+  }
+
+  if (asset.thumbnailUrl && asset.thumbnailUrl !== asset.fileUrl) {
+    await deletePropertyStorageFile(asset.thumbnailUrl)
+  }
+
+  await prisma.studioCampaignAsset.delete({
+    where: { id: assetId },
+  })
+
+  const refreshedCampaign = await prisma.studioCampaign.findUniqueOrThrow({
+    where: { id: asset.campaignId },
+    include: studioCampaignInclude,
+  })
+
+  const nextStatus = deriveCampaignStatus(refreshedCampaign.assets.map((item) => ({ status: item.status })))
+  const savedCampaign = await prisma.studioCampaign.update({
+    where: { id: asset.campaignId },
     data: {
       status: nextStatus,
     },

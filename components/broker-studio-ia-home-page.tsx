@@ -3,6 +3,7 @@
 import Link from "next/link"
 import {
   ArrowRight,
+  BookOpen,
   Bot,
   Camera,
   Home,
@@ -26,6 +27,14 @@ type StudioAction = {
 }
 
 const studioActions: StudioAction[] = [
+  {
+    title: "Biblioteca",
+    description: "Consulte todo o historico de campanhas, imagens, videos e copys gerados pelo Studio IA.",
+    icon: BookOpen,
+    href: "/corretor/studio-ia/biblioteca",
+    cta: "Abrir biblioteca",
+    status: "Disponivel",
+  },
   {
     title: "Vender este imovel",
     description: "Organize uma acao focada em conversao para apresentar o imovel certo no momento certo.",

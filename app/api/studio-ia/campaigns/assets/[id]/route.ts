@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
-import { updateStudioCampaignAssetStatus, type StudioCampaignAssetStatus } from "@/lib/studio-campaigns"
+import { deleteStudioCampaignAsset, updateStudioCampaignAssetStatus, type StudioCampaignAssetStatus } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
 export const dynamic = "force-dynamic"
@@ -41,5 +41,29 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     return NextResponse.json({ error: "Nao foi possivel atualizar o asset." }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { error, user } = await getAuthenticatedUser()
+
+  if (error || !user) {
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  }
+
+  if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
+    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+  }
+
+  try {
+    const { id } = await context.params
+    const campaign = await deleteStudioCampaignAsset(user, id)
+    return NextResponse.json({ campaign })
+  } catch (error) {
+    if (error instanceof Error && error.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
+      return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel excluir o asset." }, { status: 500 })
   }
 }
