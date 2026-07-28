@@ -15,6 +15,9 @@ export function getAppBaseUrl() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
   if (appUrl) return trimTrailingSlash(appUrl)
 
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+  if (productionUrl) return trimTrailingSlash(`https://${productionUrl.replace(/^https?:\/\//i, "")}`)
+
   const vercelUrl = process.env.VERCEL_URL?.trim()
   if (vercelUrl) return trimTrailingSlash(`https://${vercelUrl}`)
 
@@ -38,7 +41,7 @@ export function getBrokerCatalogCanonicalUrl(slug: string) {
 }
 
 export function getBrokerCatalogOgImageUrl(slug: string) {
-  return toAbsoluteCatalogUrl(`/catalogo/${slug}/opengraph-image`)
+  return toAbsoluteCatalogUrl(`/api/catalogs/broker/${slug}/og-image`)
 }
 
 export function normalizeImageSource(value: string | null | undefined) {
