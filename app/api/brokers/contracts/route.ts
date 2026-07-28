@@ -6,6 +6,7 @@ import {
   contractHtmlToText,
   contractTypeOptions,
   createContractContent,
+  normalizeContractStatus,
   normalizeContractType,
   parseContractAmount,
   parseContractContent,
@@ -39,6 +40,14 @@ function buildContractTitle(kind: string, leadName?: string | null, propertyTitl
   )
 }
 
+function getStatusWhere(status: string) {
+  const normalized = normalizeContractStatus(status)
+  if (!normalized) return null
+  if (normalized === "awaiting_signature") return { in: ["awaiting_signature", "generated"] }
+  if (normalized === "completed") return { in: ["completed", "archived"] }
+  return normalized
+}
+
 function serializeContract(document: {
   id: string
   title: string
@@ -50,12 +59,13 @@ function serializeContract(document: {
   propertyId: string | null
 }) {
   const content = parseContractContent(document.content)
+  const status = normalizeContractStatus(document.status) ?? "draft"
 
   return {
     id: document.id,
     type: "contract",
     title: document.title,
-    status: document.status,
+    status,
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
     leadId: document.leadId,
@@ -101,6 +111,7 @@ async function buildPersistedContract(input: {
   additionalConditions?: unknown
   clausesText?: unknown
   reviewNotesText?: unknown
+  status?: unknown
   previous?: ContractContent | null
 }) {
   const contractType = normalizeContractType(input.kind)
@@ -134,13 +145,14 @@ async function buildPersistedContract(input: {
   if (!property) throw new Error("Selecione um imovel valido.")
 
   const amountCents = parseContractAmount(input.amount)
+  const nextStatus = normalizeContractStatus(input.status) ?? "draft"
   const nextContent = createContractContent({
     kind: contractType,
     title:
       cleanText(input.title, 160) ||
       input.previous?.title ||
       buildContractTitle(contractType, lead.name, property.title),
-    status: "draft",
+    status: nextStatus,
     version: input.previous ? input.previous.version + 1 : 1,
     authorName: input.userName,
     authorEmail: input.userEmail,
@@ -200,12 +212,13 @@ export async function GET(request: NextRequest) {
     const q = cleanText(request.nextUrl.searchParams.get("q"), 120)
     const kind = cleanText(request.nextUrl.searchParams.get("kind"), 80)
     const status = cleanText(request.nextUrl.searchParams.get("status"), 40)
+    const statusWhere = status && status !== "all" ? getStatusWhere(status) : null
 
     const documents = await prisma.brokerDocument.findMany({
       where: {
         brokerId: auth.broker!.id,
         type: "contract",
-        ...(status && status !== "all" ? { status } : {}),
+        ...(statusWhere ? { status: statusWhere } : {}),
         ...(q
           ? {
               OR: [
@@ -264,6 +277,7 @@ export async function POST(request: NextRequest) {
       additionalConditions: body?.additionalConditions,
       clausesText: body?.clausesText,
       reviewNotesText: body?.reviewNotesText,
+      status: body?.status,
       previous: null,
     })
 
@@ -275,7 +289,7 @@ export async function POST(request: NextRequest) {
         type: "contract",
         title: draft.content.title,
         content: stringifyContractContent(draft.content),
-        status: "draft",
+        status: draft.content.status,
       },
     })
 

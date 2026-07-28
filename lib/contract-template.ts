@@ -14,8 +14,29 @@ export const contractTypeOptions = [
 
 export type ContractType = (typeof contractTypeOptions)[number]
 
-export const contractStatuses = ["draft", "generated", "signed", "archived"] as const
+export const contractStatuses = ["draft", "awaiting_signature", "signed", "cancelled", "completed"] as const
 export type ContractStatus = (typeof contractStatuses)[number]
+
+const legacyContractStatusMap = {
+  generated: "awaiting_signature",
+  archived: "completed",
+} as const
+
+export function normalizeContractStatus(value: unknown): ContractStatus | null {
+  if (typeof value !== "string") return null
+  if (value in legacyContractStatusMap) {
+    return legacyContractStatusMap[value as keyof typeof legacyContractStatusMap]
+  }
+  return contractStatuses.includes(value as ContractStatus) ? (value as ContractStatus) : null
+}
+
+function contractStatusLabel(status: ContractStatus) {
+  if (status === "awaiting_signature") return "Aguardando assinatura"
+  if (status === "signed") return "Assinado"
+  if (status === "cancelled") return "Cancelado"
+  if (status === "completed") return "Finalizado"
+  return "Rascunho"
+}
 
 export type ContractParty = {
   id?: string | null
@@ -149,6 +170,8 @@ export function buildContractHtml(content: ContractContent) {
     financial.amountLabel ||
     (financial.amountCents ? formatCurrencyBRLFromCents(financial.amountCents) : "Nao informado")
 
+  const status = normalizeContractStatus(content.status) ?? "draft"
+
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -218,7 +241,7 @@ export function buildContractHtml(content: ContractContent) {
     <section class="sheet">
       <header class="topbar">
         <div>
-          <div class="eyebrow">Contrato em rascunho</div>
+          <div class="eyebrow">${escapeHtml(`Contrato ${contractStatusLabel(status)}`)}</div>
           <h1 class="title">${escapeHtml(content.title)}</h1>
           <p class="subtitle">${escapeHtml(getContractHeadline(content.kind))}</p>
         </div>
@@ -342,7 +365,7 @@ export function createContractContent(input: {
   const content: ContractContent = {
     version: input.version ?? 1,
     kind: input.kind,
-    status: input.status ?? "draft",
+    status: normalizeContractStatus(input.status) ?? "draft",
     title: input.title,
     authorName: input.authorName,
     authorEmail: input.authorEmail ?? null,

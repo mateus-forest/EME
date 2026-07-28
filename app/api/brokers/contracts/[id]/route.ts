@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import {
   buildContractHtml,
+  contractHtmlToText,
   createContractContent,
+  normalizeContractStatus,
   normalizeContractType,
   parseContractAmount,
   parseContractContent,
@@ -34,12 +36,13 @@ function serializeContract(document: {
   propertyId: string | null
 }) {
   const content = parseContractContent(document.content)
+  const status = normalizeContractStatus(document.status) ?? "draft"
 
   return {
     id: document.id,
     type: "contract",
     title: document.title,
-    status: document.status,
+    status,
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
     leadId: document.leadId,
@@ -50,6 +53,7 @@ function serializeContract(document: {
     leadName: content.lead?.name ?? "",
     propertyTitle: content.property?.title ?? "",
     amountLabel: content.financial.amountLabel ?? "",
+    textPreview: contractHtmlToText(content.html).slice(0, 320),
     content,
   }
 }
@@ -117,6 +121,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           status: "draft",
           content: stringifyContractContent({
             ...parsed,
+            status: "draft",
             version: 1,
             title: cleanText(`${parsed.title} - copia`, 160),
             createdAt: new Date().toISOString(),
@@ -129,6 +134,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const parsed = parseContractContent(found.content)
+    const nextStatus = normalizeContractStatus(body?.status) ?? normalizeContractStatus(found.status) ?? "draft"
     const nextLeadId = cleanText(body?.leadId, 80) || found.leadId || ""
     const nextPropertyId = cleanText(body?.propertyId, 80) || found.propertyId || ""
     const nextKind = cleanText(body?.kind, 80) || parsed.kind
@@ -164,7 +170,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const nextContent = createContractContent({
       kind: contractType,
       title: cleanText(body?.title, 160) || parsed.title,
-      status: "draft",
+      status: nextStatus,
       version: parsed.version + 1,
       authorName: auth.name,
       authorEmail: auth.email,
@@ -212,7 +218,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         leadId: lead.id,
         propertyId: property.id,
         title: nextContent.title,
-        status: cleanText(body?.status, 40) || "draft",
+        status: nextStatus,
         content: stringifyContractContent(nextContent),
       },
     })
