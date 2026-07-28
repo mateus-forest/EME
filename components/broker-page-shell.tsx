@@ -72,7 +72,7 @@ export function BrokerPageShell({
         } as CSSProperties
       }
     >
-      <div className={`pwa-safe-shell relative min-h-svh w-full overflow-hidden text-[#050505] ${isCosVariant ? "bg-[#f4f1eb]" : "bg-[#fbfbf8]"}`}>
+      <div className={`pwa-safe-shell relative min-h-svh w-full overflow-hidden text-[#050505] ${isCosVariant ? "bg-[#f4f1eb]" : "bg-[#f6f2eb] sm:bg-[#fbfbf8]"}`}>
         {!isCosVariant ? (
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
         ) : null}
@@ -158,11 +158,11 @@ export function BrokerPageShell({
               className={
                 isCosVariant
                   ? "min-w-0 flex-1 overflow-hidden rounded-none border-y-0 border-r border-l border-black/[0.06] bg-transparent shadow-none"
-                  : "min-w-0 flex-1 overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-white/86 shadow-[0_18px_60px_rgba(15,23,42,0.06)]"
+                  : "min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none md:rounded-[1.75rem] md:border md:border-black/[0.06] md:bg-white/86 md:shadow-[0_18px_60px_rgba(15,23,42,0.06)]"
               }
             >
               <div
-                className={`h-full max-w-full overflow-x-hidden ${isCosVariant ? "overflow-y-hidden px-0 py-0" : "overflow-y-auto px-4 py-5 sm:px-6 lg:px-8"} ${contentClassName ?? ""}`}
+                className={`h-full max-w-full overflow-x-hidden ${isCosVariant ? "overflow-y-hidden px-0 py-0" : "overflow-y-auto px-0 py-0 sm:px-6 sm:py-5 lg:px-8"} ${contentClassName ?? ""}`}
               >
                 {children}
               </div>

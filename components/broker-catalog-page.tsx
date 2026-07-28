@@ -230,7 +230,7 @@ export function BrokerCatalogPage() {
 
   return (
     <BrokerPageShell title="Catálogo">
-      <div className="grid max-w-full gap-5 overflow-hidden">
+      <div className="grid max-w-full gap-4 overflow-hidden px-3 py-3 sm:gap-5 sm:px-0 sm:py-0">
         <section className="grid max-w-full gap-6 overflow-hidden xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           <Card className="max-w-full overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-4 py-5 sm:px-6">
@@ -295,7 +295,7 @@ export function BrokerCatalogPage() {
                             />
                           </div>
                         </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <div className="grid gap-2 sm:flex sm:flex-row sm:flex-wrap">
                           <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
                             <Copy className="size-4" />
                             {copyFeedback ? "Link copiado" : "Copiar link"}
@@ -319,12 +319,12 @@ export function BrokerCatalogPage() {
                       className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505]"
                     />
                   </label>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                     <Button
                       type="button"
                       onClick={handleSaveCatalog}
                       disabled={isSaving}
-                      className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+                      className="h-10 w-full rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 sm:w-auto"
                     >
                       {isSaving ? "Salvando..." : "Salvar alterações"}
                     </Button>
@@ -337,9 +337,9 @@ export function BrokerCatalogPage() {
                 <p className="text-xs uppercase tracking-[0.18em] text-[#7B8491]">URL pública</p>
                 <div className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2.5">
                   <Link2 className="size-4 shrink-0 text-[#8B95A1]" />
-                  <p className="min-w-0 truncate text-base font-medium text-[#050505]">{catalogUrl}</p>
+                  <p className="min-w-0 break-all text-sm font-medium text-[#050505] sm:truncate sm:text-base">{catalogUrl}</p>
                 </div>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <div className="mt-4 grid gap-2 sm:flex sm:flex-row sm:flex-wrap">
                   <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
                     <Copy className="size-4" />
                     {copyFeedback ? "Link copiado" : "Copiar link"}
@@ -378,7 +378,7 @@ export function BrokerCatalogPage() {
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex min-w-0 items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#009b3a]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-xl font-semibold text-[#009b3a]">
                 {draftSettings.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -387,13 +387,13 @@ export function BrokerCatalogPage() {
                   getInitials(draftSettings.displayName) || "MC"
                 )}
               </div>
-              <div>
-                <p className="text-lg font-semibold text-[#050505]">{draftSettings.displayName}</p>
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold text-[#050505]">{draftSettings.displayName}</p>
                 <p className="text-sm text-[#6B7280]">CRECI {profile.creci}</p>
               </div>
             </div>
 
-            <Button asChild className="h-10 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-[#050505] hover:bg-[#2fe06f]">
+            <Button asChild className="h-10 w-full rounded-full bg-[#25D366] px-5 text-sm font-semibold text-[#050505] hover:bg-[#2fe06f] lg:w-auto">
               <a href={propertyWhatsAppUrl} target="_blank" rel="noreferrer">
                 Falar no WhatsApp
               </a>
@@ -622,7 +622,7 @@ export function BrokerCatalogPage() {
                 </div>
 
                 <div className="mt-8 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-[#009b3a]/20 bg-[radial-gradient(circle_at_50%_35%,rgba(105,240,174,0.22),rgba(0,200,83,0.10)_45%,rgba(255,255,255,0.04))] text-lg font-semibold text-[#009b3a]">
                       {draftSettings.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -631,8 +631,8 @@ export function BrokerCatalogPage() {
                         getInitials(draftSettings.displayName) || "MC"
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-[#050505]">{draftSettings.displayName}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-[#050505]">{draftSettings.displayName}</p>
                       <p className="text-sm text-[#7B8491]">CRECI {profile.creci}</p>
                     </div>
                   </div>

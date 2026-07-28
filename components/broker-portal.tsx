@@ -176,6 +176,7 @@ export function BrokerPortal() {
     { label: "Conversar com o COS", focusOnly: true },
   ]
   const primaryCosSuggestions = nextStepSuggestions.slice(0, 3)
+  const isConversationEmpty = !isConversationLoading && conversation.length === 0
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
@@ -315,10 +316,10 @@ export function BrokerPortal() {
             } as CSSProperties
           }
         >
-          <div className="flex min-h-0 min-w-0 flex-1 px-3 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-0 sm:px-5 lg:px-7 lg:py-3 lg:pr-[calc(var(--cos-shortcut-rail-width)+1.75rem)]">
-            <div className="mx-auto grid h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_0.35rem)] w-full max-w-[58rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)] lg:grid-rows-[auto_minmax(0,1fr)]">
-              <div className="space-y-2 pt-0 text-center sm:pt-1">
-                <div className="mx-auto flex size-6 items-center justify-center rounded-full bg-white/80 text-[#111111] shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+          <div className="flex min-h-0 min-w-0 flex-1 px-0 pb-0 pt-0 sm:px-5 lg:px-7 lg:py-3 lg:pr-[calc(var(--cos-shortcut-rail-width)+1.75rem)]">
+            <div className="mx-auto grid h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[58rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-1 sm:gap-2 lg:mx-0 lg:h-[calc(100dvh_-_1.5rem)] lg:grid-rows-[auto_minmax(0,1fr)]">
+              <div className="space-y-1 px-3 pt-0 text-center sm:space-y-2 sm:px-0 sm:pt-1">
+                <div className="mx-auto flex size-6 items-center justify-center rounded-full bg-white/80 text-[#111111] shadow-[0_8px_20px_rgba(15,23,42,0.04)] sm:size-6">
                   <Sparkles className="size-3.5" />
                 </div>
                 <div className="space-y-0.5">
@@ -343,13 +344,15 @@ export function BrokerPortal() {
               </div>
 
               <div className="min-h-0 w-full max-w-[58rem] min-w-0 justify-self-center">
-                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-[1.7rem] border border-black/[0.05] bg-white/55 px-1 py-1 shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
-                  <div className="flex flex-col gap-1.5 px-2 pb-1.5 pt-1 sm:px-3">
+                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-none border-0 bg-transparent px-0 py-0 shadow-none sm:rounded-[1.7rem] sm:border sm:border-black/[0.05] sm:bg-white/55 sm:px-1 sm:py-1 sm:shadow-[0_12px_30px_rgba(15,23,42,0.04)] lg:rounded-[2rem] lg:border-white/40 lg:bg-white/[0.14] lg:shadow-none">
+                  <div className="flex flex-col gap-1.5 px-3 pb-1.5 pt-1 sm:px-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         {showConversationTitle ? (
                           <p className="truncate text-[0.92rem] font-semibold text-[#111111]">{activeConversation?.title}</p>
-                        ) : null}
+                        ) : (
+                          <p className="text-[0.92rem] font-semibold text-[#111111] sm:hidden">Conversa com o COS</p>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#7a8798]">
                         <span className="rounded-full border border-black/[0.06] bg-white/82 px-2.5 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
@@ -362,10 +365,34 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-1 sm:px-2">
+                  <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-1 sm:px-2">
                     {isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                         Carregando conversa...
+                      </div>
+                    ) : null}
+
+                    {isConversationEmpty ? (
+                      <div className="flex min-h-full flex-col justify-center gap-4 pb-2 pt-1">
+                        <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/82 px-5 py-5 text-left shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+                          <p className="text-sm font-semibold text-[#111111]">Pronto para conversar</p>
+                          <p className="mt-2 text-sm leading-6 text-[#6f7f97]">
+                            Comece com uma pergunta direta ou toque em uma sugestao para destravar sua proxima acao.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-2 sm:hidden">
+                          {primaryCosSuggestions.map((suggestion) => (
+                            <button
+                              key={`mobile-${suggestion.label}`}
+                              type="button"
+                              onClick={() => void handleNextStepSuggestion(suggestion)}
+                              className="rounded-[1.15rem] border border-black/[0.06] bg-white/82 px-4 py-3 text-left text-sm font-medium text-[#2f3a4d] shadow-[0_10px_24px_rgba(15,23,42,0.03)]"
+                            >
+                              {suggestion.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     ) : null}
 
@@ -424,7 +451,7 @@ export function BrokerPortal() {
                     ) : null}
                   </div>
 
-                  <div className="pt-1">
+                  <div className="pt-1 px-2 pb-2 sm:px-0 sm:pb-0">
                     <CosPromptComposer
                       prompt={prompt}
                       setPrompt={setPrompt}
