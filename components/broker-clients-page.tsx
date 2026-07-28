@@ -187,6 +187,12 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [clientDraft, setClientDraft] = useState<ClientForm>(emptyClientForm)
 
+  const openClient = useCallback((client: LeadRecord) => {
+    router.push(`/corretor/clientes/${client.id}`)
+    setSelectedClient(client)
+    setSelectedClientDraft(mapLeadToForm(client))
+  }, [router])
+
   useEffect(() => {
     void loadClients()
     const unsubscribe = subscribeEntitySync((message) => {
@@ -245,12 +251,6 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
     }
     setClients(data?.leads ?? [])
   }
-
-  const openClient = useCallback((client: LeadRecord) => {
-    router.push(`/corretor/clientes/${client.id}`)
-    setSelectedClient(client)
-    setSelectedClientDraft(mapLeadToForm(client))
-  }, [router])
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
     setIsUpdatingStatus(true)

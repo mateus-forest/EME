@@ -106,6 +106,33 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const hasActiveFilters =
     normalizedSearch.length > 0 || statusFilters.length < 2 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
 
+  const openEditModal = useCallback((property: Property) => {
+    router.push(`/corretor/imoveis/${property.id}`)
+    setEditingProperty({
+      id: property.id,
+      title: property.title,
+      city: property.city,
+      neighborhood: property.neighborhood,
+      ownerName: property.ownerName,
+      price: property.price,
+      images: [...property.images],
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      parking: property.parking,
+      status: property.status,
+      type: property.type,
+      purpose: property.purpose,
+      description: property.description,
+      audioUrl: property.audioUrl,
+      legal: property.legal,
+      documents: property.documents,
+      completion: property.completion,
+    })
+    setSaveFeedback("")
+    setAiHighlights([])
+    setIsEditModalOpen(true)
+  }, [router])
+
   useEffect(() => {
     if (!initialPropertyId || !properties.length) return
     const property = properties.find((item) => item.id === initialPropertyId)
@@ -133,33 +160,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   function toggleFilter<T extends string>(value: T, current: T[], onChange: (next: T[]) => void) {
     onChange(current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
   }
-
-  const openEditModal = useCallback((property: Property) => {
-    router.push(`/corretor/imoveis/${property.id}`)
-    setEditingProperty({
-      id: property.id,
-      title: property.title,
-      city: property.city,
-      neighborhood: property.neighborhood,
-      ownerName: property.ownerName,
-      price: property.price,
-      images: [...property.images],
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      parking: property.parking,
-      status: property.status,
-      type: property.type,
-      purpose: property.purpose,
-      description: property.description,
-      audioUrl: property.audioUrl,
-      legal: property.legal,
-      documents: property.documents,
-      completion: property.completion,
-    })
-    setSaveFeedback("")
-    setAiHighlights([])
-    setIsEditModalOpen(true)
-  }, [router])
 
   function closeEditModal(open: boolean) {
     setIsEditModalOpen(open)
