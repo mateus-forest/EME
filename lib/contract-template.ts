@@ -1,4 +1,21 @@
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
+import {
+  DocumentBullets,
+  DocumentCard,
+  DocumentCheckboxGroup,
+  DocumentColumns,
+  DocumentCover,
+  DocumentFieldGrid,
+  DocumentInput,
+  DocumentNotice,
+  DocumentPage,
+  DocumentSection,
+  DocumentSignatureBlock,
+  DocumentStack,
+  DocumentTable,
+  documentToken,
+  renderDocumentHtml,
+} from "@/lib/document-template"
 
 export const contractTypeOptions = [
   "Compra e venda",
@@ -22,30 +39,14 @@ const legacyContractStatusMap = {
   archived: "completed",
 } as const
 
-export function normalizeContractStatus(value: unknown): ContractStatus | null {
-  if (typeof value !== "string") return null
-  if (value in legacyContractStatusMap) {
-    return legacyContractStatusMap[value as keyof typeof legacyContractStatusMap]
-  }
-  return contractStatuses.includes(value as ContractStatus) ? (value as ContractStatus) : null
-}
-
-function contractStatusLabel(status: ContractStatus) {
-  if (status === "awaiting_signature") return "Aguardando assinatura"
-  if (status === "signed") return "Assinado"
-  if (status === "cancelled") return "Cancelado"
-  if (status === "completed") return "Finalizado"
-  return "Rascunho"
-}
-
-export type ContractParty = {
+type ContractParty = {
   id?: string | null
   name?: string | null
   phone?: string | null
   email?: string | null
 }
 
-export type ContractProperty = {
+type ContractProperty = {
   id?: string | null
   publicCode?: number | null
   title?: string | null
@@ -58,7 +59,7 @@ export type ContractProperty = {
   parkingSpots?: number | null
 }
 
-export type ContractFinancial = {
+type ContractFinancial = {
   amountLabel?: string | null
   amountCents?: number | null
   commissionPercent?: string | null
@@ -111,29 +112,40 @@ function propertyTypeLabel(type?: string | null) {
 }
 
 function propertyPurposeLabel(purpose?: string | null) {
-  if (purpose === "RENT" || purpose === "Locacao" || purpose === "Locação") return "Locacao"
+  if (purpose === "RENT" || purpose === "Locacao" || purpose === "LocaÃ§Ã£o") return "Locacao"
   return "Venda"
 }
 
-function renderInfoItem(label: string, value?: string | number | null) {
-  return `
-    <div class="info-card">
-      <div class="info-label">${escapeHtml(label)}</div>
-      <div class="info-value">${escapeHtml(value)}</div>
-    </div>
-  `
+function p(name: string) {
+  return documentToken(name)
+}
+
+function contractStatusLabel(status: ContractStatus) {
+  if (status === "awaiting_signature") return "Aguardando assinatura"
+  if (status === "signed") return "Assinado"
+  if (status === "cancelled") return "Cancelado"
+  if (status === "completed") return "Finalizado"
+  return "Rascunho"
+}
+
+export function normalizeContractStatus(value: unknown): ContractStatus | null {
+  if (typeof value !== "string") return null
+  if (value in legacyContractStatusMap) {
+    return legacyContractStatusMap[value as keyof typeof legacyContractStatusMap]
+  }
+  return contractStatuses.includes(value as ContractStatus) ? (value as ContractStatus) : null
 }
 
 function getContractHeadline(kind: ContractType) {
-  if (kind === "Compra e venda") return "Instrumento base para negociação de compra e venda."
-  if (kind === "Locacao residencial") return "Minuta base para locação residencial em revisão."
-  if (kind === "Locacao comercial") return "Minuta base para locação comercial em revisão."
-  if (kind === "Autorizacao de venda") return "Autorização comercial estruturada para captação."
-  if (kind === "Exclusividade") return "Minuta base para exclusividade de intermediação."
-  if (kind === "Termo de visita") return "Termo base para registro e confirmação de visita."
-  if (kind === "Reserva") return "Documento base para reserva de imóvel e condições iniciais."
-  if (kind === "Aditivo") return "Estrutura inicial para aditivo contratual."
-  return "Estrutura inicial para distrato e encerramento da relação contratual."
+  if (kind === "Compra e venda") return "Template mestre do EME para operacoes de compra e venda de imoveis."
+  if (kind === "Locacao residencial") return "Base visual oficial para futura minuta de locacao residencial."
+  if (kind === "Locacao comercial") return "Base visual oficial para futura minuta de locacao comercial."
+  if (kind === "Autorizacao de venda") return "Base visual oficial para autorizacao de venda."
+  if (kind === "Exclusividade") return "Base visual oficial para contrato de exclusividade."
+  if (kind === "Termo de visita") return "Base visual oficial para termo de visita."
+  if (kind === "Reserva") return "Base visual oficial para instrumento de reserva."
+  if (kind === "Aditivo") return "Base visual oficial para aditivos contratuais."
+  return "Base visual oficial para distrato e encerramento contratual."
 }
 
 export function buildContractClauses(kind: ContractType, input: {
@@ -146,6 +158,16 @@ export function buildContractClauses(kind: ContractType, input: {
   const personName = input.lead?.name || "cliente"
   const commission = input.financial?.commissionLabel || (input.financial?.commissionPercent ? `${input.financial.commissionPercent}%` : "Nao informada")
 
+  if (kind === "Compra e venda") {
+    return [
+      `Partes previstas: vendedor ${p("VENDEDOR")} e comprador ${p("COMPRADOR")}, com intermediacao de ${p("CORRETOR")}.`,
+      `Objeto principal: ${p("IMOVEL")} com matricula ${p("MATRICULA")} e valor base ${p("VALOR")}.`,
+      `Forma de pagamento prevista: entrada, parcelas, financiamento, FGTS e recursos proprios conforme cronograma contratual.`,
+      `Corretagem de referencia: ${commission}. Revisar responsabilidade, vencimento e base de calculo antes da assinatura.`,
+      `Dados comerciais atuais vinculados ao rascunho: ${personName}, ${propertyRef}, ${amount}.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -155,6 +177,15 @@ export function buildContractClauses(kind: ContractType, input: {
 }
 
 export function buildContractReviewNotes(kind: ContractType) {
+  if (kind === "Compra e venda") {
+    return [
+      "Confirmar se todos os placeholders obrigatorios foram substituidos antes do envio ao cliente.",
+      "Revisar matricula, endereco, cronograma financeiro, arras, corretagem e regras de posse.",
+      "Validar reparticao de tributos, despesas cartorarias e eventuais condicoes suspensivas.",
+      "Manter o documento como rascunho ate a validacao comercial e juridica final.",
+    ]
+  }
+
   return [
     `Revisar a minuta de ${kind.toLowerCase()} antes de compartilhar com o cliente.`,
     "Confirmar clausulas obrigatorias, dados cadastrais e anexos com o suporte juridico ou modelo oficial da operacao.",
@@ -162,7 +193,537 @@ export function buildContractReviewNotes(kind: ContractType) {
   ]
 }
 
-export function buildContractHtml(content: ContractContent) {
+function buildOfficialSaleContractHtml(content: ContractContent) {
+  const totalPages = 7
+
+  const cover = DocumentCover({
+    title: "Contrato Particular de Compra e Venda de Imovel",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para operacoes imobiliarias premium, preparado para revisao comercial, juridica e futura substituicao automatica de placeholders pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletrônica.",
+    highlights: ["Seguro", "Personalizavel", "Juridicamente revisavel"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Das Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Vendedor",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("VENDEDOR") },
+                { label: "CPF/CNPJ", value: p("VENDEDOR_CPF_CNPJ") },
+                { label: "RG", value: p("VENDEDOR_RG") },
+                { label: "Estado civil", value: p("VENDEDOR_ESTADO_CIVIL") },
+                { label: "Profissao", value: p("VENDEDOR_PROFISSAO") },
+                { label: "Nacionalidade", value: p("VENDEDOR_NACIONALIDADE") },
+                { label: "Endereco", value: p("VENDEDOR_ENDERECO"), span: 2 },
+                { label: "Telefone", value: p("VENDEDOR_TELEFONE") },
+                { label: "E-mail", value: p("VENDEDOR_EMAIL") },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Comprador",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("COMPRADOR") },
+                { label: "CPF/CNPJ", value: p("COMPRADOR_CPF_CNPJ") },
+                { label: "RG", value: p("COMPRADOR_RG") },
+                { label: "Estado civil", value: p("COMPRADOR_ESTADO_CIVIL") },
+                { label: "Profissao", value: p("COMPRADOR_PROFISSAO") },
+                { label: "Nacionalidade", value: p("COMPRADOR_NACIONALIDADE") },
+                { label: "Endereco", value: p("COMPRADOR_ENDERECO"), span: 2 },
+                { label: "Telefone", value: p("COMPRADOR_TELEFONE") },
+                { label: "E-mail", value: p("COMPRADOR_EMAIL") },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Corretor responsavel",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Imobiliaria", value: p("IMOBILIARIA") },
+                { label: "Telefone", value: p("CORRETOR_TELEFONE") },
+                { label: "E-mail", value: p("CORRETOR_EMAIL") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Do Objeto",
+        description: "Constitui objeto deste contrato a compra e venda do imovel abaixo identificado.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Codigo interno", value: p("CODIGO_INTERNO") },
+                { label: "Tipo do imovel", value: p("TIPO_IMOVEL") },
+                { label: "Finalidade", value: p("FINALIDADE") },
+                { label: "Endereco completo", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Bairro", value: p("BAIRRO") },
+                { label: "Cidade", value: p("CIDADE") },
+                { label: "Estado", value: p("ESTADO") },
+                { label: "CEP", value: p("CEP") },
+                { label: "Matricula", value: p("MATRICULA") },
+                { label: "Cartorio de registro", value: p("CARTORIO_REGISTRO") },
+                { label: "Inscricao imobiliaria", value: p("INSCRICAO_IMOBILIARIA") },
+                { label: "Area privativa", value: p("AREA_PRIVATIVA") },
+                { label: "Area total", value: p("AREA_TOTAL") },
+                { label: "Numero de vagas", value: p("VAGAS") },
+                { label: "Benfeitorias existentes", value: p("BENFEITORIAS"), span: 2 },
+                { label: "Unidade / complemento", value: p("UNIDADE_COMPLEMENTO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentNotice("O vendedor declara ser legitimo proprietario do imovel e possuir poderes para aliena-lo."),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "3",
+        title: "Estado do Imovel",
+        description: "O comprador declara ter vistoriado o imovel e conhecer plenamente seu estado de conservacao.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "accent",
+            children: DocumentInput({
+              label: "Descricao do estado atual",
+              value: p("ESTADO_IMOVEL"),
+              block: true,
+            }),
+          }),
+          DocumentNotice("Salvo disposicao expressa neste contrato, o imovel sera entregue no estado em que se encontra na data da assinatura."),
+        ),
+      }),
+      DocumentSection({
+        icon: "4",
+        title: "Preco e Forma de Pagamento",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Valor total da negociacao",
+            tone: "soft",
+            children: DocumentInput({ label: "Valor", value: p("VALOR") }),
+          }),
+          DocumentCard({
+            title: "Forma de pagamento",
+            children: DocumentCheckboxGroup([
+              { label: "A vista" },
+              { label: "Financiamento" },
+              { label: "Parcelado" },
+              { label: "FGTS" },
+              { label: "Recursos proprios" },
+            ]),
+          }),
+          DocumentCard({
+            title: "Cronograma financeiro",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Entrada", value: p("ENTRADA") },
+                { label: "Parcelas", value: p("PARCELAS") },
+                { label: "Banco / instituicao", value: p("BANCO_FINANCIAMENTO") },
+                { label: "FGTS", value: p("FGTS") },
+                { label: "Recursos proprios", value: p("RECURSOS_PROPRIOS") },
+                { label: "Demais condicoes", value: p("CRONOGRAMA_OBSERVACOES"), span: 2 },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentColumns(
+        DocumentSection({
+          icon: "5",
+          title: "Arras (Sinal)",
+          description: "Quando houver pagamento de sinal, este sera considerado principio de pagamento.",
+          children: DocumentCard({
+            children: DocumentBullets([
+              `Valor das arras: ${p("ARRAS_VALOR")}.`,
+              "Em caso de desistencia injustificada pelo comprador, aplicam-se as consequencias legais e contratuais cabiveis.",
+              "Em caso de desistencia injustificada pelo vendedor, aplicam-se as consequencias legais e contratuais cabiveis.",
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "6",
+          title: "Comissao de Corretagem",
+          children: DocumentStack(
+            DocumentCard({
+              children: DocumentFieldGrid({
+                columns: 2,
+                items: [
+                  { label: "Percentual", value: p("COMISSAO") },
+                  { label: "Responsavel pelo pagamento", value: p("RESPONSAVEL_COMISSAO") },
+                  { label: "Forma de pagamento", value: p("FORMA_PAGAMENTO_COMISSAO") },
+                  { label: "Momento do pagamento", value: p("MOMENTO_COMISSAO") },
+                ],
+              }),
+            }),
+            DocumentNotice("As partes reconhecem a intermediacao imobiliaria realizada pelo corretor qualificado, nos termos aplicaveis."),
+          ),
+        }),
+      ),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "7",
+          title: "Declaracoes do Vendedor",
+          children: DocumentCard({
+            children: DocumentCheckboxGroup([
+              { label: "E legitimo proprietario do imovel." },
+              { label: "Possui plena capacidade para aliena-lo." },
+              { label: "O imovel encontra-se livre de onus reais, salvo os expressamente informados." },
+              { label: "Nao ha litigios judiciais ou administrativos envolvendo o imovel, salvo os informados." },
+              { label: "Nao existem debitos de IPTU ou condominio vencidos, salvo os informados." },
+              { label: "Forneceu ao comprador todas as informacoes necessarias e verdadeiras." },
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "8",
+          title: "Obrigacoes do Comprador",
+          children: DocumentCard({
+            children: DocumentCheckboxGroup([
+              { label: "Efetuar os pagamentos nas datas e condicoes pactuadas." },
+              { label: "Fornecer a documentacao necessaria." },
+              { label: "Providenciar financiamento, quando aplicavel." },
+              { label: "Comparecer aos atos necessarios para conclusao da operacao." },
+              { label: "Cumprir todas as demais obrigacoes previstas neste instrumento." },
+            ]),
+          }),
+        }),
+      ),
+      DocumentColumns(
+        DocumentSection({
+          icon: "9",
+          title: "Posse",
+          children: DocumentStack(
+            DocumentCard({
+              children: DocumentFieldGrid({
+                columns: 2,
+                items: [
+                  { label: "Data prevista para entrega da posse", value: p("DATA_POSSE") },
+                  { label: "Forma de entrega", value: p("FORMA_ENTREGA_POSSE") },
+                  { label: "Condicao da entrega", value: p("CONDICAO_ENTREGA"), span: 2 },
+                ],
+              }),
+            }),
+            DocumentCheckboxGroup([
+              { label: "Imediata" },
+              { label: "Apos quitacao" },
+              { label: "Conforme condicao suspensiva da clausula 12" },
+              { label: "Outra forma descrita neste instrumento" },
+            ]),
+            DocumentNotice("As chaves serao entregues na data da posse, mediante quitacao das condicoes pactuadas."),
+          ),
+        }),
+        DocumentSection({
+          icon: "10",
+          title: "Escritura e Registro",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "As partes comprometem-se a praticar todos os atos necessarios para lavratura da escritura publica, quando exigivel.",
+              "As partes comprometem-se a providenciar o respectivo registro perante o Cartorio de Registro de Imoveis competente.",
+              `Prazo estimado para escritura: ${p("PRAZO_ESCRITURA")}.`,
+              `Prazo estimado para registro: ${p("PRAZO_REGISTRO")}.`,
+            ]),
+          }),
+        }),
+      ),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "11",
+        title: "Tributos e Despesas",
+        description: "As despesas e tributos incidentes sobre a presente negociacao serao distribuidos na forma abaixo.",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentTable({
+              headers: [
+                { value: "Despesa" },
+                { value: "Responsavel" },
+                { value: "Observacao" },
+              ],
+              rows: [
+                [{ value: "ITBI" }, { value: p("RESP_ITBI") }, { value: p("OBS_ITBI") }],
+                [{ value: "Escritura" }, { value: p("RESP_ESCRITURA") }, { value: p("OBS_ESCRITURA") }],
+                [{ value: "Registro" }, { value: p("RESP_REGISTRO") }, { value: p("OBS_REGISTRO") }],
+                [{ value: "Certidoes" }, { value: p("RESP_CERTIDOES") }, { value: p("OBS_CERTIDOES") }],
+                [{ value: "Despesas bancarias" }, { value: p("RESP_BANCARIAS") }, { value: p("OBS_BANCARIAS") }],
+                [{ value: "Condominio (ate a posse)" }, { value: p("RESP_CONDOMINIO") }, { value: p("OBS_CONDOMINIO") }],
+                [{ value: "IPTU (ate a posse)" }, { value: p("RESP_IPTU") }, { value: p("OBS_IPTU") }],
+                [{ value: "Outras taxas" }, { value: p("RESP_OUTRAS_TAXAS") }, { value: p("OBS_OUTRAS_TAXAS") }],
+              ],
+            }),
+          }),
+          DocumentInput({
+            label: "Observacoes complementares",
+            value: p("OBS_TRIBUTOS_DESPESAS"),
+            block: true,
+          }),
+        ),
+      }),
+      DocumentColumns(
+        DocumentSection({
+          icon: "12",
+          title: "Condicoes Suspensivas",
+          description: "Este contrato somente produzira efeitos plenos se atendidas as condicoes abaixo.",
+          children: DocumentStack(
+            DocumentCard({
+              children: DocumentCheckboxGroup([
+                { label: "Aprovacao de financiamento pelo comprador." },
+                { label: "Apresentacao de documentacao necessaria." },
+                { label: "Regularizacao documental ou registral do imovel." },
+                { label: "Emissao de certidoes negativas." },
+                { label: `Outras: ${p("OUTRAS_CONDICOES_SUSPENSIVAS")}` },
+              ]),
+            }),
+            DocumentNotice("Nao atendidas as condicoes dentro do prazo acordado, o contrato sera reavaliado conforme as regras deste instrumento."),
+          ),
+        }),
+        DocumentSection({
+          icon: "13",
+          title: "Inadimplemento",
+          children: DocumentCard({
+            children: DocumentBullets([
+              `Multa contratual de ${p("MULTA_INADIMPLEMENTO")} sobre o valor do contrato, quando aplicavel.`,
+              `Juros de ${p("JUROS_INADIMPLEMENTO")} ao mes.`,
+              `Correcao monetaria pelo indice ${p("INDICE_CORRECAO")}.`,
+              "Perdas e danos, honorarios advocaticios e demais medidas legais cabiveis.",
+            ]),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "14",
+        title: "Rescisao",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentCheckboxGroup([
+              { label: "Por mutuo acordo entre as partes." },
+              { label: "Por descumprimento de qualquer clausula." },
+              { label: "Por impossibilidade juridica da operacao." },
+              { label: "Por nao atendimento das condicoes suspensivas." },
+            ]),
+          }),
+          DocumentNotice("A parte que der causa a rescisao arcara com eventuais prejuizos comprovados a outra parte, nos limites legais e contratuais."),
+        ),
+      }),
+    ),
+  })
+
+  const page6 = DocumentPage({
+    pageNumber: 6,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "15",
+          title: "Protecao de Dados (LGPD)",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "As partes autorizam o tratamento de seus dados pessoais para execucao deste contrato, cumprimento de obrigacoes legais e regulatórias.",
+              "Os dados serao utilizados somente para finalidades ligadas a negociacao, assinatura, registro e arquivo deste instrumento.",
+              `Canal para assuntos de privacidade: ${p("CANAL_PRIVACIDADE")}.`,
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "16",
+          title: "Comunicacoes",
+          children: DocumentStack(
+            DocumentCard({
+              title: "Vendedor",
+              children: DocumentFieldGrid({
+                columns: 1,
+                items: [
+                  { label: "E-mail", value: p("VENDEDOR_EMAIL") },
+                  { label: "Telefone / WhatsApp", value: p("VENDEDOR_TELEFONE") },
+                  { label: "Endereco", value: p("VENDEDOR_ENDERECO") },
+                ],
+              }),
+            }),
+            DocumentCard({
+              title: "Comprador",
+              children: DocumentFieldGrid({
+                columns: 1,
+                items: [
+                  { label: "E-mail", value: p("COMPRADOR_EMAIL") },
+                  { label: "Telefone / WhatsApp", value: p("COMPRADOR_TELEFONE") },
+                  { label: "Endereco", value: p("COMPRADOR_ENDERECO") },
+                ],
+              }),
+            }),
+            DocumentCard({
+              title: "Corretor",
+              children: DocumentFieldGrid({
+                columns: 1,
+                items: [
+                  { label: "E-mail", value: p("CORRETOR_EMAIL") },
+                  { label: "Telefone / WhatsApp", value: p("CORRETOR_TELEFONE") },
+                  { label: "Endereco profissional", value: p("CORRETOR_ENDERECO") },
+                ],
+              }),
+            }),
+          ),
+        }),
+      ),
+      DocumentColumns(
+        DocumentSection({
+          icon: "17",
+          title: "Assinatura Eletronica",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "As partes concordam que este instrumento podera ser assinado eletronicamente.",
+              "A assinatura eletrônica produzira os mesmos efeitos juridicos da assinatura fisica, nos termos da legislacao aplicavel.",
+              `Plataforma prevista: ${p("PLATAFORMA_ASSINATURA")}.`,
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "18",
+          title: "Disposicoes Gerais",
+          children: DocumentCard({
+            children: DocumentCheckboxGroup([
+              { label: "Este contrato constitui o inteiro acordo entre as partes." },
+              { label: "Alteracoes somente terao validade se feitas por escrito e assinadas." },
+              { label: "A tolerancia de uma parte quanto ao descumprimento da outra nao implicara novacao." },
+              { label: "Se qualquer clausula for considerada nula ou invalida, as demais permanecerao validas." },
+            ]),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "19",
+        title: "Foro",
+        children: DocumentCard({
+          children: DocumentInput({
+            label: "Comarca eleita",
+            value: p("COMARCA"),
+          }),
+        }),
+      }),
+    ),
+  })
+
+  const page7 = DocumentPage({
+    pageNumber: 7,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "20",
+        title: "Assinaturas",
+        description: "Por estarem justas e contratadas, as partes assinam o presente instrumento.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("LOCAL_ASSINATURA") },
+                { label: "Data", value: p("DATA_ASSINATURA") },
+              ],
+            }),
+          }),
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Vendedor",
+              fields: [
+                { label: "Nome", value: p("VENDEDOR") },
+                { label: "Assinatura", value: p("ASSINATURA_VENDEDOR") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Comprador",
+              fields: [
+                { label: "Nome", value: p("COMPRADOR") },
+                { label: "Assinatura", value: p("ASSINATURA_COMPRADOR") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Testemunha 1",
+              fields: [
+                { label: "Nome", value: p("TESTEMUNHA_1") },
+                { label: "CPF", value: p("TESTEMUNHA_1_CPF") },
+                { label: "Assinatura", value: p("ASSINATURA_TESTEMUNHA_1") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Testemunha 2",
+              fields: [
+                { label: "Nome", value: p("TESTEMUNHA_2") },
+                { label: "CPF", value: p("TESTEMUNHA_2_CPF") },
+                { label: "Assinatura", value: p("ASSINATURA_TESTEMUNHA_2") },
+              ],
+            })}
+          </div>`,
+          DocumentNotice("Documento desenvolvido pelo EME. Este template deve ser revisado e preenchido antes do envio final para assinatura."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5, page6, page7],
+  })
+}
+
+function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
+  return DocumentCard({
+    title,
+    children: DocumentFieldGrid({
+      columns: 2,
+      items: items.map((item) => ({
+        label: item.label,
+        value: valueOrFallback(item.value),
+      })),
+    }),
+  })
+}
+
+function buildGenericContractHtml(content: ContractContent) {
   const property = content.property
   const lead = content.lead
   const financial = content.financial
@@ -170,150 +731,87 @@ export function buildContractHtml(content: ContractContent) {
     financial.amountLabel ||
     (financial.amountCents ? formatCurrencyBRLFromCents(financial.amountCents) : "Nao informado")
 
-  const status = normalizeContractStatus(content.status) ?? "draft"
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [
+      DocumentCover({
+        title: content.title,
+        subtitle: content.kind,
+        description: getContractHeadline(content.kind),
+        versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+        footerLabel: "Base visual oficial do EME para documentos contratuais.",
+        highlights: ["Modular", "Revisavel", "Pronto para evolucao"],
+      }),
+      DocumentPage({
+        pageNumber: 2,
+        totalPages: 3,
+        children: DocumentStack(
+          DocumentSection({
+            icon: "A",
+            title: "Resumo do Rascunho",
+            children: DocumentColumns(
+              renderInfoCard("Partes", [
+                { label: "Cliente", value: lead?.name },
+                { label: "Telefone", value: lead?.phone },
+                { label: "E-mail", value: lead?.email },
+                { label: "Corretor", value: content.authorName },
+              ]),
+              renderInfoCard("Ativo", [
+                { label: "Imovel", value: property?.title },
+                { label: "Tipo", value: propertyTypeLabel(property?.type) },
+                { label: "Finalidade", value: propertyPurposeLabel(property?.purpose) },
+                { label: "Cidade", value: property?.city },
+                { label: "Bairro", value: property?.neighborhood },
+                { label: "Valor", value: amountLabel },
+              ]),
+            ),
+          }),
+          DocumentSection({
+            icon: "B",
+            title: "Clausulas Base",
+            children: DocumentCard({
+              children: DocumentBullets(content.clauses),
+            }),
+          }),
+        ),
+      }),
+      DocumentPage({
+        pageNumber: 3,
+        totalPages: 3,
+        children: DocumentStack(
+          DocumentSection({
+            icon: "C",
+            title: "Notas para Revisao",
+            children: DocumentCard({
+              tone: "soft",
+              children: DocumentBullets(content.reviewNotes),
+            }),
+          }),
+          DocumentSection({
+            icon: "D",
+            title: "Condicoes Comerciais",
+            children: renderInfoCard("Financeiro", [
+              { label: "Valor", value: amountLabel },
+              { label: "Comissao", value: financial.commissionLabel || financial.commissionPercent },
+              { label: "Inicio", value: financial.startDate },
+              { label: "Fim", value: financial.endDate },
+              { label: "Vencimento", value: financial.dueDate },
+              { label: "Validade", value: financial.validity },
+            ]),
+          }),
+          DocumentNotice("Os demais templates herdam esta mesma arquitetura visual e os mesmos componentes modulares."),
+        ),
+      }),
+    ],
+  })
+}
 
-  return `<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(content.title)}</title>
-  <style>
-    :root {
-      --page: #f5f4ef;
-      --sheet: #fffdfa;
-      --surface: #f7f6f0;
-      --line: rgba(15, 23, 42, 0.08);
-      --line-soft: rgba(15, 23, 42, 0.05);
-      --text: #132018;
-      --text-soft: #607166;
-      --muted: #8c978f;
-      --green: #009b3a;
-      --green-soft: rgba(0, 155, 58, 0.08);
-      --shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body {
-      font-family: "Geist", "Segoe UI", Arial, sans-serif;
-      background: radial-gradient(circle at top left, rgba(0,155,58,0.06), transparent 24%), linear-gradient(180deg, #f7f5ef 0%, #f1eee7 100%);
-      color: var(--text);
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .page { max-width: 1040px; margin: 0 auto; padding: 24px; }
-    .sheet { background: var(--sheet); border: 1px solid var(--line-soft); border-radius: 28px; box-shadow: var(--shadow); overflow: hidden; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--line-soft); }
-    .eyebrow { color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
-    .title { margin: 8px 0 0; font-size: 40px; line-height: .96; letter-spacing: -.05em; font-weight: 700; }
-    .subtitle { margin: 12px 0 0; color: var(--text-soft); font-size: 14px; line-height: 1.7; max-width: 620px; }
-    .meta { min-width: 220px; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--line-soft); background: var(--surface); }
-    .meta strong { display: block; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-    .meta span { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; }
-    .content { padding: 28px; display: grid; gap: 24px; }
-    .hero { display: grid; grid-template-columns: minmax(0,1.1fr) 320px; gap: 24px; }
-    .hero-card, .section, .note-card { border-radius: 24px; border: 1px solid var(--line); background: white; padding: 20px; }
-    .hero-card { background: linear-gradient(180deg, rgba(0,155,58,0.03), rgba(255,255,255,1)); }
-    .hero-grid, .grid-3 { display: grid; gap: 14px; }
-    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .info-card { border-radius: 18px; border: 1px solid var(--line-soft); background: var(--surface); padding: 14px; }
-    .info-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-    .info-value { margin-top: 8px; font-size: 14px; font-weight: 600; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
-    .section-title { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.02em; }
-    .section-text { margin: 8px 0 0; font-size: 13px; line-height: 1.8; color: var(--text-soft); }
-    .clause-list { display: grid; gap: 12px; margin-top: 18px; }
-    .clause-item { padding: 14px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); font-size: 13px; line-height: 1.8; color: var(--text-soft); }
-    .note-card { background: linear-gradient(180deg, rgba(0,155,58,0.04), rgba(247,246,240,1)); }
-    .note-list { display: grid; gap: 10px; margin-top: 16px; }
-    .note-item { padding: 14px 16px; border-radius: 18px; background: white; border: 1px solid var(--line-soft); font-size: 13px; line-height: 1.8; color: var(--text-soft); }
-    .footer { padding: 0 28px 28px; color: var(--muted); font-size: 11px; line-height: 1.7; text-align: center; }
-    @media (max-width: 900px) {
-      .page { padding: 12px; }
-      .hero, .grid-3, .topbar { grid-template-columns: 1fr; display: grid; }
-      .content, .footer { padding-left: 18px; padding-right: 18px; }
-      .title { font-size: 32px; }
-    }
-    @page { size: A4; margin: 12mm; }
-  </style>
-</head>
-<body>
-  <main class="page">
-    <section class="sheet">
-      <header class="topbar">
-        <div>
-          <div class="eyebrow">${escapeHtml(`Contrato ${contractStatusLabel(status)}`)}</div>
-          <h1 class="title">${escapeHtml(content.title)}</h1>
-          <p class="subtitle">${escapeHtml(getContractHeadline(content.kind))}</p>
-        </div>
-        <div class="meta">
-          <strong>Versao e autoria</strong>
-          <span>Versao ${content.version} • ${escapeHtml(content.authorName)}</span>
-          <span>${escapeHtml(new Date(content.updatedAt).toLocaleDateString("pt-BR"))}</span>
-        </div>
-      </header>
+export function buildContractHtml(content: ContractContent) {
+  if (content.kind === "Compra e venda") {
+    return buildOfficialSaleContractHtml(content)
+  }
 
-      <section class="content">
-        <section class="hero">
-          <div class="hero-card">
-            <div class="eyebrow">${escapeHtml(content.kind)}</div>
-            <div class="hero-grid" style="margin-top:16px;">
-              ${renderInfoItem("Cliente", lead?.name)}
-              ${renderInfoItem("Imovel", property?.title)}
-              ${renderInfoItem("Valor de referencia", amountLabel)}
-              ${renderInfoItem("Inicio", financial.startDate)}
-              ${renderInfoItem("Fim", financial.endDate)}
-              ${renderInfoItem("Comissao", financial.commissionLabel || financial.commissionPercent)}
-            </div>
-          </div>
-
-          <div class="section">
-            <h2 class="section-title">Resumo do ativo</h2>
-            <div class="hero-grid" style="margin-top:16px;">
-              ${renderInfoItem("Codigo", property?.publicCode ?? property?.id)}
-              ${renderInfoItem("Tipo", propertyTypeLabel(property?.type))}
-              ${renderInfoItem("Finalidade", propertyPurposeLabel(property?.purpose))}
-              ${renderInfoItem("Cidade", property?.city)}
-              ${renderInfoItem("Bairro", property?.neighborhood)}
-            </div>
-          </div>
-        </section>
-
-        <section class="section">
-          <h2 class="section-title">Partes e referencias</h2>
-          <div class="grid-3" style="margin-top:18px;">
-            ${renderInfoItem("Cliente", lead?.name)}
-            ${renderInfoItem("Telefone", lead?.phone)}
-            ${renderInfoItem("E-mail", lead?.email)}
-            ${renderInfoItem("Corretor responsavel", content.authorName)}
-            ${renderInfoItem("E-mail do corretor", content.authorEmail)}
-            ${renderInfoItem("Data do rascunho", new Date(content.createdAt).toLocaleDateString("pt-BR"))}
-          </div>
-        </section>
-
-        <section class="section">
-          <h2 class="section-title">Estrutura base do documento</h2>
-          <p class="section-text">O contrato foi organizado com dados reais da operacao, mas segue como rascunho ate revisao comercial e juridica.</p>
-          <div class="clause-list">
-            ${content.clauses.map((clause) => `<div class="clause-item">${escapeHtml(clause)}</div>`).join("")}
-          </div>
-        </section>
-
-        <section class="note-card">
-          <h2 class="section-title">Notas para revisao antes de enviar</h2>
-          <div class="note-list">
-            ${content.reviewNotes.map((note) => `<div class="note-item">${escapeHtml(note)}</div>`).join("")}
-            ${financial.additionalConditions ? `<div class="note-item">${escapeHtml(financial.additionalConditions)}</div>` : ""}
-          </div>
-        </section>
-      </section>
-
-      <footer class="footer">
-        Documento em rascunho gerado automaticamente pelo EME • Revisar clausulas essenciais, anexos e validacoes juridicas antes de assinatura.
-      </footer>
-    </section>
-  </main>
-</body>
-</html>`
+  return buildGenericContractHtml(content)
 }
 
 export function stringifyContractContent(content: ContractContent) {
