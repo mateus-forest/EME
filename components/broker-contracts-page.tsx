@@ -658,7 +658,7 @@ function PreviewInfo({
   value: string
 }) {
   return (
-    <div className="rounded-2xl border border-black/[0.05] bg-[#fbfbf8] p-3">
+    <div className="rounded-[1.1rem] bg-[#f7f7f4] px-3.5 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[#8B95A1]">{label}</p>
       <p className="mt-2 text-sm font-medium text-[#050505]">{value || "—"}</p>
     </div>
@@ -920,6 +920,151 @@ export function BrokerContractsPage() {
     return { pendingCount, completedCount }
   }, [workspaceSections])
 
+  const selectedWorkspaceSections = useMemo(() => {
+    return buildWorkspaceSections({
+      lead: selectedContractLead,
+      property: selectedContractProperty,
+      broker: brokerProfile,
+    }).map((section) => {
+      const items = section.items.map((item) => ({
+        ...item,
+        done: Boolean(item.value.trim()),
+      }))
+
+      return {
+        ...section,
+        items,
+        completedCount: items.filter((item) => item.done).length,
+        pendingCount: items.filter((item) => !item.done).length,
+      }
+    })
+  }, [brokerProfile, selectedContractLead, selectedContractProperty])
+
+  const contractHealthIndicators = useMemo(() => {
+    const clientScore = scoreSection(selectedWorkspaceSections.find((section) => section.key === "client")?.items ?? [])
+    const propertyScore = scoreSection(
+      selectedWorkspaceSections.find((section) => section.key === "property")?.items ?? [],
+    )
+    const documentationScore = scoreSection([
+      {
+        label: "Matrícula",
+        value: selectedContractProperty?.legal.registryNumber || "",
+        done: Boolean(selectedContractProperty?.legal.registryNumber),
+      },
+      {
+        label: "Cartório",
+        value: selectedContractProperty?.legal.registryOffice || "",
+        done: Boolean(selectedContractProperty?.legal.registryOffice),
+      },
+      {
+        label: "Notas de revisão",
+        value: selectedContract?.content.reviewNotes.length ? "ok" : "",
+        done: selectedContract ? selectedContract.content.reviewNotes.length > 0 : false,
+      },
+    ])
+    const negotiationScore = scoreSection([
+      {
+        label: "Valor",
+        value: selectedContract?.amountLabel || "",
+        done: Boolean(selectedContract?.amountLabel),
+      },
+      {
+        label: "Modelo",
+        value: selectedContract?.kind || "",
+        done: Boolean(selectedContract?.kind),
+      },
+      {
+        label: "Cliente",
+        value: selectedContract?.leadName || "",
+        done: Boolean(selectedContract?.leadName),
+      },
+      {
+        label: "Imóvel",
+        value: selectedContract?.propertyTitle || "",
+        done: Boolean(selectedContract?.propertyTitle),
+      },
+    ])
+    const signatureScore = selectedContract
+      ? selectedContract.status === "signed" || selectedContract.status === "completed"
+        ? 100
+        : selectedContract.status === "awaiting_signature"
+          ? 80
+          : 64
+      : 0
+
+    return [
+      { label: "Cliente", score: clientScore },
+      { label: "Imóvel", score: propertyScore },
+      { label: "Documentação", score: documentationScore },
+      { label: "Negociação", score: negotiationScore },
+      { label: "Assinaturas", score: signatureScore },
+    ]
+  }, [selectedContract, selectedContractProperty, selectedWorkspaceSections])
+
+  const contractHealthScore = useMemo(() => {
+    if (!selectedContract) return 0
+
+    return Math.round(
+      contractHealthIndicators.reduce((total, item) => total + item.score, 0) / contractHealthIndicators.length,
+    )
+  }, [contractHealthIndicators, selectedContract])
+
+  const contractPendingHighlights = useMemo(() => {
+    if (!selectedContract) return []
+
+    return [
+      !selectedContractProperty?.legal.registryNumber ? "Matrícula" : null,
+      !selectedContractProperty?.legal.registryOffice ? "Cartório" : null,
+      !selectedContractLead?.identification.rg ? "RG do cliente" : null,
+      !selectedContract.amountLabel ? "Valor negociado" : null,
+      selectedContract.status === "draft" ? "Fluxo de assinatura" : null,
+    ].filter((item): item is string => Boolean(item))
+  }, [
+    selectedContract,
+    selectedContractLead?.identification.rg,
+    selectedContractProperty?.legal.registryNumber,
+    selectedContractProperty?.legal.registryOffice,
+  ])
+
+  const contractValidationItems = useMemo(() => {
+    if (!selectedContract) return []
+
+    return [
+      {
+        label: "Cliente validado",
+        detail: selectedContract.leadName || "Cliente ainda nao vinculado.",
+        done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+      },
+      {
+        label: "Matrícula",
+        detail: selectedContractProperty?.legal.registryNumber || "Matrícula pendente.",
+        done: Boolean(selectedContractProperty?.legal.registryNumber),
+      },
+      {
+        label: "Valor confirmado",
+        detail: selectedContract.amountLabel || "Valor negociado ainda nao informado.",
+        done: Boolean(selectedContract.amountLabel),
+      },
+      {
+        label: "Cartório",
+        detail: selectedContractProperty?.legal.registryOffice || "Cartório nao informado.",
+        done: Boolean(selectedContractProperty?.legal.registryOffice),
+      },
+      {
+        label: "Documento consistente",
+        detail:
+          selectedContract.content.reviewNotes[0] ||
+          "Revisao estruturada pronta para acompanhamento automatico.",
+        done: selectedContract.content.reviewNotes.length > 0,
+      },
+    ]
+  }, [
+    selectedContract,
+    selectedContractLead?.identification.cpfCnpj,
+    selectedContractProperty?.legal.registryNumber,
+    selectedContractProperty?.legal.registryOffice,
+  ])
+
   const negotiationChecks = useMemo(() => {
     return [
       {
@@ -1095,37 +1240,38 @@ export function BrokerContractsPage() {
 
   return (
     <div className="grid gap-5">
-      <Card className="overflow-hidden rounded-[1.9rem] border-black/[0.06] bg-white/90 py-0">
-        <CardHeader className="border-b border-black/[0.06] px-5 py-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-2xl">
-              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+      <Card className="overflow-hidden rounded-[2rem] border-black/[0.05] bg-white/92 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.04)]">
+        <CardHeader className="border-b border-black/[0.05] px-6 py-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-[42rem]">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[#9AA4B2]">Workspace de documentos</p>
+              <CardTitle className="mt-2 flex items-center gap-2 text-[2rem] tracking-[-0.05em] text-[#050505]">
                 <FileSignature className="size-5 text-[#009b3a]" />
                 Contratos
               </CardTitle>
-              <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                Um editor de contratos que antecipa dados do imovel, do cliente e do corretor para manter o documento sempre sincronizado com o preview.
+              <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                Um workspace premium para negociar, revisar e assinar documentos com o preview sempre no centro da atencao.
               </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[430px]">
-              <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+            <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[360px]">
+              <div className="rounded-[1.15rem] bg-[#f8f8f5] px-4 py-3.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Rascunhos</p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#050505]">{overview.drafts}</p>
+                <p className="mt-1.5 text-[1.6rem] font-semibold tracking-[-0.05em] text-[#050505]">{overview.drafts}</p>
               </div>
-              <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+              <div className="rounded-[1.15rem] bg-[#f8f8f5] px-4 py-3.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Em andamento</p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#050505]">{overview.awaiting}</p>
+                <p className="mt-1.5 text-[1.6rem] font-semibold tracking-[-0.05em] text-[#050505]">{overview.awaiting}</p>
               </div>
-              <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+              <div className="rounded-[1.15rem] bg-[#f8f8f5] px-4 py-3.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Assinados</p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#050505]">{overview.signed}</p>
+                <p className="mt-1.5 text-[1.6rem] font-semibold tracking-[-0.05em] text-[#050505]">{overview.signed}</p>
               </div>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="grid gap-5 p-5">
+        <CardContent className="grid gap-5 p-6">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="relative">
@@ -1134,14 +1280,14 @@ export function BrokerContractsPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Buscar por titulo, cliente, imovel ou resumo"
-                  className="h-11 rounded-xl border-black/[0.08] bg-white pl-10 text-[#050505]"
+                  className="h-11 rounded-xl border-black/[0.06] bg-[#fbfbf8] pl-10 text-[#050505]"
                 />
               </div>
 
               <select
                 value={kindFilter}
                 onChange={(event) => setKindFilter(event.target.value as "all" | ContractType)}
-                className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
+                className="h-11 rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-3 text-[#050505]"
               >
                 <option value="all">Todos os modelos</option>
                 {contractTypeOptions.map((option) => (
@@ -1155,7 +1301,7 @@ export function BrokerContractsPage() {
             <Button
               type="button"
               onClick={openCreateDialog}
-              className="h-11 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
+              className="h-11 rounded-xl bg-[#009b3a] px-4 text-white shadow-[0_10px_24px_rgba(0,155,58,0.18)] hover:bg-[#008633]"
             >
               <Plus className="size-4" />
               Novo contrato
@@ -1170,8 +1316,8 @@ export function BrokerContractsPage() {
                 onClick={() => setStatus(item.value)}
                 className={`rounded-full border px-3 py-2 text-sm transition ${
                   status === item.value
-                    ? "border-[#009b3a]/25 bg-[#009b3a]/10 text-[#009b3a]"
-                    : "border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-[#f6f7f4]"
+                    ? "border-[#009b3a]/20 bg-[#edf8f1] text-[#009b3a]"
+                    : "border-black/[0.05] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-[#f6f7f4]"
                 }`}
               >
                 {item.label}
@@ -1185,8 +1331,8 @@ export function BrokerContractsPage() {
             </p>
           ) : null}
 
-          <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-            <div className="grid gap-3">
+          <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)_320px]">
+            <div className="min-h-0">
               {isLoading ? (
                 <Card className="rounded-[1.5rem] border-black/[0.06] bg-white/90">
                   <CardContent className="p-5">
@@ -1194,39 +1340,43 @@ export function BrokerContractsPage() {
                   </CardContent>
                 </Card>
               ) : contractsList.length > 0 ? (
-                contractsList.map((contract) => (
-                  <button
-                    key={contract.id}
-                    type="button"
-                    onClick={() => setSelectedId(contract.id)}
-                    className={`rounded-[1.4rem] border p-4 text-left transition ${
-                      selectedContract?.id === contract.id
-                        ? "border-[#009b3a]/25 bg-[#009b3a]/10"
-                        : "border-black/[0.06] bg-white hover:bg-[#f8faf7]"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-[#050505]">{contract.title}</p>
-                        <p className="mt-1 text-sm text-[#6B7280]">{contract.kind}</p>
+                <div className="grid max-h-[calc(100vh-22rem)] gap-2.5 overflow-y-auto pr-1">
+                  {contractsList.map((contract) => (
+                    <button
+                      key={contract.id}
+                      type="button"
+                      onClick={() => setSelectedId(contract.id)}
+                      className={`rounded-[1.35rem] border px-4 py-3.5 text-left transition ${
+                        selectedContract?.id === contract.id
+                          ? "border-[#009b3a]/22 bg-[#f5fbf7] shadow-[0_12px_26px_rgba(0,155,58,0.08)]"
+                          : "border-black/[0.05] bg-[#fcfcfa] hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${getContractStatusTone(contract.status)}`}
+                        >
+                          {getContractStatusLabel(contract.status)}
+                        </span>
+                        <span className="text-xs text-[#9AA4B2]">{new Intl.DateTimeFormat("pt-BR").format(new Date(contract.updatedAt))}</span>
                       </div>
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getContractStatusTone(contract.status)}`}
-                      >
-                        {getContractStatusLabel(contract.status)}
-                      </span>
-                    </div>
 
-                    <div className="mt-4 grid gap-2 text-sm text-[#5F6B7A]">
-                      <p className="truncate">Cliente: {contract.leadName || "Nao informado"}</p>
-                      <p className="truncate">Imovel: {contract.propertyTitle || "Nao informado"}</p>
-                      <div className="flex items-center justify-between gap-3 text-[#8B95A1]">
-                        <span>{contract.amountLabel || "Valor nao informado"}</span>
-                        <span>{formatDateTime(contract.updatedAt)}</span>
+                      <p className="mt-3 line-clamp-2 text-[0.95rem] font-semibold leading-6 text-[#050505]">
+                        {contract.title}
+                      </p>
+
+                      <div className="mt-3 grid gap-1.5 text-sm text-[#667085]">
+                        <p className="truncate">{contract.leadName || "Cliente nao vinculado"}</p>
+                        <p className="truncate">{contract.propertyTitle || "Imovel nao vinculado"}</p>
                       </div>
-                    </div>
-                  </button>
-                ))
+
+                      <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium text-[#111111]">{contract.amountLabel || "Valor pendente"}</span>
+                        <span className="text-[#9AA4B2]">{formatDateTime(contract.updatedAt).slice(0, 10)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <div className="rounded-[1.4rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] p-6 text-sm leading-6 text-[#6B7280]">
                   Nenhum contrato encontrado. Crie o primeiro rascunho para iniciar o fluxo de revisao e assinatura.
@@ -1234,11 +1384,11 @@ export function BrokerContractsPage() {
               )}
             </div>
 
-            <Card className="rounded-[1.9rem] border-black/[0.06] bg-white/90 py-0">
-              <CardHeader className="border-b border-black/[0.06] px-5 py-5">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="grid gap-4">
+                <div className="flex flex-col gap-3 border-b border-black/[0.05] pb-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
-                    <CardTitle className="text-xl tracking-[-0.04em] text-[#050505]">
+                    <CardTitle className="text-[1.8rem] tracking-[-0.05em] text-[#050505]">
                       {selectedContract?.title ?? "Selecione um contrato"}
                     </CardTitle>
                     {selectedContract ? (
@@ -1250,18 +1400,45 @@ export function BrokerContractsPage() {
                   </div>
 
                   {selectedContract ? (
-                    <span
-                      className={`w-fit rounded-full border px-3 py-1.5 text-sm font-medium ${getContractStatusTone(
-                        selectedContract.status,
-                      )}`}
-                    >
-                      {getContractStatusLabel(selectedContract.status)}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`w-fit rounded-full border px-3 py-1.5 text-sm font-medium ${getContractStatusTone(
+                          selectedContract.status,
+                        )}`}
+                      >
+                        {getContractStatusLabel(selectedContract.status)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => openEditDialog(selectedContract)}
+                        className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#111111] hover:bg-white"
+                      >
+                        <PencilLine className="size-4" />
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={exportPdf}
+                        className="h-10 rounded-xl bg-[#111111] px-4 text-white hover:bg-[#050505]"
+                      >
+                        <Download className="size-4" />
+                        Gerar PDF
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => void updateContractStatus("signed")}
+                        className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
+                      >
+                        <CheckCheck className="size-4" />
+                        Assinar
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
-              </CardHeader>
+              </div>
 
-              <CardContent className="grid gap-5 p-5 pt-5">
+              <div className="grid gap-5">
                 {selectedContract ? (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1271,24 +1448,38 @@ export function BrokerContractsPage() {
                       <PreviewInfo label="Modelo" value={selectedContract.kind} />
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-                      <div className="rounded-[1.4rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Preview do documento</p>
-                            <p className="mt-1 text-sm text-[#5F6B7A]">Abra o editor para revisar e sincronizar o contrato em tempo real.</p>
-                          </div>
+                    <div className="grid gap-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Preview do documento</p>
+                          <p className="mt-1 text-sm text-[#5F6B7A]">
+                            A folha A4 permanece no centro enquanto a negociacao e as validacoes acompanham o contrato.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
                             variant="ghost"
-                            onClick={() => openEditDialog(selectedContract)}
-                            className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
+                            onClick={() => void duplicateContract(selectedContract.id)}
+                            className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-white"
                           >
-                            <PencilLine className="size-4" />
-                            Editar
+                            <CopyPlus className="size-4" />
+                            Duplicar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => void updateContractStatus("awaiting_signature")}
+                            className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-white"
+                          >
+                            <Send className="size-4" />
+                            Enviar
                           </Button>
                         </div>
-                        <div className="mt-4 aspect-[210/297] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+                      </div>
+
+                      <div className="aspect-[210/297] overflow-hidden rounded-[1.6rem] bg-[#f3f3ef] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] sm:p-4">
+                        <div className="h-full overflow-hidden rounded-[1.25rem] bg-white shadow-[0_24px_50px_rgba(15,23,42,0.08)]">
                           <iframe
                             title={`Preview de ${selectedContract.title}`}
                             srcDoc={buildContractExportHtml({
@@ -1301,79 +1492,6 @@ export function BrokerContractsPage() {
                           />
                         </div>
                       </div>
-
-                      <div className="grid gap-3">
-                        <div className="rounded-[1.4rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Pendencias de revisao</p>
-                          <div className="mt-3 grid gap-2">
-                            {selectedContract.content.reviewNotes.slice(0, 4).map((item) => (
-                              <div key={item} className="rounded-xl border border-black/[0.05] bg-white p-3 text-sm leading-6 text-[#4B5563]">
-                                {item}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="rounded-[1.4rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Acoes</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void duplicateContract(selectedContract.id)}
-                              className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
-                            >
-                              <CopyPlus className="size-4" />
-                              Duplicar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={exportPdf}
-                              className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
-                            >
-                              <Download className="size-4" />
-                              Gerar PDF
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void updateContractStatus("awaiting_signature")}
-                              className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
-                            >
-                              <Send className="size-4" />
-                              Enviar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void updateContractStatus("signed")}
-                              className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
-                            >
-                              <CheckCheck className="size-4" />
-                              Assinar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void updateContractStatus("cancelled")}
-                              className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#D14343] hover:bg-white"
-                            >
-                              <XCircle className="size-4" />
-                              Cancelar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void deleteContract(selectedContract.id)}
-                              className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#D14343] hover:bg-white"
-                            >
-                              <Trash2 className="size-4" />
-                              Excluir
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </>
                 ) : (
@@ -1381,8 +1499,140 @@ export function BrokerContractsPage() {
                     Escolha um contrato para revisar detalhes, atualizar status, abrir o editor inteligente ou gerar PDF.
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              {selectedContract ? (
+                <div className="grid gap-4">
+                  <section className="rounded-[1.7rem] border border-black/[0.05] bg-[#fbfbf8] p-5">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Painel contextual</p>
+                    <h3 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-[#050505]">
+                      Saude deste contrato
+                    </h3>
+                    <div className="mt-5 rounded-[1.35rem] bg-white px-4 py-4">
+                      <p className="text-[2.25rem] font-semibold tracking-[-0.06em] text-[#050505]">
+                        {contractHealthScore}%
+                      </p>
+                      <div className="mt-3 h-2 rounded-full bg-black/[0.06]">
+                        <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${contractHealthScore}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-2">
+                      {contractHealthIndicators.map((item) => (
+                        <div key={item.label} className="flex items-center justify-between rounded-[1rem] bg-white px-3.5 py-3">
+                          <span className="text-sm text-[#4B5563]">{item.label}</span>
+                          <span className="text-sm font-semibold text-[#050505]">{item.score}%</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-5 border-t border-black/[0.06] pt-5">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Pendencias</p>
+                      <div className="mt-3 grid gap-2">
+                        {contractPendingHighlights.length > 0 ? (
+                          contractPendingHighlights.map((item) => (
+                            <div key={item} className="flex items-start gap-2 text-sm leading-6 text-[#5F6B7A]">
+                              <span className="mt-2 size-1.5 rounded-full bg-[#c58917]" />
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-start gap-2 text-sm leading-6 text-[#5F6B7A]">
+                            <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
+                            <span>Sem pendencias estruturais neste momento.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="mt-5 h-10 w-full rounded-xl border border-black/[0.06] bg-white text-[#111111] hover:bg-white"
+                    >
+                      <Sparkles className="size-4" />
+                      Conversar com o COS
+                    </Button>
+                  </section>
+
+                  <section className="rounded-[1.7rem] border border-black/[0.05] bg-white p-5">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Validacao automatica</p>
+                      <h3 className="mt-3 text-base font-semibold text-[#050505]">Revisao contextual</h3>
+                    </div>
+                    <div className="mt-4 grid gap-2.5">
+                      {contractValidationItems.map((item) => (
+                        <div key={item.label} className="rounded-[1rem] bg-[#fbfbf8] px-3.5 py-3">
+                          <div className="flex items-start gap-3">
+                            {item.done ? (
+                              <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
+                            ) : (
+                              <AlertCircle className="mt-0.5 size-4 text-[#c58917]" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-[#050505]">{item.label}</p>
+                              <p className="mt-1 text-sm leading-6 text-[#6B7280]">{item.detail}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[1.7rem] border border-black/[0.05] bg-white p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Notas de revisao</p>
+                        <h3 className="mt-3 text-base font-semibold text-[#050505]">Checklist juridico e comercial</h3>
+                      </div>
+                      <span className="rounded-full bg-[#f5fbf7] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#009b3a]">
+                        {selectedContract.content.reviewNotes.length || 0} itens
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {selectedContract.content.reviewNotes.length > 0 ? (
+                        selectedContract.content.reviewNotes.slice(0, 5).map((item) => (
+                          <div key={item} className="rounded-[1rem] bg-[#fbfbf8] px-3.5 py-3 text-sm leading-6 text-[#4B5563]">
+                            {item}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-[1rem] bg-[#fbfbf8] px-3.5 py-3 text-sm leading-6 text-[#6B7280]">
+                          Este contrato ainda nao possui notas de revisao registradas.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => void updateContractStatus("cancelled")}
+                        className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#D14343] hover:bg-white"
+                      >
+                        <XCircle className="size-4" />
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => void deleteContract(selectedContract.id)}
+                        className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#D14343] hover:bg-white"
+                      >
+                        <Trash2 className="size-4" />
+                        Excluir
+                      </Button>
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] p-6 text-sm leading-6 text-[#6B7280]">
+                  Selecione um contrato para visualizar saude, validacoes e pendencias deste workspace.
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1765,4 +2015,10 @@ export function BrokerContractsPage() {
       </Dialog>
     </div>
   )
+}
+
+function scoreSection<T extends { done: boolean }>(items: T[]) {
+  if (items.length === 0) return 100
+  const completed = items.filter((item) => item.done).length
+  return Math.round((completed / items.length) * 100)
 }
