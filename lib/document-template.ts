@@ -121,11 +121,13 @@ export function renderDocumentStyles() {
       gap: 12px;
     }
     .document-brand__logo {
-      color: var(--doc-green);
-      font-size: 30px;
-      line-height: 1;
-      letter-spacing: -0.08em;
-      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+    }
+    .document-brand__logo-image {
+      height: 34px;
+      width: auto;
+      display: block;
     }
     .document-brand__eyebrow {
       display: inline-flex;
@@ -580,7 +582,9 @@ export function DocumentCover(input: DocumentCoverInput) {
       <div class="document-cover">
         <div class="document-cover__top">
           <div class="document-brand">
-            <div class="document-brand__logo">eme</div>
+            <div class="document-brand__logo">
+              <img src="/eme-logo-3d.svg" alt="EME" class="document-brand__logo-image" />
+            </div>
             <div class="document-brand__eyebrow">Template oficial EME</div>
           </div>
           <div class="document-brand__micro">Sistema operacional<br />imobiliario</div>
