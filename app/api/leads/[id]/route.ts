@@ -1,7 +1,12 @@
 import { LeadStatus } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
-import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import {
+  getAuthenticatedUser,
+  isPrismaSchemaMismatch,
+  isPrismaUnavailable,
+  prismaSchemaMismatchResponse,
+} from "@/lib/auth-route"
 import { canAccessLead, leadInclude, parseLeadStatus, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
@@ -77,6 +82,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
 
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Clientes / atualizacao de lead")
+    }
+
     return NextResponse.json({ error: "Erro interno ao atualizar lead." }, { status: 500 })
   }
 }
@@ -124,6 +133,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
         { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Clientes / arquivamento de lead")
     }
 
     return NextResponse.json({ error: "Erro interno ao arquivar lead." }, { status: 500 })

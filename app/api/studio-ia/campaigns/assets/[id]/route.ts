@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { getAuthenticatedUser } from "@/lib/auth-route"
+import {
+  getAuthenticatedUser,
+  isPrismaSchemaMismatch,
+  isPrismaUnavailable,
+  prismaSchemaMismatchResponse,
+} from "@/lib/auth-route"
 import { deleteStudioCampaignAsset, updateStudioCampaignAssetStatus, type StudioCampaignAssetStatus } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -35,9 +40,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const { id } = await context.params
     const campaign = await updateStudioCampaignAssetStatus(user, id, status)
     return NextResponse.json({ campaign })
-  } catch (error) {
-    if (error instanceof Error && error.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
+  } catch (caughtError) {
+    if (caughtError instanceof Error && caughtError.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
       return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Studio IA / asset de campanha")
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel atualizar o asset." }, { status: 500 })
@@ -59,9 +72,17 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     const { id } = await context.params
     const campaign = await deleteStudioCampaignAsset(user, id)
     return NextResponse.json({ campaign })
-  } catch (error) {
-    if (error instanceof Error && error.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
+  } catch (caughtError) {
+    if (caughtError instanceof Error && caughtError.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
       return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Studio IA / exclusao de asset")
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel excluir o asset." }, { status: 500 })

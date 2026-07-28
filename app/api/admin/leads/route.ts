@@ -2,7 +2,13 @@ import { UserRole } from "@/lib/prisma-enums"
 
 import { NextResponse } from "next/server"
 
-import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import {
+  ensureRole,
+  getAuthenticatedUser,
+  isPrismaSchemaMismatch,
+  isPrismaUnavailable,
+  prismaSchemaMismatchResponse,
+} from "@/lib/auth-route"
 import { leadInclude, serializeLead } from "@/lib/lead-contract"
 import { prisma } from "@/lib/prisma"
 
@@ -10,7 +16,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
@@ -33,9 +39,13 @@ export async function GET() {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço administrativo está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O servico administrativo esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Admin / leads")
     }
 
     return NextResponse.json({ error: "Erro interno ao listar leads." }, { status: 500 })

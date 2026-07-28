@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { getAuthenticatedUser } from "@/lib/auth-route"
+import {
+  getAuthenticatedUser,
+  isPrismaSchemaMismatch,
+  isPrismaUnavailable,
+  prismaSchemaMismatchResponse,
+} from "@/lib/auth-route"
 import { approveStudioCampaign, getStudioCampaignById } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -17,13 +22,25 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
   }
 
-  const { id } = await context.params
-  const campaign = await getStudioCampaignById(user, id)
-  if (!campaign) {
-    return NextResponse.json({ error: "Campanha nao encontrada." }, { status: 404 })
-  }
+  try {
+    const { id } = await context.params
+    const campaign = await getStudioCampaignById(user, id)
+    if (!campaign) {
+      return NextResponse.json({ error: "Campanha nao encontrada." }, { status: 404 })
+    }
 
-  return NextResponse.json({ campaign })
+    return NextResponse.json({ campaign })
+  } catch (caughtError) {
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Studio IA / campanha")
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel carregar a campanha." }, { status: 500 })
+  }
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -47,9 +64,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const { id } = await context.params
     const campaign = await approveStudioCampaign(user, id)
     return NextResponse.json({ campaign })
-  } catch (error) {
-    if (error instanceof Error && error.message === "STUDIO_CAMPAIGN_NOT_FOUND") {
+  } catch (caughtError) {
+    if (caughtError instanceof Error && caughtError.message === "STUDIO_CAMPAIGN_NOT_FOUND") {
       return NextResponse.json({ error: "Campanha nao encontrada." }, { status: 404 })
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Studio IA / aprovacao de campanha")
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel aprovar a campanha." }, { status: 500 })

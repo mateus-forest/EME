@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { getAuthenticatedUser } from "@/lib/auth-route"
+import { getAuthenticatedUser, isPrismaSchemaMismatch, isPrismaUnavailable, prismaSchemaMismatchResponse } from "@/lib/auth-route"
 import {
   getLatestStudioCampaign,
   listStudioCampaigns,
@@ -56,20 +56,32 @@ export async function GET(request: NextRequest) {
   const page = Number(request.nextUrl.searchParams.get("page") || 1)
   const limit = Number(request.nextUrl.searchParams.get("limit") || 30)
 
-  if (latest && kind) {
-    const campaign = await getLatestStudioCampaign(user, { kind, propertyId })
-    return NextResponse.json({ campaign })
+  try {
+    if (latest && kind) {
+      const campaign = await getLatestStudioCampaign(user, { kind, propertyId })
+      return NextResponse.json({ campaign })
+    }
+
+    const result = await listStudioCampaigns(user, {
+      kind,
+      status,
+      assetType,
+      query,
+      propertyId,
+      page: Number.isInteger(page) && page > 0 ? page : 1,
+      limit: Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 30,
+    })
+
+    return NextResponse.json(result)
+  } catch (caughtError) {
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Studio IA / campanhas")
+    }
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
+    }
+
+    return NextResponse.json({ error: "Nao foi possivel carregar as campanhas do Studio IA." }, { status: 500 })
   }
-
-  const result = await listStudioCampaigns(user, {
-    kind,
-    status,
-    assetType,
-    query,
-    propertyId,
-    page: Number.isInteger(page) && page > 0 ? page : 1,
-    limit: Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 30,
-  })
-
-  return NextResponse.json(result)
 }

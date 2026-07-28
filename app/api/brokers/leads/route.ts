@@ -2,7 +2,13 @@ import { UserRole } from "@/lib/prisma-enums"
 
 import { NextRequest, NextResponse } from "next/server"
 
-import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import {
+  ensureRole,
+  getAuthenticatedUser,
+  isPrismaSchemaMismatch,
+  isPrismaUnavailable,
+  prismaSchemaMismatchResponse,
+} from "@/lib/auth-route"
 import { leadInclude, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
@@ -43,6 +49,10 @@ export async function GET() {
         { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Clientes / leads do corretor")
     }
 
     return NextResponse.json({ error: leadListErrorMessage(caughtError) }, { status: 500 })
@@ -194,6 +204,10 @@ export async function POST(request: NextRequest) {
         { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Clientes / cadastro de lead")
     }
 
     return NextResponse.json({ error: leadCreateErrorMessage(caughtError) }, { status: 500 })

@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 
 import { UserRole } from "@/lib/prisma-enums"
-import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import {
+  getAuthenticatedUser,
+  isPrismaSchemaMismatch,
+  isPrismaUnavailable,
+  prismaSchemaMismatchResponse,
+} from "@/lib/auth-route"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
@@ -183,6 +188,10 @@ export async function POST(request: NextRequest) {
         { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Studio IA / geracao de campanha")
     }
 
     if (caughtError instanceof Error && caughtError.message === "OPENAI_DISABLED_OR_NOT_CONFIGURED") {

@@ -54,6 +54,32 @@ export function isPrismaUnavailable(error: unknown) {
   )
 }
 
+export function isPrismaSchemaMismatch(error: unknown) {
+  const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : null
+  const errorName = error instanceof Error ? error.constructor.name : ""
+  const message = error instanceof Error ? error.message.toLowerCase() : ""
+
+  return (
+    errorName === "PrismaClientKnownRequestError" &&
+    typeof code === "string" &&
+    ["P2021", "P2022"].includes(code)
+  ) || (
+    message.includes("does not exist") ||
+    message.includes("doesn't exist") ||
+    message.includes("column") && message.includes("does not exist") ||
+    message.includes("table") && message.includes("does not exist")
+  )
+}
+
+export function prismaSchemaMismatchResponse(resourceLabel: string) {
+  return NextResponse.json(
+    {
+      error: `Schema do banco desatualizado para ${resourceLabel}. Execute as migrations pendentes e sincronize o Prisma Client.`,
+    },
+    { status: 503 },
+  )
+}
+
 function isAuthTokenError(error: unknown) {
   const errorName = error instanceof Error ? error.constructor.name : ""
 
