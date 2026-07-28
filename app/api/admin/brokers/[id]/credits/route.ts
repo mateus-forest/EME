@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import type { PrismaTransaction } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     if (!broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const refreshedBroker = await tx.broker.update({
         where: { id },
         data: {

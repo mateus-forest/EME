@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceAgencyOperationalAccess, enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
-import { adImportDraftSchema, type AdImportDraft } from "@/lib/property-ad-import"
+import { adImportDraftSchema, type AdImportDraft } from "@/lib/property-ad-import-shared"
 import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { UserRole } from "@/lib/prisma-enums"

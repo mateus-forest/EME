@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { ImagePlus, LinkIcon, Sparkles } from "lucide-react"
 
-import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import"
+import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import-shared"
 import { confirmPropertyAdImport, extractPropertyAd, getPropertyImportCapabilities } from "@/lib/property-ad-import-client"
 import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"

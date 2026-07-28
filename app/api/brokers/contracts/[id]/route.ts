@@ -57,13 +57,13 @@ function serializeContract(document: {
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return { error: error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 }), user: null }
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
-  if (forbidden) return { error: forbidden, user: null }
-  if (!user.broker) return { error: NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 }), user: null }
-  return { error: null, user }
+  if (forbidden) return forbidden
+  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  return user
 }
 
 async function getContractOr404(id: string, brokerId: string) {
@@ -72,24 +72,21 @@ async function getContractOr404(id: string, brokerId: string) {
   })
 
   if (!contract) {
-    return {
-      error: NextResponse.json({ error: "Contrato nao encontrado." }, { status: 404 }),
-      contract: null,
-    }
+    return NextResponse.json({ error: "Contrato nao encontrado." }, { status: 404 })
   }
 
-  return { error: null, contract }
+  return contract
 }
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
-  if (auth.error || !auth.user) return auth.error
+  if (auth instanceof NextResponse) return auth
 
   try {
     const { id } = await context.params
-    const found = await getContractOr404(id, auth.user.broker!.id)
-    if (found.error || !found.contract) return found.error
-    return NextResponse.json({ contract: serializeContract(found.contract) })
+    const found = await getContractOr404(id, auth.broker!.id)
+    if (found instanceof NextResponse) return found
+    return NextResponse.json({ contract: serializeContract(found) })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
@@ -100,23 +97,23 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
-  if (auth.error || !auth.user) return auth.error
+  if (auth instanceof NextResponse) return auth
 
   try {
     const { id } = await context.params
     const body = await request.json().catch(() => null)
-    const found = await getContractOr404(id, auth.user.broker!.id)
-    if (found.error || !found.contract) return found.error
+    const found = await getContractOr404(id, auth.broker!.id)
+    if (found instanceof NextResponse) return found
 
     if (body?.action === "duplicate") {
-      const parsed = parseContractContent(found.contract.content)
+      const parsed = parseContractContent(found.content)
       const duplicate = await prisma.brokerDocument.create({
         data: {
-          brokerId: auth.user.broker!.id,
-          leadId: found.contract.leadId,
-          propertyId: found.contract.propertyId,
+          brokerId: auth.broker!.id,
+          leadId: found.leadId,
+          propertyId: found.propertyId,
           type: "contract",
-          title: cleanText(`${found.contract.title} - copia`, 160),
+          title: cleanText(`${found.title} - copia`, 160),
           status: "draft",
           content: stringifyContractContent({
             ...parsed,
@@ -131,18 +128,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ contract: serializeContract(duplicate) })
     }
 
-    const parsed = parseContractContent(found.contract.content)
-    const nextLeadId = cleanText(body?.leadId, 80) || found.contract.leadId || ""
-    const nextPropertyId = cleanText(body?.propertyId, 80) || found.contract.propertyId || ""
+    const parsed = parseContractContent(found.content)
+    const nextLeadId = cleanText(body?.leadId, 80) || found.leadId || ""
+    const nextPropertyId = cleanText(body?.propertyId, 80) || found.propertyId || ""
     const nextKind = cleanText(body?.kind, 80) || parsed.kind
 
     const [lead, property] = await Promise.all([
       prisma.lead.findFirst({
-        where: { id: nextLeadId, brokerId: auth.user.broker!.id },
+        where: { id: nextLeadId, brokerId: auth.broker!.id },
         select: { id: true, name: true, phone: true, email: true },
       }),
       prisma.property.findFirst({
-        where: { id: nextPropertyId, brokerId: auth.user.broker!.id },
+        where: { id: nextPropertyId, brokerId: auth.broker!.id },
         select: {
           id: true,
           publicCode: true,
@@ -169,8 +166,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       title: cleanText(body?.title, 160) || parsed.title,
       status: "draft",
       version: parsed.version + 1,
-      authorName: auth.user.name,
-      authorEmail: auth.user.email,
+      authorName: auth.name,
+      authorEmail: auth.email,
       createdAt: parsed.createdAt,
       updatedAt: new Date().toISOString(),
       lead: {
@@ -210,7 +207,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     nextContent.html = buildContractHtml(nextContent)
 
     const updated = await prisma.brokerDocument.update({
-      where: { id: found.contract.id },
+      where: { id: found.id },
       data: {
         leadId: lead.id,
         propertyId: property.id,
@@ -233,14 +230,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
-  if (auth.error || !auth.user) return auth.error
+  if (auth instanceof NextResponse) return auth
 
   try {
     const { id } = await context.params
-    const found = await getContractOr404(id, auth.user.broker!.id)
-    if (found.error || !found.contract) return found.error
+    const found = await getContractOr404(id, auth.broker!.id)
+    if (found instanceof NextResponse) return found
 
-    await prisma.brokerDocument.delete({ where: { id: found.contract.id } })
+    await prisma.brokerDocument.delete({ where: { id: found.id } })
     return NextResponse.json({ success: true })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {

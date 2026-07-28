@@ -74,14 +74,14 @@ function serializeContract(document: {
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return { error: error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 }), user: null }
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
-  if (forbidden) return { error: forbidden, user: null }
-  if (!user.broker) return { error: NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 }), user: null }
+  if (forbidden) return forbidden
+  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
 
-  return { error: null, user }
+  return user
 }
 
 async function buildPersistedContract(input: {
@@ -194,7 +194,7 @@ async function buildPersistedContract(input: {
 
 export async function GET(request: NextRequest) {
   const auth = await requireBroker()
-  if (auth.error || !auth.user) return auth.error
+  if (auth instanceof NextResponse) return auth
 
   try {
     const q = cleanText(request.nextUrl.searchParams.get("q"), 120)
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
 
     const documents = await prisma.brokerDocument.findMany({
       where: {
-        brokerId: auth.user.broker!.id,
+        brokerId: auth.broker!.id,
         type: "contract",
         ...(status && status !== "all" ? { status } : {}),
         ...(q
@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await requireBroker()
-  if (auth.error || !auth.user) return auth.error
+  if (auth instanceof NextResponse) return auth
 
   try {
     const body = await request.json().catch(() => null)
@@ -248,9 +248,9 @@ export async function POST(request: NextRequest) {
     if (!propertyId) return NextResponse.json({ error: "Selecione o imovel." }, { status: 400 })
 
     const draft = await buildPersistedContract({
-      brokerId: auth.user.broker!.id,
-      userName: auth.user.name,
-      userEmail: auth.user.email,
+      brokerId: auth.broker!.id,
+      userName: auth.name,
+      userEmail: auth.email,
       leadId,
       propertyId,
       kind,
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
 
     const document = await prisma.brokerDocument.create({
       data: {
-        brokerId: auth.user.broker!.id,
+        brokerId: auth.broker!.id,
         leadId: draft.lead.id,
         propertyId: draft.property.id,
         type: "contract",

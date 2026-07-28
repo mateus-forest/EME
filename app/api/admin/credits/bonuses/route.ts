@@ -8,6 +8,8 @@ function cleanQuery(value: string | null) {
   return value?.trim().slice(0, 120) ?? ""
 }
 
+type BonusTransaction = Awaited<ReturnType<typeof prisma.aiCreditTransaction.findMany>>[number]
+
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      bonuses: transactions.map((transaction) => {
+      bonuses: transactions.map((transaction: BonusTransaction) => {
         const metadata =
           transaction.metadata && typeof transaction.metadata === "object"
             ? (transaction.metadata as Record<string, unknown>)

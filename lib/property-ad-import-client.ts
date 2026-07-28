@@ -1,4 +1,4 @@
-import type { AdImportDraft } from "@/lib/property-ad-import"
+import type { AdImportDraft } from "@/lib/property-ad-import-shared"
 import type { PropertyApiItem } from "@/lib/property-contract"
 
 export type PropertyImportCapabilities = {

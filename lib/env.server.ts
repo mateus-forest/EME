@@ -25,6 +25,15 @@ function requireEnv(name: string) {
   return value
 }
 
+function requireFirstEnv(names: string[]) {
+  for (const name of names) {
+    const value = readEnv(name)
+    if (value) return value
+  }
+
+  throw new Error(`${names.join(" ou ")} precisa estar configurada no ambiente.`)
+}
+
 function readFirstEnv(names: string[]) {
   for (const name of names) {
     const value = readEnv(name)
@@ -37,7 +46,7 @@ function readFirstEnv(names: string[]) {
 export function getRequiredRuntimeEnv() {
   return {
     databaseUrl: requireEnv("DATABASE_URL"),
-    authSecret: requireEnv("AUTH_SECRET"),
+    authSecret: requireFirstEnv(["AUTH_SECRET", "NEXTAUTH_SECRET"]),
     appUrl: requireEnv("NEXT_PUBLIC_APP_URL"),
   }
 }
@@ -47,7 +56,7 @@ export function getAuthEnv() {
   const secureAuto = parseBoolean(readEnv("COOKIE_SECURE_AUTO"), true)
 
   return {
-    secret: requireEnv("AUTH_SECRET"),
+    secret: requireFirstEnv(["AUTH_SECRET", "NEXTAUTH_SECRET"]),
     sessionMaxAgeSeconds: sessionMaxAgeDays * 24 * 60 * 60,
     cookieSecure: secureAuto ? process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL) : false,
   }

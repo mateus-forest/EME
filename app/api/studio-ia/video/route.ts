@@ -48,23 +48,17 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   })
 
   if (!property) {
-    return {
-      error: NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 }),
-      property: null,
-    }
+    return NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 })
   }
 
   if (!user.broker || property.brokerId !== user.broker.id) {
-    return {
-      error: NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 }),
-      property: null,
-    }
+    return NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 })
   }
 
-  return { error: null, property }
+  return property
 }
 
-function mapPropertyContext(property: NonNullable<Awaited<ReturnType<typeof resolveAccessibleProperty>>["property"]>) {
+function mapPropertyContext(property: Awaited<ReturnType<typeof resolveAccessibleProperty>> extends NextResponse ? never : Exclude<Awaited<ReturnType<typeof resolveAccessibleProperty>>, NextResponse>) {
   return {
     id: property.id,
     title: property.title,
@@ -125,13 +119,10 @@ async function resolveJobDocument(requestId: string, brokerId: string) {
   })
 
   if (!document) {
-    return {
-      error: NextResponse.json({ error: "Solicitacao de video nao encontrada." }, { status: 404 }),
-      document: null,
-    }
+    return NextResponse.json({ error: "Solicitacao de video nao encontrada." }, { status: 404 })
   }
 
-  return { error: null, document }
+  return document
 }
 
 function isSimultaneousJob(job: ReturnType<typeof parseStudioVideoJobContent>) {
@@ -302,9 +293,9 @@ export async function GET(request: NextRequest) {
     }
 
     const jobDocument = await resolveJobDocument(requestId, user.broker.id)
-    if (jobDocument.error || !jobDocument.document) return jobDocument.error
+    if (jobDocument instanceof NextResponse) return jobDocument
 
-    const currentJob = parseStudioVideoJobContent(jobDocument.document.content)
+    const currentJob = parseStudioVideoJobContent(jobDocument.content)
     const refreshedJob = await refreshStudioVideoJob(currentJob)
     const finalJob: ReturnType<typeof parseStudioVideoJobContent> =
       refreshedJob.jobStage === "failed"
@@ -315,7 +306,7 @@ export async function GET(request: NextRequest) {
           })
         : refreshedJob
 
-    await updateJobDocument(jobDocument.document.id, finalJob)
+    await updateJobDocument(jobDocument.id, finalJob)
 
     const response = NextResponse.json(getStudioVideoResult(requestId, finalJob))
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -375,9 +366,9 @@ export async function POST(request: NextRequest) {
     if (action === "create") {
       const { payload, uploadedFiles } = await parseVideoRequestForm(request)
       const accessible = payload.propertyId ? await resolveAccessibleProperty(payload.propertyId, user) : null
-      if (accessible?.error) return accessible.error
+      if (accessible instanceof NextResponse) return accessible
 
-      const property = accessible?.property ? mapPropertyContext(accessible.property) : null
+      const property = accessible ? mapPropertyContext(accessible) : null
       const signatureSeed = payload.referenceImageUrls[0] || payload.uploadedImages[0]?.name || payload.propertyId || "studio-video"
       const requestSignature = buildStudioVideoRequestSignature(payload, signatureSeed)
       const existingJob = await findExistingJobBySignature(user.broker.id, requestSignature)
@@ -451,9 +442,9 @@ export async function POST(request: NextRequest) {
     }
 
     const jobDocument = await resolveJobDocument(requestId, user.broker.id)
-    if (jobDocument.error || !jobDocument.document) return jobDocument.error
+    if (jobDocument instanceof NextResponse) return jobDocument
 
-    const currentJob = parseStudioVideoJobContent(jobDocument.document.content)
+    const currentJob = parseStudioVideoJobContent(jobDocument.content)
 
     if (action === "regenerate-preview") {
       if (currentJob.requestKind !== "transformation_pipeline") {
@@ -489,7 +480,7 @@ export async function POST(request: NextRequest) {
       }
 
       const regeneratedJob = await regenerateStudioVideoPreview(currentJob)
-      await updateJobDocument(jobDocument.document.id, regeneratedJob)
+      await updateJobDocument(jobDocument.id, regeneratedJob)
 
       const chargedJob = await chargeStageCredits({
         brokerId: user.broker.id,
@@ -497,7 +488,7 @@ export async function POST(request: NextRequest) {
         job: regeneratedJob,
       })
 
-      await updateJobDocument(jobDocument.document.id, chargedJob)
+      await updateJobDocument(jobDocument.id, chargedJob)
 
       return NextResponse.json(getStudioVideoResult(requestId, chargedJob), { status: 202 })
     }
@@ -545,7 +536,7 @@ export async function POST(request: NextRequest) {
       }
 
       const nextJob = await createApprovedStudioVideoAnimation(currentJob)
-      await updateJobDocument(jobDocument.document.id, nextJob)
+      await updateJobDocument(jobDocument.id, nextJob)
 
       const chargedJob = await chargeStageCredits({
         brokerId: user.broker.id,
@@ -553,7 +544,7 @@ export async function POST(request: NextRequest) {
         job: nextJob,
       })
 
-      await updateJobDocument(jobDocument.document.id, chargedJob)
+      await updateJobDocument(jobDocument.id, chargedJob)
 
       return NextResponse.json(getStudioVideoResult(requestId, chargedJob), { status: 202 })
     }
@@ -650,13 +641,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const jobDocument = await resolveJobDocument(requestId, user.broker.id)
-    if (jobDocument.error || !jobDocument.document) return jobDocument.error
+    if (jobDocument instanceof NextResponse) return jobDocument
 
-    const job = parseStudioVideoJobContent(jobDocument.document.content)
+    const job = parseStudioVideoJobContent(jobDocument.content)
 
     if (action === "approve-preview") {
       const approvedJob = approveStudioVideoPreview(job)
-      await updateJobDocument(jobDocument.document.id, approvedJob)
+      await updateJobDocument(jobDocument.id, approvedJob)
       return NextResponse.json(getStudioVideoResult(requestId, approvedJob))
     }
 
@@ -695,7 +686,7 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    await updateJobDocument(jobDocument.document.id, {
+    await updateJobDocument(jobDocument.id, {
       ...job,
       savedDocumentId: savedDocument.id,
     })
