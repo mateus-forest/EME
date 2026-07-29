@@ -13,8 +13,8 @@ function computeTarget(): Rect {
   const vw = window.innerWidth
   const vh = window.innerHeight
   const isMobile = vw < 768
-  const width = isMobile ? Math.min(430, vw - 16) : Math.min(950, vw * 0.92)
-  const height = isMobile ? Math.min(vh - 16, 720) : Math.min(560, vh * 0.86)
+  const width = isMobile ? vw * 0.92 : Math.min(950, vw * 0.92)
+  const height = isMobile ? Math.min(vh * 0.84, 660) : Math.min(560, vh * 0.86)
   return { left: (vw - width) / 2, top: (vh - height) / 2, width, height }
 }
 
@@ -125,7 +125,7 @@ export function ExpandedModulePanel({
           type="button"
           onClick={handleClose}
           aria-label="Fechar"
-          className="absolute right-3.5 top-3.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-graphite/15 bg-white/80 text-graphite backdrop-blur-sm transition-colors hover:bg-white md:right-5 md:top-5"
+          className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-graphite/15 bg-white/80 text-graphite backdrop-blur-sm transition-colors hover:bg-white"
           animate={{ opacity: open ? 1 : 0 }}
           transition={{ duration: 0.2, delay: open ? 0.15 : 0 }}
         >
@@ -137,7 +137,7 @@ export function ExpandedModulePanel({
           animate={{ opacity: open ? 1 : 0 }}
           transition={{ duration: open ? 0.4 : 0.18, delay: open ? 0.18 : 0 }}
         >
-          <div className="relative flex min-h-[33svh] flex-[0_0_42%] items-center justify-center overflow-hidden px-4 pb-2 pt-10 sm:min-h-[36svh] md:min-h-0 md:flex-1 md:p-8">
+          <div className="relative flex min-h-0 basis-[52%] items-center justify-center overflow-hidden p-4 md:basis-auto md:flex-1 md:p-8">
             <motion.div
               className="relative h-full w-full"
               animate={{ opacity: open ? 1 : 0, scale: open ? 1 : 0.94 }}
@@ -147,37 +147,37 @@ export function ExpandedModulePanel({
                 src={module.mockup || "/placeholder.svg"}
                 alt={`Mockup do modulo ${module.name}`}
                 fill
-                sizes="(max-width: 430px) 92vw, (max-width: 768px) 88vw, 45vw"
+                sizes="(max-width: 768px) 90vw, 45vw"
                 className="object-contain"
                 priority
               />
             </motion.div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 pb-5 pt-1 md:justify-center md:gap-5 md:px-8 md:pb-10 md:pt-2 md:py-10 md:pr-14">
+          <div className="flex flex-1 flex-col justify-center gap-2.5 overflow-y-auto px-6 pb-6 pt-1 md:gap-5 md:overflow-visible md:px-8 md:py-10 md:pr-14">
             <div className="flex items-center gap-2.5">
-              <Icon className="h-6 w-6 text-eme" strokeWidth={1.5} aria-hidden />
-              <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-eme/70 md:text-[11px] md:tracking-[0.32em]">
+              <Icon className="h-5 w-5 text-eme md:h-6 md:w-6" strokeWidth={1.5} aria-hidden />
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.32em] text-eme/70 md:text-[11px]">
                 {module.name}
               </span>
             </div>
 
-            <h2 className="text-balance text-[22px] font-medium leading-[1.12] tracking-tight text-foreground sm:text-[24px] md:text-[32px]">
+            <h2 className="text-balance text-[20px] font-medium leading-[1.15] tracking-tight text-foreground md:text-[32px]">
               {module.tagline}
             </h2>
 
             <div className="min-h-0 overflow-y-auto pr-1 md:overflow-visible md:pr-0">
-              <p className="max-w-md text-pretty text-[13px] leading-[1.65] text-muted-foreground sm:text-[13.5px] md:text-[14.5px] md:leading-relaxed">
+              <p className="max-w-md text-pretty text-[13px] leading-relaxed text-muted-foreground md:text-[14.5px]">
                 {module.longDescription}
               </p>
 
-              <ul className="mt-4 flex flex-col gap-2.5 md:mt-5">
+              <ul className="mt-4 flex flex-col gap-2 md:mt-5 md:gap-2.5">
                 {module.benefits.map((b) => (
-                  <li key={b} className="flex items-start gap-2.5 text-[13px] text-foreground/90 md:text-[14px]">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-eme-soft">
-                      <Check className="h-3 w-3 text-eme" strokeWidth={2.5} aria-hidden />
+                  <li key={b} className="flex items-start gap-2.5 text-[12.5px] text-foreground/90 md:text-[14px]">
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-eme-soft md:h-5 md:w-5">
+                      <Check className="h-2.5 w-2.5 text-eme md:h-3 md:w-3" strokeWidth={2.5} aria-hidden />
                     </span>
-                    <span className="leading-[1.45] md:leading-snug">{b}</span>
+                    <span className="leading-snug">{b}</span>
                   </li>
                 ))}
               </ul>
@@ -185,7 +185,7 @@ export function ExpandedModulePanel({
               <div className="pt-4 md:pt-5">
                 <button
                   type="button"
-                  className="rounded-full bg-eme px-5 py-2.5 text-[13px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-14px_rgba(28,120,60,0.7)] transition-transform hover:-translate-y-0.5 md:px-6 md:text-[14px]"
+                  className="rounded-full bg-eme px-6 py-2.5 text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-14px_rgba(28,120,60,0.7)] transition-transform hover:-translate-y-0.5 md:text-[14px]"
                 >
                   {module.cta}
                 </button>

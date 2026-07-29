@@ -81,45 +81,107 @@ export function EmeMobileExperience({
   onAuthModeChange: (mode: AuthMode) => void
   onAuthClose: () => void
 }) {
-  const scrollerRef = useRef<HTMLElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const movedRef = useRef(0)
+  const selectedRef = useRef<string | null>(null)
+  const authOpenRef = useRef(false)
   const orbitTarget = useMotionValue(0)
-  const orbitAngle = useSpring(orbitTarget, { stiffness: 52, damping: 18, mass: 0.9 })
+  const orbitAngle = useSpring(orbitTarget, { stiffness: 55, damping: 18, mass: 1.1 })
   const [angle, setAngle] = useState(0)
   const [viewport, setViewport] = useState({ width: 390, height: 844 })
+  const [mounted, setMounted] = useState(false)
   useMotionValueEvent(orbitAngle, "change", (value) => setAngle(value))
 
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
   const selectedModule = selected ? emeModules.find((module) => module.id === selected.id) : undefined
   const stage = useMemo(() => getMobileOrbitConfig(viewport.width, viewport.height), [viewport.height, viewport.width])
   const authOpen = authMode != null
+  selectedRef.current = selected?.id ?? null
+  authOpenRef.current = authOpen
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const updateViewport = () => {
+      const vv = window.visualViewport
       setViewport({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: Math.round(vv?.width ?? window.innerWidth),
+        height: Math.round(vv?.height ?? window.innerHeight),
       })
     }
 
     updateViewport()
     window.addEventListener("resize", updateViewport)
-    return () => window.removeEventListener("resize", updateViewport)
+    window.visualViewport?.addEventListener("resize", updateViewport)
+    return () => {
+      window.removeEventListener("resize", updateViewport)
+      window.visualViewport?.removeEventListener("resize", updateViewport)
+    }
   }, [])
 
   useEffect(() => {
-    const scroller = scrollerRef.current
-    if (!scroller) return
+    const stageEl = stageRef.current
+    if (!stageEl) return
 
-    const handleScroll = () => {
-      const maxScroll = Math.max(1, scroller.scrollHeight - scroller.clientHeight)
-      const progress = clamp(scroller.scrollTop / maxScroll, 0, 1)
-      orbitTarget.set(progress * 280)
+    const sensitivity = 0.3
+    const inertiaProjection = 160
+
+    let dragging = false
+    let startX = 0
+    let baseAngle = 0
+    let lastX = 0
+    let lastTime = 0
+    let velocityX = 0
+
+    const handleStart = (event: TouchEvent) => {
+      if (selectedRef.current || authOpenRef.current) return
+      dragging = true
+      startX = lastX = event.touches[0].clientX
+      lastTime = performance.now()
+      baseAngle = orbitTarget.get()
+      velocityX = 0
+      movedRef.current = 0
     }
 
-    handleScroll()
-    scroller.addEventListener("scroll", handleScroll, { passive: true })
-    return () => scroller.removeEventListener("scroll", handleScroll)
-  }, [orbitTarget, stage.stageHeight])
+    const handleMove = (event: TouchEvent) => {
+      if (!dragging) return
+      event.preventDefault()
+
+      const pointerX = event.touches[0].clientX
+      const dragged = startX - pointerX
+      movedRef.current = Math.max(movedRef.current, Math.abs(dragged))
+      orbitTarget.set(baseAngle + dragged * sensitivity)
+
+      const now = performance.now()
+      const deltaTime = now - lastTime
+      if (deltaTime > 0) {
+        velocityX = (pointerX - lastX) / deltaTime
+      }
+
+      lastX = pointerX
+      lastTime = now
+    }
+
+    const handleEnd = () => {
+      if (!dragging) return
+      dragging = false
+      orbitTarget.set(orbitTarget.get() + -velocityX * sensitivity * inertiaProjection)
+    }
+
+    stageEl.addEventListener("touchstart", handleStart, { passive: true })
+    stageEl.addEventListener("touchmove", handleMove, { passive: false })
+    stageEl.addEventListener("touchend", handleEnd)
+    stageEl.addEventListener("touchcancel", handleEnd)
+
+    return () => {
+      stageEl.removeEventListener("touchstart", handleStart)
+      stageEl.removeEventListener("touchmove", handleMove)
+      stageEl.removeEventListener("touchend", handleEnd)
+      stageEl.removeEventListener("touchcancel", handleEnd)
+    }
+  }, [orbitTarget])
 
   const placedModules = useMemo(() => {
     return emeModules.map((module) => {
@@ -161,11 +223,7 @@ export function EmeMobileExperience({
   }, [placedModules])
 
   return (
-    <main
-      ref={scrollerRef}
-      className="fixed inset-0 h-[100dvh] overflow-y-auto overscroll-y-contain bg-background"
-      style={{ WebkitOverflowScrolling: "touch" }}
-    >
+    <main className="fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background">
       <CoastalCityBackground />
 
       <MobileHeader
@@ -174,8 +232,12 @@ export function EmeMobileExperience({
         onComecar={() => onAuthModeChange("signup")}
       />
 
-      <div className="relative" style={{ minHeight: stage.stageHeight }}>
-        <div className="sticky top-0 h-[100dvh] overflow-hidden">
+      <div
+        ref={stageRef}
+        className="absolute inset-0 touch-none overflow-hidden transition-opacity duration-500 ease-out"
+        style={{ opacity: mounted ? 1 : 0 }}
+      >
+        <div className="relative h-full overflow-hidden">
           <div
             className="absolute left-1/2 top-[29%]"
             style={{
@@ -236,6 +298,17 @@ export function EmeMobileExperience({
               )
             })}
           </div>
+
+          {!selected && !authOpen ? (
+            <div
+              className="pointer-events-none absolute bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+3rem))] left-1/2 z-10 -translate-x-1/2"
+              aria-hidden
+            >
+              <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/20 backdrop-blur-sm">
+                <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

@@ -172,6 +172,10 @@
     filter: brightness(0.96);
   }
 
+  .eme-swipe-hint {
+    animation: eme-swipe-hint 2.2s ease-in-out infinite;
+  }
+
   .eme-logo-3d-spin {
     animation: eme-logo-3d-spin 10s linear infinite;
     transform-origin: center;
@@ -410,6 +414,18 @@
   }
 }
 
+@keyframes eme-swipe-hint {
+  0%,
+  100% {
+    transform: translateX(-6px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateX(6px);
+    opacity: 1;
+  }
+}
+
 @keyframes landing-float {
   0%, 100% {
     transform: translateY(0px);
@@ -438,5 +454,9 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  .eme-swipe-hint {
+    animation: none;
   }
 }
