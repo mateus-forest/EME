@@ -1,4 +1,4 @@
-const LOGO_SIZE = "h-auto w-[210px] max-w-none sm:w-[456px] lg:w-[552px]"
+const LOGO_SIZE = "h-auto w-[232px] max-w-none sm:w-[456px] lg:w-[552px]"
 
 export function EmeLogoSculpture() {
   return (

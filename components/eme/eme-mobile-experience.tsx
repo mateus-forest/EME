@@ -239,7 +239,7 @@ export function EmeMobileExperience({
       >
         <div className="relative h-full overflow-hidden">
           <div
-            className="absolute left-1/2 top-[29%]"
+            className="absolute left-1/2 top-[37%]"
             style={{
               transform: `translate3d(-50%, -50%, 0) scale(${stage.logoScale})`,
               transformOrigin: "center center",
@@ -249,7 +249,7 @@ export function EmeMobileExperience({
           </div>
 
           <div
-            className="absolute left-1/2 top-[58%] h-[260px] w-0"
+            className="absolute left-1/2 top-[51%] h-[260px] w-0"
             style={{ perspective: stage.perspective }}
           >
             {placedModules.map(({ module, x, y, z, scale, rotateY, opacity, blur, visible, zIndex, front }) => (
@@ -301,7 +301,7 @@ export function EmeMobileExperience({
 
           {!selected && !authOpen ? (
             <div
-              className="pointer-events-none absolute bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+3rem))] left-1/2 z-10 -translate-x-1/2"
+              className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
               aria-hidden
             >
               <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/20 backdrop-blur-sm">
