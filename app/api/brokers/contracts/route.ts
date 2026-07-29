@@ -108,6 +108,9 @@ async function buildPersistedContract(input: {
   endDate?: unknown
   dueDate?: unknown
   validity?: unknown
+  paymentMethod?: unknown
+  guaranteeType?: unknown
+  inspectionReport?: unknown
   additionalConditions?: unknown
   clausesText?: unknown
   reviewNotesText?: unknown
@@ -184,6 +187,12 @@ async function buildPersistedContract(input: {
       endDate: toIsoDate(input.endDate) ?? input.previous?.financial.endDate ?? null,
       dueDate: toIsoDate(input.dueDate) ?? input.previous?.financial.dueDate ?? null,
       validity: cleanText(input.validity, 80) || input.previous?.financial.validity || null,
+      paymentMethod:
+        cleanText(input.paymentMethod, 120) || input.previous?.financial.paymentMethod || null,
+      guaranteeType:
+        cleanText(input.guaranteeType, 120) || input.previous?.financial.guaranteeType || null,
+      inspectionReport:
+        cleanText(input.inspectionReport, 400) || input.previous?.financial.inspectionReport || null,
       additionalConditions:
         cleanText(input.additionalConditions, 2000) ||
         input.previous?.financial.additionalConditions ||
@@ -274,6 +283,9 @@ export async function POST(request: NextRequest) {
       endDate: body?.endDate,
       dueDate: body?.dueDate,
       validity: body?.validity,
+      paymentMethod: body?.paymentMethod,
+      guaranteeType: body?.guaranteeType,
+      inspectionReport: body?.inspectionReport,
       additionalConditions: body?.additionalConditions,
       clausesText: body?.clausesText,
       reviewNotesText: body?.reviewNotesText,

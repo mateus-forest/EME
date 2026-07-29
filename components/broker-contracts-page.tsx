@@ -78,19 +78,22 @@ type CommercialFieldKey =
   | "endDate"
   | "dueDate"
   | "validity"
+  | "paymentMethod"
+  | "guaranteeType"
+  | "inspectionReport"
   | "additionalConditions"
 
 type CommercialFieldDefinition = {
   id: string
   key: CommercialFieldKey
   label: string
-  type: "currency" | "percent" | "date" | "textarea"
+  type: "currency" | "percent" | "date" | "text" | "textarea"
   placeholder: string
   hint?: string
   examples?: string[]
 }
 
-type WorkspaceEntityKey = "client" | "property" | "broker" | "agency"
+type WorkspaceEntityKey = "client" | "property" | "broker" | "agency" | "landlord"
 
 type WorkspaceEntityItem = {
   label: string
@@ -123,6 +126,9 @@ const emptyDraft: ContractDraft = {
   endDate: "",
   dueDate: "",
   validity: "",
+  paymentMethod: "",
+  guaranteeType: "",
+  inspectionReport: "",
   additionalConditions: "",
   clausesText: "",
   reviewNotesText: "",
@@ -157,6 +163,10 @@ function formatDateTime(value: string) {
 function normalizeTitle(kind: ContractType, lead?: LeadRecord | null, property?: PropertyApiItem | null) {
   const reference = lead?.name || property?.title || "rascunho"
   return `Contrato ${kind} - ${reference}`.slice(0, 160)
+}
+
+function isResidentialLease(kind: ContractType) {
+  return kind === "Locacao residencial"
 }
 
 function parsePercentInput(value: string) {
@@ -203,6 +213,12 @@ function formatPtBrDate(value: Date) {
   return new Intl.DateTimeFormat("pt-BR").format(value)
 }
 
+function resolveLeaseTerm(startDate: string, endDate: string, fallback: string) {
+  if (fallback.trim()) return fallback
+  if (startDate.trim() && endDate.trim()) return `${startDate} a ${endDate}`
+  return ""
+}
+
 function withDocumentBase(html: string) {
   const origin = typeof window !== "undefined" ? window.location.origin : ""
   const previewStyles = `
@@ -235,6 +251,9 @@ function buildPlaceholderMap(input: {
   const { lead, property, broker, draft } = input
   const amount = draft.amount || property?.formattedPrice || ""
   const commission = draft.commissionPercent ? `${formatPercentInput(draft.commissionPercent)}%` : ""
+  const propertyAddress = [property?.legal.street, property?.legal.number, property?.legal.district, property?.legal.city]
+    .filter(Boolean)
+    .join(", ")
 
   return {
     VENDEDOR: property?.ownerName || "",
@@ -259,6 +278,20 @@ function buildPlaceholderMap(input: {
       .join(", "),
     COMPRADOR_EMAIL: lead?.email || "",
     COMPRADOR_TELEFONE: lead?.whatsApp || lead?.phone || "",
+    LOCADOR: property?.ownerName || "",
+    LOCADOR_CPF_CNPJ: "",
+    LOCADOR_RG: "",
+    LOCADOR_ESTADO_CIVIL: "",
+    LOCADOR_PROFISSAO: "",
+    LOCADOR_ENDERECO: propertyAddress,
+    LOCATARIO: lead?.name || "",
+    LOCATARIO_CPF_CNPJ: lead?.identification.cpfCnpj || "",
+    LOCATARIO_RG: lead?.identification.rg || "",
+    LOCATARIO_ESTADO_CIVIL: lead?.identification.maritalStatus || "",
+    LOCATARIO_PROFISSAO: lead?.identification.profession || "",
+    LOCATARIO_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
+      .filter(Boolean)
+      .join(", "),
     CORRETOR: broker?.name || "",
     CORRETOR_EMAIL: broker?.email || "",
     CORRETOR_TELEFONE: broker?.phone || "",
@@ -283,6 +316,14 @@ function buildPlaceholderMap(input: {
     UNIDADE_COMPLEMENTO: "",
     ESTADO_IMOVEL: property?.description || "",
     VALOR: amount,
+    VALOR_ALUGUEL: amount,
+    DATA_INICIO: draft.startDate || "",
+    DATA_FIM: draft.endDate || "",
+    PRAZO_LOCACAO: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
+    DIA_VENCIMENTO: draft.dueDate || "",
+    FORMA_PAGAMENTO: draft.paymentMethod || "",
+    TIPO_GARANTIA: draft.guaranteeType || "",
+    LAUDO_VISTORIA: draft.inspectionReport || "",
     ENTRADA: "",
     PARCELAS: "",
     BANCO_FINANCIAMENTO: "",
@@ -297,6 +338,7 @@ function buildPlaceholderMap(input: {
     CONDICAO_ENTREGA: "",
     DATA_POSSE: draft.endDate || "",
     DATA_ASSINATURA: draft.validity || "",
+    DATA_DOCUMENTO: "",
     PRAZO_ESCRITURA: draft.startDate || "",
     PRAZO_REGISTRO: draft.dueDate || "",
     RESP_ITBI: "",
@@ -325,6 +367,9 @@ function buildPlaceholderMap(input: {
     PLATAFORMA_ASSINATURA: "",
     COMARCA: "",
     LOCAL_ASSINATURA: "",
+    ADICIONAIS_LOCACAO: draft.additionalConditions || "",
+    ASSINATURA_LOCADOR: "",
+    ASSINATURA_LOCATARIO: "",
     ASSINATURA_VENDEDOR: "",
     ASSINATURA_COMPRADOR: "",
     ASSINATURA_CORRETOR: "",
@@ -351,8 +396,74 @@ function buildWorkspaceSections(input: {
   lead: LeadRecord | null
   property: PropertyApiItem | null
   broker: BrokerProfile | null
+  kind: ContractType
 }) {
-  const { lead, property, broker } = input
+  const { lead, property, broker, kind } = input
+
+  if (isResidentialLease(kind)) {
+    return [
+      {
+        key: "landlord",
+        title: "Locador",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.ownerName || "Vincule um imovel com locador definido para iniciar a minuta.",
+        items: [
+          { label: "Nome", value: property?.ownerName || "" },
+          { label: "Imovel vinculado", value: property?.title || "" },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+        ],
+      },
+      {
+        key: "client",
+        title: "Locatario",
+        route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
+        actionLabel: "Editar cliente",
+        summary: lead?.name || "Selecione um locatario para compor o contrato.",
+        items: [
+          { label: "Nome", value: lead?.name || "" },
+          { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
+          { label: "E-mail", value: lead?.email || "" },
+          { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+          { label: "RG", value: lead?.identification.rg || "" },
+          { label: "Estado civil", value: lead?.identification.maritalStatus || "" },
+          { label: "Profissao", value: lead?.identification.profession || "" },
+          { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
+        ],
+      },
+      {
+        key: "property",
+        title: "Imovel",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.title || "Selecione um imovel para alimentar a locacao residencial.",
+        items: [
+          { label: "Titulo", value: property?.title || "" },
+          { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+          { label: "Bairro", value: property?.neighborhood || "" },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "CEP", value: property?.legal.cep || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+          { label: "Cartorio", value: property?.legal.registryOffice || "" },
+          { label: "Valor anunciado", value: property?.formattedPrice || "" },
+        ],
+      },
+      {
+        key: "broker",
+        title: "Corretor",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.name || "Dados do corretor ainda nao carregados.",
+        items: [
+          { label: "Nome", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+          { label: "Telefone", value: broker?.phone || "" },
+          { label: "E-mail", value: broker?.email || "" },
+        ],
+      },
+    ] satisfies WorkspaceEntitySection[]
+  }
 
   return [
     {
@@ -454,6 +565,9 @@ function buildPreviewHtml(input: {
       endDate: input.draft.endDate || null,
       dueDate: input.draft.dueDate || null,
       validity: input.draft.validity || null,
+      paymentMethod: input.draft.paymentMethod || null,
+      guaranteeType: input.draft.guaranteeType || null,
+      inspectionReport: input.draft.inspectionReport || null,
       additionalConditions: input.draft.additionalConditions || null,
     },
     createdAt: new Date().toISOString(),
@@ -493,6 +607,9 @@ function buildContractExportHtml(input: {
         endDate: input.contract.content.financial.endDate ?? "",
         dueDate: input.contract.content.financial.dueDate ?? "",
         validity: input.contract.content.financial.validity ?? "",
+        paymentMethod: input.contract.content.financial.paymentMethod ?? "",
+        guaranteeType: input.contract.content.financial.guaranteeType ?? "",
+        inspectionReport: input.contract.content.financial.inspectionReport ?? "",
         additionalConditions: input.contract.content.financial.additionalConditions ?? "",
       },
       lead: input.lead,
@@ -513,52 +630,74 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         label: "Aluguel mensal",
         type: "currency",
         placeholder: "R$ 0,00",
+        hint: "Valor preenchido automaticamente pelo imovel.",
       },
       {
         id: "commercial.commission",
         key: "commissionPercent",
-        label: "Comissao",
+        label: "Comissao da intermediacao (opcional)",
         type: "percent",
         placeholder: "0",
       },
       {
         id: "commercial.startDate",
         key: "startDate",
-        label: "Inicio da vigencia",
+        label: "Inicio",
         type: "date",
         placeholder: "dd/mm/aaaa",
       },
       {
         id: "commercial.endDate",
         key: "endDate",
-        label: "Fim da vigencia",
+        label: "Termino",
         type: "date",
         placeholder: "dd/mm/aaaa",
       },
       {
-        id: "commercial.dueDate",
-        key: "dueDate",
-        label: "Vencimento",
-        type: "date",
-        placeholder: "dd/mm/aaaa",
-      },
-      {
-        id: "commercial.validUntil",
+        id: "commercial.term",
         key: "validity",
-        label: "Vigencia",
-        type: "date",
-        placeholder: "dd/mm/aaaa",
+        label: "Prazo da locacao",
+        type: "text",
+        placeholder: "30 meses",
+      },
+      {
+        id: "commercial.dueDay",
+        key: "dueDate",
+        label: "Dia do vencimento",
+        type: "text",
+        placeholder: "Todo dia 10",
+      },
+      {
+        id: "commercial.paymentMethod",
+        key: "paymentMethod",
+        label: "Forma de pagamento",
+        type: "text",
+        placeholder: "Pix, boleto ou transferencia",
+      },
+      {
+        id: "commercial.guaranteeType",
+        key: "guaranteeType",
+        label: "Garantia",
+        type: "text",
+        placeholder: "Caucao, fiador, seguro fianca...",
+      },
+      {
+        id: "commercial.inspectionReport",
+        key: "inspectionReport",
+        label: "Laudo de vistoria",
+        type: "text",
+        placeholder: "Laudo inicial assinado em 29/07/2026",
       },
       {
         id: "commercial.notes",
         key: "additionalConditions",
-        label: "Observacoes comerciais (opcional)",
+        label: "Encargos e observacoes (opcional)",
         type: "textarea",
-        placeholder: "Caucao, garantia locaticia, reajuste, entrega das chaves.",
+        placeholder: "IPTU por conta do locatario. Entrega das chaves apos vistoria final.",
         examples: [
-          "Caucao em 3 alugueis.",
-          "Garantia por seguro fianca.",
+          "Condominio e consumo por conta do locatario.",
           "Reajuste anual pelo indice contratual.",
+          "Entrega das chaves mediante vistoria final.",
         ],
       },
     ]
@@ -896,6 +1035,7 @@ export function BrokerContractsPage() {
 
   const workspaceSections = useMemo(() => {
     return buildWorkspaceSections({
+      kind: draft.kind,
       lead: selectedLead,
       property: selectedProperty,
       broker: brokerProfile,
@@ -912,7 +1052,7 @@ export function BrokerContractsPage() {
         pendingCount: items.filter((item) => !item.done).length,
       }
     })
-  }, [brokerProfile, selectedLead, selectedProperty])
+  }, [brokerProfile, draft.kind, selectedLead, selectedProperty])
 
   const pendingSummary = useMemo(() => {
     const pendingCount = workspaceSections.reduce((total, section) => total + section.pendingCount, 0)
@@ -922,6 +1062,7 @@ export function BrokerContractsPage() {
 
   const selectedWorkspaceSections = useMemo(() => {
     return buildWorkspaceSections({
+      kind: selectedContract?.kind ?? draft.kind,
       lead: selectedContractLead,
       property: selectedContractProperty,
       broker: brokerProfile,
@@ -938,10 +1079,13 @@ export function BrokerContractsPage() {
         pendingCount: items.filter((item) => !item.done).length,
       }
     })
-  }, [brokerProfile, selectedContractLead, selectedContractProperty])
+  }, [brokerProfile, draft.kind, selectedContract?.kind, selectedContractLead, selectedContractProperty])
 
   const contractHealthIndicators = useMemo(() => {
     const clientScore = scoreSection(selectedWorkspaceSections.find((section) => section.key === "client")?.items ?? [])
+    const landlordScore = scoreSection(
+      selectedWorkspaceSections.find((section) => section.key === "landlord")?.items ?? [],
+    )
     const propertyScore = scoreSection(
       selectedWorkspaceSections.find((section) => section.key === "property")?.items ?? [],
     )
@@ -992,6 +1136,70 @@ export function BrokerContractsPage() {
           : 64
       : 0
 
+    const leaseDocumentationScore = scoreSection([
+      {
+        label: "Matricula",
+        value: selectedContractProperty?.legal.registryNumber || "",
+        done: Boolean(selectedContractProperty?.legal.registryNumber),
+      },
+      {
+        label: "Cartorio",
+        value: selectedContractProperty?.legal.registryOffice || "",
+        done: Boolean(selectedContractProperty?.legal.registryOffice),
+      },
+      {
+        label: "Laudo de vistoria",
+        value: selectedContract?.content.financial.inspectionReport || "",
+        done: Boolean(selectedContract?.content.financial.inspectionReport),
+      },
+      {
+        label: "Notas de revisao",
+        value: selectedContract?.content.reviewNotes.length ? "ok" : "",
+        done: selectedContract ? selectedContract.content.reviewNotes.length > 0 : false,
+      },
+    ])
+    const leaseFinancialScore = scoreSection([
+      {
+        label: "Valor",
+        value: selectedContract?.amountLabel || "",
+        done: Boolean(selectedContract?.amountLabel),
+      },
+      {
+        label: "Vencimento",
+        value: selectedContract?.content.financial.dueDate || "",
+        done: Boolean(selectedContract?.content.financial.dueDate),
+      },
+      {
+        label: "Forma de pagamento",
+        value: selectedContract?.content.financial.paymentMethod || "",
+        done: Boolean(selectedContract?.content.financial.paymentMethod),
+      },
+    ])
+    const guaranteeScore = scoreSection([
+      {
+        label: "Garantia",
+        value: selectedContract?.content.financial.guaranteeType || "",
+        done: Boolean(selectedContract?.content.financial.guaranteeType),
+      },
+      {
+        label: "Encargos e observacoes",
+        value: selectedContract?.content.financial.additionalConditions || "",
+        done: Boolean(selectedContract?.content.financial.additionalConditions),
+      },
+    ])
+
+    if (selectedContract?.kind === "Locacao residencial") {
+      return [
+        { label: "Locador", score: landlordScore },
+        { label: "Locatario", score: clientScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Financeiro", score: leaseFinancialScore },
+        { label: "Garantias", score: guaranteeScore },
+        { label: "Documentacao", score: leaseDocumentationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     return [
       { label: "Cliente", score: clientScore },
       { label: "Imóvel", score: propertyScore },
@@ -1012,6 +1220,17 @@ export function BrokerContractsPage() {
   const contractPendingHighlights = useMemo(() => {
     if (!selectedContract) return []
 
+    if (selectedContract.kind === "Locacao residencial") {
+      return [
+        !selectedContractProperty?.ownerName ? "Locador vinculado ao imovel" : null,
+        !selectedContractLead?.identification.rg ? "RG do locatario" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matricula" : null,
+        !selectedContract.content.financial.guaranteeType ? "Garantia locaticia" : null,
+        !selectedContract.content.financial.inspectionReport ? "Laudo de vistoria" : null,
+        selectedContract.status === "draft" ? "Fluxo de assinatura" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
     return [
       !selectedContractProperty?.legal.registryNumber ? "Matrícula" : null,
       !selectedContractProperty?.legal.registryOffice ? "Cartório" : null,
@@ -1024,10 +1243,44 @@ export function BrokerContractsPage() {
     selectedContractLead?.identification.rg,
     selectedContractProperty?.legal.registryNumber,
     selectedContractProperty?.legal.registryOffice,
+    selectedContractProperty?.ownerName,
   ])
 
   const contractValidationItems = useMemo(() => {
     if (!selectedContract) return []
+
+    if (selectedContract.kind === "Locacao residencial") {
+      return [
+        {
+          label: "Locador validado",
+          detail: selectedContractProperty?.ownerName || "Locador ainda nao identificado no imovel.",
+          done: Boolean(selectedContractProperty?.ownerName),
+        },
+        {
+          label: "Locatario validado",
+          detail: selectedContract.leadName || "Locatario ainda nao vinculado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Garantia definida",
+          detail: selectedContract.content.financial.guaranteeType || "Garantia locaticia pendente.",
+          done: Boolean(selectedContract.content.financial.guaranteeType),
+        },
+        {
+          label: "Laudo de vistoria",
+          detail: selectedContract.content.financial.inspectionReport || "Laudo inicial nao informado.",
+          done: Boolean(selectedContract.content.financial.inspectionReport),
+        },
+        {
+          label: "Financeiro confirmado",
+          detail:
+            selectedContract.amountLabel && selectedContract.content.financial.dueDate
+              ? `${selectedContract.amountLabel} • ${selectedContract.content.financial.dueDate}`
+              : "Aluguel e vencimento ainda exigem confirmacao.",
+          done: Boolean(selectedContract.amountLabel && selectedContract.content.financial.dueDate),
+        },
+      ]
+    }
 
     return [
       {
@@ -1063,6 +1316,7 @@ export function BrokerContractsPage() {
     selectedContractLead?.identification.cpfCnpj,
     selectedContractProperty?.legal.registryNumber,
     selectedContractProperty?.legal.registryOffice,
+    selectedContractProperty?.ownerName,
   ])
 
   const negotiationChecks = useMemo(() => {
@@ -1120,6 +1374,9 @@ export function BrokerContractsPage() {
       endDate: contract.content.financial.endDate ?? "",
       dueDate: contract.content.financial.dueDate ?? "",
       validity: contract.content.financial.validity ?? "",
+      paymentMethod: contract.content.financial.paymentMethod ?? "",
+      guaranteeType: contract.content.financial.guaranteeType ?? "",
+      inspectionReport: contract.content.financial.inspectionReport ?? "",
       additionalConditions: contract.content.financial.additionalConditions ?? "",
       clausesText: contract.content.clauses.join("\n"),
       reviewNotesText: contract.content.reviewNotes.join("\n"),
@@ -1818,6 +2075,26 @@ export function BrokerContractsPage() {
                           placeholder={field.placeholder}
                           onChange={(nextValue) => updateDraftField(field.key, nextValue)}
                         />
+                      )
+                    }
+
+                    if (field.type === "text") {
+                      return (
+                        <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>{field.label}</span>
+                            <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
+                              {field.id}
+                            </span>
+                          </div>
+                          <Input
+                            value={value}
+                            onChange={(event) => updateDraftField(field.key, event.target.value)}
+                            placeholder={field.placeholder}
+                            className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
+                          />
+                          {field.hint ? <p className="text-xs text-[#8B95A1]">{field.hint}</p> : null}
+                        </label>
                       )
                     }
 

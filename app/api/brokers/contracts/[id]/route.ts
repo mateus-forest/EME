@@ -201,6 +201,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         endDate: cleanText(body?.endDate, 40) || parsed.financial.endDate || null,
         dueDate: cleanText(body?.dueDate, 40) || parsed.financial.dueDate || null,
         validity: cleanText(body?.validity, 80) || parsed.financial.validity || null,
+        paymentMethod: cleanText(body?.paymentMethod, 120) || parsed.financial.paymentMethod || null,
+        guaranteeType: cleanText(body?.guaranteeType, 120) || parsed.financial.guaranteeType || null,
+        inspectionReport: cleanText(body?.inspectionReport, 400) || parsed.financial.inspectionReport || null,
         additionalConditions:
           cleanText(body?.additionalConditions, 2000) || parsed.financial.additionalConditions || null,
       },

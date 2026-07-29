@@ -28,6 +28,9 @@ export type ContractRecord = {
       endDate?: string | null
       dueDate?: string | null
       validity?: string | null
+      paymentMethod?: string | null
+      guaranteeType?: string | null
+      inspectionReport?: string | null
       additionalConditions?: string | null
     }
     clauses: string[]
@@ -46,6 +49,9 @@ export type ContractDraft = {
   endDate: string
   dueDate: string
   validity: string
+  paymentMethod: string
+  guaranteeType: string
+  inspectionReport: string
   additionalConditions: string
   clausesText: string
   reviewNotesText: string

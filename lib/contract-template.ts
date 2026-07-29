@@ -68,6 +68,9 @@ type ContractFinancial = {
   endDate?: string | null
   dueDate?: string | null
   validity?: string | null
+  paymentMethod?: string | null
+  guaranteeType?: string | null
+  inspectionReport?: string | null
   additionalConditions?: string | null
 }
 
@@ -128,6 +131,10 @@ function contractStatusLabel(status: ContractStatus) {
   return "Rascunho"
 }
 
+function isResidentialLeaseContract(kind: ContractType) {
+  return kind === "Locacao residencial"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -138,7 +145,7 @@ export function normalizeContractStatus(value: unknown): ContractStatus | null {
 
 function getContractHeadline(kind: ContractType) {
   if (kind === "Compra e venda") return "Template mestre do EME para operacoes de compra e venda de imoveis."
-  if (kind === "Locacao residencial") return "Base visual oficial para futura minuta de locacao residencial."
+  if (kind === "Locacao residencial") return "Template oficial EME para locacoes residenciais com preview editorial, PDF e sincronizacao em tempo real."
   if (kind === "Locacao comercial") return "Base visual oficial para futura minuta de locacao comercial."
   if (kind === "Autorizacao de venda") return "Base visual oficial para autorizacao de venda."
   if (kind === "Exclusividade") return "Base visual oficial para contrato de exclusividade."
@@ -168,6 +175,16 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isResidentialLeaseContract(kind)) {
+    return [
+      `Partes previstas: locador ${p("LOCADOR")}, locatario ${p("LOCATARIO")} e intermediacao de ${p("CORRETOR")}.`,
+      `Imovel locado: ${p("IMOVEL")} no endereco ${p("IMOVEL_ENDERECO")}, matricula ${p("MATRICULA")} e foro em ${p("CIDADE")}.`,
+      `Condicoes financeiras atuais: aluguel mensal ${p("VALOR_ALUGUEL")}, vencimento ${p("DIA_VENCIMENTO")} e forma de pagamento ${p("FORMA_PAGAMENTO")}.`,
+      `Garantia prevista: ${p("TIPO_GARANTIA")}. Laudo de vistoria vinculado: ${p("LAUDO_VISTORIA")}.`,
+      `Prazo da locacao: inicio ${p("DATA_INICIO")}, termino ${p("DATA_FIM")} e referencia comercial ${p("PRAZO_LOCACAO")}.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -183,6 +200,15 @@ export function buildContractReviewNotes(kind: ContractType) {
       "Revisar matricula, endereco, cronograma financeiro, arras, corretagem e regras de posse.",
       "Validar reparticao de tributos, despesas cartorarias e eventuais condicoes suspensivas.",
       "Manter o documento como rascunho ate a validacao comercial e juridica final.",
+    ]
+  }
+
+  if (isResidentialLeaseContract(kind)) {
+    return [
+      "Validar se locador, locatario, imovel, garantia e vencimento estao consistentes antes do envio para assinatura.",
+      "Conferir laudo de vistoria, encargos locaticios, prazo da locacao e regras de conservacao do imovel.",
+      "Revisar clausulas de rescisao, benfeitorias, foro e obrigacoes recorrentes com suporte juridico quando necessario.",
+      "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
     ]
   }
 
@@ -202,7 +228,7 @@ function buildOfficialSaleContractHtml(content: ContractContent) {
     description:
       "Documento base modular para operacoes imobiliarias premium, preparado para revisao comercial, juridica e futura substituicao automatica de placeholders pelo COS.",
     versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
-    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletrônica.",
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
     highlights: ["Seguro", "Personalizavel", "Juridicamente revisavel"],
   })
 
@@ -710,6 +736,311 @@ function buildOfficialSaleContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialResidentialLeaseContractHtml(content: ContractContent) {
+  const totalPages = 6
+
+  const cover = DocumentCover({
+    title: "Contrato de Locacao Residencial",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para locacoes residenciais, preparado para sincronizar dados de cliente, imovel e corretor com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Residencial", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Das Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Locador",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("LOCADOR") },
+                { label: "CPF/CNPJ", value: p("LOCADOR_CPF_CNPJ") },
+                { label: "RG", value: p("LOCADOR_RG") },
+                { label: "Estado civil", value: p("LOCADOR_ESTADO_CIVIL") },
+                { label: "Profissao", value: p("LOCADOR_PROFISSAO") },
+                { label: "Endereco", value: p("LOCADOR_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Locatario",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("LOCATARIO") },
+                { label: "CPF/CNPJ", value: p("LOCATARIO_CPF_CNPJ") },
+                { label: "RG", value: p("LOCATARIO_RG") },
+                { label: "Estado civil", value: p("LOCATARIO_ESTADO_CIVIL") },
+                { label: "Profissao", value: p("LOCATARIO_PROFISSAO") },
+                { label: "Endereco", value: p("LOCATARIO_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Corretor responsavel",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Telefone", value: p("CORRETOR_TELEFONE") },
+                { label: "E-mail", value: p("CORRETOR_EMAIL") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Do Imovel",
+        description: "Objeto da locacao residencial e identificacao das informacoes principais do ativo.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Imovel", value: p("IMOVEL") },
+                { label: "Tipo do imovel", value: p("TIPO_IMOVEL") },
+                { label: "Endereco completo", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Bairro", value: p("BAIRRO") },
+                { label: "Cidade", value: p("CIDADE") },
+                { label: "Estado", value: p("ESTADO") },
+                { label: "CEP", value: p("CEP") },
+                { label: "Matricula", value: p("MATRICULA") },
+                { label: "Cartorio de registro", value: p("CARTORIO_REGISTRO") },
+              ],
+            }),
+          }),
+          DocumentNotice("O imovel destina-se exclusivamente a uso residencial, vedada a alteracao de finalidade sem autorizacao expressa do locador."),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "3",
+          title: "Finalidade",
+          children: DocumentCard({
+            tone: "accent",
+            children: DocumentBullets([
+              "Uso exclusivamente residencial.",
+              "O locatario compromete-se a utilizar o imovel de forma compativel com a destinacao pactuada.",
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "4",
+          title: "Prazo",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Inicio", value: p("DATA_INICIO") },
+                { label: "Termino", value: p("DATA_FIM") },
+                { label: "Prazo da locacao", value: p("PRAZO_LOCACAO"), span: 2 },
+              ],
+            }),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "5",
+        title: "Valor",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Condicoes financeiras",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Aluguel mensal", value: p("VALOR_ALUGUEL") },
+                { label: "Vencimento", value: p("DIA_VENCIMENTO") },
+                { label: "Forma de pagamento", value: p("FORMA_PAGAMENTO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentNotice("Os valores e prazos devem refletir exatamente a negociacao confirmada entre locador e locatario."),
+        ),
+      }),
+      DocumentColumns(
+        DocumentSection({
+          icon: "6",
+          title: "Garantia",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 1,
+              items: [
+                { label: "Tipo de garantia", value: p("TIPO_GARANTIA") },
+                { label: "Observacoes comerciais", value: p("CRONOGRAMA_OBSERVACOES") },
+              ],
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "7",
+          title: "Encargos",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "Responsabilidade pelo pagamento de IPTU, condominio, agua, energia, gas e internet conforme negociacao.",
+              "Despesas extraordinarias e ajustes futuros deverao respeitar a legislacao aplicavel e o texto final deste instrumento.",
+            ]),
+          }),
+        }),
+      ),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "8",
+          title: "Vistoria",
+          children: DocumentStack(
+            DocumentCard({
+              children: DocumentFieldGrid({
+                columns: 1,
+                items: [{ label: "Laudo de vistoria inicial", value: p("LAUDO_VISTORIA") }],
+              }),
+            }),
+            DocumentNotice("O imovel sera entregue conforme laudo de vistoria inicial, que integra a negociacao como anexo de referencia."),
+          ),
+        }),
+        DocumentSection({
+          icon: "9",
+          title: "Conservacao",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "O locatario compromete-se a conservar o imovel durante toda a locacao.",
+              "Qualquer dano decorrente de uso inadequado devera ser reparado conforme previsao legal e contratual.",
+            ]),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "10",
+        title: "Benfeitorias",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentBullets([
+              "Benfeitorias somente poderao ser realizadas mediante autorizacao do locador.",
+              "A eventual indenizacao ou retencao dependera da natureza da benfeitoria e das regras deste contrato.",
+            ]),
+          }),
+          DocumentInput({
+            label: "Observacoes complementares",
+            value: p("ADICIONAIS_LOCACAO"),
+            block: true,
+          }),
+        ),
+      }),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "11",
+          title: "Rescisao",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "Aplicam-se as penalidades previstas em lei e neste contrato em caso de rescisao antecipada ou inadimplemento.",
+              "O descumprimento de obrigacoes essenciais podera ensejar multa, perdas e danos e demais medidas cabiveis.",
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "12",
+          title: "Foro",
+          children: DocumentCard({
+            children: DocumentInput({
+              label: "Comarca eleita",
+              value: p("CIDADE"),
+            }),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "13",
+        title: "Assinaturas",
+        description: "Por estarem justas e acordadas, as partes assinam o presente instrumento.",
+        children: `<div class="document-signature-grid">
+          ${DocumentSignatureBlock({
+            role: "Locador",
+            fields: [
+              { label: "Nome", value: p("LOCADOR") },
+              { label: "Assinatura", value: p("ASSINATURA_LOCADOR") },
+            ],
+          })}
+          ${DocumentSignatureBlock({
+            role: "Locatario",
+            fields: [
+              { label: "Nome", value: p("LOCATARIO") },
+              { label: "Assinatura", value: p("ASSINATURA_LOCATARIO") },
+            ],
+          })}
+          ${DocumentSignatureBlock({
+            role: "Corretor",
+            fields: [
+              { label: "Nome", value: p("CORRETOR") },
+              { label: "CRECI", value: p("CORRETOR_CRECI") },
+              { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+            ],
+          })}
+        </div>`,
+      }),
+    ),
+  })
+
+  const page6 = DocumentPage({
+    pageNumber: 6,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "14",
+        title: "Fechamento",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para locacao residencial. Recomenda-se revisao juridica final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5, page6],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -811,6 +1142,10 @@ export function buildContractHtml(content: ContractContent) {
     return buildOfficialSaleContractHtml(content)
   }
 
+  if (isResidentialLeaseContract(content.kind)) {
+    return buildOfficialResidentialLeaseContractHtml(content)
+  }
+
   return buildGenericContractHtml(content)
 }
 
@@ -884,6 +1219,9 @@ export function createContractContent(input: {
       endDate: financial.endDate ?? null,
       dueDate: financial.dueDate ?? null,
       validity: financial.validity ?? null,
+      paymentMethod: financial.paymentMethod ?? null,
+      guaranteeType: financial.guaranteeType ?? null,
+      inspectionReport: financial.inspectionReport ?? null,
       additionalConditions: financial.additionalConditions ?? null,
     },
     clauses: buildContractClauses(input.kind, { lead: input.lead, property: input.property, financial }),
