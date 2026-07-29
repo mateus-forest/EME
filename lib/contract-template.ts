@@ -159,6 +159,10 @@ function isReservationContract(kind: ContractType) {
   return kind === "Reserva"
 }
 
+function isAmendmentContract(kind: ContractType) {
+  return kind === "Aditivo"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -175,7 +179,7 @@ function getContractHeadline(kind: ContractType) {
   if (kind === "Exclusividade") return "Template oficial EME para exclusividade de venda com foco em prazo, comissao, direitos e obrigacoes da intermediacao exclusiva."
   if (kind === "Termo de visita") return "Template oficial EME para termo de visita com foco em ciencia da intermediacao, declaracoes e registro da visita ao imovel."
   if (kind === "Reserva") return "Template oficial EME para reserva de imovel com foco em interessado, proprietario, conversao da reserva e sincronizacao do preview em tempo real."
-  if (kind === "Aditivo") return "Base visual oficial para aditivos contratuais."
+  if (kind === "Aditivo") return "Template oficial EME para aditivos contratuais com foco em referencia ao contrato original, clausulas modificadas, vigencia e sincronizacao em tempo real."
   return "Base visual oficial para distrato e encerramento contratual."
 }
 
@@ -258,6 +262,16 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isAmendmentContract(kind)) {
+    return [
+      `Aditivo vinculado a ${p("CONTRATO_ORIGINAL_REFERENCIA")}, mantendo como partes de apoio ${p("COMPRADOR")} e a intermediacao de ${p("CORRETOR")}.`,
+      `Imovel de referencia: ${p("IMOVEL")} no endereco ${p("IMOVEL_ENDERECO")}, matricula ${p("MATRICULA")} e foro ${p("FORO_ADITIVO")}.`,
+      `Clausulas modificadas: ${p("CLAUSULAS_MODIFICADAS")}. Alteracoes consolidadas em ${p("ALTERACOES_ADITIVO")}.`,
+      `Vigencia do aditivo: de ${p("VIGENCIA_INICIO_ADITIVO")} ate ${p("VIGENCIA_FIM_ADITIVO")}.`,
+      `Dados comerciais atuais vinculados ao rascunho: ${personName}, ${propertyRef}, ${amount}.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -325,6 +339,15 @@ export function buildContractReviewNotes(kind: ContractType) {
       "Validar interessado, proprietario, imovel e prazo da reserva antes do envio para assinatura.",
       "Conferir matricula, cartorio, valor da reserva, condicoes da conversao e responsabilidades das partes.",
       "Revisar regras de rescisao, devolucao, foro e conversao da reserva com suporte juridico quando necessario.",
+      "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
+    ]
+  }
+
+  if (isAmendmentContract(kind)) {
+    return [
+      "Validar a referencia ao contrato original, as clausulas modificadas e a vigencia do aditivo antes do envio para assinatura.",
+      "Conferir se as alteracoes registradas refletem exatamente o ajuste negociado pelas partes.",
+      "Revisar foro, assinaturas e eventual impacto juridico no instrumento principal com suporte especializado quando necessario.",
       "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
     ]
   }
@@ -2326,6 +2349,180 @@ function buildOfficialReservationContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialAmendmentContractHtml(content: ContractContent) {
+  const totalPages = 5
+
+  const cover = DocumentCover({
+    title: "Aditivo Contratual",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para aditivos contratuais, preparado para sincronizar cliente, imovel, corretor e contrato original com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Aditivo", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Referencia ao Contrato Original",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Referencia", value: p("CONTRATO_ORIGINAL_REFERENCIA"), span: 2 },
+                { label: "Cliente vinculado", value: p("COMPRADOR") },
+                { label: "Imovel", value: p("IMOVEL") },
+                { label: "Endereco", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Matricula", value: p("MATRICULA") },
+                { label: "Cartorio", value: p("CARTORIO_REGISTRO") },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Intermediacao",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Corretor", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Imobiliaria", value: p("IMOBILIARIA") },
+                { label: "Contato", value: p("CORRETOR_TELEFONE") },
+              ],
+            }),
+          }),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "2",
+        title: "Alteracoes",
+        children: DocumentCard({
+          children: DocumentInput({
+            label: "Escopo do aditivo",
+            value: p("ALTERACOES_ADITIVO"),
+            block: true,
+          }),
+        }),
+      }),
+      DocumentColumns(
+        DocumentSection({
+          icon: "3",
+          title: "Clausulas Modificadas",
+          children: DocumentCard({
+            children: DocumentInput({
+              label: "Clausulas afetadas",
+              value: p("CLAUSULAS_MODIFICADAS"),
+              block: true,
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "4",
+          title: "Vigencia",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Inicio", value: p("VIGENCIA_INICIO_ADITIVO") },
+                { label: "Fim", value: p("VIGENCIA_FIM_ADITIVO") },
+              ],
+            }),
+          }),
+        }),
+      ),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "5",
+        title: "Consolidacao",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentBullets([
+              "Permanecem inalteradas e em pleno vigor as demais clausulas do contrato original nao expressamente modificadas neste aditivo.",
+              "As partes reconhecem que este instrumento complementa o contrato principal, preservando sua integridade juridica.",
+              "As alteracoes aqui registradas produzem efeitos a partir da vigencia indicada neste documento.",
+            ]),
+          }),
+          DocumentSection({
+            icon: "6",
+            title: "Foro",
+            children: DocumentCard({
+              children: DocumentInput({
+                label: "Comarca eleita",
+                value: p("FORO_ADITIVO"),
+              }),
+            }),
+          }),
+        ),
+      }),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "7",
+        title: "Assinaturas",
+        description: "Por estarem cientes das alteracoes aqui consolidadas, as partes assinam o presente aditivo.",
+        children: DocumentStack(
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Cliente",
+              fields: [
+                { label: "Nome", value: p("COMPRADOR") },
+                { label: "Assinatura", value: p("ASSINATURA_COMPRADOR") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+          </div>`,
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para aditivos contratuais. Recomenda-se revisao juridica final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -2449,6 +2646,10 @@ export function buildContractHtml(content: ContractContent) {
 
   if (isReservationContract(content.kind)) {
     return buildOfficialReservationContractHtml(content)
+  }
+
+  if (isAmendmentContract(content.kind)) {
+    return buildOfficialAmendmentContractHtml(content)
   }
 
   return buildGenericContractHtml(content)

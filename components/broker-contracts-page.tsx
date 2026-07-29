@@ -202,6 +202,21 @@ function isReservation(kind: ContractType) {
   return kind === "Reserva"
 }
 
+function isAmendment(kind: ContractType) {
+  return kind === "Aditivo"
+}
+
+function buildAmendmentReference(lead?: LeadRecord | null, property?: PropertyApiItem | null) {
+  const tokens = [
+    "Contrato original",
+    lead?.name || null,
+    property?.title || null,
+    property?.legal.city || property?.city || null,
+  ].filter(Boolean)
+
+  return tokens.join(" • ")
+}
+
 function parsePercentInput(value: string) {
   const normalized = value.replace(",", ".").replace(/[^\d.]/g, "")
   const parsed = Number(normalized)
@@ -386,6 +401,12 @@ function buildPlaceholderMap(input: {
     DIA_VENCIMENTO: draft.dueDate || "",
     CONVERSAO_RESERVA: draft.dueDate || "",
     CONDICOES_RESERVA: draft.additionalConditions || "",
+    CONTRATO_ORIGINAL_REFERENCIA: draft.paymentMethod || buildAmendmentReference(lead, property),
+    ALTERACOES_ADITIVO: draft.additionalConditions || "",
+    CLAUSULAS_MODIFICADAS: draft.validity || "",
+    VIGENCIA_INICIO_ADITIVO: draft.startDate || "",
+    VIGENCIA_FIM_ADITIVO: draft.endDate || "",
+    FORO_ADITIVO: draft.dueDate || property?.legal.city || property?.city || "",
     FORMA_PAGAMENTO: draft.paymentMethod || "",
     TIPO_GARANTIA: draft.guaranteeType || "",
     LAUDO_VISTORIA: draft.inspectionReport || "",
@@ -682,6 +703,66 @@ function buildWorkspaceSections(input: {
           { label: "Matricula", value: property?.legal.registryNumber || "" },
           { label: "Cartorio", value: property?.legal.registryOffice || "" },
           { label: "Valor anunciado", value: property?.formattedPrice || "" },
+        ],
+      },
+      {
+        key: "agency",
+        title: "Imobiliaria",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.agencyName || "A intermediacao pode ser vinculada a uma imobiliaria quando disponivel.",
+        items: [
+          { label: "Nome", value: broker?.agencyName || "" },
+          { label: "Corretor responsavel", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+        ],
+      },
+      {
+        key: "broker",
+        title: "Corretor",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.name || "Dados do corretor ainda nao carregados.",
+        items: [
+          { label: "Nome", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+          { label: "Telefone", value: broker?.phone || "" },
+          { label: "E-mail", value: broker?.email || "" },
+        ],
+      },
+    ] satisfies WorkspaceEntitySection[]
+  }
+
+  if (isAmendment(kind)) {
+    return [
+      {
+        key: "client",
+        title: "Cliente vinculado",
+        route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
+        actionLabel: "Editar cliente",
+        summary: lead?.name || "Selecione o cliente vinculado ao contrato original.",
+        items: [
+          { label: "Nome", value: lead?.name || "" },
+          { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
+          { label: "E-mail", value: lead?.email || "" },
+          { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+          { label: "RG", value: lead?.identification.rg || "" },
+          { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
+        ],
+      },
+      {
+        key: "property",
+        title: "Imovel do contrato original",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.title || "Selecione o imovel vinculado ao contrato que sera aditado.",
+        items: [
+          { label: "Titulo", value: property?.title || "" },
+          { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "Bairro", value: property?.neighborhood || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+          { label: "Cartorio", value: property?.legal.registryOffice || "" },
         ],
       },
       {
@@ -1259,6 +1340,59 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
     ]
   }
 
+  if (kind === "Aditivo") {
+    return [
+      {
+        id: "commercial.originalContract",
+        key: "paymentMethod",
+        label: "Referencia ao contrato original",
+        type: "text",
+        placeholder: "Contrato original vinculado ao cliente e ao imovel.",
+        hint: "Preenchido automaticamente a partir do cliente e do imovel selecionados.",
+      },
+      {
+        id: "commercial.changes",
+        key: "additionalConditions",
+        label: "Alteracoes",
+        type: "textarea",
+        placeholder: "Descreva exatamente o que esta sendo ajustado neste aditivo.",
+        examples: [
+          "Prorrogacao do prazo originalmente pactuado.",
+          "Atualizacao do valor e da forma de pagamento.",
+          "Inclusao de nova condicao comercial acordada entre as partes.",
+        ],
+      },
+      {
+        id: "commercial.modifiedClauses",
+        key: "validity",
+        label: "Clausulas modificadas",
+        type: "text",
+        placeholder: "Ex.: Clausulas 3, 5 e 8.",
+      },
+      {
+        id: "commercial.startDate",
+        key: "startDate",
+        label: "Vigencia inicial",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.endDate",
+        key: "endDate",
+        label: "Vigencia final",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.forum",
+        key: "dueDate",
+        label: "Foro",
+        type: "text",
+        placeholder: "Comarca aplicavel ao aditivo.",
+      },
+    ]
+  }
+
   if (kind === "Reserva") {
     return [
       {
@@ -1455,6 +1589,7 @@ export function BrokerContractsPage() {
   const [titleCustomized, setTitleCustomized] = useState(false)
   const [amountCustomized, setAmountCustomized] = useState(false)
   const [commissionCustomized, setCommissionCustomized] = useState(false)
+  const [amendmentReferenceCustomized, setAmendmentReferenceCustomized] = useState(false)
 
   const loadEntitySources = useCallback(async () => {
     const [leadsResponse, propertiesResponse, brokerResponse, financialResponse] = await Promise.all([
@@ -1575,6 +1710,13 @@ export function BrokerContractsPage() {
     if (draft.title === nextTitle) return
     setDraft((current) => ({ ...current, title: nextTitle }))
   }, [draft.kind, draft.title, isDialogOpen, selectedLead, selectedProperty, titleCustomized])
+
+  useEffect(() => {
+    if (!isDialogOpen || !isAmendment(draft.kind) || amendmentReferenceCustomized) return
+    const nextReference = buildAmendmentReference(selectedLead, selectedProperty)
+    if (!nextReference || draft.paymentMethod === nextReference) return
+    setDraft((current) => ({ ...current, paymentMethod: nextReference }))
+  }, [amendmentReferenceCustomized, draft.kind, draft.paymentMethod, isDialogOpen, selectedLead, selectedProperty])
 
   const overview = useMemo(() => {
     return {
@@ -1797,6 +1939,40 @@ export function BrokerContractsPage() {
         done: Boolean(brokerProfile?.agencyName),
       },
     ])
+    const amendmentGovernanceScore = scoreSection([
+      {
+        label: "Contrato original",
+        value: selectedContract?.content.financial.paymentMethod || "",
+        done: Boolean(selectedContract?.content.financial.paymentMethod),
+      },
+      {
+        label: "Clausulas modificadas",
+        value: selectedContract?.content.financial.validity || "",
+        done: Boolean(selectedContract?.content.financial.validity),
+      },
+      {
+        label: "Alteracoes",
+        value: selectedContract?.content.financial.additionalConditions || "",
+        done: Boolean(selectedContract?.content.financial.additionalConditions),
+      },
+    ])
+    const amendmentTermScore = scoreSection([
+      {
+        label: "Vigencia inicial",
+        value: selectedContract?.content.financial.startDate || "",
+        done: Boolean(selectedContract?.content.financial.startDate),
+      },
+      {
+        label: "Vigencia final",
+        value: selectedContract?.content.financial.endDate || "",
+        done: Boolean(selectedContract?.content.financial.endDate),
+      },
+      {
+        label: "Foro",
+        value: selectedContract?.content.financial.dueDate || "",
+        done: Boolean(selectedContract?.content.financial.dueDate),
+      },
+    ])
 
     if (selectedContract?.kind === "Locacao comercial") {
       return [
@@ -1848,6 +2024,17 @@ export function BrokerContractsPage() {
         { label: "Financeiro", score: reservationFinancialScore },
         { label: "Conversao", score: reservationConversionScore },
         { label: "Documentacao", score: documentationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
+    if (selectedContract?.kind === "Aditivo") {
+      return [
+        { label: "Cliente", score: clientScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Documentacao", score: documentationScore },
+        { label: "Contrato original", score: amendmentGovernanceScore },
+        { label: "Vigencia", score: amendmentTermScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -1946,6 +2133,19 @@ export function BrokerContractsPage() {
         !selectedContract.content.financial.validity ? "Prazo da reserva" : null,
         !selectedContract.content.financial.dueDate ? "Conversao da reserva" : null,
         !selectedContract.content.financial.additionalConditions ? "Condicoes da reserva" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
+    if (selectedContract.kind === "Aditivo") {
+      return [
+        !selectedContractLead?.identification.cpfCnpj ? "CPF do cliente vinculado" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matricula do imovel" : null,
+        !selectedContract.content.financial.paymentMethod ? "Referencia do contrato original" : null,
+        !selectedContract.content.financial.additionalConditions ? "Alteracoes do aditivo" : null,
+        !selectedContract.content.financial.validity ? "Clausulas modificadas" : null,
+        !selectedContract.content.financial.startDate ? "Vigencia inicial" : null,
+        !selectedContract.content.financial.endDate ? "Vigencia final" : null,
+        !selectedContract.content.financial.dueDate ? "Foro" : null,
       ].filter((item): item is string => Boolean(item))
     }
 
@@ -2176,6 +2376,45 @@ export function BrokerContractsPage() {
       ]
     }
 
+    if (selectedContract.kind === "Aditivo") {
+      return [
+        {
+          label: "Contrato original referenciado",
+          detail: selectedContract.content.financial.paymentMethod || "Referencia do contrato original ainda nao informada.",
+          done: Boolean(selectedContract.content.financial.paymentMethod),
+        },
+        {
+          label: "Cliente validado",
+          detail: selectedContract.leadName || "Cliente vinculado ainda nao selecionado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Imovel validado",
+          detail: selectedContract.propertyTitle || "Imovel vinculado ainda nao selecionado.",
+          done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
+        },
+        {
+          label: "Clausulas modificadas",
+          detail: selectedContract.content.financial.validity || "Clausulas alteradas ainda nao registradas.",
+          done: Boolean(selectedContract.content.financial.validity),
+        },
+        {
+          label: "Vigencia e foro",
+          detail:
+            selectedContract.content.financial.startDate &&
+            selectedContract.content.financial.endDate &&
+            selectedContract.content.financial.dueDate
+              ? `${selectedContract.content.financial.startDate} • ${selectedContract.content.financial.endDate} • ${selectedContract.content.financial.dueDate}`
+              : "Vigencia ou foro ainda exigem confirmacao.",
+          done: Boolean(
+            selectedContract.content.financial.startDate &&
+              selectedContract.content.financial.endDate &&
+              selectedContract.content.financial.dueDate,
+          ),
+        },
+      ]
+    }
+
     return [
       {
         label: "Cliente validado",
@@ -2252,6 +2491,7 @@ export function BrokerContractsPage() {
     setTitleCustomized(false)
     setAmountCustomized(false)
     setCommissionCustomized(false)
+    setAmendmentReferenceCustomized(false)
     setIsDialogOpen(true)
   }
 
@@ -2283,6 +2523,7 @@ export function BrokerContractsPage() {
     setTitleCustomized(true)
     setAmountCustomized(Boolean(contract.content.financial.amountLabel))
     setCommissionCustomized(Boolean(contract.content.financial.commissionPercent))
+    setAmendmentReferenceCustomized(Boolean(contract.content.financial.paymentMethod))
     setIsDialogOpen(true)
   }
 
@@ -2987,7 +3228,12 @@ export function BrokerContractsPage() {
                           </div>
                           <Input
                             value={value}
-                            onChange={(event) => updateDraftField(field.key, event.target.value)}
+                            onChange={(event) => {
+                              if (isAmendment(draft.kind) && field.key === "paymentMethod") {
+                                setAmendmentReferenceCustomized(true)
+                              }
+                              updateDraftField(field.key, event.target.value)
+                            }}
                             placeholder={field.placeholder}
                             className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
                           />
