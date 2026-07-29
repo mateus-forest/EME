@@ -194,6 +194,10 @@ function isExclusivity(kind: ContractType) {
   return kind === "Exclusividade"
 }
 
+function isVisitTerm(kind: ContractType) {
+  return kind === "Termo de visita"
+}
+
 function parsePercentInput(value: string) {
   const normalized = value.replace(",", ".").replace(/[^\d.]/g, "")
   const parsed = Number(normalized)
@@ -325,6 +329,14 @@ function buildPlaceholderMap(input: {
     PROPRIETARIO_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
       .filter(Boolean)
       .join(", ") || propertyAddress,
+    VISITANTE: lead?.name || "",
+    VISITANTE_CPF_CNPJ: lead?.identification.cpfCnpj || "",
+    VISITANTE_RG: lead?.identification.rg || "",
+    VISITANTE_TELEFONE: lead?.whatsApp || lead?.phone || "",
+    VISITANTE_EMAIL: lead?.email || "",
+    VISITANTE_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
+      .filter(Boolean)
+      .join(", "),
     CORRETOR: broker?.name || "",
     CORRETOR_EMAIL: broker?.email || "",
     CORRETOR_TELEFONE: broker?.phone || "",
@@ -332,6 +344,7 @@ function buildPlaceholderMap(input: {
     IMOBILIARIA: broker?.agencyName || "",
     IMOVEL: property?.title || "",
     IMOVEL_COMERCIAL: property?.title || "",
+    IMOVEL_VISITADO: property?.title || "",
     CODIGO_INTERNO: property?.publicCode ? String(property.publicCode) : "",
     TIPO_IMOVEL: property?.type || "",
     FINALIDADE: property?.purpose || "",
@@ -369,6 +382,10 @@ function buildPlaceholderMap(input: {
     COMISSAO_EXCLUSIVIDADE: commission,
     PRAZO_EXCLUSIVIDADE: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
     CONDICOES_EXCLUSIVIDADE: draft.additionalConditions || "",
+    DATA_VISITA: draft.startDate || "",
+    HORA_VISITA: draft.dueDate || "",
+    CIENCIA_INTERMEDIACAO: draft.validity || "",
+    DECLARACOES_VISITA: draft.additionalConditions || "",
     ENTRADA: "",
     PARCELAS: "",
     BANCO_FINANCIAMENTO: "",
@@ -414,6 +431,7 @@ function buildPlaceholderMap(input: {
     LOCAL_ASSINATURA: "",
     ADICIONAIS_LOCACAO: draft.additionalConditions || "",
     ASSINATURA_PROPRIETARIO: "",
+    ASSINATURA_VISITANTE: "",
     ASSINATURA_LOCADOR: "",
     ASSINATURA_LOCATARIO: "",
     ASSINATURA_VENDEDOR: "",
@@ -582,6 +600,54 @@ function buildWorkspaceSections(input: {
           { label: "Nome", value: broker?.agencyName || "" },
           { label: "Corretor responsavel", value: broker?.name || "" },
           { label: "CRECI", value: broker?.creci || "" },
+        ],
+      },
+      {
+        key: "broker",
+        title: "Corretor",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.name || "Dados do corretor ainda nao carregados.",
+        items: [
+          { label: "Nome", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+          { label: "Telefone", value: broker?.phone || "" },
+          { label: "E-mail", value: broker?.email || "" },
+        ],
+      },
+    ] satisfies WorkspaceEntitySection[]
+  }
+
+  if (isVisitTerm(kind)) {
+    return [
+      {
+        key: "client",
+        title: "Visitante",
+        route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
+        actionLabel: "Editar cliente",
+        summary: lead?.name || "Selecione o visitante para compor o termo de visita.",
+        items: [
+          { label: "Nome", value: lead?.name || "" },
+          { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
+          { label: "E-mail", value: lead?.email || "" },
+          { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+          { label: "RG", value: lead?.identification.rg || "" },
+          { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
+        ],
+      },
+      {
+        key: "property",
+        title: "Imovel visitado",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.title || "Selecione o imovel para registrar a visita.",
+        items: [
+          { label: "Titulo", value: property?.title || "" },
+          { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+          { label: "Bairro", value: property?.neighborhood || "" },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "CEP", value: property?.legal.cep || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
         ],
       },
       {
@@ -1057,6 +1123,43 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
           "Captacao exclusiva durante todo o prazo contratado.",
           "Visitas somente com acompanhamento do corretor responsavel.",
           "Negociacoes devem observar a comissao e o valor de referencia pactuados.",
+        ],
+      },
+    ]
+  }
+
+  if (kind === "Termo de visita") {
+    return [
+      {
+        id: "commercial.visitDate",
+        key: "startDate",
+        label: "Data da visita",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.visitTime",
+        key: "dueDate",
+        label: "Hora da visita",
+        type: "text",
+        placeholder: "14:30",
+      },
+      {
+        id: "commercial.awareness",
+        key: "validity",
+        label: "Ciencia da intermediacao",
+        type: "text",
+        placeholder: "Visitante ciente da intermediacao do corretor.",
+      },
+      {
+        id: "commercial.notes",
+        key: "additionalConditions",
+        label: "Declaracoes",
+        type: "textarea",
+        placeholder: "Declaracoes complementares sobre a visita realizada.",
+        examples: [
+          "Visitante conheceu o imovel por intermédio do corretor.",
+          "Visitante ciente da intermediacao para eventual proposta futura.",
         ],
       },
     ]
@@ -1579,6 +1682,16 @@ export function BrokerContractsPage() {
       ]
     }
 
+    if (selectedContract?.kind === "Termo de visita") {
+      return [
+        { label: "Visitante", score: clientScore },
+        { label: "Imovel visitado", score: propertyScore },
+        { label: "Documentacao", score: documentationScore },
+        { label: "Intermediacao", score: negotiationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     if (selectedContract?.kind === "Locacao residencial") {
       return [
         { label: "Locador", score: landlordScore },
@@ -1654,6 +1767,16 @@ export function BrokerContractsPage() {
       ].filter((item): item is string => Boolean(item))
     }
 
+    if (selectedContract.kind === "Termo de visita") {
+      return [
+        !selectedContractLead?.identification.cpfCnpj ? "CPF do visitante" : null,
+        !selectedContractProperty?.title ? "Imovel visitado" : null,
+        !selectedContract.content.financial.startDate ? "Data da visita" : null,
+        !selectedContract.content.financial.dueDate ? "Hora da visita" : null,
+        !selectedContract.content.financial.validity ? "Ciencia da intermediacao" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
     return [
       !selectedContractProperty?.legal.registryNumber ? "Matrícula" : null,
       !selectedContractProperty?.legal.registryOffice ? "Cartório" : null,
@@ -1668,6 +1791,7 @@ export function BrokerContractsPage() {
     selectedContractProperty?.legal.registryNumber,
     selectedContractProperty?.legal.registryOffice,
     selectedContractProperty?.ownerName,
+    selectedContractProperty?.title,
   ])
 
   const contractValidationItems = useMemo(() => {
@@ -1806,6 +1930,41 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.content.financial.additionalConditions ||
             "Direitos e obrigacoes ainda nao registrados.",
+          done: Boolean(selectedContract.content.financial.additionalConditions),
+        },
+      ]
+    }
+
+    if (selectedContract.kind === "Termo de visita") {
+      return [
+        {
+          label: "Visitante validado",
+          detail: selectedContract.leadName || "Visitante ainda nao vinculado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Imovel visitado",
+          detail: selectedContract.propertyTitle || "Imovel ainda nao vinculado.",
+          done: Boolean(selectedContract.propertyTitle),
+        },
+        {
+          label: "Data e hora",
+          detail:
+            selectedContract.content.financial.startDate && selectedContract.content.financial.dueDate
+              ? `${selectedContract.content.financial.startDate} / ${selectedContract.content.financial.dueDate}`
+              : "Data ou hora da visita ainda nao informadas.",
+          done: Boolean(selectedContract.content.financial.startDate && selectedContract.content.financial.dueDate),
+        },
+        {
+          label: "Ciencia da intermediacao",
+          detail:
+            selectedContract.content.financial.validity || "Ciencia da intermediacao ainda nao registrada.",
+          done: Boolean(selectedContract.content.financial.validity),
+        },
+        {
+          label: "Declaracoes registradas",
+          detail:
+            selectedContract.content.financial.additionalConditions || "Declaracoes da visita ainda nao registradas.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]

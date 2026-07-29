@@ -151,6 +151,10 @@ function isExclusivityContract(kind: ContractType) {
   return kind === "Exclusividade"
 }
 
+function isVisitTermContract(kind: ContractType) {
+  return kind === "Termo de visita"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -165,7 +169,7 @@ function getContractHeadline(kind: ContractType) {
   if (kind === "Locacao comercial") return "Template oficial EME para locacoes comerciais com foco em operacao, adequacoes do ponto e regras financeiras recorrentes."
   if (kind === "Autorizacao de venda") return "Template oficial EME para autorizacao de venda com foco em intermediar, validar prazo, comissao e condicoes da captacao."
   if (kind === "Exclusividade") return "Template oficial EME para exclusividade de venda com foco em prazo, comissao, direitos e obrigacoes da intermediacao exclusiva."
-  if (kind === "Termo de visita") return "Base visual oficial para termo de visita."
+  if (kind === "Termo de visita") return "Template oficial EME para termo de visita com foco em ciencia da intermediacao, declaracoes e registro da visita ao imovel."
   if (kind === "Reserva") return "Base visual oficial para instrumento de reserva."
   if (kind === "Aditivo") return "Base visual oficial para aditivos contratuais."
   return "Base visual oficial para distrato e encerramento contratual."
@@ -231,6 +235,15 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isVisitTermContract(kind)) {
+    return [
+      `Partes previstas: visitante ${p("VISITANTE")} e corretor ${p("CORRETOR")}, vinculados ao imovel ${p("IMOVEL_VISITADO")}.`,
+      `Registro de visita: data ${p("DATA_VISITA")} e hora ${p("HORA_VISITA")}, no endereco ${p("IMOVEL_ENDERECO")}.`,
+      `Ciencia da intermediacao registrada em ${p("CIENCIA_INTERMEDIACAO")} e declaracoes complementares em ${p("DECLARACOES_VISITA")}.`,
+      `As partes reconhecem a visita mediada pelo corretor responsavel ${p("CORRETOR")} sob o contexto operacional do EME.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -282,6 +295,14 @@ export function buildContractReviewNotes(kind: ContractType) {
       "Conferir matricula, cartorio, condicoes da intermediacao exclusiva, direitos e obrigacoes operacionais.",
       "Revisar regras de rescisao, foro e alcance da exclusividade com suporte juridico quando necessario.",
       "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
+    ]
+  }
+
+  if (isVisitTermContract(kind)) {
+    return [
+      "Validar visitante, corretor, imovel visitado, data e hora antes do envio para assinatura.",
+      "Conferir ciencia da intermediacao, declaracoes do visitante e dados minimos da visita.",
+      "Manter o termo como rascunho ate a confirmacao operacional e documental final.",
     ]
   }
 
@@ -1876,6 +1897,183 @@ function buildOfficialExclusivityContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialVisitTermContractHtml(content: ContractContent) {
+  const totalPages = 4
+
+  const cover = DocumentCover({
+    title: "Termo de Visita ao Imovel",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para registrar visitas a imoveis, preparado para sincronizar visitante, imovel e corretor com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Visita", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Das Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Visitante",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("VISITANTE") },
+                { label: "CPF/CNPJ", value: p("VISITANTE_CPF_CNPJ") },
+                { label: "RG", value: p("VISITANTE_RG") },
+                { label: "Telefone", value: p("VISITANTE_TELEFONE") },
+                { label: "E-mail", value: p("VISITANTE_EMAIL") },
+                { label: "Endereco", value: p("VISITANTE_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Corretor responsavel",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Telefone", value: p("CORRETOR_TELEFONE") },
+                { label: "E-mail", value: p("CORRETOR_EMAIL") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Do Imovel Visitado",
+        description: "Identificacao do imovel apresentado ao visitante nesta visita.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Imovel visitado", value: p("IMOVEL_VISITADO") },
+                { label: "Tipo do imovel", value: p("TIPO_IMOVEL") },
+                { label: "Endereco completo", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Bairro", value: p("BAIRRO") },
+                { label: "Cidade", value: p("CIDADE") },
+                { label: "Estado", value: p("ESTADO") },
+                { label: "CEP", value: p("CEP") },
+              ],
+            }),
+          }),
+          DocumentNotice("O visitante declara que conheceu o imovel por intermédio do corretor responsavel indicado neste termo."),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "3",
+          title: "Data e Hora",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Data da visita", value: p("DATA_VISITA") },
+                { label: "Hora da visita", value: p("HORA_VISITA") },
+              ],
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "4",
+          title: "Ciencia da Intermediacao",
+          children: DocumentCard({
+            children: DocumentInput({
+              label: "Registro",
+              value: p("CIENCIA_INTERMEDIACAO"),
+              block: true,
+            }),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "5",
+        title: "Declaracoes",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentBullets([
+              "O visitante declara ter conhecido o imovel por intermédio do corretor acima identificado.",
+              "O visitante reconhece a ciencia da intermediacao imobiliaria prestada nesta visita.",
+              "O visitante compromete-se a respeitar a intermediacao em eventual proposta ou negociacao futura referente ao imovel visitado.",
+            ]),
+          }),
+          DocumentCard({
+            tone: "soft",
+            children: DocumentInput({
+              label: "Declaracoes complementares",
+              value: p("DECLARACOES_VISITA"),
+              block: true,
+            }),
+          }),
+        ),
+      }),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "6",
+        title: "Assinaturas",
+        description: "Por estarem cientes da visita realizada, as partes assinam o presente termo.",
+        children: DocumentStack(
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Visitante",
+              fields: [
+                { label: "Nome", value: p("VISITANTE") },
+                { label: "Assinatura", value: p("ASSINATURA_VISITANTE") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+          </div>`,
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para termo de visita. Recomenda-se revisao operacional final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -1991,6 +2189,10 @@ export function buildContractHtml(content: ContractContent) {
 
   if (isExclusivityContract(content.kind)) {
     return buildOfficialExclusivityContractHtml(content)
+  }
+
+  if (isVisitTermContract(content.kind)) {
+    return buildOfficialVisitTermContractHtml(content)
   }
 
   return buildGenericContractHtml(content)
