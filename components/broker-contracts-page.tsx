@@ -206,6 +206,10 @@ function isAmendment(kind: ContractType) {
   return kind === "Aditivo"
 }
 
+function isTermination(kind: ContractType) {
+  return kind === "Distrato"
+}
+
 function buildAmendmentReference(lead?: LeadRecord | null, property?: PropertyApiItem | null) {
   const tokens = [
     "Contrato original",
@@ -407,6 +411,11 @@ function buildPlaceholderMap(input: {
     VIGENCIA_INICIO_ADITIVO: draft.startDate || "",
     VIGENCIA_FIM_ADITIVO: draft.endDate || "",
     FORO_ADITIVO: draft.dueDate || property?.legal.city || property?.city || "",
+    REFERENCIA_DISTRATO: draft.paymentMethod || buildAmendmentReference(lead, property),
+    MOTIVO_ENCERRAMENTO: draft.additionalConditions || "",
+    QUITACAO_DISTRATO: draft.validity || "",
+    OBRIGACOES_REMANESCENTES: draft.guaranteeType || "",
+    FORO_DISTRATO: draft.dueDate || property?.legal.city || property?.city || "",
     FORMA_PAGAMENTO: draft.paymentMethod || "",
     TIPO_GARANTIA: draft.guaranteeType || "",
     LAUDO_VISTORIA: draft.inspectionReport || "",
@@ -756,6 +765,66 @@ function buildWorkspaceSections(input: {
         route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
         actionLabel: "Editar imovel",
         summary: property?.title || "Selecione o imovel vinculado ao contrato que sera aditado.",
+        items: [
+          { label: "Titulo", value: property?.title || "" },
+          { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "Bairro", value: property?.neighborhood || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+          { label: "Cartorio", value: property?.legal.registryOffice || "" },
+        ],
+      },
+      {
+        key: "agency",
+        title: "Imobiliaria",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.agencyName || "A intermediacao pode ser vinculada a uma imobiliaria quando disponivel.",
+        items: [
+          { label: "Nome", value: broker?.agencyName || "" },
+          { label: "Corretor responsavel", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+        ],
+      },
+      {
+        key: "broker",
+        title: "Corretor",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.name || "Dados do corretor ainda nao carregados.",
+        items: [
+          { label: "Nome", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+          { label: "Telefone", value: broker?.phone || "" },
+          { label: "E-mail", value: broker?.email || "" },
+        ],
+      },
+    ] satisfies WorkspaceEntitySection[]
+  }
+
+  if (isTermination(kind)) {
+    return [
+      {
+        key: "client",
+        title: "Cliente vinculado",
+        route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
+        actionLabel: "Editar cliente",
+        summary: lead?.name || "Selecione o cliente vinculado ao contrato original.",
+        items: [
+          { label: "Nome", value: lead?.name || "" },
+          { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
+          { label: "E-mail", value: lead?.email || "" },
+          { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+          { label: "RG", value: lead?.identification.rg || "" },
+          { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
+        ],
+      },
+      {
+        key: "property",
+        title: "Imovel do contrato original",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.title || "Selecione o imovel vinculado ao contrato que sera encerrado.",
         items: [
           { label: "Titulo", value: property?.title || "" },
           { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -1393,6 +1462,52 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
     ]
   }
 
+  if (kind === "Distrato") {
+    return [
+      {
+        id: "commercial.originalContract",
+        key: "paymentMethod",
+        label: "Referencia ao contrato original",
+        type: "text",
+        placeholder: "Contrato original vinculado ao cliente e ao imovel.",
+        hint: "Preenchido automaticamente a partir do cliente e do imovel selecionados.",
+      },
+      {
+        id: "commercial.terminationReason",
+        key: "additionalConditions",
+        label: "Motivo do encerramento",
+        type: "textarea",
+        placeholder: "Descreva o motivo do encerramento e o contexto do distrato.",
+        examples: [
+          "Encerramento consensual por alteracao de estrategia comercial.",
+          "Rescisao amigavel por impossibilidade de continuidade da negociacao.",
+          "Distrato firmado apos acordo integral entre as partes.",
+        ],
+      },
+      {
+        id: "commercial.release",
+        key: "validity",
+        label: "Quitacao",
+        type: "text",
+        placeholder: "Ex.: Quitacao plena entre as partes.",
+      },
+      {
+        id: "commercial.remainingObligations",
+        key: "guaranteeType",
+        label: "Obrigacoes remanescentes",
+        type: "text",
+        placeholder: "Ex.: Devolucao de documentos, pagamentos pendentes, entrega de chaves.",
+      },
+      {
+        id: "commercial.forum",
+        key: "dueDate",
+        label: "Foro",
+        type: "text",
+        placeholder: "Comarca aplicavel ao distrato.",
+      },
+    ]
+  }
+
   if (kind === "Reserva") {
     return [
       {
@@ -1712,7 +1827,7 @@ export function BrokerContractsPage() {
   }, [draft.kind, draft.title, isDialogOpen, selectedLead, selectedProperty, titleCustomized])
 
   useEffect(() => {
-    if (!isDialogOpen || !isAmendment(draft.kind) || amendmentReferenceCustomized) return
+    if (!isDialogOpen || (!isAmendment(draft.kind) && !isTermination(draft.kind)) || amendmentReferenceCustomized) return
     const nextReference = buildAmendmentReference(selectedLead, selectedProperty)
     if (!nextReference || draft.paymentMethod === nextReference) return
     setDraft((current) => ({ ...current, paymentMethod: nextReference }))
@@ -1973,6 +2088,40 @@ export function BrokerContractsPage() {
         done: Boolean(selectedContract?.content.financial.dueDate),
       },
     ])
+    const terminationGovernanceScore = scoreSection([
+      {
+        label: "Contrato original",
+        value: selectedContract?.content.financial.paymentMethod || "",
+        done: Boolean(selectedContract?.content.financial.paymentMethod),
+      },
+      {
+        label: "Motivo do encerramento",
+        value: selectedContract?.content.financial.additionalConditions || "",
+        done: Boolean(selectedContract?.content.financial.additionalConditions),
+      },
+      {
+        label: "Quitacao",
+        value: selectedContract?.content.financial.validity || "",
+        done: Boolean(selectedContract?.content.financial.validity),
+      },
+    ])
+    const terminationSettlementScore = scoreSection([
+      {
+        label: "Obrigacoes remanescentes",
+        value: selectedContract?.content.financial.guaranteeType || "",
+        done: Boolean(selectedContract?.content.financial.guaranteeType),
+      },
+      {
+        label: "Foro",
+        value: selectedContract?.content.financial.dueDate || "",
+        done: Boolean(selectedContract?.content.financial.dueDate),
+      },
+      {
+        label: "Corretor responsavel",
+        value: brokerProfile?.name || "",
+        done: Boolean(brokerProfile?.name),
+      },
+    ])
 
     if (selectedContract?.kind === "Locacao comercial") {
       return [
@@ -2035,6 +2184,17 @@ export function BrokerContractsPage() {
         { label: "Documentacao", score: documentationScore },
         { label: "Contrato original", score: amendmentGovernanceScore },
         { label: "Vigencia", score: amendmentTermScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
+    if (selectedContract?.kind === "Distrato") {
+      return [
+        { label: "Cliente", score: clientScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Documentacao", score: documentationScore },
+        { label: "Contrato original", score: terminationGovernanceScore },
+        { label: "Quitacao", score: terminationSettlementScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2145,6 +2305,18 @@ export function BrokerContractsPage() {
         !selectedContract.content.financial.validity ? "Clausulas modificadas" : null,
         !selectedContract.content.financial.startDate ? "Vigencia inicial" : null,
         !selectedContract.content.financial.endDate ? "Vigencia final" : null,
+        !selectedContract.content.financial.dueDate ? "Foro" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
+    if (selectedContract.kind === "Distrato") {
+      return [
+        !selectedContractLead?.identification.cpfCnpj ? "CPF do cliente vinculado" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matricula do imovel" : null,
+        !selectedContract.content.financial.paymentMethod ? "Referencia do contrato original" : null,
+        !selectedContract.content.financial.additionalConditions ? "Motivo do encerramento" : null,
+        !selectedContract.content.financial.validity ? "Quitacao" : null,
+        !selectedContract.content.financial.guaranteeType ? "Obrigacoes remanescentes" : null,
         !selectedContract.content.financial.dueDate ? "Foro" : null,
       ].filter((item): item is string => Boolean(item))
     }
@@ -2411,6 +2583,37 @@ export function BrokerContractsPage() {
               selectedContract.content.financial.endDate &&
               selectedContract.content.financial.dueDate,
           ),
+        },
+      ]
+    }
+
+    if (selectedContract.kind === "Distrato") {
+      return [
+        {
+          label: "Contrato original referenciado",
+          detail: selectedContract.content.financial.paymentMethod || "Referencia do contrato original ainda nao informada.",
+          done: Boolean(selectedContract.content.financial.paymentMethod),
+        },
+        {
+          label: "Cliente validado",
+          detail: selectedContract.leadName || "Cliente vinculado ainda nao selecionado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Imovel validado",
+          detail: selectedContract.propertyTitle || "Imovel vinculado ainda nao selecionado.",
+          done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
+        },
+        {
+          label: "Quitacao definida",
+          detail: selectedContract.content.financial.validity || "Quitacao ainda nao registrada.",
+          done: Boolean(selectedContract.content.financial.validity),
+        },
+        {
+          label: "Obrigacoes remanescentes",
+          detail:
+            selectedContract.content.financial.guaranteeType || "Obrigacoes remanescentes ainda nao registradas.",
+          done: Boolean(selectedContract.content.financial.guaranteeType),
         },
       ]
     }
@@ -3229,7 +3432,7 @@ export function BrokerContractsPage() {
                           <Input
                             value={value}
                             onChange={(event) => {
-                              if (isAmendment(draft.kind) && field.key === "paymentMethod") {
+                              if ((isAmendment(draft.kind) || isTermination(draft.kind)) && field.key === "paymentMethod") {
                                 setAmendmentReferenceCustomized(true)
                               }
                               updateDraftField(field.key, event.target.value)

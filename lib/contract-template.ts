@@ -163,6 +163,10 @@ function isAmendmentContract(kind: ContractType) {
   return kind === "Aditivo"
 }
 
+function isTerminationContract(kind: ContractType) {
+  return kind === "Distrato"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -180,14 +184,14 @@ function getContractHeadline(kind: ContractType) {
   if (kind === "Termo de visita") return "Template oficial EME para termo de visita com foco em ciencia da intermediacao, declaracoes e registro da visita ao imovel."
   if (kind === "Reserva") return "Template oficial EME para reserva de imovel com foco em interessado, proprietario, conversao da reserva e sincronizacao do preview em tempo real."
   if (kind === "Aditivo") return "Template oficial EME para aditivos contratuais com foco em referencia ao contrato original, clausulas modificadas, vigencia e sincronizacao em tempo real."
-  return "Base visual oficial para distrato e encerramento contratual."
+  return "Template oficial EME para distratos com foco em encerramento consensual, quitacao, obrigacoes remanescentes e sincronizacao do preview em tempo real."
 }
 
 export function buildContractClauses(kind: ContractType, input: {
   lead?: ContractParty | null
   property?: ContractProperty | null
   financial?: ContractFinancial
-}) {
+}): string[] {
   const amount = input.financial?.amountLabel || (input.financial?.amountCents ? formatCurrencyBRLFromCents(input.financial.amountCents) : "Nao informado")
   const propertyRef = input.property?.title || "imovel em referencia"
   const personName = input.lead?.name || "cliente"
@@ -272,15 +276,26 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isTerminationContract(kind)) {
+    return [
+      `Distrato vinculado a ${p("REFERENCIA_DISTRATO")}, mantendo como partes de apoio ${p("COMPRADOR")} e a intermediacao de ${p("CORRETOR")}.`,
+      `Imovel de referencia: ${p("IMOVEL")} no endereco ${p("IMOVEL_ENDERECO")}, matricula ${p("MATRICULA")} e foro ${p("FORO_DISTRATO")}.`,
+      `Motivo do encerramento: ${p("MOTIVO_ENCERRAMENTO")}. Quitacao registrada em ${p("QUITACAO_DISTRATO")}.`,
+      `Obrigacoes remanescentes: ${p("OBRIGACOES_REMANESCENTES")}.`,
+      `Dados comerciais atuais vinculados ao rascunho: ${personName}, ${propertyRef}, ${amount}.`,
+    ]
+  }
+
+  const exhaustiveKind: never = kind
   return [
-    `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
+    `${String(exhaustiveKind)}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
     `Comissao prevista: ${commission}. Validar regra comercial, gatilho de pagamento e responsabilidade entre as partes.`,
     "Este rascunho organiza dados comerciais, partes e prazos, mas nao substitui revisao juridica das clausulas essenciais.",
   ]
 }
 
-export function buildContractReviewNotes(kind: ContractType) {
+export function buildContractReviewNotes(kind: ContractType): string[] {
   if (kind === "Compra e venda") {
     return [
       "Confirmar se todos os placeholders obrigatorios foram substituidos antes do envio ao cliente.",
@@ -352,8 +367,18 @@ export function buildContractReviewNotes(kind: ContractType) {
     ]
   }
 
+  if (isTerminationContract(kind)) {
+    return [
+      "Validar a referencia ao contrato original, o motivo do encerramento e a quitacao antes do envio para assinatura.",
+      "Conferir se as obrigacoes remanescentes estao descritas de forma objetiva e suficiente para evitar ambiguidades.",
+      "Revisar foro, assinaturas e efeitos juridicos do encerramento com suporte especializado quando necessario.",
+      "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
+    ]
+  }
+
+  const exhaustiveKind: never = kind
   return [
-    `Revisar a minuta de ${kind.toLowerCase()} antes de compartilhar com o cliente.`,
+    `Revisar a minuta de ${String(exhaustiveKind).toLowerCase()} antes de compartilhar com o cliente.`,
     "Confirmar clausulas obrigatorias, dados cadastrais e anexos com o suporte juridico ou modelo oficial da operacao.",
     "Manter o documento como rascunho ate a validacao final das condicoes comerciais e dos prazos.",
   ]
@@ -2523,6 +2548,196 @@ function buildOfficialAmendmentContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialTerminationContractHtml(content: ContractContent) {
+  const totalPages = 5
+
+  const cover = DocumentCover({
+    title: "Distrato Contratual",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para distratos contratuais, preparado para sincronizar cliente, imovel, corretor e contrato original com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Distrato", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Cliente vinculado",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("COMPRADOR") },
+                { label: "CPF/CNPJ", value: p("COMPRADOR_CPF_CNPJ") },
+                { label: "RG", value: p("COMPRADOR_RG") },
+                { label: "Telefone", value: p("COMPRADOR_TELEFONE") },
+                { label: "E-mail", value: p("COMPRADOR_EMAIL") },
+                { label: "Endereco", value: p("COMPRADOR_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Intermediacao",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Corretor", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Imobiliaria", value: p("IMOBILIARIA") },
+                { label: "Contato", value: p("CORRETOR_TELEFONE") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Referencia ao Contrato Original",
+        children: DocumentCard({
+          tone: "soft",
+          children: DocumentFieldGrid({
+            columns: 2,
+            items: [
+              { label: "Referencia", value: p("REFERENCIA_DISTRATO"), span: 2 },
+              { label: "Imovel", value: p("IMOVEL") },
+              { label: "Matricula", value: p("MATRICULA") },
+              { label: "Endereco", value: p("IMOVEL_ENDERECO"), span: 2 },
+              { label: "Cartorio", value: p("CARTORIO_REGISTRO") },
+              { label: "Cidade", value: p("CIDADE") },
+            ],
+          }),
+        }),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "3",
+        title: "Motivo do Encerramento",
+        children: DocumentCard({
+          children: DocumentInput({
+            label: "Contexto do distrato",
+            value: p("MOTIVO_ENCERRAMENTO"),
+            block: true,
+          }),
+        }),
+      }),
+      DocumentColumns(
+        DocumentSection({
+          icon: "4",
+          title: "Quitacao",
+          children: DocumentCard({
+            children: DocumentInput({
+              label: "Quitacao entre as partes",
+              value: p("QUITACAO_DISTRATO"),
+              block: true,
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "5",
+          title: "Obrigacoes Remanescentes",
+          children: DocumentCard({
+            children: DocumentInput({
+              label: "Obrigacoes apos o distrato",
+              value: p("OBRIGACOES_REMANESCENTES"),
+              block: true,
+            }),
+          }),
+        }),
+      ),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "6",
+        title: "Consolidacao",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentBullets([
+              "As partes declaram, conforme a quitacao pactuada, que o contrato original fica encerrado na forma deste instrumento.",
+              "As obrigacoes remanescentes aqui descritas permanecem exigiveis ate seu integral cumprimento.",
+              "O presente distrato consolida a extincao consensual da relacao contratual principal, sem prejuizo das obrigacoes expressamente preservadas.",
+            ]),
+          }),
+          DocumentSection({
+            icon: "7",
+            title: "Foro",
+            children: DocumentCard({
+              children: DocumentInput({
+                label: "Comarca eleita",
+                value: p("FORO_DISTRATO"),
+              }),
+            }),
+          }),
+        ),
+      }),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "8",
+        title: "Assinaturas",
+        description: "Por estarem cientes do encerramento e das obrigacoes remanescentes, as partes assinam o presente distrato.",
+        children: DocumentStack(
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Cliente",
+              fields: [
+                { label: "Nome", value: p("COMPRADOR") },
+                { label: "Assinatura", value: p("ASSINATURA_COMPRADOR") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+          </div>`,
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para distratos contratuais. Recomenda-se revisao juridica final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -2650,6 +2865,10 @@ export function buildContractHtml(content: ContractContent) {
 
   if (isAmendmentContract(content.kind)) {
     return buildOfficialAmendmentContractHtml(content)
+  }
+
+  if (isTerminationContract(content.kind)) {
+    return buildOfficialTerminationContractHtml(content)
   }
 
   return buildGenericContractHtml(content)
