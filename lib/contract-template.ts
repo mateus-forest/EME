@@ -143,6 +143,10 @@ function isCommercialLeaseContract(kind: ContractType) {
   return kind === "Locacao comercial"
 }
 
+function isSaleAuthorizationContract(kind: ContractType) {
+  return kind === "Autorizacao de venda"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -155,7 +159,7 @@ function getContractHeadline(kind: ContractType) {
   if (kind === "Compra e venda") return "Template mestre do EME para operacoes de compra e venda de imoveis."
   if (kind === "Locacao residencial") return "Template oficial EME para locacoes residenciais com preview editorial, PDF e sincronizacao em tempo real."
   if (kind === "Locacao comercial") return "Template oficial EME para locacoes comerciais com foco em operacao, adequacoes do ponto e regras financeiras recorrentes."
-  if (kind === "Autorizacao de venda") return "Base visual oficial para autorizacao de venda."
+  if (kind === "Autorizacao de venda") return "Template oficial EME para autorizacao de venda com foco em intermediar, validar prazo, comissao e condicoes da captacao."
   if (kind === "Exclusividade") return "Base visual oficial para contrato de exclusividade."
   if (kind === "Termo de visita") return "Base visual oficial para termo de visita."
   if (kind === "Reserva") return "Base visual oficial para instrumento de reserva."
@@ -203,6 +207,16 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isSaleAuthorizationContract(kind)) {
+    return [
+      `Partes previstas: proprietario ${p("PROPRIETARIO")} e corretor ${p("CORRETOR")}, com intermediacao vinculada a ${p("IMOBILIARIA")}.`,
+      `Imovel autorizado para venda: ${p("IMOVEL")} no endereco ${p("IMOVEL_ENDERECO")}, matricula ${p("MATRICULA")} e valor autorizado ${p("VALOR_AUTORIZADO")}.`,
+      `Prazo da autorizacao: inicio ${p("DATA_INICIO")} e termino ${p("DATA_FIM")}, referencia comercial ${p("PRAZO_AUTORIZACAO")}.`,
+      `Comissao prevista: ${p("COMISSAO_AUTORIZACAO")}. Condicoes da intermediacao registradas em ${p("CONDICOES_INTERMEDIACAO")}.`,
+      `Foro eleito: ${p("COMARCA")}. Revogacao e obrigacoes devem ser revisadas antes da assinatura final.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -235,6 +249,15 @@ export function buildContractReviewNotes(kind: ContractType) {
       "Validar ponto comercial, finalidade de uso, reajuste, garantia e responsabilidades operacionais antes do envio para assinatura.",
       "Conferir matricula, cartorio, laudo, obras, adequacoes e encargos recorrentes da locacao.",
       "Revisar clausulas de rescisao, prazo, uso comercial permitido e riscos operacionais com suporte juridico quando necessario.",
+      "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
+    ]
+  }
+
+  if (isSaleAuthorizationContract(kind)) {
+    return [
+      "Validar proprietario, corretor, imovel, valor autorizado e prazo antes do envio para assinatura.",
+      "Conferir matricula, cartorio, comissao, condicoes da intermediacao e obrigacoes operacionais da autorizacao.",
+      "Revisar regras de revogacao, foro e alcance da captacao com suporte juridico quando necessario.",
       "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
     ]
   }
@@ -1385,6 +1408,232 @@ function buildOfficialCommercialLeaseContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialSaleAuthorizationContractHtml(content: ContractContent) {
+  const totalPages = 5
+
+  const cover = DocumentCover({
+    title: "Autorizacao de Venda de Imovel",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para autorizacao de venda, preparado para sincronizar proprietario, imovel, corretor e imobiliaria com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Captacao", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Das Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Proprietario",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("PROPRIETARIO") },
+                { label: "CPF/CNPJ", value: p("PROPRIETARIO_CPF_CNPJ") },
+                { label: "RG", value: p("PROPRIETARIO_RG") },
+                { label: "Estado civil", value: p("PROPRIETARIO_ESTADO_CIVIL") },
+                { label: "Profissao", value: p("PROPRIETARIO_PROFISSAO") },
+                { label: "Endereco", value: p("PROPRIETARIO_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Intermediacao",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Corretor", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Imobiliaria", value: p("IMOBILIARIA") },
+                { label: "Contato", value: p("CORRETOR_TELEFONE") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Do Imovel",
+        description: "Identificacao do imovel autorizado para intermediar a venda.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Imovel", value: p("IMOVEL") },
+                { label: "Tipo do imovel", value: p("TIPO_IMOVEL") },
+                { label: "Endereco completo", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Bairro", value: p("BAIRRO") },
+                { label: "Cidade", value: p("CIDADE") },
+                { label: "Estado", value: p("ESTADO") },
+                { label: "CEP", value: p("CEP") },
+                { label: "Matricula", value: p("MATRICULA") },
+                { label: "Cartorio de registro", value: p("CARTORIO_REGISTRO") },
+              ],
+            }),
+          }),
+          DocumentNotice("O proprietario declara possuir legitimidade para autorizar a intermediacao da venda do imovel descrito neste instrumento."),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "3",
+          title: "Valor Autorizado",
+          children: DocumentCard({
+            tone: "accent",
+            children: DocumentInput({
+              label: "Valor autorizado para venda",
+              value: p("VALOR_AUTORIZADO"),
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "4",
+          title: "Comissao",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Percentual", value: p("COMISSAO_AUTORIZACAO") },
+                { label: "Responsavel pela intermediacao", value: p("CORRETOR") },
+              ],
+            }),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "5",
+        title: "Prazo",
+        children: DocumentCard({
+          children: DocumentFieldGrid({
+            columns: 2,
+            items: [
+              { label: "Inicio", value: p("DATA_INICIO") },
+              { label: "Termino", value: p("DATA_FIM") },
+              { label: "Prazo da autorizacao", value: p("PRAZO_AUTORIZACAO"), span: 2 },
+            ],
+          }),
+        }),
+      }),
+      DocumentSection({
+        icon: "6",
+        title: "Condicoes da Intermediacao",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentInput({
+              label: "Condicoes acordadas",
+              value: p("CONDICOES_INTERMEDIACAO"),
+              block: true,
+            }),
+          }),
+          DocumentNotice("As condicoes da intermediacao devem refletir o escopo comercial aprovado entre proprietario, corretor e imobiliaria."),
+        ),
+      }),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "7",
+          title: "Obrigacoes",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "O proprietario compromete-se a fornecer informacoes veridicas, documentacao minima e acesso necessario para a intermediacao.",
+              "O corretor compromete-se a conduzir a captacao, apresentacao e negociacao do imovel com diligencia profissional.",
+              "As partes devem respeitar o valor autorizado, as condicoes comerciais e os limites definidos nesta autorizacao.",
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "8",
+          title: "Revogacao",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "A autorizacao pode ser revogada conforme as regras deste instrumento e da legislacao aplicavel.",
+              "A revogacao nao afasta direitos ja constituídos por negociacoes iniciadas validamente dentro do prazo autorizado, conforme ajuste entre as partes.",
+            ]),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "9",
+        title: "Foro",
+        children: DocumentCard({
+          children: DocumentInput({
+            label: "Comarca eleita",
+            value: p("COMARCA"),
+          }),
+        }),
+      }),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "10",
+        title: "Assinaturas",
+        description: "Por estarem justas e acordadas, as partes assinam a presente autorizacao.",
+        children: DocumentStack(
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Proprietario",
+              fields: [
+                { label: "Nome", value: p("PROPRIETARIO") },
+                { label: "Assinatura", value: p("ASSINATURA_PROPRIETARIO") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+          </div>`,
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para autorizacao de venda. Recomenda-se revisao juridica final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -1492,6 +1741,10 @@ export function buildContractHtml(content: ContractContent) {
 
   if (isCommercialLeaseContract(content.kind)) {
     return buildOfficialCommercialLeaseContractHtml(content)
+  }
+
+  if (isSaleAuthorizationContract(content.kind)) {
+    return buildOfficialSaleAuthorizationContractHtml(content)
   }
 
   return buildGenericContractHtml(content)

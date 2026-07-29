@@ -186,6 +186,10 @@ function isLease(kind: ContractType) {
   return isResidentialLease(kind) || isCommercialLease(kind)
 }
 
+function isSaleAuthorization(kind: ContractType) {
+  return kind === "Autorizacao de venda"
+}
+
 function parsePercentInput(value: string) {
   const normalized = value.replace(",", ".").replace(/[^\d.]/g, "")
   const parsed = Number(normalized)
@@ -309,6 +313,14 @@ function buildPlaceholderMap(input: {
     LOCATARIO_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
       .filter(Boolean)
       .join(", "),
+    PROPRIETARIO: lead?.name || property?.ownerName || "",
+    PROPRIETARIO_CPF_CNPJ: lead?.identification.cpfCnpj || "",
+    PROPRIETARIO_RG: lead?.identification.rg || "",
+    PROPRIETARIO_ESTADO_CIVIL: lead?.identification.maritalStatus || "",
+    PROPRIETARIO_PROFISSAO: lead?.identification.profession || "",
+    PROPRIETARIO_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
+      .filter(Boolean)
+      .join(", ") || propertyAddress,
     CORRETOR: broker?.name || "",
     CORRETOR_EMAIL: broker?.email || "",
     CORRETOR_TELEFONE: broker?.phone || "",
@@ -335,6 +347,7 @@ function buildPlaceholderMap(input: {
     UNIDADE_COMPLEMENTO: "",
     ESTADO_IMOVEL: property?.description || "",
     VALOR: amount,
+    VALOR_AUTORIZADO: amount,
     VALOR_ALUGUEL: amount,
     DATA_INICIO: draft.startDate || "",
     DATA_FIM: draft.endDate || "",
@@ -346,6 +359,9 @@ function buildPlaceholderMap(input: {
     REAJUSTE_LOCACAO: draft.adjustmentTerm || "",
     OBRAS_LOCACAO: draft.worksScope || "",
     ADEQUACOES_LOCACAO: draft.fitOutScope || "",
+    COMISSAO_AUTORIZACAO: commission,
+    PRAZO_AUTORIZACAO: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
+    CONDICOES_INTERMEDIACAO: draft.additionalConditions || "",
     ENTRADA: "",
     PARCELAS: "",
     BANCO_FINANCIAMENTO: "",
@@ -387,9 +403,10 @@ function buildPlaceholderMap(input: {
     CANAL_PRIVACIDADE: "",
     CORRETOR_ENDERECO: "",
     PLATAFORMA_ASSINATURA: "",
-    COMARCA: "",
+    COMARCA: property?.legal.city || property?.city || "",
     LOCAL_ASSINATURA: "",
     ADICIONAIS_LOCACAO: draft.additionalConditions || "",
+    ASSINATURA_PROPRIETARIO: "",
     ASSINATURA_LOCADOR: "",
     ASSINATURA_LOCATARIO: "",
     ASSINATURA_VENDEDOR: "",
@@ -473,6 +490,70 @@ function buildWorkspaceSections(input: {
           { label: "Matricula", value: property?.legal.registryNumber || "" },
           { label: "Cartorio", value: property?.legal.registryOffice || "" },
           { label: "Valor anunciado", value: property?.formattedPrice || "" },
+        ],
+      },
+      {
+        key: "agency",
+        title: "Imobiliaria",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.agencyName || "A intermediacao pode ser vinculada a uma imobiliaria quando disponivel.",
+        items: [
+          { label: "Nome", value: broker?.agencyName || "" },
+          { label: "Corretor responsavel", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+        ],
+      },
+      {
+        key: "broker",
+        title: "Corretor",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.name || "Dados do corretor ainda nao carregados.",
+        items: [
+          { label: "Nome", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+          { label: "Telefone", value: broker?.phone || "" },
+          { label: "E-mail", value: broker?.email || "" },
+        ],
+      },
+    ] satisfies WorkspaceEntitySection[]
+  }
+
+  if (isSaleAuthorization(kind)) {
+    return [
+      {
+        key: "client",
+        title: "Proprietario",
+        route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
+        actionLabel: "Editar cliente",
+        summary: lead?.name || property?.ownerName || "Selecione o proprietario para compor a autorizacao.",
+        items: [
+          { label: "Nome", value: lead?.name || property?.ownerName || "" },
+          { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
+          { label: "E-mail", value: lead?.email || "" },
+          { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+          { label: "RG", value: lead?.identification.rg || "" },
+          { label: "Estado civil", value: lead?.identification.maritalStatus || "" },
+          { label: "Profissao", value: lead?.identification.profession || "" },
+          { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
+        ],
+      },
+      {
+        key: "property",
+        title: "Imovel",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.title || "Selecione um imovel para alimentar a autorizacao de venda.",
+        items: [
+          { label: "Titulo", value: property?.title || "" },
+          { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "Bairro", value: property?.neighborhood || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+          { label: "Cartorio", value: property?.legal.registryOffice || "" },
+          { label: "Valor anunciado", value: property?.formattedPrice || "" },
+          { label: "Proprietario no imovel", value: property?.ownerName || "" },
         ],
       },
       {
@@ -854,6 +935,59 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
           "IPTU e condominio por conta do locatario.",
           "Taxas de licenciamento operacional sob responsabilidade do locatario.",
           "Repasses extraordinarios dependem de aprovacao expressa.",
+        ],
+      },
+    ]
+  }
+
+  if (kind === "Autorizacao de venda") {
+    return [
+      {
+        id: "commercial.value",
+        key: "amount",
+        label: "Valor autorizado",
+        type: "currency",
+        placeholder: "R$ 0,00",
+        hint: "Valor preenchido automaticamente pelo imovel.",
+      },
+      {
+        id: "commercial.commission",
+        key: "commissionPercent",
+        label: "Comissao",
+        type: "percent",
+        placeholder: "0",
+      },
+      {
+        id: "commercial.startDate",
+        key: "startDate",
+        label: "Inicio",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.endDate",
+        key: "endDate",
+        label: "Termino",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.validity",
+        key: "validity",
+        label: "Prazo da autorizacao",
+        type: "text",
+        placeholder: "90 dias",
+      },
+      {
+        id: "commercial.notes",
+        key: "additionalConditions",
+        label: "Condicoes da intermediacao",
+        type: "textarea",
+        placeholder: "Escopo da captacao, formato das visitas, divulgacao e regras comerciais.",
+        examples: [
+          "Visitas somente com agendamento previo.",
+          "Divulgacao autorizada nos canais digitais do corretor e da imobiliaria.",
+          "Negociacoes devem respeitar o valor autorizado e a comissao pactuada.",
         ],
       },
     ]
@@ -1356,6 +1490,16 @@ export function BrokerContractsPage() {
       ]
     }
 
+    if (selectedContract?.kind === "Autorizacao de venda") {
+      return [
+        { label: "Proprietario", score: clientScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Documentacao", score: documentationScore },
+        { label: "Intermediacao", score: negotiationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     if (selectedContract?.kind === "Locacao residencial") {
       return [
         { label: "Locador", score: landlordScore },
@@ -1410,6 +1554,16 @@ export function BrokerContractsPage() {
       ].filter((item): item is string => Boolean(item))
     }
 
+    if (selectedContract.kind === "Autorizacao de venda") {
+      return [
+        !selectedContractLead?.identification.cpfCnpj ? "CPF do proprietario" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matricula" : null,
+        !selectedContract.amountLabel ? "Valor autorizado" : null,
+        !selectedContract.content.financial.commissionPercent ? "Comissao" : null,
+        !selectedContract.content.financial.additionalConditions ? "Condicoes da intermediacao" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
     return [
       !selectedContractProperty?.legal.registryNumber ? "Matrícula" : null,
       !selectedContractProperty?.legal.registryOffice ? "Cartório" : null,
@@ -1419,6 +1573,7 @@ export function BrokerContractsPage() {
     ].filter((item): item is string => Boolean(item))
   }, [
     selectedContract,
+    selectedContractLead?.identification.cpfCnpj,
     selectedContractLead?.identification.rg,
     selectedContractProperty?.legal.registryNumber,
     selectedContractProperty?.legal.registryOffice,
@@ -1492,6 +1647,41 @@ export function BrokerContractsPage() {
           done: Boolean(
             selectedContract.content.financial.worksScope || selectedContract.content.financial.fitOutScope,
           ),
+        },
+      ]
+    }
+
+    if (selectedContract.kind === "Autorizacao de venda") {
+      return [
+        {
+          label: "Proprietario validado",
+          detail: selectedContract.leadName || selectedContractProperty?.ownerName || "Proprietario ainda nao vinculado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Imovel validado",
+          detail: selectedContract.propertyTitle || "Imovel ainda nao vinculado.",
+          done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
+        },
+        {
+          label: "Valor autorizado",
+          detail: selectedContract.amountLabel || "Valor autorizado ainda nao informado.",
+          done: Boolean(selectedContract.amountLabel),
+        },
+        {
+          label: "Comissao definida",
+          detail:
+            selectedContract.content.financial.commissionPercent
+              ? `${selectedContract.content.financial.commissionPercent}%`
+              : "Comissao ainda nao informada.",
+          done: Boolean(selectedContract.content.financial.commissionPercent),
+        },
+        {
+          label: "Intermediacao registrada",
+          detail:
+            selectedContract.content.financial.additionalConditions ||
+            "Condicoes da intermediacao ainda nao registradas.",
+          done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]
     }
