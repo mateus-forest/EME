@@ -190,6 +190,10 @@ function isSaleAuthorization(kind: ContractType) {
   return kind === "Autorizacao de venda"
 }
 
+function isExclusivity(kind: ContractType) {
+  return kind === "Exclusividade"
+}
+
 function parsePercentInput(value: string) {
   const normalized = value.replace(",", ".").replace(/[^\d.]/g, "")
   const parsed = Number(normalized)
@@ -362,6 +366,9 @@ function buildPlaceholderMap(input: {
     COMISSAO_AUTORIZACAO: commission,
     PRAZO_AUTORIZACAO: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
     CONDICOES_INTERMEDIACAO: draft.additionalConditions || "",
+    COMISSAO_EXCLUSIVIDADE: commission,
+    PRAZO_EXCLUSIVIDADE: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
+    CONDICOES_EXCLUSIVIDADE: draft.additionalConditions || "",
     ENTRADA: "",
     PARCELAS: "",
     BANCO_FINANCIAMENTO: "",
@@ -520,14 +527,19 @@ function buildWorkspaceSections(input: {
     ] satisfies WorkspaceEntitySection[]
   }
 
-  if (isSaleAuthorization(kind)) {
+  if (isSaleAuthorization(kind) || isExclusivity(kind)) {
     return [
       {
         key: "client",
         title: "Proprietario",
         route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
         actionLabel: "Editar cliente",
-        summary: lead?.name || property?.ownerName || "Selecione o proprietario para compor a autorizacao.",
+        summary:
+          lead?.name ||
+          property?.ownerName ||
+          (isExclusivity(kind)
+            ? "Selecione o proprietario para compor o contrato de exclusividade."
+            : "Selecione o proprietario para compor a autorizacao."),
         items: [
           { label: "Nome", value: lead?.name || property?.ownerName || "" },
           { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
@@ -544,7 +556,11 @@ function buildWorkspaceSections(input: {
         title: "Imovel",
         route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
         actionLabel: "Editar imovel",
-        summary: property?.title || "Selecione um imovel para alimentar a autorizacao de venda.",
+        summary:
+          property?.title ||
+          (isExclusivity(kind)
+            ? "Selecione um imovel para alimentar o contrato de exclusividade."
+            : "Selecione um imovel para alimentar a autorizacao de venda."),
         items: [
           { label: "Titulo", value: property?.title || "" },
           { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -988,6 +1004,59 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
           "Visitas somente com agendamento previo.",
           "Divulgacao autorizada nos canais digitais do corretor e da imobiliaria.",
           "Negociacoes devem respeitar o valor autorizado e a comissao pactuada.",
+        ],
+      },
+    ]
+  }
+
+  if (kind === "Exclusividade") {
+    return [
+      {
+        id: "commercial.value",
+        key: "amount",
+        label: "Valor de referencia",
+        type: "currency",
+        placeholder: "R$ 0,00",
+        hint: "Valor preenchido automaticamente pelo imovel.",
+      },
+      {
+        id: "commercial.commission",
+        key: "commissionPercent",
+        label: "Comissao",
+        type: "percent",
+        placeholder: "0",
+      },
+      {
+        id: "commercial.startDate",
+        key: "startDate",
+        label: "Inicio",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.endDate",
+        key: "endDate",
+        label: "Termino",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.validity",
+        key: "validity",
+        label: "Prazo de exclusividade",
+        type: "text",
+        placeholder: "120 dias",
+      },
+      {
+        id: "commercial.notes",
+        key: "additionalConditions",
+        label: "Direitos e obrigacoes",
+        type: "textarea",
+        placeholder: "Escopo da exclusividade, divulgacao autorizada, visitas e regras comerciais.",
+        examples: [
+          "Captacao exclusiva durante todo o prazo contratado.",
+          "Visitas somente com acompanhamento do corretor responsavel.",
+          "Negociacoes devem observar a comissao e o valor de referencia pactuados.",
         ],
       },
     ]
@@ -1500,6 +1569,16 @@ export function BrokerContractsPage() {
       ]
     }
 
+    if (selectedContract?.kind === "Exclusividade") {
+      return [
+        { label: "Proprietario", score: clientScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Documentacao", score: documentationScore },
+        { label: "Exclusividade", score: negotiationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     if (selectedContract?.kind === "Locacao residencial") {
       return [
         { label: "Locador", score: landlordScore },
@@ -1561,6 +1640,17 @@ export function BrokerContractsPage() {
         !selectedContract.amountLabel ? "Valor autorizado" : null,
         !selectedContract.content.financial.commissionPercent ? "Comissao" : null,
         !selectedContract.content.financial.additionalConditions ? "Condicoes da intermediacao" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
+    if (selectedContract.kind === "Exclusividade") {
+      return [
+        !selectedContractLead?.identification.cpfCnpj ? "CPF do proprietario" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matricula" : null,
+        !selectedContract.amountLabel ? "Valor de referencia" : null,
+        !selectedContract.content.financial.commissionPercent ? "Comissao" : null,
+        !selectedContract.content.financial.validity ? "Prazo de exclusividade" : null,
+        !selectedContract.content.financial.additionalConditions ? "Direitos e obrigacoes" : null,
       ].filter((item): item is string => Boolean(item))
     }
 
@@ -1681,6 +1771,41 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.content.financial.additionalConditions ||
             "Condicoes da intermediacao ainda nao registradas.",
+          done: Boolean(selectedContract.content.financial.additionalConditions),
+        },
+      ]
+    }
+
+    if (selectedContract.kind === "Exclusividade") {
+      return [
+        {
+          label: "Proprietario validado",
+          detail: selectedContract.leadName || selectedContractProperty?.ownerName || "Proprietario ainda nao vinculado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Imovel validado",
+          detail: selectedContract.propertyTitle || "Imovel ainda nao vinculado.",
+          done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
+        },
+        {
+          label: "Prazo de exclusividade",
+          detail: selectedContract.content.financial.validity || "Prazo exclusivo ainda nao informado.",
+          done: Boolean(selectedContract.content.financial.validity),
+        },
+        {
+          label: "Comissao definida",
+          detail:
+            selectedContract.content.financial.commissionPercent
+              ? `${selectedContract.content.financial.commissionPercent}%`
+              : "Comissao ainda nao informada.",
+          done: Boolean(selectedContract.content.financial.commissionPercent),
+        },
+        {
+          label: "Direitos e obrigacoes",
+          detail:
+            selectedContract.content.financial.additionalConditions ||
+            "Direitos e obrigacoes ainda nao registrados.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]

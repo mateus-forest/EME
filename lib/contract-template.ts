@@ -147,6 +147,10 @@ function isSaleAuthorizationContract(kind: ContractType) {
   return kind === "Autorizacao de venda"
 }
 
+function isExclusivityContract(kind: ContractType) {
+  return kind === "Exclusividade"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -160,7 +164,7 @@ function getContractHeadline(kind: ContractType) {
   if (kind === "Locacao residencial") return "Template oficial EME para locacoes residenciais com preview editorial, PDF e sincronizacao em tempo real."
   if (kind === "Locacao comercial") return "Template oficial EME para locacoes comerciais com foco em operacao, adequacoes do ponto e regras financeiras recorrentes."
   if (kind === "Autorizacao de venda") return "Template oficial EME para autorizacao de venda com foco em intermediar, validar prazo, comissao e condicoes da captacao."
-  if (kind === "Exclusividade") return "Base visual oficial para contrato de exclusividade."
+  if (kind === "Exclusividade") return "Template oficial EME para exclusividade de venda com foco em prazo, comissao, direitos e obrigacoes da intermediacao exclusiva."
   if (kind === "Termo de visita") return "Base visual oficial para termo de visita."
   if (kind === "Reserva") return "Base visual oficial para instrumento de reserva."
   if (kind === "Aditivo") return "Base visual oficial para aditivos contratuais."
@@ -217,6 +221,16 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isExclusivityContract(kind)) {
+    return [
+      `Partes previstas: proprietario ${p("PROPRIETARIO")} e corretor ${p("CORRETOR")}, com intermediacao exclusiva vinculada a ${p("IMOBILIARIA")}.`,
+      `Imovel em exclusividade: ${p("IMOVEL")} no endereco ${p("IMOVEL_ENDERECO")}, matricula ${p("MATRICULA")} e valor de referencia ${p("VALOR_AUTORIZADO")}.`,
+      `Prazo de exclusividade: inicio ${p("DATA_INICIO")} e termino ${p("DATA_FIM")}, referencia comercial ${p("PRAZO_EXCLUSIVIDADE")}.`,
+      `Comissao prevista: ${p("COMISSAO_EXCLUSIVIDADE")}. Direitos, obrigacoes e condicoes da intermediacao registrados em ${p("CONDICOES_EXCLUSIVIDADE")}.`,
+      `Foro eleito: ${p("COMARCA")}. Rescisao e regras de exclusividade devem ser revisadas antes da assinatura final.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -258,6 +272,15 @@ export function buildContractReviewNotes(kind: ContractType) {
       "Validar proprietario, corretor, imovel, valor autorizado e prazo antes do envio para assinatura.",
       "Conferir matricula, cartorio, comissao, condicoes da intermediacao e obrigacoes operacionais da autorizacao.",
       "Revisar regras de revogacao, foro e alcance da captacao com suporte juridico quando necessario.",
+      "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
+    ]
+  }
+
+  if (isExclusivityContract(kind)) {
+    return [
+      "Validar proprietario, corretor, imovel, prazo de exclusividade e comissao antes do envio para assinatura.",
+      "Conferir matricula, cartorio, condicoes da intermediacao exclusiva, direitos e obrigacoes operacionais.",
+      "Revisar regras de rescisao, foro e alcance da exclusividade com suporte juridico quando necessario.",
       "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
     ]
   }
@@ -1634,6 +1657,225 @@ function buildOfficialSaleAuthorizationContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialExclusivityContractHtml(content: ContractContent) {
+  const totalPages = 5
+
+  const cover = DocumentCover({
+    title: "Contrato de Exclusividade de Venda",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para exclusividade de venda, preparado para sincronizar proprietario, imovel, corretor e imobiliaria com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Exclusividade", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Das Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Proprietario",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("PROPRIETARIO") },
+                { label: "CPF/CNPJ", value: p("PROPRIETARIO_CPF_CNPJ") },
+                { label: "RG", value: p("PROPRIETARIO_RG") },
+                { label: "Estado civil", value: p("PROPRIETARIO_ESTADO_CIVIL") },
+                { label: "Profissao", value: p("PROPRIETARIO_PROFISSAO") },
+                { label: "Endereco", value: p("PROPRIETARIO_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Intermediacao exclusiva",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Corretor", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Imobiliaria", value: p("IMOBILIARIA") },
+                { label: "Contato", value: p("CORRETOR_TELEFONE") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Do Imovel",
+        description: "Identificacao do imovel objeto da intermediacao exclusiva.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Imovel", value: p("IMOVEL") },
+                { label: "Tipo do imovel", value: p("TIPO_IMOVEL") },
+                { label: "Endereco completo", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Bairro", value: p("BAIRRO") },
+                { label: "Cidade", value: p("CIDADE") },
+                { label: "Estado", value: p("ESTADO") },
+                { label: "CEP", value: p("CEP") },
+                { label: "Matricula", value: p("MATRICULA") },
+                { label: "Cartorio de registro", value: p("CARTORIO_REGISTRO") },
+              ],
+            }),
+          }),
+          DocumentNotice("O proprietario declara possuir legitimidade para contratar a intermediacao exclusiva da venda do imovel descrito neste instrumento."),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "3",
+          title: "Prazo de Exclusividade",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Inicio", value: p("DATA_INICIO") },
+                { label: "Termino", value: p("DATA_FIM") },
+                { label: "Prazo contratado", value: p("PRAZO_EXCLUSIVIDADE"), span: 2 },
+              ],
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "4",
+          title: "Comissao",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Percentual", value: p("COMISSAO_EXCLUSIVIDADE") },
+                { label: "Corretor responsavel", value: p("CORRETOR") },
+              ],
+            }),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "5",
+        title: "Valor e Condicoes da Intermediacao",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Bases comerciais",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Valor de referencia", value: p("VALOR_AUTORIZADO") },
+                { label: "Finalidade", value: p("FINALIDADE") },
+                { label: "Condicoes da intermediacao", value: p("CONDICOES_EXCLUSIVIDADE"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentNotice("As condicoes da exclusividade devem refletir o escopo comercial aprovado entre proprietario, corretor e imobiliaria."),
+        ),
+      }),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "6",
+          title: "Direitos e Obrigacoes",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "O proprietario compromete-se a respeitar a exclusividade durante o prazo contratado e a fornecer informacoes veridicas sobre o imovel.",
+              "O corretor compromete-se a conduzir a captacao, divulgacao e negociacao do imovel com diligencia profissional.",
+              "As partes devem observar o valor de referencia, a comissao pactuada e as demais condicoes comerciais deste instrumento.",
+            ]),
+          }),
+        }),
+        DocumentSection({
+          icon: "7",
+          title: "Rescisao",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "A rescisao observara as regras deste instrumento e a legislacao aplicavel, inclusive quanto a eventuais penalidades.",
+              "O encerramento antecipado nao afasta direitos ja constituídos por negociacoes iniciadas validamente dentro do prazo de exclusividade, conforme ajuste entre as partes.",
+            ]),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "8",
+        title: "Foro",
+        children: DocumentCard({
+          children: DocumentInput({
+            label: "Comarca eleita",
+            value: p("COMARCA"),
+          }),
+        }),
+      }),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "9",
+        title: "Assinaturas",
+        description: "Por estarem justas e acordadas, as partes assinam o presente contrato de exclusividade.",
+        children: DocumentStack(
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Proprietario",
+              fields: [
+                { label: "Nome", value: p("PROPRIETARIO") },
+                { label: "Assinatura", value: p("ASSINATURA_PROPRIETARIO") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+          </div>`,
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para exclusividade de venda. Recomenda-se revisao juridica final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -1745,6 +1987,10 @@ export function buildContractHtml(content: ContractContent) {
 
   if (isSaleAuthorizationContract(content.kind)) {
     return buildOfficialSaleAuthorizationContractHtml(content)
+  }
+
+  if (isExclusivityContract(content.kind)) {
+    return buildOfficialExclusivityContractHtml(content)
   }
 
   return buildGenericContractHtml(content)
