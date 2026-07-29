@@ -155,6 +155,10 @@ function isVisitTermContract(kind: ContractType) {
   return kind === "Termo de visita"
 }
 
+function isReservationContract(kind: ContractType) {
+  return kind === "Reserva"
+}
+
 export function normalizeContractStatus(value: unknown): ContractStatus | null {
   if (typeof value !== "string") return null
   if (value in legacyContractStatusMap) {
@@ -170,7 +174,7 @@ function getContractHeadline(kind: ContractType) {
   if (kind === "Autorizacao de venda") return "Template oficial EME para autorizacao de venda com foco em intermediar, validar prazo, comissao e condicoes da captacao."
   if (kind === "Exclusividade") return "Template oficial EME para exclusividade de venda com foco em prazo, comissao, direitos e obrigacoes da intermediacao exclusiva."
   if (kind === "Termo de visita") return "Template oficial EME para termo de visita com foco em ciencia da intermediacao, declaracoes e registro da visita ao imovel."
-  if (kind === "Reserva") return "Base visual oficial para instrumento de reserva."
+  if (kind === "Reserva") return "Template oficial EME para reserva de imovel com foco em interessado, proprietario, conversao da reserva e sincronizacao do preview em tempo real."
   if (kind === "Aditivo") return "Base visual oficial para aditivos contratuais."
   return "Base visual oficial para distrato e encerramento contratual."
 }
@@ -244,6 +248,16 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (isReservationContract(kind)) {
+    return [
+      `Partes previstas: interessado ${p("INTERESSADO")}, proprietario ${p("PROPRIETARIO")} e intermediacao de ${p("CORRETOR")}${p("IMOBILIARIA") ? ` com apoio de ${p("IMOBILIARIA")}` : ""}.`,
+      `Imovel reservado: ${p("IMOVEL")} no endereco ${p("IMOVEL_ENDERECO")}, matricula ${p("MATRICULA")} e foro em ${p("COMARCA")}.`,
+      `Condicoes comerciais atuais: valor da reserva ${p("VALOR_RESERVA")}, prazo ${p("PRAZO_RESERVA")} e conversao prevista ate ${p("CONVERSAO_RESERVA")}.`,
+      `Condicoes adicionais registradas em ${p("CONDICOES_RESERVA")}. Revisar conversao da reserva, prazo, devolucao e penalidades antes da assinatura.`,
+      `Dados comerciais atuais vinculados ao rascunho: ${personName}, ${propertyRef}, ${amount}.`,
+    ]
+  }
+
   return [
     `${kind}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
     `Valor principal de referencia: ${amount}. Condicoes financeiras definitivas devem ser conferidas antes da assinatura.`,
@@ -303,6 +317,15 @@ export function buildContractReviewNotes(kind: ContractType) {
       "Validar visitante, corretor, imovel visitado, data e hora antes do envio para assinatura.",
       "Conferir ciencia da intermediacao, declaracoes do visitante e dados minimos da visita.",
       "Manter o termo como rascunho ate a confirmacao operacional e documental final.",
+    ]
+  }
+
+  if (isReservationContract(kind)) {
+    return [
+      "Validar interessado, proprietario, imovel e prazo da reserva antes do envio para assinatura.",
+      "Conferir matricula, cartorio, valor da reserva, condicoes da conversao e responsabilidades das partes.",
+      "Revisar regras de rescisao, devolucao, foro e conversao da reserva com suporte juridico quando necessario.",
+      "Manter o documento como rascunho ate a confirmacao comercial, documental e juridica final.",
     ]
   }
 
@@ -2074,6 +2097,235 @@ function buildOfficialVisitTermContractHtml(content: ContractContent) {
   })
 }
 
+function buildOfficialReservationContractHtml(content: ContractContent) {
+  const totalPages = 5
+
+  const cover = DocumentCover({
+    title: "Contrato de Reserva de Imovel",
+    subtitle: "Template oficial EME",
+    description:
+      "Documento base modular para reserva de imovel, preparado para sincronizar interessado, proprietario, imovel, corretor e imobiliaria com preview editorial, PDF e futura automacao pelo COS.",
+    versionLabel: `Versao ${content.version}  |  ${contractStatusLabel(content.status)}`,
+    footerLabel: "Documento institucional desenvolvido para impressao A4, PDF e assinatura eletronica.",
+    highlights: ["Reserva", "Editorial", "Sincronizado"],
+  })
+
+  const page2 = DocumentPage({
+    pageNumber: 2,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "1",
+        title: "Das Partes",
+        children: DocumentStack(
+          DocumentCard({
+            title: "Interessado",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Nome completo", value: p("INTERESSADO") },
+                { label: "CPF/CNPJ", value: p("INTERESSADO_CPF_CNPJ") },
+                { label: "RG", value: p("INTERESSADO_RG") },
+                { label: "Telefone", value: p("INTERESSADO_TELEFONE") },
+                { label: "E-mail", value: p("INTERESSADO_EMAIL") },
+                { label: "Endereco", value: p("INTERESSADO_ENDERECO"), span: 2 },
+              ],
+            }),
+          }),
+          DocumentCard({
+            title: "Proprietario e intermediacao",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Proprietario", value: p("PROPRIETARIO") },
+                { label: "Corretor", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Imobiliaria", value: p("IMOBILIARIA") },
+              ],
+            }),
+          }),
+        ),
+      }),
+      DocumentSection({
+        icon: "2",
+        title: "Do Imovel",
+        description: "Identificacao do imovel vinculado ao compromisso de reserva.",
+        children: DocumentStack(
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Imovel", value: p("IMOVEL") },
+                { label: "Tipo do imovel", value: p("TIPO_IMOVEL") },
+                { label: "Endereco completo", value: p("IMOVEL_ENDERECO"), span: 2 },
+                { label: "Bairro", value: p("BAIRRO") },
+                { label: "Cidade", value: p("CIDADE") },
+                { label: "Estado", value: p("ESTADO") },
+                { label: "CEP", value: p("CEP") },
+                { label: "Matricula", value: p("MATRICULA") },
+                { label: "Cartorio de registro", value: p("CARTORIO_REGISTRO") },
+              ],
+            }),
+          }),
+          DocumentNotice("O proprietario declara ter disponibilidade para negociar o imovel nas condicoes registradas neste instrumento de reserva."),
+        ),
+      }),
+    ),
+  })
+
+  const page3 = DocumentPage({
+    pageNumber: 3,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "3",
+          title: "Valor da Reserva",
+          children: DocumentCard({
+            tone: "accent",
+            children: DocumentInput({
+              label: "Valor comprometido para a reserva",
+              value: p("VALOR_RESERVA"),
+            }),
+          }),
+        }),
+        DocumentSection({
+          icon: "4",
+          title: "Prazo",
+          children: DocumentCard({
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Inicio", value: p("DATA_INICIO") },
+                { label: "Prazo da reserva", value: p("PRAZO_RESERVA") },
+                { label: "Conversao ate", value: p("CONVERSAO_RESERVA"), span: 2 },
+              ],
+            }),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "5",
+        title: "Condicoes",
+        children: DocumentStack(
+          DocumentCard({
+            children: DocumentInput({
+              label: "Condicoes da reserva",
+              value: p("CONDICOES_RESERVA"),
+              block: true,
+            }),
+          }),
+          DocumentNotice("As condicoes devem refletir sinal, aprovacao documental, prazo de analise e demais premissas comerciais acordadas."),
+        ),
+      }),
+    ),
+  })
+
+  const page4 = DocumentPage({
+    pageNumber: 4,
+    totalPages,
+    children: DocumentStack(
+      DocumentColumns(
+        DocumentSection({
+          icon: "6",
+          title: "Conversao da Reserva",
+          children: DocumentStack(
+            DocumentCard({
+              children: DocumentInput({
+                label: "Condicao de conversao",
+                value: p("CONVERSAO_RESERVA"),
+                block: true,
+              }),
+            }),
+            DocumentCard({
+              tone: "soft",
+              children: DocumentBullets([
+                "A reserva devera ser convertida em instrumento definitivo dentro do prazo comercial acordado entre as partes.",
+                "A intermediacao devera acompanhar a validacao documental, a confirmacao financeira e a eventual formalizacao do negocio.",
+              ]),
+            }),
+          ),
+        }),
+        DocumentSection({
+          icon: "7",
+          title: "Rescisao",
+          children: DocumentCard({
+            children: DocumentBullets([
+              "O descumprimento das condicoes de reserva pode ensejar cancelamento, devolucao ou retencao conforme o ajuste entre as partes e a legislacao aplicavel.",
+              "A liberacao do imovel para novos interessados depende da extincao formal da reserva ou do termino do prazo estipulado.",
+            ]),
+          }),
+        }),
+      ),
+      DocumentSection({
+        icon: "8",
+        title: "Foro",
+        children: DocumentCard({
+          children: DocumentInput({
+            label: "Comarca eleita",
+            value: p("COMARCA"),
+          }),
+        }),
+      }),
+    ),
+  })
+
+  const page5 = DocumentPage({
+    pageNumber: 5,
+    totalPages,
+    children: DocumentStack(
+      DocumentSection({
+        icon: "9",
+        title: "Assinaturas",
+        description: "Por estarem cientes das condicoes da reserva, as partes assinam o presente instrumento.",
+        children: DocumentStack(
+          `<div class="document-signature-grid">
+            ${DocumentSignatureBlock({
+              role: "Interessado",
+              fields: [
+                { label: "Nome", value: p("INTERESSADO") },
+                { label: "Assinatura", value: p("ASSINATURA_INTERESSADO") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Proprietario",
+              fields: [
+                { label: "Nome", value: p("PROPRIETARIO") },
+                { label: "Assinatura", value: p("ASSINATURA_PROPRIETARIO") },
+              ],
+            })}
+            ${DocumentSignatureBlock({
+              role: "Corretor",
+              fields: [
+                { label: "Nome", value: p("CORRETOR") },
+                { label: "CRECI", value: p("CORRETOR_CRECI") },
+                { label: "Assinatura", value: p("ASSINATURA_CORRETOR") },
+              ],
+            })}
+          </div>`,
+          DocumentCard({
+            tone: "soft",
+            children: DocumentFieldGrid({
+              columns: 2,
+              items: [
+                { label: "Local", value: p("CIDADE") },
+                { label: "Data", value: p("DATA_DOCUMENTO") },
+              ],
+            }),
+          }),
+          DocumentNotice("Template oficial EME para reserva de imovel. Recomenda-se revisao juridica final antes do envio para assinatura eletronica."),
+        ),
+      }),
+    ),
+  })
+
+  return renderDocumentHtml({
+    title: content.title,
+    pages: [cover, page2, page3, page4, page5],
+  })
+}
+
 function renderInfoCard(title: string, items: Array<{ label: string; value?: string | number | null }>) {
   return DocumentCard({
     title,
@@ -2193,6 +2445,10 @@ export function buildContractHtml(content: ContractContent) {
 
   if (isVisitTermContract(content.kind)) {
     return buildOfficialVisitTermContractHtml(content)
+  }
+
+  if (isReservationContract(content.kind)) {
+    return buildOfficialReservationContractHtml(content)
   }
 
   return buildGenericContractHtml(content)

@@ -98,7 +98,7 @@ type CommercialFieldDefinition = {
   examples?: string[]
 }
 
-type WorkspaceEntityKey = "client" | "property" | "broker" | "agency" | "landlord"
+type WorkspaceEntityKey = "client" | "property" | "broker" | "agency" | "landlord" | "owner"
 
 type WorkspaceEntityItem = {
   label: string
@@ -196,6 +196,10 @@ function isExclusivity(kind: ContractType) {
 
 function isVisitTerm(kind: ContractType) {
   return kind === "Termo de visita"
+}
+
+function isReservation(kind: ContractType) {
+  return kind === "Reserva"
 }
 
 function parsePercentInput(value: string) {
@@ -321,7 +325,15 @@ function buildPlaceholderMap(input: {
     LOCATARIO_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
       .filter(Boolean)
       .join(", "),
-    PROPRIETARIO: lead?.name || property?.ownerName || "",
+    INTERESSADO: lead?.name || "",
+    INTERESSADO_CPF_CNPJ: lead?.identification.cpfCnpj || "",
+    INTERESSADO_RG: lead?.identification.rg || "",
+    INTERESSADO_TELEFONE: lead?.whatsApp || lead?.phone || "",
+    INTERESSADO_EMAIL: lead?.email || "",
+    INTERESSADO_ENDERECO: [lead?.address.street, lead?.address.number, lead?.address.district, lead?.address.city]
+      .filter(Boolean)
+      .join(", "),
+    PROPRIETARIO: property?.ownerName || lead?.name || "",
     PROPRIETARIO_CPF_CNPJ: lead?.identification.cpfCnpj || "",
     PROPRIETARIO_RG: lead?.identification.rg || "",
     PROPRIETARIO_ESTADO_CIVIL: lead?.identification.maritalStatus || "",
@@ -366,10 +378,14 @@ function buildPlaceholderMap(input: {
     VALOR: amount,
     VALOR_AUTORIZADO: amount,
     VALOR_ALUGUEL: amount,
+    VALOR_RESERVA: amount,
     DATA_INICIO: draft.startDate || "",
     DATA_FIM: draft.endDate || "",
     PRAZO_LOCACAO: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
+    PRAZO_RESERVA: resolveLeaseTerm(draft.startDate, draft.endDate, draft.validity),
     DIA_VENCIMENTO: draft.dueDate || "",
+    CONVERSAO_RESERVA: draft.dueDate || "",
+    CONDICOES_RESERVA: draft.additionalConditions || "",
     FORMA_PAGAMENTO: draft.paymentMethod || "",
     TIPO_GARANTIA: draft.guaranteeType || "",
     LAUDO_VISTORIA: draft.inspectionReport || "",
@@ -431,6 +447,7 @@ function buildPlaceholderMap(input: {
     LOCAL_ASSINATURA: "",
     ADICIONAIS_LOCACAO: draft.additionalConditions || "",
     ASSINATURA_PROPRIETARIO: "",
+    ASSINATURA_INTERESSADO: "",
     ASSINATURA_VISITANTE: "",
     ASSINATURA_LOCADOR: "",
     ASSINATURA_LOCATARIO: "",
@@ -588,6 +605,83 @@ function buildWorkspaceSections(input: {
           { label: "Cartorio", value: property?.legal.registryOffice || "" },
           { label: "Valor anunciado", value: property?.formattedPrice || "" },
           { label: "Proprietario no imovel", value: property?.ownerName || "" },
+        ],
+      },
+      {
+        key: "agency",
+        title: "Imobiliaria",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.agencyName || "A intermediacao pode ser vinculada a uma imobiliaria quando disponivel.",
+        items: [
+          { label: "Nome", value: broker?.agencyName || "" },
+          { label: "Corretor responsavel", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+        ],
+      },
+      {
+        key: "broker",
+        title: "Corretor",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.name || "Dados do corretor ainda nao carregados.",
+        items: [
+          { label: "Nome", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
+          { label: "Telefone", value: broker?.phone || "" },
+          { label: "E-mail", value: broker?.email || "" },
+        ],
+      },
+    ] satisfies WorkspaceEntitySection[]
+  }
+
+  if (isReservation(kind)) {
+    return [
+      {
+        key: "client",
+        title: "Interessado",
+        route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
+        actionLabel: "Editar cliente",
+        summary: lead?.name || "Selecione o interessado para compor a reserva do imovel.",
+        items: [
+          { label: "Nome", value: lead?.name || "" },
+          { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
+          { label: "E-mail", value: lead?.email || "" },
+          { label: "CPF", value: lead?.identification.cpfCnpj || "" },
+          { label: "RG", value: lead?.identification.rg || "" },
+          { label: "Estado civil", value: lead?.identification.maritalStatus || "" },
+          { label: "Profissao", value: lead?.identification.profession || "" },
+          { label: "Endereco", value: [lead?.address.street, lead?.address.number, lead?.address.city].filter(Boolean).join(", ") },
+        ],
+      },
+      {
+        key: "owner",
+        title: "Proprietario",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.ownerName || "Vincule um imovel com proprietario identificado para formalizar a reserva.",
+        items: [
+          { label: "Nome", value: property?.ownerName || "" },
+          { label: "Imovel vinculado", value: property?.title || "" },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+        ],
+      },
+      {
+        key: "property",
+        title: "Imovel",
+        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
+        actionLabel: "Editar imovel",
+        summary: property?.title || "Selecione um imovel para alimentar a reserva.",
+        items: [
+          { label: "Titulo", value: property?.title || "" },
+          { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
+          { label: "Bairro", value: property?.neighborhood || "" },
+          { label: "Cidade", value: property?.legal.city || property?.city || "" },
+          { label: "CEP", value: property?.legal.cep || "" },
+          { label: "Matricula", value: property?.legal.registryNumber || "" },
+          { label: "Cartorio", value: property?.legal.registryOffice || "" },
+          { label: "Valor anunciado", value: property?.formattedPrice || "" },
         ],
       },
       {
@@ -1175,18 +1269,37 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         placeholder: "R$ 0,00",
       },
       {
+        id: "commercial.startDate",
+        key: "startDate",
+        label: "Inicio da reserva",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
         id: "commercial.validUntil",
         key: "validity",
-        label: "Validade da reserva",
+        label: "Prazo da reserva",
+        type: "text",
+        placeholder: "Ex.: 5 dias corridos",
+      },
+      {
+        id: "commercial.conversionDate",
+        key: "dueDate",
+        label: "Conversao ate",
         type: "date",
         placeholder: "dd/mm/aaaa",
       },
       {
         id: "commercial.notes",
         key: "additionalConditions",
-        label: "Observacoes comerciais (opcional)",
+        label: "Condicoes da reserva",
         type: "textarea",
-        placeholder: "Prazo para analise, sinal, condicoes especiais.",
+        placeholder: "Sinal, analise documental, aprovacao financeira e demais condicoes comerciais.",
+        examples: [
+          "Reserva condicionada a analise documental do imovel.",
+          "Sinal convertido integralmente na assinatura do contrato definitivo.",
+          "Prazo comercial contado em dias corridos a partir da assinatura.",
+        ],
       },
     ]
   }
@@ -1548,6 +1661,7 @@ export function BrokerContractsPage() {
     const landlordScore = scoreSection(
       selectedWorkspaceSections.find((section) => section.key === "landlord")?.items ?? [],
     )
+    const ownerScore = scoreSection(selectedWorkspaceSections.find((section) => section.key === "owner")?.items ?? [])
     const propertyScore = scoreSection(
       selectedWorkspaceSections.find((section) => section.key === "property")?.items ?? [],
     )
@@ -1649,6 +1763,40 @@ export function BrokerContractsPage() {
         done: Boolean(selectedContract?.content.financial.additionalConditions),
       },
     ])
+    const reservationFinancialScore = scoreSection([
+      {
+        label: "Valor da reserva",
+        value: selectedContract?.amountLabel || "",
+        done: Boolean(selectedContract?.amountLabel),
+      },
+      {
+        label: "Prazo da reserva",
+        value: selectedContract?.content.financial.validity || "",
+        done: Boolean(selectedContract?.content.financial.validity),
+      },
+      {
+        label: "Conversao da reserva",
+        value: selectedContract?.content.financial.dueDate || "",
+        done: Boolean(selectedContract?.content.financial.dueDate),
+      },
+    ])
+    const reservationConversionScore = scoreSection([
+      {
+        label: "Condicoes da reserva",
+        value: selectedContract?.content.financial.additionalConditions || "",
+        done: Boolean(selectedContract?.content.financial.additionalConditions),
+      },
+      {
+        label: "Corretor responsavel",
+        value: brokerProfile?.name || "",
+        done: Boolean(brokerProfile?.name),
+      },
+      {
+        label: "Imobiliaria",
+        value: brokerProfile?.agencyName || "",
+        done: Boolean(brokerProfile?.agencyName),
+      },
+    ])
 
     if (selectedContract?.kind === "Locacao comercial") {
       return [
@@ -1692,6 +1840,18 @@ export function BrokerContractsPage() {
       ]
     }
 
+    if (selectedContract?.kind === "Reserva") {
+      return [
+        { label: "Interessado", score: clientScore },
+        { label: "Proprietario", score: ownerScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Financeiro", score: reservationFinancialScore },
+        { label: "Conversao", score: reservationConversionScore },
+        { label: "Documentacao", score: documentationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     if (selectedContract?.kind === "Locacao residencial") {
       return [
         { label: "Locador", score: landlordScore },
@@ -1711,7 +1871,7 @@ export function BrokerContractsPage() {
       { label: "Negociação", score: negotiationScore },
       { label: "Assinaturas", score: signatureScore },
     ]
-  }, [selectedContract, selectedContractProperty, selectedWorkspaceSections])
+  }, [brokerProfile?.agencyName, brokerProfile?.name, selectedContract, selectedContractProperty, selectedWorkspaceSections])
 
   const contractHealthScore = useMemo(() => {
     if (!selectedContract) return 0
@@ -1774,6 +1934,18 @@ export function BrokerContractsPage() {
         !selectedContract.content.financial.startDate ? "Data da visita" : null,
         !selectedContract.content.financial.dueDate ? "Hora da visita" : null,
         !selectedContract.content.financial.validity ? "Ciencia da intermediacao" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
+    if (selectedContract.kind === "Reserva") {
+      return [
+        !selectedContractLead?.identification.cpfCnpj ? "CPF do interessado" : null,
+        !selectedContractProperty?.ownerName ? "Proprietario do imovel" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matricula" : null,
+        !selectedContract.amountLabel ? "Valor da reserva" : null,
+        !selectedContract.content.financial.validity ? "Prazo da reserva" : null,
+        !selectedContract.content.financial.dueDate ? "Conversao da reserva" : null,
+        !selectedContract.content.financial.additionalConditions ? "Condicoes da reserva" : null,
       ].filter((item): item is string => Boolean(item))
     }
 
@@ -1965,6 +2137,40 @@ export function BrokerContractsPage() {
           label: "Declaracoes registradas",
           detail:
             selectedContract.content.financial.additionalConditions || "Declaracoes da visita ainda nao registradas.",
+          done: Boolean(selectedContract.content.financial.additionalConditions),
+        },
+      ]
+    }
+
+    if (selectedContract.kind === "Reserva") {
+      return [
+        {
+          label: "Interessado validado",
+          detail: selectedContract.leadName || "Interessado ainda nao vinculado.",
+          done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
+        },
+        {
+          label: "Proprietario identificado",
+          detail: selectedContractProperty?.ownerName || "Proprietario ainda nao identificado no imovel.",
+          done: Boolean(selectedContractProperty?.ownerName),
+        },
+        {
+          label: "Imovel validado",
+          detail: selectedContract.propertyTitle || "Imovel ainda nao vinculado.",
+          done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
+        },
+        {
+          label: "Prazo e conversao",
+          detail:
+            selectedContract.content.financial.validity && selectedContract.content.financial.dueDate
+              ? `${selectedContract.content.financial.validity} • ${selectedContract.content.financial.dueDate}`
+              : "Prazo e conversao da reserva ainda exigem confirmacao.",
+          done: Boolean(selectedContract.content.financial.validity && selectedContract.content.financial.dueDate),
+        },
+        {
+          label: "Condicoes registradas",
+          detail:
+            selectedContract.content.financial.additionalConditions || "Condicoes da reserva ainda nao registradas.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]
