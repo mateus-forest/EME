@@ -19,10 +19,10 @@ self.addEventListener("fetch", (event) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#00C853" />
+    <meta name="theme-color" content="#f6f1e9" />
     <title>EME offline</title>
     <style>
-      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0B0B0B;color:white;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px}
+      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f1e9;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px}
       main{max-width:420px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(17,17,17,.98),rgba(10,10,10,.96));border-radius:24px;padding:28px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}
       div{width:48px;height:48px;margin:0 auto 18px;border-radius:18px;border:1px solid rgba(0,200,83,.22);background:rgba(0,200,83,.1);display:grid;place-items:center;color:#69F0AE;font-weight:800}
       h1{margin:0;font-size:22px;line-height:1.2}

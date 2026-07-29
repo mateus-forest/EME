@@ -42,9 +42,10 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#00C853',
+  themeColor: '#f6f1e9',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -54,7 +55,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className="dark">
-      <body className={`${barlow.variable} font-sans antialiased bg-[#0B0B0B] text-white`}>
+      <body className={`${barlow.variable} font-sans antialiased bg-[#f6f1e9] text-white`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

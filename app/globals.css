@@ -123,17 +123,27 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html, body {
+  html,
+  body {
     font-family: var(--font-sans);
     max-width: 100%;
     overflow-x: hidden;
     text-rendering: geometricPrecision;
     -webkit-tap-highlight-color: transparent;
+    background-color: #f6f1e9;
+  }
+  html {
+    min-height: 100%;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background text-foreground;
     min-width: 0;
+    min-height: 100dvh;
     animation: eme-fade-in 180ms ease-out;
+  }
+  body > div:first-child {
+    min-height: 100dvh;
   }
   img, video, canvas, svg {
     max-width: 100%;
