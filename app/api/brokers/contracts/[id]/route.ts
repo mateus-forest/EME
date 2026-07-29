@@ -204,6 +204,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         paymentMethod: cleanText(body?.paymentMethod, 120) || parsed.financial.paymentMethod || null,
         guaranteeType: cleanText(body?.guaranteeType, 120) || parsed.financial.guaranteeType || null,
         inspectionReport: cleanText(body?.inspectionReport, 400) || parsed.financial.inspectionReport || null,
+        commercialPurpose: cleanText(body?.commercialPurpose, 160) || parsed.financial.commercialPurpose || null,
+        adjustmentTerm: cleanText(body?.adjustmentTerm, 160) || parsed.financial.adjustmentTerm || null,
+        worksScope: cleanText(body?.worksScope, 1200) || parsed.financial.worksScope || null,
+        fitOutScope: cleanText(body?.fitOutScope, 1200) || parsed.financial.fitOutScope || null,
         additionalConditions:
           cleanText(body?.additionalConditions, 2000) || parsed.financial.additionalConditions || null,
       },

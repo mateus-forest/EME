@@ -31,6 +31,10 @@ export type ContractRecord = {
       paymentMethod?: string | null
       guaranteeType?: string | null
       inspectionReport?: string | null
+      commercialPurpose?: string | null
+      adjustmentTerm?: string | null
+      worksScope?: string | null
+      fitOutScope?: string | null
       additionalConditions?: string | null
     }
     clauses: string[]
@@ -52,6 +56,10 @@ export type ContractDraft = {
   paymentMethod: string
   guaranteeType: string
   inspectionReport: string
+  commercialPurpose: string
+  adjustmentTerm: string
+  worksScope: string
+  fitOutScope: string
   additionalConditions: string
   clausesText: string
   reviewNotesText: string

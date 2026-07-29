@@ -16,7 +16,16 @@ type BrokerProfileUser = {
   email: string
   phone: string | null
   photoUrl: string | null
-  broker: Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description"> | null
+  broker:
+    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description"> & {
+        agency?: {
+          id: string
+          name: string
+          phone: string | null
+          cnpj: string | null
+        } | null
+      })
+    | null
 }
 
 function buildBrokerProfile(user: BrokerProfileUser | null) {
@@ -29,8 +38,9 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     phone: user.broker.phone ?? user.phone ?? "",
     photoUrl: user.photoUrl ?? "",
     brokerId: user.broker.id,
-    agencyId: null,
-    accountType: "BROKER_INDEPENDENT",
+    agencyId: user.broker.agencyId ?? null,
+    agencyName: user.broker.agency?.name ?? "",
+    accountType: user.broker.agencyId ? "BROKER_AGENCY" : "BROKER_INDEPENDENT",
     creci: user.broker.creci ?? "",
     description: user.broker.description ?? "",
   }

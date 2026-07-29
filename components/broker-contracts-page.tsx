@@ -62,6 +62,7 @@ type BrokerProfile = {
   phone: string
   brokerId: string
   agencyId: string | null
+  agencyName?: string
   accountType: string
   creci: string
   description: string
@@ -81,6 +82,10 @@ type CommercialFieldKey =
   | "paymentMethod"
   | "guaranteeType"
   | "inspectionReport"
+  | "commercialPurpose"
+  | "adjustmentTerm"
+  | "worksScope"
+  | "fitOutScope"
   | "additionalConditions"
 
 type CommercialFieldDefinition = {
@@ -129,6 +134,10 @@ const emptyDraft: ContractDraft = {
   paymentMethod: "",
   guaranteeType: "",
   inspectionReport: "",
+  commercialPurpose: "",
+  adjustmentTerm: "",
+  worksScope: "",
+  fitOutScope: "",
   additionalConditions: "",
   clausesText: "",
   reviewNotesText: "",
@@ -167,6 +176,14 @@ function normalizeTitle(kind: ContractType, lead?: LeadRecord | null, property?:
 
 function isResidentialLease(kind: ContractType) {
   return kind === "Locacao residencial"
+}
+
+function isCommercialLease(kind: ContractType) {
+  return kind === "Locacao comercial"
+}
+
+function isLease(kind: ContractType) {
+  return isResidentialLease(kind) || isCommercialLease(kind)
 }
 
 function parsePercentInput(value: string) {
@@ -296,11 +313,13 @@ function buildPlaceholderMap(input: {
     CORRETOR_EMAIL: broker?.email || "",
     CORRETOR_TELEFONE: broker?.phone || "",
     CORRETOR_CRECI: broker?.creci || "",
-    IMOBILIARIA: "",
+    IMOBILIARIA: broker?.agencyName || "",
     IMOVEL: property?.title || "",
+    IMOVEL_COMERCIAL: property?.title || "",
     CODIGO_INTERNO: property?.publicCode ? String(property.publicCode) : "",
     TIPO_IMOVEL: property?.type || "",
     FINALIDADE: property?.purpose || "",
+    FINALIDADE_COMERCIAL: draft.commercialPurpose || "",
     IMOVEL_ENDERECO: [property?.legal.street, property?.legal.number, property?.legal.complement].filter(Boolean).join(", "),
     BAIRRO: property?.neighborhood || "",
     CIDADE: property?.legal.city || property?.city || "",
@@ -324,6 +343,9 @@ function buildPlaceholderMap(input: {
     FORMA_PAGAMENTO: draft.paymentMethod || "",
     TIPO_GARANTIA: draft.guaranteeType || "",
     LAUDO_VISTORIA: draft.inspectionReport || "",
+    REAJUSTE_LOCACAO: draft.adjustmentTerm || "",
+    OBRAS_LOCACAO: draft.worksScope || "",
+    ADEQUACOES_LOCACAO: draft.fitOutScope || "",
     ENTRADA: "",
     PARCELAS: "",
     BANCO_FINANCIAMENTO: "",
@@ -400,7 +422,7 @@ function buildWorkspaceSections(input: {
 }) {
   const { lead, property, broker, kind } = input
 
-  if (isResidentialLease(kind)) {
+  if (isLease(kind)) {
     return [
       {
         key: "landlord",
@@ -434,10 +456,14 @@ function buildWorkspaceSections(input: {
       },
       {
         key: "property",
-        title: "Imovel",
+        title: isCommercialLease(kind) ? "Imovel comercial" : "Imovel",
         route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
         actionLabel: "Editar imovel",
-        summary: property?.title || "Selecione um imovel para alimentar a locacao residencial.",
+        summary:
+          property?.title ||
+          (isCommercialLease(kind)
+            ? "Selecione um imovel comercial para alimentar a locacao."
+            : "Selecione um imovel para alimentar a locacao residencial."),
         items: [
           { label: "Titulo", value: property?.title || "" },
           { label: "Endereco", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -447,6 +473,18 @@ function buildWorkspaceSections(input: {
           { label: "Matricula", value: property?.legal.registryNumber || "" },
           { label: "Cartorio", value: property?.legal.registryOffice || "" },
           { label: "Valor anunciado", value: property?.formattedPrice || "" },
+        ],
+      },
+      {
+        key: "agency",
+        title: "Imobiliaria",
+        route: "/corretor/conta",
+        actionLabel: "Editar corretor",
+        summary: broker?.agencyName || "A intermediacao pode ser vinculada a uma imobiliaria quando disponivel.",
+        items: [
+          { label: "Nome", value: broker?.agencyName || "" },
+          { label: "Corretor responsavel", value: broker?.name || "" },
+          { label: "CRECI", value: broker?.creci || "" },
         ],
       },
       {
@@ -568,6 +606,10 @@ function buildPreviewHtml(input: {
       paymentMethod: input.draft.paymentMethod || null,
       guaranteeType: input.draft.guaranteeType || null,
       inspectionReport: input.draft.inspectionReport || null,
+      commercialPurpose: input.draft.commercialPurpose || null,
+      adjustmentTerm: input.draft.adjustmentTerm || null,
+      worksScope: input.draft.worksScope || null,
+      fitOutScope: input.draft.fitOutScope || null,
       additionalConditions: input.draft.additionalConditions || null,
     },
     createdAt: new Date().toISOString(),
@@ -610,6 +652,10 @@ function buildContractExportHtml(input: {
         paymentMethod: input.contract.content.financial.paymentMethod ?? "",
         guaranteeType: input.contract.content.financial.guaranteeType ?? "",
         inspectionReport: input.contract.content.financial.inspectionReport ?? "",
+        commercialPurpose: input.contract.content.financial.commercialPurpose ?? "",
+        adjustmentTerm: input.contract.content.financial.adjustmentTerm ?? "",
+        worksScope: input.contract.content.financial.worksScope ?? "",
+        fitOutScope: input.contract.content.financial.fitOutScope ?? "",
         additionalConditions: input.contract.content.financial.additionalConditions ?? "",
       },
       lead: input.lead,
@@ -622,7 +668,7 @@ function buildContractExportHtml(input: {
 }
 
 function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefinition[] {
-  if (kind === "Locacao residencial" || kind === "Locacao comercial") {
+  if (kind === "Locacao residencial") {
     return [
       {
         id: "commercial.value",
@@ -698,6 +744,116 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
           "Condominio e consumo por conta do locatario.",
           "Reajuste anual pelo indice contratual.",
           "Entrega das chaves mediante vistoria final.",
+        ],
+      },
+    ]
+  }
+
+  if (kind === "Locacao comercial") {
+    return [
+      {
+        id: "commercial.value",
+        key: "amount",
+        label: "Aluguel mensal",
+        type: "currency",
+        placeholder: "R$ 0,00",
+        hint: "Valor preenchido automaticamente pelo imovel.",
+      },
+      {
+        id: "commercial.startDate",
+        key: "startDate",
+        label: "Inicio",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.endDate",
+        key: "endDate",
+        label: "Termino",
+        type: "date",
+        placeholder: "dd/mm/aaaa",
+      },
+      {
+        id: "commercial.term",
+        key: "validity",
+        label: "Prazo da locacao",
+        type: "text",
+        placeholder: "60 meses",
+      },
+      {
+        id: "commercial.purpose",
+        key: "commercialPurpose",
+        label: "Finalidade comercial",
+        type: "text",
+        placeholder: "Loja, clinica, escritorio, operacao varejista...",
+      },
+      {
+        id: "commercial.dueDay",
+        key: "dueDate",
+        label: "Dia do vencimento",
+        type: "text",
+        placeholder: "Todo dia 5",
+      },
+      {
+        id: "commercial.paymentMethod",
+        key: "paymentMethod",
+        label: "Forma de pagamento",
+        type: "text",
+        placeholder: "Boleto, pix, transferencia...",
+      },
+      {
+        id: "commercial.adjustmentTerm",
+        key: "adjustmentTerm",
+        label: "Reajuste",
+        type: "text",
+        placeholder: "Anual pelo indice contratual",
+      },
+      {
+        id: "commercial.guaranteeType",
+        key: "guaranteeType",
+        label: "Garantia",
+        type: "text",
+        placeholder: "Fianca, caucao, seguro fianca...",
+      },
+      {
+        id: "commercial.inspectionReport",
+        key: "inspectionReport",
+        label: "Laudo de vistoria",
+        type: "text",
+        placeholder: "Laudo comercial inicial assinado em 29/07/2026",
+      },
+      {
+        id: "commercial.works",
+        key: "worksScope",
+        label: "Obras",
+        type: "textarea",
+        placeholder: "Obras estruturais, prazo, responsabilidade financeira e autorizacoes.",
+        examples: [
+          "Adequacao eletrica sob responsabilidade do locatario.",
+          "Obras estruturais somente com autorizacao previa do locador.",
+        ],
+      },
+      {
+        id: "commercial.fitOut",
+        key: "fitOutScope",
+        label: "Adequacoes",
+        type: "textarea",
+        placeholder: "Layout, fachada, climatizacao, acessibilidade e demais adequacoes do ponto.",
+        examples: [
+          "Fachada aprovada previamente pelo locador e condominio.",
+          "Instalacoes internas conforme atividade licenciada.",
+        ],
+      },
+      {
+        id: "commercial.notes",
+        key: "additionalConditions",
+        label: "Encargos e observacoes (opcional)",
+        type: "textarea",
+        placeholder: "IPTU, condominio, taxas operacionais e condicoes especiais da locacao.",
+        examples: [
+          "IPTU e condominio por conta do locatario.",
+          "Taxas de licenciamento operacional sob responsabilidade do locatario.",
+          "Repasses extraordinarios dependem de aprovacao expressa.",
         ],
       },
     ]
@@ -1188,6 +1344,18 @@ export function BrokerContractsPage() {
       },
     ])
 
+    if (selectedContract?.kind === "Locacao comercial") {
+      return [
+        { label: "Locador", score: landlordScore },
+        { label: "Locatario", score: clientScore },
+        { label: "Imovel comercial", score: propertyScore },
+        { label: "Financeiro", score: leaseFinancialScore },
+        { label: "Garantias", score: guaranteeScore },
+        { label: "Documentacao", score: leaseDocumentationScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     if (selectedContract?.kind === "Locacao residencial") {
       return [
         { label: "Locador", score: landlordScore },
@@ -1228,6 +1396,17 @@ export function BrokerContractsPage() {
         !selectedContract.content.financial.guaranteeType ? "Garantia locaticia" : null,
         !selectedContract.content.financial.inspectionReport ? "Laudo de vistoria" : null,
         selectedContract.status === "draft" ? "Fluxo de assinatura" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
+
+    if (selectedContract.kind === "Locacao comercial") {
+      return [
+        !selectedContractProperty?.ownerName ? "Locador vinculado ao imovel" : null,
+        !selectedContract.content.financial.commercialPurpose ? "Finalidade comercial" : null,
+        !selectedContract.content.financial.adjustmentTerm ? "Regra de reajuste" : null,
+        !selectedContract.content.financial.guaranteeType ? "Garantia locaticia" : null,
+        !selectedContract.content.financial.worksScope ? "Obras previstas" : null,
+        !selectedContract.content.financial.fitOutScope ? "Adequacoes do ponto" : null,
       ].filter((item): item is string => Boolean(item))
     }
 
@@ -1278,6 +1457,41 @@ export function BrokerContractsPage() {
               ? `${selectedContract.amountLabel} • ${selectedContract.content.financial.dueDate}`
               : "Aluguel e vencimento ainda exigem confirmacao.",
           done: Boolean(selectedContract.amountLabel && selectedContract.content.financial.dueDate),
+        },
+      ]
+    }
+
+    if (selectedContract.kind === "Locacao comercial") {
+      return [
+        {
+          label: "Locador validado",
+          detail: selectedContractProperty?.ownerName || "Locador ainda nao identificado no imovel.",
+          done: Boolean(selectedContractProperty?.ownerName),
+        },
+        {
+          label: "Finalidade comercial",
+          detail: selectedContract.content.financial.commercialPurpose || "Uso comercial ainda nao definido.",
+          done: Boolean(selectedContract.content.financial.commercialPurpose),
+        },
+        {
+          label: "Reajuste definido",
+          detail: selectedContract.content.financial.adjustmentTerm || "Regra de reajuste pendente.",
+          done: Boolean(selectedContract.content.financial.adjustmentTerm),
+        },
+        {
+          label: "Garantia definida",
+          detail: selectedContract.content.financial.guaranteeType || "Garantia locaticia pendente.",
+          done: Boolean(selectedContract.content.financial.guaranteeType),
+        },
+        {
+          label: "Obras e adequacoes",
+          detail:
+            selectedContract.content.financial.worksScope || selectedContract.content.financial.fitOutScope
+              ? "Escopo operacional registrado."
+              : "Obras e adequacoes ainda nao detalhadas.",
+          done: Boolean(
+            selectedContract.content.financial.worksScope || selectedContract.content.financial.fitOutScope,
+          ),
         },
       ]
     }
@@ -1377,6 +1591,10 @@ export function BrokerContractsPage() {
       paymentMethod: contract.content.financial.paymentMethod ?? "",
       guaranteeType: contract.content.financial.guaranteeType ?? "",
       inspectionReport: contract.content.financial.inspectionReport ?? "",
+      commercialPurpose: contract.content.financial.commercialPurpose ?? "",
+      adjustmentTerm: contract.content.financial.adjustmentTerm ?? "",
+      worksScope: contract.content.financial.worksScope ?? "",
+      fitOutScope: contract.content.financial.fitOutScope ?? "",
       additionalConditions: contract.content.financial.additionalConditions ?? "",
       clausesText: contract.content.clauses.join("\n"),
       reviewNotesText: contract.content.reviewNotes.join("\n"),

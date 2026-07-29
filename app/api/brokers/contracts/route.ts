@@ -111,6 +111,10 @@ async function buildPersistedContract(input: {
   paymentMethod?: unknown
   guaranteeType?: unknown
   inspectionReport?: unknown
+  commercialPurpose?: unknown
+  adjustmentTerm?: unknown
+  worksScope?: unknown
+  fitOutScope?: unknown
   additionalConditions?: unknown
   clausesText?: unknown
   reviewNotesText?: unknown
@@ -193,6 +197,14 @@ async function buildPersistedContract(input: {
         cleanText(input.guaranteeType, 120) || input.previous?.financial.guaranteeType || null,
       inspectionReport:
         cleanText(input.inspectionReport, 400) || input.previous?.financial.inspectionReport || null,
+      commercialPurpose:
+        cleanText(input.commercialPurpose, 160) || input.previous?.financial.commercialPurpose || null,
+      adjustmentTerm:
+        cleanText(input.adjustmentTerm, 160) || input.previous?.financial.adjustmentTerm || null,
+      worksScope:
+        cleanText(input.worksScope, 1200) || input.previous?.financial.worksScope || null,
+      fitOutScope:
+        cleanText(input.fitOutScope, 1200) || input.previous?.financial.fitOutScope || null,
       additionalConditions:
         cleanText(input.additionalConditions, 2000) ||
         input.previous?.financial.additionalConditions ||
@@ -286,6 +298,10 @@ export async function POST(request: NextRequest) {
       paymentMethod: body?.paymentMethod,
       guaranteeType: body?.guaranteeType,
       inspectionReport: body?.inspectionReport,
+      commercialPurpose: body?.commercialPurpose,
+      adjustmentTerm: body?.adjustmentTerm,
+      worksScope: body?.worksScope,
+      fitOutScope: body?.fitOutScope,
       additionalConditions: body?.additionalConditions,
       clausesText: body?.clausesText,
       reviewNotesText: body?.reviewNotesText,
