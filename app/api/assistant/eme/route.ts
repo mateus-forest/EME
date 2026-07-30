@@ -14,15 +14,24 @@ import {
   type AssessorAction,
 } from "@/lib/eme-backend"
 import {
-  doesCosCapabilityMutateData,
-  sanitizeWorkspaceContext,
-  executeCosExecutionPlan,
+  cancelWorkflow,
+  createWorkflowFromExecutionPlan,
   formatCosExecutionPlanResponse,
-  getCosCapabilityActionsForSurface,
+  formatWorkflowProgress,
+  getActiveWorkflow,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
   isCosCapabilityAvailableOnSurface,
   planCosExecution,
+  rebuildExecutionPlanFromWorkflow,
+  resumeWorkflowExecution,
+  resumeWorkflowState,
+  sanitizeWorkspaceContext,
+  shouldConfirmWorkflowMessage,
+  shouldResumeWorkflow,
+  stringifyConversationWorkflowContent,
+  updateWorkflowFromExecutionResult,
+  type CosWorkflow,
 } from "@/lib/cos"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
@@ -102,6 +111,10 @@ function buildCosHomeConfirmationResponse(action: AssessorAction) {
   return getCosCapabilityConfirmationMessage(action)
 }
 
+function formatWorkflowResponse(baseResponse: string, progress: string) {
+  return `${progress}\n\n${baseResponse}`.trim()
+}
+
 async function touchCosConversation(input: {
   conversation: { id: string; title: string } | null
   message: string
@@ -125,8 +138,31 @@ async function resolveCosConversation(brokerId: string, conversationId: string) 
       type: "cos_conversation",
       status: { not: "archived" },
     },
-    select: { id: true, title: true, createdAt: true, updatedAt: true },
+    select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
   })
+}
+
+async function persistConversationWorkflow(conversationId: string, workflow: CosWorkflow | null) {
+  return prisma.brokerDocument.update({
+    where: { id: conversationId },
+    data: { content: stringifyConversationWorkflowContent(workflow) },
+    select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
+  })
+}
+
+function workflowMetadata(workflow: CosWorkflow | null) {
+  return workflow
+    ? {
+        id: workflow.id,
+        status: workflow.status,
+        currentStep: workflow.currentStep,
+        pendingInput: workflow.pendingInput,
+        totalPausedMs: workflow.totalPausedMs,
+        startedAt: workflow.startedAt,
+        updatedAt: workflow.updatedAt,
+        completedAt: workflow.completedAt,
+      }
+    : null
 }
 
 export async function GET() {
@@ -245,6 +281,7 @@ export async function POST(request: NextRequest) {
   const conversationIdFromBody = cleanText(body?.conversationId, 80)
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
   const isCancellation = Boolean(body?.cancel)
+  const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
   let creditsUsed = 1
 
   if (!message) {
@@ -256,33 +293,33 @@ export async function POST(request: NextRequest) {
     const metadataSource = fromCosHome ? "portal_cos_home" : "portal"
     const surface = fromCosHome ? "cos_home" : "portal"
     const workspace = sanitizeWorkspaceContext(body?.workspace, surface)
+
     let conversationDocument:
       | {
           id: string
           title: string
+          content: string
           createdAt: Date
           updatedAt: Date
         }
       | null = null
 
-    if (fromCosHome) {
-      if (conversationIdFromBody) {
-        conversationDocument = await resolveCosConversation(user.broker.id, conversationIdFromBody)
-        if (!conversationDocument) {
-          return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
-        }
-      } else {
-        conversationDocument = await prisma.brokerDocument.create({
-          data: {
-            brokerId: user.broker.id,
-            type: "cos_conversation",
-            title: DEFAULT_COS_CONVERSATION_TITLE,
-            content: "",
-            status: "active",
-          },
-          select: { id: true, title: true, createdAt: true, updatedAt: true },
-        })
+    if (conversationIdFromBody) {
+      conversationDocument = await resolveCosConversation(user.broker.id, conversationIdFromBody)
+      if (!conversationDocument) {
+        return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
       }
+    } else {
+      conversationDocument = await prisma.brokerDocument.create({
+        data: {
+          brokerId: user.broker.id,
+          type: "cos_conversation",
+          title: DEFAULT_COS_CONVERSATION_TITLE,
+          content: stringifyConversationWorkflowContent(null),
+          status: "active",
+        },
+        select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
+      })
     }
 
     const brokerState = await prisma.broker.findUnique({
@@ -294,7 +331,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
     }
 
-    if (!brokerState?.aiAssistantEnabled && !isCancellation) {
+    if (!brokerState.aiAssistantEnabled && !isCancellation) {
       return NextResponse.json({ error: "Seu Assessor EME esta desativado no momento." }, { status: 403 })
     }
 
@@ -309,31 +346,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const pendingContext = await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
-    const executionPlan = planCosExecution({
-      message,
-      requestedAction: cleanText(body?.action ?? body?.actionType, 80),
-      pendingContext,
-      surface,
-      workspace,
-    })
-    const action = executionPlan.primaryStep.action as AssessorAction
+    const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
+    const resumableWorkflow = shouldResumeWorkflow(activeWorkflow) ? activeWorkflow : null
+    const pendingContext = resumableWorkflow ? null : await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
+    const executionPlan = resumableWorkflow
+      ? null
+      : planCosExecution({
+          message,
+          requestedAction,
+          pendingContext,
+          surface,
+          workspace,
+        })
+    const action = (resumableWorkflow?.steps[resumableWorkflow.currentStep]?.action ?? executionPlan?.primaryStep.action ?? "general") as AssessorAction
 
-    if (isCancellation && fromCosHome) {
-      const responseText = "Tudo bem. Nao executei a alteracao."
+    if (isCancellation) {
+      const cancelledWorkflow = resumableWorkflow ? cancelWorkflow(resumableWorkflow) : null
+      const responseText = cancelledWorkflow ? "Tudo bem. Workflow cancelado." : "Tudo bem. Nao executei a alteracao."
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
         actionName: action,
         brokerId: user.broker.id,
         visualAction: getCosCapabilityLabel(action),
-        planner: executionPlan.telemetry,
+        planner: executionPlan?.telemetry ?? null,
+        workflow: workflowMetadata(cancelledWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
 
-      const [updatedBroker, updatedConversation] = await Promise.all([
+      const [updatedBroker, persistedConversation, touchedConversation] = await Promise.all([
         getBrokerCredits(user.broker.id),
+        cancelledWorkflow && conversationDocument
+          ? persistConversationWorkflow(conversationDocument.id, cancelledWorkflow)
+          : Promise.resolve(conversationDocument),
         touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
         prisma.aiAssistantInteraction.create({
           data: {
@@ -374,12 +420,17 @@ export async function POST(request: NextRequest) {
         actionStatus: "cancelled",
         metadata: interactionMetadata,
         creditsUsed: 0,
-        conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
+        conversation: serializeConversation(touchedConversation ?? persistedConversation ?? conversationDocument ?? {
+          id: "",
+          title: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
         ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
       })
     }
 
-    if (fromCosHome && !isCosCapabilityAvailableOnSurface(action, "cos_home")) {
+    if (fromCosHome && executionPlan && !isCosCapabilityAvailableOnSurface(action, "cos_home")) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json({
         response: buildCosHomeUnsupportedResponse(),
@@ -391,8 +442,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (fromCosHome && executionPlan.requiresConfirmation && !body?.confirm) {
-      const responseText = executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action)
+    if (resumableWorkflow?.pendingInput?.field === "confirmation" && !shouldConfirmWorkflowMessage(message, Boolean(body?.confirm))) {
+      const responseText = formatWorkflowResponse(buildCosHomeConfirmationResponse(action), formatWorkflowProgress(resumableWorkflow))
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
@@ -400,7 +451,7 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker.id,
         visualAction: getCosCapabilityLabel(action),
         confirmationRequired: true,
-        planner: executionPlan.telemetry,
+        workflow: workflowMetadata(resumableWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
@@ -453,7 +504,85 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    creditsUsed = executionPlan.steps.reduce((total, step) => total + getEmeCreditCost(step.action), 0)
+    if (executionPlan?.requiresConfirmation && !body?.confirm) {
+      const pendingWorkflow = createWorkflowFromExecutionPlan({
+        conversationId: conversationDocument?.id ?? "ephemeral",
+        plan: executionPlan,
+      })
+      const responseText = formatWorkflowResponse(
+        executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action),
+        formatWorkflowProgress(pendingWorkflow),
+      )
+      const interactionMetadata = {
+        source: metadataSource,
+        parsedIntent: action,
+        actionName: action,
+        brokerId: user.broker.id,
+        visualAction: getCosCapabilityLabel(action),
+        confirmationRequired: true,
+        planner: executionPlan.telemetry,
+        workflow: workflowMetadata(pendingWorkflow),
+        conversationId: conversationDocument?.id ?? conversationIdFromBody,
+        displayMessage,
+      } as Prisma.InputJsonObject
+
+      const [updatedBroker, _persistedConversation, updatedConversation] = await Promise.all([
+        getBrokerCredits(user.broker.id),
+        conversationDocument ? persistConversationWorkflow(conversationDocument.id, pendingWorkflow) : Promise.resolve(conversationDocument),
+        touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
+        prisma.aiAssistantInteraction.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            prompt: message,
+            response: responseText,
+            actionType: action,
+            creditsUsed: 0,
+            channel: "assessor_eme",
+            intent: action,
+            actionStatus: "needs_confirmation",
+            metadata: interactionMetadata,
+            errorMessage: null,
+          },
+        }),
+        prisma.emeMessage.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            channel: "assessor_eme",
+            direction: "broker_to_ai",
+            message,
+            response: responseText,
+            detectedIntent: action,
+            actionType: action,
+            actionStatus: "needs_confirmation",
+            metadata: interactionMetadata,
+            errorMessage: null,
+            creditsUsed: 0,
+          },
+        }),
+      ])
+
+      return NextResponse.json({
+        response: responseText,
+        action,
+        actionStatus: "needs_confirmation",
+        metadata: interactionMetadata,
+        creditsUsed: 0,
+        confirmRequired: true,
+        conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
+        ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+      })
+    }
+
+    const workflow = resumableWorkflow
+      ? resumeWorkflowState(resumableWorkflow)
+      : createWorkflowFromExecutionPlan({
+          conversationId: conversationDocument?.id ?? "ephemeral",
+          plan: executionPlan!,
+        })
+
+    creditsUsed = workflow.steps.reduce((total, step) => total + getEmeCreditCost(step.action), 0)
 
     if (brokerState.aiCreditsBalance < creditsUsed) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
@@ -472,25 +601,31 @@ export async function POST(request: NextRequest) {
     let finalCreditsUsed = 0
     const actionStartedAt = Date.now()
     let executionResult = null
+    let updatedWorkflow = workflow
 
     try {
-      executionResult = await executeCosExecutionPlan({
-        plan: executionPlan,
+      executionResult = await resumeWorkflowExecution({
+        workflow,
         brokerId: user.broker.id,
         userId: user.id,
         message,
-        confirm: Boolean(body?.confirm),
-        payload: typeof body?.payload === "object" && body.payload ? (body.payload as Record<string, unknown>) : {},
+        confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
+        workspace,
+      })
+
+      updatedWorkflow = updateWorkflowFromExecutionResult({
+        workflow,
+        result: executionResult,
       })
 
       actionStatus =
-        executionResult.status === "awaiting_input"
+        updatedWorkflow.status === "awaiting_input"
           ? "processing"
-          : executionResult.status === "failed"
+          : updatedWorkflow.status === "failed"
             ? "error"
             : "success"
 
-      finalCreditsUsed = executionResult.completedSteps.reduce((total, step) => {
+      finalCreditsUsed = executionResult.executedSteps.reduce((total, step) => {
         if ((step.result?.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
           return total
         }
@@ -503,39 +638,33 @@ export async function POST(request: NextRequest) {
           amount: finalCreditsUsed,
           actionType: action,
           description:
-            executionPlan.steps.length > 1
-              ? `Assessor EME: plano ${executionPlan.steps.map((step) => getCosCapabilityLabel(step.action)).join(" + ")}`
+            workflow.steps.length > 1
+              ? `Assessor EME: workflow ${workflow.steps.map((step) => getCosCapabilityLabel(step.action)).join(" + ")}`
               : `Assessor EME: ${getCosCapabilityLabel(action)}`,
           metadata: {
             source: "api/assistant/eme",
             action,
-            planId: executionPlan.id,
-            steps: executionPlan.steps.map((step) => step.action),
+            planId: workflow.id,
+            steps: workflow.steps.map((step) => step.action),
           },
         })
       }
 
+      const planForFormatting = executionPlan ?? rebuildExecutionPlanFromWorkflow(workflow)
       responseText = await formatCosExecutionPlanResponse({
         message,
-        plan: executionPlan,
+        plan: planForFormatting,
         result: executionResult,
       })
+      responseText = formatWorkflowResponse(responseText, formatWorkflowProgress(updatedWorkflow))
 
-      console.info("[api][assistant][eme][action]", {
-        detectedIntent: action,
-        executedAction: action,
-        capabilityId: executionPlan.primaryStep.capabilityId,
-        plannerSource: executionPlan.source,
-        plannerStepCount: executionPlan.steps.length,
-        plannerUnresolvedGoals: executionPlan.unresolvedGoals.map((goal) => goal.id),
-        actionStatus,
-        brokerId: user.broker.id,
-        leadId: executionResult.leadId ?? null,
-        propertySearchFilters: executionResult.metadata?.propertySearchFilters ?? null,
-        visualAction: getCosCapabilityLabel(action),
-        planId: executionPlan.id,
-        interruptedStepId: executionResult.interruptedStep?.id ?? null,
-        interruptedReason: executionResult.interruptedReason,
+      console.info("[cos][workflow]", {
+        workflowId: updatedWorkflow.id,
+        status: updatedWorkflow.status,
+        currentStep: updatedWorkflow.currentStep,
+        pendingInput: updatedWorkflow.pendingInput?.field ?? null,
+        stepCount: updatedWorkflow.steps.length,
+        totalPausedMs: updatedWorkflow.totalPausedMs,
         durationMs: Date.now() - actionStartedAt,
       })
     } catch (caughtActionError) {
@@ -543,6 +672,13 @@ export async function POST(request: NextRequest) {
       errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na acao interna."
       responseText = getAssessorActionErrorResponse(action)
       finalCreditsUsed = 0
+      updatedWorkflow = {
+        ...workflow,
+        status: "failed",
+        pendingInput: null,
+        updatedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      }
 
       await prisma.notification.create({
         data: {
@@ -554,7 +690,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const actionMetadata = ((executionResult?.metadata ?? {}) as Prisma.InputJsonObject)
+    const actionMetadata = (executionResult?.metadata ?? {}) as Prisma.InputJsonObject
     const interactionMetadata = {
       ...actionMetadata,
       source: metadataSource,
@@ -563,13 +699,15 @@ export async function POST(request: NextRequest) {
       brokerId: user.broker.id,
       durationMs: Date.now() - actionStartedAt,
       visualAction: getCosCapabilityLabel(action),
-      planner: executionPlan.telemetry,
+      planner: executionPlan?.telemetry ?? null,
+      workflow: workflowMetadata(updatedWorkflow),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
     } as Prisma.InputJsonObject
 
-    const [updatedBroker, updatedConversation] = await Promise.all([
+    const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([
       getBrokerCredits(user.broker.id),
+      conversationDocument ? persistConversationWorkflow(conversationDocument.id, updatedWorkflow) : Promise.resolve(conversationDocument),
       touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
       prisma.aiAssistantInteraction.create({
         data: {
@@ -614,8 +752,9 @@ export async function POST(request: NextRequest) {
       actionStatus,
       metadata: interactionMetadata,
       creditsUsed: finalCreditsUsed,
-      conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
-      ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 } }),
+      confirmRequired: updatedWorkflow.pendingInput?.field === "confirmation",
+      conversation: touchedConversation ? serializeConversation(touchedConversation) : null,
+      ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
     })
   } catch (caughtError) {
     console.error("[api][assistant][eme] failed", {

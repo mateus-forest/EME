@@ -62,6 +62,15 @@ Module._extensions[".tsx"] = transpileTypeScript
 
 const { planCosCapability } = require(path.join(repoRoot, "lib/cos/planner.ts"))
 const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-planner.ts"))
+const {
+  cancelWorkflow,
+  createWorkflowFromExecutionPlan,
+  formatWorkflowProgress,
+  resumeWorkflowState,
+  shouldConfirmWorkflowMessage,
+  shouldResumeWorkflow,
+  updateWorkflowFromExecutionResult,
+} = require(path.join(repoRoot, "lib/cos/workflow-engine.ts"))
 
 const scenarios = [
   {
@@ -302,4 +311,135 @@ const executionResults = executionScenarios.map((scenario) => {
 })
 
 console.table(executionResults)
-console.log(`Validated ${results.length} capability scenarios and ${executionResults.length} execution-plan scenarios successfully.`)
+
+const workflowPlan = planCosExecution({
+  message: "Cadastre este cliente e gere uma proposta.",
+  surface: "portal",
+})
+
+const pendingWorkflow = createWorkflowFromExecutionPlan({
+  conversationId: "conversation_123",
+  plan: workflowPlan,
+})
+
+assert.strictEqual(pendingWorkflow.status, "awaiting_input", "Workflow inicial deveria aguardar confirmacao para plano mutativo.")
+assert.strictEqual(pendingWorkflow.pendingInput?.field, "confirmation", "Workflow inicial deveria pedir confirmacao.")
+assert.strictEqual(formatWorkflowProgress(pendingWorkflow), "Etapa 1 de 2\nAguardando: Confirmação.", "Progresso inicial inesperado.")
+assert.strictEqual(shouldResumeWorkflow(pendingWorkflow), true, "Workflow aguardando input deveria ser retomavel.")
+assert.strictEqual(shouldConfirmWorkflowMessage("sim", false), true, "Mensagem afirmativa deveria confirmar workflow.")
+
+const resumedWorkflow = resumeWorkflowState({
+  ...pendingWorkflow,
+  pausedAt: "2026-07-30T12:00:00.000Z",
+  updatedAt: "2026-07-30T12:00:00.000Z",
+})
+
+assert.strictEqual(resumedWorkflow.status, "running", "Workflow retomado deveria voltar para running.")
+assert.strictEqual(resumedWorkflow.pausedAt, null, "Workflow retomado nao deveria manter pausedAt.")
+
+const awaitingInputWorkflow = updateWorkflowFromExecutionResult({
+  workflow: resumedWorkflow,
+  result: {
+    planId: resumedWorkflow.id,
+    status: "awaiting_input",
+    primaryAction: "createLead",
+    primaryCapabilityId: "lead.create",
+    steps: [
+      {
+        id: `${resumedWorkflow.id}:step:1`,
+        order: 0,
+        entity: "lead",
+        capabilityId: "lead.create",
+        action: "createLead",
+        status: "awaiting_input",
+        dependsOn: [],
+        durationMs: 42,
+        errorMessage: null,
+        plan: workflowPlan.steps[0].plan,
+        result: {
+          response: "Qual o telefone dele?",
+          metadata: {
+            required: ["phone"],
+            extractedName: "Mateus",
+            parsedData: { extractedName: "Mateus" },
+          },
+        },
+      },
+      workflowPlan.steps[1],
+    ],
+    completedSteps: [],
+    executedSteps: [],
+    interruptedStep: {
+      id: `${resumedWorkflow.id}:step:1`,
+      order: 0,
+      entity: "lead",
+      capabilityId: "lead.create",
+      action: "createLead",
+      status: "awaiting_input",
+      dependsOn: [],
+      durationMs: 42,
+      errorMessage: null,
+      plan: workflowPlan.steps[0].plan,
+      result: {
+        response: "Qual o telefone dele?",
+        metadata: {
+          required: ["phone"],
+          extractedName: "Mateus",
+          parsedData: { extractedName: "Mateus" },
+        },
+      },
+    },
+    interruptedReason: "awaiting_input",
+    unresolvedGoals: [],
+    metadata: {},
+    totalDurationMs: 42,
+  },
+})
+
+assert.strictEqual(awaitingInputWorkflow.status, "awaiting_input", "Workflow deveria entrar em awaiting_input.")
+assert.strictEqual(awaitingInputWorkflow.pendingInput?.field, "phone", "Workflow deveria mapear phone como pending input.")
+assert.strictEqual(awaitingInputWorkflow.pendingInput?.parsedData?.extractedName, "Mateus", "Workflow deveria preservar parsedData.")
+
+const completedWorkflow = updateWorkflowFromExecutionResult({
+  workflow: awaitingInputWorkflow,
+  result: {
+    planId: awaitingInputWorkflow.id,
+    status: "completed",
+    primaryAction: "createLead",
+    primaryCapabilityId: "lead.create",
+    steps: workflowPlan.steps.map((step, index) => ({
+      ...step,
+      status: "completed",
+      durationMs: 100 + index,
+      result: { response: "ok", metadata: {} },
+    })),
+    completedSteps: workflowPlan.steps.map((step, index) => ({
+      ...step,
+      status: "completed",
+      durationMs: 100 + index,
+      result: { response: "ok", metadata: {} },
+    })),
+    executedSteps: workflowPlan.steps.map((step, index) => ({
+      ...step,
+      status: "completed",
+      durationMs: 100 + index,
+      result: { response: "ok", metadata: {} },
+    })),
+    interruptedStep: null,
+    interruptedReason: null,
+    unresolvedGoals: [],
+    metadata: {},
+    totalDurationMs: 201,
+  },
+})
+
+assert.strictEqual(completedWorkflow.status, "completed", "Workflow deveria concluir.")
+assert.strictEqual(formatWorkflowProgress(completedWorkflow), "Workflow concluido.\n2 etapas executadas.", "Resumo final do workflow inesperado.")
+
+const cancelledWorkflow = cancelWorkflow(awaitingInputWorkflow)
+assert.strictEqual(cancelledWorkflow.status, "cancelled", "Workflow cancelado deveria receber status cancelled.")
+assert.strictEqual(cancelledWorkflow.pendingInput, null, "Workflow cancelado nao deveria manter pendingInput.")
+
+console.log(
+  `Validated ${results.length} capability scenarios, ${executionResults.length} execution-plan scenarios and workflow lifecycle scenarios successfully.`,
+)

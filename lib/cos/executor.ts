@@ -87,18 +87,29 @@ export async function executeCosExecutionPlan(input: {
   message: string
   confirm?: boolean
   payload?: Record<string, unknown>
+  startStepIndex?: number
+  existingSteps?: CosExecutionStep[]
 }): Promise<CosExecutionPlanResult> {
   const startedAt = Date.now()
-  const steps: CosExecutionStep[] = input.plan.steps.map((step) => ({
+  const steps: CosExecutionStep[] = (input.existingSteps ?? input.plan.steps).map((step) => ({
     ...step,
     dependsOn: [...step.dependsOn],
   }))
+  const startStepIndex = Math.max(0, input.startStepIndex ?? 0)
   let interruptedStep: CosExecutionStep | null = null
   let interruptedReason: string | null = null
   let lastLeadId: string | undefined
   let lastPropertyId: string | undefined
+  const executedSteps: CosExecutionStep[] = []
 
-  for (const step of steps) {
+  for (let index = startStepIndex; index < steps.length; index += 1) {
+    const step = steps[index]
+    if (step.status === "completed") {
+      lastLeadId = step.result?.leadId ?? lastLeadId
+      lastPropertyId = step.result?.propertyId ?? lastPropertyId
+      continue
+    }
+
     step.status = "running"
     const stepStartedAt = Date.now()
 
@@ -122,16 +133,19 @@ export async function executeCosExecutionPlan(input: {
         step.status = "awaiting_input"
         interruptedStep = step
         interruptedReason = "awaiting_input"
+        executedSteps.push(step)
         break
       }
 
       step.status = "completed"
+      executedSteps.push(step)
     } catch (caughtError) {
       step.durationMs = Date.now() - stepStartedAt
       step.status = "failed"
       step.errorMessage = caughtError instanceof Error ? caughtError.message : "Erro interno na etapa."
       interruptedStep = step
       interruptedReason = "failed"
+      executedSteps.push(step)
       break
     }
   }
@@ -163,6 +177,7 @@ export async function executeCosExecutionPlan(input: {
     primaryCapabilityId: input.plan.primaryStep.capabilityId,
     steps,
     completedSteps,
+    executedSteps,
     interruptedStep,
     interruptedReason,
     unresolvedGoals: input.plan.unresolvedGoals,

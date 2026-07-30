@@ -1693,19 +1693,24 @@ Revise e preencha os dados restantes antes de enviar.`,
   }
 
   if (action === "createLead") {
+    const pendingLeadData = pendingContext.action === "createLead" ? metadataRecord(pendingContext.parsedData) : {}
     const extracted = extractLeadData(message)
-    const name = cleanText(payload?.name, 120) || extracted.name
-    const phone = normalizePhone(payload?.phone) || extracted.phone
+    const name =
+      cleanText(payload?.name, 120) ||
+      cleanText(pendingLeadData.extractedName, 120) ||
+      cleanText(pendingLeadData.name, 120) ||
+      extracted.name
+    const phone = normalizePhone(payload?.phone) || normalizePhone(pendingLeadData.phone) || extracted.phone
     if (!name) {
       return {
         response: "Qual o nome do lead?",
-        metadata: { required: ["name"], readyForConfirmation: false },
+        metadata: { required: ["name"], readyForConfirmation: false, parsedData: pendingLeadData },
       }
     }
     if (!phone && Boolean(payload?.requirePhone)) {
       return {
         response: "Qual o telefone dele?",
-        metadata: { required: ["phone"], readyForConfirmation: false, extractedName: name },
+        metadata: { required: ["phone"], readyForConfirmation: false, extractedName: name, parsedData: { ...pendingLeadData, extractedName: name } },
       }
     }
 

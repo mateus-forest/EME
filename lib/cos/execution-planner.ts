@@ -137,7 +137,7 @@ const executionRecipes: ExecutionRecipe[] = [
   },
 ]
 
-function createStepPlanFromCapabilityId(input: {
+export function createStepPlanForCapability(input: {
   capabilityId: CosCapabilityId
   message: string
   requestedAction?: string
@@ -342,7 +342,7 @@ export function planCosExecution(input: {
   const planId = randomUUID()
   const reason = matchedRecipe.reason({ normalizedMessage, workspace })
   const steps = matchedRecipe.stepIds.map((capabilityId, order) =>
-    createStepPlanFromCapabilityId({
+    createStepPlanForCapability({
       capabilityId,
       message: input.message,
       requestedAction: input.requestedAction,

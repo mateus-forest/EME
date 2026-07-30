@@ -266,6 +266,7 @@ export type CosExecutionPlanResult = {
   primaryCapabilityId: CosCapabilityId
   steps: CosExecutionStep[]
   completedSteps: CosExecutionStep[]
+  executedSteps: CosExecutionStep[]
   interruptedStep: CosExecutionStep | null
   interruptedReason: string | null
   unresolvedGoals: CosExecutionPlanGap[]
@@ -273,4 +274,70 @@ export type CosExecutionPlanResult = {
   leadId?: string
   propertyId?: string
   totalDurationMs: number
+}
+
+export type CosPendingInputType =
+  | "text"
+  | "phone"
+  | "currency"
+  | "time"
+  | "selection"
+  | "confirmation"
+
+export type CosPendingInput = {
+  field: string
+  label: string
+  type: CosPendingInputType
+  required: boolean
+  entity: CosEntityModuleId
+  action: AssessorAction
+  parsedData: Record<string, unknown>
+}
+
+export type CosWorkflowStatus =
+  | "running"
+  | "awaiting_input"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "cancelled"
+
+export type CosWorkflowStepState = {
+  id: string
+  order: number
+  entity: CosEntityModuleId
+  capabilityId: CosCapabilityId
+  action: AssessorAction
+  status: CosExecutionStepStatus
+  dependsOn: string[]
+  durationMs: number | null
+  errorMessage: string | null
+  resultResponse: string | null
+  resultMetadata: Prisma.InputJsonObject | null
+  leadId?: string
+  propertyId?: string
+}
+
+export type CosWorkflow = {
+  id: string
+  conversationId: string
+  status: CosWorkflowStatus
+  executionPlan: {
+    id: string
+    source: CosExecutionPlanSource
+    reason: string
+    message: string
+    requestedAction?: string
+    surface: CosCapabilitySurface
+    workspace: CosWorkspaceContext | null
+    unresolvedGoals: CosExecutionPlanGap[]
+  }
+  currentStep: number
+  steps: CosWorkflowStepState[]
+  pendingInput: CosPendingInput | null
+  startedAt: string
+  updatedAt: string
+  completedAt: string | null
+  pausedAt: string | null
+  totalPausedMs: number
 }
