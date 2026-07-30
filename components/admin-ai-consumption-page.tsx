@@ -1,489 +1,332 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Bot, CreditCard, History, Search, Sparkles, UserRound } from "lucide-react"
+import { BarChart3, CreditCard, DollarSign, Layers3, Sparkles, TrendingUp } from "lucide-react"
 
 import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import { AdminPageShell } from "@/components/admin-page-shell"
-import { useAdminBrokers, type AdminBrokerRecord } from "@/components/use-admin-data"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-
-const ESTIMATED_COST_PER_CREDIT = 0.08
-const BONUS_REASON_OPTIONS = [
-  "Bonificacao comercial",
-  "Campanha promocional",
-  "Suporte operacional",
-  "Recuperacao de experiencia",
-  "Teste acompanhado",
-  "Outro",
-] as const
-
-type BonusHistoryItem = {
-  id: string
-  brokerId: string
-  userId: string
-  userName: string
-  userEmail: string
-  amount: number
-  balanceBefore: number
-  balanceAfter: number
-  reason: string
-  adminUserId: string
-  adminName: string
-  createdAt: string
-}
+import { useAdminMonetization } from "@/components/use-admin-monetization"
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-function formatDateTime(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? "-"
-    : new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date)
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value)
 }
 
 export function AdminAiConsumptionPage() {
-  const [brokers, setBrokers] = useAdminBrokers()
-  const [brokerSearch, setBrokerSearch] = useState("")
-  const [historySearch, setHistorySearch] = useState("")
-  const [selectedBrokerId, setSelectedBrokerId] = useState("")
-  const [creditAmount, setCreditAmount] = useState("10")
-  const [reasonPreset, setReasonPreset] = useState<(typeof BONUS_REASON_OPTIONS)[number]>("Bonificacao comercial")
-  const [customReason, setCustomReason] = useState("")
-  const [history, setHistory] = useState<BonusHistoryItem[]>([])
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [feedback, setFeedback] = useState("")
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const { report, isLoading, error } = useAdminMonetization()
 
-  const summary = useMemo(
-    () => ({
-      balance: brokers.reduce((sum, broker) => sum + broker.aiCreditsBalance, 0),
-      used: brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0),
-      estimatedCost: brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0) * ESTIMATED_COST_PER_CREDIT,
-      users: brokers.filter((broker) => broker.aiCreditsUsedThisMonth > 0 || broker.aiCreditsBalance > 0).length,
-    }),
-    [brokers],
-  )
-
-  const filteredBrokers = useMemo(() => {
-    const normalized = brokerSearch.trim().toLowerCase()
-    if (!normalized) return brokers
-    return brokers.filter((broker) =>
-      [broker.id, broker.name, broker.email].some((value) => value.toLowerCase().includes(normalized)),
+  if (isLoading) {
+    return (
+      <AdminPageShell title="Monetizacao" subtitle="Inventario operacional, custos reais e estrategia de planos do EME">
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+          <CardContent className="px-6 py-6 text-sm text-[#6B7280]">Carregando estudo completo de monetizacao...</CardContent>
+        </Card>
+      </AdminPageShell>
     )
-  }, [brokerSearch, brokers])
-
-  const selectedBroker =
-    filteredBrokers.find((broker) => broker.id === selectedBrokerId) ??
-    brokers.find((broker) => broker.id === selectedBrokerId) ??
-    filteredBrokers[0] ??
-    brokers[0] ??
-    null
-
-  const normalizedHistorySearch = historySearch.trim().toLowerCase()
-  const filteredHistory = useMemo(() => {
-    if (!normalizedHistorySearch) return history
-    return history.filter((item) =>
-      [item.id, item.brokerId, item.userName, item.userEmail, item.reason, item.adminName]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(normalizedHistorySearch)),
-    )
-  }, [history, normalizedHistorySearch])
-
-  const resolvedReason =
-    reasonPreset === "Outro" ? customReason.trim() : reasonPreset
-
-  const numericAmount = Math.trunc(Number(creditAmount))
-  const canSubmit = Boolean(selectedBroker && Number.isFinite(numericAmount) && numericAmount > 0 && resolvedReason)
-
-  const loadHistory = useCallback(async (searchValue?: string) => {
-    setIsLoadingHistory(true)
-
-    try {
-      const params = new URLSearchParams()
-      const normalized = (searchValue ?? historySearch).trim()
-      if (normalized) params.set("q", normalized)
-
-      const response = await fetch(`/api/admin/credits/bonuses${params.toString() ? `?${params.toString()}` : ""}`, {
-        credentials: "include",
-        cache: "no-store",
-      })
-      const data = (await response.json().catch(() => null)) as { bonuses?: BonusHistoryItem[]; error?: string } | null
-      if (!response.ok) throw new Error(data?.error || "Nao foi possivel carregar o historico.")
-      setHistory(data?.bonuses ?? [])
-    } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel carregar o historico.")
-    } finally {
-      setIsLoadingHistory(false)
-    }
-  }, [historySearch])
-
-  useEffect(() => {
-    if (!selectedBrokerId && filteredBrokers[0]) {
-      setSelectedBrokerId(filteredBrokers[0].id)
-    }
-  }, [filteredBrokers, selectedBrokerId])
-
-  useEffect(() => {
-    void loadHistory()
-  }, [loadHistory])
-
-  async function applyBonus() {
-    if (!selectedBroker || !canSubmit) return
-
-    setIsSubmitting(true)
-    setFeedback("")
-
-    try {
-      const response = await fetch(`/api/admin/brokers/${selectedBroker.id}/credits`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({ amount: numericAmount, reason: resolvedReason }),
-      })
-
-      const data = (await response.json().catch(() => null)) as
-        | { error?: string; broker?: { id: string; aiCreditsBalance: number; aiCreditsUsedThisMonth: number } }
-        | null
-
-      if (!response.ok || !data?.broker) {
-        throw new Error(data?.error || "Nao foi possivel bonificar creditos.")
-      }
-
-      setBrokers((current) =>
-        current.map((item) =>
-          item.id === data.broker?.id
-            ? {
-                ...item,
-                aiCreditsBalance: data.broker.aiCreditsBalance,
-                aiCreditsUsedThisMonth: data.broker.aiCreditsUsedThisMonth,
-              }
-            : item,
-        ),
-      )
-
-      await loadHistory()
-      setFeedback("Bonificacao aplicada com sucesso.")
-      setIsConfirmOpen(false)
-      setCreditAmount("10")
-      setReasonPreset("Bonificacao comercial")
-      setCustomReason("")
-    } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel bonificar creditos.")
-    } finally {
-      setIsSubmitting(false)
-    }
   }
 
+  if (error || !report) {
+    return (
+      <AdminPageShell title="Monetizacao" subtitle="Inventario operacional, custos reais e estrategia de planos do EME">
+        <AdminEmptyState
+          icon={DollarSign}
+          title="Nao foi possivel carregar o estudo"
+          description={error || "O dashboard de monetizacao nao retornou dados neste momento."}
+        >
+          <AdminStructureCards
+            items={[
+              "Inventario de operacoes com custo real ou estimado",
+              "Planos sugeridos com margem por perfil",
+              "Ranking de modulos, operacoes e contas mais caras",
+            ]}
+          />
+        </AdminEmptyState>
+      </AdminPageShell>
+    )
+  }
+
+  const topInventory = report.inventory.slice().sort((first, second) => second.monthlyCostBrl - first.monthlyCostBrl).slice(0, 12)
+
   return (
-    <AdminPageShell title="Consumo IA" subtitle="Bonificacoes, saldos e historico operacional de creditos">
+    <AdminPageShell
+      title="Monetizacao"
+      subtitle={`Baseado no codigo atual do EME e na telemetria operacional registrada ate ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(report.generatedAt))}`}
+    >
       <div className="grid gap-5">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Creditos usados no mes" value={String(summary.used)} icon={Sparkles} />
-          <Metric label="Creditos disponiveis" value={String(summary.balance)} icon={CreditCard} />
-          <Metric label="Usuarios com saldo ou uso" value={String(summary.users)} icon={UserRound} />
-          <Metric label="Custo estimado" value={formatBRL(summary.estimatedCost)} icon={Bot} />
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {report.overview.map((metric) => (
+            <MetricCard key={metric.label} label={metric.label} value={metric.value} helper={metric.helper} />
+          ))}
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">Bonificar creditos IA</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Operacoes mais caras</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Busque um usuario, valide o saldo atual e aplique a bonificacao diretamente na carteira real.
+                Custos por operacao calculados a partir da telemetria recente ou, na ausencia de uso, pela estimativa do catalogo.
               </p>
             </CardHeader>
-            <CardContent className="grid gap-4 px-6 pb-6 pt-0">
-              <label className="grid gap-2">
-                <span className="text-sm font-medium text-[#4B5563]">Buscar usuario</span>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
-                  <Input
-                    value={brokerSearch}
-                    onChange={(event) => setBrokerSearch(event.target.value)}
-                    placeholder="Nome, email ou ID"
-                    className="h-11 rounded-xl pl-10"
-                  />
-                </div>
-              </label>
-
-              <div className="grid gap-3">
-                {filteredBrokers.length > 0 ? (
-                  filteredBrokers.slice(0, 8).map((broker) => {
-                    const isActive = broker.id === selectedBroker?.id
-                    return (
-                      <button
-                        key={broker.id}
-                        type="button"
-                        onClick={() => setSelectedBrokerId(broker.id)}
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
-                          isActive
-                            ? "border-[#009b3a]/22 bg-[#eef9f1]"
-                            : "border-black/[0.06] bg-[#fbfbf8] hover:bg-white"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-[#050505]">{broker.name}</p>
-                            <p className="mt-1 text-sm text-[#6B7280]">{broker.email}</p>
-                          </div>
-                          <span className="rounded-full border border-black/[0.06] bg-white px-3 py-1 text-xs text-[#4B5563]">
-                            {broker.plan}
-                          </span>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#5F6B7A]">
-                          <InfoBadge label={`ID ${broker.id}`} />
-                          <InfoBadge label={`${broker.aiCreditsBalance} creditos`} />
-                          <InfoBadge label={`${broker.aiCreditsUsedThisMonth} usados no mes`} />
-                        </div>
-                      </button>
-                    )
-                  })
-                ) : (
-                  <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-4 py-5 text-sm text-[#6B7280]">
-                    Nenhum usuario encontrado para esta busca.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">Aplicar bonificacao</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 px-6 pb-6 pt-0">
-              {selectedBroker ? (
-                <>
-                  <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                    <p className="text-sm font-semibold text-[#050505]">{selectedBroker.name}</p>
-                    <p className="mt-1 text-sm text-[#6B7280]">{selectedBroker.email}</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      <InfoBlock label="Plano" value={selectedBroker.plan} />
-                      <InfoBlock label="Saldo atual" value={`${selectedBroker.aiCreditsBalance} creditos`} />
+            <CardContent className="grid gap-3 px-6 pb-6 pt-0">
+              {topInventory.map((item) => (
+                <div key={item.operationKey} className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-[#050505]">{item.feature}</p>
+                      <p className="mt-1 text-sm text-[#6B7280]">{item.module} · {item.provider} · {item.model}</p>
                     </div>
+                    <span className="rounded-full border border-black/[0.06] bg-white px-3 py-1 text-xs text-[#4B5563]">
+                      {formatBRL(item.monthlyCostBrl)}/mes
+                    </span>
                   </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium text-[#4B5563]">Quantidade</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={creditAmount}
-                        onChange={(event) => setCreditAmount(event.target.value)}
-                        className="h-11 rounded-xl"
-                      />
-                    </label>
-
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium text-[#4B5563]">Motivo</span>
-                      <Select value={reasonPreset} onValueChange={(value) => setReasonPreset(value as (typeof BONUS_REASON_OPTIONS)[number])}>
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BONUS_REASON_OPTIONS.map((item) => (
-                            <SelectItem key={item} value={item}>
-                              {item}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </label>
+                  <div className="mt-3 grid gap-2 text-sm text-[#4B5563] sm:grid-cols-2 xl:grid-cols-4">
+                    <Info label="Operacao" value={item.operationKey} />
+                    <Info label="Capacidade" value={item.capability} />
+                    <Info label="Media" value={formatBRL(item.avgCostBrl)} />
+                    <Info label="Creditos" value={String(item.suggestedCredits)} />
+                    <Info label="Requests" value={formatNumber(item.requestCount)} />
+                    <Info label="Input" value={formatNumber(item.avgInputTokens)} />
+                    <Info label="Output" value={formatNumber(item.avgOutputTokens)} />
+                    <Info label="Cache" value={item.cacheable ? "Sim" : "Nao"} />
                   </div>
-
-                  {reasonPreset === "Outro" ? (
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium text-[#4B5563]">Descreva o motivo</span>
-                      <Textarea
-                        value={customReason}
-                        onChange={(event) => setCustomReason(event.target.value)}
-                        maxLength={180}
-                        className="min-h-24 rounded-[1.25rem]"
-                        placeholder="Explique a bonificacao aplicada."
-                      />
-                    </label>
-                  ) : null}
-
-                  <div className="rounded-[1.25rem] border border-[#dce9df] bg-[#f7fbf8] p-4 text-sm leading-6 text-[#4B5563]">
-                    A operacao registra usuario, administrador responsavel, saldo anterior, saldo posterior, motivo e data da bonificacao.
-                  </div>
-
-                  <Button
-                    type="button"
-                    disabled={!canSubmit}
-                    onClick={() => setIsConfirmOpen(true)}
-                    className="h-11 rounded-xl bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
-                  >
-                    Confirmar bonificacao
-                  </Button>
-                </>
-              ) : (
-                <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-4 py-5 text-sm text-[#6B7280]">
-                  Selecione um usuario para visualizar plano, saldo atual e aplicar a bonificacao.
                 </div>
-              )}
-
-              {feedback ? (
-                <div className="rounded-[1rem] border border-[#dce9df] bg-[#eef9f1] px-4 py-3 text-sm text-[#0f7a35]">
-                  {feedback}
-                </div>
-              ) : null}
+              ))}
             </CardContent>
           </Card>
+
+          <div className="grid gap-5">
+            <InsightCard
+              icon={TrendingUp}
+              title="Rankings"
+              items={[
+                `Operacao lider: ${report.ranking.expensiveOperations[0]?.label || "-"}`,
+                `Modulo lider: ${report.ranking.expensiveModules[0]?.label || "-"}`,
+                `Plano mais custoso: ${report.ranking.expensivePlans[0]?.helper || report.ranking.expensivePlans[0]?.label || "-"}`,
+              ]}
+            />
+            <InsightCard
+              icon={Layers3}
+              title="Distribuicao"
+              items={[
+                `Top modelo: ${report.distribution.costByModel[0]?.label || "-"}`,
+                `Top capability: ${report.distribution.costByCapability[0]?.label || "-"}`,
+                `Workflows mapeados: ${report.distribution.costByWorkflow.length}`,
+              ]}
+            />
+            <InsightCard
+              icon={Sparkles}
+              title="Referencia de pricing"
+              items={[
+                `Cambio USD/BRL: ${report.pricingReference.usdToBrlRate.toFixed(4)}`,
+                `Data de referencia: ${report.pricingReference.usdToBrlDate}`,
+                "OpenAI e Luma baseados em precos oficiais consultados nesta sprint.",
+              ]}
+            />
+          </div>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <TableCard
+            icon={BarChart3}
+            title="Distribuicao por capability"
+            rows={report.distribution.costByCapability.slice(0, 8).map((item) => ({
+              label: item.label,
+              value: formatBRL(item.value),
+              helper: item.helper || "Capability registrada no catalogo do COS/Studio",
+            }))}
+          />
+          <TableCard
+            icon={DollarSign}
+            title="Distribuicao por modelo"
+            rows={report.distribution.costByModel.slice(0, 8).map((item) => ({
+              label: item.label,
+              value: formatBRL(item.value),
+              helper: item.helper || "Custo agregado por modelo/provedor",
+            }))}
+          />
         </section>
 
         <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
           <CardHeader className="px-6 py-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <CardTitle className="text-xl text-[#050505]">Historico de bonificacoes</CardTitle>
-                <p className="text-sm leading-6 text-[#6B7280]">
-                  Consulte as ultimas bonificacoes aplicadas e filtre por usuario, email, ID, motivo ou administrador.
-                </p>
-              </div>
-              <div className="flex w-full max-w-sm gap-2">
-                <Input
-                  value={historySearch}
-                  onChange={(event) => setHistorySearch(event.target.value)}
-                  placeholder="Buscar no historico"
-                  className="h-11 rounded-xl"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void loadHistory(historySearch)}
-                  className="h-11 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
-                >
-                  Buscar
-                </Button>
-              </div>
-            </div>
+            <CardTitle className="text-xl text-[#050505]">Planos sugeridos</CardTitle>
+            <p className="text-sm leading-6 text-[#6B7280]">
+              Estrategia de monetizacao baseada no custo operacional real do EME, buscando simplicidade, margem alta e espaco para escala.
+            </p>
           </CardHeader>
-          <CardContent className="grid gap-3 px-6 pb-6 pt-0">
-            {isLoadingHistory ? (
-              <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-5 text-sm text-[#6B7280]">
-                Carregando historico...
-              </div>
-            ) : filteredHistory.length > 0 ? (
-              filteredHistory.map((item) => (
-                <div key={item.id} className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="font-semibold text-[#050505]">{item.userName}</p>
-                      <p className="mt-1 text-sm text-[#6B7280]">{item.userEmail}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <InfoBadge label={`+${item.amount} creditos`} />
-                      <InfoBadge label={`Antes ${item.balanceBefore}`} />
-                      <InfoBadge label={`Depois ${item.balanceAfter}`} />
-                    </div>
+          <CardContent className="grid gap-4 px-6 pb-6 pt-0 xl:grid-cols-4">
+            {report.plans.map((plan) => (
+              <div key={plan.key} className="rounded-[1.3rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-[#98A2B3]">{plan.key}</p>
+                    <h3 className="mt-2 text-lg font-semibold text-[#050505]">{plan.name}</h3>
                   </div>
-                  <div className="mt-3 grid gap-2 text-sm text-[#4B5563]">
-                    <p><span className="font-medium text-[#111111]">Motivo:</span> {item.reason}</p>
-                    <p><span className="font-medium text-[#111111]">Administrador:</span> {item.adminName || item.adminUserId}</p>
-                    <p><span className="font-medium text-[#111111]">Data:</span> {formatDateTime(item.createdAt)}</p>
-                    <p><span className="font-medium text-[#111111]">Broker ID:</span> {item.brokerId}</p>
-                  </div>
+                  <span className="rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium text-[#009b3a]">
+                    {plan.price}
+                  </span>
                 </div>
-              ))
-            ) : (
-              <AdminEmptyState
-                icon={History}
-                title="Nenhuma bonificacao encontrada"
-                description="As bonificacoes aplicadas pelo portal master aparecerao aqui com usuario, motivo, administrador e saldos."
-              >
-                <AdminStructureCards items={["Saldo anterior e posterior", "Administrador responsavel", "Motivo e data da bonificacao"]} />
-              </AdminEmptyState>
-            )}
+                <div className="mt-4 grid gap-2 text-sm text-[#4B5563]">
+                  <Info label="Imoveis" value={formatNumber(plan.propertyLimit)} />
+                  <Info label="Creditos" value={formatNumber(plan.monthlyCredits)} />
+                  <Info label="Custo estimado" value={formatBRL(plan.estimatedMonthlyCostBrl)} />
+                  <Info label="Margem" value={`${formatBRL(plan.estimatedMarginBrl)} · ${plan.estimatedMarginPercent}%`} />
+                </div>
+                <p className="mt-4 text-sm leading-6 text-[#6B7280]">{plan.targetProfile}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
+
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="text-xl text-[#050505]">Sistema de creditos sugerido</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 px-6 pb-6 pt-0">
+              {report.creditSystem.map((item) => (
+                <div key={item.operationKey} className="flex flex-wrap items-center justify-between gap-3 rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+                  <div>
+                    <p className="font-medium text-[#050505]">{item.feature}</p>
+                    <p className="text-sm text-[#6B7280]">{item.module} · {item.operationKey}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-[#050505]">{item.suggestedCredits} creditos</p>
+                    <p className="text-xs text-[#6B7280]">{formatBRL(item.estimatedCostBrl)}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            <CardHeader className="px-6 py-5">
+              <CardTitle className="text-xl text-[#050505]">Pacotes extras sugeridos</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 px-6 pb-6 pt-0">
+              {report.extraPackages.map((pack) => (
+                <div key={pack.key} className="flex flex-wrap items-center justify-between gap-3 rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+                  <div>
+                    <p className="font-medium text-[#050505]">{pack.label}</p>
+                    <p className="text-sm text-[#6B7280]">{pack.credits ? `${pack.credits} creditos adicionais` : `${pack.properties} imoveis adicionais`}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-[#050505]">{pack.price}</p>
+                    <p className="text-xs text-[#6B7280]">{pack.estimatedMarginPercent}% de margem estimada</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-3">
+          <SeriesCard title="Relatorio diario" points={report.reports.dailyCostBrl} />
+          <SeriesCard title="Relatorio semanal" points={report.reports.weeklyCostBrl} />
+          <SeriesCard title="Relatorio mensal" points={report.reports.monthlyCostBrl} />
+        </section>
       </div>
-
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="max-w-lg border-black/[0.06] bg-white text-[#050505]">
-          <DialogHeader>
-            <DialogTitle>Confirmar bonificacao</DialogTitle>
-            <DialogDescription className="text-[#6B7280]">
-              Confira os dados antes de aplicar os creditos na carteira real do usuario.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedBroker ? (
-            <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-              <InfoBlock label="Usuario" value={selectedBroker.name} />
-              <InfoBlock label="Plano" value={selectedBroker.plan} />
-              <InfoBlock label="Saldo atual" value={`${selectedBroker.aiCreditsBalance} creditos`} />
-              <InfoBlock label="Bonificacao" value={`+${numericAmount} creditos`} />
-              <InfoBlock label="Motivo" value={resolvedReason || "-"} />
-            </div>
-          ) : null}
-
-          <DialogFooter className="flex flex-wrap gap-2 sm:justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsConfirmOpen(false)}
-              className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={isSubmitting || !canSubmit}
-              onClick={() => void applyBonus()}
-              className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
-            >
-              {isSubmitting ? "Aplicando..." : "Aplicar bonificacao"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AdminPageShell>
   )
 }
 
-function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Bot }) {
+function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
     <Card className="rounded-[1.5rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-      <CardContent className="flex items-start justify-between gap-4 p-4">
-        <div>
-          <p className="text-sm text-[#6B7280]">{label}</p>
-          <p className="mt-2 text-3xl font-semibold text-[#050505]">{value}</p>
+      <CardContent className="p-4">
+        <p className="text-sm text-[#6B7280]">{label}</p>
+        <p className="mt-2 text-3xl font-semibold text-[#050505]">{value}</p>
+        <p className="mt-2 text-sm leading-6 text-[#6B7280]">{helper}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-[#98A2B3]">{label}</p>
+      <p className="mt-1 text-sm text-[#111111]">{value}</p>
+    </div>
+  )
+}
+
+function InsightCard({ icon: Icon, title, items }: { icon: typeof CreditCard; title: string; items: string[] }) {
+  return (
+    <Card className="rounded-[1.5rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
+            <Icon className="size-5" />
+          </div>
+          <h3 className="text-lg font-semibold text-[#050505]">{title}</h3>
         </div>
-        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-          <Icon className="size-5" />
+        <div className="mt-4 grid gap-2 text-sm leading-6 text-[#4B5563]">
+          {items.map((item) => (
+            <p key={item}>{item}</p>
+          ))}
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function InfoBadge({ label }: { label: string }) {
-  return <span className="rounded-full border border-black/[0.06] bg-white px-3 py-1 text-[#5F6B7A]">{label}</span>
+function TableCard({
+  icon: Icon,
+  title,
+  rows,
+}: {
+  icon: typeof CreditCard
+  title: string
+  rows: Array<{ label: string; value: string; helper: string }>
+}) {
+  return (
+    <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+      <CardHeader className="px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
+            <Icon className="size-5" />
+          </div>
+          <CardTitle className="text-xl text-[#050505]">{title}</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 px-6 pb-6 pt-0">
+        {rows.map((row) => (
+          <div key={row.label} className="flex flex-wrap items-center justify-between gap-3 rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+            <div>
+              <p className="font-medium text-[#050505]">{row.label}</p>
+              <p className="text-sm text-[#6B7280]">{row.helper}</p>
+            </div>
+            <span className="text-sm font-semibold text-[#050505]">{row.value}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
 }
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
+function SeriesCard({ title, points }: { title: string; points: Array<{ label: string; value: number }> }) {
+  const maxValue = Math.max(...points.map((point) => point.value), 1)
   return (
-    <div>
-      <p className="text-xs uppercase tracking-[0.16em] text-[#98A2B3]">{label}</p>
-      <p className="mt-2 text-sm text-[#111111]">{value}</p>
-    </div>
+    <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+      <CardHeader className="px-6 py-5">
+        <CardTitle className="text-xl text-[#050505]">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 px-6 pb-6 pt-0">
+        {points.map((point) => (
+          <div key={point.label} className="grid gap-2">
+            <div className="flex items-center justify-between gap-3 text-sm text-[#4B5563]">
+              <span>{point.label}</span>
+              <span>{formatBRL(point.value)}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#eef1ec]">
+              <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${Math.max(4, (point.value / maxValue) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }

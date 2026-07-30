@@ -1,11 +1,11 @@
-export type EmePlanKey = "free" | "pro" | "growth"
+export type EmePlanKey = "free" | "pro" | "growth" | "scale"
 
 export type EmeExtraPackageKey =
-  | "credit_50"
-  | "credit_150"
+  | "credit_100"
   | "credit_300"
-  | "property_30"
-  | "property_90"
+  | "credit_800"
+  | "property_50"
+  | "property_200"
 
 export type EmeCreditActionKey =
   | "searchProperties"
@@ -34,27 +34,36 @@ export const EME_PLANS = {
     key: "free",
     name: "Plano Free",
     priceCents: 0,
-    propertyLimit: 3,
-    monthlyAiCredits: 20,
-    initialAiCredits: 20,
+    propertyLimit: 5,
+    monthlyAiCredits: 25,
+    initialAiCredits: 25,
     features: ["catalog", "leads", "agenda", "documents", "financial", "analytics", "assessor_eme"],
   },
   pro: {
     key: "pro",
     name: "Plano EME Pro",
-    priceCents: 8990,
-    propertyLimit: 50,
-    monthlyAiCredits: 50,
-    initialAiCredits: 50,
+    priceCents: 9900,
+    propertyLimit: 120,
+    monthlyAiCredits: 220,
+    initialAiCredits: 220,
     features: ["all", "assessor_eme"],
   },
   growth: {
     key: "growth",
     name: "Plano EME Growth",
-    priceCents: 14990,
-    propertyLimit: 150,
-    monthlyAiCredits: 150,
-    initialAiCredits: 150,
+    priceCents: 19900,
+    propertyLimit: 320,
+    monthlyAiCredits: 520,
+    initialAiCredits: 520,
+    features: ["all", "assessor_eme"],
+  },
+  scale: {
+    key: "scale",
+    name: "Plano EME Scale",
+    priceCents: 39900,
+    propertyLimit: 900,
+    monthlyAiCredits: 1400,
+    initialAiCredits: 1400,
     features: ["all", "assessor_eme"],
   },
 } as const satisfies Record<EmePlanKey, {
@@ -68,39 +77,39 @@ export const EME_PLANS = {
 }>
 
 export const EME_EXTRA_PACKAGES = {
-  credit_50: {
-    key: "credit_50",
+  credit_100: {
+    key: "credit_100",
     type: "credit",
-    label: "+50 créditos IA",
-    quantity: 50,
-    priceCents: 2990,
-  },
-  credit_150: {
-    key: "credit_150",
-    type: "credit",
-    label: "+150 créditos IA",
-    quantity: 150,
-    priceCents: 6990,
+    label: "+100 creditos IA",
+    quantity: 100,
+    priceCents: 4990,
   },
   credit_300: {
     key: "credit_300",
     type: "credit",
-    label: "+300 créditos IA",
+    label: "+300 creditos IA",
     quantity: 300,
     priceCents: 11990,
   },
-  property_30: {
-    key: "property_30",
-    type: "property",
-    label: "+30 imóveis",
-    quantity: 30,
-    priceCents: 4990,
+  credit_800: {
+    key: "credit_800",
+    type: "credit",
+    label: "+800 creditos IA",
+    quantity: 800,
+    priceCents: 24990,
   },
-  property_90: {
-    key: "property_90",
+  property_50: {
+    key: "property_50",
     type: "property",
-    label: "+90 imóveis",
-    quantity: 90,
+    label: "+50 imoveis",
+    quantity: 50,
+    priceCents: 3990,
+  },
+  property_200: {
+    key: "property_200",
+    type: "property",
+    label: "+200 imoveis",
+    quantity: 200,
     priceCents: 11990,
   },
 } as const satisfies Record<EmeExtraPackageKey, {
@@ -125,23 +134,23 @@ export const EME_CREDIT_COSTS = {
   analyzeCatalog: 2,
   getCatalogSummary: 2,
   getFinancialSummary: 2,
-  create_ad: 3,
-  generate_property_ai: 3,
-  generate_proposal_pdf: 3,
-  generate_contract_pdf: 3,
-  smart_import_image: 3,
-  smart_import_print: 3,
-  smart_import_text: 3,
+  create_ad: 2,
+  generate_property_ai: 2,
+  generate_proposal_pdf: 1,
+  generate_contract_pdf: 1,
+  smart_import_image: 5,
+  smart_import_print: 5,
+  smart_import_text: 4,
 } as const satisfies Record<EmeCreditActionKey, number>
 
 export const EME_PROPERTY_LIMIT_MESSAGE =
-  "Você atingiu o limite de imóveis do seu plano. Faça upgrade ou compre um pacote de imóveis extras para continuar publicando."
+  "Voce atingiu o limite de imoveis do seu plano. Faca upgrade ou compre um pacote de imoveis extras para continuar publicando."
 
 export const EME_INSUFFICIENT_CREDITS_MESSAGE =
-  "Créditos IA insuficientes. Compre um pacote de créditos ou aguarde a renovação do seu plano."
+  "Creditos IA insuficientes. Compre um pacote de creditos ou aguarde a renovacao do seu plano."
 
 export function normalizeEmePlanKey(value: unknown): EmePlanKey {
-  return value === "pro" || value === "growth" ? value : "free"
+  return value === "pro" || value === "growth" || value === "scale" ? value : "free"
 }
 
 export function getEmeCreditCost(actionKey: string) {

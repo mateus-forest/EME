@@ -3,6 +3,7 @@ import "server-only"
 import { createHash, randomUUID } from "node:crypto"
 
 import { getLumaAIEnv } from "@/lib/env.server"
+import { recordEstimatedCatalogTelemetry } from "@/lib/ai-operation-telemetry"
 import { savePropertyGeneratedImage, savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
 import {
   studioVideoActionType,
@@ -887,6 +888,21 @@ export async function createInitialStudioVideoJob({
       requestKind,
     })
 
+    await recordEstimatedCatalogTelemetry({
+      operationKey: "studio.video.preview",
+      model: config.previewImageModel,
+      imageCount: 1,
+      retryCount: nextJob.metrics.retryCount,
+      metadata: {
+        requestKind,
+        duration: input.duration,
+        format: input.format,
+        objective: input.objective,
+        transformation: input.transformation,
+        providerJobId: generation.id,
+      },
+    })
+
     return {
       requestSignature,
       jobContent: nextJob,
@@ -957,6 +973,21 @@ export async function createInitialStudioVideoJob({
     actualProviderCostUsd: null,
     retries: nextJob.metrics.retryCount,
     requestKind,
+  })
+
+  await recordEstimatedCatalogTelemetry({
+    operationKey: "studio.video.final",
+    model: config.model,
+    videoCount: 1,
+    retryCount: nextJob.metrics.retryCount,
+    metadata: {
+      requestKind,
+      duration: input.duration,
+      format: input.format,
+      objective: input.objective,
+      transformation: input.transformation,
+      providerJobId: generation.id,
+    },
   })
 
   return {
@@ -1044,6 +1075,21 @@ export async function regenerateStudioVideoPreview(job: StudioVideoJobContent) {
     actualProviderCostUsd: null,
     retries: nextJob.metrics.retryCount,
     requestKind: job.requestKind,
+  })
+
+  await recordEstimatedCatalogTelemetry({
+    operationKey: "studio.video.preview_regeneration",
+    model: config.previewImageModel,
+    imageCount: 1,
+    retryCount: nextJob.metrics.retryCount,
+    metadata: {
+      requestKind: job.requestKind,
+      duration: job.duration,
+      format: job.format,
+      objective: job.objective,
+      transformation: job.transformation,
+      providerJobId: generation.id,
+    },
   })
 
   return nextJob
@@ -1148,6 +1194,21 @@ export async function createApprovedStudioVideoAnimation(job: StudioVideoJobCont
     actualProviderCostUsd: null,
     retries: nextJob.metrics.retryCount,
     requestKind: job.requestKind,
+  })
+
+  await recordEstimatedCatalogTelemetry({
+    operationKey: "studio.video.final",
+    model: config.model,
+    videoCount: 1,
+    retryCount: nextJob.metrics.retryCount,
+    metadata: {
+      requestKind: job.requestKind,
+      duration: job.duration,
+      format: job.format,
+      objective: job.objective,
+      transformation: job.transformation,
+      providerJobId: generation.id,
+    },
   })
 
   return nextJob

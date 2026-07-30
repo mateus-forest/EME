@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
 import { getOpenAIEnv } from "@/lib/env.server"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
 import { generateOwnerStrategy, studioOwnerRequestSchema } from "@/lib/studio-ia-owners"
@@ -23,7 +24,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const payload = studioOwnerRequestSchema.parse(body)
-    const result = await generateOwnerStrategy(payload)
+    const result = await runWithAiOperationContext(
+      {
+        route: "/api/studio-ia/owners",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+      },
+      () => generateOwnerStrategy(payload),
+    )
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {
       kind: "OWNERS",

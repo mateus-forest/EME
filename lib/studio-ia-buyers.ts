@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 export const studioBuyerAudiences = [
   "Primeiro imovel",
@@ -98,35 +99,45 @@ export async function generateBuyerStrategy(
   }
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 1400,
-    instructions:
-      "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Monte estrategias comerciais praticas e persuasivas para captar interesse de compradores no mercado brasileiro.",
-    input: buildBuyersPrompt(input, property),
-    text: {
-      format: {
-        type: "json_schema",
-        name: "studio_ia_buyers_strategy",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            audience: { type: "string" },
-            strategy: { type: "string" },
-            copy: { type: "string" },
-            cta: { type: "string" },
-            timeline: {
-              type: "array",
-              minItems: 3,
-              maxItems: 3,
-              items: { type: "string" },
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "studio.buyers",
+    metadata: {
+      propertyId: property.id,
+      audience: input.audience,
+      channel: input.channel,
+      version: input.version,
+    },
+    request: {
+      model,
+      max_output_tokens: 1400,
+      instructions:
+        "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Monte estrategias comerciais praticas e persuasivas para captar interesse de compradores no mercado brasileiro.",
+      input: buildBuyersPrompt(input, property),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "studio_ia_buyers_strategy",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              audience: { type: "string" },
+              strategy: { type: "string" },
+              copy: { type: "string" },
+              cta: { type: "string" },
+              timeline: {
+                type: "array",
+                minItems: 3,
+                maxItems: 3,
+                items: { type: "string" },
+              },
+              reach: { type: "string" },
+              leads: { type: "string" },
             },
-            reach: { type: "string" },
-            leads: { type: "string" },
+            required: ["audience", "strategy", "copy", "cta", "timeline", "reach", "leads"],
           },
-          required: ["audience", "strategy", "copy", "cta", "timeline", "reach", "leads"],
         },
       },
     },

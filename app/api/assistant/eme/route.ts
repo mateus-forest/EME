@@ -35,6 +35,7 @@ import {
 } from "@/lib/cos"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -351,14 +352,26 @@ export async function POST(request: NextRequest) {
     const pendingContext = resumableWorkflow ? null : await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
     const executionPlan = resumableWorkflow
       ? null
-      : await planCosExecution({
-          message,
-          requestedAction,
-          pendingContext,
-          surface,
-          workspace,
-          activeWorkflow: activeWorkflow ?? null,
-        })
+      : await runWithAiOperationContext(
+          {
+            route: "/api/assistant/eme",
+            source: metadataSource,
+            userId: user.id,
+            brokerId: user.broker!.id,
+            planKey: user.plan ?? null,
+            conversationId: conversationDocument?.id ?? null,
+            workflowId: activeWorkflow?.id ?? null,
+          },
+          () =>
+            planCosExecution({
+              message,
+              requestedAction,
+              pendingContext,
+              surface,
+              workspace,
+              activeWorkflow: activeWorkflow ?? null,
+            }),
+        )
     const action = (resumableWorkflow?.steps[resumableWorkflow.currentStep]?.action ?? executionPlan?.primaryStep.action ?? "general") as AssessorAction
 
     if (isCancellation) {
@@ -385,7 +398,7 @@ export async function POST(request: NextRequest) {
         prisma.aiAssistantInteraction.create({
           data: {
             userId: user.id,
-            brokerId: user.broker.id,
+            brokerId: user.broker!.id,
             prompt: displayMessage || "Cancelar",
             response: responseText,
             actionType: action,
@@ -400,7 +413,7 @@ export async function POST(request: NextRequest) {
         prisma.emeMessage.create({
           data: {
             userId: user.id,
-            brokerId: user.broker.id,
+            brokerId: user.broker!.id,
             channel: "assessor_eme",
             direction: "broker_to_ai",
             message: displayMessage || "Cancelar",
@@ -605,14 +618,27 @@ export async function POST(request: NextRequest) {
     let updatedWorkflow = workflow
 
     try {
-      executionResult = await resumeWorkflowExecution({
-        workflow,
-        brokerId: user.broker.id,
-        userId: user.id,
-        message,
-        confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
-        workspace,
-      })
+      executionResult = await runWithAiOperationContext(
+        {
+          route: "/api/assistant/eme",
+          source: metadataSource,
+          userId: user.id,
+          brokerId: user.broker.id,
+          planKey: user.plan ?? null,
+          conversationId: conversationDocument?.id ?? null,
+          workflowId: workflow.id,
+          creditsConsumed: creditsUsed,
+        },
+        () =>
+          resumeWorkflowExecution({
+            workflow,
+            brokerId: user.broker!.id,
+            userId: user.id,
+            message,
+            confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
+            workspace,
+          }),
+      )
 
       updatedWorkflow = updateWorkflowFromExecutionResult({
         workflow,

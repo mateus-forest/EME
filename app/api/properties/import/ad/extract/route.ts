@@ -7,6 +7,7 @@ import {
   hasBrokerAiCredits,
   refundBrokerAiCredits,
 } from "@/lib/eme-plan-service"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { AD_IMPORT_MAX_IMAGE_BYTES, AD_IMPORT_MAX_TEXT_LENGTH, extractPropertyFromAd } from "@/lib/property-ad-import"
 import { UserRole } from "@/lib/prisma-enums"
@@ -72,12 +73,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const drafts = await extractPropertyFromAd({
-      adText,
-      sourceUrl,
-      notes,
-      imageDataUrl: hasImage ? await fileToDataUrl(image) : "",
-    })
+    const drafts = await runWithAiOperationContext(
+      {
+        route: "/api/properties/import/ad/extract",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+        creditsConsumed: creditsUsed,
+      },
+      async () =>
+        extractPropertyFromAd({
+          adText,
+          sourceUrl,
+          notes,
+          imageDataUrl: hasImage ? await fileToDataUrl(image) : "",
+        }),
+    )
 
     if (user.role === UserRole.BROKER && user.broker) {
       await consumeBrokerAiCredits({

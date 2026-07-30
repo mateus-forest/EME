@@ -12,6 +12,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import {
   buildInstagramPrompt,
   generateInstagramCampaign,
@@ -101,21 +102,32 @@ export async function POST(request: NextRequest) {
       description: property.description ?? "",
       status: propertyStatusLabel(property.status),
     })
-    const result = await generateInstagramCampaign(payload, {
-      id: property.id,
-      title: property.title,
-      city: property.city,
-      neighborhood: property.neighborhood ?? "",
-      location,
-      type: propertyTypeLabel(property.type),
-      purpose: propertyPurposeLabel(property.purpose),
-      price: formatCurrencyFromCents(property.price),
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      parkingSpots: property.parkingSpots,
-      description: property.description ?? "",
-      status: propertyStatusLabel(property.status),
-    })
+    const result = await runWithAiOperationContext(
+      {
+        route: "/api/studio-ia/instagram",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+      },
+      () =>
+        generateInstagramCampaign(payload, {
+          id: property.id,
+          title: property.title,
+          city: property.city,
+          neighborhood: property.neighborhood ?? "",
+          location,
+          type: propertyTypeLabel(property.type),
+          purpose: propertyPurposeLabel(property.purpose),
+          price: formatCurrencyFromCents(property.price),
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          parkingSpots: property.parkingSpots,
+          description: property.description ?? "",
+          status: propertyStatusLabel(property.status),
+        }),
+    )
 
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {

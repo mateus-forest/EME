@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 const OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED = "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED"
 
@@ -108,18 +109,28 @@ export async function generateInstagramCampaign(
   }
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 2200,
-    reasoning: {
-      effort: "minimal",
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "studio.instagram",
+    metadata: {
+      propertyId: property.id,
+      goal: input.goal,
+      identity: input.identity,
+      version: input.version,
     },
-    instructions:
-      "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Responda apenas com o JSON do schema solicitado, sem texto adicional, sempre em portugues do Brasil.",
-    input: buildInstagramPrompt(input, property),
-    text: {
-      verbosity: "low",
-      format: zodTextFormat(studioInstagramResultSchema, "studio_ia_instagram_campaign"),
+    request: {
+      model,
+      max_output_tokens: 2200,
+      reasoning: {
+        effort: "minimal",
+      },
+      instructions:
+        "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Responda apenas com o JSON do schema solicitado, sem texto adicional, sempre em portugues do Brasil.",
+      input: buildInstagramPrompt(input, property),
+      text: {
+        verbosity: "low",
+        format: zodTextFormat(studioInstagramResultSchema, "studio_ia_instagram_campaign"),
+      },
     },
   })
 

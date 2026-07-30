@@ -9,6 +9,7 @@ import {
   refundBrokerAiCredits,
 } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
 import { generatePropertyCopy, propertyGenerationSchema } from "@/lib/property-ai"
 
@@ -69,7 +70,18 @@ export async function POST(request: NextRequest) {
       hasDescription: Boolean(input.description),
     })
 
-    const result = await generatePropertyCopy(input)
+    const result = await runWithAiOperationContext(
+      {
+        route: "/api/ai/generate-property",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+        creditsConsumed: creditsUsed,
+      },
+      () => generatePropertyCopy(input),
+    )
 
     if (user.role === UserRole.BROKER && user.broker) {
       stage = "consume_ai_credits"

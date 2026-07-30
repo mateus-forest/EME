@@ -8,6 +8,7 @@ import { z } from "zod"
 import { listCosCapabilityCatalog } from "@/lib/cos/capability-catalog"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 import type { PendingAssessorContext } from "@/lib/eme-backend"
 import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosExecutionPlanGap, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
@@ -330,18 +331,26 @@ export async function generateCosAiExecutionPlan(input: {
     const client = getOpenAIClient()
     const response =
       input.responseOverride ??
-      (await client!.responses.create({
-        model,
-        max_output_tokens: 1200,
-        reasoning: {
-          effort: "minimal",
+      (await createOpenAIResponse({
+        client: client!,
+        operationKey: "cos.ai_orchestrator",
+        metadata: {
+          triggerReason: input.triggerReason,
+          surface: input.surface,
         },
-        instructions:
-          "Voce planeja fluxos do COS. Sua unica tarefa e devolver um plano estruturado usando apenas capabilities existentes. Nao escreva texto livre.",
-        input: prompt,
-        text: {
-          verbosity: "low",
-          format: zodTextFormat(aiPlanSchema, "cos_ai_execution_plan"),
+        request: {
+          model,
+          max_output_tokens: 1200,
+          reasoning: {
+            effort: "minimal",
+          },
+          instructions:
+            "Voce planeja fluxos do COS. Sua unica tarefa e devolver um plano estruturado usando apenas capabilities existentes. Nao escreva texto livre.",
+          input: prompt,
+          text: {
+            verbosity: "low",
+            format: zodTextFormat(aiPlanSchema, "cos_ai_execution_plan"),
+          },
         },
       }))
 

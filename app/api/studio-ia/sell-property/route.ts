@@ -6,6 +6,7 @@ import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
 import {
   generateSellPropertyPlan,
@@ -92,23 +93,34 @@ export async function POST(request: NextRequest) {
 
     const property = accessible.property
     const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
-    const result = await generateSellPropertyPlan(payload, {
-      id: property.id,
-      title: property.title,
-      city: property.city,
-      neighborhood: property.neighborhood ?? "",
-      location,
-      type: propertyTypeLabel(property.type),
-      purpose: propertyPurposeLabel(property.purpose),
-      price: formatCurrencyFromCents(property.price),
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      parkingSpots: property.parkingSpots,
-      description: property.description ?? "",
-      status: propertyStatusLabel(property.status),
-      hasImages: Array.isArray(property.imageUrls) && property.imageUrls.some((image) => typeof image === "string" && image.trim()),
-      likelyUnderConstruction: detectConstructionScenario(property),
-    })
+    const result = await runWithAiOperationContext(
+      {
+        route: "/api/studio-ia/sell-property",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+      },
+      () =>
+        generateSellPropertyPlan(payload, {
+          id: property.id,
+          title: property.title,
+          city: property.city,
+          neighborhood: property.neighborhood ?? "",
+          location,
+          type: propertyTypeLabel(property.type),
+          purpose: propertyPurposeLabel(property.purpose),
+          price: formatCurrencyFromCents(property.price),
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          parkingSpots: property.parkingSpots,
+          description: property.description ?? "",
+          status: propertyStatusLabel(property.status),
+          hasImages: Array.isArray(property.imageUrls) && property.imageUrls.some((image) => typeof image === "string" && image.trim()),
+          likelyUnderConstruction: detectConstructionScenario(property),
+        }),
+    )
 
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {

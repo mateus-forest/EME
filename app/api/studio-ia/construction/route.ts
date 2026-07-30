@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { getOpenAIEnv } from "@/lib/env.server"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { prisma } from "@/lib/prisma"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
 import {
@@ -88,7 +89,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A imagem selecionada nao pertence a este imovel." }, { status: 400 })
     }
 
-    const result = await generateConstructionToListingImage(payload)
+    const result = await runWithAiOperationContext(
+      {
+        route: "/api/studio-ia/construction",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+      },
+      () => generateConstructionToListingImage(payload),
+    )
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {
       kind: "CONSTRUCTION",

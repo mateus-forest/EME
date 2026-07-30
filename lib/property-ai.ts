@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 export const propertyGenerationSchema = z.object({
   title: z.string().trim().max(120).optional().default(""),
@@ -73,39 +74,48 @@ export async function generatePropertyCopy(input: PropertyGenerationInput) {
   }
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 500,
-    instructions:
-      "Voce e um especialista em criacao de anuncios imobiliarios no Brasil. Gere uma descricao clara, objetiva, profissional e persuasiva com base nos dados fornecidos. Destaque os diferenciais reais do imovel, localizacao e praticidade. Nao invente informacoes que nao foram fornecidas.",
-    input: buildPrompt(input),
-    text: {
-      format: {
-        type: "json_schema",
-        name: "property_ad_generation",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            description: {
-              type: "string",
-              description: "Descricao pronta para uso, em portugues do Brasil, com cerca de 80 a 140 palavras.",
-            },
-            suggestedTitle: {
-              type: "string",
-              description: "Titulo curto e comercial, sem exageros irreais.",
-            },
-            highlights: {
-              type: "array",
-              maxItems: 3,
-              items: {
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "property.generate_copy",
+    metadata: {
+      propertyType: input.type,
+      city: input.city,
+      neighborhood: input.neighborhood,
+    },
+    request: {
+      model,
+      max_output_tokens: 500,
+      instructions:
+        "Voce e um especialista em criacao de anuncios imobiliarios no Brasil. Gere uma descricao clara, objetiva, profissional e persuasiva com base nos dados fornecidos. Destaque os diferenciais reais do imovel, localizacao e praticidade. Nao invente informacoes que nao foram fornecidas.",
+      input: buildPrompt(input),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "property_ad_generation",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              description: {
                 type: "string",
-                description: "Highlight curto do imovel com ate 8 palavras.",
+                description: "Descricao pronta para uso, em portugues do Brasil, com cerca de 80 a 140 palavras.",
+              },
+              suggestedTitle: {
+                type: "string",
+                description: "Titulo curto e comercial, sem exageros irreais.",
+              },
+              highlights: {
+                type: "array",
+                maxItems: 3,
+                items: {
+                  type: "string",
+                  description: "Highlight curto do imovel com ate 8 palavras.",
+                },
               },
             },
+            required: ["description", "suggestedTitle", "highlights"],
           },
-          required: ["description", "suggestedTitle", "highlights"],
         },
       },
     },

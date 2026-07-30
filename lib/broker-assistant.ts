@@ -3,6 +3,7 @@ import { z } from "zod"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 export const brokerAssistantActionTypes = [
   "general",
@@ -61,12 +62,19 @@ export async function generateBrokerAssistantResponse(prompt: string, actionType
   }
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 650,
-    instructions:
-      "Voce e o Assessor EME, canal oficial de IA dentro de um SaaS imobiliario para corretores individuais. Ajude o corretor a cadastrar leads, buscar imoveis no catalogo, cadastrar imoveis, criar anuncios, resumir atendimentos e executar tarefas operacionais. Seja objetivo, pratico e seguro.",
-    input: buildAssistantPrompt(prompt, actionType),
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "broker.assistant",
+    metadata: {
+      actionType,
+    },
+    request: {
+      model,
+      max_output_tokens: 650,
+      instructions:
+        "Voce e o Assessor EME, canal oficial de IA dentro de um SaaS imobiliario para corretores individuais. Ajude o corretor a cadastrar leads, buscar imoveis no catalogo, cadastrar imoveis, criar anuncios, resumir atendimentos e executar tarefas operacionais. Seja objetivo, pratico e seguro.",
+      input: buildAssistantPrompt(prompt, actionType),
+    },
   })
 
   return response.output_text.trim()

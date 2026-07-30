@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 export const studioOwnerGoals = [
   "Captar imovel para venda",
@@ -70,41 +71,52 @@ export async function generateOwnerStrategy(input: StudioOwnerRequest) {
   }
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 1700,
-    instructions:
-      "Voce e o Studio IA do EME, especialista em captacao de proprietarios para corretores e imobiliarias. Entregue estrategias comerciais objetivas, sofisticadas e prontas para revisao final no mercado brasileiro.",
-    input: buildOwnersPrompt(input),
-    text: {
-      format: {
-        type: "json_schema",
-        name: "studio_ia_owner_strategy",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            audience: { type: "string" },
-            approach: { type: "string" },
-            adCopy: { type: "string" },
-            instagramCaption: { type: "string" },
-            videoScript: {
-              type: "array",
-              minItems: 3,
-              maxItems: 3,
-              items: { type: "string" },
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "studio.owners",
+    metadata: {
+      goal: input.goal,
+      city: input.city,
+      neighborhood: input.neighborhood,
+      ownerProfile: input.ownerProfile,
+      version: input.version,
+    },
+    request: {
+      model,
+      max_output_tokens: 1700,
+      instructions:
+        "Voce e o Studio IA do EME, especialista em captacao de proprietarios para corretores e imobiliarias. Entregue estrategias comerciais objetivas, sofisticadas e prontas para revisao final no mercado brasileiro.",
+      input: buildOwnersPrompt(input),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "studio_ia_owner_strategy",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              audience: { type: "string" },
+              approach: { type: "string" },
+              adCopy: { type: "string" },
+              instagramCaption: { type: "string" },
+              videoScript: {
+                type: "array",
+                minItems: 3,
+                maxItems: 3,
+                items: { type: "string" },
+              },
+              whatsappText: { type: "string" },
+              cta: { type: "string" },
+              timeline: {
+                type: "array",
+                minItems: 3,
+                maxItems: 3,
+                items: { type: "string" },
+              },
             },
-            whatsappText: { type: "string" },
-            cta: { type: "string" },
-            timeline: {
-              type: "array",
-              minItems: 3,
-              maxItems: 3,
-              items: { type: "string" },
-            },
+            required: ["audience", "approach", "adCopy", "instagramCaption", "videoScript", "whatsappText", "cta", "timeline"],
           },
-          required: ["audience", "approach", "adCopy", "instagramCaption", "videoScript", "whatsappText", "cta", "timeline"],
         },
       },
     },

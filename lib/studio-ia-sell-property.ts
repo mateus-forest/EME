@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 export const studioSellPropertyRequestSchema = z.object({
   propertyId: z.string().trim().min(1).max(191),
@@ -95,57 +96,66 @@ export async function generateSellPropertyPlan(
   }
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 1800,
-    instructions:
-      "Voce e o Studio IA do EME, especialista em planejamento comercial imobiliario para corretores. Monte um plano consolidado de venda com foco em clareza, persuasao e execucao pratica no mercado brasileiro.",
-    input: buildSellPropertyPrompt(input, property),
-    text: {
-      format: {
-        type: "json_schema",
-        name: "studio_ia_sell_property_plan",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            salesStrategy: { type: "string" },
-            recommendedAudience: { type: "string" },
-            mainCampaign: { type: "string" },
-            caption: { type: "string" },
-            cta: { type: "string" },
-            whatsappText: { type: "string" },
-            timeline: {
-              type: "array",
-              minItems: 3,
-              maxItems: 4,
-              items: { type: "string" },
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "studio.sell_property",
+    metadata: {
+      propertyId: property.id,
+      version: input.version,
+      likelyUnderConstruction: property.likelyUnderConstruction,
+    },
+    request: {
+      model,
+      max_output_tokens: 1800,
+      instructions:
+        "Voce e o Studio IA do EME, especialista em planejamento comercial imobiliario para corretores. Monte um plano consolidado de venda com foco em clareza, persuasao e execucao pratica no mercado brasileiro.",
+      input: buildSellPropertyPrompt(input, property),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "studio_ia_sell_property_plan",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              salesStrategy: { type: "string" },
+              recommendedAudience: { type: "string" },
+              mainCampaign: { type: "string" },
+              caption: { type: "string" },
+              cta: { type: "string" },
+              whatsappText: { type: "string" },
+              timeline: {
+                type: "array",
+                minItems: 3,
+                maxItems: 4,
+                items: { type: "string" },
+              },
+              nextActions: {
+                type: "array",
+                minItems: 3,
+                maxItems: 5,
+                items: { type: "string" },
+              },
+              applicableFlows: {
+                type: "array",
+                minItems: 3,
+                maxItems: 4,
+                items: { type: "string" },
+              },
             },
-            nextActions: {
-              type: "array",
-              minItems: 3,
-              maxItems: 5,
-              items: { type: "string" },
-            },
-            applicableFlows: {
-              type: "array",
-              minItems: 3,
-              maxItems: 4,
-              items: { type: "string" },
-            },
+            required: [
+              "salesStrategy",
+              "recommendedAudience",
+              "mainCampaign",
+              "caption",
+              "cta",
+              "whatsappText",
+              "timeline",
+              "nextActions",
+              "applicableFlows",
+            ],
           },
-          required: [
-            "salesStrategy",
-            "recommendedAudience",
-            "mainCampaign",
-            "caption",
-            "cta",
-            "whatsappText",
-            "timeline",
-            "nextActions",
-            "applicableFlows",
-          ],
         },
       },
     },

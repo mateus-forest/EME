@@ -8,6 +8,7 @@ import {
 } from "@/lib/broker-assistant"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance, hasBrokerAiCredits } from "@/lib/eme-plan-service"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { prisma } from "@/lib/prisma"
 
@@ -104,7 +105,17 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const assistantResponse = await generateBrokerAssistantResponse(input.prompt, input.actionType)
+      const assistantResponse = await runWithAiOperationContext(
+        {
+          route: "/api/ai/broker-assistant",
+          source: "portal",
+          userId: user.id,
+          brokerId: user.broker.id,
+          planKey: user.plan ?? null,
+          creditsConsumed: creditsUsed,
+        },
+        () => generateBrokerAssistantResponse(input.prompt, input.actionType),
+      )
       const updatedCredits = await consumeBrokerAiCredits({
         brokerId: user.broker.id,
         amount: creditsUsed,

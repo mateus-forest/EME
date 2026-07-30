@@ -3,6 +3,7 @@ import { z } from "zod"
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import {
   AD_IMPORT_MAX_IMAGE_BYTES,
   AD_IMPORT_MAX_TEXT_LENGTH,
@@ -800,81 +801,90 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     })
   }
 
-  const response = await client.responses.create({
-    model,
-    max_output_tokens: 2200,
-    reasoning: {
-      effort: "minimal",
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: sanitizedInput.imageDataUrl ? "property.import_image" : "property.import_text",
+    metadata: {
+      hasImage: Boolean(sanitizedInput.imageDataUrl),
+      hasSourceUrl: Boolean(sanitizedInput.sourceUrl),
+      sourceWarningCode: sourceLookup.warningCode || null,
     },
-    instructions:
-      "Extraia dados de anuncios imobiliarios no Brasil e responda apenas com o JSON do schema solicitado, sem texto adicional.",
-    input: [
-      {
-        role: "user",
-        content: inputParts,
+    request: {
+      model,
+      max_output_tokens: 2200,
+      reasoning: {
+        effort: "minimal",
       },
-    ],
-    text: {
-      verbosity: "low",
-      format: {
-        type: "json_schema",
-        name: "property_ad_import",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            drafts: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  price: { type: "string" },
-                  type: { type: "string", enum: propertyImportTypeOptions },
-                  city: { type: "string" },
-                  neighborhood: { type: "string" },
-                  address: { type: "string" },
-                  bedrooms: { type: "string" },
-                  bathrooms: { type: "string" },
-                  parking: { type: "string" },
-                  area: { type: "string" },
-                  features: { type: "array", items: { type: "string" } },
-                  tags: { type: "array", items: { type: "string" } },
-                  images: { type: "array", items: { type: "string" } },
-                  sourceUrl: { type: "string" },
-                  notes: { type: "string" },
-                  lowConfidenceFields: { type: "array", items: { type: "string" } },
-                  missingFields: { type: "array", items: { type: "string" } },
-                  status: { type: "string", enum: ["ready", "needs_review", "invalid"] },
+      instructions:
+        "Extraia dados de anuncios imobiliarios no Brasil e responda apenas com o JSON do schema solicitado, sem texto adicional.",
+      input: [
+        {
+          role: "user",
+          content: inputParts,
+        },
+      ],
+      text: {
+        verbosity: "low",
+        format: {
+          type: "json_schema",
+          name: "property_ad_import",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              drafts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    price: { type: "string" },
+                    type: { type: "string", enum: propertyImportTypeOptions },
+                    city: { type: "string" },
+                    neighborhood: { type: "string" },
+                    address: { type: "string" },
+                    bedrooms: { type: "string" },
+                    bathrooms: { type: "string" },
+                    parking: { type: "string" },
+                    area: { type: "string" },
+                    features: { type: "array", items: { type: "string" } },
+                    tags: { type: "array", items: { type: "string" } },
+                    images: { type: "array", items: { type: "string" } },
+                    sourceUrl: { type: "string" },
+                    notes: { type: "string" },
+                    lowConfidenceFields: { type: "array", items: { type: "string" } },
+                    missingFields: { type: "array", items: { type: "string" } },
+                    status: { type: "string", enum: ["ready", "needs_review", "invalid"] },
+                  },
+                  required: [
+                    "title",
+                    "description",
+                    "price",
+                    "type",
+                    "city",
+                    "neighborhood",
+                    "address",
+                    "bedrooms",
+                    "bathrooms",
+                    "parking",
+                    "area",
+                    "features",
+                    "tags",
+                    "images",
+                    "sourceUrl",
+                    "notes",
+                    "lowConfidenceFields",
+                    "missingFields",
+                    "status",
+                  ],
                 },
-                required: [
-                  "title",
-                  "description",
-                  "price",
-                  "type",
-                  "city",
-                  "neighborhood",
-                  "address",
-                  "bedrooms",
-                  "bathrooms",
-                  "parking",
-                  "area",
-                  "features",
-                  "tags",
-                  "images",
-                  "sourceUrl",
-                  "notes",
-                  "lowConfidenceFields",
-                  "missingFields",
-                  "status",
-                ],
               },
             },
+            required: ["drafts"],
           },
-          required: ["drafts"],
         },
       },
     },

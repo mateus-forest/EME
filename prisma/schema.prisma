@@ -519,6 +519,51 @@ model AiCreditTransaction {
   @@index([type, createdAt])
 }
 
+model AiOperationTelemetry {
+  id                String   @id @default(cuid())
+  operationKey      String
+  module            String
+  feature           String
+  capability        String?
+  handler           String?
+  route             String?
+  provider          String
+  model             String?
+  status            String
+  errorCode         String?
+  errorMessage      String?
+  source            String?
+  workflowId        String?
+  conversationId    String?
+  userId            String?
+  brokerId          String?
+  agencyId          String?
+  planKey           String?
+  inputTokens       Int?
+  cachedInputTokens Int?
+  outputTokens      Int?
+  reasoningTokens   Int?
+  totalTokens       Int?
+  imageCount        Int      @default(0)
+  videoCount        Int      @default(0)
+  audioCount        Int      @default(0)
+  storageBytes      Int?
+  durationMs        Int?
+  costUsd           Decimal? @db.Decimal(12, 6)
+  costBrl           Decimal? @db.Decimal(12, 6)
+  creditsConsumed   Int?
+  retryCount        Int      @default(0)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  @@index([operationKey, createdAt])
+  @@index([provider, createdAt])
+  @@index([brokerId, createdAt])
+  @@index([userId, createdAt])
+  @@index([planKey, createdAt])
+  @@index([status, createdAt])
+}
+
 model ExtraPackagePurchase {
   id          String   @id @default(cuid())
   brokerId    String

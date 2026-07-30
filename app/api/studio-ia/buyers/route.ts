@@ -6,6 +6,7 @@ import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
 import { generateBuyerStrategy, studioBuyerRequestSchema } from "@/lib/studio-ia-buyers"
 
@@ -77,21 +78,32 @@ export async function POST(request: NextRequest) {
 
     const property = accessible.property
     const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
-    const result = await generateBuyerStrategy(payload, {
-      id: property.id,
-      title: property.title,
-      city: property.city,
-      neighborhood: property.neighborhood ?? "",
-      location,
-      type: propertyTypeLabel(property.type),
-      purpose: propertyPurposeLabel(property.purpose),
-      price: formatCurrencyFromCents(property.price),
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      parkingSpots: property.parkingSpots,
-      description: property.description ?? "",
-      status: propertyStatusLabel(property.status),
-    })
+    const result = await runWithAiOperationContext(
+      {
+        route: "/api/studio-ia/buyers",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker?.id ?? null,
+        agencyId: user.ownedAgency?.id ?? null,
+        planKey: user.plan ?? null,
+      },
+      () =>
+        generateBuyerStrategy(payload, {
+          id: property.id,
+          title: property.title,
+          city: property.city,
+          neighborhood: property.neighborhood ?? "",
+          location,
+          type: propertyTypeLabel(property.type),
+          purpose: propertyPurposeLabel(property.purpose),
+          price: formatCurrencyFromCents(property.price),
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          parkingSpots: property.parkingSpots,
+          description: property.description ?? "",
+          status: propertyStatusLabel(property.status),
+        }),
+    )
 
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {

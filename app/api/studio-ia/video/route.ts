@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits, refundBrokerAiCredits } from "@/lib/eme-plan-service"
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
@@ -433,7 +434,17 @@ export async function GET(request: NextRequest) {
     if (jobDocument instanceof NextResponse) return jobDocument
 
     const currentJob = parseStudioVideoJobContent(jobDocument.content)
-    const refreshedJob = await refreshStudioVideoJob(currentJob)
+    const refreshedJob = await runWithAiOperationContext(
+      {
+        route: "/api/studio-ia/video",
+        source: "portal",
+        userId: user.id,
+        brokerId: user.broker.id,
+        planKey: user.plan ?? null,
+        conversationId: requestId,
+      },
+      () => refreshStudioVideoJob(currentJob),
+    )
     const finalJob: ReturnType<typeof parseStudioVideoJobContent> =
       refreshedJob.jobStage === "failed"
         ? await refundStageCredits({
@@ -545,14 +556,25 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
       }
 
-      const created = await createInitialStudioVideoJob({
-        input: payload,
-        property,
-        referenceInput:
-          uploadedFiles[0]
-            ? { kind: "file", file: uploadedFiles[0] }
-            : { kind: "url", url: payload.referenceImageUrls[0]! },
-      })
+      const created = await runWithAiOperationContext(
+        {
+          route: "/api/studio-ia/video",
+          source: "portal",
+          userId: user.id,
+          brokerId: user.broker.id,
+          planKey: user.plan ?? null,
+          creditsConsumed: firstStageCredits,
+        },
+        () =>
+          createInitialStudioVideoJob({
+            input: payload,
+            property,
+            referenceInput:
+              uploadedFiles[0]
+                ? { kind: "file", file: uploadedFiles[0] }
+                : { kind: "url", url: payload.referenceImageUrls[0]! },
+          }),
+      )
 
       const campaign = await createStudioCampaign(getStudioCampaignUser(user), {
         kind: "VIDEO",
@@ -674,7 +696,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
       }
 
-      const regeneratedJob = await regenerateStudioVideoPreview(currentJob)
+      const regeneratedJob = await runWithAiOperationContext(
+        {
+          route: "/api/studio-ia/video",
+          source: "portal",
+          userId: user.id,
+          brokerId: user.broker.id,
+          planKey: user.plan ?? null,
+          conversationId: requestId,
+          creditsConsumed: stageCredits,
+        },
+        () => regenerateStudioVideoPreview(currentJob),
+      )
       await updateJobDocument(jobDocument.id, regeneratedJob)
 
       const chargedJob = await chargeStageCredits({
@@ -735,7 +768,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
       }
 
-      const nextJob = await createApprovedStudioVideoAnimation(currentJob)
+      const nextJob = await runWithAiOperationContext(
+        {
+          route: "/api/studio-ia/video",
+          source: "portal",
+          userId: user.id,
+          brokerId: user.broker.id,
+          planKey: user.plan ?? null,
+          conversationId: requestId,
+          creditsConsumed: stageCredits,
+        },
+        () => createApprovedStudioVideoAnimation(currentJob),
+      )
       await updateJobDocument(jobDocument.id, nextJob)
 
       const chargedJob = await chargeStageCredits({

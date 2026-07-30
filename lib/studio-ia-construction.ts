@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import { savePropertyGeneratedImage } from "@/lib/property-storage"
 
 export const studioConstructionStyles = [
@@ -75,19 +76,28 @@ export async function generateConstructionToListingImage(input: StudioConstructi
 
   const { model } = getOpenAIEnv()
   const referenceImage = await fetchImageAsDataUrl(input.imageUrl)
-  const response = await client.responses.create({
-    model,
-    stream: false,
-    tools: [{ type: "image_generation" }],
-    input: [
-      {
-        role: "user",
-        content: [
-          { type: "input_text", text: buildTransformationPrompt(input.style) },
-          { type: "input_image", image_url: referenceImage, detail: "high" },
-        ],
-      },
-    ],
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "studio.construction_image",
+    metadata: {
+      propertyId: input.propertyId,
+      style: input.style,
+      generatedImages: 1,
+    },
+    request: {
+      model,
+      stream: false,
+      tools: [{ type: "image_generation" }],
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: buildTransformationPrompt(input.style) },
+            { type: "input_image", image_url: referenceImage, detail: "high" },
+          ],
+        },
+      ],
+    },
   })
 
   const resultBase64 = extractGeneratedImageBase64(response)

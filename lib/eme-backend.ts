@@ -5,6 +5,7 @@ import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { canCreateBrokerProperties } from "@/lib/eme-plan-service"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
+import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import { prisma } from "@/lib/prisma"
 import { extractPropertyPublicCode, findPropertyByBrokerPublicCode, getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { contractHtmlToText, createContractContent, parseContractContent, stringifyContractContent } from "@/lib/contract-template"
@@ -2043,12 +2044,19 @@ export async function generateAssessorText(message: string, action: AssessorActi
   if (!client) return actionResponse || ASSESSOR_FALLBACK_RESPONSE
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "assessor.whatsapp.reply",
+    metadata: {
+      action,
+    },
+    request: {
     model,
     max_output_tokens: 120,
     instructions:
       "Você é o Assessor EME no WhatsApp: concierge comercial e SDR imobiliário para corretores. Responda em 1 a 4 linhas, natural e direto. Uma ação por vez. Sem onboarding, manual, listas grandes, linguagem técnica ou textão. Se a ação já foi executada, apenas confirme e sugira o próximo passo. Nunca diga que não tem acesso ao CRM. Não execute ações destrutivas nem altere créditos ou imóveis sem confirmação explícita.",
     input: [`Ação detectada: ${action}`, `Pedido do corretor: ${message}`, actionResponse ? `Resultado interno: ${actionResponse}` : "Resultado interno: Oi 👋 Sou o Assessor EME.\n\nPosso ajudar com:\n• imóveis\n• leads\n• anúncios\n• atendimentos\n\nO que você precisa?"].join("\n"),
+    },
   })
   return response.output_text.trim()
 }
@@ -2068,7 +2076,14 @@ export async function generateCorretorEmeReply(input: {
   if (!client) return fallback
 
   const { model } = getOpenAIEnv()
-  const response = await client.responses.create({
+  const response = await createOpenAIResponse({
+    client,
+    operationKey: "corretor_eme.reply",
+    metadata: {
+      intent: input.intent,
+      suggestionCount: input.suggestions.length,
+    },
+    request: {
     model,
     max_output_tokens: 420,
     instructions:
@@ -2078,6 +2093,7 @@ export async function generateCorretorEmeReply(input: {
       `Intenção detectada: ${input.intent}`,
       `Imóveis sugeridos: ${input.suggestions.map((property) => `${property.title} em ${property.neighborhood ?? property.city} por ${formatCurrencyBRLFromCents(property.price)}`).join("; ") || "nenhum"}`,
     ].join("\n"),
+    },
   })
   return response.output_text.trim()
 }
