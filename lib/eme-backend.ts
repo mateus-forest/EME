@@ -212,7 +212,7 @@ export function parseBrazilianMoneyToInt(input: unknown) {
   return parsed && !parsed.outOfRange ? parsed.value : null
 }
 
-function formatAssessorPropertyPrice(value: number) {
+export function formatAssessorPropertyPrice(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -357,13 +357,13 @@ function parsePropertyDraftData(message: string, payload?: Record<string, unknow
   }
 }
 
-function getDateOnly(value: Date) {
+export function getDateOnly(value: Date) {
   const date = new Date(value)
   date.setHours(0, 0, 0, 0)
   return date
 }
 
-function addDays(date: Date, days: number) {
+export function addDays(date: Date, days: number) {
   const next = new Date(date)
   next.setDate(next.getDate() + days)
   return next
@@ -422,7 +422,7 @@ function parseAgendaListRange(message: string) {
   return { start, end, label: pendingOnly ? "pendente" : normalized.includes("amanha") ? "de amanhã" : normalized.includes("semana") ? "da semana" : "de hoje", pendingOnly }
 }
 
-function parseFixedAgendaListRange(message: string) {
+export function parseFixedAgendaListRange(message: string) {
   const normalized = normalizeForIntent(message)
   const start = normalized.includes("amanha") ? addDays(getDateOnly(new Date()), 1) : parseAgendaDate(message)
   const end = new Date(start)
@@ -525,7 +525,7 @@ function firstImageUrl(value: unknown) {
   return Array.isArray(value) && typeof value[0] === "string" ? value[0] : null
 }
 
-type PendingAssessorContext = {
+export type PendingAssessorContext = {
   action: AssessorAction
   missingField: string
   parsedData: Record<string, unknown>
@@ -870,7 +870,7 @@ export async function buildBrokerContext(brokerId: string) {
   return { properties, leads, events }
 }
 
-export async function runAssessorAction({
+export async function runLegacyAssessorAction({
   brokerId,
   userId,
   message,
@@ -1806,6 +1806,17 @@ ${missingFields.length ? `Faltou preencher: ${missingFields.join(" e ")}.
   }
 
   return { response: "", metadata: {} }
+}
+
+export async function runAssessorAction(input: {
+  brokerId: string
+  userId: string
+  message: string
+  action: AssessorAction
+  confirm?: boolean
+  payload?: Record<string, unknown>
+}) {
+  return runLegacyAssessorAction(input)
 }
 
 export async function generateAssessorText(message: string, action: AssessorAction, actionResponse: string) {

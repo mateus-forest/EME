@@ -9,13 +9,11 @@ import {
 } from "@/lib/cos-conversations"
 import {
   cleanText,
-  generateAssessorText,
   getAssessorActionErrorResponse,
   getPendingAssessorContext,
-  resolveAssessorInputWithContext,
-  runAssessorAction,
   type AssessorAction,
 } from "@/lib/eme-backend"
+import { executeCosCapability, formatCosCapabilityResponse, planCosCapability, type CosActionResult } from "@/lib/cos"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { UserRole } from "@/lib/prisma-enums"
@@ -100,30 +98,6 @@ function getVisualActionLabel(action: AssessorAction) {
   if (action === "LIST_CONTRACTS") return "Consulta de contratos"
   if (action === "GET_CONTRACT") return "Contrato consultado"
   return "Acao do Assessor"
-}
-
-function shouldReturnActionResponse(action: AssessorAction) {
-  return [
-    "createLead",
-    "searchProperties",
-    "createPropertyDraft",
-    "CREATE_AGENDA_EVENT",
-    "LIST_AGENDA_EVENTS",
-    "MARK_AGENDA_DONE",
-    "CREATE_PROPOSAL",
-    "CREATE_CONTRACT",
-    "LIST_DOCUMENTS",
-    "GET_DOCUMENT",
-    "LIST_CONTRACTS",
-    "GET_CONTRACT",
-    "getFinancialSummary",
-    "getAnalyticsSummary",
-    "getCatalogSummary",
-    "getLeadsSummary",
-    "createInternalNotification",
-    "analyzeCatalog",
-    "summarizeLead",
-  ].includes(action)
 }
 
 const COS_HOME_ALLOWED_ACTIONS: AssessorAction[] = [
@@ -380,12 +354,12 @@ export async function POST(request: NextRequest) {
     }
 
     const pendingContext = await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
-    const resolvedInput = resolveAssessorInputWithContext({
+    const plan = planCosCapability({
       message,
       requestedAction: cleanText(body?.action ?? body?.actionType, 80),
       pendingContext,
     })
-    const action = resolvedInput.action as AssessorAction
+    const action = plan.action as AssessorAction
 
     if (isCancellation && fromCosHome) {
       const responseText = "Tudo bem. Nao executei a alteracao."
@@ -532,7 +506,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let actionResult: Awaited<ReturnType<typeof runAssessorAction>> = { response: "", metadata: {} }
+    let actionResult: CosActionResult = { response: "", metadata: {} }
     let responseText = ""
     let actionStatus = "processing"
     let errorMessage: string | null = null
@@ -540,16 +514,13 @@ export async function POST(request: NextRequest) {
     const actionStartedAt = Date.now()
 
     try {
-      actionResult = await runAssessorAction({
+      actionResult = await executeCosCapability({
+        plan,
         brokerId: user.broker.id,
         userId: user.id,
         message,
-        action,
         confirm: Boolean(body?.confirm),
-        payload: {
-          ...(typeof body?.payload === "object" && body.payload ? body.payload : {}),
-          ...resolvedInput.payload,
-        },
+        payload: typeof body?.payload === "object" && body.payload ? (body.payload as Record<string, unknown>) : {},
       })
 
       actionStatus =
@@ -576,9 +547,12 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      responseText = shouldReturnActionResponse(action)
-        ? actionResult.response
-        : await generateAssessorText(message, action, actionResult.response)
+      responseText = await formatCosCapabilityResponse({
+        message,
+        action,
+        capability: plan.capability,
+        actionResponse: actionResult.response,
+      })
 
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,

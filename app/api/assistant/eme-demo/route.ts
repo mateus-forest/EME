@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { cleanText, generateAssessorText, resolveAssessorInputWithContext, type AssessorAction } from "@/lib/eme-backend"
+import { cleanText, type AssessorAction } from "@/lib/eme-backend"
+import { formatCosCapabilityResponse, planCosCapability } from "@/lib/cos"
 
 type LandingDemoMode = "create_ad" | "generate_video" | "create_catalog" | "search_property" | "chat_cos"
 
@@ -114,19 +115,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Envie uma solicitação para testar o COS." }, { status: 400 })
     }
 
-    const resolved = resolveAssessorInputWithContext({
+    const plan = planCosCapability({
       message,
       requestedAction: modeActionMap[mode],
       pendingContext: null,
     })
 
-    const actionResponse = buildDemoActionResponse(mode, message, resolved.action)
-    const response = await generateAssessorText(message, resolved.action, actionResponse)
+    const actionResponse = buildDemoActionResponse(mode, message, plan.action)
+    const response = await formatCosCapabilityResponse({
+      message,
+      action: plan.action,
+      capability: plan.capability,
+      actionResponse,
+    })
 
     return NextResponse.json(
       {
         response,
-        action: resolved.action,
+        action: plan.action,
         demo: true,
       },
       {

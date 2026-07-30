@@ -3,17 +3,15 @@ import type { Prisma } from "@prisma/client"
 
 import {
   cleanText,
-  generateAssessorText,
   generateCorretorEmeReply,
   getAssessorActionErrorResponse,
   getAssessorVisualAction,
   getPendingAssessorContext,
   inferCustomerIntent,
-  resolveAssessorInputWithContext,
-  runAssessorAction,
   searchBrokerProperties,
   type AssessorAction,
 } from "@/lib/eme-backend"
+import { executeCosCapability, formatCosCapabilityResponse, planCosCapability, type CosActionResult } from "@/lib/cos"
 import { isPrismaUnavailable } from "@/lib/auth-route"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
@@ -24,30 +22,6 @@ import { markAsRead, sendTextMessage, sanitizeWhatsAppNumber } from "@/lib/whats
 export const dynamic = "force-dynamic"
 
 const WHATSAPP_WEBHOOK_RECIPIENT_VERSION = "whatsapp-reply-to-meta-from-v2"
-
-function shouldReturnActionResponse(action: AssessorAction) {
-  return [
-    "createLead",
-    "searchProperties",
-    "createPropertyDraft",
-    "CREATE_AGENDA_EVENT",
-    "LIST_AGENDA_EVENTS",
-    "MARK_AGENDA_DONE",
-    "CREATE_PROPOSAL",
-    "CREATE_CONTRACT",
-    "LIST_DOCUMENTS",
-    "GET_DOCUMENT",
-    "LIST_CONTRACTS",
-    "GET_CONTRACT",
-    "getFinancialSummary",
-    "getAnalyticsSummary",
-    "getCatalogSummary",
-    "getLeadsSummary",
-    "createInternalNotification",
-    "analyzeCatalog",
-    "summarizeLead",
-  ].includes(action)
-}
 
 function toLoggableJson(value: unknown) {
   return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue
@@ -288,8 +262,8 @@ async function processAssessorMessage({
   }
 
   const pendingContext = await getPendingAssessorContext(brokerId)
-  const resolvedInput = resolveAssessorInputWithContext({ message, pendingContext })
-  const action = resolvedInput.action as AssessorAction
+  const plan = planCosCapability({ message, pendingContext })
+  const action = plan.action as AssessorAction
   const creditsUsed: number = getEmeCreditCost(action)
   const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)
 
@@ -314,12 +288,7 @@ async function processAssessorMessage({
     return { response, intent: action, actionType: action, actionStatus: "insufficient_credits", creditsUsed: 0 }
   }
 
-  let actionResult: {
-    response: string
-    metadata: Prisma.InputJsonObject
-    leadId?: string
-    propertyId?: string
-  } = { response: "", metadata: {} }
+  let actionResult: CosActionResult = { response: "", metadata: {} }
   let responseText: string
   let actionStatus: string
   let errorMessage: string | null = null
@@ -327,14 +296,14 @@ async function processAssessorMessage({
   const actionStartedAt = Date.now()
 
   try {
-    actionResult = await runAssessorAction({
+    actionResult = await executeCosCapability({
+      plan,
       brokerId,
       userId,
       message,
-      action,
       confirm: false,
-      payload: { ...resolvedInput.payload, whatsappMedia: metadata.media },
-    }) as typeof actionResult
+      payload: { whatsappMedia: metadata.media },
+    })
     actionStatus =
       Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
         ? "needs_input"
@@ -358,7 +327,12 @@ async function processAssessorMessage({
         },
       })
     }
-    responseText = shouldReturnActionResponse(action) ? actionResult.response : await generateAssessorText(message, action, actionResult.response)
+    responseText = await formatCosCapabilityResponse({
+      message,
+      action,
+      capability: plan.capability,
+      actionResponse: actionResult.response,
+    })
     console.info("[api][whatsapp][assessor-action]", {
       detectedIntent: action,
       executedAction: action,
@@ -384,7 +358,7 @@ async function processAssessorMessage({
       brokerId,
       userId,
       phoneNumber: fromPhone,
-      payload: resolvedInput.payload,
+      payload: plan.payload,
       errorMessage,
       errorStack,
       durationMs: Date.now() - actionStartedAt,
@@ -399,7 +373,7 @@ async function processAssessorMessage({
         brokerId,
         userId,
         phoneNumber: fromPhone,
-        actionPayload: toLoggableJson(resolvedInput.payload),
+        actionPayload: toLoggableJson(plan.payload),
         errorReason: errorMessage,
         errorStack,
         durationMs: Date.now() - actionStartedAt,
