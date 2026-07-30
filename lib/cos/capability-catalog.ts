@@ -1,345 +1,34 @@
 import type { AssessorAction } from "@/lib/eme-backend"
 
-import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface } from "@/lib/cos/types"
+import { cosEntityModules } from "@/lib/cos/entities"
+import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosEntityModule } from "@/lib/cos/types"
 
-const CAPABILITY_CATALOG: CosCapabilityDescriptor[] = [
-  {
-    id: "general.chat",
-    action: "general",
-    title: "Atendimento geral",
-    description: "Conduz a conversa geral do COS quando não há uma ação operacional específica.",
-    domain: "general",
-    entity: "conversation",
-    aliases: ["chat", "chat_cos"],
-    responseMode: "nlg",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp", "demo"],
-  },
-  {
-    id: "property.create",
-    action: "createPropertyDraft",
-    title: "Cadastro de imóvel",
-    description: "Cria um imóvel em rascunho a partir de instruções em linguagem natural.",
-    domain: "property",
-    entity: "property",
-    aliases: ["create_ad"],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: true,
-    requiresConfirmation: true,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-    confirmationMessage: "Encontrei um pedido para cadastrar um imóvel em rascunho. Deseja confirmar?",
-  },
-  {
-    id: "property.search",
-    action: "searchProperties",
-    title: "Busca de imóveis",
-    description: "Pesquisa imóveis do corretor com base em filtros extraídos da mensagem.",
-    domain: "property",
-    entity: "property",
-    aliases: ["match_properties", "search_property"],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: true,
-    surfaces: ["portal", "cos_home", "whatsapp", "demo"],
-  },
-  {
-    id: "property.description.improve",
-    action: "improvePropertyDescription",
-    title: "Melhoria de descrição",
-    description: "Melhora a base de descrição comercial de um imóvel.",
-    domain: "property",
-    entity: "property",
-    aliases: ["improve_description"],
-    responseMode: "nlg",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "whatsapp"],
-  },
-  {
-    id: "lead.create",
-    action: "createLead",
-    title: "Cadastro de cliente",
-    description: "Cria ou atualiza um lead/cliente a partir da conversa.",
-    domain: "lead",
-    entity: "lead",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: true,
-    requiresConfirmation: true,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-    confirmationMessage: "Posso cadastrar ou atualizar este cliente agora. Deseja confirmar?",
-  },
-  {
-    id: "lead.summary",
-    action: "getLeadsSummary",
-    title: "Resumo de clientes",
-    description: "Retorna um resumo operacional dos leads/clientes do corretor.",
-    domain: "lead",
-    entity: "lead",
-    aliases: [],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "lead.summarize",
-    action: "summarizeLead",
-    title: "Análise de clientes",
-    description: "Resume os últimos leads e atendimentos relevantes.",
-    domain: "lead",
-    entity: "lead",
-    aliases: ["reply_client"],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "operation.summary",
-    action: "createInternalNotification",
-    title: "Resumo da operação",
-    description: "Consolida pendências e indicadores operacionais do corretor.",
-    domain: "operation",
-    entity: "operation",
-    aliases: [],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "finance.summary",
-    action: "getFinancialSummary",
-    title: "Análise financeira",
-    description: "Resume carteira, ticket médio e distribuição de imóveis ativos.",
-    domain: "finance",
-    entity: "financial",
-    aliases: [],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "analytics.summary",
-    action: "getAnalyticsSummary",
-    title: "Consulta de desempenho",
-    description: "Resume analytics do catálogo e o desempenho comercial recente.",
-    domain: "analytics",
-    entity: "analytics",
-    aliases: ["lead_ideas"],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "catalog.summary",
-    action: "getCatalogSummary",
-    title: "Resumo do catálogo",
-    description: "Retorna um resumo sintético do catálogo publicado do corretor.",
-    domain: "catalog",
-    entity: "catalog",
-    aliases: [],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "catalog.analyze",
-    action: "analyzeCatalog",
-    title: "Catálogo analisado",
-    description: "Analisa o catálogo e retorna um panorama comercial resumido.",
-    domain: "catalog",
-    entity: "catalog",
-    aliases: ["analyze_catalog", "create_catalog"],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp", "demo"],
-  },
-  {
-    id: "agenda.create",
-    action: "CREATE_AGENDA_EVENT",
-    title: "Compromisso criado",
-    description: "Cria compromissos e lembretes na agenda do corretor.",
-    domain: "agenda",
-    entity: "agenda",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: true,
-    requiresConfirmation: true,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-    confirmationMessage: "Posso criar este compromisso agora na sua agenda. Deseja confirmar?",
-  },
-  {
-    id: "agenda.list",
-    action: "LIST_AGENDA_EVENTS",
-    title: "Consulta de agenda",
-    description: "Lista compromissos pendentes ou filtrados por data.",
-    domain: "agenda",
-    entity: "agenda",
-    aliases: [],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "agenda.complete",
-    action: "MARK_AGENDA_DONE",
-    title: "Compromisso concluído",
-    description: "Marca compromissos pendentes como concluídos.",
-    domain: "agenda",
-    entity: "agenda",
-    aliases: [],
-    responseMode: "raw",
-    source: "modular",
-    mutatesData: true,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "whatsapp"],
-  },
-  {
-    id: "proposal.create",
-    action: "CREATE_PROPOSAL",
-    title: "Proposta gerada",
-    description: "Cria propostas comerciais em rascunho para revisão posterior.",
-    domain: "proposal",
-    entity: "document",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: true,
-    requiresConfirmation: true,
-    requiresSelection: true,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-    confirmationMessage: "Posso gerar esta proposta agora e salvar em Documentos. Deseja confirmar?",
-  },
-  {
-    id: "contract.create",
-    action: "CREATE_CONTRACT",
-    title: "Contrato gerado",
-    description: "Cria contratos em rascunho vinculados a cliente e imóvel.",
-    domain: "contract",
-    entity: "contract",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: true,
-    requiresConfirmation: true,
-    requiresSelection: true,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-    confirmationMessage: "Posso gerar este contrato agora, salvar em Documentos e deixar como rascunho para revisao. Deseja confirmar?",
-  },
-  {
-    id: "document.list",
-    action: "LIST_DOCUMENTS",
-    title: "Consulta de documentos",
-    description: "Lista documentos relacionados ao cliente ou imóvel consultado.",
-    domain: "document",
-    entity: "document",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "whatsapp"],
-  },
-  {
-    id: "document.get",
-    action: "GET_DOCUMENT",
-    title: "Documento consultado",
-    description: "Abre ou resume o documento mais relevante para o contexto consultado.",
-    domain: "document",
-    entity: "document",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "whatsapp"],
-  },
-  {
-    id: "contract.list",
-    action: "LIST_CONTRACTS",
-    title: "Consulta de contratos",
-    description: "Lista contratos relacionados ao contexto consultado.",
-    domain: "contract",
-    entity: "contract",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-  {
-    id: "contract.get",
-    action: "GET_CONTRACT",
-    title: "Contrato consultado",
-    description: "Abre ou resume o contrato mais relevante para o contexto consultado.",
-    domain: "contract",
-    entity: "contract",
-    aliases: [],
-    responseMode: "raw",
-    source: "legacy",
-    mutatesData: false,
-    requiresConfirmation: false,
-    requiresSelection: false,
-    surfaces: ["portal", "cos_home", "whatsapp"],
-  },
-]
+const entityModules = cosEntityModules
+const descriptors = entityModules.flatMap((module) => module.capabilities.map((capability) => capability.descriptor))
 
-export function listCosCapabilityCatalog() {
-  return CAPABILITY_CATALOG
+export function listCosEntityModules(): CosEntityModule[] {
+  return entityModules
+}
+
+export function listCosCapabilityCatalog(): CosCapabilityDescriptor[] {
+  return descriptors
 }
 
 export function getCosCapabilityDescriptorByAction(action: AssessorAction) {
-  return CAPABILITY_CATALOG.find((capability) => capability.action === action) ?? CAPABILITY_CATALOG[0]
+  return descriptors.find((capability) => capability.action === action) ?? descriptors[0]
 }
 
 export function getCosCapabilityDescriptorByAliasOrAction(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase()
   if (!normalized) return null
 
-  return CAPABILITY_CATALOG.find((capability) =>
+  return descriptors.find((capability) =>
     capability.action.toLowerCase() === normalized || capability.aliases.some((alias) => alias.toLowerCase() === normalized),
   ) ?? null
+}
+
+export function getCosCapabilityDescriptorById(id: CosCapabilityId) {
+  return descriptors.find((capability) => capability.id === id) ?? null
 }
 
 export function getCosCapabilityLabel(action: string | null | undefined) {
@@ -347,7 +36,7 @@ export function getCosCapabilityLabel(action: string | null | undefined) {
 }
 
 export function getCosCapabilityActionsForSurface(surface: CosCapabilitySurface) {
-  return CAPABILITY_CATALOG.filter((capability) => capability.surfaces.includes(surface)).map((capability) => capability.action)
+  return descriptors.filter((capability) => capability.surfaces.includes(surface)).map((capability) => capability.action)
 }
 
 export function isCosCapabilityAvailableOnSurface(action: AssessorAction, surface: CosCapabilitySurface) {
@@ -362,4 +51,3 @@ export function getCosCapabilityConfirmationMessage(action: AssessorAction) {
   const capability = getCosCapabilityDescriptorByAction(action)
   return capability.confirmationMessage ?? `Posso executar "${capability.title}" agora. Deseja confirmar?`
 }
-

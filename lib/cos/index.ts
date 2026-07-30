@@ -5,14 +5,17 @@ export {
   getCosCapabilityConfirmationMessage,
   getCosCapabilityDescriptorByAction,
   getCosCapabilityDescriptorByAliasOrAction,
+  getCosCapabilityDescriptorById,
   getCosCapabilityLabel,
   isCosCapabilityAvailableOnSurface,
   listCosCapabilityCatalog,
+  listCosEntityModules,
 } from "@/lib/cos/capability-catalog"
 export { executeCosCapability } from "@/lib/cos/executor"
 export { buildCosCapabilityInventoryMarkdown, getCosCapabilityInventory } from "@/lib/cos/inventory"
 export { planCosCapability } from "@/lib/cos/planner"
 export { formatCosCapabilityResponse } from "@/lib/cos/response-formatter"
+export { cosEntityModules } from "@/lib/cos/entities"
 export type {
   CosActionResult,
   CosCapabilityDefinition,
@@ -24,4 +27,8 @@ export type {
   CosCapabilityId,
   CosCapabilityPlan,
   CosCapabilitySurface,
+  CosEntityCapabilityRegistration,
+  CosEntityMetadata,
+  CosEntityModule,
+  CosEntityModuleId,
 } from "@/lib/cos/types"

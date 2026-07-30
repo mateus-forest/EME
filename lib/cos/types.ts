@@ -91,6 +91,34 @@ export type CosCapabilityDefinition = {
 
 export type CosCapabilityDescriptor = Omit<CosCapabilityDefinition, "handler">
 
+export type CosEntityModuleId =
+  | "lead"
+  | "property"
+  | "proposal"
+  | "contract"
+  | "agenda"
+  | "finance"
+  | "catalog"
+  | "studio_ia"
+  | "operation"
+  | "general"
+
+export type CosEntityMetadata = {
+  id: CosEntityModuleId
+  title: string
+  description: string
+}
+
+export type CosEntityCapabilityRegistration = {
+  descriptor: CosCapabilityDescriptor
+  handler?: CosCapabilityHandler
+}
+
+export type CosEntityModule = {
+  entity: CosEntityMetadata
+  capabilities: CosEntityCapabilityRegistration[]
+}
+
 export type CosCapabilityPlan = {
   action: AssessorAction
   payload: Record<string, unknown>

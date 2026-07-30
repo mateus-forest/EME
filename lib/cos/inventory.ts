@@ -1,4 +1,4 @@
-import { listCosCapabilityCatalog } from "@/lib/cos/capability-catalog"
+import { listCosCapabilityCatalog, listCosEntityModules } from "@/lib/cos/capability-catalog"
 
 export function getCosCapabilityInventory() {
   return listCosCapabilityCatalog().map((capability) => ({
@@ -20,6 +20,7 @@ export function getCosCapabilityInventory() {
 
 export function buildCosCapabilityInventoryMarkdown() {
   const capabilities = getCosCapabilityInventory()
+  const entities = listCosEntityModules()
   const header = [
     "# COS Capability Inventory",
     "",
@@ -47,5 +48,12 @@ export function buildCosCapabilityInventoryMarkdown() {
     ].join("\n"),
   )
 
-  return [...header, ...sections].join("\n")
+  const entitySection = [
+    "## Entities",
+    "",
+    ...entities.map((entityModule) => `- \`${entityModule.entity.id}\`: ${entityModule.entity.title} — ${entityModule.entity.description}`),
+    "",
+  ]
+
+  return [...header, ...entitySection, ...sections].join("\n")
 }
