@@ -9,8 +9,11 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Circle,
+  Grip,
   FileText,
   Home,
+  X,
   Sparkles,
   UsersRound,
   WalletCards,
@@ -24,6 +27,7 @@ import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { AssistantCredits, useCosConversations } from "@/components/use-cos-conversations"
 import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
 import type { ContractRecord } from "@/lib/contracts-client"
@@ -74,6 +78,7 @@ export function BrokerPortal() {
   const [contracts, setContracts] = useState<ContractRecord[]>([])
   const [commissionPercent, setCommissionPercent] = useState(6)
   const [isOperationHealthExpanded, setIsOperationHealthExpanded] = useState(false)
+  const [isMobileOperationHealthOpen, setIsMobileOperationHealthOpen] = useState(false)
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
   const chatViewportRef = useRef<HTMLDivElement>(null)
@@ -341,23 +346,30 @@ export function BrokerPortal() {
                       </div>
 
                       <div className="mt-10 w-full">
-                        <CosPromptComposer
-                          prompt={prompt}
-                          setPrompt={setPrompt}
-                          onSubmit={handleSubmit}
-                          onNewConversation={async () => {
-                            await createConversation()
-                          }}
-                          quickActions={[
-                            { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
-                            { label: "Minha agenda", message: "Minha agenda de amanha" },
-                            { label: "Analisar financeiro", message: "Analisar financeiro" },
-                            { label: "Ver notificacoes", message: "Minhas notificacoes" },
-                          ]}
-                          disabled={isSending || isConversationLoading}
-                          inputRef={inputRef}
-                          feedback={chatFeedback}
-                        />
+                        <div className="flex flex-col items-end gap-2">
+                          <MobileOperationHealthTrigger
+                            operationHealth={operationHealth}
+                            pendingCount={visiblePendingCount}
+                            onClick={() => setIsMobileOperationHealthOpen(true)}
+                          />
+                          <CosPromptComposer
+                            prompt={prompt}
+                            setPrompt={setPrompt}
+                            onSubmit={handleSubmit}
+                            onNewConversation={async () => {
+                              await createConversation()
+                            }}
+                            quickActions={[
+                              { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
+                              { label: "Minha agenda", message: "Minha agenda de amanha" },
+                              { label: "Analisar financeiro", message: "Analisar financeiro" },
+                              { label: "Ver notificacoes", message: "Minhas notificacoes" },
+                            ]}
+                            disabled={isSending || isConversationLoading}
+                            inputRef={inputRef}
+                            feedback={chatFeedback}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -463,23 +475,30 @@ export function BrokerPortal() {
                   </div>
 
                   <div className="mt-auto px-1 pb-1 pt-2">
-                    <CosPromptComposer
-                      prompt={prompt}
-                      setPrompt={setPrompt}
-                      onSubmit={handleSubmit}
-                      onNewConversation={async () => {
-                        await createConversation()
-                      }}
-                      quickActions={[
-                        { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
-                        { label: "Minha agenda", message: "Minha agenda de amanha" },
-                        { label: "Analisar financeiro", message: "Analisar financeiro" },
-                        { label: "Ver notificacoes", message: "Minhas notificacoes" },
-                      ]}
-                      disabled={isSending || isConversationLoading}
-                      inputRef={inputRef}
-                      feedback={chatFeedback}
-                    />
+                    <div className="flex flex-col items-end gap-2">
+                      <MobileOperationHealthTrigger
+                        operationHealth={operationHealth}
+                        pendingCount={visiblePendingCount}
+                        onClick={() => setIsMobileOperationHealthOpen(true)}
+                      />
+                      <CosPromptComposer
+                        prompt={prompt}
+                        setPrompt={setPrompt}
+                        onSubmit={handleSubmit}
+                        onNewConversation={async () => {
+                          await createConversation()
+                        }}
+                        quickActions={[
+                          { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
+                          { label: "Minha agenda", message: "Minha agenda de amanha" },
+                          { label: "Analisar financeiro", message: "Analisar financeiro" },
+                          { label: "Ver notificacoes", message: "Minhas notificacoes" },
+                        ]}
+                        disabled={isSending || isConversationLoading}
+                        inputRef={inputRef}
+                        feedback={chatFeedback}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -524,57 +543,11 @@ export function BrokerPortal() {
                     isOperationHealthExpanded ? "mt-4 max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
                   }`}
                 >
-                  <div className="space-y-2 border-t border-black/[0.06] pt-4">
-                    {operationIndicators.map((item) => {
-                      const Icon = item.icon
-
-                      return (
-                        <div
-                          key={item.label}
-                          className="flex items-center justify-between gap-3 rounded-[1rem] bg-[#fbfbf8] px-3 py-2.5"
-                        >
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-[#f5fbf7] text-[#009b3a]">
-                              <Icon className="size-3.5" />
-                            </span>
-                            <span className="truncate text-sm font-medium text-[#111111]">{item.label}</span>
-                          </div>
-                          <span className="text-sm font-semibold text-[#111111]">{item.score}%</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="mt-4 border-t border-black/[0.06] pt-4">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="size-4 text-[#9a6b00]" />
-                      <p className="text-sm font-semibold text-[#111111]">Pendencias</p>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {operationPendingItems.length > 0 ? (
-                        operationPendingItems.slice(0, 5).map((item) => (
-                          <div key={item} className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
-                            <span className="mt-2 size-1.5 rounded-full bg-[#c28a00]" />
-                            <span>{item}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
-                          <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
-                          <span>Nenhuma pendencia critica detectada agora.</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => void handleSubmit("Me mostre as pendencias da operacao")}
-                      className="mt-4 h-9 w-full rounded-full border border-black/[0.06] bg-white px-4 text-sm text-[#111111] hover:bg-white"
-                    >
-                      Ver detalhes
-                    </Button>
-                  </div>
+                  <OperationHealthDetails
+                    operationIndicators={operationIndicators}
+                    operationPendingItems={operationPendingItems}
+                    onViewDetails={() => void handleSubmit("Me mostre as pendencias da operacao")}
+                  />
                 </div>
               </div>
             </aside>
@@ -583,6 +556,68 @@ export function BrokerPortal() {
       </BrokerPageShell>
 
       <BrokerFreePlanLimitModal open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen} />
+      <Drawer open={isMobileOperationHealthOpen} onOpenChange={setIsMobileOperationHealthOpen} repositionInputs={false}>
+        <DrawerContent className="border-black/[0.06] bg-white text-[#111111] lg:hidden">
+          <DrawerHeader className="gap-0 px-4 pb-0 pt-3 text-left">
+            <div className="mx-auto mb-2 flex items-center justify-center">
+              <Grip className="size-5 text-[#c7ced8]" />
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <DrawerTitle className="text-base font-semibold tracking-[-0.02em] text-[#111111]">
+                  Saude da operacao
+                </DrawerTitle>
+                <DrawerDescription className="mt-1 text-sm text-[#667085]">
+                  Indicadores e pendencias da sua operacao sem sair do COS.
+                </DrawerDescription>
+              </div>
+              <DrawerClose asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="size-9 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#667085] hover:bg-white"
+                  aria-label="Fechar saude da operacao"
+                >
+                  <X className="size-4" />
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerHeader>
+
+          <div className="max-h-[72vh] overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-4">
+            <div className="rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.035)]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8a97a8]">
+                    Panorama geral
+                  </p>
+                  <p className="mt-2 text-[2rem] font-semibold tracking-[-0.05em] text-[#111111]">
+                    {operationHealth}%
+                  </p>
+                </div>
+                <span className="rounded-full bg-[#edf8f1] px-2.5 py-1 text-xs font-medium text-[#0d7a39]">
+                  {visiblePendingCount} pendencia{visiblePendingCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
+                <div className="h-full rounded-full bg-[#009b3a] transition-all duration-300" style={{ width: `${operationHealth}%` }} />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <OperationHealthDetails
+                operationIndicators={operationIndicators}
+                operationPendingItems={operationPendingItems}
+                onViewDetails={() => {
+                  setIsMobileOperationHealthOpen(false)
+                  void handleSubmit("Me mostre as pendencias da operacao")
+                }}
+              />
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
       <Dialog open={isNextStepModalOpen} onOpenChange={setIsNextStepModalOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-xl overflow-hidden rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-h-[calc(100vh-4rem)]">
           <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 py-6 sm:max-h-[calc(100vh-4rem)]">
@@ -640,4 +675,97 @@ function clampScore(score: number) {
 
 function pluralize(singular: string, plural: string, count: number) {
   return count === 1 ? singular : plural
+}
+
+function MobileOperationHealthTrigger({
+  operationHealth,
+  pendingCount,
+  onClick,
+}: {
+  operationHealth: number
+  pendingCount: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/94 px-3 py-2 text-left shadow-[0_10px_20px_rgba(15,23,42,0.045)] backdrop-blur-sm transition-colors hover:bg-white lg:hidden"
+      aria-label={`Abrir saude da operacao. Status atual ${operationHealth}% com ${pendingCount} pendencias.`}
+    >
+      <span className="flex items-center gap-2">
+        <Circle className="size-2.5 fill-[#009b3a] text-[#009b3a]" />
+        <span className="text-sm font-medium text-[#111111]">Saude {operationHealth}%</span>
+      </span>
+      <span className="rounded-full bg-[#edf8f1] px-2 py-0.5 text-[11px] font-medium text-[#0d7a39]">
+        {pendingCount}
+      </span>
+    </button>
+  )
+}
+
+function OperationHealthDetails({
+  operationIndicators,
+  operationPendingItems,
+  onViewDetails,
+}: {
+  operationIndicators: Array<{ label: string; score: number; icon: typeof UsersRound }>
+  operationPendingItems: string[]
+  onViewDetails: () => void
+}) {
+  return (
+    <>
+      <div className="space-y-2 border-t border-black/[0.06] pt-4">
+        {operationIndicators.map((item) => {
+          const Icon = item.icon
+
+          return (
+            <div
+              key={item.label}
+              className="flex items-center justify-between gap-3 rounded-[1rem] bg-[#fbfbf8] px-3 py-2.5"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-[#f5fbf7] text-[#009b3a]">
+                  <Icon className="size-3.5" />
+                </span>
+                <span className="truncate text-sm font-medium text-[#111111]">{item.label}</span>
+              </div>
+              <span className="text-sm font-semibold text-[#111111]">{item.score}%</span>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-4 border-t border-black/[0.06] pt-4">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="size-4 text-[#9a6b00]" />
+          <p className="text-sm font-semibold text-[#111111]">Pendencias</p>
+        </div>
+        <div className="mt-3 space-y-2">
+          {operationPendingItems.length > 0 ? (
+            operationPendingItems.slice(0, 5).map((item) => (
+              <div key={item} className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
+                <span className="mt-2 size-1.5 rounded-full bg-[#c28a00]" />
+                <span>{item}</span>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
+              <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
+              <span>Nenhuma pendencia critica detectada agora.</span>
+            </div>
+          )}
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onViewDetails}
+          className="mt-4 h-9 w-full rounded-full border border-black/[0.06] bg-white px-4 text-sm text-[#111111] hover:bg-white"
+        >
+          Ver detalhes
+        </Button>
+      </div>
+    </>
+  )
 }
