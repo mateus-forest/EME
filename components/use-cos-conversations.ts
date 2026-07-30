@@ -1,8 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
+import { usePathname } from "next/navigation"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
+import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
+import type { CosWorkspaceContext } from "@/lib/cos/types"
 
 export type AssistantCredits = {
   balance: number
@@ -66,6 +69,7 @@ type UseCosConversationsOptions = {
   setAssistantCredits: Dispatch<SetStateAction<AssistantCredits>>
   autoOpenLatest?: boolean
   source?: "cos_home" | "portal"
+  workspaceContext?: Partial<CosWorkspaceContext> | null
 }
 
 export function useCosConversations({
@@ -74,7 +78,9 @@ export function useCosConversations({
   setAssistantCredits,
   autoOpenLatest = true,
   source = "portal",
+  workspaceContext,
 }: UseCosConversationsOptions) {
+  const pathname = usePathname()
   const [conversation, setConversation] = useState<CosConversationItem[]>([])
   const [conversations, setConversations] = useState<CosConversationSummary[]>([])
   const [activeConversationId, setActiveConversationId] = useState("")
@@ -84,6 +90,16 @@ export function useCosConversations({
   const [isConversationLoading, setIsConversationLoading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
+
+  const resolvedWorkspaceContext = useMemo(
+    () =>
+      deriveWorkspaceContextFromPathname({
+        pathname: pathname || "/corretor",
+        surface: source,
+        workspace: workspaceContext,
+      }),
+    [pathname, source, workspaceContext],
+  )
 
   const loadConversations = useCallback(async () => {
     const response = await fetch("/api/assistant/eme/conversations", {
@@ -182,7 +198,13 @@ export function useCosConversations({
 
   const sendCosMessage = useCallback(async (
     messageToSend: string,
-    options?: { confirm?: boolean; action?: string; visibleMessage?: string; cancel?: boolean },
+    options?: {
+      confirm?: boolean
+      action?: string
+      visibleMessage?: string
+      cancel?: boolean
+      workspaceContext?: Partial<CosWorkspaceContext> | null
+    },
   ) => {
     const normalizedMessage = messageToSend.trim()
     if (!normalizedMessage || isSending) return
@@ -211,6 +233,15 @@ export function useCosConversations({
     setChatFeedback("")
 
     try {
+      const messageWorkspaceContext = deriveWorkspaceContextFromPathname({
+        pathname: pathname || "/corretor",
+        surface: source,
+        workspace: {
+          ...resolvedWorkspaceContext,
+          ...(options?.workspaceContext ?? {}),
+        },
+      })
+
       const response = await fetch("/api/assistant/eme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -224,6 +255,7 @@ export function useCosConversations({
           cancel: Boolean(options?.cancel),
           source,
           conversationId: activeConversationId || undefined,
+          workspace: messageWorkspaceContext,
         }),
       })
 
@@ -290,7 +322,7 @@ export function useCosConversations({
       setIsSending(false)
       window.setTimeout(() => inputRef.current?.focus(), 0)
     }
-  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, setAssistantCredits, source])
+  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, pathname, resolvedWorkspaceContext, setAssistantCredits, source])
 
   const confirmPendingAction = useCallback(async () => {
     if (!pendingConfirmation) return
@@ -340,6 +372,7 @@ export function useCosConversations({
     createConversation,
     renameConversation,
     deleteConversation,
+    workspaceContext: resolvedWorkspaceContext,
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,

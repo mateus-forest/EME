@@ -119,6 +119,28 @@ export type CosEntityModule = {
   capabilities: CosEntityCapabilityRegistration[]
 }
 
+export type CosWorkspaceEntity =
+  | CosEntityModuleId
+  | "document"
+  | "conversation"
+
+export type CosWorkspaceSelection = {
+  entity: CosWorkspaceEntity
+  entityId: string
+  label?: string
+}
+
+export type CosWorkspaceContext = {
+  surface: CosCapabilitySurface
+  page: string
+  entity: CosWorkspaceEntity
+  entityId?: string | null
+  selection: CosWorkspaceSelection[]
+  pendingEntity?: CosWorkspaceEntity | null
+  pendingEntityId?: string | null
+  metadata: Record<string, unknown>
+}
+
 export type CosCapabilityPlanSource = "catalog" | "legacy"
 
 export type CosCapabilityPlanTelemetry = {
@@ -132,17 +154,26 @@ export type CosCapabilityPlanTelemetry = {
   surface: CosCapabilitySurface
   resolutionMs: number
   requestedAction: string | null
+  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  workspaceReceived: boolean
+  workspacePage: string | null
+  workspaceEntity: CosWorkspaceEntity | null
+  workspaceEntityId: string | null
+  workspaceEntityUsed: CosWorkspaceEntity | null
+  workspaceEntityIdUsed: string | null
 }
 
 export type CosCapabilityPlan = {
   action: AssessorAction
   payload: Record<string, unknown>
   pendingContext: PendingAssessorContext | null
+  workspace: CosWorkspaceContext | null
   capability: CosCapabilityDefinition
   capabilityId: CosCapabilityId
   entity: CosEntityModuleId
   confidence: number
   source: CosCapabilityPlanSource
   reason: string
+  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
   telemetry: CosCapabilityPlanTelemetry
 }

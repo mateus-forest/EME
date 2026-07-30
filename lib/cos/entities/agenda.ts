@@ -15,7 +15,7 @@ export const agendaEntityModule: CosEntityModule = {
         description: "Cria compromissos e lembretes na agenda do corretor.",
         domain: "agenda",
         entity: "agenda",
-        aliases: ["agendar compromisso", "criar compromisso", "nova visita"],
+        aliases: ["agendar compromisso", "criar compromisso", "nova visita", "marque para", "marcar para amanha", "agendar para amanha"],
         responseMode: "raw",
         source: "legacy",
         mutatesData: true,

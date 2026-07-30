@@ -139,6 +139,51 @@ const scenarios = [
     expectedAction: "general",
     expectedSource: "legacy",
   },
+  {
+    message: "Crie uma proposta.",
+    surface: "portal",
+    workspace: {
+      surface: "portal",
+      page: "lead_detail",
+      entity: "lead",
+      entityId: "lead_123",
+      selection: [],
+      metadata: {},
+    },
+    expectedAction: "CREATE_PROPOSAL",
+    expectedSource: "catalog",
+    expectedContextOrigin: "workspace",
+  },
+  {
+    message: "Marque para amanha as 14h.",
+    surface: "portal",
+    workspace: {
+      surface: "portal",
+      page: "agenda",
+      entity: "agenda",
+      entityId: null,
+      selection: [],
+      metadata: {},
+    },
+    expectedAction: "CREATE_AGENDA_EVENT",
+    expectedSource: "catalog",
+    expectedContextOrigin: "workspace",
+  },
+  {
+    message: "Gere um anuncio.",
+    surface: "portal",
+    workspace: {
+      surface: "portal",
+      page: "property_detail",
+      entity: "property",
+      entityId: "property_123",
+      selection: [],
+      metadata: {},
+    },
+    expectedAction: "improvePropertyDescription",
+    expectedSource: "catalog",
+    expectedContextOrigin: "workspace",
+  },
 ]
 
 const results = scenarios.map((scenario) => {
@@ -146,6 +191,7 @@ const results = scenarios.map((scenario) => {
     message: scenario.message,
     surface: scenario.surface,
     pendingContext: scenario.pendingContext ?? null,
+    workspace: scenario.workspace ?? null,
   })
 
   assert.strictEqual(plan.action, scenario.expectedAction, `Mensagem "${scenario.message}" deveria resolver ${scenario.expectedAction}, mas resolveu ${plan.action}.`)
@@ -158,6 +204,14 @@ const results = scenarios.map((scenario) => {
     )
   }
 
+  if (scenario.expectedContextOrigin) {
+    assert.strictEqual(
+      plan.contextOrigin,
+      scenario.expectedContextOrigin,
+      `Mensagem "${scenario.message}" deveria usar contextOrigin=${scenario.expectedContextOrigin}, mas usou ${plan.contextOrigin}.`,
+    )
+  }
+
   return {
     message: scenario.message,
     action: plan.action,
@@ -165,6 +219,7 @@ const results = scenarios.map((scenario) => {
     entity: plan.entity,
     source: plan.source,
     confidence: plan.confidence,
+    contextOrigin: plan.contextOrigin,
   }
 })
 

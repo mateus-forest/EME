@@ -15,6 +15,7 @@ import {
 } from "@/lib/eme-backend"
 import {
   doesCosCapabilityMutateData,
+  sanitizeWorkspaceContext,
   executeCosCapability,
   formatCosCapabilityResponse,
   getCosCapabilityActionsForSurface,
@@ -254,6 +255,8 @@ export async function POST(request: NextRequest) {
   try {
     const fromCosHome = isCosHomeSource(source)
     const metadataSource = fromCosHome ? "portal_cos_home" : "portal"
+    const surface = fromCosHome ? "cos_home" : "portal"
+    const workspace = sanitizeWorkspaceContext(body?.workspace, surface)
     let conversationDocument:
       | {
           id: string
@@ -312,7 +315,8 @@ export async function POST(request: NextRequest) {
       message,
       requestedAction: cleanText(body?.action ?? body?.actionType, 80),
       pendingContext,
-      surface: fromCosHome ? "cos_home" : "portal",
+      surface,
+      workspace,
     })
     const action = plan.action as AssessorAction
 

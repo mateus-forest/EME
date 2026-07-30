@@ -12,6 +12,8 @@ import type {
   CosCapabilityPlanSource,
   CosCapabilitySurface,
   CosEntityModuleId,
+  CosWorkspaceContext,
+  CosWorkspaceEntity,
 } from "@/lib/cos/types"
 
 const GENERIC_TOKENS = new Set([
@@ -31,19 +33,17 @@ const GENERIC_TOKENS = new Set([
   "esta",
   "este",
   "isso",
+  "listar",
+  "lista",
   "me",
   "meu",
   "minha",
+  "mostrar",
+  "mostre",
   "na",
   "nas",
   "no",
   "nos",
-  "mostrar",
-  "mostre",
-  "listar",
-  "lista",
-  "quais",
-  "quanto",
   "o",
   "os",
   "ou",
@@ -52,6 +52,8 @@ const GENERIC_TOKENS = new Set([
   "para",
   "por",
   "pra",
+  "quais",
+  "quanto",
   "que",
   "se",
   "tem",
@@ -88,6 +90,19 @@ function getEntityModuleId(descriptor: CosCapabilityDescriptor): CosEntityModule
   return getCosEntityModuleIdByCapabilityId(descriptor.id) ?? "general"
 }
 
+function getWorkspaceSelectionItem(workspace: CosWorkspaceContext | null | undefined) {
+  if (!workspace) return null
+  return workspace.selection[0] ?? null
+}
+
+function getWorkspaceEntity(workspace: CosWorkspaceContext | null | undefined) {
+  return workspace?.entity || getWorkspaceSelectionItem(workspace)?.entity || null
+}
+
+function getWorkspaceEntityId(workspace: CosWorkspaceContext | null | undefined) {
+  return workspace?.entityId || getWorkspaceSelectionItem(workspace)?.entityId || null
+}
+
 function buildCapabilitySearchDocument(descriptor: CosCapabilityDescriptor) {
   const actionTokens = descriptor.action
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -121,7 +136,86 @@ function tokensMatch(left: string, right: string) {
   return false
 }
 
-function scoreCapability(descriptor: CosCapabilityDescriptor, message: string, requestedAction: string | undefined, surface: CosCapabilitySurface) {
+function isWorkspaceRelevantEntity(workspaceEntity: CosWorkspaceEntity | null, descriptor: CosCapabilityDescriptor) {
+  if (!workspaceEntity) return false
+
+  const entityModule = getEntityModuleId(descriptor)
+  if (workspaceEntity === entityModule) return true
+  if (workspaceEntity === "document" && (entityModule === "contract" || entityModule === "proposal")) return true
+  if (workspaceEntity === "conversation" && descriptor.id === "general.chat") return true
+  return false
+}
+
+function scoreWorkspaceAffinity(descriptor: CosCapabilityDescriptor, normalizedMessage: string, workspace: CosWorkspaceContext | null | undefined) {
+  const workspaceEntity = getWorkspaceEntity(workspace)
+  const workspaceEntityId = getWorkspaceEntityId(workspace)
+
+  if (!workspaceEntity) {
+    return {
+      score: 0,
+      reasons: [] as string[],
+      workspaceEntityUsed: null as CosWorkspaceEntity | null,
+      workspaceEntityIdUsed: null as string | null,
+    }
+  }
+
+  const reasons: string[] = []
+  let score = 0
+
+  if (isWorkspaceRelevantEntity(workspaceEntity, descriptor)) {
+    score += 2.4
+    reasons.push(`workspace=${workspaceEntity}`)
+  }
+
+  if (workspaceEntityId && isWorkspaceRelevantEntity(workspaceEntity, descriptor)) {
+    score += 0.6
+    reasons.push("workspaceId")
+  }
+
+  if (
+    workspaceEntity === "agenda" &&
+    descriptor.id === "agenda.create" &&
+    /\b(amanha|hoje|\d{1,2}h|:\d{2}|marque|marcar|agende|agendar)\b/.test(normalizedMessage)
+  ) {
+    score += 3.2
+    reasons.push("workspace agenda + horario")
+  }
+
+  if (workspaceEntity === "lead" && descriptor.id === "proposal.create" && /\b(proposta|propor|apresentacao)\b/.test(normalizedMessage)) {
+    score += 2.2
+    reasons.push("workspace lead + proposta")
+  }
+
+  if (workspaceEntity === "property" && descriptor.id === "property.description.improve" && /\b(anuncio|descricao|texto)\b/.test(normalizedMessage)) {
+    score += 2.2
+    reasons.push("workspace property + anuncio")
+  }
+
+  if (workspaceEntity === "property" && descriptor.id === "contract.create" && /\b(contrato|reserva|autorizacao|exclusividade)\b/.test(normalizedMessage)) {
+    score += 1.8
+    reasons.push("workspace property + contrato")
+  }
+
+  if (workspaceEntity === "lead" && descriptor.id === "contract.create" && /\b(contrato|compra e venda|locacao)\b/.test(normalizedMessage)) {
+    score += 1.8
+    reasons.push("workspace lead + contrato")
+  }
+
+  return {
+    score,
+    reasons,
+    workspaceEntityUsed: score > 0 ? workspaceEntity : null,
+    workspaceEntityIdUsed: score > 0 ? workspaceEntityId : null,
+  }
+}
+
+function scoreCapability(
+  descriptor: CosCapabilityDescriptor,
+  message: string,
+  requestedAction: string | undefined,
+  surface: CosCapabilitySurface,
+  workspace: CosWorkspaceContext | null | undefined,
+) {
   if (!descriptor.surfaces.includes(surface)) return null
 
   const normalizedMessage = normalizeText(message)
@@ -159,6 +253,12 @@ function scoreCapability(descriptor: CosCapabilityDescriptor, message: string, r
     reasons.push(`tokens=${overlap.join(",")}`)
   }
 
+  const workspaceAffinity = scoreWorkspaceAffinity(descriptor, normalizedMessage, workspace)
+  if (workspaceAffinity.score > 0) {
+    score += workspaceAffinity.score
+    reasons.push(...workspaceAffinity.reasons)
+  }
+
   const entityModule = getEntityModuleId(descriptor)
   if (messageTokens.includes(entityModule) || messageTokens.includes(descriptor.domain) || messageTokens.includes(descriptor.entity)) {
     score += 1.5
@@ -168,7 +268,7 @@ function scoreCapability(descriptor: CosCapabilityDescriptor, message: string, r
   const verbHint = inferVerbHint(normalizedMessage)
   if (verbHint === "create" && descriptor.mutatesData) {
     score += 1.2
-    reasons.push("verbo de criação")
+    reasons.push("verbo de criacao")
   }
   if (verbHint === "list" && !descriptor.mutatesData && descriptor.id.includes(".list")) {
     score += 1.2
@@ -176,11 +276,11 @@ function scoreCapability(descriptor: CosCapabilityDescriptor, message: string, r
   }
   if (verbHint === "update" && descriptor.id.includes(".improve")) {
     score += 1.2
-    reasons.push("verbo de atualização")
+    reasons.push("verbo de atualizacao")
   }
   if (verbHint === "complete" && descriptor.id.includes(".complete")) {
     score += 1.2
-    reasons.push("verbo de conclusão")
+    reasons.push("verbo de conclusao")
   }
 
   if (descriptor.id === "general.chat") {
@@ -194,6 +294,8 @@ function scoreCapability(descriptor: CosCapabilityDescriptor, message: string, r
     overlapCount: overlap.length,
     hasRequestedMatch: requestedMatch?.id === descriptor.id,
     hasVerbHint: Boolean(verbHint),
+    workspaceEntityUsed: workspaceAffinity.workspaceEntityUsed,
+    workspaceEntityIdUsed: workspaceAffinity.workspaceEntityIdUsed,
   }
 }
 
@@ -215,10 +317,11 @@ function pickCatalogCandidate(input: {
   surface: CosCapabilitySurface
   pendingContext?: PendingAssessorContext | null
   legacyAction: string
+  workspace?: CosWorkspaceContext | null
 }) {
   const descriptors = listCosCapabilityCatalog()
   const scoredCandidates = descriptors
-    .map((descriptor) => scoreCapability(descriptor, input.message, input.requestedAction, input.surface))
+    .map((descriptor) => scoreCapability(descriptor, input.message, input.requestedAction, input.surface, input.workspace))
     .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
     .sort((left, right) => right.score - left.score)
 
@@ -252,21 +355,24 @@ function pickCatalogCandidate(input: {
     Boolean(input.pendingContext) &&
     input.pendingContext?.action === topCandidate.descriptor.action &&
     shouldContinuePendingContext(input.message, input.pendingContext ?? null, input.legacyAction)
+  const clearByWorkspace = Boolean(topCandidate.workspaceEntityUsed && confidence >= 0.52)
   const clearByAgreement = topCandidate.descriptor.action === input.legacyAction && confidence >= 0.45
   const clearByScore = confidence >= 0.78 && margin >= 0.25
 
-  if (!clearByRequest && !clearByPending && !clearByAgreement && !clearByScore) {
+  if (!clearByRequest && !clearByPending && !clearByWorkspace && !clearByAgreement && !clearByScore) {
     return null
   }
 
   return {
     descriptor: topCandidate.descriptor,
     confidence,
+    workspaceEntityUsed: topCandidate.workspaceEntityUsed,
+    workspaceEntityIdUsed: topCandidate.workspaceEntityIdUsed,
     reason: clearByPending
       ? `continuidade do contexto pendente (${input.pendingContext?.missingField ?? "sem campo"})`
       : clearByRequest
         ? `requestedAction mapeada para ${topCandidate.descriptor.id}`
-        : `catálogo combinou ${topCandidate.reasons.join("; ")} com margem ${margin.toFixed(2)}`,
+        : `catalogo combinou ${topCandidate.reasons.join("; ")} com margem ${margin.toFixed(2)}`,
   }
 }
 
@@ -275,6 +381,7 @@ export function planCosCapability(input: {
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
   surface?: CosCapabilitySurface
+  workspace?: CosWorkspaceContext | null
 }): CosCapabilityPlan {
   const startedAt = Date.now()
   const surface = input.surface ?? "portal"
@@ -287,10 +394,10 @@ export function planCosCapability(input: {
     surface,
     pendingContext: input.pendingContext ?? null,
     legacyAction,
+    workspace: input.workspace ?? null,
   })
 
   const resolvedSource: CosCapabilityPlanSource = catalogCandidate ? "catalog" : "legacy"
-
   const resolvedAction =
     resolvedSource === "catalog"
       ? catalogCandidate?.descriptor.action ?? legacyAction
@@ -298,10 +405,24 @@ export function planCosCapability(input: {
         ? input.pendingContext?.action ?? legacyAction
         : legacyAction
 
-  const resolvedPayload = usePendingContext && input.pendingContext ? { pendingContext: input.pendingContext } : {}
+  const resolvedPayload = {
+    ...(usePendingContext && input.pendingContext ? { pendingContext: input.pendingContext } : {}),
+    ...(input.workspace ? { workspace: input.workspace } : {}),
+  }
   const capability = getCosCapabilityByAction(resolvedAction)
   const capabilityId = capability.id
   const entity = getEntityModuleId(capability)
+  const workspaceEntityUsed = catalogCandidate?.workspaceEntityUsed ?? null
+  const workspaceEntityIdUsed = catalogCandidate?.workspaceEntityIdUsed ?? null
+  const contextOrigin =
+    workspaceEntityUsed
+      ? "workspace"
+      : usePendingContext
+        ? "pending_context"
+        : resolvedSource === "catalog"
+          ? "catalog"
+          : "legacy"
+
   const confidence =
     resolvedSource === "catalog"
       ? catalogCandidate?.confidence ?? 0.5
@@ -312,7 +433,7 @@ export function planCosCapability(input: {
           : 0.35
   const reason =
     resolvedSource === "catalog"
-      ? catalogCandidate?.reason ?? `catálogo selecionou ${capability.id}`
+      ? catalogCandidate?.reason ?? `catalogo selecionou ${capability.id}`
       : usePendingContext
         ? `fallback legado preservou contexto pendente para ${input.pendingContext?.missingField ?? "continuidade"}`
         : `fallback legado via inferAssessorAction(${legacyAction})`
@@ -322,12 +443,14 @@ export function planCosCapability(input: {
     action: resolvedAction,
     payload: resolvedPayload,
     pendingContext: input.pendingContext ?? null,
+    workspace: input.workspace ?? null,
     capability,
     capabilityId,
     entity,
     confidence,
     source: resolvedSource,
     reason,
+    contextOrigin,
     telemetry: {
       capabilityId,
       entity,
@@ -339,6 +462,13 @@ export function planCosCapability(input: {
       surface,
       resolutionMs,
       requestedAction: input.requestedAction?.trim() || null,
+      contextOrigin,
+      workspaceReceived: Boolean(input.workspace),
+      workspacePage: input.workspace?.page ?? null,
+      workspaceEntity: getWorkspaceEntity(input.workspace ?? null),
+      workspaceEntityId: getWorkspaceEntityId(input.workspace ?? null),
+      workspaceEntityUsed,
+      workspaceEntityIdUsed,
     },
   }
 
@@ -352,6 +482,12 @@ export function planCosCapability(input: {
     surface,
     resolutionMs,
     requestedAction: plan.telemetry.requestedAction,
+    contextOrigin,
+    workspacePage: plan.telemetry.workspacePage,
+    workspaceEntity: plan.telemetry.workspaceEntity,
+    workspaceEntityId: plan.telemetry.workspaceEntityId,
+    workspaceEntityUsed,
+    workspaceEntityIdUsed,
     messageLength: input.message.trim().length,
     reason,
   })

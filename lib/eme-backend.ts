@@ -536,6 +536,110 @@ function metadataRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
 }
 
+function workspaceEntityFromPayload(payload?: Record<string, unknown>) {
+  const workspace = metadataRecord(payload?.workspace)
+  const selection = Array.isArray(workspace.selection)
+    ? workspace.selection.find((item) => item && typeof item === "object")
+    : null
+  const selectionRecord = metadataRecord(selection)
+
+  return {
+    workspace,
+    entity: cleanText(workspace.entity, 40) || cleanText(selectionRecord.entity, 40),
+    entityId: cleanText(workspace.entityId, 120) || cleanText(selectionRecord.entityId, 120),
+  }
+}
+
+async function resolveWorkspaceScope(brokerId: string, payload?: Record<string, unknown>) {
+  const workspacePayload = workspaceEntityFromPayload(payload)
+  const { entity, entityId, workspace } = workspacePayload
+  if (!entity || !entityId) {
+    return {
+      workspace,
+      entity,
+      entityId,
+      lead: null,
+      property: null,
+      document: null,
+    }
+  }
+
+  if (entity === "lead") {
+    const lead = await prisma.lead.findFirst({
+      where: { brokerId, id: entityId },
+      select: { id: true, name: true, phone: true, email: true },
+    })
+    return { workspace, entity, entityId, lead, property: null, document: null }
+  }
+
+  if (entity === "property") {
+    const property = await prisma.property.findFirst({
+      where: { brokerId, id: entityId },
+      select: {
+        id: true,
+        publicCode: true,
+        title: true,
+        city: true,
+        neighborhood: true,
+        description: true,
+        price: true,
+        purpose: true,
+        type: true,
+        bedrooms: true,
+        parkingSpots: true,
+        imageUrls: true,
+      },
+    })
+    return { workspace, entity, entityId, lead: null, property, document: null }
+  }
+
+  if (entity === "contract" || entity === "proposal" || entity === "document") {
+    const document = await prisma.brokerDocument.findFirst({
+      where: { brokerId, id: entityId },
+      select: { id: true, type: true, title: true, leadId: true, propertyId: true },
+    })
+
+    const [lead, property] = await Promise.all([
+      document?.leadId
+        ? prisma.lead.findFirst({
+            where: { brokerId, id: document.leadId },
+            select: { id: true, name: true, phone: true, email: true },
+          })
+        : null,
+      document?.propertyId
+        ? prisma.property.findFirst({
+            where: { brokerId, id: document.propertyId },
+            select: {
+              id: true,
+              publicCode: true,
+              title: true,
+              city: true,
+              neighborhood: true,
+              description: true,
+              price: true,
+              purpose: true,
+              type: true,
+              bedrooms: true,
+              parkingSpots: true,
+              imageUrls: true,
+            },
+          })
+        : null,
+    ])
+
+    return { workspace, entity, entityId, lead, property, document }
+  }
+
+  return {
+    workspace,
+    entity,
+    entityId,
+    lead: null,
+    property: null,
+    document: null,
+  }
+}
+
 export async function getPendingAssessorContext(brokerId: string, conversationId?: string | null): Promise<PendingAssessorContext | null> {
   const recent = await prisma.emeMessage.findFirst({
     where: {
@@ -885,6 +989,7 @@ export async function runLegacyAssessorAction({
   payload?: Record<string, unknown>
 }) {
   const pendingContext = metadataRecord(payload?.pendingContext) as Partial<PendingAssessorContext>
+  const workspaceScope = await resolveWorkspaceScope(brokerId, payload)
   if (!brokerId) {
     return {
       response: "Não encontrei seu cadastro de corretor vinculado a este WhatsApp.",
@@ -934,7 +1039,9 @@ export async function runLegacyAssessorAction({
     const [lead, property] = await Promise.all([
       personName
         ? prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true } })
-        : null,
+        : workspaceScope.lead
+          ? Promise.resolve({ id: workspaceScope.lead.id, name: workspaceScope.lead.name })
+          : null,
       propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
         ? prisma.property.findFirst({
             where: {
@@ -948,7 +1055,9 @@ export async function runLegacyAssessorAction({
             orderBy: { updatedAt: "desc" },
             select: { id: true, title: true },
           })
-        : null,
+        : workspaceScope.property
+          ? Promise.resolve({ id: workspaceScope.property.id, title: workspaceScope.property.title })
+          : null,
     ])
     const baseTitle = parseAgendaTitle(message)
     const title = cleanText(`${baseTitle}${lead?.name || personName ? ` com ${lead?.name ?? personName}` : ""}${property ? ` no ${property.title}` : ""}`, 160)
@@ -1034,14 +1143,19 @@ export async function runLegacyAssessorAction({
       /^(sim|s|pode|gerar manual|isso|ok|claro)$/i.test(normalizeForIntent(message).trim())
     const personName = fixedProposal.personName || (pendingContext.missingField === "lead"
       ? cleanText(pendingParsedData.personName, 120) || cleanText(message, 120)
-      : cleanText(pendingParsedData.personName, 120) || extractPersonName(message))
+      : cleanText(pendingParsedData.personName, 120) || extractPersonName(message) || cleanText(workspaceScope.lead?.name, 120))
     const selectedLeadId = pendingContext.missingField === "lead" && pendingLeadIds.length
       ? pendingLeadIds[Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)] ?? null
-      : null
+      : workspaceScope.lead?.id ?? null
     const propertyReference = {
       ...extractPropertyReference(message),
-      publicCode: fixedProposal.publicCode ?? extractPropertyReference(message).publicCode,
-      idOrCode: cleanText(pendingPropertyReference.idOrCode, 80) || cleanText(pendingParsedData.propertyId, 80) || extractPropertyReference(message).idOrCode,
+      publicCode: fixedProposal.publicCode ?? extractPropertyReference(message).publicCode ?? workspaceScope.property?.publicCode ?? null,
+      idOrCode:
+        cleanText(pendingPropertyReference.idOrCode, 80) ||
+        cleanText(pendingParsedData.propertyId, 80) ||
+        extractPropertyReference(message).idOrCode ||
+        workspaceScope.property?.id ||
+        "",
       neighborhood: cleanText(pendingPropertyReference.neighborhood, 80) || cleanText(pendingParsedData.propertyNeighborhood, 80) || cleanText(pendingParsedData.propertyTerm, 120) || extractPropertyReference(message).neighborhood,
       type: (cleanText(pendingPropertyReference.type, 40) as PropertyType | "") || extractPropertyReference(message).type,
       price: Number(pendingPropertyReference.price ?? pendingParsedData.propertyPrice) || extractPropertyReference(message).price,
@@ -1058,8 +1172,12 @@ export async function runLegacyAssessorAction({
         ? prisma.lead.findMany({ where: { brokerId, id: selectedLeadId }, take: 1, select: { id: true, name: true, phone: true, email: true } })
         : personName
         ? findLeadCandidates(brokerId, personName, 4)
-        : [],
-      selectedOption?.id
+        : workspaceScope.lead
+          ? Promise.resolve([workspaceScope.lead])
+          : [],
+      workspaceScope.property
+        ? Promise.resolve(workspaceScope.property)
+        : selectedOption?.id
         ? prisma.property.findFirst({
             where: { brokerId, id: selectedOption.id },
             select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
@@ -1144,7 +1262,7 @@ Revise e preencha os dados restantes antes de enviar.`,
 
   if (action === "CREATE_CONTRACT") {
     const normalized = normalizeForIntent(message)
-    const personName = extractPersonName(message)
+    const personName = extractPersonName(message) || cleanText(workspaceScope.lead?.name, 120)
     const propertyReference = extractPropertyReference(message)
     const contractKind =
       normalized.includes("locacao comercial") || normalized.includes("aluguel comercial")
@@ -1167,7 +1285,7 @@ Revise e preencha os dados restantes antes de enviar.`,
 
     const [broker, matchingLeads] = await Promise.all([
       prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true } } } }),
-      personName ? findLeadCandidates(brokerId, personName, 4) : [],
+      personName ? findLeadCandidates(brokerId, personName, 4) : workspaceScope.lead ? Promise.resolve([workspaceScope.lead]) : [],
     ])
 
     if (matchingLeads.length > 1) {
@@ -1185,7 +1303,7 @@ Revise e preencha os dados restantes antes de enviar.`,
       }
     }
 
-    const propertyCandidates = await findProposalPropertyCandidates(brokerId, message, propertyReference, 4)
+    const propertyCandidates = workspaceScope.property ? [workspaceScope.property] : await findProposalPropertyCandidates(brokerId, message, propertyReference, 4)
     if (propertyCandidates.length > 1) {
       return {
         response: `Encontrei mais de um imovel. Qual devo usar no contrato?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.publicCode ? `Imovel ${item.publicCode} - ` : ""}${item.title} - ${item.city}`).join("\n")}`,
@@ -1280,7 +1398,9 @@ Revise e preencha os dados restantes antes de enviar.`,
     const propertyReference = extractPropertyReference(message)
     const lead = personName
       ? await prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, select: { id: true } })
-      : null
+      : workspaceScope.lead
+        ? { id: workspaceScope.lead.id }
+        : null
     const property = propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
       ? await prisma.property.findFirst({
           where: {
@@ -1294,7 +1414,9 @@ Revise e preencha os dados restantes antes de enviar.`,
           select: { id: true },
           orderBy: { updatedAt: "desc" },
         })
-      : null
+      : workspaceScope.property
+        ? { id: workspaceScope.property.id }
+        : null
     const documents = await prisma.brokerDocument.findMany({
       where: { brokerId, ...(lead?.id ? { leadId: lead.id } : {}), ...(property?.id ? { propertyId: property.id } : {}) },
       orderBy: { createdAt: "desc" },
@@ -1321,7 +1443,9 @@ Revise e preencha os dados restantes antes de enviar.`,
     const propertyReference = extractPropertyReference(message)
     const lead = personName
       ? await prisma.lead.findFirst({ where: { brokerId, name: { contains: personName, mode: "insensitive" } }, select: { id: true } })
-      : null
+      : workspaceScope.lead
+        ? { id: workspaceScope.lead.id }
+        : null
     const property = propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
       ? await prisma.property.findFirst({
           where: {
@@ -1335,7 +1459,9 @@ Revise e preencha os dados restantes antes de enviar.`,
           select: { id: true },
           orderBy: { updatedAt: "desc" },
         })
-      : null
+      : workspaceScope.property
+        ? { id: workspaceScope.property.id }
+        : null
     const documents = await prisma.brokerDocument.findMany({
       where: {
         brokerId,
@@ -1540,8 +1666,7 @@ Revise e preencha os dados restantes antes de enviar.`,
   }
 
   if (action === "improvePropertyDescription") {
-    const searchResult = await searchBrokerProperties(brokerId, message, 1)
-    const property = searchResult.results[0]
+    const property = workspaceScope.property ?? (await searchBrokerProperties(brokerId, message, 1)).results[0]
     return {
       response: property
         ? `Base para melhoria: ${property.title}. Descrição atual: ${property.description || "sem descrição cadastrada"}.`
