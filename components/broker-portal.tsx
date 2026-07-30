@@ -91,6 +91,7 @@ export function BrokerPortal() {
     chatFeedback,
     isSending,
     isConversationLoading,
+    isBootstrappingConversation,
     inputRef,
     setChatFeedback,
     createConversation,
@@ -176,6 +177,7 @@ export function BrokerPortal() {
     const [firstName] = profile.fullName.trim().split(" ").filter(Boolean)
     return firstName || "Corretor"
   }, [profile.fullName])
+  const hasResolvedBrokerName = profile.fullName.trim().length > 0
 
   const quickActions = [
     {
@@ -214,7 +216,7 @@ export function BrokerPortal() {
     { label: "Revisar clientes", message: "Revisar clientes" },
     { label: "Analisar carteira", message: "Analisar carteira" },
   ] satisfies NextStepSuggestion[]
-  const isConversationEmpty = !isConversationLoading && conversation.length === 0
+  const isConversationEmpty = !isBootstrappingConversation && !isConversationLoading && conversation.length === 0
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
@@ -324,9 +326,11 @@ export function BrokerPortal() {
                         <Sparkles className="size-3.5" />
                         Centro operacional EME
                       </div>
-                      <h1 className="mt-6 text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
-                        Ola, {brokerFirstName}.
-                      </h1>
+                      <div className="mt-6 min-h-[2.75rem] sm:min-h-[3.75rem]">
+                        <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
+                          Ola, {brokerFirstName}.
+                        </h1>
+                      </div>
                       <p className="mt-3 max-w-[38rem] text-sm leading-7 text-[#667085] sm:text-[1rem]">
                         O COS esta no centro da sua operacao para destravar clientes, catalogo, documentos,
                         contratos e agenda sem trocar de tela.
@@ -392,14 +396,22 @@ export function BrokerPortal() {
                   <div className="flex flex-wrap items-start justify-between gap-3 px-4 pb-3 pt-2">
                     <div className="min-w-0">
                       <p className="text-xs uppercase tracking-[0.18em] text-[#8a97a8]">COS</p>
-                      <h1 className="mt-1 text-[1.55rem] font-semibold tracking-[-0.03em] text-[#111111]">
-                        Ola, {brokerFirstName}.
-                      </h1>
+                      <div className="mt-1 min-h-[2rem]">
+                        {hasResolvedBrokerName ? (
+                          <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#111111]">
+                            Ola, {brokerFirstName}.
+                          </h1>
+                        ) : (
+                          <div className="h-8 w-40 rounded-full bg-[#e9ece6] animate-pulse" />
+                        )}
+                      </div>
                       <p className="mt-1 text-sm text-[#667085]">
                         Continue a conversa e mantenha a operacao sincronizada em tempo real.
                       </p>
                       {showConversationTitle ? (
                         <p className="mt-3 truncate text-sm font-medium text-[#111111]">{activeConversation?.title}</p>
+                      ) : isBootstrappingConversation ? (
+                        <div className="mt-3 h-5 w-56 rounded-full bg-[#eef1ec] animate-pulse" />
                       ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7a8798]">
@@ -413,7 +425,9 @@ export function BrokerPortal() {
                   </div>
 
                   <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-2">
-                    {isConversationLoading ? (
+                    {isBootstrappingConversation ? (
+                      <CosConversationSkeleton />
+                    ) : isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                         Carregando conversa...
                       </div>
@@ -767,5 +781,36 @@ function OperationHealthDetails({
         </Button>
       </div>
     </>
+  )
+}
+
+function CosConversationSkeleton() {
+  return (
+    <div className="flex min-h-full flex-col gap-3 pt-1">
+      <div className="flex justify-start">
+        <div className="w-[78%] rounded-[1.5rem] border border-black/[0.05] bg-white/82 px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.035)]">
+          <div className="h-4 w-28 rounded-full bg-[#eef1ec] animate-pulse" />
+          <div className="mt-3 h-3.5 w-full rounded-full bg-[#f1f4ef] animate-pulse" />
+          <div className="mt-2 h-3.5 w-[82%] rounded-full bg-[#f1f4ef] animate-pulse" />
+          <div className="mt-2 h-3.5 w-[58%] rounded-full bg-[#f1f4ef] animate-pulse" />
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <div className="w-[64%] rounded-[1.5rem] bg-[#1f1f1f] px-4 py-4">
+          <div className="h-3.5 w-full rounded-full bg-white/15 animate-pulse" />
+          <div className="mt-2 h-3.5 w-[76%] rounded-full bg-white/15 animate-pulse" />
+        </div>
+      </div>
+
+      <div className="flex justify-start">
+        <div className="w-[86%] rounded-[1.5rem] border border-black/[0.05] bg-white/82 px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.035)]">
+          <div className="h-3.5 w-[92%] rounded-full bg-[#f1f4ef] animate-pulse" />
+          <div className="mt-2 h-3.5 w-full rounded-full bg-[#f1f4ef] animate-pulse" />
+          <div className="mt-2 h-3.5 w-[74%] rounded-full bg-[#f1f4ef] animate-pulse" />
+          <div className="mt-3 h-3 w-24 rounded-full bg-[#eef1ec] animate-pulse" />
+        </div>
+      </div>
+    </div>
   )
 }

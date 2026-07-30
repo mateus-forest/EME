@@ -88,6 +88,7 @@ export function useCosConversations({
   const [chatFeedback, setChatFeedback] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isConversationLoading, setIsConversationLoading] = useState(false)
+  const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(true)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
 
@@ -346,6 +347,7 @@ export function useCosConversations({
     if (hasBootstrappedRef.current) return
     hasBootstrappedRef.current = true
 
+    setIsBootstrappingConversation(true)
     loadConversations()
       .then((items) => {
         if (autoOpenLatest && items[0]) {
@@ -354,6 +356,9 @@ export function useCosConversations({
         return null
       })
       .catch(() => null)
+      .finally(() => {
+        setIsBootstrappingConversation(false)
+      })
   }, [autoOpenLatest, loadConversations, openConversation])
 
   return {
@@ -364,6 +369,7 @@ export function useCosConversations({
     chatFeedback,
     isSending,
     isConversationLoading,
+    isBootstrappingConversation,
     inputRef,
     setChatFeedback,
     setConversation,
