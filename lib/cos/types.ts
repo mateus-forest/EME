@@ -186,7 +186,8 @@ export type CosWorkspaceContext = {
   metadata: Record<string, unknown>
 }
 
-export type CosCapabilityPlanSource = "catalog" | "legacy"
+export type CosCapabilityPlanSource = "catalog" | "legacy" | "ai"
+export type CosPlannerKind = "deterministic" | "ai"
 
 export type CosCapabilityPlanTelemetry = {
   capabilityId: CosCapabilityId
@@ -223,7 +224,8 @@ export type CosCapabilityPlan = {
   telemetry: CosCapabilityPlanTelemetry
 }
 
-export type CosExecutionPlanSource = "single" | "recipe"
+export type CosExecutionPlanSource = "single" | "recipe" | "ai"
+export type CosExecutionPlanBuilder = "deterministic" | "ai"
 
 export type CosExecutionPlanStatus =
   | "pending"
@@ -264,6 +266,7 @@ export type CosExecutionStep = {
 export type CosExecutionPlanTelemetry = {
   planId: string
   source: CosExecutionPlanSource
+  planner: CosExecutionPlanBuilder
   reason: string
   surface: CosCapabilitySurface
   stepCount: number
@@ -284,6 +287,7 @@ export type CosExecutionPlanTelemetry = {
   workspaceEntityId: string | null
   contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
   resolutionMs: number
+  orchestrator: Prisma.InputJsonObject | null
 }
 
 export type CosExecutionPlan = {

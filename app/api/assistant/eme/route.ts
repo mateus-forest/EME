@@ -351,12 +351,13 @@ export async function POST(request: NextRequest) {
     const pendingContext = resumableWorkflow ? null : await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
     const executionPlan = resumableWorkflow
       ? null
-      : planCosExecution({
+      : await planCosExecution({
           message,
           requestedAction,
           pendingContext,
           surface,
           workspace,
+          activeWorkflow: activeWorkflow ?? null,
         })
     const action = (resumableWorkflow?.steps[resumableWorkflow.currentStep]?.action ?? executionPlan?.primaryStep.action ?? "general") as AssessorAction
 
@@ -691,6 +692,9 @@ export async function POST(request: NextRequest) {
     }
 
     const actionMetadata = (executionResult?.metadata ?? {}) as Prisma.InputJsonObject
+    const plannedCapabilities = (executionPlan?.steps ?? workflow.steps).map((step) => step.capabilityId)
+    const executedCapabilities = executionResult?.executedSteps.map((step) => step.capabilityId) ?? []
+    const skippedCapabilities = plannedCapabilities.filter((capabilityId) => !executedCapabilities.includes(capabilityId))
     const interactionMetadata = {
       ...actionMetadata,
       source: metadataSource,
@@ -700,6 +704,14 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - actionStartedAt,
       visualAction: getCosCapabilityLabel(action),
       planner: executionPlan?.telemetry ?? null,
+      planningAudit: {
+        planner: executionPlan?.telemetry.planner ?? "deterministic",
+        source: executionPlan?.source ?? workflow.executionPlan.source,
+        plannedCapabilities,
+        executedCapabilities,
+        skippedCapabilities,
+        aiOrchestrator: executionPlan?.telemetry.orchestrator ?? null,
+      },
       workflow: workflowMetadata(updatedWorkflow),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,

@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 
 import type { PendingAssessorContext } from "@/lib/eme-backend"
 
+import { buildRejectedAiPlanGoal, evaluateAiOrchestratorTrigger, generateCosAiExecutionPlan, type CosAiOrchestratorAudit } from "@/lib/cos/ai-orchestrator"
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
 import { getCosCapabilityConfirmationMessage, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
 import { planCosCapability } from "@/lib/cos/planner"
@@ -13,22 +14,23 @@ import type {
   CosEntityModuleId,
   CosExecutionPlan,
   CosExecutionPlanGap,
+  CosExecutionPlanTelemetry,
   CosExecutionStep,
   CosWorkspaceContext,
   CosWorkspaceEntity,
+  CosWorkflow,
 } from "@/lib/cos/types"
 
 type ExecutionRecipe = {
   id: string
   match: (input: { normalizedMessage: string; workspace: CosWorkspaceContext | null }) => boolean
   stepIds: CosCapabilityId[]
-  gaps?: Array<{
-    id: string
-    title: string
-    when: (input: { normalizedMessage: string; workspace: CosWorkspaceContext | null }) => boolean
-    reason: string
-  }>
   reason: (input: { normalizedMessage: string; workspace: CosWorkspaceContext | null }) => string
+}
+
+type StepPlanSource = {
+  source?: CosCapabilityPlanSource
+  confidence?: number
 }
 
 function normalizeText(value: string) {
@@ -60,6 +62,21 @@ function hasAny(normalizedMessage: string, tokens: string[]) {
 
 function isPropertyWorkspace(workspace: CosWorkspaceContext | null) {
   return getWorkspaceEntity(workspace) === "property" && Boolean(getWorkspaceEntityId(workspace))
+}
+
+function summarizeActiveWorkflow(workflow: CosWorkflow | null | undefined) {
+  if (!workflow) return null
+  return {
+    id: workflow.id,
+    status: workflow.status,
+    currentStep: workflow.currentStep,
+    pendingInput: workflow.pendingInput,
+    steps: workflow.steps.map((step) => ({
+      id: step.id,
+      capabilityId: step.capabilityId,
+      status: step.status,
+    })),
+  }
 }
 
 const executionRecipes: ExecutionRecipe[] = [
@@ -111,6 +128,10 @@ export function createStepPlanForCapability(input: {
   planId: string
   order: number
   reason: string
+  stepId?: string
+  dependsOn?: string[]
+  source?: CosCapabilityPlanSource
+  confidence?: number
 }): CosExecutionStep {
   const descriptor = getCosCapabilityDescriptorById(input.capabilityId)
   if (!descriptor) {
@@ -126,18 +147,22 @@ export function createStepPlanForCapability(input: {
       ? "workspace"
       : input.pendingContext
         ? "pending_context"
-        : "catalog"
+        : input.source === "legacy"
+          ? "legacy"
+          : "catalog"
   const payload = {
     ...(input.pendingContext ? { pendingContext: input.pendingContext } : {}),
     ...(input.workspace ? { workspace: input.workspace } : {}),
   }
+  const stepSource = input.source ?? "catalog"
+  const stepConfidence = input.confidence ?? (stepSource === "ai" ? 0.82 : 0.92)
   const telemetry = {
     capabilityId: capability.id,
     entity,
-    confidence: 0.92,
-    source: "catalog" as CosCapabilityPlanSource,
+    confidence: stepConfidence,
+    source: stepSource,
     reason: `${input.reason} [step ${input.order + 1}]`,
-    fallbackUsed: false,
+    fallbackUsed: stepSource === "legacy",
     pendingContextUsed: Boolean(input.pendingContext),
     surface: input.surface,
     resolutionMs: 0,
@@ -160,37 +185,25 @@ export function createStepPlanForCapability(input: {
     capabilityId: capability.id,
     entity,
     confidence: telemetry.confidence,
-    source: "catalog",
+    source: stepSource,
     reason: telemetry.reason,
     contextOrigin,
     telemetry,
   }
 
   return {
-    id: `${input.planId}:step:${input.order + 1}`,
+    id: input.stepId ?? `${input.planId}:step:${input.order + 1}`,
     order: input.order,
     entity,
     capabilityId: capability.id,
     action: plan.action,
     status: "pending",
-    dependsOn: input.order === 0 ? [] : [`${input.planId}:step:${input.order}`],
+    dependsOn: input.dependsOn ?? (input.order === 0 ? [] : [`${input.planId}:step:${input.order}`]),
     durationMs: null,
     result: null,
     errorMessage: null,
     plan,
   }
-}
-
-function buildUnresolvedGoals(recipe: ExecutionRecipe, input: { normalizedMessage: string; workspace: CosWorkspaceContext | null }) {
-  return (recipe.gaps ?? [])
-    .filter((gap) => gap.when(input))
-    .map(
-      (gap): CosExecutionPlanGap => ({
-        id: gap.id,
-        title: gap.title,
-        reason: gap.reason,
-      }),
-    )
 }
 
 function buildConfirmationMessage(steps: CosExecutionStep[]) {
@@ -201,6 +214,49 @@ function buildConfirmationMessage(steps: CosExecutionStep[]) {
   return ["Posso executar este plano agora:", ...labels, "", "Deseja confirmar?"].join("\n")
 }
 
+function buildTelemetry(input: {
+  planId: string
+  source: CosExecutionPlan["source"]
+  planner: CosExecutionPlanTelemetry["planner"]
+  reason: string
+  surface: CosCapabilitySurface
+  steps: CosExecutionStep[]
+  unresolvedGoals: CosExecutionPlanGap[]
+  requestedAction?: string
+  message: string
+  workspace: CosWorkspaceContext | null
+  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  resolutionMs: number
+  orchestrator: CosAiOrchestratorAudit | null
+}): CosExecutionPlanTelemetry {
+  return {
+    planId: input.planId,
+    source: input.source,
+    planner: input.planner,
+    reason: input.reason,
+    surface: input.surface,
+    stepCount: input.steps.length,
+    steps: input.steps.map((step) => ({
+      id: step.id,
+      capabilityId: step.capabilityId,
+      action: step.action,
+      entity: step.entity,
+      source: step.plan.source,
+      mutatesData: step.plan.capability.mutatesData,
+      requiresConfirmation: step.plan.capability.requiresConfirmation,
+    })),
+    unresolvedGoals: input.unresolvedGoals,
+    requestedAction: input.requestedAction?.trim() || null,
+    messageLength: input.message.trim().length,
+    workspaceReceived: Boolean(input.workspace),
+    workspaceEntity: getWorkspaceEntity(input.workspace),
+    workspaceEntityId: getWorkspaceEntityId(input.workspace),
+    contextOrigin: input.contextOrigin,
+    resolutionMs: input.resolutionMs,
+    orchestrator: input.orchestrator ? (input.orchestrator as unknown as CosExecutionPlanTelemetry["orchestrator"]) : null,
+  }
+}
+
 function buildSingleExecutionPlan(input: {
   capabilityPlan: CosCapabilityPlan
   message: string
@@ -209,6 +265,8 @@ function buildSingleExecutionPlan(input: {
   surface: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
   startedAt: number
+  planner?: CosExecutionPlanTelemetry["planner"]
+  orchestrator?: CosAiOrchestratorAudit | null
 }): CosExecutionPlan {
   const planId = randomUUID()
   const step: CosExecutionStep = {
@@ -241,42 +299,193 @@ function buildSingleExecutionPlan(input: {
     unresolvedGoals: [],
     requiresConfirmation: input.capabilityPlan.capability.requiresConfirmation,
     confirmationMessage: input.capabilityPlan.capability.requiresConfirmation ? getCosCapabilityConfirmationMessage(input.capabilityPlan.action) : null,
-    telemetry: {
+    telemetry: buildTelemetry({
       planId,
       source: "single",
+      planner: input.planner ?? "deterministic",
       reason: input.capabilityPlan.reason,
       surface: input.surface,
-      stepCount: 1,
-      steps: [
-        {
-          id: step.id,
-          capabilityId: step.capabilityId,
-          action: step.action,
-          entity: step.entity,
-          source: step.plan.source,
-          mutatesData: step.plan.capability.mutatesData,
-          requiresConfirmation: step.plan.capability.requiresConfirmation,
-        },
-      ],
+      steps: [step],
       unresolvedGoals: [],
-      requestedAction: input.requestedAction?.trim() || null,
-      messageLength: input.message.trim().length,
-      workspaceReceived: Boolean(input.workspace),
-      workspaceEntity: getWorkspaceEntity(input.workspace ?? null),
-      workspaceEntityId: getWorkspaceEntityId(input.workspace ?? null),
+      requestedAction: input.requestedAction,
+      message: input.message,
+      workspace: input.workspace ?? null,
       contextOrigin: input.capabilityPlan.contextOrigin,
       resolutionMs,
-    },
+      orchestrator: input.orchestrator ?? null,
+    }),
   }
 }
 
-export function planCosExecution(input: {
+function buildRecipeExecutionPlan(input: {
+  message: string
+  requestedAction?: string
+  pendingContext?: PendingAssessorContext | null
+  surface: CosCapabilitySurface
+  workspace: CosWorkspaceContext | null
+  startedAt: number
+  recipe: ExecutionRecipe
+}): CosExecutionPlan {
+  const planId = randomUUID()
+  const normalizedMessage = normalizeText(input.message)
+  const reason = input.recipe.reason({ normalizedMessage, workspace: input.workspace })
+  const steps = input.recipe.stepIds.map((capabilityId, order) =>
+    createStepPlanForCapability({
+      capabilityId,
+      message: input.message,
+      requestedAction: input.requestedAction,
+      pendingContext: input.pendingContext,
+      surface: input.surface,
+      workspace: input.workspace,
+      planId,
+      order,
+      reason,
+    }),
+  )
+
+  const requiresConfirmation = steps.some((step) => step.plan.capability.requiresConfirmation)
+  const resolutionMs = Date.now() - input.startedAt
+  const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
+    getWorkspaceEntity(input.workspace)
+      ? "workspace"
+      : input.pendingContext
+        ? "pending_context"
+        : "catalog"
+
+  const plan: CosExecutionPlan = {
+    id: planId,
+    source: "recipe",
+    reason,
+    status: requiresConfirmation ? "needs_confirmation" : "pending",
+    message: input.message,
+    requestedAction: input.requestedAction,
+    surface: input.surface,
+    workspace: input.workspace,
+    pendingContext: input.pendingContext ?? null,
+    primaryStep: steps[0],
+    steps,
+    unresolvedGoals: [],
+    requiresConfirmation,
+    confirmationMessage: requiresConfirmation ? buildConfirmationMessage(steps) : null,
+    telemetry: buildTelemetry({
+      planId,
+      source: "recipe",
+      planner: "deterministic",
+      reason,
+      surface: input.surface,
+      steps,
+      unresolvedGoals: [],
+      requestedAction: input.requestedAction,
+      message: input.message,
+      workspace: input.workspace,
+      contextOrigin,
+      resolutionMs,
+      orchestrator: null,
+    }),
+  }
+
+  console.info("[cos][execution-plan]", {
+    planId: plan.id,
+    source: plan.source,
+    planner: plan.telemetry.planner,
+    stepCount: plan.steps.length,
+    capabilities: plan.steps.map((step) => step.capabilityId),
+    unresolvedGoals: plan.unresolvedGoals.map((gap) => gap.id),
+    requiresConfirmation: plan.requiresConfirmation,
+    surface: input.surface,
+    workspaceEntity: plan.telemetry.workspaceEntity,
+    workspaceEntityId: plan.telemetry.workspaceEntityId,
+    resolutionMs,
+    reason,
+  })
+
+  return plan
+}
+
+function buildAiExecutionPlan(input: {
+  message: string
+  requestedAction?: string
+  pendingContext?: PendingAssessorContext | null
+  surface: CosCapabilitySurface
+  workspace: CosWorkspaceContext | null
+  startedAt: number
+  aiPlan: Awaited<ReturnType<typeof generateCosAiExecutionPlan>> & { accepted: true }
+}): CosExecutionPlan {
+  const planId = randomUUID()
+  const stepIdMap = new Map(input.aiPlan.data.steps.map((step, index) => [step.id, `${planId}:step:${index + 1}`]))
+  const steps = input.aiPlan.data.steps.map((step, order) =>
+    createStepPlanForCapability({
+      capabilityId: step.capability as CosCapabilityId,
+      message: input.message,
+      requestedAction: input.requestedAction,
+      pendingContext: input.pendingContext,
+      surface: input.surface,
+      workspace: input.workspace,
+      planId,
+      order,
+      reason: input.aiPlan.data.reason,
+      stepId: stepIdMap.get(step.id),
+      dependsOn: step.dependsOn.map((dependency) => stepIdMap.get(dependency)).filter((value): value is string => Boolean(value)),
+      source: "ai",
+      confidence: input.aiPlan.data.confidence,
+    }),
+  )
+
+  const requiresConfirmation = steps.some((step) => step.plan.capability.requiresConfirmation)
+  const resolutionMs = Date.now() - input.startedAt
+  const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
+    getWorkspaceEntity(input.workspace)
+      ? "workspace"
+      : input.pendingContext
+        ? "pending_context"
+        : "catalog"
+
+  return {
+    id: planId,
+    source: "ai",
+    reason: input.aiPlan.data.reason,
+    status: requiresConfirmation ? "needs_confirmation" : "pending",
+    message: input.message,
+    requestedAction: input.requestedAction,
+    surface: input.surface,
+    workspace: input.workspace,
+    pendingContext: input.pendingContext ?? null,
+    primaryStep: steps[0],
+    steps,
+    unresolvedGoals: [],
+    requiresConfirmation,
+    confirmationMessage: requiresConfirmation ? buildConfirmationMessage(steps) : null,
+    telemetry: buildTelemetry({
+      planId,
+      source: "ai",
+      planner: "ai",
+      reason: input.aiPlan.data.reason,
+      surface: input.surface,
+      steps,
+      unresolvedGoals: [],
+      requestedAction: input.requestedAction,
+      message: input.message,
+      workspace: input.workspace,
+      contextOrigin,
+      resolutionMs,
+      orchestrator: {
+        ...input.aiPlan.audit,
+        executedCapabilities: steps.map((step) => step.capabilityId),
+      },
+    }),
+  }
+}
+
+export async function planCosExecution(input: {
   message: string
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
   surface?: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
-}): CosExecutionPlan {
+  activeWorkflow?: CosWorkflow | null
+  aiOrchestratorOverride?: unknown
+  allowAiOrchestrator?: boolean
+}): Promise<CosExecutionPlan> {
   const startedAt = Date.now()
   const surface = input.surface ?? "portal"
   const workspace = input.workspace ?? null
@@ -291,110 +500,116 @@ export function planCosExecution(input: {
   })
 
   const matchedRecipe = executionRecipes.find((recipe) => recipe.match({ normalizedMessage, workspace }))
-  if (!matchedRecipe) {
-    return buildSingleExecutionPlan({
-      capabilityPlan: primaryCapabilityPlan,
+  if (matchedRecipe) {
+    return buildRecipeExecutionPlan({
       message: input.message,
       requestedAction: input.requestedAction,
       pendingContext,
       surface,
       workspace,
       startedAt,
+      recipe: matchedRecipe,
     })
   }
 
-  const planId = randomUUID()
-  const reason = matchedRecipe.reason({ normalizedMessage, workspace })
-  const steps = matchedRecipe.stepIds.map((capabilityId, order) =>
-    createStepPlanForCapability({
-      capabilityId,
-      message: input.message,
-      requestedAction: input.requestedAction,
-      pendingContext,
-      surface,
-      workspace,
-      planId,
-      order,
-      reason,
-    }),
-  )
-  const unresolvedGoals = buildUnresolvedGoals(matchedRecipe, { normalizedMessage, workspace })
-
-  if (steps.length <= 1 && unresolvedGoals.length === 0) {
-    return buildSingleExecutionPlan({
-      capabilityPlan: primaryCapabilityPlan,
-      message: input.message,
-      requestedAction: input.requestedAction,
-      pendingContext,
-      surface,
-      workspace,
-      startedAt,
-    })
-  }
-
-  const requiresConfirmation = steps.some((step) => step.plan.capability.requiresConfirmation)
-  const resolutionMs = Date.now() - startedAt
-  const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
-    getWorkspaceEntity(workspace)
-      ? "workspace"
-      : pendingContext
-        ? "pending_context"
-        : "catalog"
-
-  const plan: CosExecutionPlan = {
-    id: planId,
-    source: "recipe",
-    reason,
-    status: requiresConfirmation ? "needs_confirmation" : "pending",
+  const aiTrigger = evaluateAiOrchestratorTrigger({
     message: input.message,
+    surface,
     requestedAction: input.requestedAction,
+    workspace,
+    pendingContext,
+    primaryCapabilityId: primaryCapabilityPlan.capabilityId,
+    primarySource: primaryCapabilityPlan.source,
+    primaryConfidence: primaryCapabilityPlan.confidence,
+    recipeMatched: Boolean(matchedRecipe),
+  })
+
+  if (!aiTrigger.shouldTry || input.allowAiOrchestrator === false) {
+    return buildSingleExecutionPlan({
+      capabilityPlan: primaryCapabilityPlan,
+      message: input.message,
+      requestedAction: input.requestedAction,
+      pendingContext,
+      surface,
+      workspace,
+      startedAt,
+      planner: "deterministic",
+    })
+  }
+
+  const aiPlan = await generateCosAiExecutionPlan({
+    message: input.message,
     surface,
     workspace,
     pendingContext,
-    primaryStep: steps[0],
-    steps,
-    unresolvedGoals,
-    requiresConfirmation,
-    confirmationMessage: requiresConfirmation ? buildConfirmationMessage(steps) : null,
-    telemetry: {
-      planId,
-      source: "recipe",
-      reason,
-      surface,
-      stepCount: steps.length,
-      steps: steps.map((step) => ({
-        id: step.id,
-        capabilityId: step.capabilityId,
-        action: step.action,
-        entity: step.entity,
-        source: step.plan.source,
-        mutatesData: step.plan.capability.mutatesData,
-        requiresConfirmation: step.plan.capability.requiresConfirmation,
-      })),
-      unresolvedGoals,
-      requestedAction: input.requestedAction?.trim() || null,
-      messageLength: input.message.trim().length,
-      workspaceReceived: Boolean(workspace),
-      workspaceEntity: getWorkspaceEntity(workspace),
-      workspaceEntityId: getWorkspaceEntityId(workspace),
-      contextOrigin,
-      resolutionMs,
-    },
-  }
-
-  console.info("[cos][execution-plan]", {
-    planId: plan.id,
-    source: plan.source,
-    stepCount: plan.steps.length,
-    capabilities: plan.steps.map((step) => step.capabilityId),
-    unresolvedGoals: plan.unresolvedGoals.map((gap) => gap.id),
-    requiresConfirmation: plan.requiresConfirmation,
-    surface,
-    workspaceEntity: plan.telemetry.workspaceEntity,
-    workspaceEntityId: plan.telemetry.workspaceEntityId,
-    resolutionMs,
-    reason,
+    activeWorkflowSummary: summarizeActiveWorkflow(input.activeWorkflow ?? null),
+    triggerReason: aiTrigger.triggerReason ?? "deterministic_fallback",
+    responseOverride: input.aiOrchestratorOverride,
   })
 
-  return plan
+  if (aiPlan.accepted) {
+    const plan = buildAiExecutionPlan({
+      message: input.message,
+      requestedAction: input.requestedAction,
+      pendingContext,
+      surface,
+      workspace,
+      startedAt,
+      aiPlan,
+    })
+
+    console.info("[cos][execution-plan]", {
+      planId: plan.id,
+      source: plan.source,
+      planner: plan.telemetry.planner,
+      stepCount: plan.steps.length,
+      capabilities: plan.steps.map((step) => step.capabilityId),
+      unresolvedGoals: [],
+      requiresConfirmation: plan.requiresConfirmation,
+      surface,
+      workspaceEntity: plan.telemetry.workspaceEntity,
+      workspaceEntityId: plan.telemetry.workspaceEntityId,
+      resolutionMs: plan.telemetry.resolutionMs,
+      reason: plan.reason,
+    })
+
+    return plan
+  }
+
+  const fallbackCapabilityPlan: CosCapabilityPlan = {
+    ...primaryCapabilityPlan,
+    reason: aiPlan.audit.triggerReason
+      ? `${primaryCapabilityPlan.reason} | fallback apos AI (${aiPlan.audit.triggerReason})`
+      : `${primaryCapabilityPlan.reason} | fallback apos AI`,
+  }
+
+  const fallbackPlan = buildSingleExecutionPlan({
+    capabilityPlan: fallbackCapabilityPlan,
+    message: input.message,
+    requestedAction: input.requestedAction,
+    pendingContext,
+    surface,
+    workspace,
+    startedAt,
+    planner: "deterministic",
+    orchestrator: {
+      ...aiPlan.audit,
+      fallbackUsed: true,
+      executedCapabilities: [primaryCapabilityPlan.capabilityId],
+      validationErrors: [
+        ...aiPlan.audit.validationErrors,
+        ...buildRejectedAiPlanGoal({ audit: aiPlan.audit }).map((goal) => goal.reason),
+      ],
+    },
+  })
+
+  console.info("[cos][execution-plan][fallback]", {
+    planId: fallbackPlan.id,
+    planner: fallbackPlan.telemetry.planner,
+    fallbackReason: aiPlan.audit.fallbackReason,
+    aiStatus: aiPlan.audit.status,
+    capability: fallbackPlan.primaryStep.capabilityId,
+  })
+
+  return fallbackPlan
 }

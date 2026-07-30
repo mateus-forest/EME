@@ -245,6 +245,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
     telemetry: {
       planId: workflow.executionPlan.id,
       source: workflow.executionPlan.source,
+      planner: workflow.executionPlan.source === "ai" ? "ai" : "deterministic",
       reason: workflow.executionPlan.reason,
       surface: workflow.executionPlan.surface,
       stepCount: steps.length,
@@ -265,6 +266,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
       workspaceEntityId: workflow.executionPlan.workspace?.entityId ?? null,
       contextOrigin: workflow.executionPlan.workspace ? "workspace" : "catalog",
       resolutionMs: 0,
+      orchestrator: null,
     },
   }
 }

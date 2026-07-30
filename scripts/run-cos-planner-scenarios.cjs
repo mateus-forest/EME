@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global __dirname, console, require */
+/* global __dirname, console, process, require */
 
 const fs = require("fs")
 const path = require("path")
@@ -72,65 +72,18 @@ const {
   updateWorkflowFromExecutionResult,
 } = require(path.join(repoRoot, "lib/cos/workflow-engine.ts"))
 
-const scenarios = [
-  {
-    message: "Busque apartamentos no centro.",
-    surface: "portal",
-    expectedAction: "searchProperties",
-  },
-  {
-    message: "Cadastre este cliente.",
-    surface: "portal",
-    expectedAction: "createLead",
-  },
-  {
-    message: "Crie um contrato de compra e venda.",
-    surface: "portal",
-    expectedAction: "CREATE_CONTRACT",
-  },
-  {
-    message: "Quais compromissos tenho hoje?",
-    surface: "cos_home",
-    expectedAction: "LIST_AGENDA_EVENTS",
-  },
-  {
-    message: "Quanto tenho de comissão prevista?",
-    surface: "portal",
-    expectedAction: "getFinancialSummary",
-  },
-  {
-    message: "Analise meu catálogo.",
-    surface: "portal",
-    expectedAction: "analyzeCatalog",
-  },
-  {
-    message: "Mostre meus contratos.",
-    surface: "portal",
-    expectedAction: "LIST_CONTRACTS",
-  },
-  {
-    message: "Melhore a descrição deste imóvel.",
-    surface: "portal",
-    expectedAction: "improvePropertyDescription",
-  },
-  {
-    message: "Crie um novo.",
-    surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
-  },
-  {
-    message: "Mostre os pendentes.",
-    surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
-  },
-  {
-    message: "Atualize isso.",
-    surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
-  },
+const capabilityScenarios = [
+  { message: "Busque apartamentos no centro.", surface: "portal", expectedAction: "searchProperties" },
+  { message: "Cadastre este cliente.", surface: "portal", expectedAction: "createLead" },
+  { message: "Crie um contrato de compra e venda.", surface: "portal", expectedAction: "CREATE_CONTRACT" },
+  { message: "Quais compromissos tenho hoje?", surface: "cos_home", expectedAction: "LIST_AGENDA_EVENTS" },
+  { message: "Quanto tenho de comissão prevista?", surface: "portal", expectedAction: "getFinancialSummary" },
+  { message: "Analise meu catálogo.", surface: "portal", expectedAction: "analyzeCatalog" },
+  { message: "Mostre meus contratos.", surface: "portal", expectedAction: "LIST_CONTRACTS" },
+  { message: "Melhore a descrição deste imóvel.", surface: "portal", expectedAction: "improvePropertyDescription" },
+  { message: "Crie um novo.", surface: "portal", expectedAction: "general", expectedSource: "legacy" },
+  { message: "Mostre os pendentes.", surface: "portal", expectedAction: "general", expectedSource: "legacy" },
+  { message: "Atualize isso.", surface: "portal", expectedAction: "general", expectedSource: "legacy" },
   {
     message: "Sim.",
     surface: "portal",
@@ -143,12 +96,7 @@ const scenarios = [
       createdAt: new Date("2026-07-30T10:00:00.000Z"),
     },
   },
-  {
-    message: "Cancelar.",
-    surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
-  },
+  { message: "Cancelar.", surface: "portal", expectedAction: "general", expectedSource: "legacy" },
   {
     message: "Crie uma proposta.",
     surface: "portal",
@@ -196,46 +144,7 @@ const scenarios = [
   },
 ]
 
-const results = scenarios.map((scenario) => {
-  const plan = planCosCapability({
-    message: scenario.message,
-    surface: scenario.surface,
-    pendingContext: scenario.pendingContext ?? null,
-    workspace: scenario.workspace ?? null,
-  })
-
-  assert.strictEqual(plan.action, scenario.expectedAction, `Mensagem "${scenario.message}" deveria resolver ${scenario.expectedAction}, mas resolveu ${plan.action}.`)
-
-  if (scenario.expectedSource) {
-    assert.strictEqual(
-      plan.source,
-      scenario.expectedSource,
-      `Mensagem "${scenario.message}" deveria usar source=${scenario.expectedSource}, mas usou ${plan.source}.`,
-    )
-  }
-
-  if (scenario.expectedContextOrigin) {
-    assert.strictEqual(
-      plan.contextOrigin,
-      scenario.expectedContextOrigin,
-      `Mensagem "${scenario.message}" deveria usar contextOrigin=${scenario.expectedContextOrigin}, mas usou ${plan.contextOrigin}.`,
-    )
-  }
-
-  return {
-    message: scenario.message,
-    action: plan.action,
-    capabilityId: plan.capabilityId,
-    entity: plan.entity,
-    source: plan.source,
-    confidence: plan.confidence,
-    contextOrigin: plan.contextOrigin,
-  }
-})
-
-console.table(results)
-
-const executionScenarios = [
+const deterministicExecutionScenarios = [
   {
     message: "Cadastre este cliente e gere uma proposta.",
     surface: "portal",
@@ -276,74 +185,183 @@ const executionScenarios = [
   },
 ]
 
-const executionResults = executionScenarios.map((scenario) => {
-  const plan = planCosExecution({
-    message: scenario.message,
-    surface: scenario.surface,
-    workspace: scenario.workspace ?? null,
+async function main() {
+  const capabilityResults = capabilityScenarios.map((scenario) => {
+    const plan = planCosCapability({
+      message: scenario.message,
+      surface: scenario.surface,
+      pendingContext: scenario.pendingContext ?? null,
+      workspace: scenario.workspace ?? null,
+    })
+
+    assert.strictEqual(plan.action, scenario.expectedAction, `Mensagem "${scenario.message}" deveria resolver ${scenario.expectedAction}, mas resolveu ${plan.action}.`)
+
+    if (scenario.expectedSource) {
+      assert.strictEqual(plan.source, scenario.expectedSource, `Mensagem "${scenario.message}" deveria usar source=${scenario.expectedSource}, mas usou ${plan.source}.`)
+    }
+
+    if (scenario.expectedContextOrigin) {
+      assert.strictEqual(
+        plan.contextOrigin,
+        scenario.expectedContextOrigin,
+        `Mensagem "${scenario.message}" deveria usar contextOrigin=${scenario.expectedContextOrigin}, mas usou ${plan.contextOrigin}.`,
+      )
+    }
+
+    return {
+      message: scenario.message,
+      action: plan.action,
+      capabilityId: plan.capabilityId,
+      entity: plan.entity,
+      source: plan.source,
+      confidence: plan.confidence,
+      contextOrigin: plan.contextOrigin,
+    }
   })
 
+  console.table(capabilityResults)
+
+  const executionResults = []
+  for (const scenario of deterministicExecutionScenarios) {
+    const plan = await planCosExecution({
+      message: scenario.message,
+      surface: scenario.surface,
+      workspace: scenario.workspace ?? null,
+      allowAiOrchestrator: false,
+    })
+
+    assert.deepStrictEqual(
+      plan.steps.map((step) => step.capabilityId),
+      scenario.expectedSteps,
+      `Plano "${scenario.message}" deveria conter ${scenario.expectedSteps.join(", ")}, mas trouxe ${plan.steps.map((step) => step.capabilityId).join(", ")}.`,
+    )
+    assert.strictEqual(plan.source, scenario.expectedSource, `Plano "${scenario.message}" deveria usar source=${scenario.expectedSource}.`)
+
+    executionResults.push({
+      message: scenario.message,
+      source: plan.source,
+      planner: plan.telemetry.planner,
+      stepCount: plan.steps.length,
+      steps: plan.steps.map((step) => step.capabilityId).join(" -> "),
+      unresolvedGoals: plan.unresolvedGoals.map((goal) => goal.id).join(", "),
+    })
+  }
+
+  console.table(executionResults)
+
+  const aiPlan = await planCosExecution({
+    message: "Analise toda minha operação e sugira prioridades.",
+    surface: "portal",
+    aiOrchestratorOverride: {
+      output_parsed: {
+        goal: "priorizar_operacao",
+        confidence: 0.94,
+        reason: "pedido composto sem receita deterministica direta",
+        steps: [
+          { id: "step_1", capability: "lead.summary", dependsOn: [] },
+          { id: "step_2", capability: "finance.summary", dependsOn: ["step_1"] },
+          { id: "step_3", capability: "analytics.summary", dependsOn: ["step_2"] },
+          { id: "step_4", capability: "operation.summary", dependsOn: ["step_3"] },
+        ],
+      },
+      usage: { input_tokens: 900, output_tokens: 180, total_tokens: 1080 },
+      finish_reason: "completed",
+    },
+  })
+
+  assert.strictEqual(aiPlan.source, "ai", "Plano do orquestrador deveria usar source=ai.")
+  assert.strictEqual(aiPlan.telemetry.planner, "ai", "Plano do orquestrador deveria registrar planner=ai.")
   assert.deepStrictEqual(
-    plan.steps.map((step) => step.capabilityId),
-    scenario.expectedSteps,
-    `Plano "${scenario.message}" deveria conter ${scenario.expectedSteps.join(", ")}, mas trouxe ${plan.steps.map((step) => step.capabilityId).join(", ")}.`,
+    aiPlan.steps.map((step) => step.capabilityId),
+    ["lead.summary", "finance.summary", "analytics.summary", "operation.summary"],
+    "Plano do orquestrador deveria refletir o structured output validado.",
   )
 
-  assert.strictEqual(plan.source, scenario.expectedSource, `Plano "${scenario.message}" deveria usar source=${scenario.expectedSource}.`)
+  const invalidAiFallback = await planCosExecution({
+    message: "Monte uma campanha para este imóvel considerando o público ideal.",
+    surface: "portal",
+    workspace: {
+      surface: "portal",
+      page: "property_detail",
+      entity: "property",
+      entityId: "property_123",
+      selection: [],
+      metadata: {},
+    },
+    aiOrchestratorOverride: {
+      output_parsed: {
+        goal: "campanha_invalida",
+        confidence: 0.91,
+        reason: "capability inexistente",
+        steps: [{ id: "step_1", capability: "studio.capabilityInexistente", dependsOn: [] }],
+      },
+      finish_reason: "completed",
+    },
+  })
 
-  if (scenario.expectedUnresolvedGoals) {
-    assert.deepStrictEqual(
-      plan.unresolvedGoals.map((goal) => goal.id),
-      scenario.expectedUnresolvedGoals,
-      `Plano "${scenario.message}" deveria sinalizar gaps ${scenario.expectedUnresolvedGoals.join(", ")}.`,
-    )
-  }
+  assert.notStrictEqual(invalidAiFallback.source, "ai", "Plano invalido da IA deveria voltar ao planner deterministico.")
+  assert.strictEqual(invalidAiFallback.telemetry.planner, "deterministic", "Fallback deveria preservar planner final deterministico.")
+  assert.strictEqual(invalidAiFallback.telemetry.orchestrator?.planner, "ai", "Fallback deveria registrar a tentativa da IA.")
 
-  return {
-    message: scenario.message,
-    source: plan.source,
-    stepCount: plan.steps.length,
-    steps: plan.steps.map((step) => step.capabilityId).join(" -> "),
-    unresolvedGoals: plan.unresolvedGoals.map((goal) => goal.id).join(", "),
-  }
-})
+  const workflowPlan = await planCosExecution({
+    message: "Cadastre este cliente e gere uma proposta.",
+    surface: "portal",
+    allowAiOrchestrator: false,
+  })
 
-console.table(executionResults)
+  const pendingWorkflow = createWorkflowFromExecutionPlan({
+    conversationId: "conversation_123",
+    plan: workflowPlan,
+  })
 
-const workflowPlan = planCosExecution({
-  message: "Cadastre este cliente e gere uma proposta.",
-  surface: "portal",
-})
+  assert.strictEqual(pendingWorkflow.status, "awaiting_input", "Workflow inicial deveria aguardar confirmacao para plano mutativo.")
+  assert.strictEqual(pendingWorkflow.pendingInput?.field, "confirmation", "Workflow inicial deveria pedir confirmacao.")
+  assert.strictEqual(formatWorkflowProgress(pendingWorkflow), "Etapa 1 de 2\nAguardando: Confirmação.", "Progresso inicial inesperado.")
+  assert.strictEqual(shouldResumeWorkflow(pendingWorkflow), true, "Workflow aguardando input deveria ser retomavel.")
+  assert.strictEqual(shouldConfirmWorkflowMessage("sim", false), true, "Mensagem afirmativa deveria confirmar workflow.")
 
-const pendingWorkflow = createWorkflowFromExecutionPlan({
-  conversationId: "conversation_123",
-  plan: workflowPlan,
-})
+  const resumedWorkflow = resumeWorkflowState({
+    ...pendingWorkflow,
+    pausedAt: "2026-07-30T12:00:00.000Z",
+    updatedAt: "2026-07-30T12:00:00.000Z",
+  })
 
-assert.strictEqual(pendingWorkflow.status, "awaiting_input", "Workflow inicial deveria aguardar confirmacao para plano mutativo.")
-assert.strictEqual(pendingWorkflow.pendingInput?.field, "confirmation", "Workflow inicial deveria pedir confirmacao.")
-assert.strictEqual(formatWorkflowProgress(pendingWorkflow), "Etapa 1 de 2\nAguardando: Confirmação.", "Progresso inicial inesperado.")
-assert.strictEqual(shouldResumeWorkflow(pendingWorkflow), true, "Workflow aguardando input deveria ser retomavel.")
-assert.strictEqual(shouldConfirmWorkflowMessage("sim", false), true, "Mensagem afirmativa deveria confirmar workflow.")
+  assert.strictEqual(resumedWorkflow.status, "running", "Workflow retomado deveria voltar para running.")
+  assert.strictEqual(resumedWorkflow.pausedAt, null, "Workflow retomado nao deveria manter pausedAt.")
 
-const resumedWorkflow = resumeWorkflowState({
-  ...pendingWorkflow,
-  pausedAt: "2026-07-30T12:00:00.000Z",
-  updatedAt: "2026-07-30T12:00:00.000Z",
-})
-
-assert.strictEqual(resumedWorkflow.status, "running", "Workflow retomado deveria voltar para running.")
-assert.strictEqual(resumedWorkflow.pausedAt, null, "Workflow retomado nao deveria manter pausedAt.")
-
-const awaitingInputWorkflow = updateWorkflowFromExecutionResult({
-  workflow: resumedWorkflow,
-  result: {
-    planId: resumedWorkflow.id,
-    status: "awaiting_input",
-    primaryAction: "createLead",
-    primaryCapabilityId: "lead.create",
-    steps: [
-      {
+  const awaitingInputWorkflow = updateWorkflowFromExecutionResult({
+    workflow: resumedWorkflow,
+    result: {
+      planId: resumedWorkflow.id,
+      status: "awaiting_input",
+      primaryAction: "createLead",
+      primaryCapabilityId: "lead.create",
+      steps: [
+        {
+          id: `${resumedWorkflow.id}:step:1`,
+          order: 0,
+          entity: "lead",
+          capabilityId: "lead.create",
+          action: "createLead",
+          status: "awaiting_input",
+          dependsOn: [],
+          durationMs: 42,
+          errorMessage: null,
+          plan: workflowPlan.steps[0].plan,
+          result: {
+            response: "Qual o telefone dele?",
+            metadata: {
+              required: ["phone"],
+              extractedName: "Mateus",
+              parsedData: { extractedName: "Mateus" },
+            },
+          },
+        },
+        workflowPlan.steps[1],
+      ],
+      completedSteps: [],
+      executedSteps: [],
+      interruptedStep: {
         id: `${resumedWorkflow.id}:step:1`,
         order: 0,
         entity: "lead",
@@ -363,81 +381,63 @@ const awaitingInputWorkflow = updateWorkflowFromExecutionResult({
           },
         },
       },
-      workflowPlan.steps[1],
-    ],
-    completedSteps: [],
-    executedSteps: [],
-    interruptedStep: {
-      id: `${resumedWorkflow.id}:step:1`,
-      order: 0,
-      entity: "lead",
-      capabilityId: "lead.create",
-      action: "createLead",
-      status: "awaiting_input",
-      dependsOn: [],
-      durationMs: 42,
-      errorMessage: null,
-      plan: workflowPlan.steps[0].plan,
-      result: {
-        response: "Qual o telefone dele?",
-        metadata: {
-          required: ["phone"],
-          extractedName: "Mateus",
-          parsedData: { extractedName: "Mateus" },
-        },
-      },
+      interruptedReason: "awaiting_input",
+      unresolvedGoals: [],
+      metadata: {},
+      totalDurationMs: 42,
     },
-    interruptedReason: "awaiting_input",
-    unresolvedGoals: [],
-    metadata: {},
-    totalDurationMs: 42,
-  },
+  })
+
+  assert.strictEqual(awaitingInputWorkflow.status, "awaiting_input", "Workflow deveria entrar em awaiting_input.")
+  assert.strictEqual(awaitingInputWorkflow.pendingInput?.field, "phone", "Workflow deveria mapear phone como pending input.")
+  assert.strictEqual(awaitingInputWorkflow.pendingInput?.parsedData?.extractedName, "Mateus", "Workflow deveria preservar parsedData.")
+
+  const completedWorkflow = updateWorkflowFromExecutionResult({
+    workflow: awaitingInputWorkflow,
+    result: {
+      planId: awaitingInputWorkflow.id,
+      status: "completed",
+      primaryAction: "createLead",
+      primaryCapabilityId: "lead.create",
+      steps: workflowPlan.steps.map((step, index) => ({
+        ...step,
+        status: "completed",
+        durationMs: 100 + index,
+        result: { response: "ok", metadata: {} },
+      })),
+      completedSteps: workflowPlan.steps.map((step, index) => ({
+        ...step,
+        status: "completed",
+        durationMs: 100 + index,
+        result: { response: "ok", metadata: {} },
+      })),
+      executedSteps: workflowPlan.steps.map((step, index) => ({
+        ...step,
+        status: "completed",
+        durationMs: 100 + index,
+        result: { response: "ok", metadata: {} },
+      })),
+      interruptedStep: null,
+      interruptedReason: null,
+      unresolvedGoals: [],
+      metadata: {},
+      totalDurationMs: 201,
+    },
+  })
+
+  assert.strictEqual(completedWorkflow.status, "completed", "Workflow deveria concluir.")
+  assert.strictEqual(formatWorkflowProgress(completedWorkflow), "Workflow concluido.\n2 etapas executadas.", "Resumo final do workflow inesperado.")
+
+  const cancelledWorkflow = cancelWorkflow(awaitingInputWorkflow)
+  assert.strictEqual(cancelledWorkflow.status, "cancelled", "Workflow cancelado deveria receber status cancelled.")
+  assert.strictEqual(cancelledWorkflow.pendingInput, null, "Workflow cancelado nao deveria manter pendingInput.")
+
+  console.log(
+    `Validated ${capabilityResults.length} capability scenarios, ${executionResults.length} deterministic execution-plan scenarios, AI orchestrator scenarios and workflow lifecycle scenarios successfully.`,
+  )
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
 })
-
-assert.strictEqual(awaitingInputWorkflow.status, "awaiting_input", "Workflow deveria entrar em awaiting_input.")
-assert.strictEqual(awaitingInputWorkflow.pendingInput?.field, "phone", "Workflow deveria mapear phone como pending input.")
-assert.strictEqual(awaitingInputWorkflow.pendingInput?.parsedData?.extractedName, "Mateus", "Workflow deveria preservar parsedData.")
-
-const completedWorkflow = updateWorkflowFromExecutionResult({
-  workflow: awaitingInputWorkflow,
-  result: {
-    planId: awaitingInputWorkflow.id,
-    status: "completed",
-    primaryAction: "createLead",
-    primaryCapabilityId: "lead.create",
-    steps: workflowPlan.steps.map((step, index) => ({
-      ...step,
-      status: "completed",
-      durationMs: 100 + index,
-      result: { response: "ok", metadata: {} },
-    })),
-    completedSteps: workflowPlan.steps.map((step, index) => ({
-      ...step,
-      status: "completed",
-      durationMs: 100 + index,
-      result: { response: "ok", metadata: {} },
-    })),
-    executedSteps: workflowPlan.steps.map((step, index) => ({
-      ...step,
-      status: "completed",
-      durationMs: 100 + index,
-      result: { response: "ok", metadata: {} },
-    })),
-    interruptedStep: null,
-    interruptedReason: null,
-    unresolvedGoals: [],
-    metadata: {},
-    totalDurationMs: 201,
-  },
-})
-
-assert.strictEqual(completedWorkflow.status, "completed", "Workflow deveria concluir.")
-assert.strictEqual(formatWorkflowProgress(completedWorkflow), "Workflow concluido.\n2 etapas executadas.", "Resumo final do workflow inesperado.")
-
-const cancelledWorkflow = cancelWorkflow(awaitingInputWorkflow)
-assert.strictEqual(cancelledWorkflow.status, "cancelled", "Workflow cancelado deveria receber status cancelled.")
-assert.strictEqual(cancelledWorkflow.pendingInput, null, "Workflow cancelado nao deveria manter pendingInput.")
-
-console.log(
-  `Validated ${results.length} capability scenarios, ${executionResults.length} execution-plan scenarios and workflow lifecycle scenarios successfully.`,
-)
