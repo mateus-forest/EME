@@ -61,6 +61,7 @@ Module._extensions[".ts"] = transpileTypeScript
 Module._extensions[".tsx"] = transpileTypeScript
 
 const { planCosCapability } = require(path.join(repoRoot, "lib/cos/planner.ts"))
+const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-planner.ts"))
 
 const scenarios = [
   {
@@ -224,4 +225,81 @@ const results = scenarios.map((scenario) => {
 })
 
 console.table(results)
-console.log(`Validated ${results.length} planner scenarios successfully.`)
+
+const executionScenarios = [
+  {
+    message: "Cadastre este cliente e gere uma proposta.",
+    surface: "portal",
+    expectedSteps: ["lead.create", "proposal.create"],
+    expectedSource: "recipe",
+  },
+  {
+    message: "Crie um contrato e envie para assinatura.",
+    surface: "portal",
+    expectedSteps: ["contract.create"],
+    expectedSource: "recipe",
+    expectedUnresolvedGoals: ["contract_signature_dispatch"],
+  },
+  {
+    message: "Analise minha operacao.",
+    surface: "portal",
+    expectedSteps: ["lead.summary", "finance.summary", "analytics.summary", "operation.summary"],
+    expectedSource: "recipe",
+  },
+  {
+    message: "Quero vender este imovel.",
+    surface: "portal",
+    workspace: {
+      surface: "portal",
+      page: "property_detail",
+      entity: "property",
+      entityId: "property_123",
+      selection: [],
+      metadata: {},
+    },
+    expectedSteps: ["property.description.improve", "catalog.analyze"],
+    expectedSource: "recipe",
+  },
+  {
+    message: "Publique meu catalogo e gere uma campanha.",
+    surface: "portal",
+    expectedSteps: ["catalog.analyze"],
+    expectedSource: "recipe",
+    expectedUnresolvedGoals: ["catalog_publish", "studio_campaign"],
+  },
+]
+
+const executionResults = executionScenarios.map((scenario) => {
+  const plan = planCosExecution({
+    message: scenario.message,
+    surface: scenario.surface,
+    workspace: scenario.workspace ?? null,
+  })
+
+  assert.deepStrictEqual(
+    plan.steps.map((step) => step.capabilityId),
+    scenario.expectedSteps,
+    `Plano "${scenario.message}" deveria conter ${scenario.expectedSteps.join(", ")}, mas trouxe ${plan.steps.map((step) => step.capabilityId).join(", ")}.`,
+  )
+
+  assert.strictEqual(plan.source, scenario.expectedSource, `Plano "${scenario.message}" deveria usar source=${scenario.expectedSource}.`)
+
+  if (scenario.expectedUnresolvedGoals) {
+    assert.deepStrictEqual(
+      plan.unresolvedGoals.map((goal) => goal.id),
+      scenario.expectedUnresolvedGoals,
+      `Plano "${scenario.message}" deveria sinalizar gaps ${scenario.expectedUnresolvedGoals.join(", ")}.`,
+    )
+  }
+
+  return {
+    message: scenario.message,
+    source: plan.source,
+    stepCount: plan.steps.length,
+    steps: plan.steps.map((step) => step.capabilityId).join(" -> "),
+    unresolvedGoals: plan.unresolvedGoals.map((goal) => goal.id).join(", "),
+  }
+})
+
+console.table(executionResults)
+console.log(`Validated ${results.length} capability scenarios and ${executionResults.length} execution-plan scenarios successfully.`)

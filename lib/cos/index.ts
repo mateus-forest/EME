@@ -12,10 +12,11 @@ export {
   listCosCapabilityCatalog,
   listCosEntityModules,
 } from "@/lib/cos/capability-catalog"
-export { executeCosCapability } from "@/lib/cos/executor"
+export { executeCosCapability, executeCosExecutionPlan } from "@/lib/cos/executor"
+export { planCosExecution } from "@/lib/cos/execution-planner"
 export { buildCosCapabilityInventoryMarkdown, getCosCapabilityInventory } from "@/lib/cos/inventory"
 export { planCosCapability } from "@/lib/cos/planner"
-export { formatCosCapabilityResponse } from "@/lib/cos/response-formatter"
+export { formatCosCapabilityResponse, formatCosExecutionPlanResponse } from "@/lib/cos/response-formatter"
 export { deriveWorkspaceContextFromPathname, sanitizeWorkspaceContext } from "@/lib/cos/workspace-context"
 export { cosEntityModules } from "@/lib/cos/entities"
 export type {
@@ -31,6 +32,14 @@ export type {
   CosCapabilityPlanSource,
   CosCapabilityPlanTelemetry,
   CosCapabilitySurface,
+  CosExecutionPlan,
+  CosExecutionPlanGap,
+  CosExecutionPlanResult,
+  CosExecutionPlanSource,
+  CosExecutionPlanStatus,
+  CosExecutionPlanTelemetry,
+  CosExecutionStep,
+  CosExecutionStepStatus,
   CosEntityCapabilityRegistration,
   CosEntityMetadata,
   CosEntityModule,

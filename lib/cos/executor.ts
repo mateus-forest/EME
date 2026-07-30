@@ -1,6 +1,6 @@
 import { runLegacyAssessorAction } from "@/lib/eme-backend"
 
-import type { CosActionResult, CosCapabilityPlan } from "@/lib/cos/types"
+import type { CosActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
 
 export async function executeCosCapability(input: {
   plan: CosCapabilityPlan
@@ -35,4 +35,146 @@ export async function executeCosCapability(input: {
     confirm: input.confirm,
     payload: mergedPayload,
   })) as CosActionResult
+}
+
+function isAwaitingInputResult(result: CosActionResult) {
+  const required = Array.isArray(result.metadata?.required) ? result.metadata.required : []
+  if (required.length > 0) return true
+
+  return (
+    result.response.includes("preciso de confirmacao") ||
+    result.response.includes("confirmacao") ||
+    result.response.includes("Qual ") ||
+    result.response.includes("Pode confirmar")
+  )
+}
+
+function buildExecutionMetadata(input: {
+  plan: CosExecutionPlan
+  steps: CosExecutionStep[]
+  interruptedStep: CosExecutionStep | null
+  interruptedReason: string | null
+  totalDurationMs: number
+}) {
+  return {
+    planId: input.plan.id,
+    source: input.plan.source,
+    reason: input.plan.reason,
+    totalDurationMs: input.totalDurationMs,
+    interruptedStepId: input.interruptedStep?.id ?? null,
+    interruptedCapabilityId: input.interruptedStep?.capabilityId ?? null,
+    interruptedReason: input.interruptedReason,
+    unresolvedGoals: input.plan.unresolvedGoals,
+    steps: input.steps.map((step) => ({
+      id: step.id,
+      order: step.order,
+      capabilityId: step.capabilityId,
+      action: step.action,
+      entity: step.entity,
+      status: step.status,
+      dependsOn: step.dependsOn,
+      durationMs: step.durationMs,
+      errorMessage: step.errorMessage,
+      metadata: step.result?.metadata ?? {},
+    })),
+  }
+}
+
+export async function executeCosExecutionPlan(input: {
+  plan: CosExecutionPlan
+  brokerId: string
+  userId: string
+  message: string
+  confirm?: boolean
+  payload?: Record<string, unknown>
+}): Promise<CosExecutionPlanResult> {
+  const startedAt = Date.now()
+  const steps: CosExecutionStep[] = input.plan.steps.map((step) => ({
+    ...step,
+    dependsOn: [...step.dependsOn],
+  }))
+  let interruptedStep: CosExecutionStep | null = null
+  let interruptedReason: string | null = null
+  let lastLeadId: string | undefined
+  let lastPropertyId: string | undefined
+
+  for (const step of steps) {
+    step.status = "running"
+    const stepStartedAt = Date.now()
+
+    try {
+      const result = await executeCosCapability({
+        plan: step.plan,
+        brokerId: input.brokerId,
+        userId: input.userId,
+        message: input.message,
+        confirm: input.confirm,
+        payload: input.payload,
+      })
+
+      step.durationMs = Date.now() - stepStartedAt
+      step.result = result
+      step.errorMessage = null
+      lastLeadId = result.leadId ?? lastLeadId
+      lastPropertyId = result.propertyId ?? lastPropertyId
+
+      if (isAwaitingInputResult(result)) {
+        step.status = "awaiting_input"
+        interruptedStep = step
+        interruptedReason = "awaiting_input"
+        break
+      }
+
+      step.status = "completed"
+    } catch (caughtError) {
+      step.durationMs = Date.now() - stepStartedAt
+      step.status = "failed"
+      step.errorMessage = caughtError instanceof Error ? caughtError.message : "Erro interno na etapa."
+      interruptedStep = step
+      interruptedReason = "failed"
+      break
+    }
+  }
+
+  const finalStatus =
+    interruptedReason === "failed"
+      ? "failed"
+      : interruptedReason === "awaiting_input"
+        ? "awaiting_input"
+        : "completed"
+  const completedSteps = steps.filter((step) => step.status === "completed")
+  const totalDurationMs = Date.now() - startedAt
+
+  console.info("[cos][execution-run]", {
+    planId: input.plan.id,
+    status: finalStatus,
+    stepCount: steps.length,
+    completedSteps: completedSteps.length,
+    interruptedStepId: interruptedStep?.id ?? null,
+    interruptedCapabilityId: interruptedStep?.capabilityId ?? null,
+    interruptedReason,
+    totalDurationMs,
+  })
+
+  return {
+    planId: input.plan.id,
+    status: finalStatus,
+    primaryAction: input.plan.primaryStep.action,
+    primaryCapabilityId: input.plan.primaryStep.capabilityId,
+    steps,
+    completedSteps,
+    interruptedStep,
+    interruptedReason,
+    unresolvedGoals: input.plan.unresolvedGoals,
+    metadata: buildExecutionMetadata({
+      plan: input.plan,
+      steps,
+      interruptedStep,
+      interruptedReason,
+      totalDurationMs,
+    }),
+    leadId: lastLeadId,
+    propertyId: lastPropertyId,
+    totalDurationMs,
+  }
 }

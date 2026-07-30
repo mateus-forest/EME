@@ -177,3 +177,100 @@ export type CosCapabilityPlan = {
   contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
   telemetry: CosCapabilityPlanTelemetry
 }
+
+export type CosExecutionPlanSource = "single" | "recipe"
+
+export type CosExecutionPlanStatus =
+  | "pending"
+  | "needs_confirmation"
+  | "running"
+  | "completed"
+  | "awaiting_input"
+  | "failed"
+
+export type CosExecutionStepStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "awaiting_input"
+  | "failed"
+  | "skipped"
+
+export type CosExecutionPlanGap = {
+  id: string
+  title: string
+  reason: string
+}
+
+export type CosExecutionStep = {
+  id: string
+  order: number
+  entity: CosEntityModuleId
+  capabilityId: CosCapabilityId
+  action: AssessorAction
+  status: CosExecutionStepStatus
+  dependsOn: string[]
+  durationMs: number | null
+  result: CosActionResult | null
+  errorMessage: string | null
+  plan: CosCapabilityPlan
+}
+
+export type CosExecutionPlanTelemetry = {
+  planId: string
+  source: CosExecutionPlanSource
+  reason: string
+  surface: CosCapabilitySurface
+  stepCount: number
+  steps: Array<{
+    id: string
+    capabilityId: CosCapabilityId
+    action: AssessorAction
+    entity: CosEntityModuleId
+    source: CosCapabilityPlanSource
+    mutatesData: boolean
+    requiresConfirmation: boolean
+  }>
+  unresolvedGoals: CosExecutionPlanGap[]
+  requestedAction: string | null
+  messageLength: number
+  workspaceReceived: boolean
+  workspaceEntity: CosWorkspaceEntity | null
+  workspaceEntityId: string | null
+  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  resolutionMs: number
+}
+
+export type CosExecutionPlan = {
+  id: string
+  source: CosExecutionPlanSource
+  reason: string
+  status: CosExecutionPlanStatus
+  message: string
+  requestedAction?: string
+  surface: CosCapabilitySurface
+  workspace: CosWorkspaceContext | null
+  pendingContext: PendingAssessorContext | null
+  primaryStep: CosExecutionStep
+  steps: CosExecutionStep[]
+  unresolvedGoals: CosExecutionPlanGap[]
+  requiresConfirmation: boolean
+  confirmationMessage: string | null
+  telemetry: CosExecutionPlanTelemetry
+}
+
+export type CosExecutionPlanResult = {
+  planId: string
+  status: CosExecutionPlanStatus
+  primaryAction: AssessorAction
+  primaryCapabilityId: CosCapabilityId
+  steps: CosExecutionStep[]
+  completedSteps: CosExecutionStep[]
+  interruptedStep: CosExecutionStep | null
+  interruptedReason: string | null
+  unresolvedGoals: CosExecutionPlanGap[]
+  metadata: Prisma.InputJsonObject
+  leadId?: string
+  propertyId?: string
+  totalDurationMs: number
+}

@@ -16,14 +16,13 @@ import {
 import {
   doesCosCapabilityMutateData,
   sanitizeWorkspaceContext,
-  executeCosCapability,
-  formatCosCapabilityResponse,
+  executeCosExecutionPlan,
+  formatCosExecutionPlanResponse,
   getCosCapabilityActionsForSurface,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
   isCosCapabilityAvailableOnSurface,
-  planCosCapability,
-  type CosActionResult,
+  planCosExecution,
 } from "@/lib/cos"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
@@ -311,14 +310,14 @@ export async function POST(request: NextRequest) {
     }
 
     const pendingContext = await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
-    const plan = planCosCapability({
+    const executionPlan = planCosExecution({
       message,
       requestedAction: cleanText(body?.action ?? body?.actionType, 80),
       pendingContext,
       surface,
       workspace,
     })
-    const action = plan.action as AssessorAction
+    const action = executionPlan.primaryStep.action as AssessorAction
 
     if (isCancellation && fromCosHome) {
       const responseText = "Tudo bem. Nao executei a alteracao."
@@ -328,7 +327,7 @@ export async function POST(request: NextRequest) {
         actionName: action,
         brokerId: user.broker.id,
         visualAction: getCosCapabilityLabel(action),
-        planner: plan.telemetry,
+        planner: executionPlan.telemetry,
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
@@ -392,8 +391,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (fromCosHome && doesCosCapabilityMutateData(action) && !body?.confirm) {
-      const responseText = buildCosHomeConfirmationResponse(action)
+    if (fromCosHome && executionPlan.requiresConfirmation && !body?.confirm) {
+      const responseText = executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action)
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
@@ -401,7 +400,7 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker.id,
         visualAction: getCosCapabilityLabel(action),
         confirmationRequired: true,
-        planner: plan.telemetry,
+        planner: executionPlan.telemetry,
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
@@ -454,7 +453,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    creditsUsed = getEmeCreditCost(action)
+    creditsUsed = executionPlan.steps.reduce((total, step) => total + getEmeCreditCost(step.action), 0)
 
     if (brokerState.aiCreditsBalance < creditsUsed) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
@@ -467,16 +466,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let actionResult: CosActionResult = { response: "", metadata: {} }
     let responseText = ""
     let actionStatus = "processing"
     let errorMessage: string | null = null
-    let finalCreditsUsed = creditsUsed
+    let finalCreditsUsed = 0
     const actionStartedAt = Date.now()
+    let executionResult = null
 
     try {
-      actionResult = await executeCosCapability({
-        plan,
+      executionResult = await executeCosExecutionPlan({
+        plan: executionPlan,
         brokerId: user.broker.id,
         userId: user.id,
         message,
@@ -485,49 +484,58 @@ export async function POST(request: NextRequest) {
       })
 
       actionStatus =
-        Array.isArray(actionResult.metadata?.required) && actionResult.metadata.required.length > 0
+        executionResult.status === "awaiting_input"
           ? "processing"
-          : actionResult.response.includes("preciso de confirmacao") || actionResult.response.includes("confirmacao")
-            ? "processing"
+          : executionResult.status === "failed"
+            ? "error"
             : "success"
 
-      if ((actionResult.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
-        finalCreditsUsed = 0
-      }
+      finalCreditsUsed = executionResult.completedSteps.reduce((total, step) => {
+        if ((step.result?.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
+          return total
+        }
+        return total + getEmeCreditCost(step.action)
+      }, 0)
 
       if (finalCreditsUsed > 0) {
         await consumeBrokerAiCredits({
           brokerId: user.broker.id,
           amount: finalCreditsUsed,
           actionType: action,
-          description: `Assessor EME: ${getCosCapabilityLabel(action)}`,
+          description:
+            executionPlan.steps.length > 1
+              ? `Assessor EME: plano ${executionPlan.steps.map((step) => getCosCapabilityLabel(step.action)).join(" + ")}`
+              : `Assessor EME: ${getCosCapabilityLabel(action)}`,
           metadata: {
             source: "api/assistant/eme",
             action,
+            planId: executionPlan.id,
+            steps: executionPlan.steps.map((step) => step.action),
           },
         })
       }
 
-      responseText = await formatCosCapabilityResponse({
+      responseText = await formatCosExecutionPlanResponse({
         message,
-        action,
-        capability: plan.capability,
-        actionResponse: actionResult.response,
+        plan: executionPlan,
+        result: executionResult,
       })
 
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,
         executedAction: action,
-        capabilityId: plan.capabilityId,
-        plannerEntity: plan.entity,
-        plannerSource: plan.source,
-        plannerConfidence: plan.confidence,
-        plannerFallbackUsed: plan.telemetry.fallbackUsed,
+        capabilityId: executionPlan.primaryStep.capabilityId,
+        plannerSource: executionPlan.source,
+        plannerStepCount: executionPlan.steps.length,
+        plannerUnresolvedGoals: executionPlan.unresolvedGoals.map((goal) => goal.id),
         actionStatus,
         brokerId: user.broker.id,
-        leadId: actionResult.leadId ?? null,
-        propertySearchFilters: actionResult.metadata?.propertySearchFilters ?? null,
+        leadId: executionResult.leadId ?? null,
+        propertySearchFilters: executionResult.metadata?.propertySearchFilters ?? null,
         visualAction: getCosCapabilityLabel(action),
+        planId: executionPlan.id,
+        interruptedStepId: executionResult.interruptedStep?.id ?? null,
+        interruptedReason: executionResult.interruptedReason,
         durationMs: Date.now() - actionStartedAt,
       })
     } catch (caughtActionError) {
@@ -546,7 +554,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const actionMetadata = (actionResult.metadata ?? {}) as Prisma.InputJsonObject
+    const actionMetadata = ((executionResult?.metadata ?? {}) as Prisma.InputJsonObject)
     const interactionMetadata = {
       ...actionMetadata,
       source: metadataSource,
@@ -555,7 +563,7 @@ export async function POST(request: NextRequest) {
       brokerId: user.broker.id,
       durationMs: Date.now() - actionStartedAt,
       visualAction: getCosCapabilityLabel(action),
-      planner: plan.telemetry,
+      planner: executionPlan.telemetry,
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
     } as Prisma.InputJsonObject
@@ -576,8 +584,8 @@ export async function POST(request: NextRequest) {
           actionStatus,
           metadata: interactionMetadata,
           errorMessage,
-          leadId: actionResult.leadId ?? null,
-          propertyId: actionResult.propertyId ?? null,
+          leadId: executionResult?.leadId ?? null,
+          propertyId: executionResult?.propertyId ?? null,
         },
       }),
       prisma.emeMessage.create({
@@ -594,8 +602,8 @@ export async function POST(request: NextRequest) {
           metadata: interactionMetadata,
           errorMessage,
           creditsUsed: finalCreditsUsed,
-          leadId: actionResult.leadId ?? null,
-          propertyId: actionResult.propertyId ?? null,
+          leadId: executionResult?.leadId ?? null,
+          propertyId: executionResult?.propertyId ?? null,
         },
       }),
     ])
