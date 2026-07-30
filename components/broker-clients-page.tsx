@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { formatCep, lookupCep } from "@/lib/cep"
+import { openClientDocumentPreview } from "@/lib/client-document-preview"
 import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
 import type { EntityDocumentRecord } from "@/lib/legal-entities"
 import type { LeadRecord } from "@/lib/lead-contract"
@@ -713,7 +714,7 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
                         </label>
                       ))}
                     </div>
-                    <DocumentList documents={selectedClientDraft.documents} />
+                    <DocumentList leadId={selectedClientDraft.id} documents={selectedClientDraft.documents} />
                   </section>
                 </div>
 
@@ -858,7 +859,7 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
                     </label>
                   ))}
                 </div>
-                <DocumentList documents={clientDraft.documents} />
+                <DocumentList leadId={clientDraft.id} documents={clientDraft.documents} />
               </section>
             </div>
 
@@ -907,7 +908,7 @@ function QualityCard({ score, pending }: { score: number; pending: string[] }) {
   )
 }
 
-function DocumentList({ documents }: { documents: EntityDocumentRecord[] }) {
+function DocumentList({ documents, leadId }: { documents: EntityDocumentRecord[]; leadId?: string }) {
   if (!documents.length) {
     return <p className="text-sm text-[#8B95A1]">Nenhum documento anexado ainda.</p>
   }
@@ -915,15 +916,14 @@ function DocumentList({ documents }: { documents: EntityDocumentRecord[] }) {
   return (
     <div className="grid gap-2">
       {documents.map((document) => (
-        <a
+        <button
           key={document.id}
-          href={document.url}
-          target="_blank"
-          rel="noreferrer"
+          type="button"
+          onClick={() => void openClientDocumentPreview(document, leadId)}
           className="rounded-xl border border-black/[0.06] bg-white px-3 py-2 text-sm text-[#4B5563]"
         >
           {document.label}: {document.name}
-        </a>
+        </button>
       ))}
     </div>
   )

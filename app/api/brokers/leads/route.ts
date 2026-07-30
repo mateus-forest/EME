@@ -9,6 +9,7 @@ import {
   isPrismaUnavailable,
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
 import { leadInclude, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
@@ -257,14 +258,7 @@ function normalizeLeadLegal(value: unknown) {
 }
 
 function normalizeDocuments(value: unknown) {
-  return parseEntityDocuments(value).map((document) => ({
-    ...document,
-    label: cleanText(document.label, 64),
-    name: cleanText(document.name, 160),
-    url: cleanText(document.url, 5_000),
-    mimeType: cleanText(document.mimeType, 120),
-    uploadedAt: cleanText(document.uploadedAt, 64) || new Date().toISOString(),
-  }))
+  return parseEntityDocuments(value).map((document) => normalizeEntityDocumentForStorage(document, cleanText))
 }
 
 function leadListErrorMessage(error: unknown) {
