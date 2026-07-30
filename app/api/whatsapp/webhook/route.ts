@@ -262,7 +262,7 @@ async function processAssessorMessage({
   }
 
   const pendingContext = await getPendingAssessorContext(brokerId)
-  const plan = planCosCapability({ message, pendingContext })
+  const plan = planCosCapability({ message, pendingContext, surface: "whatsapp" })
   const action = plan.action as AssessorAction
   const creditsUsed: number = getEmeCreditCost(action)
   const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)
@@ -336,6 +336,11 @@ async function processAssessorMessage({
     console.info("[api][whatsapp][assessor-action]", {
       detectedIntent: action,
       executedAction: action,
+      capabilityId: plan.capabilityId,
+      plannerEntity: plan.entity,
+      plannerSource: plan.source,
+      plannerConfidence: plan.confidence,
+      plannerFallbackUsed: plan.telemetry.fallbackUsed,
       actionStatus,
       brokerId,
       visualAction: getAssessorVisualAction(action),
@@ -391,6 +396,7 @@ async function processAssessorMessage({
     brokerId,
     visualAction: getAssessorVisualAction(action),
     durationMs: Date.now() - actionStartedAt,
+    planner: plan.telemetry,
   } as Prisma.InputJsonObject
 
   await Promise.all([

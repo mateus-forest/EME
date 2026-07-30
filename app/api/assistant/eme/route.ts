@@ -312,6 +312,7 @@ export async function POST(request: NextRequest) {
       message,
       requestedAction: cleanText(body?.action ?? body?.actionType, 80),
       pendingContext,
+      surface: fromCosHome ? "cos_home" : "portal",
     })
     const action = plan.action as AssessorAction
 
@@ -323,6 +324,7 @@ export async function POST(request: NextRequest) {
         actionName: action,
         brokerId: user.broker.id,
         visualAction: getCosCapabilityLabel(action),
+        planner: plan.telemetry,
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
@@ -395,6 +397,7 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker.id,
         visualAction: getCosCapabilityLabel(action),
         confirmationRequired: true,
+        planner: plan.telemetry,
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
@@ -511,6 +514,11 @@ export async function POST(request: NextRequest) {
       console.info("[api][assistant][eme][action]", {
         detectedIntent: action,
         executedAction: action,
+        capabilityId: plan.capabilityId,
+        plannerEntity: plan.entity,
+        plannerSource: plan.source,
+        plannerConfidence: plan.confidence,
+        plannerFallbackUsed: plan.telemetry.fallbackUsed,
         actionStatus,
         brokerId: user.broker.id,
         leadId: actionResult.leadId ?? null,
@@ -543,6 +551,7 @@ export async function POST(request: NextRequest) {
       brokerId: user.broker.id,
       durationMs: Date.now() - actionStartedAt,
       visualAction: getCosCapabilityLabel(action),
+      planner: plan.telemetry,
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
     } as Prisma.InputJsonObject

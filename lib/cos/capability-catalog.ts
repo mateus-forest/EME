@@ -1,7 +1,7 @@
 import type { AssessorAction } from "@/lib/eme-backend"
 
 import { cosEntityModules } from "@/lib/cos/entities"
-import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosEntityModule } from "@/lib/cos/types"
+import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosEntityModule, CosEntityModuleId } from "@/lib/cos/types"
 
 const entityModules = cosEntityModules
 const descriptors = entityModules.flatMap((module) => module.capabilities.map((capability) => capability.descriptor))
@@ -22,13 +22,20 @@ export function getCosCapabilityDescriptorByAliasOrAction(value: string | null |
   const normalized = value?.trim().toLowerCase()
   if (!normalized) return null
 
-  return descriptors.find((capability) =>
-    capability.action.toLowerCase() === normalized || capability.aliases.some((alias) => alias.toLowerCase() === normalized),
-  ) ?? null
+  return (
+    descriptors.find((capability) => {
+      return capability.action.toLowerCase() === normalized || capability.aliases.some((alias) => alias.toLowerCase() === normalized)
+    }) ?? null
+  )
 }
 
 export function getCosCapabilityDescriptorById(id: CosCapabilityId) {
   return descriptors.find((capability) => capability.id === id) ?? null
+}
+
+export function getCosEntityModuleIdByCapabilityId(id: CosCapabilityId): CosEntityModuleId | null {
+  const entityModule = entityModules.find((module) => module.capabilities.some((capability) => capability.descriptor.id === id))
+  return entityModule?.entity.id ?? null
 }
 
 export function getCosCapabilityLabel(action: string | null | undefined) {

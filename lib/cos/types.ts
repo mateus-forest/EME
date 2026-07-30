@@ -119,9 +119,30 @@ export type CosEntityModule = {
   capabilities: CosEntityCapabilityRegistration[]
 }
 
+export type CosCapabilityPlanSource = "catalog" | "legacy"
+
+export type CosCapabilityPlanTelemetry = {
+  capabilityId: CosCapabilityId
+  entity: CosEntityModuleId
+  confidence: number
+  source: CosCapabilityPlanSource
+  reason: string
+  fallbackUsed: boolean
+  pendingContextUsed: boolean
+  surface: CosCapabilitySurface
+  resolutionMs: number
+  requestedAction: string | null
+}
+
 export type CosCapabilityPlan = {
   action: AssessorAction
   payload: Record<string, unknown>
   pendingContext: PendingAssessorContext | null
   capability: CosCapabilityDefinition
+  capabilityId: CosCapabilityId
+  entity: CosEntityModuleId
+  confidence: number
+  source: CosCapabilityPlanSource
+  reason: string
+  telemetry: CosCapabilityPlanTelemetry
 }

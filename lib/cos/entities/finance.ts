@@ -15,7 +15,7 @@ export const financeEntityModule: CosEntityModule = {
         description: "Resume carteira, ticket médio e distribuição de imóveis ativos.",
         domain: "finance",
         entity: "financial",
-        aliases: [],
+        aliases: ["financeiro", "resumo financeiro", "comissao prevista", "quanto tenho de comissao"],
         responseMode: "raw",
         source: "modular",
         mutatesData: false,

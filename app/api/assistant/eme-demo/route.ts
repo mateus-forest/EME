@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
       message,
       requestedAction: modeActionMap[mode],
       pendingContext: null,
+      surface: "demo",
     })
 
     const actionResponse = buildDemoActionResponse(mode, message, plan.action)
