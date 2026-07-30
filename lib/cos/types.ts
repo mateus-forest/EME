@@ -32,6 +32,33 @@ export type CosActionResult = {
   propertyId?: string
 }
 
+export type CosCapabilitySurface = "portal" | "cos_home" | "whatsapp" | "demo"
+
+export type CosCapabilityDomain =
+  | "general"
+  | "property"
+  | "lead"
+  | "proposal"
+  | "contract"
+  | "agenda"
+  | "finance"
+  | "analytics"
+  | "catalog"
+  | "operation"
+  | "document"
+
+export type CosCapabilityEntity =
+  | "conversation"
+  | "property"
+  | "lead"
+  | "agenda"
+  | "financial"
+  | "analytics"
+  | "catalog"
+  | "document"
+  | "contract"
+  | "operation"
+
 export type CosCapabilityExecutionInput = {
   brokerId: string
   userId: string
@@ -47,11 +74,22 @@ export type CosCapabilityHandler = (input: CosCapabilityExecutionInput) => Promi
 export type CosCapabilityDefinition = {
   id: CosCapabilityId
   action: AssessorAction
-  domain: "general" | "property" | "lead" | "proposal" | "contract" | "agenda" | "finance" | "analytics" | "catalog" | "operation" | "document"
+  title: string
+  description: string
+  domain: CosCapabilityDomain
+  entity: CosCapabilityEntity
+  aliases: string[]
   responseMode: "raw" | "nlg"
   source: "modular" | "legacy"
+  mutatesData: boolean
+  requiresConfirmation: boolean
+  requiresSelection: boolean
+  surfaces: CosCapabilitySurface[]
+  confirmationMessage?: string
   handler?: CosCapabilityHandler
 }
+
+export type CosCapabilityDescriptor = Omit<CosCapabilityDefinition, "handler">
 
 export type CosCapabilityPlan = {
   action: AssessorAction

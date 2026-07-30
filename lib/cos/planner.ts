@@ -1,6 +1,7 @@
 import { resolveAssessorInputWithContext, type PendingAssessorContext } from "@/lib/eme-backend"
 
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
+import { getCosCapabilityDescriptorByAliasOrAction } from "@/lib/cos/capability-catalog"
 import type { CosCapabilityPlan } from "@/lib/cos/types"
 
 export function planCosCapability(input: {
@@ -8,9 +9,10 @@ export function planCosCapability(input: {
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
 }): CosCapabilityPlan {
+  const registryRequestedAction = getCosCapabilityDescriptorByAliasOrAction(input.requestedAction)?.action
   const resolved = resolveAssessorInputWithContext({
     message: input.message,
-    requestedAction: input.requestedAction,
+    requestedAction: registryRequestedAction ?? input.requestedAction,
     pendingContext: input.pendingContext,
   })
 

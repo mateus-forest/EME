@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
+import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 
 export type AssistantCredits = {
   balance: number
@@ -346,17 +347,5 @@ export function useCosConversations({
 }
 
 function formatCosAction(action: string | null) {
-  if (!action) return "Acao do COS"
-  const normalized = action.toLowerCase()
-  if (normalized.includes("searchproperties")) return "Busca de imoveis"
-  if (normalized.includes("createpropertydraft")) return "Cadastro de imovel"
-  if (normalized.includes("createlead")) return "Cadastro de cliente"
-  if (normalized.includes("create_proposal")) return "Criacao de proposta"
-  if (normalized.includes("create_agenda_event")) return "Agendamento"
-  if (normalized.includes("list_agenda_events")) return "Consulta de agenda"
-  if (normalized.includes("getleadssummary") || normalized.includes("summarizelead")) return "Analise de clientes"
-  if (normalized.includes("analytics") || normalized.includes("catalog")) return "Consulta de desempenho"
-  if (normalized.includes("financial")) return "Analise financeira"
-  if (normalized.includes("notification")) return "Consulta de notificacoes"
-  return action.replace(/_/g, " ")
+  return getCosCapabilityLabel(action)
 }

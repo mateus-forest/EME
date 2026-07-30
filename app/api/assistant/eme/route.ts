@@ -13,7 +13,17 @@ import {
   getPendingAssessorContext,
   type AssessorAction,
 } from "@/lib/eme-backend"
-import { executeCosCapability, formatCosCapabilityResponse, planCosCapability, type CosActionResult } from "@/lib/cos"
+import {
+  doesCosCapabilityMutateData,
+  executeCosCapability,
+  formatCosCapabilityResponse,
+  getCosCapabilityActionsForSurface,
+  getCosCapabilityConfirmationMessage,
+  getCosCapabilityLabel,
+  isCosCapabilityAvailableOnSurface,
+  planCosCapability,
+  type CosActionResult,
+} from "@/lib/cos"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { UserRole } from "@/lib/prisma-enums"
@@ -77,57 +87,6 @@ function serializeConversation(document: { id: string; title: string; createdAt:
   }
 }
 
-function getVisualActionLabel(action: AssessorAction) {
-  if (action === "createLead") return "Lead cadastrado"
-  if (action === "searchProperties") return "Busca de imoveis"
-  if (action === "getFinancialSummary") return "Consulta financeira"
-  if (action === "getCatalogSummary") return "Resumo do catalogo"
-  if (action === "getLeadsSummary") return "Resumo de leads"
-  if (action === "createPropertyDraft") return "Rascunho de imovel"
-  if (action === "improvePropertyDescription") return "Descricao melhorada"
-  if (action === "summarizeLead") return "Resumo de leads"
-  if (action === "analyzeCatalog") return "Catalogo analisado"
-  if (action === "getAnalyticsSummary") return "Consulta de analytics"
-  if (action === "CREATE_AGENDA_EVENT") return "Compromisso criado"
-  if (action === "LIST_AGENDA_EVENTS") return "Consulta de agenda"
-  if (action === "MARK_AGENDA_DONE") return "Compromisso concluido"
-  if (action === "CREATE_PROPOSAL") return "Proposta gerada"
-  if (action === "CREATE_CONTRACT") return "Contrato gerado"
-  if (action === "LIST_DOCUMENTS") return "Consulta de documentos"
-  if (action === "GET_DOCUMENT") return "Documento consultado"
-  if (action === "LIST_CONTRACTS") return "Consulta de contratos"
-  if (action === "GET_CONTRACT") return "Contrato consultado"
-  return "Acao do Assessor"
-}
-
-const COS_HOME_ALLOWED_ACTIONS: AssessorAction[] = [
-  "general",
-  "searchProperties",
-  "createPropertyDraft",
-  "createLead",
-  "CREATE_PROPOSAL",
-  "CREATE_CONTRACT",
-  "CREATE_AGENDA_EVENT",
-  "LIST_AGENDA_EVENTS",
-  "LIST_CONTRACTS",
-  "GET_CONTRACT",
-  "getLeadsSummary",
-  "summarizeLead",
-  "getAnalyticsSummary",
-  "getCatalogSummary",
-  "analyzeCatalog",
-  "getFinancialSummary",
-  "createInternalNotification",
-]
-
-const COS_HOME_MUTATING_ACTIONS: AssessorAction[] = [
-  "createPropertyDraft",
-  "createLead",
-  "CREATE_PROPOSAL",
-  "CREATE_CONTRACT",
-  "CREATE_AGENDA_EVENT",
-]
-
 function isCosHomeSource(source: string) {
   return source === "cos_home"
 }
@@ -140,12 +99,7 @@ function buildCosHomeUnsupportedResponse() {
 }
 
 function buildCosHomeConfirmationResponse(action: AssessorAction) {
-  if (action === "createPropertyDraft") return "Encontrei um pedido para cadastrar um imovel em rascunho. Deseja confirmar?"
-  if (action === "createLead") return "Posso cadastrar ou atualizar este cliente agora. Deseja confirmar?"
-  if (action === "CREATE_PROPOSAL") return "Posso gerar esta proposta agora e salvar em Documentos. Deseja confirmar?"
-  if (action === "CREATE_CONTRACT") return "Posso gerar este contrato agora, salvar em Documentos e deixar como rascunho para revisao. Deseja confirmar?"
-  if (action === "CREATE_AGENDA_EVENT") return "Posso criar este compromisso agora na sua agenda. Deseja confirmar?"
-  return `Posso executar "${getVisualActionLabel(action)}" agora. Deseja confirmar?`
+  return getCosCapabilityConfirmationMessage(action)
 }
 
 async function touchCosConversation(input: {
@@ -368,7 +322,7 @@ export async function POST(request: NextRequest) {
         parsedIntent: action,
         actionName: action,
         brokerId: user.broker.id,
-        visualAction: getVisualActionLabel(action),
+        visualAction: getCosCapabilityLabel(action),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
       } as Prisma.InputJsonObject
@@ -420,7 +374,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (fromCosHome && !COS_HOME_ALLOWED_ACTIONS.includes(action)) {
+    if (fromCosHome && !isCosCapabilityAvailableOnSurface(action, "cos_home")) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json({
         response: buildCosHomeUnsupportedResponse(),
@@ -432,14 +386,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (fromCosHome && COS_HOME_MUTATING_ACTIONS.includes(action) && !body?.confirm) {
+    if (fromCosHome && doesCosCapabilityMutateData(action) && !body?.confirm) {
       const responseText = buildCosHomeConfirmationResponse(action)
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
         actionName: action,
         brokerId: user.broker.id,
-        visualAction: getVisualActionLabel(action),
+        visualAction: getCosCapabilityLabel(action),
         confirmationRequired: true,
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
@@ -539,7 +493,7 @@ export async function POST(request: NextRequest) {
           brokerId: user.broker.id,
           amount: finalCreditsUsed,
           actionType: action,
-          description: `Assessor EME: ${getVisualActionLabel(action)}`,
+          description: `Assessor EME: ${getCosCapabilityLabel(action)}`,
           metadata: {
             source: "api/assistant/eme",
             action,
@@ -561,7 +515,7 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker.id,
         leadId: actionResult.leadId ?? null,
         propertySearchFilters: actionResult.metadata?.propertySearchFilters ?? null,
-        visualAction: getVisualActionLabel(action),
+        visualAction: getCosCapabilityLabel(action),
         durationMs: Date.now() - actionStartedAt,
       })
     } catch (caughtActionError) {
@@ -588,7 +542,7 @@ export async function POST(request: NextRequest) {
       actionName: action,
       brokerId: user.broker.id,
       durationMs: Date.now() - actionStartedAt,
-      visualAction: getVisualActionLabel(action),
+      visualAction: getCosCapabilityLabel(action),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
     } as Prisma.InputJsonObject
