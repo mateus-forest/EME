@@ -15,7 +15,7 @@ export const proposalEntityModule: CosEntityModule = {
         description: "Cria propostas comerciais em rascunho para revisão posterior.",
         domain: "proposal",
         entity: "document",
-        aliases: [],
+        aliases: ["criar proposta", "gerar proposta", "nova proposta", "montar proposta"],
         responseMode: "raw",
         source: "legacy",
         mutatesData: true,

@@ -100,6 +100,10 @@ export async function executeCosExecutionPlan(input: {
   let interruptedReason: string | null = null
   let lastLeadId: string | undefined
   let lastPropertyId: string | undefined
+  let lastDocumentId: string | undefined
+  const runtimePayload: Record<string, unknown> = {
+    ...(input.payload ?? {}),
+  }
   const executedSteps: CosExecutionStep[] = []
 
   for (let index = startStepIndex; index < steps.length; index += 1) {
@@ -120,7 +124,7 @@ export async function executeCosExecutionPlan(input: {
         userId: input.userId,
         message: input.message,
         confirm: input.confirm,
-        payload: input.payload,
+        payload: runtimePayload,
       })
 
       step.durationMs = Date.now() - stepStartedAt
@@ -128,6 +132,15 @@ export async function executeCosExecutionPlan(input: {
       step.errorMessage = null
       lastLeadId = result.leadId ?? lastLeadId
       lastPropertyId = result.propertyId ?? lastPropertyId
+      lastDocumentId =
+        (typeof result.metadata?.documentId === "string" ? result.metadata.documentId : undefined) ??
+        lastDocumentId
+      if (lastLeadId) runtimePayload.leadId = lastLeadId
+      if (lastPropertyId) runtimePayload.propertyId = lastPropertyId
+      if (lastDocumentId) runtimePayload.documentId = lastDocumentId
+      if (result.metadata && typeof result.metadata === "object") {
+        runtimePayload.lastStepMetadata = result.metadata
+      }
 
       if (isAwaitingInputResult(result)) {
         step.status = "awaiting_input"

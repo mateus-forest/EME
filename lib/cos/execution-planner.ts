@@ -75,16 +75,8 @@ const executionRecipes: ExecutionRecipe[] = [
     id: "contract_create_then_signature",
     match: ({ normalizedMessage }) =>
       normalizedMessage.includes("contrato") && hasAny(normalizedMessage, ["assinatura", "assinar", "envie", "enviar"]),
-    stepIds: ["contract.create"],
-    gaps: [
-      {
-        id: "contract_signature_dispatch",
-        title: "Enviar para assinatura",
-        when: () => true,
-        reason: "o Registry ainda nao possui capability registrada para envio ou assinatura de contratos",
-      },
-    ],
-    reason: () => "pedido combinou criacao de contrato com envio para assinatura, mas a etapa final ainda nao existe no Registry",
+    stepIds: ["contract.create", "contract.send", "contract.sign"],
+    reason: () => "pedido combinou criacao de contrato com envio e conclusao da assinatura no mesmo workflow",
   },
   {
     id: "operation_analysis",
@@ -98,42 +90,14 @@ const executionRecipes: ExecutionRecipe[] = [
     match: ({ normalizedMessage, workspace }) =>
       isPropertyWorkspace(workspace) &&
       hasAny(normalizedMessage, ["quero vender", "vender este imovel", "gere um anuncio", "criar anuncio", "publicar este imovel"]),
-    stepIds: ["property.description.improve", "catalog.analyze"],
-    gaps: [
-      {
-        id: "catalog_publish",
-        title: "Publicar catalogo",
-        when: ({ normalizedMessage }) => hasAny(normalizedMessage, ["publicar", "publique"]),
-        reason: "a publicacao do catalogo ainda nao possui capability registrada no Registry",
-      },
-      {
-        id: "studio_campaign",
-        title: "Sugerir campanha no Studio IA",
-        when: ({ normalizedMessage }) => hasAny(normalizedMessage, ["campanha", "studio ia", "anuncio"]),
-        reason: "o modulo Studio IA ainda nao possui capabilities registradas no COS",
-      },
-    ],
-    reason: () => "pedido usou um imovel do workspace para preparar a venda com descricao e leitura comercial do catalogo",
+    stepIds: ["property.description.improve", "catalog.publish", "studio.generateCampaign"],
+    reason: () => "pedido usou um imovel do workspace para preparar a venda com descricao, publicacao e campanha",
   },
   {
     id: "catalog_publish_then_campaign",
     match: ({ normalizedMessage }) => normalizedMessage.includes("catalogo") && hasAny(normalizedMessage, ["publique", "publicar", "campanha"]),
-    stepIds: ["catalog.analyze"],
-    gaps: [
-      {
-        id: "catalog_publish",
-        title: "Publicar catalogo",
-        when: () => true,
-        reason: "a publicacao do catalogo ainda nao possui capability registrada no Registry",
-      },
-      {
-        id: "studio_campaign",
-        title: "Gerar campanha",
-        when: () => true,
-        reason: "o modulo Studio IA ainda nao possui capabilities registradas no COS",
-      },
-    ],
-    reason: () => "pedido combinou catalogo com campanha, mas o Registry ainda cobre apenas a etapa analitica",
+    stepIds: ["catalog.publish", "studio.generateCampaign"],
+    reason: () => "pedido combinou publicacao em catalogo com geracao de campanha no Studio IA",
   },
 ]
 

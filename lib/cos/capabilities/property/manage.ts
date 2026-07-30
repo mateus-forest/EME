@@ -1,0 +1,170 @@
+import "server-only"
+
+import { PropertyStatus } from "@/lib/prisma-enums"
+
+import { formatCurrencyBRLFromCents } from "@/lib/currency"
+import { prisma } from "@/lib/prisma"
+
+import { cleanText, extractPriceFromMessage, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
+import type { CosCapabilityHandler } from "@/lib/cos/types"
+
+async function resolveProperty(brokerId: string, payload: Record<string, unknown>) {
+  const propertyId = getEntityIdFromPayload(payload, "property")
+  if (propertyId) {
+    return prisma.property.findFirst({ where: { id: propertyId, brokerId } })
+  }
+
+  return prisma.property.findFirst({ where: { brokerId }, orderBy: { updatedAt: "desc" } })
+}
+
+async function updatePropertyPublication(input: {
+  brokerId: string
+  payload: Record<string, unknown>
+  published: boolean
+  status: PropertyStatus
+  responseLabel: string
+}) {
+  const property = await resolveProperty(input.brokerId, input.payload)
+  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+
+  const updated = await prisma.property.update({
+    where: { id: property.id },
+    data: {
+      published: input.published,
+      status: input.status,
+    },
+  })
+
+  return {
+    response: `${input.responseLabel}\n\n${updated.title}`,
+    metadata: {
+      propertyId: updated.id,
+      published: updated.published,
+      propertyStatus: updated.status,
+    },
+    propertyId: updated.id,
+  }
+}
+
+export const publishPropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
+  updatePropertyPublication({
+    brokerId,
+    payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
+    published: true,
+    status: PropertyStatus.PUBLISHED,
+    responseLabel: "Imovel publicado com sucesso.",
+  })
+
+export const unpublishPropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
+  updatePropertyPublication({
+    brokerId,
+    payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
+    published: false,
+    status: PropertyStatus.PAUSED,
+    responseLabel: "Imovel removido do catalogo.",
+  })
+
+export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
+  const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
+  const property = await resolveProperty(brokerId, payloadRecord)
+  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+
+  const providedImages = Array.isArray(payloadRecord.imageUrls)
+    ? payloadRecord.imageUrls.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : []
+
+  if (providedImages.length === 0) {
+    return {
+      response: `O imovel ${property.title} tem ${Array.isArray(property.imageUrls) ? property.imageUrls.length : 0} midia(s) cadastrada(s). Envie as novas URLs para eu atualizar esse conjunto.`,
+      metadata: {
+        required: ["imageUrls"],
+        noCharge: true,
+        propertyId: property.id,
+      },
+      propertyId: property.id,
+    }
+  }
+
+  const updated = await prisma.property.update({
+    where: { id: property.id },
+    data: {
+      imageUrls: providedImages,
+    },
+  })
+
+  return {
+    response: `Midias do imovel atualizadas com sucesso.\n\n${updated.title}\nTotal de imagens: ${providedImages.length}`,
+    metadata: {
+      propertyId: updated.id,
+      imageCount: providedImages.length,
+    },
+    propertyId: updated.id,
+  }
+}
+
+export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
+  const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
+  const property = await resolveProperty(brokerId, payloadRecord)
+  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+
+  const comparableProperties = await prisma.property.findMany({
+    where: {
+      brokerId,
+      id: { not: property.id },
+      city: property.city,
+      type: property.type,
+      price: { gt: 0 },
+    },
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      neighborhood: true,
+    },
+    take: 12,
+  })
+
+  const sameNeighborhood = comparableProperties.filter((item) => item.neighborhood && item.neighborhood === property.neighborhood)
+  const baseList = sameNeighborhood.length >= 2 ? sameNeighborhood : comparableProperties
+  const suggestedPrice = baseList.length
+    ? Math.round(baseList.reduce((sum, item) => sum + item.price, 0) / baseList.length)
+    : property.price
+  const explicitPrice = extractPriceFromMessage(message)
+
+  return {
+    response: `Sugestao de preco para ${property.title}:\n\n- Faixa recomendada: ${formatCurrencyBRLFromCents(Math.round(suggestedPrice * 0.95))} a ${formatCurrencyBRLFromCents(Math.round(suggestedPrice * 1.05))}\n- Referencia central: ${formatCurrencyBRLFromCents(suggestedPrice)}\n- Preco atual: ${formatCurrencyBRLFromCents(property.price)}${explicitPrice ? `\n- Valor citado na conversa: ${formatCurrencyBRLFromCents(explicitPrice)}` : ""}`,
+    metadata: {
+      propertyId: property.id,
+      suggestedPrice,
+      currentPrice: property.price,
+      comparableCount: baseList.length,
+    },
+    propertyId: property.id,
+  }
+}
+
+export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
+  const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
+  const property = await resolveProperty(brokerId, payloadRecord)
+  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+
+  const updated = await prisma.property.update({
+    where: { id: property.id },
+    data: {
+      status: PropertyStatus.PAUSED,
+      published: false,
+      title: cleanText(property.title, 160),
+    },
+  })
+
+  return {
+    response: `Imovel arquivado com sucesso.\n\n${updated.title}`,
+    metadata: {
+      propertyId: updated.id,
+      propertyStatus: updated.status,
+      published: updated.published,
+    },
+    propertyId: updated.id,
+  }
+}
+

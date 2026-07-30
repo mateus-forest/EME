@@ -245,9 +245,8 @@ const executionScenarios = [
   {
     message: "Crie um contrato e envie para assinatura.",
     surface: "portal",
-    expectedSteps: ["contract.create"],
+    expectedSteps: ["contract.create", "contract.send", "contract.sign"],
     expectedSource: "recipe",
-    expectedUnresolvedGoals: ["contract_signature_dispatch"],
   },
   {
     message: "Analise minha operacao.",
@@ -266,15 +265,14 @@ const executionScenarios = [
       selection: [],
       metadata: {},
     },
-    expectedSteps: ["property.description.improve", "catalog.analyze"],
+    expectedSteps: ["property.description.improve", "catalog.publish", "studio.generateCampaign"],
     expectedSource: "recipe",
   },
   {
     message: "Publique meu catalogo e gere uma campanha.",
     surface: "portal",
-    expectedSteps: ["catalog.analyze"],
+    expectedSteps: ["catalog.publish", "studio.generateCampaign"],
     expectedSource: "recipe",
-    expectedUnresolvedGoals: ["catalog_publish", "studio_campaign"],
   },
 ]
 
