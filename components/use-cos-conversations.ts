@@ -68,6 +68,7 @@ type UseCosConversationsOptions = {
   assistantCredits: AssistantCredits
   setAssistantCredits: Dispatch<SetStateAction<AssistantCredits>>
   autoOpenLatest?: boolean
+  bootstrapEnabled?: boolean
   source?: "cos_home" | "portal"
   workspaceContext?: Partial<CosWorkspaceContext> | null
 }
@@ -77,6 +78,7 @@ export function useCosConversations({
   assistantCredits,
   setAssistantCredits,
   autoOpenLatest = true,
+  bootstrapEnabled = true,
   source = "portal",
   workspaceContext,
 }: UseCosConversationsOptions) {
@@ -91,6 +93,9 @@ export function useCosConversations({
   const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(true)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const conversationListRequestIdRef = useRef(0)
+  const openConversationRequestIdRef = useRef(0)
 
   const resolvedWorkspaceContext = useMemo(
     () =>
@@ -102,7 +107,18 @@ export function useCosConversations({
     [pathname, source, workspaceContext],
   )
 
+  useEffect(() => {
+    isMountedRef.current = true
+
+    return () => {
+      isMountedRef.current = false
+      conversationListRequestIdRef.current += 1
+      openConversationRequestIdRef.current += 1
+    }
+  }, [])
+
   const loadConversations = useCallback(async () => {
+    const requestId = ++conversationListRequestIdRef.current
     const response = await fetch("/api/assistant/eme/conversations", {
       credentials: "include",
       cache: "no-store",
@@ -112,13 +128,21 @@ export function useCosConversations({
     if (!response.ok) throw new Error(data?.error || "Nao foi possivel carregar o historico do COS.")
 
     const nextConversations = data?.conversations ?? []
+    if (!isMountedRef.current || requestId !== conversationListRequestIdRef.current) {
+      return nextConversations
+    }
+
     setConversations(nextConversations)
     return nextConversations
   }, [])
 
   const openConversation = useCallback(async (conversationId: string) => {
+    const requestId = ++openConversationRequestIdRef.current
     setIsConversationLoading(true)
     setChatFeedback("")
+    setActiveConversationId(conversationId)
+    setConversation([])
+    setPendingConfirmation(null)
 
     try {
       const response = await fetch(`/api/assistant/eme/conversations/${conversationId}`, {
@@ -128,18 +152,30 @@ export function useCosConversations({
       const data = (await response.json().catch(() => null)) as ConversationDetailResponse | null
       if (!response.ok) throw new Error(data?.error || "Nao foi possivel abrir a conversa.")
 
+      if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
+        return
+      }
+
       setConversation(data?.messages ?? [])
       setPendingConfirmation(data?.pendingConfirmation ?? null)
       setActiveConversationId(conversationId)
     } catch (caughtError) {
+      if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
+        return
+      }
       setChatFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel abrir a conversa.")
     } finally {
-      setIsConversationLoading(false)
-      window.setTimeout(() => inputRef.current?.focus(), 0)
+      if (isMountedRef.current && requestId === openConversationRequestIdRef.current) {
+        setIsConversationLoading(false)
+        window.setTimeout(() => inputRef.current?.focus(), 0)
+      }
     }
   }, [])
 
   const createConversation = useCallback(async () => {
+    conversationListRequestIdRef.current += 1
+    openConversationRequestIdRef.current += 1
+
     const response = await fetch("/api/assistant/eme/conversations", {
       method: "POST",
       credentials: "include",
@@ -150,6 +186,12 @@ export function useCosConversations({
       throw new Error(data?.error || "Nao foi possivel criar a conversa.")
     }
 
+    if (!isMountedRef.current) {
+      return data.conversation
+    }
+
+    setIsBootstrappingConversation(false)
+    setIsConversationLoading(false)
     setConversations((current) => [data.conversation!, ...current.filter((item) => item.id !== data.conversation!.id)])
     setActiveConversationId(data.conversation.id)
     setConversation([])
@@ -344,10 +386,18 @@ export function useCosConversations({
   }, [pendingConfirmation, sendCosMessage])
 
   useEffect(() => {
+    if (!bootstrapEnabled) {
+      setIsBootstrappingConversation(true)
+      return
+    }
+
     if (hasBootstrappedRef.current) return
     hasBootstrappedRef.current = true
 
     setIsBootstrappingConversation(true)
+    setConversation([])
+    setPendingConfirmation(null)
+    setActiveConversationId("")
     loadConversations()
       .then((items) => {
         if (autoOpenLatest && items[0]) {
@@ -357,9 +407,11 @@ export function useCosConversations({
       })
       .catch(() => null)
       .finally(() => {
-        setIsBootstrappingConversation(false)
+        if (isMountedRef.current) {
+          setIsBootstrappingConversation(false)
+        }
       })
-  }, [autoOpenLatest, loadConversations, openConversation])
+  }, [autoOpenLatest, bootstrapEnabled, loadConversations, openConversation])
 
   return {
     conversation,

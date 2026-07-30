@@ -67,7 +67,7 @@ type NextStepSuggestion =
 
 export function BrokerPortal() {
   const { properties } = useBrokerProperties()
-  const { profile } = useBrokerProfile()
+  const { profile, isLoading: isProfileLoading } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
@@ -102,6 +102,7 @@ export function BrokerPortal() {
     assistantEnabled,
     assistantCredits,
     setAssistantCredits,
+    bootstrapEnabled: !isProfileLoading,
     source: "cos_home",
   })
 
@@ -175,9 +176,10 @@ export function BrokerPortal() {
 
   const brokerFirstName = useMemo(() => {
     const [firstName] = profile.fullName.trim().split(" ").filter(Boolean)
-    return firstName || "Corretor"
+    return firstName || ""
   }, [profile.fullName])
   const hasResolvedBrokerName = profile.fullName.trim().length > 0
+  const greetingLabel = brokerFirstName ? `Ola, ${brokerFirstName}.` : "Ola."
 
   const quickActions = [
     {
@@ -216,7 +218,8 @@ export function BrokerPortal() {
     { label: "Revisar clientes", message: "Revisar clientes" },
     { label: "Analisar carteira", message: "Analisar carteira" },
   ] satisfies NextStepSuggestion[]
-  const isConversationEmpty = !isBootstrappingConversation && !isConversationLoading && conversation.length === 0
+  const isBootstrapPending = isProfileLoading || isBootstrappingConversation
+  const isConversationEmpty = !isBootstrapPending && !isConversationLoading && conversation.length === 0
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
@@ -328,7 +331,7 @@ export function BrokerPortal() {
                       </div>
                       <div className="mt-6 min-h-[2.75rem] sm:min-h-[3.75rem]">
                         <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
-                          Ola, {brokerFirstName}.
+                          {greetingLabel}
                         </h1>
                       </div>
                       <p className="mt-3 max-w-[38rem] text-sm leading-7 text-[#667085] sm:text-[1rem]">
@@ -399,7 +402,7 @@ export function BrokerPortal() {
                       <div className="mt-1 min-h-[2rem]">
                         {hasResolvedBrokerName ? (
                           <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#111111]">
-                            Ola, {brokerFirstName}.
+                            {greetingLabel}
                           </h1>
                         ) : (
                           <div className="h-8 w-40 rounded-full bg-[#e9ece6] animate-pulse" />
@@ -410,7 +413,7 @@ export function BrokerPortal() {
                       </p>
                       {showConversationTitle ? (
                         <p className="mt-3 truncate text-sm font-medium text-[#111111]">{activeConversation?.title}</p>
-                      ) : isBootstrappingConversation ? (
+                      ) : isBootstrapPending ? (
                         <div className="mt-3 h-5 w-56 rounded-full bg-[#eef1ec] animate-pulse" />
                       ) : null}
                     </div>
@@ -425,7 +428,7 @@ export function BrokerPortal() {
                   </div>
 
                   <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-2">
-                    {isBootstrappingConversation ? (
+                    {isBootstrapPending ? (
                       <CosConversationSkeleton />
                     ) : isConversationLoading ? (
                       <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
