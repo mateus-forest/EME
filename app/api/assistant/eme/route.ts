@@ -32,6 +32,7 @@ import {
   updateWorkflowFromExecutionResult,
   type CosWorkflow,
 } from "@/lib/cos"
+import { analyzeCosAttachments, mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
@@ -164,26 +165,6 @@ function sanitizeIncomingAttachments(value: unknown) {
       textContent: cleanText(item.textContent, 120_000) || undefined,
     }))
     .filter((item) => item.name)
-}
-
-function buildExecutionMessage(message: string, attachments: CosIncomingAttachment[]) {
-  if (attachments.length === 0) return message
-
-  const attachmentLines = attachments.map((attachment) => `- ${attachment.name} (${attachment.category})`)
-  const textSnippets = attachments
-    .filter((attachment) => attachment.textContent)
-    .slice(0, 2)
-    .map((attachment) => `${attachment.name}:\n${attachment.textContent}`)
-
-  return [
-    message,
-    "",
-    "Arquivos anexados:",
-    ...attachmentLines,
-    ...(textSnippets.length > 0 ? ["", "Conteudo de apoio:", ...textSnippets] : []),
-  ]
-    .filter(Boolean)
-    .join("\n")
 }
 
 async function persistConversationWorkflow(conversationId: string, workflow: CosWorkflow | null) {
@@ -327,7 +308,6 @@ export async function POST(request: NextRequest) {
   const isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
   const attachments = sanitizeIncomingAttachments(body?.attachments)
-  const executionMessage = buildExecutionMessage(message, attachments)
   let creditsUsed = 1
 
   if (!message) {
@@ -394,8 +374,20 @@ export async function POST(request: NextRequest) {
 
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
     const resumableWorkflow = shouldResumeWorkflow(activeWorkflow) ? activeWorkflow : null
+    const attachmentAnalysis = resumableWorkflow
+      ? {
+          executionMessage: message,
+          propertyDrafts: [],
+          primaryPropertyDraft: null,
+          propertyConfirmationText: null,
+        }
+      : await analyzeCosAttachments({
+          message,
+          attachments,
+        })
+    const executionMessage = attachmentAnalysis.executionMessage
     const pendingContext = resumableWorkflow ? null : await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
-    const executionPlan = resumableWorkflow
+    const executionPlanBase = resumableWorkflow
       ? null
       : await runWithAiOperationContext(
           {
@@ -417,6 +409,13 @@ export async function POST(request: NextRequest) {
               activeWorkflow: activeWorkflow ?? null,
             }),
         )
+    const executionPlan =
+      executionPlanBase && attachmentAnalysis.primaryPropertyDraft && executionPlanBase.primaryStep.action === "createPropertyDraft"
+        ? {
+            ...executionPlanBase,
+            confirmationMessage: attachmentAnalysis.propertyConfirmationText ?? executionPlanBase.confirmationMessage,
+          }
+        : executionPlanBase
     const action = (resumableWorkflow?.steps[resumableWorkflow.currentStep]?.action ?? executionPlan?.primaryStep.action ?? "general") as AssessorAction
 
     if (isCancellation) {
@@ -570,6 +569,12 @@ export async function POST(request: NextRequest) {
         conversationId: conversationDocument?.id ?? "ephemeral",
         plan: executionPlan,
       })
+      if (pendingWorkflow.pendingInput?.action === "createPropertyDraft" && attachmentAnalysis.primaryPropertyDraft) {
+        pendingWorkflow.pendingInput = {
+          ...pendingWorkflow.pendingInput,
+          parsedData: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message),
+        }
+      }
       const responseText = executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action)
       const interactionMetadata = {
         source: metadataSource,
@@ -579,6 +584,12 @@ export async function POST(request: NextRequest) {
         visualAction: getCosCapabilityLabel(action),
         confirmationRequired: true,
         planner: executionPlan.telemetry,
+        attachmentAnalysis: attachmentAnalysis.primaryPropertyDraft
+          ? {
+              propertyDrafts: attachmentAnalysis.propertyDrafts.length,
+              primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message),
+            }
+          : null,
         workflow: workflowMetadata(pendingWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
@@ -783,6 +794,12 @@ export async function POST(request: NextRequest) {
         skippedCapabilities,
         aiOrchestrator: executionPlan?.telemetry.orchestrator ?? null,
       },
+      attachmentAnalysis: attachmentAnalysis.primaryPropertyDraft
+        ? {
+            propertyDrafts: attachmentAnalysis.propertyDrafts.length,
+            primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message),
+          }
+        : null,
       workflow: workflowMetadata(updatedWorkflow),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
