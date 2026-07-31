@@ -23,6 +23,7 @@ type CreativeLayout = {
   logoHeight: number
   categoryX: number
   categoryY: number
+  categoryMaxWidth: number
   titleX: number
   titleY: number
   titleMaxWidth: number
@@ -38,19 +39,13 @@ type CreativeLayout = {
   pricePanelHeight: number
 }
 
-type TextLayout = {
-  lines: string[]
-  fontSize: number
-  lineHeight: number
-}
-
 export function getStudioCreativeRenderPath(campaignId: string, assetId: string) {
   return `/api/studio-ia/campaigns/${encodeURIComponent(campaignId)}/assets/${encodeURIComponent(assetId)}/render`
 }
 
 export function getStudioCreativeFilename(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
   const suffix = resolveStudioCreativeFormat(campaign, asset) ?? asset.assetKey
-  return `${sanitizeFileName(`${campaign.title}-${suffix}`)}.svg`
+  return `${sanitizeFileName(`${campaign.title}-${suffix}`)}.png`
 }
 
 export function isSyntheticStudioCreative(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
@@ -77,35 +72,50 @@ export function renderStudioCreativeSvg(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
   officialLogoDataUri: string,
+  propertyImageSrc?: string | null,
 ) {
   const format = resolveStudioCreativeFormat(campaign, asset)
   if (!format) return null
 
-  return renderUnifiedCreative(campaign, asset, officialLogoDataUri, format)
+  return renderUnifiedCreative(campaign, asset, officialLogoDataUri, propertyImageSrc ?? null, format)
 }
 
 function renderUnifiedCreative(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
   officialLogoDataUri: string,
+  propertyImageSrc: string | null,
   format: StudioCreativeFormat,
 ) {
   const dimensions = getCreativeDimensions(format)
   const layout = getCreativeLayout(dimensions.width, dimensions.height)
-  const imageUrl = resolveCampaignImage(campaign)
+  const imageSrc = propertyImageSrc || resolveCampaignImage(campaign)
   const badge = resolveCampaignBadge(campaign)
   const category = resolveSupportLabel(campaign, asset)
+  const categoryLayout = fitSingleLineText(
+    category,
+    layout.categoryMaxWidth,
+    dimensions.height > dimensions.width ? 30 : 34,
+    dimensions.height > dimensions.width ? 20 : 24,
+    0.24,
+  )
   const hero = resolvePrimaryHeadline(campaign, asset)
   const heroLayout = fitMultilineText(
     hero,
     layout.titleMaxWidth,
-    dimensions.height > dimensions.width ? 112 : 134,
-    dimensions.height > dimensions.width ? 60 : 78,
+    dimensions.height > dimensions.width ? 112 : 132,
+    dimensions.height > dimensions.width ? 62 : 76,
     2,
   )
   const summary = buildSummaryItems(campaign, asset).slice(0, 4)
   const price = resolveDisplayedPrice(campaign, asset)
-  const ctaLayout = fitMultilineText(resolveDisplayedCta(asset), Math.max(220, layout.pricePanelWidth * 0.32), 28, 20, 2)
+  const ctaLayout = fitMultilineText(
+    resolveDisplayedCta(asset),
+    Math.max(210, layout.pricePanelWidth * 0.28),
+    dimensions.height > dimensions.width ? 24 : 26,
+    18,
+    2,
+  )
   const gradientId = `studio-overlay-${campaign.id}-${asset.id}`
   const waveId = `studio-wave-${campaign.id}-${asset.id}`
 
@@ -113,28 +123,28 @@ function renderUnifiedCreative(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimensions.width} ${dimensions.height}" width="${dimensions.width}" height="${dimensions.height}">`,
     "<defs>",
     `<linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">`,
-    `<stop offset="0%" stop-color="rgba(3,22,11,0.8)" />`,
-    `<stop offset="28%" stop-color="rgba(4,28,13,0.66)" />`,
-    `<stop offset="58%" stop-color="rgba(4,20,10,0.22)" />`,
-    `<stop offset="100%" stop-color="rgba(0,0,0,0.04)" />`,
+    `<stop offset="0%" stop-color="rgba(4,23,11,0.72)" />`,
+    `<stop offset="30%" stop-color="rgba(4,28,13,0.56)" />`,
+    `<stop offset="60%" stop-color="rgba(4,20,10,0.18)" />`,
+    `<stop offset="100%" stop-color="rgba(0,0,0,0.03)" />`,
     "</linearGradient>",
     `<radialGradient id="${waveId}" cx="82%" cy="100%" r="72%">`,
-    `<stop offset="0%" stop-color="rgba(138,255,160,0.72)" />`,
-    `<stop offset="38%" stop-color="rgba(42,178,66,0.42)" />`,
-    `<stop offset="76%" stop-color="rgba(19,88,34,0.09)" />`,
+    `<stop offset="0%" stop-color="rgba(138,255,160,0.58)" />`,
+    `<stop offset="38%" stop-color="rgba(42,178,66,0.34)" />`,
+    `<stop offset="76%" stop-color="rgba(19,88,34,0.08)" />`,
     `<stop offset="100%" stop-color="rgba(19,88,34,0)" />`,
     "</radialGradient>",
     "</defs>",
-    renderBackgroundImage(imageUrl, dimensions.width, dimensions.height),
+    renderBackgroundImage(imageSrc, dimensions.width, dimensions.height),
     `<rect width="${dimensions.width}" height="${dimensions.height}" fill="url(#${gradientId})" />`,
     renderLeftOverlay(dimensions.width, dimensions.height),
     renderWaveDecoration(dimensions.width, dimensions.height, waveId),
     renderBadge(badge, layout.badgeX, layout.badgeY, layout.badgeWidth, layout.badgeHeight),
     renderLogo(officialLogoDataUri, layout.logoX, layout.logoY, layout.logoWidth, layout.logoHeight),
-    renderSingleLineText(category, layout.categoryX, layout.categoryY, dimensions.height > dimensions.width ? 22 : 24, "700", "#7be23f", 0.22),
+    renderSingleLineText(category, layout.categoryX, layout.categoryY, categoryLayout.fontSize, "700", "#7be23f", categoryLayout.letterSpacing),
     renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0),
     renderDivider(layout.dividerX, layout.dividerY, layout.dividerWidth),
-    renderStorySummary(summary, layout.summaryX, layout.summaryY),
+    renderSummaryItems(summary, layout.summaryX, layout.summaryY, layout.summaryWidth, dimensions.height > dimensions.width),
     renderUnifiedPricePanel({
       x: layout.pricePanelX,
       y: layout.pricePanelY,
@@ -144,36 +154,36 @@ function renderUnifiedCreative(
       ctaLines: ctaLayout.lines,
       ctaFontSize: ctaLayout.fontSize,
       ctaLineHeight: ctaLayout.lineHeight,
+      portrait: dimensions.height > dimensions.width,
     }),
     "</svg>",
   ].join("")
 }
 
-function renderBackgroundImage(imageUrl: string | null, width: number, height: number) {
-  if (!imageUrl) {
+function renderBackgroundImage(imageSrc: string | null, width: number, height: number) {
+  if (!imageSrc) {
     return `<rect width="${width}" height="${height}" fill="#05110a" />`
   }
 
-  return `<image href="${escapeXml(imageUrl)}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" />`
+  return `<image href="${escapeXml(imageSrc)}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" />`
 }
 
 function renderLeftOverlay(width: number, height: number) {
   const portraitBoost = Math.max(0, height / width - 1)
-  const widthRatio = 0.52 + portraitBoost * 0.02
+  const widthRatio = 0.49 + portraitBoost * 0.035
   const control1 = 0.18 - portraitBoost * 0.01
-  const control2 = 0.54 + portraitBoost * 0.03
-  const lowerX = 0.32 - portraitBoost * 0.02
-  return `<path d="M0 0 H${Math.round(width * widthRatio)} C${Math.round(width * 0.53)} ${Math.round(height * control1)} ${Math.round(width * 0.56)} ${Math.round(height * control2)} ${Math.round(width * lowerX)} ${Math.round(height * 0.88)} C${Math.round(width * 0.18)} ${Math.round(height * 1.01)} ${Math.round(width * 0.06)} ${Math.round(height * 1.01)} 0 ${height} Z" fill="rgba(3,18,9,0.42)" />`
+  const control2 = 0.56 + portraitBoost * 0.02
+  const lowerX = 0.31 - portraitBoost * 0.016
+  return `<path d="M0 0 H${Math.round(width * widthRatio)} C${Math.round(width * 0.52)} ${Math.round(height * control1)} ${Math.round(width * 0.55)} ${Math.round(height * control2)} ${Math.round(width * lowerX)} ${Math.round(height * 0.88)} C${Math.round(width * 0.18)} ${Math.round(height * 1.01)} ${Math.round(width * 0.06)} ${Math.round(height * 1.01)} 0 ${height} Z" fill="rgba(3,18,9,0.34)" />`
 }
 
 function renderWaveDecoration(width: number, height: number, waveId: string) {
   const endY = Math.round(height * 0.975)
 
   return [
-    `<path d="M${Math.round(width * 0.56)} ${height} C${Math.round(width * 0.69)} ${Math.round(height * 0.93)} ${Math.round(width * 0.82)} ${Math.round(height * 0.8)} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.62" />`,
-    `<path d="M${Math.round(width * 0.54)} ${height} C${Math.round(width * 0.7)} ${Math.round(height * 0.91)} ${Math.round(width * 0.84)} ${Math.round(height * 0.83)} ${width} ${Math.round(height * 0.9)}" fill="none" stroke="rgba(123,226,63,0.28)" stroke-width="1.75" />`,
-    `<path d="M${Math.round(width * 0.64)} ${height} C${Math.round(width * 0.78)} ${Math.round(height * 0.94)} ${Math.round(width * 0.9)} ${Math.round(height * 0.87)} ${width} ${Math.round(height * 0.944)}" fill="none" stroke="rgba(199,255,210,0.14)" stroke-width="1" />`,
-    `<path d="M${Math.round(width * 0.65)} ${height} C${Math.round(width * 0.81)} ${Math.round(height * 0.94)} ${Math.round(width * 0.92)} ${Math.round(height * 0.88)} ${width} ${Math.round(height * 0.962)}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="0.9" />`,
+    `<path d="M${Math.round(width * 0.6)} ${height} C${Math.round(width * 0.72)} ${Math.round(height * 0.93)} ${Math.round(width * 0.84)} ${Math.round(height * 0.82)} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.56" />`,
+    `<path d="M${Math.round(width * 0.58)} ${height} C${Math.round(width * 0.72)} ${Math.round(height * 0.92)} ${Math.round(width * 0.86)} ${Math.round(height * 0.84)} ${width} ${Math.round(height * 0.91)}" fill="none" stroke="rgba(123,226,63,0.24)" stroke-width="1.6" />`,
+    `<path d="M${Math.round(width * 0.68)} ${height} C${Math.round(width * 0.8)} ${Math.round(height * 0.94)} ${Math.round(width * 0.9)} ${Math.round(height * 0.88)} ${width} ${Math.round(height * 0.956)}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.9" />`,
   ].join("")
 }
 
@@ -189,7 +199,7 @@ function renderBadge(label: string, x: number, y: number, width: number, height:
 }
 
 function renderLogo(logoDataUri: string, x: number, y: number, width: number, height: number) {
-  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${Math.round(width * 1.15)}" height="${Math.round(height * 1.15)}" preserveAspectRatio="xMaxYMid meet" />`
+  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${Math.round(width * 1.26)}" height="${Math.round(height * 1.26)}" preserveAspectRatio="xMaxYMid meet" />`
 }
 
 function renderSingleLineText(
@@ -225,12 +235,29 @@ function renderDivider(x: number, y: number, width: number) {
   return `<rect x="${x}" y="${y}" width="${width}" height="5" rx="2.5" fill="#73df30" />`
 }
 
-function renderSummaryGrid(
+function renderSummaryItems(
   items: Array<{ icon: string; value: string; support?: string }>,
   x: number,
   y: number,
   availableWidth: number,
+  portrait: boolean,
 ) {
+  if (portrait) {
+    return items
+      .map((item, index) => {
+        const offsetY = index * 104
+        const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, Math.max(300, availableWidth - 72), 20, 17, 2)
+
+        return [
+          `<g transform="translate(${x} ${y + offsetY})">`,
+          renderFeatureIcon(item.icon, 0, 4, "#73df30"),
+          renderMultilineText(valueLayout.lines, 84, 26, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
+          "</g>",
+        ].join("")
+      })
+      .join("")
+  }
+
   const count = Math.max(items.length, 1)
   const cardWidth = Math.floor(availableWidth / count)
 
@@ -256,22 +283,6 @@ function renderSummaryGrid(
     .join("")
 }
 
-function renderStorySummary(items: Array<{ icon: string; value: string; support?: string }>, x: number, y: number) {
-  return items
-    .map((item, index) => {
-      const offsetY = index * 104
-      const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, 340, 20, 17, 2)
-
-      return [
-        `<g transform="translate(${x} ${y + offsetY})">`,
-        renderFeatureIcon(item.icon, 0, 4, "#73df30"),
-        renderMultilineText(valueLayout.lines, 84, 26, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
-        "</g>",
-      ].join("")
-    })
-    .join("")
-}
-
 function renderUnifiedPricePanel(input: {
   x: number
   y: number
@@ -281,20 +292,31 @@ function renderUnifiedPricePanel(input: {
   ctaLines: string[]
   ctaFontSize: number
   ctaLineHeight: number
+  portrait: boolean
 }) {
-  const dividerX = Math.round(input.width * 0.58)
-  const ctaWidth = input.width - dividerX - 42
+  const dividerX = Math.round(input.width * (input.portrait ? 0.56 : 0.58))
+  const ctaWidth = input.width - dividerX - 38
+  const innerHeight = input.height - 40
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="28" fill="rgba(3,15,8,0.3)" stroke="rgba(123,226,63,0.36)" stroke-width="1.35" />`,
-    renderSingleLineText("PRECO", 34, 40, 20, "500", "#ffffff", 0.02),
-    renderSingleLineText(input.price, 34, 94, 46, "800", "#73df30", 0),
-    `<rect x="${dividerX}" y="22" width="1" height="${input.height - 44}" fill="rgba(255,255,255,0.14)" />`,
-    `<g transform="translate(${dividerX + 24} 22)">`,
-    `<rect width="${ctaWidth}" height="${input.height - 44}" rx="20" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
-    renderFeatureIcon("calendar", 18, 14, "#73df30"),
-    renderMultilineText(input.ctaLines, 78, 34, input.ctaFontSize, "700", "#ffffff", input.ctaLineHeight, 0.01),
+    `<rect width="${input.width}" height="${input.height}" rx="28" fill="rgba(3,15,8,0.28)" stroke="rgba(123,226,63,0.34)" stroke-width="1.35" />`,
+    renderSingleLineText("PRE\u00c7O", 34, 40, 20, "500", "#ffffff", 0.02),
+    renderSingleLineText(input.price, 34, 88, input.portrait ? 40 : 44, "800", "#73df30", 0),
+    `<rect x="${dividerX}" y="20" width="1" height="${input.height - 40}" fill="rgba(255,255,255,0.14)" />`,
+    `<g transform="translate(${dividerX + 20} 20)">`,
+    `<rect width="${ctaWidth}" height="${innerHeight}" rx="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
+    renderFeatureIcon("calendar", 18, Math.max(8, Math.round((innerHeight - 58) / 2)), "#73df30"),
+    renderMultilineText(
+      input.ctaLines,
+      78,
+      Math.round(innerHeight / 2) - (input.ctaLines.length > 1 ? input.ctaLineHeight * 0.35 : -8),
+      input.ctaFontSize,
+      "700",
+      "#ffffff",
+      input.ctaLineHeight,
+      0.01,
+    ),
     "</g>",
     "</g>",
   ].join("")
@@ -326,6 +348,13 @@ function resolveCampaignImage(campaign: StudioCampaignRecord) {
 function resolveCampaignBadge(campaign: StudioCampaignRecord) {
   const goal = campaign.goal?.trim()
   if (!goal) return "DESTAQUE"
+
+  const normalized = goal
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+
+  if (normalized === "LANCAMENTO") return "LAN\u00c7AMENTO"
   return goal.toUpperCase()
 }
 
@@ -351,7 +380,7 @@ function resolvePrimaryHeadline(campaign: StudioCampaignRecord, asset: CampaignA
 
 function buildDefaultHeadline(campaign: StudioCampaignRecord) {
   const typeLabel = mapPropertyTypeLabel(campaign.property?.type).toUpperCase()
-  return `${typeLabel}\nDISPONIVEL`
+  return `${typeLabel}\n${mapPurposeHeadline(campaign.property?.purpose)}`
 }
 
 function buildSummaryItems(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
@@ -367,7 +396,7 @@ function buildSummaryItems(campaign: StudioCampaignRecord, asset: CampaignAssetR
   }
 
   if (area) {
-    items.push({ icon: "area", value: area, support: "AREA UTIL" })
+    items.push({ icon: "area", value: area, support: "\u00c1REA \u00daTIL" })
   } else if ((campaign.property?.bedrooms ?? 0) > 0) {
     items.push({ icon: "bed", value: `${campaign.property?.bedrooms} DORM${campaign.property?.bedrooms === 1 ? "" : "S"}` })
   }
@@ -383,8 +412,45 @@ function buildSummaryItems(campaign: StudioCampaignRecord, asset: CampaignAssetR
   return items.slice(0, 4)
 }
 
-function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, minFontSize: number, maxLines: number) {
+function fitSingleLineText(
+  text: string,
+  maxWidth: number,
+  maxFontSize: number,
+  minFontSize: number,
+  desiredLetterSpacing = 0.2,
+) {
   const normalized = text.replace(/\s+/g, " ").trim()
+  for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 2) {
+    const estimatedWidth = normalized.length * fontSize * (0.63 + desiredLetterSpacing * 0.35)
+    if (estimatedWidth <= maxWidth) {
+      return { fontSize, letterSpacing: desiredLetterSpacing }
+    }
+  }
+
+  return { fontSize: minFontSize, letterSpacing: Math.max(0.1, desiredLetterSpacing - 0.08) }
+}
+
+function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, minFontSize: number, maxLines: number) {
+  const sourceLines = text
+    .split("\n")
+    .map((item) => item.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+
+  if (sourceLines.length > 1) {
+    for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 4) {
+      const capacity = Math.max(6, Math.floor(maxWidth / (fontSize * 0.58)))
+      const lines = sourceLines.flatMap((line) => wrapText(line, capacity, 1))
+      if (lines.length <= maxLines && lines.every((line) => line.length <= capacity + 2)) {
+        return {
+          lines,
+          fontSize,
+          lineHeight: Math.round(fontSize * 0.94),
+        }
+      }
+    }
+  }
+
+  const normalized = sourceLines.length ? sourceLines.join(" ") : text.replace(/\s+/g, " ").trim()
 
   for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 4) {
     const capacity = Math.max(6, Math.floor(maxWidth / (fontSize * 0.58)))
@@ -406,8 +472,7 @@ function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, m
 }
 
 function wrapText(text: string, maxCharsPerLine: number, maxLines: number) {
-  const sourceLines = text.split("\n").map((item) => item.trim()).filter(Boolean)
-  const words = (sourceLines.length ? sourceLines : [text]).flatMap((line) => line.split(/\s+/).filter(Boolean))
+  const words = text.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let current = ""
 
@@ -449,14 +514,14 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
 function mapPurposeHeadline(value: string | null | undefined) {
   const normalized = (value || "").toUpperCase()
   if (normalized.includes("RENT") || normalized.includes("LOC")) return "PARA ALUGAR"
-  return "A VENDA"
+  return "\u00c0 VENDA"
 }
 
 function readAreaLabel(campaign: StudioCampaignRecord) {
   const legal = asRecord(campaign.property?.legalData)
   const area = readString(legal.privateArea) || readString(legal.totalArea)
   if (!area) return null
-  return /\d\s*m/i.test(area) ? area : `${area} m²`
+  return /\d\s*m/i.test(area) ? area.replace(/m(?:Â)?²?/i, "m\u00b2") : `${area} m\u00b2`
 }
 
 function formatPriceLabel(value: number | null | undefined) {
@@ -507,7 +572,6 @@ function getCreativeDimensions(format: StudioCreativeFormat) {
     case "reels_cover":
       return { width: 1080, height: 1350 }
     case "thumbnail":
-      return { width: 1080, height: 1080 }
     case "whatsapp":
       return { width: 1080, height: 1080 }
     case "catalog":
@@ -525,25 +589,26 @@ function getCreativeLayout(width: number, height: number): CreativeLayout {
     badgeY: Math.round(height * (0.058 - portraitBoost * 0.012)),
     badgeWidth: Math.round(width * (0.23 + portraitBoost * 0.055)),
     badgeHeight: Math.round(height * Math.max(0.037, 0.048 - portraitBoost * 0.01)),
-    logoX: width - Math.round(width * 0.197),
-    logoY: Math.round(height * (0.056 - portraitBoost * 0.01)),
-    logoWidth: Math.round(width * 0.13),
-    logoHeight: Math.round(height * Math.max(0.036, 0.05 - portraitBoost * 0.01)),
+    logoX: width - Math.round(width * 0.202),
+    logoY: Math.round(height * (0.05 - portraitBoost * 0.008)),
+    logoWidth: Math.round(width * 0.132),
+    logoHeight: Math.round(height * Math.max(0.037, 0.051 - portraitBoost * 0.009)),
     categoryX: Math.round(width * 0.068),
-    categoryY: Math.round(height * (0.26 + portraitBoost * 0.17)),
+    categoryY: Math.round(height * (0.215 + portraitBoost * 0.145)),
+    categoryMaxWidth: Math.round(width * (0.42 + portraitBoost * 0.08)),
     titleX: Math.round(width * 0.065),
-    titleY: Math.round(height * (0.318 + portraitBoost * 0.16)),
-    titleMaxWidth: Math.round(width * (0.44 + portraitBoost * 0.12)),
+    titleY: Math.round(height * (0.298 + portraitBoost * 0.14)),
+    titleMaxWidth: Math.round(width * (0.47 + portraitBoost * 0.12)),
     dividerX: Math.round(width * 0.067),
-    dividerY: Math.round(height * (0.476 + portraitBoost * 0.14)),
+    dividerY: Math.round(height * (0.468 + portraitBoost * 0.135)),
     dividerWidth: Math.round(width * 0.078),
     summaryX: Math.round(width * 0.067),
-    summaryY: Math.round(height * (0.515 + portraitBoost * 0.145)),
-    summaryWidth: Math.round(width * (0.34 + portraitBoost * 0.1)),
+    summaryY: Math.round(height * (0.507 + portraitBoost * 0.14)),
+    summaryWidth: Math.round(width * (0.66 - Math.min(portraitBoost * 0.08, 0.08))),
     pricePanelX: Math.round(width * 0.058),
-    pricePanelY: height - Math.round(height * (0.145 + portraitBoost * 0.01)),
-    pricePanelWidth: Math.min(Math.round(width * (0.58 + portraitBoost * 0.12)), width - Math.round(width * 0.116)),
-    pricePanelHeight: Math.round(height * Math.max(0.082, 0.1 - portraitBoost * 0.015)),
+    pricePanelY: height - Math.round(height * (0.145 + portraitBoost * 0.012)),
+    pricePanelWidth: Math.min(Math.round(width * (0.59 + portraitBoost * 0.1)), width - Math.round(width * 0.116)),
+    pricePanelHeight: Math.round(height * Math.max(0.082, 0.098 - portraitBoost * 0.013)),
   }
 }
 

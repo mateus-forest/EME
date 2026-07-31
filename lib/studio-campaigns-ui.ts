@@ -179,7 +179,7 @@ function resolveVisualAssetDescriptor(
     return {
       kind: "video",
       src: asset.fileUrl,
-      filename: `${getStudioCreativeFilename(campaign, asset).replace(/\.svg$/i, "")}.mp4`,
+      filename: `${getStudioCreativeFilename(campaign, asset).replace(/\.png$/i, "")}.mp4`,
     }
   }
 
@@ -187,7 +187,7 @@ function resolveVisualAssetDescriptor(
     return {
       kind: "image",
       src: asset.thumbnailUrl || asset.fileUrl,
-      filename: `${getStudioCreativeFilename(campaign, asset).replace(/\.svg$/i, "")}.png`,
+      filename: getStudioCreativeFilename(campaign, asset),
     }
   }
 
@@ -204,7 +204,7 @@ function resolveVisualAssetDescriptor(
     return {
       kind: "text",
       src: createTextDataUrl(text),
-      filename: `${getStudioCreativeFilename(campaign, asset).replace(/\.svg$/i, "")}.txt`,
+      filename: `${getStudioCreativeFilename(campaign, asset).replace(/\.png$/i, "")}.txt`,
     }
   }
 
@@ -318,7 +318,13 @@ export function getAssetOpenDescriptor(campaign: StudioCampaignRecord, asset: Ca
 }
 
 export function getAssetDownloadDescriptor(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  return resolveVisualAssetDescriptor(campaign, asset)
+  const descriptor = resolveVisualAssetDescriptor(campaign, asset)
+  if (!descriptor || descriptor.kind !== "synthetic-image") return descriptor
+
+  return {
+    ...descriptor,
+    src: `${descriptor.src}?download=1`,
+  }
 }
 
 export function getAssetActionLabels(asset: CampaignAssetRecord) {

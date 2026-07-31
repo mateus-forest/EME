@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic"
 let cachedLogoDataUriPromise: Promise<string> | null = null
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<unknown> },
 ) {
   const { error, user } = await getAuthenticatedUser()
@@ -44,16 +44,22 @@ export async function GET(
       return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
     }
 
-    const svg = renderStudioCreativeSvg(campaign, asset, await getOfficialStudioLogoDataUri())
+    const propertyImageDataUri = await getPropertyImageDataUri(campaign.property?.imageUrls?.[0])
+    const svg = renderStudioCreativeSvg(campaign, asset, await getOfficialStudioLogoDataUri(), propertyImageDataUri)
     if (!svg) {
       return NextResponse.json({ error: "Este asset nao possui renderizacao visual oficial." }, { status: 404 })
     }
 
-    return new NextResponse(svg, {
+    const sharp = (await import("sharp")).default
+    const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
+    const shouldDownload = request.nextUrl.searchParams.get("download") === "1"
+
+    return new NextResponse(pngBuffer, {
       headers: {
-        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Content-Type": "image/png",
         "Cache-Control": "private, no-store, max-age=0",
         "X-Content-Type-Options": "nosniff",
+        ...(shouldDownload ? { "Content-Disposition": 'attachment; filename="studio-eme.png"' } : {}),
       },
     })
   } catch (caughtError) {
@@ -78,4 +84,22 @@ async function getOfficialStudioLogoDataUri() {
   }
 
   return cachedLogoDataUriPromise
+}
+
+async function getPropertyImageDataUri(imageUrl: string | null | undefined) {
+  const normalized = imageUrl?.trim()
+  if (!normalized) return null
+
+  try {
+    const response = await fetch(normalized, { cache: "no-store" })
+    if (!response.ok) return null
+
+    const contentType = response.headers.get("content-type") || "image/jpeg"
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (!buffer.length) return null
+
+    return `data:${contentType};base64,${buffer.toString("base64")}`
+  } catch {
+    return null
+  }
 }
