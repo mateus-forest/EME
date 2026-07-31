@@ -38,6 +38,12 @@ type CreativeLayout = {
   pricePanelHeight: number
 }
 
+type TextLayout = {
+  lines: string[]
+  fontSize: number
+  lineHeight: number
+}
+
 export function getStudioCreativeRenderPath(campaignId: string, assetId: string) {
   return `/api/studio-ia/campaigns/${encodeURIComponent(campaignId)}/assets/${encodeURIComponent(assetId)}/render`
 }
@@ -98,12 +104,12 @@ function renderFeedCreative(
   const layout = getCreativeLayout(dimensions.width, dimensions.height, "feed")
   const imageUrl = resolveCampaignImage(campaign)
   const badge = resolveCampaignBadge(campaign)
-  const category = resolveCategoryLabel(campaign)
-  const hero = resolveFeedHero(campaign, asset)
-  const heroLayout = fitMultilineText(hero, layout.titleMaxWidth, 164, 88, 3)
+  const category = resolveSupportLabel(campaign, asset)
+  const hero = resolvePrimaryHeadline(campaign, asset)
+  const heroLayout = fitMultilineText(hero, layout.titleMaxWidth, 136, 82, 2)
   const summary = buildSummaryItems(campaign)
   const price = formatPriceLabel(campaign.property?.price)
-  const ctaLayout = fitMultilineText("AGENDE SUA VISITA", Math.max(170, layout.pricePanelWidth * 0.26), 30, 22, 2)
+  const ctaLayout = fitMultilineText("AGENDE SUA VISITA", Math.max(210, layout.pricePanelWidth * 0.31), 28, 20, 2)
   const gradientId = `studio-overlay-${campaign.id}-${asset.id}`
   const waveId = `studio-wave-${campaign.id}-${asset.id}`
 
@@ -111,15 +117,15 @@ function renderFeedCreative(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimensions.width} ${dimensions.height}" width="${dimensions.width}" height="${dimensions.height}">`,
     "<defs>",
     `<linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">`,
-    `<stop offset="0%" stop-color="rgba(3,22,11,0.88)" />`,
-    `<stop offset="34%" stop-color="rgba(5,33,15,0.72)" />`,
-    `<stop offset="66%" stop-color="rgba(4,20,10,0.24)" />`,
+    `<stop offset="0%" stop-color="rgba(3,22,11,0.76)" />`,
+    `<stop offset="34%" stop-color="rgba(5,33,15,0.58)" />`,
+    `<stop offset="66%" stop-color="rgba(4,20,10,0.18)" />`,
     `<stop offset="100%" stop-color="rgba(4,20,10,0.02)" />`,
     "</linearGradient>",
     `<radialGradient id="${waveId}" cx="80%" cy="100%" r="70%">`,
-    `<stop offset="0%" stop-color="rgba(138,255,160,0.82)" />`,
-    `<stop offset="34%" stop-color="rgba(55,198,79,0.52)" />`,
-    `<stop offset="75%" stop-color="rgba(20,92,34,0.12)" />`,
+    `<stop offset="0%" stop-color="rgba(138,255,160,0.7)" />`,
+    `<stop offset="34%" stop-color="rgba(55,198,79,0.42)" />`,
+    `<stop offset="75%" stop-color="rgba(20,92,34,0.09)" />`,
     `<stop offset="100%" stop-color="rgba(20,92,34,0)" />`,
     "</radialGradient>",
     "</defs>",
@@ -129,10 +135,10 @@ function renderFeedCreative(
     renderWaveDecoration(dimensions.width, dimensions.height, waveId),
     renderBadge(badge, layout.badgeX, layout.badgeY, layout.badgeWidth, layout.badgeHeight),
     renderLogo(officialLogoDataUri, layout.logoX, layout.logoY, layout.logoWidth, layout.logoHeight),
-    renderSingleLineText(category, layout.categoryX, layout.categoryY, 24, "700", "#7be23f", 0.28),
-    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0.005),
+    renderSingleLineText(category, layout.categoryX, layout.categoryY, 24, "700", "#7be23f", 0.22),
+    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0),
     renderDivider(layout.dividerX, layout.dividerY, layout.dividerWidth),
-    renderSummaryGrid(summary, layout.summaryX, layout.summaryY, layout.summaryWidth),
+    renderStorySummary(summary, layout.summaryX, layout.summaryY),
     renderPriceCtaPanel({
       x: layout.pricePanelX,
       y: layout.pricePanelY,
@@ -157,12 +163,12 @@ function renderStoryCreative(
   const layout = getCreativeLayout(dimensions.width, dimensions.height, "story")
   const imageUrl = resolveCampaignImage(campaign)
   const badge = resolveCampaignBadge(campaign)
-  const category = resolveCategoryLabel(campaign)
-  const hero = resolveStoryHero(campaign, asset)
-  const heroLayout = fitMultilineText(hero, layout.titleMaxWidth, 110, 70, 3)
+  const category = resolveSupportLabel(campaign, asset)
+  const hero = resolvePrimaryHeadline(campaign, asset)
+  const heroLayout = fitMultilineText(hero, layout.titleMaxWidth, 100, 62, 2)
   const summary = buildSummaryItems(campaign).slice(0, 4)
   const price = formatPriceLabel(campaign.property?.price)
-  const ctaLayout = fitMultilineText("AGENDE SUA VISITA", Math.max(190, layout.pricePanelWidth * 0.32), 28, 22, 2)
+  const ctaLayout = fitMultilineText("AGENDE SUA VISITA", Math.max(190, layout.pricePanelWidth * 0.33), 26, 20, 2)
   const gradientId = `studio-story-overlay-${campaign.id}-${asset.id}`
   const waveId = `studio-story-wave-${campaign.id}-${asset.id}`
 
@@ -170,15 +176,15 @@ function renderStoryCreative(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimensions.width} ${dimensions.height}" width="${dimensions.width}" height="${dimensions.height}">`,
     "<defs>",
     `<linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">`,
-    `<stop offset="0%" stop-color="rgba(3,22,11,0.9)" />`,
-    `<stop offset="28%" stop-color="rgba(4,28,13,0.8)" />`,
-    `<stop offset="58%" stop-color="rgba(4,20,10,0.28)" />`,
+    `<stop offset="0%" stop-color="rgba(3,22,11,0.8)" />`,
+    `<stop offset="28%" stop-color="rgba(4,28,13,0.66)" />`,
+    `<stop offset="58%" stop-color="rgba(4,20,10,0.22)" />`,
     `<stop offset="100%" stop-color="rgba(0,0,0,0.04)" />`,
     "</linearGradient>",
     `<radialGradient id="${waveId}" cx="82%" cy="100%" r="72%">`,
-    `<stop offset="0%" stop-color="rgba(138,255,160,0.84)" />`,
-    `<stop offset="38%" stop-color="rgba(42,178,66,0.54)" />`,
-    `<stop offset="76%" stop-color="rgba(19,88,34,0.12)" />`,
+    `<stop offset="0%" stop-color="rgba(138,255,160,0.72)" />`,
+    `<stop offset="38%" stop-color="rgba(42,178,66,0.42)" />`,
+    `<stop offset="76%" stop-color="rgba(19,88,34,0.09)" />`,
     `<stop offset="100%" stop-color="rgba(19,88,34,0)" />`,
     "</radialGradient>",
     "</defs>",
@@ -188,8 +194,8 @@ function renderStoryCreative(
     renderWaveDecoration(dimensions.width, dimensions.height, waveId),
     renderBadge(badge, layout.badgeX, layout.badgeY, layout.badgeWidth, layout.badgeHeight),
     renderLogo(officialLogoDataUri, layout.logoX, layout.logoY, layout.logoWidth, layout.logoHeight),
-    renderSingleLineText(category, layout.categoryX, layout.categoryY, 22, "700", "#7be23f", 0.28),
-    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0.005),
+    renderSingleLineText(category, layout.categoryX, layout.categoryY, 22, "700", "#7be23f", 0.22),
+    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0),
     renderDivider(layout.dividerX, layout.dividerY, layout.dividerWidth),
     renderStorySummary(summary, layout.summaryX, layout.summaryY),
     renderStoryPricePanel(
@@ -216,20 +222,20 @@ function renderBackgroundImage(imageUrl: string | null, width: number, height: n
 
 function renderLeftOverlay(width: number, height: number, variant: "feed" | "story") {
   const widthRatio = variant === "feed" ? 0.52 : 0.54
-  const control1 = variant === "feed" ? 0.17 : 0.16
-  const control2 = variant === "feed" ? 0.56 : 0.58
-  const lowerX = variant === "feed" ? 0.36 : 0.34
+  const control1 = variant === "feed" ? 0.18 : 0.17
+  const control2 = variant === "feed" ? 0.54 : 0.56
+  const lowerX = variant === "feed" ? 0.32 : 0.3
 
-  return `<path d="M0 0 H${Math.round(width * widthRatio)} C${Math.round(width * 0.56)} ${Math.round(height * control1)} ${Math.round(width * 0.6)} ${Math.round(height * control2)} ${Math.round(width * lowerX)} ${Math.round(height * 0.88)} C${Math.round(width * 0.22)} ${Math.round(height * 1.03)} ${Math.round(width * 0.08)} ${Math.round(height * 1.02)} 0 ${height} Z" fill="rgba(3,18,9,0.54)" />`
+  return `<path d="M0 0 H${Math.round(width * widthRatio)} C${Math.round(width * 0.53)} ${Math.round(height * control1)} ${Math.round(width * 0.56)} ${Math.round(height * control2)} ${Math.round(width * lowerX)} ${Math.round(height * 0.88)} C${Math.round(width * 0.18)} ${Math.round(height * 1.01)} ${Math.round(width * 0.06)} ${Math.round(height * 1.01)} 0 ${height} Z" fill="rgba(3,18,9,0.42)" />`
 }
 
 function renderWaveDecoration(width: number, height: number, waveId: string) {
   const endY = Math.round(height * 0.975)
 
   return [
-    `<path d="M${Math.round(width * 0.5)} ${height} C${Math.round(width * 0.64)} ${Math.round(height * 0.92)} ${Math.round(width * 0.8)} ${Math.round(height * 0.76)} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.8" />`,
-    `<path d="M${Math.round(width * 0.46)} ${height} C${Math.round(width * 0.65)} ${Math.round(height * 0.9)} ${Math.round(width * 0.82)} ${Math.round(height * 0.8)} ${width} ${Math.round(height * 0.885)}" fill="none" stroke="rgba(123,226,63,0.34)" stroke-width="2" />`,
-    `<path d="M${Math.round(width * 0.57)} ${height} C${Math.round(width * 0.75)} ${Math.round(height * 0.93)} ${Math.round(width * 0.88)} ${Math.round(height * 0.84)} ${width} ${Math.round(height * 0.935)}" fill="none" stroke="rgba(199,255,210,0.18)" stroke-width="1.25" />`,
+    `<path d="M${Math.round(width * 0.56)} ${height} C${Math.round(width * 0.69)} ${Math.round(height * 0.93)} ${Math.round(width * 0.82)} ${Math.round(height * 0.8)} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.62" />`,
+    `<path d="M${Math.round(width * 0.54)} ${height} C${Math.round(width * 0.7)} ${Math.round(height * 0.91)} ${Math.round(width * 0.84)} ${Math.round(height * 0.83)} ${width} ${Math.round(height * 0.9)}" fill="none" stroke="rgba(123,226,63,0.28)" stroke-width="1.75" />`,
+    `<path d="M${Math.round(width * 0.64)} ${height} C${Math.round(width * 0.78)} ${Math.round(height * 0.94)} ${Math.round(width * 0.9)} ${Math.round(height * 0.87)} ${width} ${Math.round(height * 0.944)}" fill="none" stroke="rgba(199,255,210,0.14)" stroke-width="1" />`,
     `<path d="M${Math.round(width * 0.65)} ${height} C${Math.round(width * 0.81)} ${Math.round(height * 0.94)} ${Math.round(width * 0.92)} ${Math.round(height * 0.88)} ${width} ${Math.round(height * 0.962)}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="0.9" />`,
   ].join("")
 }
@@ -316,13 +322,13 @@ function renderSummaryGrid(
 function renderStorySummary(items: Array<{ icon: string; value: string; support?: string }>, x: number, y: number) {
   return items
     .map((item, index) => {
-      const offsetY = index * 118
-      const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, 332, 21, 18, 2)
+      const offsetY = index * 104
+      const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, 340, 20, 17, 2)
 
       return [
         `<g transform="translate(${x} ${y + offsetY})">`,
-        renderFeatureIcon(item.icon, 0, 6, "#73df30"),
-        renderMultilineText(valueLayout.lines, 88, 28, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
+        renderFeatureIcon(item.icon, 0, 4, "#73df30"),
+        renderMultilineText(valueLayout.lines, 84, 26, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
         "</g>",
       ].join("")
     })
@@ -339,19 +345,19 @@ function renderPriceCtaPanel(input: {
   ctaFontSize: number
   ctaLineHeight: number
 }) {
-  const dividerX = Math.round(input.width * 0.6)
-  const ctaWidth = input.width - dividerX - 44
+  const dividerX = Math.round(input.width * 0.58)
+  const ctaWidth = input.width - dividerX - 42
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(3,15,8,0.32)" stroke="rgba(123,226,63,0.46)" stroke-width="1.6" />`,
-    renderSingleLineText("PRECO", 34, 42, 21, "500", "#ffffff", 0.02),
-    renderSingleLineText(input.price, 34, 98, 50, "800", "#73df30", 0),
-    `<rect x="${dividerX}" y="24" width="1.1" height="${input.height - 48}" fill="rgba(255,255,255,0.14)" />`,
-    `<g transform="translate(${dividerX + 28} 24)">`,
-    `<rect width="${ctaWidth}" height="${input.height - 48}" rx="22" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
-    renderFeatureIcon("calendar", 18, 16, "#73df30"),
-    renderMultilineText(input.ctaLines, 80, 36, input.ctaFontSize, "700", "#ffffff", input.ctaLineHeight, 0.01),
+    `<rect width="${input.width}" height="${input.height}" rx="28" fill="rgba(3,15,8,0.3)" stroke="rgba(123,226,63,0.36)" stroke-width="1.35" />`,
+    renderSingleLineText("PRECO", 34, 40, 20, "500", "#ffffff", 0.02),
+    renderSingleLineText(input.price, 34, 94, 46, "800", "#73df30", 0),
+    `<rect x="${dividerX}" y="22" width="1" height="${input.height - 44}" fill="rgba(255,255,255,0.14)" />`,
+    `<g transform="translate(${dividerX + 24} 22)">`,
+    `<rect width="${ctaWidth}" height="${input.height - 44}" rx="20" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
+    renderFeatureIcon("calendar", 18, 14, "#73df30"),
+    renderMultilineText(input.ctaLines, 78, 34, input.ctaFontSize, "700", "#ffffff", input.ctaLineHeight, 0.01),
     "</g>",
     "</g>",
   ].join("")
@@ -371,11 +377,11 @@ function renderStoryPricePanel(
 
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="28" fill="rgba(3,15,8,0.34)" stroke="rgba(123,226,63,0.44)" stroke-width="1.5" />`,
-    renderSingleLineText("PRECO", 34, 42, 20, "500", "#ffffff", 0.02),
-    renderSingleLineText(price, 34, 102, 50, "800", "#73df30", 0),
+    `<rect width="${width}" height="${height}" rx="28" fill="rgba(3,15,8,0.3)" stroke="rgba(123,226,63,0.36)" stroke-width="1.35" />`,
+    renderSingleLineText("PRECO", 34, 40, 20, "500", "#ffffff", 0.02),
+    renderSingleLineText(price, 34, 96, 46, "800", "#73df30", 0),
     `<g transform="translate(${width - ctaWidth - 24} ${Math.round((height - 78) / 2)})">`,
-    `<rect width="${ctaWidth}" height="78" rx="22" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
+    `<rect width="${ctaWidth}" height="78" rx="20" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
     renderFeatureIcon("calendar", 16, 12, "#73df30"),
     renderMultilineText(ctaLines, 78, 32, ctaFontSize, "700", "#ffffff", ctaLineHeight, 0.01),
     "</g>",
@@ -412,50 +418,25 @@ function resolveCampaignBadge(campaign: StudioCampaignRecord) {
   return goal.toUpperCase()
 }
 
-function resolveCategoryLabel(campaign: StudioCampaignRecord) {
-  return mapPropertyTypeLabel(campaign.property?.type).toUpperCase()
+function resolveSupportLabel(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
+  const content = asRecord(asset.content)
+  const preferred = readString(content.subtitle) || readString(content.category) || readString(content.highlight)
+  if (preferred) return preferred.toUpperCase()
+
+  return "OPORTUNIDADE PREMIUM"
 }
 
-function resolveFeedHero(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
+function resolvePrimaryHeadline(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
   const content = asRecord(asset.content)
-  const preferred = readString(content.highlight) || readString(content.title)
+  const preferred = readString(content.title)
   if (preferred) return preferred.toUpperCase()
 
   return buildDefaultHeadline(campaign).toUpperCase()
 }
 
-function resolveStoryHero(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  const content = asRecord(asset.content)
-  const line1 = readString(content.line1) || readString(content.highlight)
-  const line2 = readString(content.line2)
-  if (line1 && line2) return `${line1}\n${line2}`.toUpperCase()
-  if (line1) return line1.toUpperCase()
-  return buildDefaultHeadline(campaign).toUpperCase()
-}
-
 function buildDefaultHeadline(campaign: StudioCampaignRecord) {
-  const purpose = mapPurposeHeadline(campaign.property?.purpose)
-  const neighborhood = campaign.property?.neighborhood?.trim()
-  const city = campaign.property?.city?.trim()
-
-  if (neighborhood) {
-    return `${purpose}\n${prependLocationPreposition(neighborhood)}`
-  }
-
-  if (city) {
-    return `${purpose}\nEM ${city}`
-  }
-
-  return purpose
-}
-
-function prependLocationPreposition(value: string) {
-  const normalized = value.trim()
-  const upper = normalized.toUpperCase()
-  if (!upper) return "EM DESTAQUE"
-  if (upper.startsWith("JARDINS")) return `NOS ${upper}`
-  if (upper.startsWith("CENTRO")) return `NO ${upper}`
-  return `EM ${upper}`
+  const typeLabel = mapPropertyTypeLabel(campaign.property?.type).toUpperCase()
+  return `${typeLabel}\nDISPONIVEL`
 }
 
 function buildSummaryItems(campaign: StudioCampaignRecord) {
@@ -618,20 +599,20 @@ function getCreativeLayout(width: number, height: number, variant: "feed" | "sto
       logoWidth: Math.round(width * 0.182),
       logoHeight: Math.round(height * 0.042),
       categoryX: Math.round(width * 0.078),
-      categoryY: Math.round(height * 0.422),
+      categoryY: Math.round(height * 0.4),
       titleX: Math.round(width * 0.074),
-      titleY: Math.round(height * 0.468),
-      titleMaxWidth: Math.round(width * 0.68),
+      titleY: Math.round(height * 0.452),
+      titleMaxWidth: Math.round(width * 0.58),
       dividerX: Math.round(width * 0.078),
-      dividerY: Math.round(height * 0.64),
-      dividerWidth: Math.round(width * 0.086),
+      dividerY: Math.round(height * 0.586),
+      dividerWidth: Math.round(width * 0.09),
       summaryX: Math.round(width * 0.076),
-      summaryY: Math.round(height * 0.675),
+      summaryY: Math.round(height * 0.622),
       summaryWidth: Math.round(width * 0.44),
       pricePanelX: Math.round(width * 0.072),
-      pricePanelY: height - Math.round(height * 0.176),
-      pricePanelWidth: Math.round(width * 0.71),
-      pricePanelHeight: Math.round(height * 0.09),
+      pricePanelY: height - Math.round(height * 0.148),
+      pricePanelWidth: Math.round(width * 0.7),
+      pricePanelHeight: Math.round(height * 0.085),
     }
   }
 
@@ -645,20 +626,20 @@ function getCreativeLayout(width: number, height: number, variant: "feed" | "sto
     logoWidth: Math.round(width * 0.13),
     logoHeight: Math.round(height * 0.053),
     categoryX: Math.round(width * 0.068),
-    categoryY: Math.round(height * 0.292),
+    categoryY: Math.round(height * 0.26),
     titleX: Math.round(width * 0.065),
-    titleY: Math.round(height * 0.35),
-    titleMaxWidth: Math.round(width * 0.58),
+    titleY: Math.round(height * 0.318),
+    titleMaxWidth: Math.round(width * 0.44),
     dividerX: Math.round(width * 0.067),
-    dividerY: Math.round(height * 0.53),
-    dividerWidth: Math.round(width * 0.074),
+    dividerY: Math.round(height * 0.476),
+    dividerWidth: Math.round(width * 0.078),
     summaryX: Math.round(width * 0.067),
-    summaryY: Math.round(height * 0.574),
-    summaryWidth: width - Math.round(width * 0.134),
+    summaryY: Math.round(height * 0.515),
+    summaryWidth: Math.round(width * 0.34),
     pricePanelX: Math.round(width * 0.058),
-    pricePanelY: height - Math.round(height * 0.19),
-    pricePanelWidth: Math.min(Math.round(width * 0.55), width - Math.round(width * 0.116)),
-    pricePanelHeight: Math.round(height * 0.112),
+    pricePanelY: height - Math.round(height * 0.145),
+    pricePanelWidth: Math.min(Math.round(width * 0.58), width - Math.round(width * 0.116)),
+    pricePanelHeight: Math.round(height * 0.1),
   }
 }
 
