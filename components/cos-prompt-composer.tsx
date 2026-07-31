@@ -5,10 +5,14 @@ import type { ChangeEvent, RefObject } from "react"
 import {
   FileText,
   Files,
+  HelpCircle,
   ImageIcon,
   Mic,
+  MessageSquarePlus,
   Paperclip,
+  Search,
   Send,
+  Sparkles,
   Square,
   Video,
   X,
@@ -20,6 +24,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
@@ -35,6 +42,17 @@ export type CosComposerAttachment = {
   textContent?: string
 }
 
+export type CosPromptComposerMenuAction = {
+  id: string
+  label: string
+}
+
+export type CosPromptComposerMenuGroup = {
+  id: string
+  label: string
+  items: CosPromptComposerMenuAction[]
+}
+
 type CosPromptComposerProps = {
   prompt: string
   setPrompt: (value: string) => void
@@ -45,6 +63,8 @@ type CosPromptComposerProps = {
   feedback?: string
   sticky?: boolean
   containerClassName?: string
+  menuGroups?: CosPromptComposerMenuGroup[]
+  onMenuAction?: (action: CosPromptComposerMenuAction) => Promise<void> | void
 }
 
 type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionInstance
@@ -89,6 +109,8 @@ export function CosPromptComposer({
   feedback,
   sticky = true,
   containerClassName,
+  menuGroups,
+  onMenuAction,
 }: CosPromptComposerProps) {
   const [micState, setMicState] = useState<"idle" | "recording" | "processing" | "error">("idle")
   const [micError, setMicError] = useState("")
@@ -142,7 +164,7 @@ export function CosPromptComposer({
 
     if (!speechRecognitionCtor) {
       updateMicState("error")
-      setMicError("Microfone indisponivel neste navegador.")
+      setMicError("Microfone indisponível neste navegador.")
       return
     }
 
@@ -204,7 +226,7 @@ export function CosPromptComposer({
       recognition.start()
     } catch {
       updateMicState("error")
-      setMicError("Nao foi possivel iniciar a gravacao.")
+      setMicError("Não foi possível iniciar a gravação.")
     }
   }
 
@@ -235,6 +257,10 @@ export function CosPromptComposer({
   async function handleSubmit() {
     await onSubmit({ attachments })
     setAttachments([])
+  }
+
+  async function handleMenuAction(action: CosPromptComposerMenuAction) {
+    await onMenuAction?.(action)
   }
 
   return (
@@ -292,40 +318,74 @@ export function CosPromptComposer({
                 variant="ghost"
                 disabled={disabled || isPreparingAttachments}
                 className="size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8]"
-                aria-label="Adicionar anexos ao COS"
+                aria-label="Abrir menu de ações do COS"
               >
                 <Paperclip className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+            <DropdownMenuContent
+              align="start"
+              className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl"
+            >
               {onNewConversation ? (
                 <>
                   <DropdownMenuItem
                     onSelect={() => void onNewConversation()}
                     className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
                   >
-                    <Paperclip className="mr-2 size-4 text-[#7B8491]" />
+                    <MessageSquarePlus className="mr-2 size-4 text-[#7B8491]" />
                     Nova conversa
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="my-1 bg-black/[0.06]" />
                 </>
               ) : null}
-              <DropdownMenuItem onSelect={() => openPicker("image")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                <ImageIcon className="mr-2 size-4 text-[#7B8491]" />
-                Imagem
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => openPicker("document")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                <FileText className="mr-2 size-4 text-[#7B8491]" />
-                Documento
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => openPicker("video")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                <Video className="mr-2 size-4 text-[#7B8491]" />
-                Vídeo
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => openPicker("files")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                <Files className="mr-2 size-4 text-[#7B8491]" />
-                Múltiplos arquivos
-              </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                  <Paperclip className="mr-2 size-4 text-[#7B8491]" />
+                  Anexar
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-56 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+                  <DropdownMenuItem onSelect={() => openPicker("image")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                    <ImageIcon className="mr-2 size-4 text-[#7B8491]" />
+                    Imagem
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => openPicker("document")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                    <FileText className="mr-2 size-4 text-[#7B8491]" />
+                    Documento
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => openPicker("video")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                    <Video className="mr-2 size-4 text-[#7B8491]" />
+                    Vídeo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => openPicker("files")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                    <Files className="mr-2 size-4 text-[#7B8491]" />
+                    Múltiplos arquivos
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              {menuGroups?.map((group) => (
+                <DropdownMenuSub key={group.id}>
+                  <DropdownMenuSubTrigger className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                    {group.id === "skills" ? <Sparkles className="mr-2 size-4 text-[#7B8491]" /> : null}
+                    {group.id === "queries" ? <Search className="mr-2 size-4 text-[#7B8491]" /> : null}
+                    {group.id === "help" ? <HelpCircle className="mr-2 size-4 text-[#7B8491]" /> : null}
+                    {group.label}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+                    {group.items.map((item) => (
+                      <DropdownMenuItem
+                        key={item.id}
+                        onSelect={() => void handleMenuAction(item)}
+                        className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
+                      >
+                        {item.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -352,7 +412,7 @@ export function CosPromptComposer({
             className={`size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8] ${
               micState === "recording" ? "border-[#009b3a]/30 bg-[#effaf3] text-[#009b3a]" : ""
             }`}
-            aria-label="Gravar audio para o COS"
+            aria-label="Gravar áudio para o COS"
           >
             {micState === "recording" ? <Square className="size-4" /> : <Mic className="size-4" />}
           </Button>
@@ -375,7 +435,7 @@ export function CosPromptComposer({
               : micState === "recording"
                 ? "Gravando..."
                 : micState === "processing"
-                  ? "Processando audio..."
+                  ? "Processando áudio..."
                   : micState === "error"
                     ? micError
                     : feedback || ""}
@@ -430,7 +490,7 @@ function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "")
-    reader.onerror = () => reject(new Error("Nao foi possivel ler o anexo."))
+    reader.onerror = () => reject(new Error("Não foi possível ler o anexo."))
     reader.readAsDataURL(file)
   })
 }
@@ -438,6 +498,6 @@ function readFileAsDataUrl(file: File) {
 function resolveMicErrorMessage(errorCode: string) {
   if (errorCode === "not-allowed" || errorCode === "service-not-allowed") return "Permita o uso do microfone para continuar."
   if (errorCode === "no-speech") return "Nenhuma fala foi detectada."
-  if (errorCode === "audio-capture") return "Nao foi possivel acessar o microfone."
-  return "Nao foi possivel processar o audio."
+  if (errorCode === "audio-capture") return "Não foi possível acessar o microfone."
+  return "Não foi possível processar o áudio."
 }

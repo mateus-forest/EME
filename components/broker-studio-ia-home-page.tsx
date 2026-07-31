@@ -29,7 +29,7 @@ type StudioAction = {
 const studioActions: StudioAction[] = [
   {
     title: "Biblioteca",
-    description: "Consulte todo o historico de campanhas, imagens, videos e copys gerados pelo Studio IA.",
+    description: "Consulte todo o histórico de campanhas, imagens, vídeos e copys gerados pelo Studio IA.",
     icon: BookOpen,
     href: "/corretor/studio-ia/biblioteca",
     cta: "Abrir biblioteca",
@@ -37,7 +37,7 @@ const studioActions: StudioAction[] = [
   },
   {
     title: "Vender este imovel",
-    description: "Organize uma acao focada em conversao para apresentar o imovel certo no momento certo.",
+    description: "Organize uma ação focada em conversão para apresentar o imóvel certo no momento certo.",
     icon: Home,
     href: "/corretor/studio-ia/vender-este-imovel",
     cta: "Abrir fluxo",
@@ -98,7 +98,7 @@ export function BrokerStudioIaHomePage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Central de criacao com IA</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Crie campanhas, imagens, videos, anuncios e conteudos para divulgar seus imoveis com inteligencia artificial.
+                Crie campanhas, imagens, vídeos, anúncios e conteúdos para divulgar seus imóveis com inteligência artificial.
               </p>
             </div>
           </div>

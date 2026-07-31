@@ -17,6 +17,7 @@ import {
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
+import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
@@ -171,18 +172,48 @@ export function BrokerPortal() {
   const hasResolvedBrokerName = profile.fullName.trim().length > 0
   const greetingLabel = brokerFirstName ? `Olá, ${brokerFirstName}.` : "Olá."
 
-  const conversationSuggestions = [
-    { label: "Cadastrar cliente", message: "Quero cadastrar um cliente." },
-    { label: "Buscar imóvel", message: "Quero buscar um imóvel." },
-    { label: "Criar imóvel", message: "Quero criar um imóvel." },
-    { label: "Últimos leads", message: "Mostre meus últimos leads." },
-    { label: "Agenda de hoje", message: "Mostre minha agenda de hoje." },
-    { label: "Criar campanha", message: "Quero criar uma campanha para Instagram." },
-    { label: "Gerar contrato", message: "Quero gerar um contrato." },
-    { label: "Publicar catálogo", message: "Quero publicar um imóvel no catálogo." },
-  ]
   const isBootstrapPending = isProfileLoading || isBootstrappingConversation
   const isConversationEmpty = !isBootstrapPending && !isConversationLoading && conversation.length === 0
+  const composerMenuGroups = useMemo<CosPromptComposerMenuGroup[]>(
+    () => [
+      {
+        id: "skills",
+        label: "Habilidades",
+        items: [
+          { id: "register_client", label: "Cadastrar cliente" },
+          { id: "create_property", label: "Criar imóvel" },
+          { id: "attach_contract", label: "Anexar contrato" },
+          { id: "create_campaign", label: "Criar campanha" },
+          { id: "generate_proposal", label: "Gerar proposta" },
+        ],
+      },
+      {
+        id: "queries",
+        label: "Consultas",
+        items: [
+          { id: "search_property", label: "Buscar imóvel" },
+          { id: "my_clients", label: "Meus clientes" },
+          { id: "today_agenda", label: "Agenda de hoje" },
+          { id: "latest_leads", label: "Últimos leads" },
+          { id: "latest_properties", label: "Últimos imóveis" },
+        ],
+      },
+      {
+        id: "help",
+        label: "Ajuda",
+        items: [
+          { id: "help_first_steps", label: "Primeiros passos" },
+          { id: "help_use_cos", label: "Como usar o COS" },
+          { id: "help_register_properties", label: "Como cadastrar imóveis" },
+          { id: "help_manage_clients", label: "Como gerenciar clientes" },
+          { id: "help_contracts_proposals", label: "Contratos e propostas" },
+          { id: "help_marketing_studio", label: "Marketing e Studio IA" },
+          { id: "help_general_question", label: "Tirar uma dúvida" },
+        ],
+      },
+    ],
+    [],
+  )
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
@@ -207,6 +238,32 @@ export function BrokerPortal() {
     await sendCosMessage(selection.message, { visibleMessage: selection.label })
   }
 
+  async function handleMenuAction(action: CosPromptComposerMenuAction) {
+    const actionMap: Record<string, { label: string; message: string }> = {
+      register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente." },
+      create_property: { label: "Criar imóvel", message: "Quero criar um imóvel." },
+      attach_contract: { label: "Anexar contrato", message: "Quero anexar um contrato." },
+      create_campaign: { label: "Criar campanha", message: "Quero criar uma campanha para Instagram." },
+      generate_proposal: { label: "Gerar proposta", message: "Quero gerar uma proposta." },
+      search_property: { label: "Buscar imóvel", message: "Quero buscar um imóvel." },
+      my_clients: { label: "Meus clientes", message: "Mostre meus clientes." },
+      today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje." },
+      latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads." },
+      latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados." },
+      help_first_steps: { label: "Primeiros passos", message: "Quais são os primeiros passos para começar a usar o EME?" },
+      help_use_cos: { label: "Como usar o COS", message: "Como posso usar melhor o COS no dia a dia?" },
+      help_register_properties: { label: "Como cadastrar imóveis", message: "Como cadastrar imóveis no EME?" },
+      help_manage_clients: { label: "Como gerenciar clientes", message: "Como gerenciar meus clientes no EME?" },
+      help_contracts_proposals: { label: "Contratos e propostas", message: "Como funcionam contratos e propostas no EME?" },
+      help_marketing_studio: { label: "Marketing e Studio IA", message: "Como usar o Studio IA e o marketing do EME?" },
+      help_general_question: { label: "Tirar uma dúvida", message: "Preciso de ajuda para entender uma funcionalidade do EME." },
+    }
+
+    const selection = actionMap[action.id]
+    if (!selection) return
+    await handleConversationSuggestion(selection)
+  }
+
   async function handleOperationDetails() {
     const missingRegistry = properties.filter((property) => !property.legal.registryNumber).length
     const missingPropertyDocuments = properties.filter((property) => property.documents.length === 0).length
@@ -220,19 +277,19 @@ export function BrokerPortal() {
     const pendingAgenda = agendaEvents.filter((event) => event.status === "pending" && event.date <= todayKey).length
 
     const operationalSummary = [
-      `Imoveis sem matricula: ${missingRegistry}`,
-      `Imoveis sem documentos anexados: ${missingPropertyDocuments}`,
+      `Imóveis sem matrícula: ${missingRegistry}`,
+      `Imóveis sem documentos anexados: ${missingPropertyDocuments}`,
       `Propostas ou documentos em rascunho: ${draftDocuments}`,
       `Contratos em rascunho: ${draftContracts}`,
       `Contratos aguardando assinatura: ${awaitingSignature}`,
-      `Clientes com informacoes faltantes: ${missingLeadInfo}`,
+      `Clientes com informações faltantes: ${missingLeadInfo}`,
       `Leads sem atendimento: ${unattendedLeads}`,
       `Compromissos pendentes: ${pendingAgenda}`,
     ].join("\n")
 
     await sendCosMessage(
-      `Analise minha operacao com base nas pendencias reais abaixo. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual proxima acao devo executar em cada frente. Considere especialmente imoveis incompletos, clientes sem dados obrigatorios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos proximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
-      { visibleMessage: "Ver detalhes da operacao" },
+      `Analise minha operação com base nas pendências reais abaixo. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual próxima ação devo executar em cada frente. Considere especialmente imóveis incompletos, clientes sem dados obrigatórios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos próximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
+      { visibleMessage: "Ver detalhes da operação" },
     )
     setPrompt("")
   }
@@ -272,7 +329,7 @@ export function BrokerPortal() {
   const operationIndicators = useMemo(
     () => [
       { label: "Clientes", score: leadScore, icon: UsersRound },
-      { label: "Imoveis", score: propertyScore, icon: Home },
+      { label: "Imóveis", score: propertyScore, icon: Home },
       { label: "Documentos", score: documentScore, icon: FileText },
       { label: "Contratos", score: contractScore, icon: FileText },
       { label: "Agenda", score: agendaScore, icon: CalendarDays },
@@ -291,9 +348,9 @@ export function BrokerPortal() {
     const pendingAgenda = agendaEvents.filter((event) => event.status === "pending" && event.date <= todayKey).length
 
     return [
-      missingRegistry > 0 ? `${missingRegistry} ${pluralize("imovel", "imoveis", missingRegistry)} sem matricula` : null,
+      missingRegistry > 0 ? `${missingRegistry} ${pluralize("imóvel", "imóveis", missingRegistry)} sem matrícula` : null,
       missingPropertyDocuments > 0
-        ? `${missingPropertyDocuments} ${pluralize("imovel", "imoveis", missingPropertyDocuments)} sem documentos`
+        ? `${missingPropertyDocuments} ${pluralize("imóvel", "imóveis", missingPropertyDocuments)} sem documentos`
         : null,
       missingRg > 0 ? `${missingRg} ${pluralize("cliente", "clientes", missingRg)} sem RG` : null,
       unattendedLeads > 0 ? `${unattendedLeads} ${pluralize("lead", "leads", unattendedLeads)} sem atendimento` : null,
@@ -318,13 +375,9 @@ export function BrokerPortal() {
                   <div className="flex flex-1 flex-col">
                     <div className="mx-auto flex h-full w-full max-w-[48rem] flex-col items-center px-1 text-center">
                       <div className="pt-8 sm:pt-10">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[#8a97a8]">COS</p>
                         <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
                           {greetingLabel}
                         </h1>
-                        <p className="mt-2 text-sm text-[#667085]">
-                          Continue a conversa e mantenha sua operação sincronizada.
-                        </p>
                       </div>
 
                       <div className="mt-16 w-full pt-16 sm:mt-20 sm:pt-20" />
@@ -348,7 +401,6 @@ export function BrokerPortal() {
                 <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-black/[0.05] bg-white/58 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.04)] backdrop-blur-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3 px-4 pb-3 pt-2">
                     <div className="min-w-0">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[#8a97a8]">COS</p>
                       <div className="mt-1 min-h-[2rem]">
                         {hasResolvedBrokerName ? (
                           <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#111111]">
@@ -358,9 +410,6 @@ export function BrokerPortal() {
                           <div className="h-8 w-40 rounded-full bg-[#e9ece6] animate-pulse" />
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-[#667085]">
-                        Continue a conversa e mantenha a operação sincronizada em tempo real.
-                      </p>
                       {showConversationTitle ? (
                         <p className="mt-3 truncate text-sm font-medium text-[#111111]">{activeConversation?.title}</p>
                       ) : isBootstrapPending ? (
@@ -372,7 +421,7 @@ export function BrokerPortal() {
                         {assistantEnabled ? "COS ativo" : "COS pausado"}
                       </span>
                       <span className="rounded-full border border-black/[0.06] bg-white/84 px-3 py-1.5">
-                        {assistantCredits.balance} creditos
+                        {assistantCredits.balance} créditos
                       </span>
                     </div>
                   </div>
@@ -446,20 +495,6 @@ export function BrokerPortal() {
                     pendingCount={visiblePendingCount}
                     onClick={() => setIsMobileOperationHealthOpen(true)}
                   />
-                  {isConversationEmpty ? (
-                    <div className="flex w-full flex-wrap justify-center gap-2 pb-1">
-                      {conversationSuggestions.map((suggestion) => (
-                        <button
-                          key={suggestion.label}
-                          type="button"
-                          onClick={() => void handleConversationSuggestion(suggestion)}
-                          className="inline-flex min-h-9 items-center justify-center rounded-full border border-black/[0.06] bg-white/88 px-3.5 py-1.5 text-[13px] font-medium text-[#273444] transition-colors hover:bg-white sm:min-h-10 sm:px-4 sm:py-2 sm:text-sm"
-                        >
-                          {suggestion.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                   <CosPromptComposer
                     prompt={prompt}
                     setPrompt={setPrompt}
@@ -473,6 +508,8 @@ export function BrokerPortal() {
                     inputRef={inputRef}
                     feedback={chatFeedback}
                     sticky={false}
+                    menuGroups={composerMenuGroups}
+                    onMenuAction={handleMenuAction}
                   />
                 </div>
               </div>
@@ -489,7 +526,7 @@ export function BrokerPortal() {
                 >
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8a97a8]">
-                      Saude da operacao
+                      Saúde da operação
                     </p>
                     <p className="mt-2 text-[1.8rem] font-semibold tracking-[-0.05em] text-[#111111]">
                       {operationHealth}%
@@ -505,7 +542,7 @@ export function BrokerPortal() {
                 </div>
 
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[#667085]">
-                  <span>{visiblePendingCount} pendencia{visiblePendingCount === 1 ? "" : "s"}</span>
+                  <span>{visiblePendingCount} pendência{visiblePendingCount === 1 ? "" : "s"}</span>
                   <span className="rounded-full bg-[#edf8f1] px-2.5 py-1 font-medium text-[#0d7a39]">
                     {commissionPercent}% base
                   </span>
@@ -539,10 +576,10 @@ export function BrokerPortal() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <DrawerTitle className="text-base font-semibold tracking-[-0.02em] text-[#111111]">
-                  Saude da operacao
+                  Saúde da operação
                 </DrawerTitle>
                 <DrawerDescription className="mt-1 text-sm text-[#667085]">
-                  Indicadores e pendencias da sua operacao sem sair do COS.
+                  Indicadores e pendências da sua operação sem sair do COS.
                 </DrawerDescription>
               </div>
               <DrawerClose asChild>
@@ -551,7 +588,7 @@ export function BrokerPortal() {
                   size="icon"
                   variant="ghost"
                   className="size-9 rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#667085] hover:bg-white"
-                  aria-label="Fechar saude da operacao"
+                  aria-label="Fechar saúde da operação"
                 >
                   <X className="size-4" />
                 </Button>
@@ -624,11 +661,11 @@ function MobileOperationHealthTrigger({
       type="button"
       onClick={onClick}
       className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/94 px-3 py-2 text-left shadow-[0_10px_20px_rgba(15,23,42,0.045)] backdrop-blur-sm transition-colors hover:bg-white lg:hidden"
-      aria-label={`Abrir saude da operacao. Status atual ${operationHealth}% com ${pendingCount} pendencias.`}
+      aria-label={`Abrir saúde da operação. Status atual ${operationHealth}% com ${pendingCount} pendências.`}
     >
       <span className="flex items-center gap-2">
         <Circle className="size-2.5 fill-[#009b3a] text-[#009b3a]" />
-        <span className="text-sm font-medium text-[#111111]">Saude {operationHealth}%</span>
+        <span className="text-sm font-medium text-[#111111]">Saúde {operationHealth}%</span>
       </span>
       <span className="rounded-full bg-[#edf8f1] px-2 py-0.5 text-[11px] font-medium text-[#0d7a39]">
         {pendingCount}

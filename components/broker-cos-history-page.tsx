@@ -18,7 +18,7 @@ type AssistantBootstrapResponse = {
   error?: string
 }
 
-const CONVERSATION_GROUP_ORDER = ["Hoje", "Ontem", "Ultimos 7 dias", "Este mes", "Anteriores"] as const
+const CONVERSATION_GROUP_ORDER = ["Hoje", "Ontem", "Últimos 7 dias", "Este mês", "Anteriores"] as const
 
 export function BrokerCosHistoryPage() {
   const [prompt, setPrompt] = useState("")
@@ -112,13 +112,13 @@ export function BrokerCosHistoryPage() {
   }
 
   async function handleRename(conversationId: string, currentTitle: string) {
-    const nextTitle = window.prompt("Novo titulo da conversa", currentTitle)?.trim()
+    const nextTitle = window.prompt("Novo título da conversa", currentTitle)?.trim()
     if (!nextTitle || nextTitle === currentTitle) return
 
     try {
       await renameConversation(conversationId, nextTitle)
     } catch (caughtError) {
-      setChatFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel renomear a conversa.")
+      setChatFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível renomear a conversa.")
     }
   }
 
@@ -128,13 +128,13 @@ export function BrokerCosHistoryPage() {
     try {
       await deleteConversation(conversationId)
     } catch (caughtError) {
-      setChatFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel excluir a conversa.")
+      setChatFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível excluir a conversa.")
     }
   }
 
   return (
     <BrokerPageShell
-      title="Historico"
+      title="Histórico"
       searchPlaceholder="Pesquisar conversas"
       searchValue={search}
       onSearchChange={setSearch}
@@ -145,7 +145,7 @@ export function BrokerCosHistoryPage() {
         <div className="min-w-0 rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
           {groupedConversations.length === 0 ? (
             <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-white px-4 py-4 text-sm text-[#7B8491]">
-              {search.trim() ? "Nenhuma conversa encontrada." : "As conversas do COS apareceram aqui por corretor, com titulo e ultima interacao."}
+              {search.trim() ? "Nenhuma conversa encontrada." : "As conversas do COS aparecerão aqui por corretor, com título e última interação."}
             </div>
           ) : (
             groupedConversations.map((group) => (
@@ -221,7 +221,7 @@ export function BrokerCosHistoryPage() {
                   {assistantEnabled ? "COS ativo" : "COS pausado"}
                 </span>
                 <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1">
-                  {assistantCredits.balance} creditos
+                  {assistantCredits.balance} créditos
                 </span>
               </div>
             </div>
@@ -319,8 +319,8 @@ function getConversationGroupLabel(isoDate: string) {
 
   if (diffDays <= 0) return "Hoje"
   if (diffDays === 1) return "Ontem"
-  if (diffDays <= 7) return "Ultimos 7 dias"
-  if (today.getFullYear() === compared.getFullYear() && today.getMonth() === compared.getMonth()) return "Este mes"
+  if (diffDays <= 7) return "Últimos 7 dias"
+  if (today.getFullYear() === compared.getFullYear() && today.getMonth() === compared.getMonth()) return "Este mês"
   return "Anteriores"
 }
 

@@ -54,13 +54,13 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     label: "CARTEIRA",
     items: [
       { label: "Clientes", icon: UserRound, href: "/corretor/clientes" },
-      { label: "Imoveis", icon: Building2, href: "/corretor/imoveis" },
+      { label: "Imóveis", icon: Building2, href: "/corretor/imoveis" },
     ],
   },
   {
     label: "VENDER",
     items: [
-      { label: "Catalogo", icon: BookOpenText, href: "/corretor/catalogo" },
+      { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
       { label: "Studio IA", icon: Bot, href: "/corretor/studio-ia" },
     ],
   },
@@ -72,18 +72,18 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     ],
   },
   {
-    label: "OPERACAO",
+    label: "OPERAÇÃO",
     items: [
       { label: "Compromissos", icon: CalendarDays, href: "/corretor/agenda" },
       { label: "Desempenho", icon: BarChart3, href: "/corretor/analytics" },
     ],
   },
   {
-    label: "CONFIGURACOES",
+    label: "CONFIGURAÇÕES",
     items: [
       { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
       { label: "Conta", icon: UserRound, href: "/corretor/conta" },
-      { label: "Historico", icon: History, href: "/corretor/historico" },
+      { label: "Histórico", icon: History, href: "/corretor/historico" },
     ],
   },
 ]
@@ -260,7 +260,7 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Portal do corretor</SheetTitle>
-            <SheetDescription>Navegacao lateral do portal do corretor.</SheetDescription>
+            <SheetDescription>Navegação lateral do portal do corretor.</SheetDescription>
           </SheetHeader>
           {sidebarInner}
         </SheetContent>
