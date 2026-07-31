@@ -26,7 +26,14 @@ import type {
   PublicBrokerCatalogData,
 } from "@/lib/public-catalog"
 import { createPublicLead } from "@/lib/lead-client"
-import { buildAgencyCatalogPath, buildAgencyCatalogUrl, buildBrokerCatalogPath, buildBrokerCatalogUrl } from "@/lib/public-catalog-url"
+import {
+  buildAgencyCatalogListingPath,
+  buildAgencyCatalogPath,
+  buildAgencyCatalogUrl,
+  buildBrokerCatalogListingPath,
+  buildBrokerCatalogPath,
+  buildBrokerCatalogUrl,
+} from "@/lib/public-catalog-url"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -63,6 +70,7 @@ type PublicCatalogLandingProps = {
   kind: CatalogKind
   slug: string
   catalog: PublicBrokerCatalogData | PublicAgencyCatalogData
+  listingOnly?: boolean
 }
 
 type LeadDraft = {
@@ -92,7 +100,7 @@ const quickSuggestions = [
   "Mais filtros",
 ]
 
-export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandingProps) {
+export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false }: PublicCatalogLandingProps) {
   const [search, setSearch] = useState("")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [advancedFilters, setAdvancedFilters] = useState<CatalogAdvancedFilters>({
@@ -119,6 +127,10 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
   )
   const publicPath =
     kind === "broker" ? buildBrokerCatalogPath(catalog.slug || slug) : buildAgencyCatalogPath(catalog.slug || slug)
+  const listingPath =
+    kind === "broker"
+      ? buildBrokerCatalogListingPath(catalog.slug || slug)
+      : buildAgencyCatalogListingPath(catalog.slug || slug)
   const catalogUrl =
     kind === "broker" ? buildBrokerCatalogUrl(catalog.slug || slug) : buildAgencyCatalogUrl(catalog.slug || slug)
   const image = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
@@ -261,6 +273,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
           </div>
         ) : null}
 
+        {!listingOnly ? (
         <section className="overflow-hidden rounded-[2rem] border border-[#ece5dc] bg-white px-6 py-6 shadow-[0_20px_54px_rgba(15,23,42,0.05)] sm:px-8 sm:py-7 lg:px-10 lg:py-8">
           <div className="grid gap-6 lg:grid-cols-[170px_minmax(0,1fr)_520px] lg:items-center lg:gap-8">
             <div className="flex justify-center lg:justify-start">
@@ -317,24 +330,32 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               </div>
             </div>
 
-            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] sm:grid-cols-[1fr_1fr_1.55fr] lg:border-l lg:border-[#f0e9e1]">
+            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] grid-cols-2 lg:border-l lg:border-[#f0e9e1] sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.35fr]">
               <MetricStat icon={Home} label="Imoveis" value={String(properties.length)} />
               <MetricStat icon={MapPin} label="Cidades" value={cities.length ? String(cities.length) : "A consultar"} />
-              <MetricStat icon={CircleDollarSign} label="Faixa de preco" value={priceRange} valueClassName="whitespace-nowrap text-[1.6rem] sm:text-[1.75rem]" />
+              <MetricStat
+                icon={CircleDollarSign}
+                label="Faixa de preco"
+                value={priceRange}
+                fullWidthOnMobile
+                valueClassName="whitespace-nowrap text-[1.45rem] sm:text-[1.7rem]"
+              />
             </div>
           </div>
         </section>
+        ) : null}
 
-        <section className="rounded-[2rem] bg-white px-6 py-8 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-8 sm:py-10 lg:px-12 lg:py-12">
+        {!listingOnly ? (
+        <section className="rounded-[2rem] bg-white px-5 py-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10">
           <div className="mx-auto max-w-none">
-            <h2 className="text-3xl font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.7rem]">
+            <h2 className="text-[1.55rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
               Encontre seu proximo imovel
             </h2>
-            <p className="mt-3 text-base leading-7 text-[#6b6b6b]">
+            <p className="mt-2 text-sm leading-6 text-[#6b6b6b] sm:text-[0.98rem] sm:leading-7">
               Busque por bairro, cidade ou caracteristica.
             </p>
 
-            <div className="mt-9 grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
+            <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_170px]">
               <div className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-[#9a9a9a]" />
                 <Input
@@ -344,19 +365,19 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Ex.: apartamento em Porto Alegre ate 900 mil com 2 quartos e vaga"
-                  className="h-[4.4rem] rounded-[1.2rem] border-transparent bg-white pl-14 pr-4 text-base text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8]"
+                  className="h-[3.6rem] rounded-[1rem] border-transparent bg-white pl-12 pr-4 text-sm text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8] sm:text-base"
                 />
               </div>
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-[4.4rem] rounded-[1.2rem] bg-[#17181d] px-7 text-lg font-medium text-white shadow-[0_14px_30px_rgba(23,24,29,0.16)] hover:bg-[#111216]"
+                className="h-[3.6rem] rounded-[1rem] bg-[#17181d] px-6 text-base font-medium text-white shadow-[0_14px_30px_rgba(23,24,29,0.16)] hover:bg-[#111216]"
               >
                 Buscar
               </Button>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-2.5">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
@@ -369,7 +390,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
 
                     setSearch(suggestion)
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#efe8df] bg-white px-5 py-3 text-sm font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#efe8df] bg-white px-4 py-2.5 text-[13px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
                 >
                   {getSuggestionIcon(suggestion)}
                   {suggestion}
@@ -498,18 +519,22 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
             ) : null}
           </div>
         </section>
+        ) : null}
 
         {visibleProperties.length > 0 ? (
           <>
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111]">Imoveis em destaque</h2>
-              <button
-                type="button"
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                className="text-base font-medium text-[#202020] transition hover:text-[#009b3a]"
-              >
-                Ver todos
-              </button>
+              <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2rem]">
+                {listingOnly ? "Todos os imoveis" : "Imoveis em destaque"}
+              </h2>
+              {!listingOnly ? (
+                <Link
+                  href={listingPath}
+                  className="text-sm font-medium text-[#202020] transition hover:text-[#009b3a] sm:text-base"
+                >
+                  Ver todos
+                </Link>
+              ) : null}
             </div>
 
             <section className="grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2">
@@ -565,7 +590,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
 
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <span className="inline-flex w-fit rounded-full border border-[#ebe3da] bg-[#fbfaf8] px-3.5 py-1.5 text-xs font-medium text-[#636363]">
-                        {property.type}
+                        {property.type === "Bolsao" ? "Bolsão" : property.type}
                       </span>
                       <Button
                         type="button"
@@ -581,6 +606,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
               ))}
             </section>
 
+            {!listingOnly ? (
             <section className="rounded-[1.9rem] border border-[#ece5dc] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
@@ -611,6 +637,7 @@ export function PublicCatalogLanding({ kind, slug, catalog }: PublicCatalogLandi
                 </Button>
               </div>
             </section>
+            ) : null}
           </>
         ) : (
           <div className="rounded-[1.75rem] border border-black/[0.05] bg-white px-6 py-16 text-center text-sm text-[#6B7280] shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
@@ -1210,20 +1237,26 @@ function MetricStat({
   icon: Icon,
   label,
   value,
+  fullWidthOnMobile = false,
   valueClassName = "",
 }: {
   icon: typeof Home
   label: string
   value: string
+  fullWidthOnMobile?: boolean
   valueClassName?: string
 }) {
   return (
-    <div className="flex min-h-[138px] flex-col items-center justify-center gap-3 border-b border-[#eee6de] px-5 py-5 text-center last:border-b-0 sm:border-b-0 sm:border-r last:sm:border-r-0">
-      <div className="flex size-10 items-center justify-center rounded-full bg-[#f4faf5] text-[#3e9651]">
-        <Icon className="size-5" />
+    <div
+      className={`flex min-h-[110px] flex-col items-center justify-center gap-2.5 border-b border-[#eee6de] px-4 py-4 text-center last:border-b-0 sm:min-h-[128px] sm:border-b-0 sm:border-r last:sm:border-r-0 ${
+        fullWidthOnMobile ? "col-span-2" : ""
+      }`}
+    >
+      <div className="flex size-9 items-center justify-center rounded-full bg-[#f4faf5] text-[#3e9651] sm:size-10">
+        <Icon className="size-4.5 sm:size-5" />
       </div>
-      <p className={`text-[1.8rem] font-semibold tracking-[-0.05em] text-[#151515] ${valueClassName}`}>{value}</p>
-      <p className="text-[0.95rem] text-[#676767]">{label}</p>
+      <p className={`text-[1.45rem] font-semibold tracking-[-0.05em] text-[#151515] sm:text-[1.8rem] ${valueClassName}`}>{value}</p>
+      <p className="text-[0.86rem] text-[#676767] sm:text-[0.95rem]">{label}</p>
     </div>
   )
 }

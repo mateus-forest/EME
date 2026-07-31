@@ -16,7 +16,6 @@ import {
   X,
   Sparkles,
   UsersRound,
-  WalletCards,
 } from "lucide-react"
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
@@ -252,6 +251,36 @@ export function BrokerPortal() {
     await sendCosMessage(selection.message, { visibleMessage: selection.label })
   }
 
+  async function handleOperationDetails() {
+    const missingRegistry = properties.filter((property) => !property.legal.registryNumber).length
+    const missingPropertyDocuments = properties.filter((property) => property.documents.length === 0).length
+    const draftDocuments = documents.filter((document) => document.status === "draft").length
+    const draftContracts = contracts.filter((contract) => contract.status === "draft").length
+    const awaitingSignature = contracts.filter((contract) => contract.status === "awaiting_signature").length
+    const missingLeadInfo = leads.filter(
+      (lead) => !lead.identification.rg || !lead.identification.cpfCnpj || !lead.address.city,
+    ).length
+    const unattendedLeads = leads.filter((lead) => lead.status === "NEW").length
+    const pendingAgenda = agendaEvents.filter((event) => event.status === "pending" && event.date <= todayKey).length
+
+    const operationalSummary = [
+      `Imoveis sem matricula: ${missingRegistry}`,
+      `Imoveis sem documentos anexados: ${missingPropertyDocuments}`,
+      `Propostas ou documentos em rascunho: ${draftDocuments}`,
+      `Contratos em rascunho: ${draftContracts}`,
+      `Contratos aguardando assinatura: ${awaitingSignature}`,
+      `Clientes com informacoes faltantes: ${missingLeadInfo}`,
+      `Leads sem atendimento: ${unattendedLeads}`,
+      `Compromissos pendentes: ${pendingAgenda}`,
+    ].join("\n")
+
+    await sendCosMessage(
+      `Analise minha operacao e conduza um workflow pratico com base nas pendencias reais abaixo. Priorize o que exige acao imediata, agrupe por categoria e me diga por onde comecar.\n\n${operationalSummary}`,
+      { visibleMessage: "Ver detalhes da operacao" },
+    )
+    setPrompt("")
+  }
+
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const leadScore = useMemo(() => averageScore(leads.map((lead) => lead.completion.score)), [leads])
   const propertyScore = useMemo(() => averageScore(properties.map((property) => property.completion.score)), [properties])
@@ -270,18 +299,18 @@ export function BrokerPortal() {
     const overdue = agendaEvents.filter((event) => event.status === "pending" && event.date < todayKey).length
     return clampScore(100 - overdue * 12)
   }, [agendaEvents, todayKey])
-  const financialScore = useMemo(() => {
-    if (properties.length === 0) return 100
-    const priced = properties.filter((property) => property.priceValue > 0).length
-    return Math.round((priced / properties.length) * 100)
-  }, [properties])
+  const leadsScore = useMemo(() => {
+    if (leads.length === 0) return 100
+    const unattended = leads.filter((lead) => lead.status === "NEW").length
+    return clampScore(Math.round(((leads.length - unattended) / leads.length) * 100))
+  }, [leads])
 
   const operationHealth = useMemo(
     () =>
       clampScore(
-        Math.round((leadScore + propertyScore + documentScore + contractScore + agendaScore + financialScore) / 6),
+        Math.round((leadScore + propertyScore + documentScore + contractScore + agendaScore + leadsScore) / 6),
       ),
-    [agendaScore, contractScore, documentScore, financialScore, leadScore, propertyScore],
+    [agendaScore, contractScore, documentScore, leadScore, leadsScore, propertyScore],
   )
 
   const operationIndicators = useMemo(
@@ -291,21 +320,27 @@ export function BrokerPortal() {
       { label: "Documentos", score: documentScore, icon: FileText },
       { label: "Contratos", score: contractScore, icon: FileText },
       { label: "Agenda", score: agendaScore, icon: CalendarDays },
-      { label: "Financeiro", score: financialScore, icon: WalletCards },
+      { label: "Leads", score: leadsScore, icon: UsersRound },
     ],
-    [agendaScore, contractScore, documentScore, financialScore, leadScore, propertyScore],
+    [agendaScore, contractScore, documentScore, leadScore, leadsScore, propertyScore],
   )
 
   const operationPendingItems = useMemo(() => {
     const missingRegistry = properties.filter((property) => !property.legal.registryNumber).length
+    const missingPropertyDocuments = properties.filter((property) => property.documents.length === 0).length
     const missingRg = leads.filter((lead) => !lead.identification.rg).length
+    const unattendedLeads = leads.filter((lead) => lead.status === "NEW").length
     const awaitingSignature = contracts.filter((contract) => contract.status === "awaiting_signature").length
     const draftDocuments = documents.filter((document) => document.status === "draft").length
     const pendingAgenda = agendaEvents.filter((event) => event.status === "pending" && event.date <= todayKey).length
 
     return [
       missingRegistry > 0 ? `${missingRegistry} ${pluralize("imovel", "imoveis", missingRegistry)} sem matricula` : null,
+      missingPropertyDocuments > 0
+        ? `${missingPropertyDocuments} ${pluralize("imovel", "imoveis", missingPropertyDocuments)} sem documentos`
+        : null,
       missingRg > 0 ? `${missingRg} ${pluralize("cliente", "clientes", missingRg)} sem RG` : null,
+      unattendedLeads > 0 ? `${unattendedLeads} ${pluralize("lead", "leads", unattendedLeads)} sem atendimento` : null,
       awaitingSignature > 0
         ? `${awaitingSignature} ${pluralize("contrato", "contratos", awaitingSignature)} aguardando assinatura`
         : null,
@@ -548,13 +583,13 @@ export function BrokerPortal() {
                 <div
                   id="operation-health-panel"
                   className={`overflow-hidden transition-all duration-300 ease-out ${
-                    isOperationHealthExpanded ? "mt-4 max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
+                    isOperationHealthExpanded ? "mt-4 max-h-[36rem] overflow-y-auto pr-1 opacity-100" : "max-h-0 opacity-0"
                   }`}
                 >
                   <OperationHealthDetails
                     operationIndicators={operationIndicators}
                     operationPendingItems={operationPendingItems}
-                    onViewDetails={() => void handleSubmit("Me mostre as pendencias da operacao")}
+                    onViewDetails={() => void handleOperationDetails()}
                   />
                 </div>
               </div>
@@ -619,7 +654,7 @@ export function BrokerPortal() {
                 operationPendingItems={operationPendingItems}
                 onViewDetails={() => {
                   setIsMobileOperationHealthOpen(false)
-                  void handleSubmit("Me mostre as pendencias da operacao")
+                  void handleOperationDetails()
                 }}
               />
             </div>

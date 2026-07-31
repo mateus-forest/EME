@@ -16,6 +16,14 @@ export function buildAgencyCatalogPath(slug: string) {
   return `/catalogo/imobiliaria/${trimSlashes(slug)}`
 }
 
+export function buildBrokerCatalogListingPath(slug: string) {
+  return `${buildBrokerCatalogPath(slug)}/imoveis`
+}
+
+export function buildAgencyCatalogListingPath(slug: string) {
+  return `${buildAgencyCatalogPath(slug)}/imoveis`
+}
+
 export function toPublicWebUrl(pathname: string) {
   return new URL(pathname, PUBLIC_WEB_ORIGIN).toString()
 }
@@ -26,4 +34,12 @@ export function buildBrokerCatalogUrl(slug: string) {
 
 export function buildAgencyCatalogUrl(slug: string) {
   return toPublicWebUrl(buildAgencyCatalogPath(slug))
+}
+
+export function buildBrokerCatalogListingUrl(slug: string) {
+  return toPublicWebUrl(buildBrokerCatalogListingPath(slug))
+}
+
+export function buildAgencyCatalogListingUrl(slug: string) {
+  return toPublicWebUrl(buildAgencyCatalogListingPath(slug))
 }
