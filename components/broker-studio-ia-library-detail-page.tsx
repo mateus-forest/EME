@@ -11,6 +11,7 @@ import {
   Eye,
   Film,
   ImageIcon,
+  Pencil,
   RefreshCcw,
   Trash2,
   X,
@@ -26,15 +27,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   studioCampaignsClient,
   type StudioCampaignAssetStatus,
   type StudioCampaignRecord,
 } from "@/lib/studio-campaigns-client"
 import {
+  applyEditedStudioAssetFields,
   extractTextFromAsset,
   getAssetActionLabels,
   getAssetDownloadDescriptor,
+  getEditableStudioAssetFields,
   getAssetOpenDescriptor,
   getAssetPreviewSource,
   formatStudioCampaignAssetType,
@@ -45,6 +50,7 @@ import {
   getCampaignPropertyLabel,
   getStudioCampaignWorkspacePath,
   isPreviewableAsset,
+  isTextEditableAsset,
   isVisualAsset,
   getStudioStatusTone,
 } from "@/lib/studio-campaigns-ui"
@@ -100,8 +106,11 @@ function openDescriptor(descriptor: ReturnType<typeof getAssetOpenDescriptor>) {
 export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: string }) {
   const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [previewAsset, setPreviewAsset] = useState<AssetRecord | null>(null)
+  const [editingAsset, setEditingAsset] = useState<AssetRecord | null>(null)
+  const [editValues, setEditValues] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -135,6 +144,23 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
     if (!campaign) return ""
     return campaign.promptRevised || campaign.prompt || "Prompt nao informado."
   }, [campaign])
+
+  const editableFields = useMemo(() => {
+    if (!campaign || !editingAsset) return []
+    return getEditableStudioAssetFields(campaign, editingAsset)
+  }, [campaign, editingAsset])
+
+  useEffect(() => {
+    if (!editingAsset || !campaign) {
+      setEditValues({})
+      return
+    }
+
+    const nextValues = Object.fromEntries(
+      getEditableStudioAssetFields(campaign, editingAsset).map((field) => [field.id, field.value]),
+    )
+    setEditValues(nextValues)
+  }, [campaign, editingAsset])
 
   async function handleAssetStatus(assetId: string, status: StudioCampaignAssetStatus) {
     try {
@@ -196,6 +222,25 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
     const descriptor = getAssetDownloadDescriptor(campaign, asset)
     if (!descriptor) return
     triggerDownload(descriptor.src, descriptor.filename)
+  }
+
+  async function handleSaveEdit() {
+    if (!campaign || !editingAsset) return
+
+    try {
+      setIsSavingEdit(true)
+      setNotice(null)
+      setError(null)
+      const content = applyEditedStudioAssetFields(editingAsset, editValues)
+      const updated = await studioCampaignsClient.updateAssetContent(editingAsset.id, content)
+      setCampaign(updated)
+      setNotice("Conteudo textual atualizado. O preview e a exportacao usam a mesma renderizacao oficial.")
+      setEditingAsset(null)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel salvar a edicao do asset.")
+    } finally {
+      setIsSavingEdit(false)
+    }
   }
 
   return (
@@ -331,6 +376,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                       onPreview={() => setPreviewAsset(asset)}
                       onOpen={() => handleOpenAsset(asset)}
                       onDownload={() => handleDownloadAsset(asset)}
+                      onEdit={() => setEditingAsset(asset)}
                       onApprove={() => handleAssetStatus(asset.id, "APPROVED")}
                       onReject={() => handleAssetStatus(asset.id, "REJECTED")}
                       onDelete={() => handleDeleteAsset(asset)}
@@ -375,6 +421,69 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={Boolean(editingAsset)} onOpenChange={(open) => !open && !isSavingEdit && setEditingAsset(null)}>
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto rounded-[1.75rem] border-black/[0.06] bg-white text-[#050505]">
+          {editingAsset ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Editar conteudos textuais</DialogTitle>
+                <DialogDescription className="text-[#667085]">
+                  Ajuste somente os textos. A identidade visual, o grid e a renderizacao oficial permanecem preservados.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4">
+                {editableFields.length > 0 ? (
+                  editableFields.map((field) => (
+                    <label key={field.id} className="grid gap-2">
+                      <span className="text-sm font-medium text-[#44505f]">{field.label}</span>
+                      {field.kind === "textarea" || field.kind === "tags" ? (
+                        <Textarea
+                          value={editValues[field.id] ?? ""}
+                          onChange={(event) => setEditValues((current) => ({ ...current, [field.id]: event.target.value }))}
+                          placeholder={field.placeholder}
+                          rows={field.kind === "tags" ? 5 : 4}
+                        />
+                      ) : (
+                        <Input
+                          value={editValues[field.id] ?? ""}
+                          onChange={(event) => setEditValues((current) => ({ ...current, [field.id]: event.target.value }))}
+                          placeholder={field.placeholder}
+                        />
+                      )}
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-[#fbfbfa] px-4 py-5 text-sm text-[#667085]">
+                    Este asset nao possui campos textuais editaveis nesta etapa.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingAsset(null)}
+                  disabled={isSavingEdit}
+                  className="h-9 rounded-xl border-black/[0.08] px-4 text-[#44505f]"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit || editableFields.length === 0}
+                  className="h-9 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
+                >
+                  {isSavingEdit ? "Salvando..." : "Salvar textos"}
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </BrokerPageShell>
   )
 }
@@ -404,6 +513,7 @@ function AssetCard({
   onPreview,
   onOpen,
   onDownload,
+  onEdit,
   onApprove,
   onReject,
   onDelete,
@@ -416,6 +526,7 @@ function AssetCard({
   onPreview: () => void
   onOpen: () => void
   onDownload: () => void
+  onEdit: () => void
   onApprove: () => void
   onReject: () => void
   onDelete: () => void
@@ -430,6 +541,7 @@ function AssetCard({
   const canDownload = Boolean(getAssetDownloadDescriptor(campaign, asset)) && asset.type !== "COPY" && asset.type !== "CAROUSEL"
   const canCopyText = Boolean(textPreview.trim())
   const canCopyPrompt = Boolean((asset.promptRevised || asset.prompt || "").trim())
+  const canEdit = ["APPROVED", "PUBLISHED"].includes(campaign.status) && isTextEditableAsset(campaign, asset)
   const regenerateBasePath = getStudioCampaignWorkspacePath(campaign.kind)
   const regenerateHref = regenerateBasePath
     ? `${regenerateBasePath}?propertyId=${encodeURIComponent(campaign.propertyId ?? "")}&campaignId=${encodeURIComponent(campaign.id)}&assetKey=${encodeURIComponent(asset.assetKey)}`
@@ -486,6 +598,7 @@ function AssetCard({
         )}
 
         <div className="grid gap-2 sm:grid-cols-2">
+          <ActionButton icon={Pencil} label="Editar texto" onClick={onEdit} disabled={!canEdit} />
           <ActionButton icon={Eye} label="Visualizar" onClick={onPreview} disabled={!canPreview} />
           <ActionButton icon={ArrowUpRight} label={actionLabels.open} onClick={onOpen} disabled={!canOpen} />
           <ActionButton icon={Download} label={actionLabels.download} onClick={onDownload} disabled={!canDownload} />
@@ -513,7 +626,7 @@ function AssetCard({
             variant="outline"
             onClick={onReject}
             disabled={isUpdating}
-            className="h-9 rounded-xl border-black/[0.08] text-[#44505f]"
+            className="h-8 rounded-xl border-black/[0.08] bg-transparent px-3 text-[#44505f] hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
           >
             <X className="size-4" />
             Rejeitar
@@ -523,7 +636,7 @@ function AssetCard({
             variant="outline"
             onClick={onDelete}
             disabled={isUpdating}
-            className="h-9 rounded-xl border-[#f3d0d0] text-[#c24141] hover:bg-[#fff5f5] hover:text-[#c24141]"
+            className="h-8 rounded-xl border-[#f3d0d0] bg-transparent px-3 text-[#c24141] hover:bg-[#fff5f5] hover:text-[#c24141]"
           >
             <Trash2 className="size-4" />
             Excluir
@@ -551,7 +664,7 @@ function ActionButton({
       variant="outline"
       onClick={onClick}
       disabled={disabled}
-      className="h-9 justify-start rounded-xl border-black/[0.06] text-[#44505f]"
+      className="h-8 justify-start rounded-xl border-black/[0.06] bg-transparent px-3 text-[#44505f] transition-colors hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
     >
       <Icon className="size-4" />
       {label}
@@ -574,7 +687,7 @@ function ActionLink({
 }) {
   if (!href || disabled) {
     return (
-      <Button type="button" variant="outline" disabled className="h-9 justify-start rounded-xl border-black/[0.06] text-[#98a2b3]">
+      <Button type="button" variant="outline" disabled className="h-8 justify-start rounded-xl border-black/[0.06] bg-transparent px-3 text-[#98a2b3]">
         <Icon className="size-4" />
         {label}
       </Button>
@@ -582,7 +695,12 @@ function ActionLink({
   }
 
   return (
-    <Button asChild type="button" variant="outline" className="h-9 justify-start rounded-xl border-black/[0.06] text-[#44505f]">
+    <Button
+      asChild
+      type="button"
+      variant="outline"
+      className="h-8 justify-start rounded-xl border-black/[0.06] bg-transparent px-3 text-[#44505f] transition-colors hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
+    >
       <a href={href} target="_blank" rel="noreferrer" download={download}>
         <Icon className="size-4" />
         {label}

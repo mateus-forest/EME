@@ -19,6 +19,16 @@ type VisualAssetDescriptor =
   | { kind: "synthetic-image"; src: string; filename: string }
   | { kind: "text"; src: string; filename: string }
 
+export type StudioEditableFieldKind = "text" | "textarea" | "tags"
+
+export type StudioEditableField = {
+  id: string
+  label: string
+  kind: StudioEditableFieldKind
+  placeholder: string
+  value: string
+}
+
 type StudioLibraryThumbnailResolution = {
   src: string
   fallbacks: string[]
@@ -138,6 +148,27 @@ function encodeSvg(svg: string) {
 
 function createTextDataUrl(text: string) {
   return `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`
+}
+
+function asRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+function formatEditablePrice(value: number | null | undefined) {
+  if (!value || value <= 0) return ""
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(value / 100)
+}
+
+function joinLocationParts(...parts: Array<string | null | undefined>) {
+  return parts.map((item) => item?.trim()).filter((item): item is string => Boolean(item)).join(", ")
 }
 
 function resolveVisualAssetDescriptor(
@@ -304,4 +335,190 @@ export function getAssetActionLabels(asset: CampaignAssetRecord) {
   }
 
   return { copy: "Copiar conteudo", open: "Abrir", download: "Baixar", prompt: "Copiar prompt" }
+}
+
+export function isTextEditableAsset(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
+  return Boolean(getEditableStudioAssetFields(campaign, asset).length)
+}
+
+export function getEditableStudioAssetFields(
+  campaign: StudioCampaignRecord,
+  asset: CampaignAssetRecord,
+): StudioEditableField[] {
+  const content = asRecord(asset.content)
+
+  if (asset.assetKey === "post_feed") {
+    return [
+      {
+        id: "title",
+        label: "Titulo principal",
+        kind: "text",
+        placeholder: campaign.property?.title || "Sala comercial disponivel",
+        value: readString(content.title),
+      },
+      {
+        id: "highlight",
+        label: "Subtitulo",
+        kind: "text",
+        placeholder: "Oportunidade premium",
+        value: readString(content.highlight),
+      },
+      {
+        id: "support",
+        label: "Descricao de apoio",
+        kind: "textarea",
+        placeholder: "Texto curto de apoio para reforcar a campanha.",
+        value: readString(content.support),
+      },
+      {
+        id: "location",
+        label: "Localizacao",
+        kind: "text",
+        placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
+        value: readString(content.location),
+      },
+      {
+        id: "price",
+        label: "Preco",
+        kind: "text",
+        placeholder: formatEditablePrice(campaign.property?.price) || "R$ 1.780.000",
+        value: readString(content.price),
+      },
+      {
+        id: "cta",
+        label: "CTA",
+        kind: "text",
+        placeholder: "Agende sua visita",
+        value: readString(content.cta),
+      },
+    ]
+  }
+
+  if (asset.assetKey === "story") {
+    return [
+      {
+        id: "kicker",
+        label: "Subtitulo",
+        kind: "text",
+        placeholder: "Oportunidade premium",
+        value: readString(content.kicker),
+      },
+      {
+        id: "line1",
+        label: "Titulo linha 1",
+        kind: "text",
+        placeholder: campaign.property?.title || "Sala comercial",
+        value: readString(content.line1),
+      },
+      {
+        id: "line2",
+        label: "Titulo linha 2",
+        kind: "text",
+        placeholder: "Disponivel",
+        value: readString(content.line2),
+      },
+      {
+        id: "location",
+        label: "Localizacao",
+        kind: "text",
+        placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
+        value: readString(content.location),
+      },
+      {
+        id: "price",
+        label: "Preco",
+        kind: "text",
+        placeholder: formatEditablePrice(campaign.property?.price) || "R$ 1.780.000",
+        value: readString(content.price),
+      },
+      {
+        id: "cta",
+        label: "CTA",
+        kind: "text",
+        placeholder: "Agende sua visita",
+        value: readString(content.cta),
+      },
+    ]
+  }
+
+  if (asset.assetKey === "caption") {
+    return [
+      {
+        id: "body",
+        label: "Legenda",
+        kind: "textarea",
+        placeholder: "Legenda da campanha",
+        value: typeof asset.content === "string" ? asset.content : extractTextFromAsset(asset),
+      },
+    ]
+  }
+
+  if (asset.assetKey === "cta") {
+    return [
+      {
+        id: "body",
+        label: "CTA",
+        kind: "text",
+        placeholder: "Agende sua visita",
+        value: typeof asset.content === "string" ? asset.content : extractTextFromAsset(asset),
+      },
+    ]
+  }
+
+  if (asset.assetKey === "hashtags") {
+    const hashtagValue = Array.isArray(asset.content)
+      ? asset.content.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join("\n")
+      : extractTextFromAsset(asset)
+
+    return [
+      {
+        id: "body",
+        label: "Hashtags",
+        kind: "tags",
+        placeholder: "#eme\n#imoveis\n#altopadrao",
+        value: hashtagValue,
+      },
+    ]
+  }
+
+  if (asset.type === "COPY") {
+    return [
+      {
+        id: "body",
+        label: asset.label || "Conteudo",
+        kind: "textarea",
+        placeholder: "Conteudo textual",
+        value: typeof asset.content === "string" ? asset.content : extractTextFromAsset(asset),
+      },
+    ]
+  }
+
+  return []
+}
+
+export function applyEditedStudioAssetFields(
+  asset: CampaignAssetRecord,
+  values: Record<string, string>,
+): unknown {
+  const normalized = Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [key, value.trim()]),
+  )
+
+  if (asset.assetKey === "hashtags") {
+    return normalized.body
+      .split(/\r?\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => (item.startsWith("#") ? item : `#${item.replace(/^#+/, "")}`))
+  }
+
+  if (asset.assetKey === "caption" || asset.assetKey === "cta" || asset.type === "COPY") {
+    return normalized.body || ""
+  }
+
+  const current = asRecord(asset.content)
+  return {
+    ...current,
+    ...normalized,
+  }
 }

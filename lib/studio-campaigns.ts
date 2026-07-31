@@ -531,6 +531,41 @@ export async function deleteStudioCampaignAsset(user: AuthenticatedStudioUser, a
   return serializeCampaign(savedCampaign)
 }
 
+export async function updateStudioCampaignAssetContent(
+  user: AuthenticatedStudioUser,
+  assetId: string,
+  content: Prisma.InputJsonValue | string,
+) {
+  const workspace = resolveWorkspace(user)
+  const asset = await prisma.studioCampaignAsset.findFirst({
+    where: {
+      id: assetId,
+      campaign: {
+        brokerId: workspace.brokerId ?? undefined,
+        agencyId: workspace.agencyId ?? undefined,
+      },
+    },
+  })
+
+  if (!asset) {
+    throw new Error("STUDIO_CAMPAIGN_ASSET_NOT_FOUND")
+  }
+
+  await prisma.studioCampaignAsset.update({
+    where: { id: assetId },
+    data: {
+      content,
+    },
+  })
+
+  const refreshedCampaign = await prisma.studioCampaign.findUniqueOrThrow({
+    where: { id: asset.campaignId },
+    include: studioCampaignInclude,
+  })
+
+  return serializeCampaign(refreshedCampaign)
+}
+
 export async function approveStudioCampaign(user: AuthenticatedStudioUser, campaignId: string) {
   const workspace = resolveWorkspace(user)
   const campaign = await prisma.studioCampaign.findFirst({

@@ -216,4 +216,18 @@ export const studioCampaignsClient = {
     }
     return data.campaign
   },
+
+  async updateAssetContent(assetId: string, content: unknown) {
+    const response = await fetch(`/api/studio-ia/campaigns/assets/${assetId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ content }),
+    })
+    const data = await parseCampaignResponse(response)
+    if (!data.campaign) {
+      throw new Error("Nao foi possivel atualizar o texto do asset.")
+    }
+    return data.campaign
+  },
 }

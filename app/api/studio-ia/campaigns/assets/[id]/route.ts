@@ -6,8 +6,14 @@ import {
   isPrismaUnavailable,
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
-import { deleteStudioCampaignAsset, updateStudioCampaignAssetStatus, type StudioCampaignAssetStatus } from "@/lib/studio-campaigns"
+import {
+  deleteStudioCampaignAsset,
+  updateStudioCampaignAssetContent,
+  updateStudioCampaignAssetStatus,
+  type StudioCampaignAssetStatus,
+} from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
+import type { Prisma } from "@prisma/client"
 
 export const dynamic = "force-dynamic"
 
@@ -32,14 +38,22 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const body = await request.json().catch(() => null)
   const status = readStatus(body?.status)
-  if (!status) {
-    return NextResponse.json({ error: "Status invalido." }, { status: 400 })
-  }
 
   try {
     const { id } = await context.params
-    const campaign = await updateStudioCampaignAssetStatus(user, id, status)
-    return NextResponse.json({ campaign })
+
+    if (status) {
+      const campaign = await updateStudioCampaignAssetStatus(user, id, status)
+      return NextResponse.json({ campaign })
+    }
+
+    if (body && Object.prototype.hasOwnProperty.call(body, "content")) {
+      const content = body.content as Prisma.InputJsonValue | string
+      const campaign = await updateStudioCampaignAssetContent(user, id, content)
+      return NextResponse.json({ campaign })
+    }
+
+    return NextResponse.json({ error: "Nenhuma alteracao valida foi informada." }, { status: 400 })
   } catch (caughtError) {
     if (caughtError instanceof Error && caughtError.message === "STUDIO_CAMPAIGN_ASSET_NOT_FOUND") {
       return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
