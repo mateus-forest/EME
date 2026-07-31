@@ -114,13 +114,13 @@ export function BrokerNewPropertyPage() {
     totalPropertiesCount >= (subscription.propertyLimit ?? 3)
 
   const previewImages = useMemo(() => images, [images])
-  const previewNeighborhood = neighborhood.trim() || "Bairro nÃ£o identificado"
-  const previewCity = city.trim() || "Cidade nÃ£o identificada"
+  const previewNeighborhood = neighborhood.trim() || "Bairro não identificado"
+  const previewCity = city.trim() || "Cidade não identificada"
   const previewLocation = [previewNeighborhood, previewCity].filter(Boolean).join(", ")
-  const previewPrice = price || "Valor nÃ£o informado"
-  const previewTitle = title.trim() || "ImÃ³vel em revisÃ£o"
+  const previewPrice = price || "Valor não informado"
+  const previewTitle = title.trim() || "Imóvel em revisão"
   const previewDescription =
-    description.trim() || "A prÃ©via serÃ¡ enriquecida automaticamente conforme vocÃª enviar mais contexto."
+    description.trim() || "A prévia será enriquecida automaticamente conforme você enviar mais contexto."
   const hasAiSource =
     Boolean(aiContext.trim() || title.trim() || city.trim() || neighborhood.trim() || price.trim()) ||
     selectedFiles.length > 0
@@ -160,18 +160,18 @@ export function BrokerNewPropertyPage() {
 
   function buildAiNotes(snapshot: AiPreviewSnapshot) {
     return [
-      "Contexto complementar do corretor para montar a prÃ©via editÃ¡vel do imÃ³vel.",
-      snapshot.title.trim() ? `TÃ­tulo informado: ${snapshot.title.trim()}` : "",
-      snapshot.type ? `Tipo do imÃ³vel: ${snapshot.type}` : "",
+      "Contexto complementar do corretor para montar a prévia editável do imóvel.",
+      snapshot.title.trim() ? `Título informado: ${snapshot.title.trim()}` : "",
+      snapshot.type ? `Tipo do imóvel: ${snapshot.type}` : "",
       snapshot.city.trim() ? `Cidade informada: ${snapshot.city.trim()}` : "",
       snapshot.neighborhood.trim() ? `Bairro informado: ${snapshot.neighborhood.trim()}` : "",
       snapshot.price.trim() ? `Valor informado: ${snapshot.price.trim()}` : "",
-      `DormitÃ³rios informados: ${snapshot.bedrooms}`,
+      `Dormitórios informados: ${snapshot.bedrooms}`,
       `Banheiros informados: ${snapshot.bathrooms}`,
       `Garagens informadas: ${snapshot.parking}`,
-      snapshot.context.trim() ? `Contexto adicional em texto/Ã¡udio: ${snapshot.context.trim()}` : "",
-      snapshot.image ? "Existe uma imagem do imÃ³vel anexada para anÃ¡lise visual." : "",
-      "Se algum dado estiver ausente, mantenha a prÃ©via mesmo assim e marque os campos faltantes.",
+      snapshot.context.trim() ? `Contexto adicional em texto/áudio: ${snapshot.context.trim()}` : "",
+      snapshot.image ? "Existe uma imagem do imóvel anexada para análise visual." : "",
+      "Se algum dado estiver ausente, mantenha a prévia mesmo assim e marque os campos faltantes.",
     ]
       .filter(Boolean)
       .join("\n")
@@ -191,8 +191,8 @@ export function BrokerNewPropertyPage() {
     setHasGenerated(true)
     setPublishFeedback(
       draft.missingFields.length > 0
-        ? `PrÃ©via atualizada. Revise: ${draft.missingFields.join(", ")}.`
-        : "PrÃ©via atualizada automaticamente.",
+        ? `Prévia atualizada. Revise: ${draft.missingFields.join(", ")}.`
+        : "Prévia atualizada automaticamente.",
     )
   }, [buildFallbackTitle])
 
@@ -221,7 +221,7 @@ export function BrokerNewPropertyPage() {
     activeGenerationIdRef.current = generationId
     setIsGenerating(true)
     setIsPublished(false)
-    setPublishFeedback(options?.feedback || (hasGenerated ? "Atualizando prÃ©via..." : "Gerando primeira prÃ©via..."))
+    setPublishFeedback(options?.feedback || (hasGenerated ? "Atualizando prévia..." : "Gerando primeira prévia..."))
 
     try {
       const generated = await extractPropertyAd({
@@ -239,7 +239,7 @@ export function BrokerNewPropertyPage() {
     } catch (caughtError) {
       if (activeGenerationIdRef.current !== generationId) return
       setPublishFeedback(
-        caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel atualizar a prÃ©via do imÃ³vel.",
+        caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar a prévia do imóvel.",
       )
     } finally {
       if (activeGenerationIdRef.current === generationId) {
@@ -271,7 +271,7 @@ export function BrokerNewPropertyPage() {
     const resolvedTitle = titleOverride?.trim() || title.trim()
 
     if (!resolvedTitle || !city.trim() || !neighborhood.trim() || !price.trim()) {
-      setPublishFeedback("Preencha tÃ­tulo, cidade, bairro e valor para cadastrar o imÃ³vel manualmente.")
+      setPublishFeedback("Preencha título, cidade, bairro e valor para cadastrar o imóvel manualmente.")
       return false
     }
 
@@ -315,9 +315,9 @@ export function BrokerNewPropertyPage() {
       const result = await previewPropertyXml({ file })
       setXmlPreview(result.properties)
       setXmlSummary(result.summary)
-      setPublishFeedback("XML analisado. Revise os imÃ³veis antes de importar.")
+      setPublishFeedback("XML analisado. Revise os imóveis antes de importar.")
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel analisar o XML.")
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsAnalyzingXml(false)
     }
@@ -339,9 +339,9 @@ export function BrokerNewPropertyPage() {
       const result = await previewPropertyXml({ sourceUrl: xmlSourceUrl.trim() })
       setXmlPreview(result.properties)
       setXmlSummary(result.summary)
-      setPublishFeedback("XML analisado. Revise os imÃ³veis antes de importar.")
+      setPublishFeedback("XML analisado. Revise os imóveis antes de importar.")
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel analisar o XML.")
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsAnalyzingXml(false)
     }
@@ -350,7 +350,7 @@ export function BrokerNewPropertyPage() {
   async function handleConfirmXmlImport() {
     const importableProperties = xmlPreview.filter((property) => property.status !== "invalid")
     if (importableProperties.length === 0) {
-      setPublishFeedback("Nenhum imÃ³vel estÃ¡ pronto para importar.")
+      setPublishFeedback("Nenhum imóvel está pronto para importar.")
       return
     }
 
@@ -360,10 +360,10 @@ export function BrokerNewPropertyPage() {
     try {
       const result = await confirmPropertyXmlImport(importableProperties)
       setXmlReport(result.report)
-      setPublishFeedback("ImportaÃ§Ã£o finalizada.")
+      setPublishFeedback("Importação finalizada.")
       await refreshProperties()
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel importar os imÃ³veis.")
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível importar os imóveis.")
     } finally {
       setIsImportingXml(false)
     }
@@ -472,12 +472,12 @@ export function BrokerNewPropertyPage() {
 
   async function handlePublishToCatalog() {
     if (isPlanBlocked) {
-      setPublishFeedback("Seu plano Corretor nÃ£o estÃ¡ ativo para criar novos imÃ³veis. Regularize sua assinatura para continuar.")
+      setPublishFeedback("Seu plano Corretor não está ativo para criar novos imóveis. Regularize sua assinatura para continuar.")
       return
     }
 
     if (hasReachedLimit) {
-      setPublishFeedback("Seu plano atual atingiu o limite permitido de 3 imÃ³veis. FaÃ§a upgrade para continuar.")
+      setPublishFeedback("Seu plano atual atingiu o limite permitido de 3 imóveis. Faça upgrade para continuar.")
       return
     }
 
@@ -565,18 +565,18 @@ export function BrokerNewPropertyPage() {
           await uploadPropertyAudio(createdProperty.id, audioFile)
         } catch (caughtError) {
           const message = caughtError instanceof Error ? caughtError.message : "erro desconhecido"
-          mediaErrors.push(`Ã¡udio (${message})`)
+          mediaErrors.push(`áudio (${message})`)
         }
       }
 
       setIsPublished(true)
       setPublishFeedback(
         mediaErrors.length > 0
-          ? `${publishStatus === "Publicado" ? "ImÃ³vel publicado" : "Rascunho criado"}, mas nÃ£o foi possÃ­vel anexar ${mediaErrors.join(" e ")}.`
+          ? `${publishStatus === "Publicado" ? "Imóvel publicado" : "Rascunho criado"}, mas não foi possível anexar ${mediaErrors.join(" e ")}.`
           : publishStatus === "Publicado" ? "Publicado com sucesso" : "Rascunho criado com sucesso",
       )
     } catch (caughtError) {
-      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel publicar o imÃ³vel.")
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível publicar o imóvel.")
     } finally {
       setIsSubmitting(false)
     }
@@ -609,17 +609,17 @@ export function BrokerNewPropertyPage() {
   }, [aiGenerationKey, creationMode, generateAiPreview, hasAiSource, isRecordingAudio, isTranscribingAudio])
 
   return (
-    <BrokerPageShell title="Novo imÃ³vel">
+    <BrokerPageShell title="Novo imóvel">
       <div className="grid gap-6">
         {billingBypassEnabled ? (
           <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
-            Ambiente local com billing em modo de teste. Os bloqueios de plano estÃ£o temporariamente desativados.
+            Ambiente local com billing em modo de teste. Os bloqueios de plano estão temporariamente desativados.
           </div>
         ) : null}
 
         {isPlanBlocked ? (
           <div className="flex flex-col gap-3 rounded-[1.25rem] border border-[#ffb74d]/20 bg-[#ffb74d]/10 px-4 py-4 text-sm text-[#ffd180]">
-            <p>Seu plano Corretor nÃ£o estÃ¡ ativo para criar novos imÃ³veis. Regularize sua assinatura para continuar.</p>
+            <p>Seu plano Corretor não está ativo para criar novos imóveis. Regularize sua assinatura para continuar.</p>
             <div>
               <Button
                 asChild
@@ -631,7 +631,7 @@ export function BrokerNewPropertyPage() {
           </div>
         ) : hasReachedLimit ? (
           <div className="flex flex-col gap-3 rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-4 text-sm text-[#009b3a]">
-            <p>Seu plano atual atingiu o limite permitido de 3 imÃ³veis. FaÃ§a upgrade para continuar.</p>
+            <p>Seu plano atual atingiu o limite permitido de 3 imóveis. Faça upgrade para continuar.</p>
             <div>
               <Button
                 asChild
@@ -668,14 +668,14 @@ export function BrokerNewPropertyPage() {
           <>
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 px-6 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imÃ³vel</p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imóvel</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">
-            {creationMode === "ai" ? "Use fotos, Ã¡udio ou texto para gerar o anÃºncio" : "Preencha os dados do imÃ³vel com controle total"}
+            {creationMode === "ai" ? "Use fotos, áudio ou texto para gerar o anúncio" : "Preencha os dados do imóvel com controle total"}
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
             {creationMode === "ai"
-              ? "A IA monta a primeira versÃ£o do anÃºncio e vocÃª revisa tudo antes de publicar."
-              : "Cadastre cada detalhe do imÃ³vel com calma, sem depender da geraÃ§Ã£o automÃ¡tica."}
+              ? "A IA monta a primeira versão do anúncio e você revisa tudo antes de publicar."
+              : "Cadastre cada detalhe do imóvel com calma, sem depender da geração automática."}
           </p>
           <Button
             type="button"
@@ -689,11 +689,11 @@ export function BrokerNewPropertyPage() {
 
         <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-[#050505]">{creationMode === "ai" ? "Fotos para acelerar a IA" : "Fotos do imÃ³vel"}</CardTitle>
+            <CardTitle className="text-xl text-[#050505]">{creationMode === "ai" ? "Fotos para acelerar a IA" : "Fotos do imóvel"}</CardTitle>
             <p className="text-sm text-[#6B7280]">
               {creationMode === "ai"
-                ? "Envie fotos reais para apoiar a criaÃ§Ã£o do anÃºncio. VocÃª revisa o resultado antes de publicar."
-                : "Adicione fotos reais do imÃ³vel para compor o anÃºncio manual."}
+                ? "Envie fotos reais para apoiar a criação do anúncio. Você revisa o resultado antes de publicar."
+                : "Adicione fotos reais do imóvel para compor o anúncio manual."}
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-5 pt-0">
@@ -713,8 +713,8 @@ export function BrokerNewPropertyPage() {
               </h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-[#6B7280]">
                 {creationMode === "ai"
-                  ? "Use fotos, Ã¡udio ou texto para a IA montar uma primeira versÃ£o do anÃºncio."
-                  : "Selecione imagens reais para o cadastro tradicional do imÃ³vel."}
+                  ? "Use fotos, áudio ou texto para a IA montar uma primeira versão do anúncio."
+                  : "Selecione imagens reais para o cadastro tradicional do imóvel."}
               </p>
               <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/80 px-4 py-2 text-sm text-[#4B5563]">
                 <Upload className="size-4" />
@@ -738,7 +738,7 @@ export function BrokerNewPropertyPage() {
               <div className="flex min-h-28 flex-col items-center justify-center rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 text-center">
                 <Images className="size-8 text-[#8B95A1]" />
                 <p className="mt-3 text-sm font-medium text-[#4B5563]">Nenhuma foto selecionada</p>
-                <p className="mt-1 text-sm text-[#7B8491]">As imagens reais aparecerÃ£o aqui antes da publicaÃ§Ã£o.</p>
+                <p className="mt-1 text-sm text-[#7B8491]">As imagens reais aparecerão aqui antes da publicação.</p>
               </div>
             )}
           </CardContent>
@@ -749,11 +749,11 @@ export function BrokerNewPropertyPage() {
             {creationMode === "ai" ? (
             <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-[#050505]">{creationMode === "ai" ? "DescriÃ§Ã£o, Ã¡udio e IA" : "DescriÃ§Ã£o do imÃ³vel"}</CardTitle>
+                <CardTitle className="text-xl text-[#050505]">{creationMode === "ai" ? "Descrição, áudio e IA" : "Descrição do imóvel"}</CardTitle>
                 <p className="text-sm text-[#6B7280]">
                   {creationMode === "ai"
-                    ? "Descreva ou grave os pontos principais. A IA transforma isso em um anÃºncio revisÃ¡vel."
-                    : "Escreva a descriÃ§Ã£o do imÃ³vel diretamente, com os detalhes que deseja publicar."}
+                    ? "Descreva ou grave os pontos principais. A IA transforma isso em um anúncio revisável."
+                    : "Escreva a descrição do imóvel diretamente, com os detalhes que deseja publicar."}
                 </p>
               </CardHeader>
               <CardContent className="grid gap-4 p-5 pt-0">
@@ -787,7 +787,7 @@ export function BrokerNewPropertyPage() {
                       }}
                     />
                     <Upload className="size-4" />
-                    Anexar Ã¡udio
+                    Anexar áudio
                   </label>
 
                   <Button
@@ -806,7 +806,7 @@ export function BrokerNewPropertyPage() {
                     <p>{audioFile.name}</p>
                     {audioPreviewUrl ? (
                       <audio controls src={audioPreviewUrl} className="w-full">
-                        Seu navegador nÃ£o suporta reproduÃ§Ã£o de Ã¡udio.
+                        Seu navegador não suporta reprodução de áudio.
                       </audio>
                     ) : null}
                   </div>
@@ -818,11 +818,11 @@ export function BrokerNewPropertyPage() {
             {(creationMode === "manual" || hasGenerated) ? (
             <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-[#050505]">{creationMode === "manual" ? "Dados do imÃ³vel" : "RevisÃ£o do imÃ³vel"}</CardTitle>
+                <CardTitle className="text-xl text-[#050505]">{creationMode === "manual" ? "Dados do imóvel" : "Revisão do imóvel"}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 p-5 pt-0">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="TÃ­tulo do imÃ³vel">
+                  <Field label="Título do imóvel">
                     <Input
                       value={title}
                       onChange={(event) => setTitle(event.target.value)}
@@ -861,7 +861,7 @@ export function BrokerNewPropertyPage() {
                       </SelectTrigger>
                       <SelectContent className="border-black/[0.06] bg-white text-[#111111]">
                         <SelectItem value="Venda">Venda</SelectItem>
-                        <SelectItem value="LocaÃ§Ã£o">LocaÃ§Ã£o</SelectItem>
+                        <SelectItem value="Locação">Locação</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -880,7 +880,7 @@ export function BrokerNewPropertyPage() {
                     <Input
                       value={city}
                       onChange={(event) => setCity(event.target.value)}
-                      placeholder="SÃ£o Paulo"
+                      placeholder="São Paulo"
                       className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>
@@ -894,14 +894,14 @@ export function BrokerNewPropertyPage() {
                   </Field>
                 </div>
 
-                <Field label={creationMode === "manual" ? "DescriÃ§Ã£o" : "DescriÃ§Ã£o do anÃºncio"}>
+                <Field label={creationMode === "manual" ? "Descrição" : "Descrição do anúncio"}>
                   <Textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     placeholder={
                       creationMode === "manual"
-                        ? "Descreva os principais diferenciais do imÃ³vel..."
-                        : "Revise a descriÃ§Ã£o gerada pela IA antes de publicar."
+                        ? "Descreva os principais diferenciais do imóvel..."
+                        : "Revise a descrição gerada pela IA antes de publicar."
                     }
                     className="min-h-32 rounded-[1.25rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                   />
@@ -923,8 +923,8 @@ export function BrokerNewPropertyPage() {
               <CardContent className="p-6">
                 <p className="text-sm leading-7 text-[#5F6B7A]">
                   {creationMode === "ai"
-                    ? "Fluxo rÃ¡pido: envie contexto, gere com IA e ajuste os dados antes de publicar."
-                    : "Fluxo manual: preencha informaÃ§Ãµes, descriÃ§Ã£o e fotos com controle total sobre o anÃºncio."}
+                    ? "Fluxo rápido: envie contexto, gere com IA e ajuste os dados antes de publicar."
+                    : "Fluxo manual: preencha informações, descrição e fotos com controle total sobre o anúncio."}
                 </p>
               </CardContent>
             </Card>
@@ -937,7 +937,7 @@ export function BrokerNewPropertyPage() {
         <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="text-xl text-[#050505]">
-                {isGenerating ? "Gerando seu anÃºncio..." : "Preview do anÃºncio"}
+                {isGenerating ? "Gerando seu anúncio..." : "Preview do anúncio"}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 pt-0">
@@ -960,20 +960,20 @@ export function BrokerNewPropertyPage() {
                     {previewImages[0] ? (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={previewImages[0]} alt="Preview do anÃºncio" className="h-full w-full object-cover" />
+                        <img src={previewImages[0]} alt="Preview do anúncio" className="h-full w-full object-cover" />
                       </>
                     ) : (
                       <div className="flex h-full flex-col items-center justify-center px-4 text-center">
                         <Images className="size-9 text-[#8B95A1]" />
                         <p className="mt-3 text-sm font-medium text-[#4B5563]">Preview sem foto</p>
-                        <p className="mt-1 text-sm text-[#7B8491]">Selecione imagens para visualizar o anÃºncio.</p>
+                        <p className="mt-1 text-sm text-[#7B8491]">Selecione imagens para visualizar o anúncio.</p>
                       </div>
                     )}
                   </div>
 
                   <div className="flex flex-col justify-between gap-5 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-[#009b3a]">{hasGenerated ? "AnÃºncio gerado com IA" : "AnÃºncio manual"}</p>
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-[#009b3a]">{hasGenerated ? "Anúncio gerado com IA" : "Anúncio manual"}</p>
                       {isGenerating ? (
                         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs text-[#009b3a]">
                           <Spinner className="size-3" />
@@ -1017,7 +1017,7 @@ export function BrokerNewPropertyPage() {
                         className="h-11 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:opacity-70"
                       >
                         <ArrowUpFromLine className="size-4" />
-                        {isPublished ? "Publicado no catÃ¡logo" : isSubmitting ? "Publicando..." : "Publicar no catÃ¡logo"}
+                        {isPublished ? "Publicado no catálogo" : isSubmitting ? "Publicando..." : "Publicar no catálogo"}
                       </Button>
                       {publishFeedback && <p className="mt-3 text-sm text-[#009b3a]">{publishFeedback}</p>}
                     </div>
@@ -1037,28 +1037,28 @@ export function BrokerNewPropertyPage() {
 function PropertyCreationChoice({ onChoose }: { onChoose: (mode: CreationMode) => void }) {
   return (
     <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-      <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imÃ³vel</p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Como vocÃª quer criar este imÃ³vel?</h2>
+      <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imóvel</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Como você quer criar este imóvel?</h2>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
-        Escolha o melhor ponto de partida. VocÃª sempre poderÃ¡ revisar antes de publicar.
+        Escolha o melhor ponto de partida. Você sempre poderá revisar antes de publicar.
       </p>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <CreationOption
           icon={Sparkles}
           title="Criar com IA"
-          description="Descreva o imÃ³vel e deixe o EME montar o anÃºncio para vocÃª."
+          description="Descreva o imóvel e deixe o EME montar o anúncio para você."
           onClick={() => onChoose("ai")}
         />
         <CreationOption
           icon={Keyboard}
           title="Criar manualmente"
-          description="Preencha os dados do imÃ³vel passo a passo."
+          description="Preencha os dados do imóvel passo a passo."
           onClick={() => onChoose("manual")}
         />
         <CreationOption
           icon={FileText}
           title="Importar"
-          description="Importe informaÃ§Ãµes de outro anÃºncio ou arquivo."
+          description="Importe informações de outro anúncio ou arquivo."
           onClick={() => onChoose("import")}
         />
       </div>
@@ -1139,10 +1139,10 @@ function ImportPropertyPanel({
     <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Importar imÃ³veis</p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Importar imóveis</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Escolha uma origem</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
-            Use XML, URL de XML, link do anÃºncio ou imagem para chegar sempre na mesma prÃ©via revisÃ¡vel.
+            Use XML, URL de XML, link do anúncio ou imagem para chegar sempre na mesma prévia revisável.
           </p>
         </div>
         <Button type="button" variant="ghost" onClick={onBack} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
@@ -1173,13 +1173,13 @@ function XmlImportPreview({
     <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#050505]">Preview da importaÃ§Ã£o</h3>
+          <h3 className="text-lg font-semibold text-[#050505]">Preview da importação</h3>
           <p className="mt-1 text-sm text-[#6B7280]">
-            {summary.total} encontrados Â· {summary.ready} prontos Â· {summary.needsReview} para revisar Â· {summary.invalid} invÃ¡lidos
+            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} inválidos
           </p>
         </div>
         <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
-          {isImporting ? "Importando..." : "Confirmar importaÃ§Ã£o"}
+          {isImporting ? "Importando..." : "Confirmar importação"}
         </Button>
       </div>
       <div className="grid gap-3">

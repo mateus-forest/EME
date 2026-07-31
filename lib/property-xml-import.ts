@@ -27,18 +27,18 @@ export type ParsedXmlProperty = {
 type AliasMap = Record<string, string[]>
 
 const fieldAliases: AliasMap = {
-  title: ["title", "titulo", "tÃ­tulo", "nome", "headline", "referencia", "referÃªncia"],
-  description: ["description", "descricao", "descriÃ§Ã£o", "detalhes", "observacao", "observaÃ§Ã£o"],
-  price: ["price", "valor", "valorvenda", "saleprice", "preco", "preÃ§o"],
+  title: ["title", "titulo", "título", "nome", "headline", "referencia", "referência"],
+  description: ["description", "descricao", "descrição", "detalhes", "observacao", "observação"],
+  price: ["price", "valor", "valorvenda", "saleprice", "preco", "preço"],
   type: ["type", "tipo", "tipoimovel", "tipoImovel", "propertytype"],
   city: ["city", "cidade"],
   neighborhood: ["neighborhood", "bairro", "district"],
-  address: ["address", "endereco", "endereÃ§o", "logradouro"],
-  bedrooms: ["bedrooms", "quartos", "dormitorios", "dormitÃ³rios", "suites", "suÃ­tes"],
+  address: ["address", "endereco", "endereço", "logradouro"],
+  bedrooms: ["bedrooms", "quartos", "dormitorios", "dormitórios", "suites", "suítes"],
   bathrooms: ["bathrooms", "banheiros", "wc"],
   parking: ["parking", "vagas", "garagens", "garage"],
-  area: ["area", "areautil", "Ã¡reautil", "areaUtil", "area_total", "areatotal"],
-  externalRef: ["externalid", "externalId", "codigo", "cÃ³digo", "referencia", "referÃªncia", "ref", "idexterno"],
+  area: ["area", "areautil", "áreautil", "areaUtil", "area_total", "areatotal"],
+  externalRef: ["externalid", "externalId", "codigo", "código", "referencia", "referência", "ref", "idexterno"],
 }
 
 const imageAliases = ["images", "image", "fotos", "foto", "url", "imageurl", "imageUrl", "imagem"]

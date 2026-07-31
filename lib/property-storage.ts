@@ -91,7 +91,7 @@ async function uploadPropertyBuffer({
   if (!response.ok) {
     const detail = await response.text().catch(() => "")
     console.error("[storage][properties] upload failed", { status: response.status, detail })
-    throw new Error("NÃ£o foi possÃ­vel enviar o arquivo para o Supabase Storage.")
+    throw new Error("Não foi possível enviar o arquivo para o Supabase Storage.")
   }
 
   return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${objectPath}`
