@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   AlertCircle,
-  Bot,
-  Building2,
   CalendarDays,
   ChevronDown,
   ChevronUp,
@@ -14,14 +12,12 @@ import {
   FileText,
   Home,
   X,
-  Sparkles,
   UsersRound,
 } from "lucide-react"
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
@@ -60,17 +56,12 @@ type FinancialConfigResponse = {
   }
 }
 
-type NextStepSuggestion =
-  | { label: string; message: string; focusOnly?: false }
-  | { label: string; focusOnly: true; message?: never }
-
 export function BrokerPortal() {
   const { properties } = useBrokerProperties()
   const { profile, isLoading: isProfileLoading } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
-  const [isNextStepModalOpen, setIsNextStepModalOpen] = useState(false)
   const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
   const [leads, setLeads] = useState<LeadRecord[]>([])
   const [documents, setDocuments] = useState<DocumentItem[]>([])
@@ -93,6 +84,7 @@ export function BrokerPortal() {
     isBootstrappingConversation,
     inputRef,
     setChatFeedback,
+    createConversation,
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,
@@ -177,20 +169,18 @@ export function BrokerPortal() {
     return firstName || ""
   }, [profile.fullName])
   const hasResolvedBrokerName = profile.fullName.trim().length > 0
-  const greetingLabel = brokerFirstName ? `Ola, ${brokerFirstName}.` : "Ola."
+  const greetingLabel = brokerFirstName ? `Olá, ${brokerFirstName}.` : "Olá."
 
-  const nextStepSuggestions: NextStepSuggestion[] = [
+  const conversationSuggestions = [
     { label: "Cadastrar cliente", message: "Quero cadastrar um cliente." },
-    { label: "Buscar imovel", message: "Quero buscar um imovel." },
-    { label: "Criar imovel", message: "Quero criar um imovel." },
-    { label: "Ultimos leads", message: "Mostre meus ultimos leads." },
+    { label: "Buscar imóvel", message: "Quero buscar um imóvel." },
+    { label: "Criar imóvel", message: "Quero criar um imóvel." },
+    { label: "Últimos leads", message: "Mostre meus últimos leads." },
     { label: "Agenda de hoje", message: "Mostre minha agenda de hoje." },
     { label: "Criar campanha", message: "Quero criar uma campanha para Instagram." },
     { label: "Gerar contrato", message: "Quero gerar um contrato." },
-    { label: "Publicar catalogo", message: "Quero publicar um imovel no catalogo." },
-    { label: "Conversar com o COS", focusOnly: true },
+    { label: "Publicar catálogo", message: "Quero publicar um imóvel no catálogo." },
   ]
-  const primaryCosSuggestions = nextStepSuggestions.filter((item): item is Exclude<NextStepSuggestion, { focusOnly: true }> => !item.focusOnly)
   const isBootstrapPending = isProfileLoading || isBootstrappingConversation
   const isConversationEmpty = !isBootstrapPending && !isConversationLoading && conversation.length === 0
 
@@ -213,14 +203,7 @@ export function BrokerPortal() {
     setPrompt("")
   }
 
-  async function handleNextStepSuggestion(selection: NextStepSuggestion) {
-    setIsNextStepModalOpen(false)
-
-    if (selection.focusOnly) {
-      window.setTimeout(() => inputRef.current?.focus(), 0)
-      return
-    }
-
+  async function handleConversationSuggestion(selection: { label: string; message: string }) {
     await sendCosMessage(selection.message, { visibleMessage: selection.label })
   }
 
@@ -335,22 +318,13 @@ export function BrokerPortal() {
                   <div className="flex flex-1 flex-col">
                     <div className="mx-auto flex h-full w-full max-w-[48rem] flex-col items-center px-1 text-center">
                       <div className="pt-8 sm:pt-10">
+                        <p className="text-xs uppercase tracking-[0.18em] text-[#8a97a8]">COS</p>
                         <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
                           {greetingLabel}
                         </h1>
-                      </div>
-
-                      <div className="mt-4 flex w-full max-w-[34rem] flex-wrap items-center justify-center gap-2 sm:mt-5 sm:max-w-[42rem] sm:gap-2.5">
-                        {primaryCosSuggestions.map((suggestion) => (
-                          <button
-                            key={suggestion.label}
-                            type="button"
-                            onClick={() => void handleNextStepSuggestion(suggestion)}
-                            className="inline-flex min-h-9 items-center justify-center rounded-full border border-black/[0.06] bg-white/88 px-3.5 py-1.5 text-[13px] font-medium text-[#273444] transition-colors hover:bg-white sm:min-h-10 sm:px-4 sm:py-2 sm:text-sm"
-                          >
-                            {suggestion.label}
-                          </button>
-                        ))}
+                        <p className="mt-2 text-sm text-[#667085]">
+                          Continue a conversa e mantenha sua operação sincronizada.
+                        </p>
                       </div>
 
                       <div className="mt-16 w-full pt-16 sm:mt-20 sm:pt-20" />
@@ -385,7 +359,7 @@ export function BrokerPortal() {
                         )}
                       </div>
                       <p className="mt-1 text-sm text-[#667085]">
-                        Continue a conversa e mantenha a operacao sincronizada em tempo real.
+                        Continue a conversa e mantenha a operação sincronizada em tempo real.
                       </p>
                       {showConversationTitle ? (
                         <p className="mt-3 truncate text-sm font-medium text-[#111111]">{activeConversation?.title}</p>
@@ -472,10 +446,29 @@ export function BrokerPortal() {
                     pendingCount={visiblePendingCount}
                     onClick={() => setIsMobileOperationHealthOpen(true)}
                   />
+                  {isConversationEmpty ? (
+                    <div className="flex w-full flex-wrap justify-center gap-2 pb-1">
+                      {conversationSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.label}
+                          type="button"
+                          onClick={() => void handleConversationSuggestion(suggestion)}
+                          className="inline-flex min-h-9 items-center justify-center rounded-full border border-black/[0.06] bg-white/88 px-3.5 py-1.5 text-[13px] font-medium text-[#273444] transition-colors hover:bg-white sm:min-h-10 sm:px-4 sm:py-2 sm:text-sm"
+                        >
+                          {suggestion.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <CosPromptComposer
                     prompt={prompt}
                     setPrompt={setPrompt}
                     onSubmit={handleSubmit}
+                    onNewConversation={async () => {
+                      setPrompt("")
+                      setChatFeedback("")
+                      await createConversation()
+                    }}
                     disabled={isSending || isConversationLoading}
                     inputRef={inputRef}
                     feedback={chatFeedback}
@@ -599,39 +592,6 @@ export function BrokerPortal() {
           </div>
         </DrawerContent>
       </Drawer>
-      <Dialog open={isNextStepModalOpen} onOpenChange={setIsNextStepModalOpen}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-xl overflow-hidden rounded-[1.75rem] border border-black/[0.08] bg-white p-0 text-[#111111] shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-h-[calc(100vh-4rem)]">
-          <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 py-6 sm:max-h-[calc(100vh-4rem)]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold tracking-tight text-[#111111]">
-                Proximo passo com o COS
-              </DialogTitle>
-              <DialogDescription className="mt-2 text-sm leading-6 text-[#6B7280]">
-                Escolha uma sugestao inteligente para iniciar a conversa agora mesmo na Home.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-5 grid gap-3">
-              {nextStepSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion.label}
-                  type="button"
-                  onClick={() => void handleNextStepSuggestion(suggestion)}
-                  className="flex items-center justify-between rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4 text-left transition-colors hover:bg-white hover:border-black/[0.1]"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-[#111111]">{suggestion.label}</p>
-                    <p className="mt-1 text-sm text-[#7B8491]">
-                      {suggestion.focusOnly ? "Fechar e continuar a conversa manualmente." : "Enviar essa sugestao para o COS."}
-                    </p>
-                  </div>
-                  <Sparkles className="size-4 shrink-0 text-[#7B8491]" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

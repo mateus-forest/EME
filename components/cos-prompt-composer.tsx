@@ -19,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
@@ -38,6 +39,7 @@ type CosPromptComposerProps = {
   prompt: string
   setPrompt: (value: string) => void
   onSubmit: (input?: { promptOverride?: string; attachments?: CosComposerAttachment[] }) => Promise<void> | void
+  onNewConversation?: () => Promise<void> | void
   disabled?: boolean
   inputRef: RefObject<HTMLTextAreaElement | null>
   feedback?: string
@@ -81,6 +83,7 @@ export function CosPromptComposer({
   prompt,
   setPrompt,
   onSubmit,
+  onNewConversation,
   disabled = false,
   inputRef,
   feedback,
@@ -295,6 +298,18 @@ export function CosPromptComposer({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+              {onNewConversation ? (
+                <>
+                  <DropdownMenuItem
+                    onSelect={() => void onNewConversation()}
+                    className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
+                  >
+                    <Paperclip className="mr-2 size-4 text-[#7B8491]" />
+                    Nova conversa
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1 bg-black/[0.06]" />
+                </>
+              ) : null}
               <DropdownMenuItem onSelect={() => openPicker("image")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
                 <ImageIcon className="mr-2 size-4 text-[#7B8491]" />
                 Imagem
@@ -305,11 +320,11 @@ export function CosPromptComposer({
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => openPicker("video")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
                 <Video className="mr-2 size-4 text-[#7B8491]" />
-                Video
+                Vídeo
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => openPicker("files")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
                 <Files className="mr-2 size-4 text-[#7B8491]" />
-                Multiplos arquivos
+                Múltiplos arquivos
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -291,6 +291,11 @@ export function BrokerCosHistoryPage() {
             prompt={prompt}
             setPrompt={setPrompt}
             onSubmit={handleSubmit}
+            onNewConversation={async () => {
+              setPrompt("")
+              setChatFeedback("")
+              await createConversation()
+            }}
             disabled={isSending || isConversationLoading}
             inputRef={inputRef}
             feedback={chatFeedback}
