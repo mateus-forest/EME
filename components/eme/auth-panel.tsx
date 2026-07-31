@@ -26,7 +26,7 @@ export function AuthPanel({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [cnpj, setCnpj] = useState("")
+  const [creci, setCreci] = useState("")
   const [password, setPassword] = useState("")
   const [pin, setPin] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -131,7 +131,7 @@ export function AuthPanel({
           role: "BROKER",
           name: trimmedName,
           email: normalizedEmail,
-          cnpj: cnpj.trim(),
+          creci: creci.trim(),
           password,
         }),
       })
@@ -254,12 +254,12 @@ export function AuthPanel({
 
                   {!isLogin && (
                     <Field
-                      label="CNPJ"
+                      label="CRECI"
                       type="text"
                       autoComplete="off"
-                      placeholder="00.000.000/0000-00"
-                      value={cnpj}
-                      onChange={(event) => setCnpj(event.target.value)}
+                      placeholder="000000-F"
+                      value={creci}
+                      onChange={(event) => setCreci(event.target.value)}
                     />
                   )}
 

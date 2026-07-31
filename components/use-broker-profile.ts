@@ -12,7 +12,6 @@ export type BrokerProfile = {
   fullName: string
   email: string
   creci: string
-  cnpj: string
   whatsApp: string
   photoUrl: string
   description: string
@@ -28,7 +27,6 @@ const defaultProfile: BrokerProfile = {
   fullName: "",
   email: "",
   creci: "",
-  cnpj: "",
   whatsApp: "",
   photoUrl: "",
   description: "",
@@ -67,7 +65,6 @@ export function useBrokerProfile() {
               phone: string
               photoUrl: string
               creci: string
-              cnpj: string
               description: string
             }
           }
@@ -91,7 +88,6 @@ export function useBrokerProfile() {
           fullName: data.profile.name,
           email: data.profile.email,
           creci: data.profile.creci,
-          cnpj: data.profile.cnpj,
           whatsApp: data.profile.phone,
           photoUrl: data.profile.photoUrl,
           description: data.profile.description,
@@ -141,7 +137,6 @@ export function useBrokerProfile() {
         email: updates.email,
         phone: updates.whatsApp,
         creci: updates.creci,
-        cnpj: updates.cnpj,
         description: updates.description,
         photoUrl: updates.photoUrl,
         currentPassword: updates.currentPassword,
@@ -161,7 +156,6 @@ export function useBrokerProfile() {
             email: string
             phone: string
             creci: string
-            cnpj: string
             description: string
             photoUrl: string
           }
@@ -181,7 +175,6 @@ export function useBrokerProfile() {
       email: data.profile.email,
       whatsApp: data.profile.phone,
       creci: data.profile.creci,
-      cnpj: data.profile.cnpj,
       description: data.profile.description,
       photoUrl: data.profile.photoUrl,
     })

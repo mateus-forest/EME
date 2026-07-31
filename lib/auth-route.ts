@@ -12,7 +12,6 @@ export const authUserInclude = {
       agencyId: true,
       phone: true,
       creci: true,
-      cnpj: true,
       description: true,
       catalogSlug: true,
       agency: {

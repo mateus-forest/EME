@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const password = typeof body?.password === "string" ? body.password : ""
     const phone = typeof body?.phone === "string" ? body.phone.trim() : ""
-    const cnpj = typeof body?.cnpj === "string" ? body.cnpj.trim() : ""
+    const creci = typeof body?.creci === "string" ? body.creci.trim() : ""
     const companyName = typeof body?.companyName === "string" ? body.companyName.trim() : ""
 
     if (!role || !name || !email || !password) {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
               data: {
                 userId: createdUser.id,
                 phone,
-                cnpj: cnpj || null,
+                creci: creci || null,
                 catalogSlug,
               },
             })
