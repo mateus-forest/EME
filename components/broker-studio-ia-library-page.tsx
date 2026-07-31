@@ -24,9 +24,9 @@ import {
   formatStudioCampaignDate,
   formatStudioCampaignKind,
   formatStudioCampaignStatus,
-  getCampaignCoverUrl,
   getCampaignPropertyLabel,
   getStudioStatusTone,
+  resolveStudioLibraryThumbnail,
 } from "@/lib/studio-campaigns-ui"
 import { cn } from "@/lib/utils"
 
@@ -102,14 +102,25 @@ function StatusPill({ status }: { status: StudioCampaignStatus }) {
 }
 
 function CampaignCard({ campaign }: { campaign: StudioCampaignRecord }) {
-  const coverUrl = getCampaignCoverUrl(campaign)
+  const thumbnail = useMemo(() => resolveStudioLibraryThumbnail(campaign), [campaign])
+  const initialCoverCandidates = useMemo(() => [thumbnail.src, ...thumbnail.fallbacks], [thumbnail])
+  const [coverCandidates, setCoverCandidates] = useState(initialCoverCandidates)
+  const coverUrl = coverCandidates[0] ?? null
+
+  useEffect(() => {
+    setCoverCandidates(initialCoverCandidates)
+  }, [initialCoverCandidates])
+
+  function handleCoverError() {
+    setCoverCandidates((current) => (current.length > 1 ? current.slice(1) : current))
+  }
 
   return (
     <Link href={`/corretor/studio-ia/biblioteca/${campaign.id}`} className="min-w-0">
       <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)] transition-transform duration-200 hover:-translate-y-0.5">
         <div className="relative aspect-[1.25/1] overflow-hidden border-b border-black/[0.05] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
           {coverUrl ? (
-            <img src={coverUrl} alt={campaign.title} className="h-full w-full object-cover" />
+            <img src={coverUrl} alt={campaign.title} className="h-full w-full object-cover" onError={handleCoverError} />
           ) : (
             <div className="flex h-full items-center justify-center">
               <div className="flex size-16 items-center justify-center rounded-[1.5rem] border border-[#009b3a]/12 bg-white/80 text-[#009b3a]">

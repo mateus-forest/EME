@@ -14,6 +14,11 @@ type VisualAssetDescriptor =
   | { kind: "synthetic-image"; src: string; filename: string }
   | { kind: "text"; src: string; filename: string }
 
+type StudioLibraryThumbnailResolution = {
+  src: string
+  fallbacks: string[]
+}
+
 const premiumPlaceholder = encodeSvg(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
     <defs>
@@ -276,14 +281,69 @@ function resolveVisualAssetDescriptor(
   return null
 }
 
-export function getCampaignCoverUrl(campaign: StudioCampaignRecord) {
-  const preferredAsset = getPreferredCampaignAsset(campaign)
-  if (preferredAsset) {
-    const descriptor = resolveVisualAssetDescriptor(campaign, preferredAsset)
-    if (descriptor && descriptor.kind !== "text") return descriptor.src
-  }
+function cleanMediaUrl(value: string | null | undefined) {
+  const normalized = value?.trim()
+  return normalized ? normalized : null
+}
 
-  return campaign.property?.imageUrls?.[0] || premiumPlaceholder
+function uniqueMediaUrls(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((value) => cleanMediaUrl(value)).filter((value): value is string => Boolean(value))))
+}
+
+function getCampaignThumbnailPriority(campaign: StudioCampaignRecord) {
+  switch (campaign.kind) {
+    case "INSTAGRAM":
+      return ["post_feed", "story", "carousel"]
+    case "VIDEO":
+      return ["preview_image", "video_final", "video_request"]
+    case "CONSTRUCTION":
+      return ["construction_image"]
+    case "SELL_PROPERTY":
+      return ["campaign", "caption"]
+    case "OWNERS":
+      return ["ad_copy", "instagram"]
+    case "BUYERS":
+      return ["copy", "audience"]
+    default:
+      return []
+  }
+}
+
+function collectAssetThumbnailCandidates(campaign: StudioCampaignRecord) {
+  const prioritizedKeys = getCampaignThumbnailPriority(campaign)
+  const prioritizedAssets = prioritizedKeys.flatMap((assetKey) => campaign.assets.filter((asset) => asset.assetKey === assetKey))
+  const remainingAssets = campaign.assets.filter((asset) => !prioritizedKeys.includes(asset.assetKey))
+  const orderedAssets = [...prioritizedAssets, ...remainingAssets]
+
+  return orderedAssets.flatMap((asset) => {
+    const descriptor = resolveVisualAssetDescriptor(campaign, asset)
+    if (descriptor?.kind === "image" || descriptor?.kind === "synthetic-image") return [descriptor.src]
+
+    if (descriptor?.kind === "video") {
+      return uniqueMediaUrls([asset.thumbnailUrl, campaign.property?.imageUrls?.[0]])
+    }
+
+    return uniqueMediaUrls([asset.thumbnailUrl, asset.fileUrl])
+  })
+}
+
+export function resolveStudioLibraryThumbnail(campaign: StudioCampaignRecord): StudioLibraryThumbnailResolution {
+  const candidates = uniqueMediaUrls([
+    ...collectAssetThumbnailCandidates(campaign),
+    campaign.primaryAsset?.thumbnailUrl,
+    campaign.primaryAsset?.type === "VIDEO" ? null : campaign.primaryAsset?.fileUrl,
+    campaign.property?.imageUrls?.[0],
+    premiumPlaceholder,
+  ])
+
+  return {
+    src: candidates[0] ?? premiumPlaceholder,
+    fallbacks: candidates.slice(1),
+  }
+}
+
+export function getCampaignCoverUrl(campaign: StudioCampaignRecord) {
+  return resolveStudioLibraryThumbnail(campaign).src
 }
 
 export function getCampaignPropertyLabel(campaign: StudioCampaignRecord) {
