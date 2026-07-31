@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const trustedDevice = await resolveTrustedDevice(request)
 
   if (!trustedDevice) {
-    const response = NextResponse.json({ error: "Dispositivo confiavel nao encontrado." }, { status: 401 })
+    const response = NextResponse.json({ error: "Dispositivo confiável não encontrado." }, { status: 401 })
     clearTrustedDeviceCookie(response)
     return response
   }
@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
   const pin = normalizePin(body?.pin)
 
   if (!isValidPin(pin)) {
-    return NextResponse.json({ error: "Informe um PIN valido com 6 digitos." }, { status: 400 })
+    return NextResponse.json({ error: "Informe um PIN válido com 6 dígitos." }, { status: 400 })
   }
 
   if (!trustedDevice.user.pinHash) {
-    return NextResponse.json({ error: "Este usuario ainda nao configurou um PIN de acesso." }, { status: 400 })
+    return NextResponse.json({ error: "Este usuário ainda não configurou um PIN de acesso." }, { status: 400 })
   }
 
   const matches = await comparePin(pin, trustedDevice.user.pinHash)
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (!user) {
-    const response = NextResponse.json({ error: "Usuario nao encontrado." }, { status: 404 })
+    const response = NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 })
     clearTrustedDeviceCookie(response)
     return response
   }

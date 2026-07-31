@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
-    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
   }
 
   const kind = readKind(request.nextUrl.searchParams.get("kind"))
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Studio IA está indisponível no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel carregar as campanhas do Studio IA." }, { status: 500 })

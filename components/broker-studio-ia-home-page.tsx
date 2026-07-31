@@ -33,55 +33,55 @@ const studioActions: StudioAction[] = [
     icon: BookOpen,
     href: "/corretor/studio-ia/biblioteca",
     cta: "Abrir biblioteca",
-    status: "Disponivel",
+    status: "Disponível",
   },
   {
-    title: "Vender este imovel",
+    title: "Vender este imóvel",
     description: "Organize uma ação focada em conversão para apresentar o imóvel certo no momento certo.",
     icon: Home,
     href: "/corretor/studio-ia/vender-este-imovel",
     cta: "Abrir fluxo",
-    status: "Disponivel",
+    status: "Disponível",
   },
   {
     title: "Criar campanha para Instagram",
-    description: "Monte uma campanha visual para publicar o imovel com narrativa pronta para redes sociais.",
+    description: "Monte uma campanha visual para publicar o imóvel com narrativa pronta para redes sociais.",
     icon: Megaphone,
     href: "/corretor/studio-ia/criar-campanha-instagram",
     cta: "Abrir fluxo",
-    status: "Disponivel",
+    status: "Disponível",
   },
   {
-    title: "Criar video do imovel",
-    description: "Estruture a producao de um video comercial com foco em captacao de atencao e visitas.",
+    title: "Criar vídeo do imóvel",
+    description: "Estruture a produção de um vídeo comercial com foco em captação de atenção e visitas.",
     icon: Video,
     href: "/corretor/studio-ia/criar-video-do-imovel",
     cta: "Abrir fluxo",
-    status: "Disponivel",
+    status: "Disponível",
   },
   {
-    title: "Transformar obra em imovel pronto",
-    description: "Use uma imagem real da obra e gere uma versao pronta para venda com aprovacao e novas versoes.",
+    title: "Transformar obra em imóvel pronto",
+    description: "Use uma imagem real da obra e gere uma versão pronta para venda com aprovação e novas versões.",
     icon: Sparkles,
     href: "/corretor/studio-ia/transformar-obra-em-imovel-pronto",
     cta: "Abrir fluxo",
-    status: "Disponivel",
+    status: "Disponível",
   },
   {
     title: "Atrair compradores",
-    description: "Planeje a mensagem e os ganchos comerciais para aumentar interesse qualificado no imovel.",
+    description: "Planeje a mensagem e os ganchos comerciais para aumentar interesse qualificado no imóvel.",
     icon: Users,
     href: "/corretor/studio-ia/atrair-compradores",
     cta: "Abrir fluxo",
-    status: "Disponivel",
+    status: "Disponível",
   },
   {
-    title: "Captar proprietarios",
-    description: "Estruture abordagens de captacao para ampliar a carteira com foco no perfil certo.",
+    title: "Captar proprietários",
+    description: "Estruture abordagens de captação para ampliar a carteira com foco no perfil certo.",
     icon: Camera,
     href: "/corretor/studio-ia/captar-proprietarios",
     cta: "Abrir fluxo",
-    status: "Disponivel",
+    status: "Disponível",
   },
 ]
 
@@ -96,7 +96,7 @@ export function BrokerStudioIaHomePage() {
                 <Bot className="size-3.5" />
                 Studio IA
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Central de criacao com IA</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Central de criação com IA</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
                 Crie campanhas, imagens, vídeos, anúncios e conteúdos para divulgar seus imóveis com inteligência artificial.
               </p>

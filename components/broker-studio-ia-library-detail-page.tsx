@@ -77,7 +77,7 @@ function StatusPill({ status }: { status: StudioCampaignRecord["status"] | Studi
 
 function getAssetDisplayText(asset: AssetRecord) {
   const text = extractTextFromAsset(asset)
-  return text || "Sem conteudo textual adicional."
+  return text || "Sem conteúdo textual adicional."
 }
 
 async function copyText(value: string, fallbackMessage: string) {
@@ -127,7 +127,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
         setCampaign(result)
       } catch (caughtError) {
         if (!active) return
-        setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel carregar a campanha.")
+        setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar a campanha.")
       } finally {
         if (active) setIsLoading(false)
       }
@@ -142,7 +142,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
 
   const campaignPrompt = useMemo(() => {
     if (!campaign) return ""
-    return campaign.promptRevised || campaign.prompt || "Prompt nao informado."
+    return campaign.promptRevised || campaign.prompt || "Prompt não informado."
   }, [campaign])
 
   const editableFields = useMemo(() => {
@@ -170,7 +170,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
       setCampaign(updated)
       setNotice(`Asset marcado como ${formatStudioCampaignStatus(status)}.`)
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel atualizar o asset.")
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o asset.")
     } finally {
       setIsUpdating(null)
     }
@@ -186,9 +186,9 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
       const updated = await studioCampaignsClient.deleteAsset(asset.id)
       setCampaign(updated)
       setPreviewAsset((current) => (current?.id === asset.id ? null : current))
-      setNotice("Asset excluido da campanha.")
+      setNotice("Asset excluído da campanha.")
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel excluir o asset.")
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível excluir o asset.")
     } finally {
       setIsUpdating(null)
     }
@@ -196,19 +196,19 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
 
   async function handleCopyCaption(asset: AssetRecord) {
     try {
-      await copyText(getAssetDisplayText(asset), "Nao ha legenda disponivel para copiar.")
-      setNotice("Conteudo copiado.")
+      await copyText(getAssetDisplayText(asset), "Não há legenda disponível para copiar.")
+      setNotice("Conteúdo copiado.")
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel copiar o conteudo.")
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível copiar o conteúdo.")
     }
   }
 
   async function handleCopyPrompt(asset: AssetRecord) {
     try {
-      await copyText(asset.promptRevised || asset.prompt || "", "Nao ha prompt disponivel para copiar.")
+      await copyText(asset.promptRevised || asset.prompt || "", "Não há prompt disponível para copiar.")
       setNotice("Prompt copiado.")
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel copiar o prompt.")
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível copiar o prompt.")
     }
   }
 
@@ -234,10 +234,10 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
       const content = applyEditedStudioAssetFields(editingAsset, editValues)
       const updated = await studioCampaignsClient.updateAssetContent(editingAsset.id, content)
       setCampaign(updated)
-      setNotice("Conteudo textual atualizado. O preview e a exportacao usam a mesma renderizacao oficial.")
+      setNotice("Conteúdo textual atualizado. O preview e a exportação usam a mesma renderização oficial.")
       setEditingAsset(null)
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel salvar a edicao do asset.")
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar a edição do asset.")
     } finally {
       setIsSavingEdit(false)
     }
@@ -263,7 +263,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                 </div>
               ) : error ? (
                 <div className="mt-5">
-                  <h2 className="text-2xl font-semibold tracking-tight text-[#050505]">Campanha indisponivel</h2>
+                  <h2 className="text-2xl font-semibold tracking-tight text-[#050505]">Campanha indisponível</h2>
                   <p className="mt-3 text-sm leading-6 text-[#c24141]">{error}</p>
                 </div>
               ) : campaign ? (
@@ -280,8 +280,8 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
               <div className="grid gap-2 text-sm text-[#667085] sm:grid-cols-2 xl:grid-cols-4">
                 <Metric label="Assets" value={String(campaign.assets.length)} />
                 <Metric label="Criada em" value={formatStudioCampaignDate(campaign.createdAt)} />
-                <Metric label="Provider" value={campaign.provider || "Nao informado"} />
-                <Metric label="Modelo" value={campaign.model || "Nao informado"} />
+                <Metric label="Provider" value={campaign.provider || "Não informado"} />
+                <Metric label="Modelo" value={campaign.model || "Não informado"} />
               </div>
             ) : null}
           </div>
@@ -313,7 +313,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                 </div>
                 <CardContent className="grid gap-4 p-5">
                   <div className="flex flex-wrap gap-2">
-                    {["Versoes", "Historico", "Prompts", "Downloads", "Biblioteca", "Colecoes"].map((item) => (
+                    {["Versões", "Histórico", "Prompts", "Downloads", "Biblioteca", "Coleções"].map((item) => (
                       <span key={item} className="rounded-full border border-black/[0.06] bg-[#f9fafb] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#7b8491]">
                         {item}
                       </span>
@@ -322,7 +322,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   <div className="grid gap-4 sm:grid-cols-2">
                     <InfoBlock label="Tipo" value={formatStudioCampaignKind(campaign.kind)} />
                     <InfoBlock label="Status" value={formatStudioCampaignStatus(campaign.status)} />
-                    <InfoBlock label="Imovel" value={getCampaignPropertyLabel(campaign)} />
+                    <InfoBlock label="Imóvel" value={getCampaignPropertyLabel(campaign)} />
                     <InfoBlock label="Assets" value={`${campaign.assets.length} salvos`} />
                   </div>
                 </CardContent>
@@ -339,9 +339,9 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                 </Card>
                 <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
                   <CardContent className="grid gap-3 p-5">
-                    <InfoBlock label="Provider" value={campaign.provider || "Nao informado"} />
-                    <InfoBlock label="Modelo" value={campaign.model || "Nao informado"} />
-                    <InfoBlock label="Rota" value={campaign.sourceRoute || "Nao informada"} />
+                    <InfoBlock label="Provider" value={campaign.provider || "Não informado"} />
+                    <InfoBlock label="Modelo" value={campaign.model || "Não informado"} />
+                    <InfoBlock label="Rota" value={campaign.sourceRoute || "Não informada"} />
                   </CardContent>
                 </Card>
               </div>
@@ -351,7 +351,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-2xl font-semibold tracking-tight text-[#050505]">Assets da campanha</h3>
-                  <p className="mt-2 text-sm text-[#667085]">Assets organizados como biblioteca premium, com visualizacao, abertura, download e acoes por tipo.</p>
+                  <p className="mt-2 text-sm text-[#667085]">Assets organizados como biblioteca premium, com visualização, abertura, download e ações por tipo.</p>
                 </div>
               </div>
 
@@ -360,9 +360,9 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   <div className="mx-auto flex size-14 items-center justify-center rounded-[1.25rem] border border-[#009b3a]/12 bg-[#eef9f1] text-[#009b3a]">
                     <BookOpen className="size-6" />
                   </div>
-                  <h4 className="mt-5 text-xl font-semibold tracking-tight text-[#050505]">Nenhum asset disponivel</h4>
+                  <h4 className="mt-5 text-xl font-semibold tracking-tight text-[#050505]">Nenhum asset disponível</h4>
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#667085]">
-                    Esta campanha permanece no historico, mas no momento nao possui assets ativos.
+                    Esta campanha permanece no histórico, mas no momento não possui assets ativos.
                   </p>
                 </div>
               ) : (
@@ -427,9 +427,9 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
           {editingAsset ? (
             <>
               <DialogHeader>
-                <DialogTitle>Editar conteudos textuais</DialogTitle>
+                <DialogTitle>Editar conteúdos textuais</DialogTitle>
                 <DialogDescription className="text-[#667085]">
-                  Ajuste somente os textos. A identidade visual, o grid e a renderizacao oficial permanecem preservados.
+                  Ajuste somente os textos. A identidade visual, o grid e a renderização oficial permanecem preservados.
                 </DialogDescription>
               </DialogHeader>
 
@@ -456,7 +456,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   ))
                 ) : (
                   <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-[#fbfbfa] px-4 py-5 text-sm text-[#667085]">
-                    Este asset nao possui campos textuais editaveis nesta etapa.
+                    Este asset não possui campos textuais editáveis nesta etapa.
                   </div>
                 )}
               </div>

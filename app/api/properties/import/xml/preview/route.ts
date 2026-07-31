@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (properties.length === 0) {
       return NextResponse.json(
-        { error: "Nao encontramos imoveis validos neste XML. Revise o arquivo e tente novamente." },
+        { error: "Não encontramos imóveis válidos neste XML. Revise o arquivo e tente novamente." },
         { status: 400 },
       )
     }
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (caughtError instanceof Error && caughtError.message === "XML_TOO_LARGE") {
-      return NextResponse.json({ error: "O XML deve ter ate 5 MB." }, { status: 400 })
+      return NextResponse.json({ error: "O XML deve ter até 5 MB." }, { status: 400 })
     }
 
     if (caughtError instanceof Error && caughtError.message === "XML_MISSING_INPUT") {
@@ -120,22 +120,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (caughtError instanceof Error && caughtError.message === "XML_SOURCE_URL_INVALID") {
-      return NextResponse.json({ error: "Informe uma URL valida para o XML." }, { status: 400 })
+      return NextResponse.json({ error: "Informe uma URL válida para o XML." }, { status: 400 })
     }
 
     if (caughtError instanceof Error && caughtError.message === "XML_SOURCE_URL_BLOCKED") {
       return NextResponse.json(
-        { error: "O servidor do XML bloqueou a leitura automatica. Baixe o arquivo e envie o XML manualmente." },
+        { error: "O servidor do XML bloqueou a leitura automática. Baixe o arquivo e envie o XML manualmente." },
         { status: 403 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message === "XML_SOURCE_URL_UNREACHABLE") {
-      return NextResponse.json({ error: "Nao foi possivel acessar a URL do XML no momento." }, { status: 502 })
+      return NextResponse.json({ error: "Não foi possível acessar a URL do XML no momento." }, { status: 502 })
     }
 
     if (caughtError instanceof Error && caughtError.message === "XML_SOURCE_URL_FETCH_FAILED") {
-      return NextResponse.json({ error: "Nao foi possivel baixar esse XML. Verifique a URL e tente novamente." }, { status: 502 })
+      return NextResponse.json({ error: "Não foi possível baixar esse XML. Verifique a URL e tente novamente." }, { status: 502 })
     }
 
     return NextResponse.json(

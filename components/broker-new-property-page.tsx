@@ -234,7 +234,7 @@ export function BrokerNewPropertyPage() {
       if (generated.drafts[0]) {
         applyAiPreview(snapshot, generated.drafts[0])
       } else {
-        throw new Error("Nao foi possivel montar uma previa editavel para este imovel.")
+        throw new Error("Não foi possível montar uma prévia editável para este imóvel.")
       }
     } catch (caughtError) {
       if (activeGenerationIdRef.current !== generationId) return
@@ -296,12 +296,12 @@ export function BrokerNewPropertyPage() {
 
     const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
     if (!isXml) {
-      setPublishFeedback("Envie um arquivo XML valido para revisar antes de importar.")
+      setPublishFeedback("Envie um arquivo XML válido para revisar antes de importar.")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setPublishFeedback("O XML deve ter ate 5 MB.")
+      setPublishFeedback("O XML deve ter até 5 MB.")
       return
     }
 
@@ -1187,12 +1187,12 @@ function XmlImportPreview({
           <div key={`${property.title}-${index}`} className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-medium text-[#050505]">{property.title || "Imovel sem titulo"}</p>
-                <p className="mt-1 text-sm text-[#6B7280]">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localizacao pendente"}</p>
+                <p className="font-medium text-[#050505]">{property.title || "Imóvel sem título"}</p>
+                <p className="mt-1 text-sm text-[#6B7280]">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localização pendente"}</p>
               </div>
               <ImportStatusBadge status={property.status} />
             </div>
-            <p className="mt-2 text-sm text-[#5F6B7A]">{property.price || "Preco pendente"}</p>
+            <p className="mt-2 text-sm text-[#5F6B7A]">{property.price || "Preço pendente"}</p>
             {property.issues.length > 0 ? <p className="mt-2 text-xs text-[#7B8491]">Revisar: {property.issues.join(", ")}</p> : null}
           </div>
         ))}
@@ -1208,7 +1208,7 @@ function XmlImportPreview({
 
 function ImportStatusBadge({ status }: { status: ParsedXmlProperty["status"] }) {
   const label =
-    status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Invalido"
+    status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Inválido"
 
   return (
     <span className="rounded-full border border-black/[0.06] bg-white/80 px-3 py-1 text-xs text-[#5F6B7A]">

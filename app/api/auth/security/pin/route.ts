@@ -11,11 +11,11 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (!user.passwordHash) {
-    return NextResponse.json({ error: "Nao foi possivel validar a senha atual." }, { status: 400 })
+    return NextResponse.json({ error: "Não foi possível validar a senha atual." }, { status: 400 })
   }
 
   const body = await request.json().catch(() => null)
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   const passwordMatches = await compare(currentPassword, user.passwordHash)
   if (!passwordMatches) {
-    return NextResponse.json({ error: "A senha atual esta incorreta." }, { status: 400 })
+    return NextResponse.json({ error: "A senha atual está incorreta." }, { status: 400 })
   }
 
   if (action === "remove") {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!isValidPin(newPin)) {
-    return NextResponse.json({ error: "Informe um PIN valido com 6 digitos." }, { status: 400 })
+    return NextResponse.json({ error: "Informe um PIN válido com 6 dígitos." }, { status: 400 })
   }
 
   const pinHash = await hashPin(newPin)

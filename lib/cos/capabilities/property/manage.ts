@@ -25,7 +25,7 @@ async function updatePropertyPublication(input: {
   responseLabel: string
 }) {
   const property = await resolveProperty(input.brokerId, input.payload)
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const updated = await prisma.property.update({
     where: { id: property.id },
@@ -52,7 +52,7 @@ export const publishPropertyCapability: CosCapabilityHandler = async ({ brokerId
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     published: true,
     status: PropertyStatus.PUBLISHED,
-    responseLabel: "Imovel publicado com sucesso.",
+    responseLabel: "Imóvel publicado com sucesso.",
   })
 
 export const unpublishPropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
@@ -61,13 +61,13 @@ export const unpublishPropertyCapability: CosCapabilityHandler = async ({ broker
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     published: false,
     status: PropertyStatus.PAUSED,
-    responseLabel: "Imovel removido do catalogo.",
+    responseLabel: "Imóvel removido do catálogo.",
   })
 
 export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
   const property = await resolveProperty(brokerId, payloadRecord)
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const providedImages = Array.isArray(payloadRecord.imageUrls)
     ? payloadRecord.imageUrls.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
@@ -75,7 +75,7 @@ export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brok
 
   if (providedImages.length === 0) {
     return {
-      response: `O imovel ${property.title} tem ${Array.isArray(property.imageUrls) ? property.imageUrls.length : 0} midia(s) cadastrada(s). Envie as novas URLs para eu atualizar esse conjunto.`,
+      response: `O imóvel ${property.title} tem ${Array.isArray(property.imageUrls) ? property.imageUrls.length : 0} mídia(s) cadastrada(s). Envie as novas URLs para eu atualizar esse conjunto.`,
       metadata: {
         required: ["imageUrls"],
         noCharge: true,
@@ -93,7 +93,7 @@ export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brok
   })
 
   return {
-    response: `Midias do imovel atualizadas com sucesso.\n\n${updated.title}\nTotal de imagens: ${providedImages.length}`,
+    response: `Mídias do imóvel atualizadas com sucesso.\n\n${updated.title}\nTotal de imagens: ${providedImages.length}`,
     metadata: {
       propertyId: updated.id,
       imageCount: providedImages.length,
@@ -105,7 +105,7 @@ export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brok
 export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
   const property = await resolveProperty(brokerId, payloadRecord)
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const comparableProperties = await prisma.property.findMany({
     where: {
@@ -132,7 +132,7 @@ export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ bro
   const explicitPrice = extractPriceFromMessage(message)
 
   return {
-    response: `Sugestao de preco para ${property.title}:\n\n- Faixa recomendada: ${formatCurrencyBRLFromCents(Math.round(suggestedPrice * 0.95))} a ${formatCurrencyBRLFromCents(Math.round(suggestedPrice * 1.05))}\n- Referencia central: ${formatCurrencyBRLFromCents(suggestedPrice)}\n- Preco atual: ${formatCurrencyBRLFromCents(property.price)}${explicitPrice ? `\n- Valor citado na conversa: ${formatCurrencyBRLFromCents(explicitPrice)}` : ""}`,
+    response: `Sugestão de preço para ${property.title}:\n\n- Faixa recomendada: ${formatCurrencyBRLFromCents(Math.round(suggestedPrice * 0.95))} a ${formatCurrencyBRLFromCents(Math.round(suggestedPrice * 1.05))}\n- Referência central: ${formatCurrencyBRLFromCents(suggestedPrice)}\n- Preço atual: ${formatCurrencyBRLFromCents(property.price)}${explicitPrice ? `\n- Valor citado na conversa: ${formatCurrencyBRLFromCents(explicitPrice)}` : ""}`,
     metadata: {
       propertyId: property.id,
       suggestedPrice,
@@ -146,7 +146,7 @@ export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ bro
 export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
   const property = await resolveProperty(brokerId, payloadRecord)
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const updated = await prisma.property.update({
     where: { id: property.id },
@@ -158,7 +158,7 @@ export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId
   })
 
   return {
-    response: `Imovel arquivado com sucesso.\n\n${updated.title}`,
+    response: `Imóvel arquivado com sucesso.\n\n${updated.title}`,
     metadata: {
       propertyId: updated.id,
       propertyStatus: updated.status,

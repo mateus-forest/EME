@@ -23,7 +23,7 @@ export function AdminPortal() {
   const { insights, isLoading, error } = useAdminInsights()
 
   return (
-    <AdminPageShell title="Admin EME" subtitle="Visao executiva da plataforma, operacao e crescimento">
+    <AdminPageShell title="Admin EME" subtitle="Visão executiva da plataforma, operação e crescimento">
       {isLoading && !insights ? <EmeLoading message="Carregando dashboards do Admin..." /> : null}
 
       {error ? (
@@ -35,7 +35,7 @@ export function AdminPortal() {
       {insights ? (
         <div className="grid gap-5">
           <AdminMetricGrid>
-            <AdminMetricCard label="Usuarios ativos hoje" value={String(insights.analytics.activeUsers)} hint="Base ativa usando portal, COS ou Studio IA." icon={<Users className="size-5" />} />
+            <AdminMetricCard label="Usuários ativos hoje" value={String(insights.analytics.activeUsers)} hint="Base ativa usando portal, COS ou Studio IA." icon={<Users className="size-5" />} />
             <AdminMetricCard label="MRR atual" value={formatCurrency(insights.revenue.mrr)} hint="Receita recorrente mensal consolidada." icon={<CreditCard className="size-5" />} />
             <AdminMetricCard label="Consumo IA" value={`${insights.aiConsumption.totalCreditsConsumed} créditos`} hint="Uso agregado entre COS e Studio IA." icon={<Sparkles className="size-5" />} />
             <AdminMetricCard label="Conversas no COS hoje" value={String(insights.cos.conversationsToday)} hint="Conversas abertas e continuadas no dia." icon={<MessageCircle className="size-5" />} />
@@ -44,16 +44,16 @@ export function AdminPortal() {
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
             <AdminSurface
               title="Resumo da plataforma"
-              subtitle="Indicadores essenciais para acompanhar tracao, valor entregue e saude da operacao."
+              subtitle="Indicadores essenciais para acompanhar tração, valor entregue e saúde da operação."
             >
               <AdminDefinitionGrid
                 columns={4}
                 items={[
                   { label: "Corretores", value: String(insights.brokers.total) },
-                  { label: "Imoveis", value: String(insights.analytics.properties) },
+                  { label: "Imóveis", value: String(insights.analytics.properties) },
                   { label: "Clientes", value: String(insights.analytics.clients) },
                   { label: "Propostas", value: String(insights.analytics.proposals) },
-                  { label: "Studio IA", value: `${insights.analytics.studioIa} acoes` },
+                  { label: "Studio IA", value: `${insights.analytics.studioIa} ações` },
                   { label: "COS", value: `${insights.analytics.cos} comandos` },
                   { label: "Videos", value: String(insights.analytics.videos) },
                   { label: "Imagens", value: String(insights.analytics.images) },
@@ -63,7 +63,7 @@ export function AdminPortal() {
 
             <AdminSurface
               title="Alertas imediatos"
-              subtitle="Pontos que merecem acao de produto, suporte, receita ou integracao."
+              subtitle="Pontos que merecem ação de produto, suporte, receita ou integração."
             >
               <AdminActivityFeed
                 items={insights.alerts.items.slice(0, 4).map((item) => ({
@@ -78,13 +78,13 @@ export function AdminPortal() {
           </section>
 
           <section className="grid gap-5 xl:grid-cols-3">
-            <AdminSurface title="Receita e crescimento" subtitle="Visao comercial para upgrades, inadimplencia e previsibilidade.">
+            <AdminSurface title="Receita e crescimento" subtitle="Visão comercial para upgrades, inadimplência e previsibilidade.">
               <AdminDefinitionGrid
                 items={[
                   { label: "MRR", value: formatCurrency(insights.revenue.mrr) },
                   { label: "ARR", value: formatCurrency(insights.revenue.arr) },
-                  { label: "Ticket medio", value: formatCurrency(insights.revenue.averageTicket) },
-                  { label: "Inadimplencia", value: String(insights.revenue.delinquency) },
+                  { label: "Ticket médio", value: formatCurrency(insights.revenue.averageTicket) },
+                  { label: "Inadimplência", value: String(insights.revenue.delinquency) },
                   { label: "Crescimento", value: insights.revenue.growth == null ? "Sem base" : `${insights.revenue.growth}%` },
                   { label: "LTV", value: insights.revenue.ltv == null ? "Sem base" : formatCurrency(insights.revenue.ltv) },
                 ]}
@@ -100,20 +100,20 @@ export function AdminPortal() {
                   { label: "Buscas", value: String(insights.cos.propertySearches) },
                   { label: "Agendamentos", value: String(insights.cos.appointments) },
                   { label: "Clientes criados", value: String(insights.cos.clientsCreated) },
-                  { label: "Creditos", value: String(insights.cos.creditsSpent) },
+                  { label: "Créditos", value: String(insights.cos.creditsSpent) },
                 ]}
                 columns={2}
               />
             </AdminSurface>
 
-            <AdminSurface title="Studio IA" subtitle="Uso criativo, geracao visual e potencial economizado.">
+            <AdminSurface title="Studio IA" subtitle="Uso criativo, geração visual e potencial economizado.">
               <AdminDefinitionGrid
                 items={[
                   { label: "Imagens", value: String(insights.studioIa.imagesCreated) },
                   { label: "Videos", value: String(insights.studioIa.videosCreated) },
                   { label: "Instagram", value: String(insights.studioIa.postsInstagram) },
-                  { label: "Anuncios", value: String(insights.studioIa.anuncios) },
-                  { label: "Creditos", value: String(insights.studioIa.creditsUsed) },
+                  { label: "Anúncios", value: String(insights.studioIa.anuncios) },
+                  { label: "Créditos", value: String(insights.studioIa.creditsUsed) },
                   { label: "Economia", value: formatCurrency(insights.studioIa.estimatedSavings) },
                 ]}
                 columns={2}
@@ -122,35 +122,35 @@ export function AdminPortal() {
           </section>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <AdminSurface title="Produtividade dos corretores" subtitle="Ranking vivo com base em imoveis, clientes, propostas e uso de IA.">
+            <AdminSurface title="Produtividade dos corretores" subtitle="Ranking vivo com base em imóveis, clientes, propostas e uso de IA.">
               <AdminKpiList rows={insights.brokers.topProductivity} />
             </AdminSurface>
 
-            <AdminSurface title="Ultimas conversas do COS" subtitle="Contexto recente das conversas retomadas pelos corretores.">
+            <AdminSurface title="Últimas conversas do COS" subtitle="Contexto recente das conversas retomadas pelos corretores.">
               <AdminActivityFeed items={insights.cos.latestConversations} />
             </AdminSurface>
           </section>
 
           <section className="grid gap-5 xl:grid-cols-3">
-            <AdminMiniChart title="Uso do COS por dia" subtitle="Ultimos 7 dias" points={insights.cos.usageByDay} />
-            <AdminMiniChart title="Studio IA por dia" subtitle="Ultimos 7 dias" points={insights.studioIa.generationByDay} />
+            <AdminMiniChart title="Uso do COS por dia" subtitle="Últimos 7 dias" points={insights.cos.usageByDay} />
+            <AdminMiniChart title="Studio IA por dia" subtitle="Últimos 7 dias" points={insights.studioIa.generationByDay} />
             <AdminMiniChart title="Receita ativa por mes" subtitle="Serie consolidada" points={insights.revenue.monthlySeries} />
           </section>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
-            <AdminSurface title="Assessor EME" subtitle="Status do canal oficial, execucoes recentes e resposta da operacao.">
+            <AdminSurface title="Assessor EME" subtitle="Status do canal oficial, execuções recentes e resposta da operação.">
               <AdminDefinitionGrid
                 columns={3}
                 items={[
                   { label: "Status", value: insights.assessor.status },
-                  { label: "Numero oficial", value: insights.assessor.officialNumber },
-                  { label: "Sessoes", value: String(insights.assessor.sessions) },
+                  { label: "Número oficial", value: insights.assessor.officialNumber },
+                  { label: "Sessões", value: String(insights.assessor.sessions) },
                   { label: "Recebidas", value: String(insights.assessor.messagesReceived) },
                   { label: "Enviadas", value: String(insights.assessor.messagesSent) },
                   { label: "Comandos", value: String(insights.assessor.commandsExecuted) },
                   { label: "Falhas", value: String(insights.assessor.failures) },
                   { label: "Consumo IA", value: String(insights.assessor.aiConsumption) },
-                  { label: "Tempo medio", value: insights.assessor.avgResponseMinutes == null ? "Sem base" : `${insights.assessor.avgResponseMinutes} min` },
+                  { label: "Tempo médio", value: insights.assessor.avgResponseMinutes == null ? "Sem base" : `${insights.assessor.avgResponseMinutes} min` },
                 ]}
               />
             </AdminSurface>

@@ -608,7 +608,7 @@ export function BrokerPortal() {
                   </p>
                 </div>
                 <span className="rounded-full bg-[#edf8f1] px-2.5 py-1 text-xs font-medium text-[#0d7a39]">
-                  {visiblePendingCount} pendencia{visiblePendingCount === 1 ? "" : "s"}
+                  {visiblePendingCount} pendência{visiblePendingCount === 1 ? "" : "s"}
                 </span>
               </div>
               <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
@@ -709,7 +709,7 @@ function OperationHealthDetails({
       <div className="mt-4 border-t border-black/[0.06] pt-4">
         <div className="flex items-center gap-2">
           <AlertCircle className="size-4 text-[#9a6b00]" />
-          <p className="text-sm font-semibold text-[#111111]">Pendencias</p>
+          <p className="text-sm font-semibold text-[#111111]">Pendências</p>
         </div>
         <div className="mt-3 space-y-2">
           {operationPendingItems.length > 0 ? (
@@ -722,7 +722,7 @@ function OperationHealthDetails({
           ) : (
             <div className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
               <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
-              <span>Nenhuma pendencia critica detectada agora.</span>
+              <span>Nenhuma pendência crítica detectada agora.</span>
             </div>
           )}
         </div>

@@ -25,38 +25,38 @@ type DemoResponse = {
 const demoActions: DemoAction[] = [
   {
     id: "create_ad",
-    label: "Criar anuncio",
+    label: "Criar anúncio",
     icon: ImageIcon,
-    placeholder: "Descreva o imovel para criar um anuncio incrivel...",
-    example: "Exemplo: Apartamento 2 quartos, suite, sacada gourmet, 1 vaga, condominio com piscina em Canoas.",
+    placeholder: "Descreva o imóvel para criar um anúncio incrível...",
+    example: "Exemplo: Apartamento 2 quartos, suíte, sacada gourmet, 1 vaga, condomínio com piscina em Canoas.",
   },
   {
     id: "generate_video",
-    label: "Gerar video",
+    label: "Gerar vídeo",
     icon: Video,
-    placeholder: "Descreva o imovel e o estilo do video que voce quer gerar...",
-    example: "Exemplo: Video vertical de 30s para apartamento com vista, foco em Instagram e visitas agendadas.",
+    placeholder: "Descreva o imóvel e o estilo do vídeo que você quer gerar...",
+    example: "Exemplo: Vídeo vertical de 30s para apartamento com vista, foco em Instagram e visitas agendadas.",
   },
   {
     id: "create_catalog",
-    label: "Criar catalogo",
+    label: "Criar catálogo",
     icon: ClipboardList,
-    placeholder: "Explique o tipo de catalogo que voce quer montar...",
-    example: "Exemplo: Catalogo premium com imoveis de alto padrao em Balneario Camboriu para enviar por WhatsApp.",
+    placeholder: "Explique o tipo de catálogo que você quer montar...",
+    example: "Exemplo: Catálogo premium com imóveis de alto padrão em Balneário Camboriú para enviar por WhatsApp.",
   },
   {
     id: "search_property",
-    label: "Procurar imovel",
+    label: "Procurar imóvel",
     icon: Search,
-    placeholder: "Conte o tipo de imovel que voce esta procurando...",
-    example: "Exemplo: Apartamento 3 quartos, suite, ate R$ 900 mil, em Porto Alegre.",
+    placeholder: "Conte o tipo de imóvel que você está procurando...",
+    example: "Exemplo: Apartamento 3 quartos, suíte, até R$ 900 mil, em Porto Alegre.",
   },
   {
     id: "chat_cos",
     label: "Conversar com o COS",
     icon: Bot,
     placeholder: "Pergunte qualquer coisa ao COS...",
-    example: "Exemplo: Como eu posso divulgar melhor um imovel esta semana?",
+    example: "Exemplo: Como eu posso divulgar melhor um imóvel esta semana?",
   },
 ] as const
 
@@ -77,7 +77,7 @@ export function LandingCosDemoSection() {
 
     const trimmedMessage = message.trim()
     if (!trimmedMessage) {
-      setError("Escreva uma solicitacao para testar o COS.")
+      setError("Escreva uma solicitação para testar o COS.")
       return
     }
 
@@ -100,14 +100,14 @@ export function LandingCosDemoSection() {
       const payload = (await apiResponse.json()) as DemoResponse
 
       if (!apiResponse.ok) {
-        setError(payload.error ?? "Nao foi possivel falar com o COS agora.")
+        setError(payload.error ?? "Não foi possível falar com o COS agora.")
         setResponse(payload)
         return
       }
 
       setResponse(payload)
     } catch {
-      setError("Nao foi possivel falar com o COS agora.")
+      setError("Não foi possível falar com o COS agora.")
     } finally {
       setIsSending(false)
     }
@@ -118,7 +118,7 @@ export function LandingCosDemoSection() {
       <h2 className="text-[2.15rem] font-semibold tracking-[-0.055em] text-[#111111] sm:text-[3rem]">
         Experimente o <span className="text-[#16a34a]">EME agora</span>
       </h2>
-      <p className="mt-3 text-[0.98rem] text-[#68737d]">Faca uma solicitacao e veja o EME trabalhando para voce.</p>
+      <p className="mt-3 text-[0.98rem] text-[#68737d]">Faça uma solicitação e veja o EME trabalhando para você.</p>
 
       <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
         {demoActions.map((action) => {
@@ -152,7 +152,7 @@ export function LandingCosDemoSection() {
       >
         <div className="flex flex-col gap-3 sm:flex-row">
           <label className="sr-only" htmlFor="landing-cos-demo-input">
-            Solicitacao para o COS
+            Solicitação para o COS
           </label>
           <input
             id="landing-cos-demo-input"
@@ -175,7 +175,7 @@ export function LandingCosDemoSection() {
         <div className="mt-3 flex flex-col items-start gap-2.5 text-left">
           <p className="text-[13px] text-[#6f7982] sm:text-center sm:self-center">{selectedAction.example}</p>
           <p className="rounded-full bg-[#f4f8f5] px-3 py-1 text-[11px] font-medium text-[#5f6973]">
-            Demonstracao publica: o COS responde na propria Landing sem acessar dados reais nem executar acoes.
+            Demonstração pública: o COS responde na própria Landing sem acessar dados reais nem executar ações.
           </p>
         </div>
       </form>
@@ -192,7 +192,7 @@ export function LandingCosDemoSection() {
           </div>
           {response?.rateLimited ? (
             <p className="mt-3 text-[13px] text-[#a16207]">
-              Limite temporario de demonstracao atingido. Tente novamente em instantes.
+              Limite temporário de demonstração atingido. Tente novamente em instantes.
             </p>
           ) : null}
         </div>

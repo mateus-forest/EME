@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const roleError = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         payload: payloadForLog,
       })
       return NextResponse.json(
-        { error: "Preencha os dados obrigatorios do imovel antes de gerar o anuncio com IA." },
+        { error: "Preencha os dados obrigatórios do imóvel antes de gerar o anúncio com IA." },
         { status: 400 },
       )
     }
@@ -156,32 +156,32 @@ export async function POST(request: NextRequest) {
 
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_DISABLED_OR_NOT_CONFIGURED")) {
       return NextResponse.json(
-        { error: "A geracao com IA nao esta configurada neste ambiente." },
+        { error: "A geração com IA não está configurada neste ambiente." },
         { status: 503 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
       return NextResponse.json(
-        { error: "A IA nao retornou um anuncio valido. Tente novamente em instantes." },
+        { error: "A IA não retornou um anúncio válido. Tente novamente em instantes." },
         { status: 502 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_INVALID_JSON")) {
       return NextResponse.json(
-        { error: "A resposta da IA veio em um formato invalido. Tente novamente em instantes." },
+        { error: "A resposta da IA veio em um formato inválido. Tente novamente em instantes." },
         { status: 502 },
       )
     }
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel gerar o anuncio com IA no momento." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível gerar o anúncio com IA no momento." }, { status: 500 })
   }
 }

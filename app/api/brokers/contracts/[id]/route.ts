@@ -74,12 +74,12 @@ function serializeContract(document: {
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
   return user
 }
 
@@ -89,7 +89,7 @@ async function getContractOr404(id: string, brokerId: string) {
   })
 
   if (!contract) {
-    return NextResponse.json({ error: "Contrato nao encontrado." }, { status: 404 })
+    return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
   }
 
   return contract
@@ -158,9 +158,9 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ contract: serializeContract(found) })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel carregar o contrato." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível carregar o contrato." }, { status: 500 })
   }
 }
 
@@ -177,7 +177,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     if (contentType.includes("multipart/form-data")) {
       if (!isExternalContractContent(parsed)) {
-        return NextResponse.json({ error: "Somente contratos anexados aceitam atualizacao por upload." }, { status: 400 })
+        return NextResponse.json({ error: "Somente contratos anexados aceitam atualização por upload." }, { status: 400 })
       }
 
       const formData = await request.formData()
@@ -215,8 +215,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           : Promise.resolve(null),
       ])
 
-      if (!lead) return NextResponse.json({ error: "Selecione um cliente valido." }, { status: 400 })
-      if (propertyId && !property) return NextResponse.json({ error: "Selecione um imovel valido." }, { status: 400 })
+      if (!lead) return NextResponse.json({ error: "Selecione um cliente válido." }, { status: 400 })
+      if (propertyId && !property) return NextResponse.json({ error: "Selecione um imóvel válido." }, { status: 400 })
 
       const nextAttachment = { ...(parsed.attachment ?? {}) }
       if (fileEntry instanceof File && fileEntry.size > 0) {
@@ -242,7 +242,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       nextAttachment.notes = notes || null
 
       const contractType = normalizeContractType(kind)
-      if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato valido." }, { status: 400 })
+      if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato válido." }, { status: 400 })
 
       const nextContent = createContractContent({
         kind: contractType,
@@ -377,11 +377,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           : Promise.resolve(null),
       ])
 
-      if (!lead) return NextResponse.json({ error: "Selecione um cliente valido." }, { status: 400 })
-      if (nextPropertyId && !property) return NextResponse.json({ error: "Selecione um imovel valido." }, { status: 400 })
+      if (!lead) return NextResponse.json({ error: "Selecione um cliente válido." }, { status: 400 })
+      if (nextPropertyId && !property) return NextResponse.json({ error: "Selecione um imóvel válido." }, { status: 400 })
 
       const contractType = normalizeContractType(nextKind)
-      if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato valido." }, { status: 400 })
+      if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato válido." }, { status: 400 })
 
       const nextContent = createContractContent({
         kind: contractType,
@@ -489,11 +489,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }),
     ])
 
-    if (!lead) return NextResponse.json({ error: "Selecione um cliente valido." }, { status: 400 })
-    if (!property) return NextResponse.json({ error: "Selecione um imovel valido." }, { status: 400 })
+    if (!lead) return NextResponse.json({ error: "Selecione um cliente válido." }, { status: 400 })
+    if (!property) return NextResponse.json({ error: "Selecione um imóvel válido." }, { status: 400 })
 
     const contractType = normalizeContractType(nextKind)
-    if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato valido." }, { status: 400 })
+    if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato válido." }, { status: 400 })
 
     const nextContent = createContractContent({
       kind: contractType,
@@ -575,9 +575,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const message = caughtError instanceof Error ? caughtError.message : ""
     if (message) return NextResponse.json({ error: message }, { status: 400 })
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel atualizar o contrato." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível atualizar o contrato." }, { status: 500 })
   }
 }
 
@@ -599,8 +599,8 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     return NextResponse.json({ success: true })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel excluir o contrato." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível excluir o contrato." }, { status: 500 })
   }
 }

@@ -114,6 +114,6 @@ export const monthAgendaCapability: CosCapabilityHandler = async ({ brokerId }) 
   const now = new Date()
   const start = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
   const end = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0))
-  return listAgendaWindow(brokerId, start, end, "Agenda do mes")
+  return listAgendaWindow(brokerId, start, end, "Agenda do mês")
 }
 

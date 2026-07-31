@@ -10,7 +10,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])

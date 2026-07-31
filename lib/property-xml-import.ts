@@ -207,7 +207,7 @@ function parseNode(nodeXml: string): ParsedXmlProperty {
 export function parsePropertiesXml(xml: string) {
   const normalizedXml = xml.replace(/^\uFEFF/, "").trim()
   if (!normalizedXml || !normalizedXml.includes("<") || !normalizedXml.includes(">")) {
-    throw new Error("Arquivo XML vazio ou invalido.")
+    throw new Error("Arquivo XML vazio ou inválido.")
   }
 
   return getCandidateNodes(normalizedXml)

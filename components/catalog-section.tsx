@@ -6,7 +6,7 @@ export function CatalogSection() {
   const properties = [
     {
       image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop",
-      title: "Apartamento 2 quartos com suite",
+      title: "Apartamento 2 quartos com suíte",
       location: "Porto Alegre - Bela Vista",
       price: "R$ 485.000",
       views: 47,

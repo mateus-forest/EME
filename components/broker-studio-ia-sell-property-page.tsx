@@ -50,7 +50,7 @@ type CommercialFlow = {
 }
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
-  { id: "selection", label: "Selecao" },
+  { id: "selection", label: "Seleção" },
   { id: "checklist", label: "Checklist" },
   { id: "operation", label: "Central" },
   { id: "readiness", label: "Pronto" },
@@ -59,7 +59,7 @@ const stepLabels: Array<{ id: StudioStep; label: string }> = [
 const commercialFlows: CommercialFlow[] = [
   {
     key: "construction",
-    title: "Transformar obra em imovel pronto",
+    title: "Transformar obra em imóvel pronto",
     description: "Prepare a imagem comercial final quando o ativo ainda estiver em obra.",
     href: "/corretor/studio-ia/transformar-obra-em-imovel-pronto",
     icon: Sparkles,
@@ -68,15 +68,15 @@ const commercialFlows: CommercialFlow[] = [
   {
     key: "instagram",
     title: "Criar campanha para Instagram",
-    description: "Organize feed, story, carrossel, legenda, CTA e hashtags do imovel.",
+    description: "Organize feed, story, carrossel, legenda, CTA e hashtags do imóvel.",
     href: "/corretor/studio-ia/criar-campanha-instagram",
     icon: Instagram,
     isAvailable: true,
   },
   {
     key: "video",
-    title: "Criar video do imovel",
-    description: "Estruture a frente audiovisual da divulgacao comercial.",
+    title: "Criar vídeo do imóvel",
+    description: "Estruture a frente audiovisual da divulgação comercial.",
     href: "/corretor/studio-ia/criar-video-do-imovel",
     icon: Video,
     isAvailable: true,
@@ -84,14 +84,14 @@ const commercialFlows: CommercialFlow[] = [
   {
     key: "buyers",
     title: "Atrair compradores",
-    description: "Planeje a captacao de demanda para acelerar a operacao comercial.",
+    description: "Planeje a captação de demanda para acelerar a operação comercial.",
     href: "/corretor/studio-ia/atrair-compradores",
     icon: Users,
     isAvailable: true,
   },
   {
     key: "owners",
-    title: "Captar proprietarios",
+    title: "Captar proprietários",
     description: "Amplie o potencial comercial do corretor com novos ativos e relacionamento.",
     href: "/corretor/studio-ia/captar-proprietarios",
     icon: Home,
@@ -204,16 +204,16 @@ export function BrokerStudioIaSellPropertyPage() {
   const visualSummary = useMemo(
     () => [
       {
-        label: "Imovel selecionado",
-        value: selectedProperty?.title ?? "Nenhum imovel selecionado",
+        label: "Imóvel selecionado",
+        value: selectedProperty?.title ?? "Nenhum imóvel selecionado",
       },
       {
-        label: "Fluxos concluidos",
-        value: `${availableCompletedCount} de ${availableFlows.length} disponiveis`,
+        label: "Fluxos concluídos",
+        value: `${availableCompletedCount} de ${availableFlows.length} disponíveis`,
       },
       {
-        label: "Ultima atualizacao",
-        value: approvedVersion ? `Versao ${approvedVersion} aprovada` : buildLastUpdateLabel(availableCompletedCount),
+        label: "Última atualização",
+        value: approvedVersion ? `Versão ${approvedVersion} aprovada` : buildLastUpdateLabel(availableCompletedCount),
       },
     ],
     [approvedVersion, availableCompletedCount, availableFlows.length, selectedProperty],
@@ -354,9 +354,9 @@ export function BrokerStudioIaSellPropertyPage() {
                 <PlayCircle className="size-3.5" />
                 Orquestrador Studio IA
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Vender este imovel</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Vender este imóvel</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Centralize a preparacao comercial do imovel, acompanhe os fluxos disponiveis e gere um plano comercial consolidado antes de iniciar a divulgacao.
+                Centralize a preparação comercial do imóvel, acompanhe os fluxos disponíveis e gere um plano comercial consolidado antes de iniciar a divulgação.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -400,7 +400,7 @@ export function BrokerStudioIaSellPropertyPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio organiza a venda do imovel em uma trilha unica e agora consolida o plano comercial real no servidor.
+                O Studio organiza a venda do imóvel em uma trilha única e agora consolida o plano comercial real no servidor.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -410,9 +410,9 @@ export function BrokerStudioIaSellPropertyPage() {
                     <Home className="size-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Vender este imovel</p>
+                    <p className="text-base font-semibold text-[#050505]">Vender este imóvel</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      Centralize todos os materiais e fluxos essenciais para preparar a operacao comercial do ativo.
+                      Centralize todos os materiais e fluxos essenciais para preparar a operação comercial do ativo.
                     </p>
                   </div>
                 </div>
@@ -420,12 +420,12 @@ export function BrokerStudioIaSellPropertyPage() {
 
               <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imovel</p>
-                  <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponivel(is)</span>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imóvel</p>
+                  <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponível(is)</span>
                 </div>
 
                 {isLoading ? (
-                  <EmeLoading compact message="Carregando imoveis do corretor..." className="mt-3" />
+                  <EmeLoading compact message="Carregando imóveis do corretor..." className="mt-3" />
                 ) : propertyOptions.length > 0 ? (
                   <div className="mt-3 grid gap-3">
                     <select
@@ -467,7 +467,7 @@ export function BrokerStudioIaSellPropertyPage() {
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2">
                               <InfoTile label="Valor" value={selectedProperty.price} />
-                              <InfoTile label="Endereco" value={`${selectedProperty.neighborhood}, ${selectedProperty.city}`} />
+                              <InfoTile label="Endereço" value={`${selectedProperty.neighborhood}, ${selectedProperty.city}`} />
                             </div>
                           </div>
                         </div>
@@ -480,7 +480,7 @@ export function BrokerStudioIaSellPropertyPage() {
                       disabled={!selectedProperty}
                       className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                     >
-                      Avancar para checklist
+                      Avançar para checklist
                       <ArrowRight className="size-4" />
                     </Button>
                   </div>
@@ -491,8 +491,8 @@ export function BrokerStudioIaSellPropertyPage() {
 
               <div className={`rounded-[1.25rem] border p-4 ${currentStep === "selection" ? "border-black/[0.06] bg-[#f6f7f4] opacity-65" : "border-black/[0.06] bg-[#fbfbf8]"}`}>
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Checklist de preparacao comercial</p>
-                  <span className="text-xs text-[#7B8491]">{availableCompletedCount} concluido(s)</span>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Checklist de preparação comercial</p>
+                  <span className="text-xs text-[#7B8491]">{availableCompletedCount} concluído(s)</span>
                 </div>
 
                 <div className="mt-3 grid gap-3">
@@ -513,7 +513,7 @@ export function BrokerStudioIaSellPropertyPage() {
                     disabled={!selectedProperty}
                     className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                   >
-                    Abrir Central de Operacao
+                    Abrir Central de Operação
                     <ArrowRight className="size-4" />
                   </Button>
                   <Button
@@ -523,7 +523,7 @@ export function BrokerStudioIaSellPropertyPage() {
                     disabled={!selectedProperty || isSubmitting}
                     className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60"
                   >
-                    {isSubmitting ? "Gerando plano" : resultVersion > 0 ? "Gerar nova versao" : "Gerar plano comercial"}
+                    {isSubmitting ? "Gerando plano" : resultVersion > 0 ? "Gerar nova versão" : "Gerar plano comercial"}
                   </Button>
                 </div>
               </div>
@@ -548,17 +548,17 @@ export function BrokerStudioIaSellPropertyPage() {
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
-              <CardTitle className="text-xl text-[#050505]">Central de Operacao</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Central de Operação</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Painel para acompanhar o preparo comercial e revisar o plano consolidado antes da operacao.
+                Painel para acompanhar o preparo comercial e revisar o plano consolidado antes da operação.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <InfoMetric
-                  label="Preparacao comercial"
+                  label="Preparação comercial"
                   value={`${Math.round((availableCompletedCount / availableFlows.length) * 100)}%`}
-                  description="Percentual simulado dos fluxos disponiveis ja organizados."
+                  description="Percentual simulado dos fluxos disponíveis já organizados."
                 />
                 <InfoMetric
                   label="Materiais gerados"
@@ -566,30 +566,30 @@ export function BrokerStudioIaSellPropertyPage() {
                   description="Contagem de frentes comerciais consideradas no plano consolidado."
                 />
                 <InfoMetric
-                  label="Fluxos concluidos"
+                  label="Fluxos concluídos"
                   value={`${availableCompletedCount}`}
-                  description="Fluxos ja marcados como prontos dentro deste orquestrador."
+                  description="Fluxos já marcados como prontos dentro deste orquestrador."
                 />
                 <InfoMetric
                   label="Fluxos pendentes"
                   value={`${pendingFlowsCount}`}
-                  description="Itens ainda nao finalizados ou aguardando implementacao futura."
+                  description="Itens ainda não finalizados ou aguardando implementação futura."
                 />
                 <InfoMetric
-                  label="Ultima atualizacao"
-                  value={approvedVersion ? `Versao ${approvedVersion}` : resultVersion > 0 ? `Versao ${resultVersion}` : buildLastUpdateLabel(availableCompletedCount)}
-                  description="Referencia da ultima versao gerada ou aprovada dentro do orquestrador."
+                  label="Última atualização"
+                  value={approvedVersion ? `Versão ${approvedVersion}` : resultVersion > 0 ? `Versão ${resultVersion}` : buildLastUpdateLabel(availableCompletedCount)}
+                  description="Referência da última versão gerada ou aprovada dentro do orquestrador."
                 />
               </div>
 
               <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Validacao da operacao comercial</p>
+                    <p className="text-base font-semibold text-[#050505]">Validação da operação comercial</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                       {isReadyForOperation
-                        ? "Todos os fluxos disponiveis ja foram concluidos. O imovel pode avancar para prontidao comercial."
-                        : "Conclua os fluxos disponiveis e aprove o plano comercial para liberar a etapa final de prontidao."}
+                        ? "Todos os fluxos disponíveis já foram concluídos. O imóvel pode avançar para prontidão comercial."
+                        : "Conclua os fluxos disponíveis e aprove o plano comercial para liberar a etapa final de prontidão."}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -600,7 +600,7 @@ export function BrokerStudioIaSellPropertyPage() {
                       disabled={!selectedProperty || isSubmitting}
                       className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:opacity-60"
                     >
-                      {isSubmitting ? "Gerando plano" : resultVersion > 0 ? "Gerar nova versao" : "Gerar plano"}
+                      {isSubmitting ? "Gerando plano" : resultVersion > 0 ? "Gerar nova versão" : "Gerar plano"}
                     </Button>
                     <Button
                       type="button"
@@ -608,7 +608,7 @@ export function BrokerStudioIaSellPropertyPage() {
                       disabled={!isReadyForOperation}
                       className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                     >
-                      Validar prontidao
+                      Validar prontidão
                       <ArrowRight className="size-4" />
                     </Button>
                   </div>
@@ -624,20 +624,20 @@ export function BrokerStudioIaSellPropertyPage() {
               {isSubmitting ? (
                 <EmeLoading
                   message="Gerando plano comercial com IA"
-                  description="Consolidando estrategia de venda, publico, campanha principal, cronograma e proximas acoes para este imovel."
+                  description="Consolidando estratégia de venda, público, campanha principal, cronograma e próximas ações para este imóvel."
                   className="min-h-[20rem] border border-[#009b3a]/18 bg-[#eef9f1]"
                 />
               ) : plan ? (
                 <div className="grid gap-4">
                   <div className="grid gap-4 xl:grid-cols-2">
                     <PlanPreviewCard
-                      title="Estrategia de venda"
+                      title="Estratégia de venda"
                       approved={approvedBlocks.strategy}
                       onApprove={() => togglePlanBlock("strategy")}
                       content={<ParagraphCard text={plan.salesStrategy} />}
                     />
                     <PlanPreviewCard
-                      title="Publico recomendado"
+                      title="Público recomendado"
                       approved={approvedBlocks.audience}
                       onApprove={() => togglePlanBlock("audience")}
                       content={<ParagraphCard text={plan.recommendedAudience} />}
@@ -673,16 +673,16 @@ export function BrokerStudioIaSellPropertyPage() {
                       content={<ParagraphCard text={plan.whatsappText} />}
                     />
                     <PlanPreviewCard
-                      title="Cronograma de divulgacao"
+                      title="Cronograma de divulgação"
                       approved={approvedBlocks.timeline}
                       onApprove={() => togglePlanBlock("timeline")}
                       content={<ListCard items={plan.timeline} prefix="Etapa" />}
                     />
                     <PlanPreviewCard
-                      title="Proximas acoes"
+                      title="Próximas ações"
                       approved={approvedBlocks.nextActions}
                       onApprove={() => togglePlanBlock("nextActions")}
-                      content={<ListCard items={plan.nextActions} prefix="Acao" />}
+                      content={<ListCard items={plan.nextActions} prefix="Ação" />}
                     />
                   </div>
 
@@ -701,12 +701,12 @@ export function BrokerStudioIaSellPropertyPage() {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-base font-semibold text-[#050505]">
-                          {approvedVersion === resultVersion && resultVersion > 0 ? "Plano comercial aprovado" : "Plano comercial pronto para revisao"}
+                          {approvedVersion === resultVersion && resultVersion > 0 ? "Plano comercial aprovado" : "Plano comercial pronto para revisão"}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                           {approvedVersion === resultVersion && resultVersion > 0
-                            ? `A versao ${approvedVersion} foi aprovada para conduzir a operacao comercial deste imovel.`
-                            : "Revise o plano consolidado, aprove os blocos desejados e finalize ou gere outra versao."}
+                            ? `A versão ${approvedVersion} foi aprovada para conduzir a operação comercial deste imóvel.`
+                            : "Revise o plano consolidado, aprove os blocos desejados e finalize ou gere outra versão."}
                         </p>
                         <p className="mt-2 text-sm text-[#6B7280]">{approvedBlocksCount} de 8 blocos revisados</p>
                       </div>
@@ -727,7 +727,7 @@ export function BrokerStudioIaSellPropertyPage() {
                           onClick={generateAnotherVersion}
                           className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                         >
-                          Gerar nova versao
+                          Gerar nova versão
                         </Button>
                       </div>
                     </div>
@@ -737,9 +737,9 @@ export function BrokerStudioIaSellPropertyPage() {
 
               {currentStep === "readiness" ? (
                 <div className="rounded-[1.35rem] border border-[#009b3a]/22 bg-[#eef9f1] p-5">
-                  <p className="text-lg font-semibold text-[#050505]">Este imovel esta pronto para iniciar sua operacao comercial.</p>
+                  <p className="text-lg font-semibold text-[#050505]">Este imóvel está pronto para iniciar sua operação comercial.</p>
                   <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                    Todos os fluxos disponiveis do Studio IA foram organizados para este ativo nesta simulacao do orquestrador.
+                    Todos os fluxos disponíveis do Studio IA foram organizados para este ativo nesta simulação do orquestrador.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
@@ -765,9 +765,9 @@ export function BrokerStudioIaSellPropertyPage() {
               ) : (
                 <div className="rounded-[1.35rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-6 py-10 text-center">
                   <Clock3 className="mx-auto size-8 text-[#8B95A1]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Prontidao comercial em preparacao</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Prontidão comercial em preparação</p>
                   <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                    Conclua as acoes disponiveis do checklist e aprove o plano comercial para liberar a mensagem final deste orquestrador.
+                    Conclua as ações disponíveis do checklist e aprove o plano comercial para liberar a mensagem final deste orquestrador.
                   </p>
                 </div>
               )}
@@ -825,7 +825,7 @@ function CommercialActionCard({
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold text-[#050505]">{flow.title}</p>
               <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${completed ? "bg-[#eef9f1] text-[#009b3a]" : flow.isAvailable ? "bg-[#f4f6f8] text-[#4B5563]" : "bg-[#f2f4f7] text-[#667085]"}`}>
-                {completed ? "Concluido" : flow.isAvailable ? "Disponivel" : "Em breve"}
+                {completed ? "Concluído" : flow.isAvailable ? "Disponível" : "Em breve"}
               </span>
             </div>
             <p className="mt-1 text-sm leading-6 text-[#6B7280]">{flow.description}</p>
@@ -858,7 +858,7 @@ function CommercialActionCard({
               onClick={onToggleComplete}
               className={`h-10 rounded-xl px-4 text-sm font-semibold ${completed ? "border border-black/[0.06] bg-white text-[#4B5563] hover:bg-white hover:text-[#050505]" : "bg-[#009b3a] text-white hover:bg-[#008633]"}`}
             >
-              {completed ? "Marcar pendente" : "Marcar concluido"}
+              {completed ? "Marcar pendente" : "Marcar concluído"}
             </Button>
           ) : null}
         </div>
@@ -938,8 +938,8 @@ function ListCard({ items, prefix }: { items: string[]; prefix: string }) {
 
 function buildLastUpdateLabel(completedCount: number) {
   if (completedCount >= 2) return "Agora mesmo"
-  if (completedCount === 1) return "Ha poucos minutos"
-  return "Aguardando preparacao"
+  if (completedCount === 1) return "Há poucos minutos"
+  return "Aguardando preparação"
 }
 
 function stepOrder(step: StudioStep) {
@@ -955,23 +955,23 @@ function buildStatusItems(step: StudioStep, isReadyForOperation: boolean, isPlan
       title: "Etapa atual",
       value:
         step === "selection"
-          ? "Selecao"
+          ? "Seleção"
           : step === "checklist"
             ? "Checklist"
             : step === "operation"
-              ? "Central de Operacao"
-              : "Prontidao comercial",
-      description: "O Studio organiza a venda do imovel em uma sequencia unica para futura automacao completa.",
+              ? "Central de Operação"
+              : "Prontidão comercial",
+      description: "O Studio organiza a venda do imóvel em uma sequência única para futura automação completa.",
     },
     {
-      title: "Integracoes",
+      title: "Integrações",
       value: "OpenAI + fluxos existentes",
-      description: "O plano comercial e gerado no servidor com OpenAI e considera os fluxos do Studio IA ja implementados.",
+      description: "O plano comercial é gerado no servidor com OpenAI e considera os fluxos do Studio IA já implementados.",
     },
     {
-      title: "Prontidao",
+      title: "Prontidão",
       value: isReadyForOperation ? "Liberada" : isPlanApproved ? "Plano aprovado" : "Em andamento",
-      description: "A etapa final e habilitada apenas quando todos os fluxos disponiveis forem concluidos e o plano for aprovado.",
+      description: "A etapa final é habilitada apenas quando todos os fluxos disponíveis forem concluídos e o plano for aprovado.",
     },
   ]
 }
@@ -984,12 +984,12 @@ function EmptyPropertiesState() {
           <ImagePlus className="size-4.5" />
         </div>
         <div>
-          <p className="font-semibold text-[#050505]">Nenhum imovel disponivel</p>
+          <p className="font-semibold text-[#050505]">Nenhum imóvel disponível</p>
           <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-            Cadastre ou publique um imovel para iniciar este fluxo do Studio IA.
+            Cadastre ou publique um imóvel para iniciar este fluxo do Studio IA.
           </p>
           <Button asChild className="mt-3 h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
-            <Link href="/corretor/novo-imovel">Cadastrar imovel</Link>
+            <Link href="/corretor/novo-imovel">Cadastrar imóvel</Link>
           </Button>
         </div>
       </div>

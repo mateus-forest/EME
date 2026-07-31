@@ -269,7 +269,7 @@ export function EmeMobileExperience({
               >
                 <button
                   type="button"
-                  aria-label={`Abrir modulo ${module.name}`}
+                  aria-label={`Abrir módulo ${module.name}`}
                   onClick={(event) => setSelected({ id: module.id, el: event.currentTarget })}
                   className="block rounded-[28px] text-left"
                 >
@@ -346,7 +346,7 @@ function MobileHeader({
     >
       <div className="pointer-events-auto flex items-start justify-between gap-3 px-4 py-3.5">
         <p className="max-w-[52%] text-balance text-[11px] font-normal italic leading-snug tracking-[0.02em] text-graphite">
-          Sistema Operacional do Corretor de Imoveis
+          Sistema Operacional do Corretor de Imóveis
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <button

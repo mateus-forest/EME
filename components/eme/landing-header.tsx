@@ -14,7 +14,7 @@ export function LandingHeader({
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 sm:px-12 sm:py-9">
         <p className="max-w-[62%] text-balance text-[12px] font-normal italic leading-snug tracking-[0.03em] text-graphite sm:max-w-none sm:whitespace-nowrap sm:text-[14px]">
-          Sistema Operacional do Corretor de Imoveis
+          Sistema Operacional do Corretor de Imóveis
         </p>
 
         <div
@@ -39,7 +39,7 @@ export function LandingHeader({
             tabIndex={authOpen ? -1 : undefined}
             className="eme-gradient hidden whitespace-nowrap rounded-full px-5 py-2 text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_10px_24px_-12px_rgba(28,120,60,0.6)] transition-[transform,filter] hover:-translate-y-0.5 sm:inline-block"
           >
-            Comecar agora
+            Começar agora
           </button>
         </div>
       </div>

@@ -51,11 +51,11 @@ const goalOptions: CaptureGoal[] = [
 const ownerProfileOptions: OwnerProfile[] = ["Proprietario particular", "Investidor", "Construtora", "Incorporadora"]
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
-  { id: "selection", label: "Selecao" },
-  { id: "configuration", label: "Configuracao" },
+  { id: "selection", label: "Seleção" },
+  { id: "configuration", label: "Configuração" },
   { id: "processing", label: "Processamento" },
   { id: "result", label: "Resultado" },
-  { id: "approval", label: "Aprovacao" },
+  { id: "approval", label: "Aprovação" },
 ]
 
 export function BrokerStudioIaOwnersPage() {
@@ -179,7 +179,7 @@ export function BrokerStudioIaOwnersPage() {
       const data = (await response.json().catch(() => null)) as (OwnerStrategyPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
-        throw new Error(data?.error || "Nao foi possivel gerar a estrategia para captar proprietarios.")
+        throw new Error(data?.error || "Não foi possível gerar a estratégia para captar proprietários.")
       }
 
       setPreview({
@@ -207,7 +207,7 @@ export function BrokerStudioIaOwnersPage() {
       setResultVersion(nextVersion)
       setCurrentStep("result")
     } catch (caughtError) {
-      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a estrategia.")
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Não foi possível gerar a estratégia.")
       setCurrentStep("configuration")
     } finally {
       setIsSubmitting(false)
@@ -260,8 +260,8 @@ export function BrokerStudioIaOwnersPage() {
   const visualSummary = useMemo(
     () => [
       { label: "Objetivo", value: selectedGoal },
-      { label: "Regiao", value: city && neighborhood ? `${neighborhood}, ${city}` : "Nao definida" },
-      { label: "Versao", value: resultVersion > 0 ? `${resultVersion}` : "Ainda nao gerada" },
+      { label: "Região", value: city && neighborhood ? `${neighborhood}, ${city}` : "Não definida" },
+      { label: "Versão", value: resultVersion > 0 ? `${resultVersion}` : "Ainda não gerada" },
     ],
     [city, neighborhood, resultVersion, selectedGoal],
   )
@@ -276,9 +276,9 @@ export function BrokerStudioIaOwnersPage() {
                 <Camera className="size-3.5" />
                 Fluxo Studio IA
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Captar proprietarios</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Captar proprietários</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Defina o objetivo de captacao, configure a regiao de atuacao e gere uma estrategia real completa para abordar proprietarios com mais precisao.
+                Defina o objetivo de captação, configure a região de atuação e gere uma estratégia real completa para abordar proprietários com mais precisão.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -322,7 +322,7 @@ export function BrokerStudioIaOwnersPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio reaproveita a mesma arquitetura em etapas e agora gera o conteudo real no servidor para este fluxo.
+                O Studio reaproveita a mesma arquitetura em etapas e agora gera o conteúdo real no servidor para este fluxo.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -332,9 +332,9 @@ export function BrokerStudioIaOwnersPage() {
                     <Camera className="size-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Captar proprietarios</p>
+                    <p className="text-base font-semibold text-[#050505]">Captar proprietários</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      Estruture a abordagem comercial para aumentar captacao de imoveis de acordo com objetivo, regiao e perfil do proprietario.
+                      Estruture a abordagem comercial para aumentar captação de imóveis de acordo com objetivo, região e perfil do proprietário.
                     </p>
                   </div>
                 </div>
@@ -362,13 +362,13 @@ export function BrokerStudioIaOwnersPage() {
                     disabled={!canAdvanceToConfiguration}
                     className="mt-4 h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                   >
-                    Avancar para configuracao
+                    Avançar para configuração
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
 
                 <div className={`rounded-[1.25rem] border p-4 ${currentStep === "selection" ? "border-black/[0.06] bg-[#f6f7f4] opacity-65" : "border-black/[0.06] bg-[#fbfbf8]"}`}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuracao</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuração</p>
 
                   <div className="mt-3 grid gap-4">
                     <div className="grid gap-3 md:grid-cols-3">
@@ -391,7 +391,7 @@ export function BrokerStudioIaOwnersPage() {
                         />
                       </label>
                       <label className="grid gap-2 text-sm text-[#050505]">
-                        <span className="font-medium">Raio de atuacao</span>
+                        <span className="font-medium">Raio de atuação</span>
                         <input
                           value={operationRadius}
                           onChange={(event) => setOperationRadius(event.target.value)}
@@ -402,7 +402,7 @@ export function BrokerStudioIaOwnersPage() {
                     </div>
 
                     <div>
-                      <p className="text-sm font-medium text-[#050505]">Perfil do proprietario</p>
+                      <p className="text-sm font-medium text-[#050505]">Perfil do proprietário</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {ownerProfileOptions.map((profile) => (
                           <button
@@ -423,7 +423,7 @@ export function BrokerStudioIaOwnersPage() {
                       disabled={!canProcess}
                       className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                     >
-                      {isSubmitting ? "Gerando estrategia" : "Gerar estrategia"}
+                      {isSubmitting ? "Gerando estratégia" : "Gerar estratégia"}
                       <ArrowRight className="size-4" />
                     </Button>
                     {generationError ? (
@@ -448,10 +448,10 @@ export function BrokerStudioIaOwnersPage() {
               ))}
 
               <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Aprovacoes da estrategia</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Aprovações da estratégia</p>
                 <p className="mt-2 text-sm font-semibold text-[#050505]">{approvedBlocksCount} de 8 blocos revisados</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                  Cada bloco da estrategia pode ser aprovado individualmente para manter o mesmo padrao de revisao do Studio IA.
+                  Cada bloco da estratégia pode ser aprovado individualmente para manter o mesmo padrão de revisão do Studio IA.
                 </p>
               </div>
             </CardContent>
@@ -461,15 +461,15 @@ export function BrokerStudioIaOwnersPage() {
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
-              <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Resultado e aprovação</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Revise a estrategia gerada, aprove cada bloco e finalize a versao quando estiver pronta.
+                Revise a estratégia gerada, aprove cada bloco e finalize a versão quando estiver pronta.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
                 <EmeLoading
-                  message="Gerando estrategia com IA"
+                  message="Gerando estratégia com IA"
                   description={`Montando a abordagem para ${selectedOwnerProfile.toLowerCase()} com foco em ${selectedGoal.toLowerCase()}.`}
                   className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
                 />
@@ -477,10 +477,10 @@ export function BrokerStudioIaOwnersPage() {
                 <div className="grid gap-4">
                   <div className="grid gap-4 xl:grid-cols-2">
                     <PreviewCard
-                      title="Publico recomendado"
+                      title="Público recomendado"
                       approved={approvedBlocks.audience}
                       onApprove={() => toggleBlockApproval("audience")}
-                      content={<TextBlock icon={<Camera className="size-4.5" />} title={preview?.audience ?? "--"} description="Perfil de proprietario com maior aderencia para a captacao definida." />}
+                      content={<TextBlock icon={<Camera className="size-4.5" />} title={preview?.audience ?? "--"} description="Perfil de proprietário com maior aderência para a captação definida." />}
                     />
 
                     <PreviewCard
@@ -491,7 +491,7 @@ export function BrokerStudioIaOwnersPage() {
                     />
 
                     <PreviewCard
-                      title="Texto para anuncio"
+                      title="Texto para anúncio"
                       approved={approvedBlocks.adCopy}
                       onApprove={() => toggleBlockApproval("adCopy")}
                       content={<ParagraphCard text={preview?.adCopy ?? "--"} />}
@@ -505,7 +505,7 @@ export function BrokerStudioIaOwnersPage() {
                     />
 
                     <PreviewCard
-                      title="Roteiro para video"
+                      title="Roteiro para vídeo"
                       approved={approvedBlocks.video}
                       onApprove={() => toggleBlockApproval("video")}
                       content={
@@ -538,7 +538,7 @@ export function BrokerStudioIaOwnersPage() {
                     />
 
                     <PreviewCard
-                      title="Cronograma de divulgacao"
+                      title="Cronograma de divulgação"
                       approved={approvedBlocks.timeline}
                       onApprove={() => toggleBlockApproval("timeline")}
                       content={
@@ -555,12 +555,12 @@ export function BrokerStudioIaOwnersPage() {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-base font-semibold text-[#050505]">
-                          {currentStep === "approval" ? "Estrategia aprovada com sucesso" : "Estrategia pronta para revisao"}
+                          {currentStep === "approval" ? "Estratégia aprovada com sucesso" : "Estratégia pronta para revisão"}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                           {currentStep === "approval"
-                            ? `A estrategia versao ${approvedVersion ?? resultVersion} foi aprovada para ${selectedOwnerProfile.toLowerCase()} em ${city}.`
-                            : "Revise os blocos da estrategia, aprove os itens desejados e finalize ou gere outra versao."}
+                            ? `A estratégia versão ${approvedVersion ?? resultVersion} foi aprovada para ${selectedOwnerProfile.toLowerCase()} em ${city}.`
+                            : "Revise os blocos da estratégia, aprove os itens desejados e finalize ou gere outra versão."}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -571,7 +571,7 @@ export function BrokerStudioIaOwnersPage() {
                               onClick={approveStrategy}
                               className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]"
                             >
-                              Aprovar estrategia
+                              Aprovar estratégia
                               <CheckCircle2 className="size-4" />
                             </Button>
                             <Button
@@ -580,7 +580,7 @@ export function BrokerStudioIaOwnersPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar nova versao
+                              Gerar nova versão
                               <RefreshCcw className="size-4" />
                             </Button>
                             <Button
@@ -602,7 +602,7 @@ export function BrokerStudioIaOwnersPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar nova versao
+                              Gerar nova versão
                               <RefreshCcw className="size-4" />
                             </Button>
                             <Button
@@ -624,9 +624,9 @@ export function BrokerStudioIaOwnersPage() {
               ) : (
                 <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-6 text-center">
                   <Camera className="size-8 text-[#8B95A1]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma estrategia gerada ainda</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma estratégia gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao desta estrategia.
+                    Avance pelas etapas de seleção e configuração para iniciar a geração desta estratégia.
                   </p>
                 </div>
               )}
@@ -746,25 +746,25 @@ function buildStatusItems(step: StudioStep) {
       title: "Etapa atual",
       value:
         step === "selection"
-          ? "Selecao"
+          ? "Seleção"
           : step === "configuration"
-            ? "Configuracao"
+            ? "Configuração"
             : step === "processing"
-              ? "Geracao com IA"
+              ? "Geração com IA"
               : step === "result"
                 ? "Resultado"
-                : "Aprovacao",
-      description: "O Studio reaproveita a mesma jornada por etapas para manter consistencia e permitir novas versoes da estrategia.",
+                : "Aprovação",
+      description: "O Studio reaproveita a mesma jornada por etapas para manter consistência e permitir novas versões da estratégia.",
     },
     {
-      title: "Integracoes",
+      title: "Integrações",
       value: "OpenAI",
-      description: "Este fluxo gera a estrategia real no servidor com OpenAI, sem expor chaves no cliente.",
+      description: "Este fluxo gera a estratégia real no servidor com OpenAI, sem expor chaves no cliente.",
     },
     {
-      title: "Persistencia",
+      title: "Persistência",
       value: "Sem alterar banco",
-      description: "As aprovacoes e versoes desta estrategia continuam apenas na sessao atual, preservando a arquitetura do portal.",
+      description: "As aprovações e versões desta estratégia continuam apenas na sessão atual, preservando a arquitetura do portal.",
     },
   ]
 }

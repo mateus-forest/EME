@@ -46,7 +46,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -54,7 +54,7 @@ export async function GET() {
 
   const profile = buildBrokerProfile(user)
   if (!profile) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   const response = NextResponse.json({ profile })
@@ -66,14 +66,14 @@ export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   const brokerId = user.broker.id
@@ -93,11 +93,11 @@ export async function PATCH(request: NextRequest) {
     const newPin = normalizePin(body?.newPin)
 
     if (!name || !email || !phone || !creci) {
-      return NextResponse.json({ error: "Nome, email, telefone e CRECI sao obrigatorios." }, { status: 400 })
+      return NextResponse.json({ error: "Nome, email, telefone e CRECI são obrigatórios." }, { status: 400 })
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Informe um email valido." }, { status: 400 })
+      return NextResponse.json({ error: "Informe um email válido." }, { status: 400 })
     }
 
     const needsPasswordConfirmation = Boolean(currentPassword || newPassword || pinAction)
@@ -106,16 +106,16 @@ export async function PATCH(request: NextRequest) {
 
     if (needsPasswordConfirmation) {
       if (!currentPassword) {
-        return NextResponse.json({ error: "Informe sua senha atual para confirmar esta alteracao." }, { status: 400 })
+        return NextResponse.json({ error: "Informe sua senha atual para confirmar esta alteração." }, { status: 400 })
       }
 
       if (!user.passwordHash) {
-        return NextResponse.json({ error: "Nao foi possivel validar a senha atual." }, { status: 400 })
+        return NextResponse.json({ error: "Não foi possível validar a senha atual." }, { status: 400 })
       }
 
       const passwordMatches = await compare(currentPassword, user.passwordHash)
       if (!passwordMatches) {
-        return NextResponse.json({ error: "A senha atual esta incorreta." }, { status: 400 })
+        return NextResponse.json({ error: "A senha atual está incorreta." }, { status: 400 })
       }
     }
 
@@ -126,13 +126,13 @@ export async function PATCH(request: NextRequest) {
     if (pinAction === "set") {
       if (user.pinSchemaAvailable === false) {
         return NextResponse.json(
-          { error: "O PIN ainda nao pode ser configurado nesta base porque a migration necessaria nao foi aplicada." },
+          { error: "O PIN ainda não pode ser configurado nesta base porque a migration necessária não foi aplicada." },
           { status: 503 },
         )
       }
 
       if (!isValidPin(newPin)) {
-        return NextResponse.json({ error: "Informe um PIN valido com 4 digitos." }, { status: 400 })
+        return NextResponse.json({ error: "Informe um PIN válido com 4 dígitos." }, { status: 400 })
       }
 
       let usersWithPin: Array<{ pinHash: string | null }> = []
@@ -150,7 +150,7 @@ export async function PATCH(request: NextRequest) {
       } catch (error) {
         if (isPrismaSchemaMismatch(error)) {
           return NextResponse.json(
-            { error: "O PIN ainda nao pode ser configurado nesta base porque a migration necessaria nao foi aplicada." },
+            { error: "O PIN ainda não pode ser configurado nesta base porque a migration necessária não foi aplicada." },
             { status: 503 },
           )
         }
@@ -160,7 +160,7 @@ export async function PATCH(request: NextRequest) {
 
       for (const candidate of usersWithPin) {
         if (await comparePin(newPin, candidate.pinHash)) {
-          return NextResponse.json({ error: "Este PIN ja esta em uso. Escolha outro codigo de 4 digitos." }, { status: 400 })
+          return NextResponse.json({ error: "Este PIN já está em uso. Escolha outro código de 4 dígitos." }, { status: 400 })
         }
       }
 
@@ -170,13 +170,13 @@ export async function PATCH(request: NextRequest) {
     if (pinAction === "remove") {
       if (user.pinSchemaAvailable === false) {
         return NextResponse.json(
-          { error: "O PIN ainda nao pode ser removido nesta base porque a migration necessaria nao foi aplicada." },
+          { error: "O PIN ainda não pode ser removido nesta base porque a migration necessária não foi aplicada." },
           { status: 503 },
         )
       }
 
       if (!user.pinHash) {
-        return NextResponse.json({ error: "Nenhum PIN esta configurado para esta conta." }, { status: 400 })
+        return NextResponse.json({ error: "Nenhum PIN está configurado para esta conta." }, { status: 400 })
       }
 
       if (!isValidPin(currentPin)) {
@@ -185,7 +185,7 @@ export async function PATCH(request: NextRequest) {
 
       const currentPinMatches = await comparePin(currentPin, user.pinHash)
       if (!currentPinMatches) {
-        return NextResponse.json({ error: "O PIN atual esta incorreto." }, { status: 400 })
+        return NextResponse.json({ error: "O PIN atual está incorreto." }, { status: 400 })
       }
 
       pinHash = null
@@ -200,7 +200,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     if (emailOwner) {
-      return NextResponse.json({ error: "Ja existe uma conta com este email." }, { status: 400 })
+      return NextResponse.json({ error: "Já existe uma conta com este email." }, { status: 400 })
     }
 
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
@@ -250,7 +250,7 @@ export async function PATCH(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de conta esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de conta está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

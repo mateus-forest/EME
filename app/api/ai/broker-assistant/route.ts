@@ -35,20 +35,20 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   try {
     const brokerCredits = await getBrokerCredits(user.broker.id)
     if (!brokerCredits) {
-      return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+      return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
     }
 
     const response = NextResponse.json(creditsResponse(brokerCredits))
@@ -57,12 +57,12 @@ export async function GET() {
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico do Assessor EME esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço do Assessor EME está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel carregar os creditos do Assessor EME." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível carregar os créditos do Assessor EME." }, { status: 500 })
   }
 }
 
@@ -70,14 +70,14 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   try {
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!updatedBroker) {
-        return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+        return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
       }
 
       await prisma.aiAssistantInteraction.create({
@@ -170,11 +170,11 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico do Assessor EME esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço do Assessor EME está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Nao foi possivel acionar o Assessor EME agora." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível acionar o Assessor EME agora." }, { status: 500 })
   }
 }

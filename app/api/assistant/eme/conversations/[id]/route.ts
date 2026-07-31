@@ -108,11 +108,11 @@ function mapConversationMessages(rows: Array<{
 
 async function getConversationOrError(id: string) {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return { error: error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 }), user: null, conversation: null }
+  if (error || !user) return { error: error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 }), user: null, conversation: null }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return { error: forbidden, user: null, conversation: null }
-  if (!user.broker) return { error: NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 }), user: null, conversation: null }
+  if (!user.broker) return { error: NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 }), user: null, conversation: null }
 
   const conversation = await prisma.brokerDocument.findFirst({
     where: {
@@ -125,7 +125,7 @@ async function getConversationOrError(id: string) {
   })
 
   if (!conversation) {
-    return { error: NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 }), user: null, conversation: null }
+    return { error: NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 }), user: null, conversation: null }
   }
 
   return { error: null, user, conversation }
@@ -138,7 +138,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const resolved = await getConversationOrError(id)
     if (resolved.error) return resolved.error
     if (!resolved.conversation || !resolved.user?.broker) {
-      return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
     }
 
     const rows = await prisma.emeMessage.findMany({
@@ -171,9 +171,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de conversas indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel abrir a conversa." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível abrir a conversa." }, { status: 500 })
   }
 }
 
@@ -184,14 +184,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const resolved = await getConversationOrError(id)
     if (resolved.error) return resolved.error
     if (!resolved.conversation) {
-      return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
     }
 
     const body = await request.json().catch(() => null)
     const title = cleanCosConversationTitle(body?.title)
 
     if (!title) {
-      return NextResponse.json({ error: "Informe um titulo para a conversa." }, { status: 400 })
+      return NextResponse.json({ error: "Informe um título para a conversa." }, { status: 400 })
     }
 
     const conversation = await prisma.brokerDocument.update({
@@ -203,9 +203,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ conversation: serializeConversation(conversation) })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de conversas indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel renomear a conversa." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível renomear a conversa." }, { status: 500 })
   }
 }
 
@@ -216,7 +216,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const resolved = await getConversationOrError(id)
     if (resolved.error) return resolved.error
     if (!resolved.conversation || !resolved.user?.broker) {
-      return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
     }
 
     await prisma.$transaction([
@@ -248,8 +248,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ deleted: true })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de conversas indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel excluir a conversa." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível excluir a conversa." }, { status: 500 })
   }
 }

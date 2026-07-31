@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const currentDevice = await resolveTrustedDevice(request)

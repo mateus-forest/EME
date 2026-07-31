@@ -76,7 +76,7 @@ export function AdminAgenciesPage() {
       setAgencies(agencies.map((current) => (current.id === agency.id ? updated : current)))
       setSelectedAgency((current) => (current?.id === agency.id ? updated : current))
       setEditingAgency((current) => (current?.id === agency.id ? updated : current))
-      setFeedback(`${updated.name} agora est? ${updated.status.toLowerCase()}.`)
+      setFeedback(`${updated.name} agora está ${updated.status.toLowerCase()}.`)
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o status da imobiliária.")
     }
@@ -100,7 +100,7 @@ export function AdminAgenciesPage() {
         setAgencies(agencies.map((current) => (current.id === agency.id ? result.item! : current)))
         setSelectedAgency((current) => (current?.id === agency.id ? result.item! : current))
         setEditingAgency((current) => (current?.id === agency.id ? result.item! : current))
-        setFeedback(`${result.item.name} possui v?nculos e foi inativada.`)
+        setFeedback(`${result.item.name} possui vínculos e foi inativada.`)
       }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível excluir a imobiliária.")
@@ -113,7 +113,7 @@ export function AdminAgenciesPage() {
       setAgencies(agencies.map((current) => (current.id === agency.id ? updated : current)))
       setEditingAgency(null)
       setSelectedAgency(updated)
-      setFeedback("Imobili?ria atualizada com sucesso.")
+      setFeedback("Imobiliária atualizada com sucesso.")
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar a imobiliária.")
     }

@@ -80,35 +80,35 @@ export const EME_EXTRA_PACKAGES = {
   credit_100: {
     key: "credit_100",
     type: "credit",
-    label: "+250 Operacoes Inteligentes",
+    label: "+250 Operações Inteligentes",
     quantity: 250,
     priceCents: 2900,
   },
   credit_300: {
     key: "credit_300",
     type: "credit",
-    label: "+750 Operacoes Inteligentes",
+    label: "+750 Operações Inteligentes",
     quantity: 750,
     priceCents: 6900,
   },
   credit_800: {
     key: "credit_800",
     type: "credit",
-    label: "+1.500 Operacoes Inteligentes",
+    label: "+1.500 Operações Inteligentes",
     quantity: 1500,
     priceCents: 11900,
   },
   property_50: {
     key: "property_50",
     type: "property",
-    label: "+250 imoveis ativos",
+    label: "+250 imóveis ativos",
     quantity: 250,
     priceCents: 4900,
   },
   property_200: {
     key: "property_200",
     type: "property",
-    label: "+500 imoveis ativos",
+    label: "+500 imóveis ativos",
     quantity: 500,
     priceCents: 8900,
   },
@@ -144,10 +144,10 @@ export const EME_CREDIT_COSTS = {
 } as const satisfies Record<EmeCreditActionKey, number>
 
 export const EME_PROPERTY_LIMIT_MESSAGE =
-  "Voce atingiu o limite de imoveis do seu plano. Faca upgrade ou compre um pacote de imoveis extras para continuar publicando."
+  "Você atingiu o limite de imóveis do seu plano. Faça upgrade ou compre um pacote de imóveis extras para continuar publicando."
 
 export const EME_INSUFFICIENT_CREDITS_MESSAGE =
-  "Creditos IA insuficientes. Compre um pacote de creditos ou aguarde a renovacao do seu plano."
+  "Créditos IA insuficientes. Compre um pacote de créditos ou aguarde a renovação do seu plano."
 
 export function normalizeEmePlanKey(value: unknown): EmePlanKey {
   return value === "pro" || value === "growth" || value === "scale" ? value : "free"

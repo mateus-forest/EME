@@ -15,13 +15,13 @@ export async function POST(request: NextRequest) {
   const trustedDevice = await resolveTrustedDevice(request)
 
   if (!trustedDevice) {
-    const response = NextResponse.json({ error: "Dispositivo confiavel nao encontrado." }, { status: 401 })
+    const response = NextResponse.json({ error: "Dispositivo confiável não encontrado." }, { status: 401 })
     clearTrustedDeviceCookie(response)
     return response
   }
 
   if (!trustedDevice.biometricEnabled || trustedDevice.passkeyCredentials.length === 0) {
-    return NextResponse.json({ error: "Biometria nao configurada para este dispositivo." }, { status: 400 })
+    return NextResponse.json({ error: "Biometria não configurada para este dispositivo." }, { status: 400 })
   }
 
   const rpID = getRpIdFromHost(new URL(getOriginFromRequest(request)).host)

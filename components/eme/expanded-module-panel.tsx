@@ -145,7 +145,7 @@ export function ExpandedModulePanel({
             >
               <Image
                 src={module.mockup || "/placeholder.svg"}
-                alt={`Mockup do modulo ${module.name}`}
+                alt={`Mockup do módulo ${module.name}`}
                 fill
                 sizes="(max-width: 768px) 90vw, 45vw"
                 className="object-contain"

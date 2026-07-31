@@ -10,13 +10,13 @@ export async function DELETE(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const trustedDevice = await resolveTrustedDevice(request)
   if (!trustedDevice || trustedDevice.userId !== user.id) {
     return NextResponse.json(
-      { error: "Ative este dispositivo como confiavel antes de alterar a biometria." },
+      { error: "Ative este dispositivo como confiável antes de alterar a biometria." },
       { status: 400 },
     )
   }

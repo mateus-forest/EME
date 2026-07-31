@@ -127,7 +127,7 @@ export function AgencyPropertiesPage() {
 
   function handleOpenCreateChoice() {
     if (isPlanBlocked) {
-      setActionFeedback("Seu plano da imobiliaria nao esta ativo para criar novos imoveis. Ative ou regularize sua assinatura para continuar.")
+      setActionFeedback("Seu plano da imobiliária não está ativo para criar novos imóveis. Ative ou regularize sua assinatura para continuar.")
       return
     }
 
@@ -173,12 +173,12 @@ export function AgencyPropertiesPage() {
 
     const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
     if (!isXml) {
-      setImportFeedback("Envie um arquivo XML valido para revisar antes de importar.")
+      setImportFeedback("Envie um arquivo XML válido para revisar antes de importar.")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setImportFeedback("O XML deve ter ate 5 MB.")
+      setImportFeedback("O XML deve ter até 5 MB.")
       return
     }
 
@@ -192,9 +192,9 @@ export function AgencyPropertiesPage() {
       const result = await previewPropertyXml({ file })
       setXmlPreview(result.properties)
       setXmlSummary(result.summary)
-      setImportFeedback("XML analisado. Revise os imoveis antes de importar.")
+      setImportFeedback("XML analisado. Revise os imóveis antes de importar.")
     } catch (caughtError) {
-      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsAnalyzingXml(false)
     }
@@ -216,9 +216,9 @@ export function AgencyPropertiesPage() {
       const result = await previewPropertyXml({ sourceUrl: xmlSourceUrl.trim() })
       setXmlPreview(result.properties)
       setXmlSummary(result.summary)
-      setImportFeedback("XML analisado. Revise os imoveis antes de importar.")
+      setImportFeedback("XML analisado. Revise os imóveis antes de importar.")
     } catch (caughtError) {
-      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsAnalyzingXml(false)
     }
@@ -227,7 +227,7 @@ export function AgencyPropertiesPage() {
   async function handleConfirmAgencyXmlImport() {
     const importableProperties = xmlPreview.filter((property) => property.status !== "invalid")
     if (importableProperties.length === 0) {
-      setImportFeedback("Nenhum imovel esta pronto para importar.")
+      setImportFeedback("Nenhum imóvel está pronto para importar.")
       return
     }
 
@@ -237,10 +237,10 @@ export function AgencyPropertiesPage() {
     try {
       const result = await confirmPropertyXmlImport(importableProperties)
       setXmlReport(result.report)
-      setImportFeedback("Importacao finalizada.")
+      setImportFeedback("Importação finalizada.")
       await refreshProperties()
     } catch (caughtError) {
-      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel importar os imoveis.")
+      setImportFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível importar os imóveis.")
     } finally {
       setIsImportingXml(false)
     }
@@ -463,7 +463,7 @@ export function AgencyPropertiesPage() {
         description: editingProperty.description,
       })
 
-      if (!editingProperty.description.trim() || window.confirm("Substituir a descricao atual pela sugestao da IA?")) {
+      if (!editingProperty.description.trim() || window.confirm("Substituir a descrição atual pela sugestão da IA?")) {
         updateEditingField("description", generated.description)
       }
 
@@ -477,7 +477,7 @@ export function AgencyPropertiesPage() {
       const message = caughtError instanceof Error ? caughtError.message : ""
       setSaveFeedback(
         message.toLowerCase().includes("ia ainda")
-          ? "A geracao com IA ainda nao esta ativada."
+          ? "A geração com IA ainda não está ativada."
           : message || "Não foi possível gerar a descrição com IA.",
       )
     } finally {
@@ -651,9 +651,9 @@ export function AgencyPropertiesPage() {
 
       <Dialog open={isCreateChoiceOpen} onOpenChange={setIsCreateChoiceOpen}>
         <DialogContent showCloseButton className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.98),rgba(11,11,11,0.96))] p-6 text-white shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:max-w-4xl">
-          <DialogTitle className="text-2xl text-white">Como voce quer criar este imovel?</DialogTitle>
+          <DialogTitle className="text-2xl text-white">Como você quer criar este imóvel?</DialogTitle>
           <DialogDescription className="mt-2 text-white/55">
-            Escolha o melhor ponto de partida. Voce sempre podera revisar antes de publicar.
+            Escolha o melhor ponto de partida. Você sempre poderá revisar antes de publicar.
           </DialogDescription>
           {creationMode === "import" ? (
             <AgencyImportPanel
@@ -679,19 +679,19 @@ export function AgencyPropertiesPage() {
               <AgencyCreationOption
                 icon={Sparkles}
                 title="Criar com IA"
-                description="Envie fotos, audio ou uma descricao e gere um anuncio automaticamente."
+                description="Envie fotos, áudio ou uma descrição e gere um anúncio automaticamente."
                 onClick={() => void handleCreateProperty("ai")}
               />
               <AgencyCreationOption
                 icon={Keyboard}
                 title="Criar manualmente"
-                description="Ideal para anuncios ja existentes ou preenchimento completo."
+                description="Ideal para anúncios já existentes ou preenchimento completo."
                 onClick={() => void handleCreateProperty("manual")}
               />
               <AgencyCreationOption
                 icon={FileText}
-                title="Importar imoveis"
-                description="Importe imoveis via XML, planilha ou anuncio existente."
+                title="Importar imóveis"
+                description="Importe imóveis via XML, planilha ou anúncio existente."
                 onClick={() => {
                   setCreationMode("import")
                   setImportFeedback("")
@@ -815,7 +815,7 @@ export function AgencyPropertiesPage() {
                       </div>
                     ) : (
                       <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/55">
-                        Nenhuma imagem selecionada ainda para este imovel.
+                        Nenhuma imagem selecionada ainda para este imóvel.
                       </div>
                     )}
                   </section>
@@ -1046,13 +1046,13 @@ function AgencyXmlImportPreview({
     <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Preview da importacao</h3>
+          <h3 className="text-lg font-semibold text-white">Preview da importação</h3>
           <p className="mt-1 text-sm text-white/55">
-            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} invalidos
+            {summary.total} encontrados · {summary.ready} prontos · {summary.needsReview} para revisar · {summary.invalid} inválidos
           </p>
         </div>
         <Button type="button" onClick={() => void onConfirmImport()} disabled={isImporting || summary.ready + summary.needsReview === 0} className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60">
-          {isImporting ? "Importando..." : "Confirmar importacao"}
+          {isImporting ? "Importando..." : "Confirmar importação"}
         </Button>
       </div>
       <div className="grid gap-3">
@@ -1060,12 +1060,12 @@ function AgencyXmlImportPreview({
           <div key={`${property.title}-${index}`} className="rounded-[1rem] border border-white/[0.08] bg-black/20 p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-medium text-white">{property.title || "Imovel sem titulo"}</p>
-                <p className="mt-1 text-sm text-white/50">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localizacao pendente"}</p>
+                <p className="font-medium text-white">{property.title || "Imóvel sem título"}</p>
+                <p className="mt-1 text-sm text-white/50">{[property.neighborhood, property.city].filter(Boolean).join(", ") || "Localização pendente"}</p>
               </div>
               <AgencyImportStatusBadge status={property.status} />
             </div>
-            <p className="mt-2 text-sm text-white/70">{property.price || "Preco pendente"}</p>
+            <p className="mt-2 text-sm text-white/70">{property.price || "Preço pendente"}</p>
             {property.images.length > 0 ? <p className="mt-1 text-xs text-white/45">{property.images.length} imagem(ns) por URL</p> : null}
             {property.issues.length > 0 ? <p className="mt-2 text-xs text-white/45">Revisar: {property.issues.join(", ")}</p> : null}
           </div>
@@ -1082,7 +1082,7 @@ function AgencyXmlImportPreview({
 
 function AgencyImportStatusBadge({ status }: { status: ParsedXmlProperty["status"] }) {
   const label =
-    status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Invalido"
+    status === "ready" ? "Pronto para importar" : status === "needs_review" ? "Precisa revisar" : "Inválido"
 
   return (
     <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/70">
@@ -1100,7 +1100,7 @@ function AgencyDraftPreview({ property }: { property: EditableAgencyProperty }) 
       <h3 className="text-lg font-semibold text-white">Preview</h3>
       {!hasData ? (
         <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-sm text-white/55">
-          Preencha os dados para visualizar o anuncio.
+          Preencha os dados para visualizar o anúncio.
         </div>
       ) : (
         <div className="rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4">

@@ -8,7 +8,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
@@ -24,7 +24,7 @@ export async function GET() {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O dashboard de monetizacao esta indisponivel no momento. Verifique a conexao com o banco." },
+        { error: "O dashboard de monetização está indisponível no momento. Verifique a conexão com o banco." },
         { status: 503 },
       )
     }
@@ -33,6 +33,6 @@ export async function GET() {
       return prismaSchemaMismatchResponse("Dashboard de monetizacao")
     }
 
-    return NextResponse.json({ error: "Erro interno ao carregar o estudo de monetizacao." }, { status: 500 })
+    return NextResponse.json({ error: "Erro interno ao carregar o estudo de monetização." }, { status: 500 })
   }
 }

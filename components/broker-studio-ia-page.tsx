@@ -34,11 +34,11 @@ const styleOptions: StudioStyle[] = [
 ]
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
-  { id: "selection", label: "Selecao" },
-  { id: "configuration", label: "Configuracao" },
+  { id: "selection", label: "Seleção" },
+  { id: "configuration", label: "Configuração" },
   { id: "processing", label: "Processamento" },
   { id: "result", label: "Resultado" },
-  { id: "approval", label: "Aprovacao" },
+  { id: "approval", label: "Aprovação" },
 ]
 
 const studioGenerationResponseSchema = z.object({
@@ -118,7 +118,7 @@ export function BrokerStudioIaPage() {
   const canAdvanceToConfiguration = Boolean(selectedProperty)
   const canProcess = Boolean(selectedProperty && selectedImage) && !isSubmitting
   const selectedImageLabel = useMemo(() => {
-    if (!selectedProperty || !selectedImage) return "Imagem nao selecionada"
+    if (!selectedProperty || !selectedImage) return "Imagem não selecionada"
     const index = availableImages.findIndex((image) => image === selectedImage)
     return index >= 0 ? `Imagem ${index + 1}` : "Imagem selecionada"
   }, [availableImages, selectedImage, selectedProperty])
@@ -170,7 +170,7 @@ export function BrokerStudioIaPage() {
       const data = (await response.json().catch(() => null)) as { error?: string; imageUrl?: string; campaign?: StudioCampaignRecord } | null
 
       if (!response.ok || !data) {
-        throw new Error(data?.error || "Nao foi possivel gerar a imagem final do imovel.")
+        throw new Error(data?.error || "Não foi possível gerar a imagem final do imóvel.")
       }
 
       const parsed = studioGenerationResponseSchema.parse(data)
@@ -180,7 +180,7 @@ export function BrokerStudioIaPage() {
       setApprovedVersion(null)
       setCurrentStep("result")
     } catch (caughtError) {
-      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a imagem final do imovel.")
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Não foi possível gerar a imagem final do imóvel.")
       setCurrentStep("configuration")
     } finally {
       setIsSubmitting(false)
@@ -214,15 +214,15 @@ export function BrokerStudioIaPage() {
     () => [
       {
         label: "Objetivo",
-        value: "Transformar obra em imovel pronto",
+        value: "Transformar obra em imóvel pronto",
       },
       {
         label: "Estilo",
         value: selectedStyle,
       },
       {
-        label: "Versao",
-        value: resultVersion > 0 ? `${resultVersion}` : "Ainda nao gerada",
+        label: "Versão",
+        value: resultVersion > 0 ? `${resultVersion}` : "Ainda não gerada",
       },
     ],
     [resultVersion, selectedStyle],
@@ -238,9 +238,9 @@ export function BrokerStudioIaPage() {
                 <Sparkles className="size-3.5" />
                 Primeiro fluxo real
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Transformar obra em imovel pronto</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Transformar obra em imóvel pronto</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione um imovel, escolha a imagem de base, defina o estilo visual e acompanhe a geracao real ate a aprovacao do resultado.
+                Selecione um imóvel, escolha a imagem de base, defina o estilo visual e acompanhe a geração real até a aprovação do resultado.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -294,7 +294,7 @@ export function BrokerStudioIaPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio fica concentrado neste unico fluxo para manter a implementacao inicial enxuta.
+                O Studio fica concentrado neste único fluxo para manter a implementação inicial enxuta.
               </p>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -304,9 +304,9 @@ export function BrokerStudioIaPage() {
                     <Home className="size-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Transformar obra em imovel pronto</p>
+                    <p className="text-base font-semibold text-[#050505]">Transformar obra em imóvel pronto</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      O resultado parte de uma imagem real do imovel e gera uma versao final no estilo escolhido.
+                      O resultado parte de uma imagem real do imóvel e gera uma versão final no estilo escolhido.
                     </p>
                   </div>
                 </div>
@@ -315,12 +315,12 @@ export function BrokerStudioIaPage() {
               <div className="grid gap-4">
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imovel</p>
-                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponivel(is)</span>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imóvel</p>
+                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponível(is)</span>
                   </div>
 
                   {isLoading ? (
-                    <EmeLoading compact message="Carregando imoveis do corretor..." className="mt-3" />
+                    <EmeLoading compact message="Carregando imóveis do corretor..." className="mt-3" />
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
@@ -357,7 +357,7 @@ export function BrokerStudioIaPage() {
                         disabled={!canAdvanceToConfiguration}
                         className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                       >
-                        Avancar para configuracao
+                        Avançar para configuração
                         <ArrowRight className="size-4" />
                       </Button>
                     </div>
@@ -367,12 +367,12 @@ export function BrokerStudioIaPage() {
                 </div>
 
                 <div className={`rounded-[1.25rem] border p-4 ${currentStep === "selection" ? "border-black/[0.06] bg-[#f6f7f4] opacity-65" : "border-black/[0.06] bg-[#fbfbf8]"}`}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuracao</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuração</p>
 
                   {selectedProperty ? (
                     <div className="mt-3 grid gap-4">
                       <div>
-                        <p className="text-sm font-medium text-[#050505]">Escolha uma imagem do imovel</p>
+                        <p className="text-sm font-medium text-[#050505]">Escolha uma imagem do imóvel</p>
                         {availableImages.length > 0 ? (
                           <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {availableImages.map((image, index) => {
@@ -387,7 +387,7 @@ export function BrokerStudioIaPage() {
                                 >
                                   <div className="relative aspect-[4/3] bg-[#f2f4f7]">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={image} alt={`Imagem ${index + 1} do imovel`} className="h-full w-full object-cover" />
+                                    <img src={image} alt={`Imagem ${index + 1} do imóvel`} className="h-full w-full object-cover" />
                                   </div>
                                   <div className="flex items-center justify-between px-3 py-3">
                                     <span className="text-sm font-medium text-[#050505]">Imagem {index + 1}</span>
@@ -403,7 +403,7 @@ export function BrokerStudioIaPage() {
                           </div>
                         ) : (
                           <div className="mt-3 rounded-[1.15rem] border border-dashed border-black/[0.08] bg-white p-4 text-sm text-[#6B7280]">
-                            Este imovel ainda nao possui imagens para este fluxo.
+                            Este imóvel ainda não possui imagens para este fluxo.
                           </div>
                         )}
                       </div>
@@ -441,7 +441,7 @@ export function BrokerStudioIaPage() {
                       </Button>
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-[#6B7280]">Escolha um imovel primeiro para liberar a configuracao.</p>
+                    <p className="mt-3 text-sm text-[#6B7280]">Escolha um imóvel primeiro para liberar a configuração.</p>
                   )}
                 </div>
               </div>
@@ -464,7 +464,7 @@ export function BrokerStudioIaPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Imagem base</p>
                 <p className="mt-2 text-sm font-semibold text-[#050505]">{selectedImageLabel}</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                  A imagem selecionada e enviada como referencia visual para a geracao final.
+                  A imagem selecionada é enviada como referência visual para a geração final.
                 </p>
               </div>
             </CardContent>
@@ -474,16 +474,16 @@ export function BrokerStudioIaPage() {
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
-              <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Resultado e aprovação</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Acompanhe o estado da geracao e aprove a versao escolhida.
+                Acompanhe o estado da geração e aprove a versão escolhida.
               </p>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
               {currentStep === "processing" ? (
                 <EmeLoading
-                  message="Gerando transformacao visual"
-                  description={`Gerando a versao pronta do imovel com estilo ${selectedStyle.toLowerCase()}.`}
+                  message="Gerando transformação visual"
+                  description={`Gerando a versão pronta do imóvel com estilo ${selectedStyle.toLowerCase()}.`}
                   className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
                 />
               ) : currentStep === "result" || currentStep === "approval" ? (
@@ -499,7 +499,7 @@ export function BrokerStudioIaPage() {
                           {selectedImage ? (
                             <>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={selectedImage} alt="Imagem original do imovel" className="h-full w-full object-cover" />
+                              <img src={selectedImage} alt="Imagem original do imóvel" className="h-full w-full object-cover" />
                               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent px-4 py-4">
                                 <span className="rounded-full bg-white/92 px-3 py-1 text-xs font-medium text-[#050505]">
                                   Base atual da obra
@@ -514,7 +514,7 @@ export function BrokerStudioIaPage() {
                         <div className="flex items-center justify-between px-4 py-3">
                           <p className="text-sm font-semibold text-[#050505]">Resultado gerado</p>
                           <span className="rounded-full bg-[#009b3a] px-3 py-1 text-xs font-medium text-white">
-                            Versao {resultVersion}
+                            Versão {resultVersion}
                           </span>
                         </div>
                         <div className="relative aspect-[4/3] bg-[#e7ecef]">
@@ -523,7 +523,7 @@ export function BrokerStudioIaPage() {
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={generatedImageUrl}
-                                alt="Resultado gerado do imovel"
+                                alt="Resultado gerado do imóvel"
                                 className="h-full w-full object-cover"
                               />
                               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.24),transparent_36%,rgba(0,0,0,0.14))]" />
@@ -533,7 +533,7 @@ export function BrokerStudioIaPage() {
                                     Estilo {selectedStyle}
                                   </span>
                                   <span className="rounded-full bg-[#009b3a] px-3 py-1 text-xs font-medium text-white">
-                                    Imovel pronto
+                                    Imóvel pronto
                                   </span>
                                 </div>
                               </div>
@@ -548,12 +548,12 @@ export function BrokerStudioIaPage() {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-base font-semibold text-[#050505]">
-                          {currentStep === "approval" ? "Versao aprovada com sucesso" : "Resultado pronto para revisao"}
+                          {currentStep === "approval" ? "Versão aprovada com sucesso" : "Resultado pronto para revisão"}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                           {currentStep === "approval"
-                            ? `A versao ${approvedVersion ?? resultVersion} foi aprovada no estilo ${selectedStyle.toLowerCase()}.`
-                            : "Revise a geracao visual e escolha se deseja aprovar ou gerar outra versao."}
+                            ? `A versão ${approvedVersion ?? resultVersion} foi aprovada no estilo ${selectedStyle.toLowerCase()}.`
+                            : "Revise a geração visual e escolha se deseja aprovar ou gerar outra versão."}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -573,7 +573,7 @@ export function BrokerStudioIaPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar outra versao
+                              Gerar outra versão
                               <RefreshCcw className="size-4" />
                             </Button>
                           </>
@@ -584,7 +584,7 @@ export function BrokerStudioIaPage() {
                             onClick={generateAnotherVersion}
                             className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                           >
-                            Gerar outra versao
+                            Gerar outra versão
                             <RefreshCcw className="size-4" />
                           </Button>
                         )}
@@ -597,7 +597,7 @@ export function BrokerStudioIaPage() {
                   <ImagePlus className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhum resultado gerado ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao visual desta transformacao.
+                    Avance pelas etapas de seleção e configuração para iniciar a geração visual desta transformação.
                   </p>
                 </div>
               )}
@@ -647,25 +647,25 @@ function buildStatusItems(step: StudioStep) {
       title: "Etapa atual",
       value:
         step === "selection"
-          ? "Selecao"
+          ? "Seleção"
           : step === "configuration"
-            ? "Configuracao"
+            ? "Configuração"
             : step === "processing"
-              ? "Geracao em andamento"
+              ? "Geração em andamento"
               : step === "result"
                 ? "Resultado"
-                : "Aprovacao",
-      description: "O Studio executa apenas este fluxo de transformacao visual nesta etapa do produto.",
+                : "Aprovação",
+      description: "O Studio executa apenas este fluxo de transformação visual nesta etapa do produto.",
     },
     {
-      title: "Integracoes",
+      title: "Integrações",
       value: "OpenAI + storage",
-      description: "A geracao final roda no servidor e salva a imagem resultante no storage do EME.",
+      description: "A geração final roda no servidor e salva a imagem resultante no storage do EME.",
     },
     {
-      title: "Persistencia",
+      title: "Persistência",
       value: "Sem alterar banco",
-      description: "A aprovacao continua na interface e a imagem gerada e persistida apenas no storage.",
+      description: "A aprovação continua na interface e a imagem gerada é persistida apenas no storage.",
     },
   ]
 }
@@ -678,12 +678,12 @@ function EmptyPropertiesState() {
           <ImagePlus className="size-4.5" />
         </div>
         <div>
-          <p className="font-semibold text-[#050505]">Nenhum imovel disponivel</p>
+          <p className="font-semibold text-[#050505]">Nenhum imóvel disponível</p>
           <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-            Cadastre ou publique um imovel para iniciar este fluxo do Studio IA.
+            Cadastre ou publique um imóvel para iniciar este fluxo do Studio IA.
           </p>
           <Button asChild className="mt-3 h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
-            <Link href="/corretor/novo-imovel">Cadastrar imovel</Link>
+            <Link href="/corretor/novo-imovel">Cadastrar imóvel</Link>
           </Button>
         </div>
       </div>

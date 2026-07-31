@@ -19,11 +19,11 @@ function serializeConversation(document: { id: string; title: string; createdAt:
 
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
   try {
     const conversations = await prisma.brokerDocument.findMany({
@@ -44,19 +44,19 @@ export async function GET() {
     return NextResponse.json({ conversations: conversations.map(serializeConversation) })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de conversas indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel carregar o historico do COS." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível carregar o histórico do COS." }, { status: 500 })
   }
 }
 
 export async function POST() {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
   try {
     const conversation = await prisma.brokerDocument.create({
@@ -78,8 +78,8 @@ export async function POST() {
     return NextResponse.json({ conversation: serializeConversation(conversation) }, { status: 201 })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de conversas indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de conversas indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel criar a conversa." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível criar a conversa." }, { status: 500 })
   }
 }

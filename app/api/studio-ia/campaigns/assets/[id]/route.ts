@@ -29,11 +29,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
-    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
   }
 
   const body = await request.json().catch(() => null)
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Studio IA está indisponível no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel atualizar o asset." }, { status: 500 })
@@ -75,11 +75,11 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
-    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
   }
 
   try {
@@ -96,7 +96,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     }
 
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Studio IA está indisponível no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel excluir o asset." }, { status: 500 })

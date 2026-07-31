@@ -49,11 +49,11 @@ const goalOptions: CampaignGoal[] = ["Venda", "Captacao", "Lancamento", "Alto pa
 const identityOptions: VisualIdentity[] = ["Moderna", "Luxo", "Minimalista", "Comercial"]
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
-  { id: "selection", label: "Selecao" },
-  { id: "configuration", label: "Configuracao" },
+  { id: "selection", label: "Seleção" },
+  { id: "configuration", label: "Configuração" },
   { id: "processing", label: "Processamento" },
   { id: "result", label: "Resultado" },
-  { id: "approval", label: "Aprovacao" },
+  { id: "approval", label: "Aprovação" },
 ]
 
 const previewItemLabels: Array<{ key: CampaignItemKey; label: string }> = [
@@ -208,7 +208,7 @@ export function BrokerStudioIaInstagramPage() {
       const data = (await response.json().catch(() => null)) as (CampaignPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
-        throw new Error(data?.error || "Nao foi possivel gerar a campanha para Instagram.")
+        throw new Error(data?.error || "Não foi possível gerar a campanha para Instagram.")
       }
 
       setPreview({
@@ -234,7 +234,7 @@ export function BrokerStudioIaInstagramPage() {
       })
       setCurrentStep("result")
     } catch (caughtError) {
-      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a campanha.")
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Não foi possível gerar a campanha.")
       setCurrentStep("configuration")
     } finally {
       setIsSubmitting(false)
@@ -300,7 +300,7 @@ export function BrokerStudioIaInstagramPage() {
     () => [
       { label: "Objetivo", value: selectedGoal },
       { label: "Identidade", value: selectedIdentity },
-      { label: "Versao", value: resultVersion > 0 ? `${resultVersion}` : "Ainda nao gerada" },
+      { label: "Versão", value: resultVersion > 0 ? `${resultVersion}` : "Ainda não gerada" },
     ],
     [resultVersion, selectedGoal, selectedIdentity],
   )
@@ -329,7 +329,7 @@ export function BrokerStudioIaInstagramPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar campanha para Instagram</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione o imovel, defina o objetivo da campanha, escolha a identidade visual e acompanhe a geracao real do conteudo ate a aprovacao final.
+                Selecione o imóvel, defina o objetivo da campanha, escolha a identidade visual e acompanhe a geração real do conteúdo até a aprovação final.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -373,7 +373,7 @@ export function BrokerStudioIaInstagramPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio usa a mesma experiencia em etapas e agora gera o conteudo real no servidor para este fluxo.
+                O Studio usa a mesma experiência em etapas e agora gera o conteúdo real no servidor para este fluxo.
               </p>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -394,12 +394,12 @@ export function BrokerStudioIaInstagramPage() {
               <div className="grid gap-4">
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imovel</p>
-                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponivel(is)</span>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imóvel</p>
+                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponível(is)</span>
                   </div>
 
                   {isLoading ? (
-                    <EmeLoading compact message="Carregando imoveis do corretor..." className="mt-3" />
+                    <EmeLoading compact message="Carregando imóveis do corretor..." className="mt-3" />
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
@@ -436,7 +436,7 @@ export function BrokerStudioIaInstagramPage() {
                         disabled={!canAdvanceToConfiguration}
                         className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                       >
-                        Avancar para configuracao
+                        Avançar para configuração
                         <ArrowRight className="size-4" />
                       </Button>
                     </div>
@@ -446,7 +446,7 @@ export function BrokerStudioIaInstagramPage() {
                 </div>
 
                 <div className={`rounded-[1.25rem] border p-4 ${currentStep === "selection" ? "border-black/[0.06] bg-[#f6f7f4] opacity-65" : "border-black/[0.06] bg-[#fbfbf8]"}`}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuracao</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuração</p>
 
                   {selectedProperty ? (
                     <div className="mt-3 grid gap-4">
@@ -496,7 +496,7 @@ export function BrokerStudioIaInstagramPage() {
                       ) : null}
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-[#6B7280]">Escolha um imovel primeiro para liberar a configuracao.</p>
+                    <p className="mt-3 text-sm text-[#6B7280]">Escolha um imóvel primeiro para liberar a configuração.</p>
                   )}
                 </div>
               </div>
@@ -516,10 +516,10 @@ export function BrokerStudioIaInstagramPage() {
               ))}
 
               <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Aprovacoes da campanha</p>
-                <p className="mt-2 text-sm font-semibold text-[#050505]">{approvedItemsCount} de 6 pecas revisadas</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Aprovações da campanha</p>
+                <p className="mt-2 text-sm font-semibold text-[#050505]">{approvedItemsCount} de 6 peças revisadas</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                  Cada item da campanha possui sua propria aprovacao para manter a mesma logica de revisao do Studio IA.
+                  Cada item da campanha possui sua própria aprovação para manter a mesma lógica de revisão do Studio IA.
                 </p>
               </div>
             </CardContent>
@@ -529,9 +529,9 @@ export function BrokerStudioIaInstagramPage() {
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
-              <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Resultado e aprovação</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Revise a campanha gerada, aprove cada peca e finalize a campanha quando estiver pronta.
+                Revise a campanha gerada, aprove cada peça e finalize a campanha quando estiver pronta.
               </p>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-4 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -653,12 +653,12 @@ export function BrokerStudioIaInstagramPage() {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-base font-semibold text-[#050505]">
-                          {currentStep === "approval" ? "Campanha aprovada com sucesso" : "Campanha pronta para revisao"}
+                          {currentStep === "approval" ? "Campanha aprovada com sucesso" : "Campanha pronta para revisão"}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                           {currentStep === "approval"
-                            ? `A campanha versao ${approvedVersion ?? resultVersion} foi aprovada para o objetivo ${selectedGoal.toLowerCase()}.`
-                            : "Revise cada peca da campanha, aprove os itens desejados e finalize ou gere outra versao."}
+                            ? `A campanha versão ${approvedVersion ?? resultVersion} foi aprovada para o objetivo ${selectedGoal.toLowerCase()}.`
+                            : "Revise cada peça da campanha, aprove os itens desejados e finalize ou gere outra versão."}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -678,7 +678,7 @@ export function BrokerStudioIaInstagramPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar nova versao
+                              Gerar nova versão
                               <RefreshCcw className="size-4" />
                             </Button>
                             <Button
@@ -700,7 +700,7 @@ export function BrokerStudioIaInstagramPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar nova versao
+                              Gerar nova versão
                               <RefreshCcw className="size-4" />
                             </Button>
                             <Button
@@ -724,7 +724,7 @@ export function BrokerStudioIaInstagramPage() {
                   <ImagePlus className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma campanha gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao desta campanha.
+                    Avance pelas etapas de seleção e configuração para iniciar a geração desta campanha.
                   </p>
                 </div>
               )}
@@ -805,25 +805,25 @@ function buildStatusItems(step: StudioStep) {
       title: "Etapa atual",
       value:
         step === "selection"
-          ? "Selecao"
+          ? "Seleção"
           : step === "configuration"
-            ? "Configuracao"
+            ? "Configuração"
             : step === "processing"
-              ? "Geracao simulada"
+              ? "Geração simulada"
               : step === "result"
                 ? "Resultado"
-                : "Aprovacao",
-      description: "O Studio reaproveita a mesma sequencia de etapas para manter consistencia e permitir novas versoes do conteudo.",
+                : "Aprovação",
+      description: "O Studio reaproveita a mesma sequência de etapas para manter consistência e permitir novas versões do conteúdo.",
     },
     {
-      title: "Integracoes",
+      title: "Integrações",
       value: "OpenAI",
-      description: "Este fluxo gera o conteudo real no servidor com OpenAI, sem expor chaves no cliente.",
+      description: "Este fluxo gera o conteúdo real no servidor com OpenAI, sem expor chaves no cliente.",
     },
     {
-      title: "Persistencia",
+      title: "Persistência",
       value: "Sem alterar banco",
-      description: "As aprovacoes e versoes da campanha continuam na sessao atual, preservando a arquitetura do portal.",
+      description: "As aprovações e versões da campanha continuam na sessão atual, preservando a arquitetura do portal.",
     },
   ]
 }
@@ -836,12 +836,12 @@ function EmptyPropertiesState() {
           <ImagePlus className="size-4.5" />
         </div>
         <div>
-          <p className="font-semibold text-[#050505]">Nenhum imovel disponivel</p>
+          <p className="font-semibold text-[#050505]">Nenhum imóvel disponível</p>
           <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-            Cadastre ou publique um imovel para iniciar este fluxo do Studio IA.
+            Cadastre ou publique um imóvel para iniciar este fluxo do Studio IA.
           </p>
           <Button asChild className="mt-3 h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
-            <Link href="/corretor/novo-imovel">Cadastrar imovel</Link>
+            <Link href="/corretor/novo-imovel">Cadastrar imóvel</Link>
           </Button>
         </div>
       </div>

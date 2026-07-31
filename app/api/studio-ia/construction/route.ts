@@ -31,7 +31,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
 
   if (!property) {
     return {
-      error: NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 }),
+      error: NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 }),
       property: null,
     }
   }
@@ -39,7 +39,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   if (user.role === UserRole.BROKER) {
     if (!user.broker || property.brokerId !== user.broker.id) {
       return {
-        error: NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 }),
+        error: NextResponse.json({ error: "Acesso não permitido a este imóvel." }, { status: 403 }),
         property: null,
       }
     }
@@ -48,7 +48,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   if (user.role === UserRole.AGENCY) {
     if (!user.ownedAgency || property.agencyId !== user.ownedAgency.id) {
       return {
-        error: NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 }),
+        error: NextResponse.json({ error: "Acesso não permitido a este imóvel." }, { status: 403 }),
         property: null,
       }
     }
@@ -67,11 +67,11 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
-    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
   }
 
   try {
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     if (accessible.error) return accessible.error
     if (!accessible.property) {
-      return NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
     }
 
     const existingImages = getExistingImages(accessible.property)
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

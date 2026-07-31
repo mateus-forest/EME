@@ -30,7 +30,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.AGENCY])
@@ -57,12 +57,12 @@ export async function GET() {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "Servico de notificacoes indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "Serviço de notificações indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao listar notificacoes da imobiliaria." }, { status: 500 })
+    return NextResponse.json({ error: "Erro interno ao listar notificações da imobiliária." }, { status: 500 })
   }
 }
 
@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.AGENCY])
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest) {
     const id = typeof body?.id === "string" ? body.id : ""
 
     if (!id) {
-      return NextResponse.json({ error: "Notificacao nao informada." }, { status: 400 })
+      return NextResponse.json({ error: "Notificação não informada." }, { status: 400 })
     }
 
     const notification = await prisma.notification.findFirst({
@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     if (!notification) {
-      return NextResponse.json({ error: "Notificacao nao encontrada para esta imobiliaria." }, { status: 404 })
+      return NextResponse.json({ error: "Notificação não encontrada para esta imobiliária." }, { status: 404 })
     }
 
     const updated = await prisma.notification.update({
@@ -112,11 +112,11 @@ export async function PATCH(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "Servico de notificacoes indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "Serviço de notificações indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao atualizar notificacao da imobiliaria." }, { status: 500 })
+    return NextResponse.json({ error: "Erro interno ao atualizar notificação da imobiliária." }, { status: 500 })
   }
 }

@@ -72,7 +72,7 @@ function statusLabel(status: string) {
 }
 
 function typeLabel(type: string) {
-  if (type === "studio_ia_video") return "Video"
+  if (type === "studio_ia_video") return "Vídeo"
   return "Proposta"
 }
 
@@ -235,7 +235,7 @@ export function BrokerDocumentsPage() {
     if (isVideoDocument(selectedDocument)) {
       const videoUrl = parseVideoDocumentContent(selectedDocument.content)
       await navigator.clipboard.writeText(videoUrl).catch(() => null)
-      setFeedback("Link do video copiado.")
+      setFeedback("Link do vídeo copiado.")
       return
     }
 
@@ -251,7 +251,7 @@ export function BrokerDocumentsPage() {
     if (isVideoDocument(selectedDocument)) {
       const videoUrl = parseVideoDocumentContent(selectedDocument.content)
       if (!videoUrl) {
-        setFeedback("Nao foi possivel localizar o arquivo de video.")
+        setFeedback("Não foi possível localizar o arquivo de vídeo.")
         return
       }
 

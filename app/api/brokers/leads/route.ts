@@ -18,14 +18,14 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   try {
@@ -47,7 +47,7 @@ export async function GET() {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de leads está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
@@ -64,14 +64,14 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   try {
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Informe um email valido." }, { status: 400 })
+      return NextResponse.json({ error: "Informe um email válido." }, { status: 400 })
     }
 
     const property = propertyId
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       : null
 
     if (propertyId && !property) {
-      return NextResponse.json({ error: "Imovel nao encontrado para este corretor." }, { status: 404 })
+      return NextResponse.json({ error: "Imóvel não encontrado para este corretor." }, { status: 404 })
     }
 
     const existingLead =
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de leads está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

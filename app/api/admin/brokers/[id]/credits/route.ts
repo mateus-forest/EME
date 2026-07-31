@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
   if (forbidden) return forbidden
@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         : "Bonificacao administrativa"
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json({ error: "Informe uma quantidade valida de creditos." }, { status: 400 })
+      return NextResponse.json({ error: "Informe uma quantidade válida de créditos." }, { status: 400 })
     }
 
     const broker = await prisma.broker.findUnique({
@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       include: { user: true },
     })
 
-    if (!broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+    if (!broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
       const refreshedBroker = await tx.broker.update({
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           data: {
             userId: broker.userId,
             title: "Creditos IA adicionados",
-            message: `${amount} credito(s). Motivo: ${reason}.`,
+            message: `${amount} crédito(s). Motivo: ${reason}.`,
             read: false,
           },
         }),
@@ -99,9 +99,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico administrativo indisponivel." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço administrativo indisponível." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Nao foi possivel bonificar creditos." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível bonificar créditos." }, { status: 500 })
   }
 }

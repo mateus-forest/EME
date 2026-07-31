@@ -29,14 +29,14 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.AGENCY])
   if (forbidden) return forbidden
 
   if (!user.ownedAgency) {
-    return NextResponse.json({ error: "Imobiliaria nao encontrada para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Imobiliária não encontrada para esta conta." }, { status: 404 })
   }
 
   try {
@@ -80,11 +80,11 @@ export async function GET() {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "Servico de assinatura indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "Serviço de assinatura indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
 
-    return NextResponse.json({ error: "Erro interno ao consultar assinatura da imobiliaria." }, { status: 500 })
+    return NextResponse.json({ error: "Erro interno ao consultar assinatura da imobiliária." }, { status: 500 })
   }
 }

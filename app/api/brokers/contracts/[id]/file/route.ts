@@ -10,12 +10,12 @@ import { prisma } from "@/lib/prisma"
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
   return user
 }
 
@@ -33,12 +33,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     })
 
     if (!contract) {
-      return NextResponse.json({ error: "Contrato nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
     }
 
     const content = parseContractContent(contract.content)
     if (!isExternalContractContent(content) || !content.attachment?.fileUrl) {
-      return NextResponse.json({ error: "Este contrato nao possui arquivo anexado." }, { status: 404 })
+      return NextResponse.json({ error: "Este contrato não possui arquivo anexado." }, { status: 404 })
     }
 
     const file = await readBrokerContractFile(content.attachment.fileUrl)
@@ -62,9 +62,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     return new NextResponse(file.buffer, { status: 200, headers })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Nao foi possivel abrir o contrato anexado." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível abrir o contrato anexado." }, { status: 500 })
   }
 }

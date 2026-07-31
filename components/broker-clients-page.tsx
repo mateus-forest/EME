@@ -452,7 +452,7 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
       const data = (await response.json().catch(() => null)) as { lead?: LeadRecord; error?: string } | null
 
       if (!response.ok || !data?.lead) {
-        throw new Error(data?.error || "Nao foi possivel remover o documento.")
+        throw new Error(data?.error || "Não foi possível remover o documento.")
       }
 
       syncClientInState(data.lead)
@@ -460,7 +460,7 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
       setFeedback("Documento removido com sucesso.")
     } catch (caughtError) {
       setFeedbackTone("error")
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel remover o documento.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível remover o documento.")
     }
   }
 
@@ -484,7 +484,7 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
             <div>
               <h2 className="text-3xl font-semibold tracking-tight text-[#050505]">Clientes</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                Sua carteira de clientes organizada em um unico lugar.
+                Sua carteira de clientes organizada em um único lugar.
               </p>
             </div>
           </div>

@@ -5,7 +5,7 @@ import type { PublicBrokerCatalogData } from "@/lib/public-catalog"
 import { buildBrokerCatalogUrl, toPublicWebUrl } from "@/lib/public-catalog-url"
 
 const DEFAULT_CATALOG_DESCRIPTION =
-  "Encontre imoveis disponiveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
+  "Encontre imóveis disponíveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
 
 export const PREMIUM_FALLBACK_IMAGE_PATH = "/images/catalogo-eme.png"
 
@@ -22,7 +22,7 @@ export function getCatalogDescription(catalog?: PublicBrokerCatalogData | null) 
 }
 
 export function getBrokerCatalogTitle(catalog?: PublicBrokerCatalogData | null) {
-  return catalog?.displayName?.trim() ? `Catalogo de imoveis | ${catalog.displayName.trim()}` : "Catalogo de imoveis | EME"
+  return catalog?.displayName?.trim() ? `Catálogo de imóveis | ${catalog.displayName.trim()}` : "Catálogo de imóveis | EME"
 }
 
 export function getBrokerCatalogCanonicalUrl(slug: string) {

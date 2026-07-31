@@ -29,14 +29,14 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.AGENCY])
   if (forbidden) return forbidden
 
   if (!user.ownedAgency) {
-    return NextResponse.json({ error: "Imobiliaria nao encontrada para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Imobiliária não encontrada para esta conta." }, { status: 404 })
   }
 
   const response = NextResponse.json(serializeAgencyCatalog(user.ownedAgency))
@@ -48,14 +48,14 @@ export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.AGENCY])
   if (forbidden) return forbidden
 
   if (!user.ownedAgency) {
-    return NextResponse.json({ error: "Imobiliaria nao encontrada para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Imobiliária não encontrada para esta conta." }, { status: 404 })
   }
 
   try {

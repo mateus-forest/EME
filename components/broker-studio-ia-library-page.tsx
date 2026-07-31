@@ -45,11 +45,11 @@ type LibraryFilter =
 const FILTERS: Array<{ key: LibraryFilter; label: string; icon: typeof Grid2X2 }> = [
   { key: "ALL", label: "Todos", icon: Grid2X2 },
   { key: "IMAGES", label: "Imagens", icon: ImageIcon },
-  { key: "VIDEOS", label: "Videos", icon: Film },
+  { key: "VIDEOS", label: "Vídeos", icon: Film },
   { key: "INSTAGRAM", label: "Instagram", icon: Megaphone },
-  { key: "OWNERS", label: "Captacao", icon: BookOpen },
+  { key: "OWNERS", label: "Captação", icon: BookOpen },
   { key: "SELL_PROPERTY", label: "Venda", icon: Sparkles },
-  { key: "CONSTRUCTION", label: "Construcao", icon: ImageIcon },
+  { key: "CONSTRUCTION", label: "Construção", icon: ImageIcon },
   { key: "APPROVED", label: "Aprovadas", icon: BookOpen },
   { key: "PENDING_REVIEW", label: "Pendentes", icon: BookOpen },
   { key: "PUBLISHED", label: "Publicadas", icon: BookOpen },
@@ -191,7 +191,7 @@ export function BrokerStudioIaLibraryPage() {
         setPagination(result.pagination)
       } catch (caughtError) {
         if (!active) return
-        setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel carregar a Biblioteca.")
+        setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar a Biblioteca.")
       } finally {
         if (active) setIsLoading(false)
       }
@@ -217,7 +217,7 @@ export function BrokerStudioIaLibraryPage() {
   return (
     <BrokerPageShell
       title="Biblioteca"
-      searchPlaceholder="Pesquisar por titulo, imovel ou tipo"
+      searchPlaceholder="Pesquisar por título, imóvel ou tipo"
       searchValue={search}
       onSearchChange={setSearch}
     >
@@ -229,15 +229,15 @@ export function BrokerStudioIaLibraryPage() {
                 <BookOpen className="size-3.5" />
                 Biblioteca
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Historico permanente do Studio IA</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Histórico permanente do Studio IA</h2>
               <p className="mt-3 text-sm leading-6 text-[#667085]">
-                Todas as campanhas, imagens, videos e copys gerados pela IA ficam reunidos aqui para consulta, revisao e gestao continua.
+                Todas as campanhas, imagens, vídeos e copys gerados pela IA ficam reunidos aqui para consulta, revisão e gestão contínua.
               </p>
             </div>
 
             <div className="grid gap-2 text-sm text-[#667085] sm:grid-cols-3">
               <Metric label="Campanhas" value={String(pagination.total)} />
-              <Metric label="Pagina" value={`${pagination.page}/${pagination.totalPages}`} />
+              <Metric label="Página" value={`${pagination.page}/${pagination.totalPages}`} />
               <Metric label="Busca" value={deferredSearch ? "Ativa" : "Livre"} />
             </div>
           </div>
@@ -286,14 +286,14 @@ export function BrokerStudioIaLibraryPage() {
           ) : error ? (
             <EmptyState
               icon={Search}
-              title="Nao foi possivel carregar a Biblioteca"
+              title="Não foi possível carregar a Biblioteca"
               description={error}
             />
           ) : campaigns.length === 0 ? (
             <EmptyState
               icon={BookOpen}
               title="Nenhuma campanha encontrada"
-              description="Ajuste os filtros ou gere novos conteudos no Studio IA para alimentar a Biblioteca."
+              description="Ajuste os filtros ou gere novos conteúdos no Studio IA para alimentar a Biblioteca."
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -352,7 +352,7 @@ export function BrokerStudioIaLibraryPage() {
                     onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                     className="rounded-xl border-black/[0.06]"
                   >
-                    Proxima
+                    Próxima
                     <ChevronRight className="size-4" />
                   </Button>
                 </PaginationItem>

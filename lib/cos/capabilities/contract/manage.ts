@@ -64,7 +64,7 @@ export const previewContractCapability: CosCapabilityHandler = async ({ brokerId
 
   const summary = serializeContractSummary(contract)
   return {
-    response: `Preview do contrato:\n\n${summary.title}\nStatus: ${summary.status}\n\n${summary.preview || "Preview ainda nao disponivel."}`,
+    response: `Preview do contrato:\n\n${summary.title}\nStatus: ${summary.status}\n\n${summary.preview || "Preview ainda não disponível."}`,
     metadata: {
       documentId: contract.id,
       contractId: contract.id,
@@ -181,7 +181,7 @@ export const cancelContractCapability: CosCapabilityHandler = async ({ brokerId,
     brokerId,
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     status: "cancelled",
-    responseLabel: "Contrato cancelado com historico preservado.",
+    responseLabel: "Contrato cancelado com histórico preservado.",
   })
 
 export const downloadContractCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
@@ -221,10 +221,10 @@ export const contractHistoryCapability: CosCapabilityHandler = async ({ brokerId
 
   return {
     response: contracts.length
-      ? `Historico recente de contratos:\n\n${contracts
+      ? `Histórico recente de contratos:\n\n${contracts
           .map((item) => `- ${item.title} (${normalizeContractStatus(item.status) ?? "draft"})`)
           .join("\n")}`
-      : "Ainda nao ha contratos registrados.",
+      : "Ainda não há contratos registrados.",
     metadata: {
       totalContracts: contracts.length,
       contractsByStatus: byStatus,

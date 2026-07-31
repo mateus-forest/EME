@@ -24,7 +24,7 @@ const bonusTransactionInclude = {
 
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
   if (forbidden) return forbidden
@@ -96,9 +96,9 @@ export async function GET(request: NextRequest) {
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico administrativo indisponivel." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço administrativo indisponível." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Nao foi possivel carregar o historico de bonificacoes." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível carregar o histórico de bonificações." }, { status: 500 })
   }
 }

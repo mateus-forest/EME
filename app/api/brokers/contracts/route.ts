@@ -95,12 +95,12 @@ function serializeContract(document: {
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
   return user
 }
@@ -134,7 +134,7 @@ async function buildPersistedContract(input: {
 }) {
   const contractType = normalizeContractType(input.kind)
   if (!contractType) {
-    throw new Error("Selecione um tipo de contrato valido.")
+    throw new Error("Selecione um tipo de contrato válido.")
   }
 
   const [lead, property] = await Promise.all([
@@ -159,8 +159,8 @@ async function buildPersistedContract(input: {
     }),
   ])
 
-  if (!lead) throw new Error("Selecione um cliente valido.")
-  if (!property) throw new Error("Selecione um imovel valido.")
+  if (!lead) throw new Error("Selecione um cliente válido.")
+  if (!property) throw new Error("Selecione um imóvel válido.")
 
   const amountCents = parseContractAmount(input.amount)
   const nextStatus = normalizeContractStatus(input.status) ?? "draft"
@@ -261,8 +261,8 @@ async function loadLeadAndProperty(input: { brokerId: string; leadId: string; pr
       : Promise.resolve(null),
   ])
 
-  if (!lead) throw new Error("Selecione um cliente valido.")
-  if (input.propertyId && !property) throw new Error("Selecione um imovel valido.")
+  if (!lead) throw new Error("Selecione um cliente válido.")
+  if (input.propertyId && !property) throw new Error("Selecione um imóvel válido.")
 
   return { lead, property }
 }
@@ -315,7 +315,7 @@ function createExternalContractContent(input: {
 }) {
   const contractType = normalizeContractType(input.kind)
   if (!contractType) {
-    throw new Error("Selecione um tipo de contrato valido.")
+    throw new Error("Selecione um tipo de contrato válido.")
   }
   const status = normalizeContractStatus(input.status) ?? "draft"
 
@@ -398,9 +398,9 @@ export async function GET(request: NextRequest) {
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel carregar contratos." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível carregar contratos." }, { status: 500 })
   }
 }
 
@@ -498,7 +498,7 @@ export async function POST(request: NextRequest) {
     const kind = cleanText(body?.kind, 80)
 
     if (!leadId) return NextResponse.json({ error: "Selecione o cliente." }, { status: 400 })
-    if (!propertyId) return NextResponse.json({ error: "Selecione o imovel." }, { status: 400 })
+    if (!propertyId) return NextResponse.json({ error: "Selecione o imóvel." }, { status: 400 })
 
     const draft = await buildPersistedContract({
       brokerId: auth.broker!.id,
@@ -545,8 +545,8 @@ export async function POST(request: NextRequest) {
     const message = caughtError instanceof Error ? caughtError.message : ""
     if (message) return NextResponse.json({ error: message }, { status: 400 })
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel criar o contrato." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível criar o contrato." }, { status: 500 })
   }
 }

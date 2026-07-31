@@ -37,7 +37,7 @@ export async function formatCosExecutionPlanResponse(input: {
   if (input.result.status === "failed") {
     return (
       input.result.interruptedStep?.result?.response?.trim() ||
-      "Nao consegui concluir isso agora. Pode me pedir novamente de outra forma?"
+      "Não consegui concluir isso agora. Pode me pedir novamente de outra forma?"
     )
   }
 
@@ -46,7 +46,7 @@ export async function formatCosExecutionPlanResponse(input: {
     .filter(Boolean)
 
   if (stepResponses.length === 0) {
-    return "Concluido."
+    return "Concluído."
   }
 
   if (stepResponses.length === 1) {
@@ -56,7 +56,7 @@ export async function formatCosExecutionPlanResponse(input: {
   const summarized = stepResponses.map((response) => summarizeExecutionResponse(response))
   const unique = Array.from(new Set(summarized.filter(Boolean)))
 
-  return ["Conclui isso para voce:", ...unique.map((response) => `• ${response}`)].join("\n")
+  return ["Concluí isso para você:", ...unique.map((response) => `• ${response}`)].join("\n")
 }
 
 function summarizeExecutionResponse(response: string) {

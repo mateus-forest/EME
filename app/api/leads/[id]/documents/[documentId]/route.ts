@@ -16,7 +16,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   try {
@@ -31,11 +31,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     })
 
     if (!lead) {
-      return NextResponse.json({ error: "Lead nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 })
     }
 
     if (!canAccessLead(user, lead)) {
-      return NextResponse.json({ error: "Acesso nao permitido para este lead." }, { status: 403 })
+      return NextResponse.json({ error: "Acesso não permitido para este lead." }, { status: 403 })
     }
 
     const document = parseEntityDocuments(lead.documentsData).find((item) => item.id === documentId)
@@ -113,7 +113,7 @@ export async function DELETE(
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   try {
@@ -128,11 +128,11 @@ export async function DELETE(
     })
 
     if (!lead) {
-      return NextResponse.json({ error: "Lead nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 })
     }
 
     if (!canAccessLead(user, lead)) {
-      return NextResponse.json({ error: "Acesso nao permitido para este lead." }, { status: 403 })
+      return NextResponse.json({ error: "Acesso não permitido para este lead." }, { status: 403 })
     }
 
     const documents = parseEntityDocuments(lead.documentsData)

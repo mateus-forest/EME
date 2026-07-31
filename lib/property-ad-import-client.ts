@@ -35,7 +35,7 @@ export async function extractPropertyAd(input: {
       cache: "no-store",
       body: formData,
     }),
-    "Nao foi possivel extrair os dados do anuncio.",
+    "Não foi possível extrair os dados do anúncio.",
   )
 }
 
@@ -50,7 +50,7 @@ export async function confirmPropertyAdImport(draft: AdImportDraft) {
       cache: "no-store",
       body: JSON.stringify({ draft }),
     }),
-    "Nao foi possivel criar o imovel a partir do anuncio.",
+    "Não foi possível criar o imóvel a partir do anúncio.",
   )
 }
 
@@ -61,6 +61,6 @@ export async function getPropertyImportCapabilities() {
       credentials: "include",
       cache: "no-store",
     }),
-    "Nao foi possivel verificar os recursos de importacao.",
+    "Não foi possível verificar os recursos de importação.",
   )
 }

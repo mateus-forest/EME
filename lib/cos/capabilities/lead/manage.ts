@@ -112,7 +112,7 @@ export const findLeadCapability: CosCapabilityHandler = async ({ brokerId, messa
   return {
     response: leads.length
       ? `Encontrei ${leads.length} cliente${leads.length === 1 ? "" : "s"}:\n\n${leads.map((lead) => `- ${lead.name ?? "Sem nome"} (${lead.status})`).join("\n")}`
-      : "Nao encontrei clientes com esse filtro.",
+      : "Não encontrei clientes com esse filtro.",
     metadata: {
       leadIds: leads.map((lead) => lead.id),
       resultCount: leads.length,
@@ -155,7 +155,7 @@ export const leadTimelineCapability: CosCapabilityHandler = async ({ brokerId, m
       `Compromissos: ${events.length}`,
       `Documentos: ${documents.length}`,
       "",
-      ...messages.slice(0, 2).map((item) => `- ${item.direction === "outbound" ? "Saida" : "Entrada"}: ${cleanText(item.message, 80)}`),
+      ...messages.slice(0, 2).map((item) => `- ${item.direction === "outbound" ? "Saída" : "Entrada"}: ${cleanText(item.message, 80)}`),
     ].join("\n"),
     metadata: {
       leadId: lead.id,

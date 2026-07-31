@@ -50,7 +50,7 @@ export async function previewPropertyXml(input: PreviewXmlInput) {
       cache: "no-store",
       body: formData,
     }),
-    "Nao foi possivel analisar o XML.",
+    "Não foi possível analisar o XML.",
   )
 }
 
@@ -65,6 +65,6 @@ export async function confirmPropertyXmlImport(properties: ParsedXmlProperty[]) 
       cache: "no-store",
       body: JSON.stringify({ properties }),
     }),
-    "Nao foi possivel importar os imoveis.",
+    "Não foi possível importar os imóveis.",
   )
 }

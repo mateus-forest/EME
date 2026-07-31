@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   try {
@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const status = body?.status === undefined ? null : parseLeadStatus(body?.status)
 
     if (body?.status !== undefined && !status) {
-      return NextResponse.json({ error: "Status do lead invalido." }, { status: 400 })
+      return NextResponse.json({ error: "Status do lead inválido." }, { status: 400 })
     }
 
     const currentLead = await prisma.lead.findUnique({
@@ -37,11 +37,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     })
 
     if (!currentLead) {
-      return NextResponse.json({ error: "Lead nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 })
     }
 
     if (!canAccessLead(user, currentLead)) {
-      return NextResponse.json({ error: "Acesso nao permitido para este lead." }, { status: 403 })
+      return NextResponse.json({ error: "Acesso não permitido para este lead." }, { status: 403 })
     }
 
     const lead = await prisma.lead.update({
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de leads está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
@@ -95,7 +95,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   try {
@@ -109,11 +109,11 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     })
 
     if (!currentLead) {
-      return NextResponse.json({ error: "Lead nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 })
     }
 
     if (!canAccessLead(user, currentLead)) {
-      return NextResponse.json({ error: "Acesso nao permitido para este lead." }, { status: 403 })
+      return NextResponse.json({ error: "Acesso não permitido para este lead." }, { status: 403 })
     }
 
     await prisma.lead.update({
@@ -131,7 +131,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de leads esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de leads está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

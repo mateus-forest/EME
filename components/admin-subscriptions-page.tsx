@@ -115,7 +115,7 @@ export function AdminSubscriptionsPage() {
       updateSubscription(
         subscription.id,
         updated,
-        `Notifica??o enviada com sucesso para ${subscription.clientName}.`,
+        `Notificação enviada com sucesso para ${subscription.clientName}.`,
       )
     } catch (error) {
       showFeedback(error instanceof Error ? error.message : "Não foi possível enviar a notificação.")

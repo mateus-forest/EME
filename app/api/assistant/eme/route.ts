@@ -194,14 +194,14 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   try {
@@ -241,7 +241,7 @@ export async function GET() {
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Assessor EME esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
     }
     return NextResponse.json({ error: "Nao foi possivel carregar o Assessor EME." }, { status: 500 })
   }
@@ -251,14 +251,14 @@ export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   const body = await request.json().catch(() => null)
@@ -280,7 +280,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(creditsResponse(broker))
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Assessor EME esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
     }
     return NextResponse.json({ error: "Nao foi possivel atualizar o Assessor EME." }, { status: 500 })
   }
@@ -290,14 +290,14 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
   const body = await request.json().catch(() => null)
@@ -333,7 +333,7 @@ export async function POST(request: NextRequest) {
     if (conversationIdFromBody) {
       conversationDocument = await resolveCosConversation(user.broker.id, conversationIdFromBody)
       if (!conversationDocument) {
-        return NextResponse.json({ error: "Conversa nao encontrada." }, { status: 404 })
+        return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
       }
     } else {
       conversationDocument = await prisma.brokerDocument.create({
@@ -354,7 +354,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!brokerState) {
-      return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
     }
 
     if (!brokerState.aiAssistantEnabled && !isCancellation) {
@@ -863,9 +863,9 @@ export async function POST(request: NextRequest) {
     })
 
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Assessor EME esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Nao foi possivel acionar o Assessor EME agora." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível acionar o Assessor EME agora." }, { status: 500 })
   }
 }

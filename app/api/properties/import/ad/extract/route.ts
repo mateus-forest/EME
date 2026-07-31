@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

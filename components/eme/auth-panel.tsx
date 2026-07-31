@@ -73,7 +73,7 @@ export function AuthPanel({
 
   const helperText = useMemo(() => {
     if (!isLogin) {
-      return "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliario."
+      return "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliário."
     }
 
     return "Continue para acessar o seu Sistema Operacional."
@@ -91,7 +91,7 @@ export function AuthPanel({
           await submitPassword()
         }
       } catch (caughtError) {
-        setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel entrar agora.")
+        setError(caughtError instanceof Error ? caughtError.message : "Não foi possível entrar agora.")
       }
 
       return
@@ -101,12 +101,12 @@ export function AuthPanel({
     const normalizedEmail = signupEmail.trim().toLowerCase()
 
     if (!trimmedName || !normalizedEmail || !signupPassword) {
-      setError("Nome, email e senha sao obrigatorios.")
+      setError("Nome, email e senha são obrigatórios.")
       return
     }
 
     if (signupPassword !== confirmPassword) {
-      setError("As senhas nao coincidem.")
+      setError("As senhas não coincidem.")
       return
     }
 
@@ -131,7 +131,7 @@ export function AuthPanel({
       const data = (await response.json().catch(() => null)) as { user: AuthenticatedUser } | { error?: string } | null
 
       if (!response.ok || !data || !("user" in data)) {
-        setError(data && "error" in data && data.error ? data.error : "Nao foi possivel criar sua conta agora.")
+        setError(data && "error" in data && data.error ? data.error : "Não foi possível criar sua conta agora.")
         return
       }
 
@@ -145,7 +145,7 @@ export function AuthPanel({
     <div className="pointer-events-none absolute inset-0 z-[70]">
       <motion.button
         type="button"
-        aria-label="Fechar autenticacao"
+        aria-label="Fechar autenticação"
         className="pointer-events-auto absolute inset-0 cursor-default"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -277,7 +277,7 @@ export function AuthPanel({
                       ) : (
                         <div className="grid gap-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN de 6 digitos</span>
+                            <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN de 6 dígitos</span>
                             {trustedDevice?.emailMasked ? <span className="text-[12px] text-foreground/50">{trustedDevice.emailMasked}</span> : null}
                           </div>
                           <PinCodeInput value={pin} onChange={setPin} autoFocus />
@@ -337,7 +337,7 @@ export function AuthPanel({
                 ) : null}
 
                 <p className="mt-5 text-center text-[13px] text-foreground/65 sm:mt-6 sm:text-[13.5px]">
-                  {isLogin ? "Ainda nao possui uma conta? " : "Ja possui uma conta? "}
+                  {isLogin ? "Ainda não possui uma conta? " : "Já possui uma conta? "}
                   <button
                     type="button"
                     onClick={() => onModeChange(isLogin ? "signup" : "login")}

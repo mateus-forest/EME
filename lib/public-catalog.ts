@@ -116,7 +116,7 @@ function propertyTypeLabel(type: string) {
 }
 
 function propertyPurposeLabel(purpose: string) {
-  return purpose === "RENT" ? "Locacao" : "Venda"
+  return purpose === "RENT" ? "Locação" : "Venda"
 }
 
 export async function getPublicBrokerCatalogBySlug(slug: string): Promise<PublicBrokerCatalogData | null> {

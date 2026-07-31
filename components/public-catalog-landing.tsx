@@ -91,12 +91,12 @@ type CatalogAdvancedFilters = {
 }
 
 const quickSuggestions = [
-  "Alto padrao",
+  "Alto padrão",
   "Casas",
   "Coberturas",
   "Frente mar",
   "Investimento",
-  "Ate R$ 1 milhao",
+  "Até R$ 1 milhão",
   "Mais filtros",
 ]
 
@@ -209,7 +209,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
       property,
       name: "",
       phone: "",
-      message: `Ola, tenho interesse no imovel ${property.title}: ${propertyUrl}`,
+      message: `Olá, tenho interesse no imóvel ${property.title}: ${propertyUrl}`,
     })
   }
 
@@ -226,7 +226,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
     setLeadFeedback("")
 
     const propertyUrl = `${catalogUrl}#imovel-${leadDraft.property.id}`
-    const whatsappMessage = `Ola, tenho interesse no imovel ${leadDraft.property.title}: ${propertyUrl}. Meu nome e ${name}.`
+    const whatsappMessage = `Olá, tenho interesse no imóvel ${leadDraft.property.title}: ${propertyUrl}. Meu nome é ${name}.`
 
     try {
       await createPublicLead({
@@ -242,7 +242,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
       })
 
       if (!catalog.whatsApp) {
-        setLeadFeedback("Interesse registrado. O responsavel pelo catalogo recebera seu contato.")
+        setLeadFeedback("Interesse registrado. O responsável pelo catálogo receberá seu contato.")
         setLeadDraft(null)
         return
       }
@@ -256,7 +256,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
       })
       setLeadDraft(null)
     } catch (caughtError) {
-      setLeadFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel registrar seu interesse.")
+      setLeadFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar seu interesse.")
     } finally {
       setIsSavingLead(false)
     }
@@ -287,13 +287,13 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
 
             <div className="min-w-0 text-center lg:text-left">
               <p className="text-xs uppercase tracking-[0.3em] text-[#6a6a6a]">
-                {kind === "broker" ? "Catalogo do corretor" : "Catalogo da imobiliaria"}
+                {kind === "broker" ? "Catálogo do corretor" : "Catálogo da imobiliária"}
               </p>
               <h1 className="mt-2 text-[2.9rem] font-semibold tracking-[-0.055em] text-[#111111] sm:text-[3.65rem]">
-                {catalog.displayName || "Catalogo EME"}
+                {catalog.displayName || "Catálogo EME"}
               </h1>
               <p className="mt-3 text-[1.04rem] leading-7 text-[#5f5f5f]">
-                {catalog.description || "Corretor especialista em imoveis de alto padrao."}
+                {catalog.description || "Corretor especialista em imóveis de alto padrão."}
               </p>
               {creci ? <p className="mt-1.5 text-[0.95rem] text-[#707070]">CRECI {creci}</p> : null}
 
@@ -302,10 +302,10 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                   type="button"
                   onClick={() => {
                     if (!catalog.whatsApp) {
-                      showFeedback("Contato indisponivel no momento")
+                      showFeedback("Contato indisponível no momento")
                       return
                     }
-                    window.open(createWhatsAppUrl(catalog.whatsApp, `Ola, quero saber mais sobre o catalogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
+                    window.open(createWhatsAppUrl(catalog.whatsApp, `Olá, quero saber mais sobre o catálogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
                     void trackCatalogEvent({
                       eventType: "whatsapp_click",
                       catalogSlug: catalog.slug || slug,
@@ -320,7 +320,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catalogo de imoveis")}
+                  onClick={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catálogo de imóveis")}
                   className="h-11 rounded-full border border-[#e6dfd7] bg-white px-6 text-sm font-medium text-[#2f2f2f] shadow-[0_4px_14px_rgba(15,23,42,0.04)] hover:bg-[#faf8f5]"
                 >
                   <Share2 className="size-4" />
@@ -331,11 +331,11 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
             </div>
 
             <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] grid-cols-2 sm:grid-cols-2 lg:border-l lg:border-[#f0e9e1] lg:grid-cols-2">
-              <MetricStat icon={Home} label="Imoveis" value={String(properties.length)} />
+              <MetricStat icon={Home} label="Imóveis" value={String(properties.length)} />
               <MetricStat icon={MapPin} label="Cidades" value={cities.length ? String(cities.length) : "A consultar"} />
               <MetricStat
                 icon={CircleDollarSign}
-                label="Faixa de preco"
+                label="Faixa de preço"
                 value={priceRange}
                 fullWidthOnMobile
                 fullWidthOnDesktop
@@ -350,10 +350,10 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
         <section className="rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10">
           <div className="mx-auto max-w-none">
             <h2 className="text-[1.3rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
-              Encontre seu proximo imovel
+              Encontre seu próximo imóvel
             </h2>
             <p className="mt-1.5 text-[13px] leading-5 text-[#6b6b6b] sm:mt-2 sm:text-[0.98rem] sm:leading-7">
-              Busque por bairro, cidade ou caracteristica.
+              Busque por bairro, cidade ou característica.
             </p>
 
             <div className="mt-4 grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_170px]">
@@ -365,7 +365,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submitSearch()
                   }}
-                  placeholder="Ex.: apartamento em Porto Alegre ate 900 mil com 2 quartos e vaga"
+                  placeholder="Ex.: apartamento em Porto Alegre até 900 mil com 2 quartos e vaga"
                   className="h-[3rem] rounded-[0.95rem] border-transparent bg-white pl-11 pr-4 text-[13px] text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8] sm:h-[3.6rem] sm:rounded-[1rem] sm:pl-12 sm:text-base"
                 />
               </div>
@@ -443,7 +443,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                     ))}
                   </select>
                 </FilterField>
-                <FilterField label="Preco maximo">
+                <FilterField label="Preço máximo">
                   <Input
                     value={advancedFilters.maxPrice}
                     onChange={(event) =>
@@ -453,7 +453,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                     className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
                   />
                 </FilterField>
-                <FilterField label="Dormitorios">
+                <FilterField label="Dormitórios">
                   <Input
                     value={advancedFilters.bedrooms}
                     onChange={(event) =>
@@ -473,13 +473,13 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                     className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
                   />
                 </FilterField>
-                <FilterField label="Caracteristicas">
+                <FilterField label="Características">
                   <Input
                     value={advancedFilters.feature}
                     onChange={(event) =>
                       setAdvancedFilters((current) => ({ ...current, feature: event.target.value }))
                     }
-                    placeholder="sacada, piscina, suite"
+                    placeholder="sacada, piscina, suíte"
                     className="h-11 rounded-xl border-black/[0.08] bg-white text-[#111111] placeholder:text-[#9a9a9a]"
                   />
                 </FilterField>
@@ -515,7 +515,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
 
             {search.trim() || hasActiveAdvancedFilters(advancedFilters) ? (
               <p className="mt-4 text-sm text-[#6B7280]">
-                {visibleProperties.length} imovel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
+                {visibleProperties.length} imóvel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
               </p>
             ) : null}
           </div>
@@ -526,7 +526,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
           <>
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2rem]">
-                {listingOnly ? "Todos os imoveis" : "Imoveis em destaque"}
+                {listingOnly ? "Todos os imóveis" : "Imóveis em destaque"}
               </h2>
               {!listingOnly ? (
                 <Link
@@ -615,7 +615,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                     <MessageCircle className="size-7" />
                   </div>
                   <div>
-                    <h3 className="text-[1.9rem] font-semibold tracking-[-0.04em] text-[#111111]">Ainda nao encontrou o imovel ideal?</h3>
+                    <h3 className="text-[1.9rem] font-semibold tracking-[-0.04em] text-[#111111]">Ainda não encontrou o imóvel ideal?</h3>
                     <p className="mt-1.5 text-base leading-7 text-[#6b6b6b]">
                       Receba novas oportunidades diretamente pelo WhatsApp.
                     </p>
@@ -627,10 +627,10 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                   variant="ghost"
                   onClick={() => {
                     if (!catalog.whatsApp) {
-                      showFeedback("Contato indisponivel no momento")
+                      showFeedback("Contato indisponível no momento")
                       return
                     }
-                    window.open(createWhatsAppUrl(catalog.whatsApp, `Ola, quero receber opcoes exclusivas do catalogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
+                    window.open(createWhatsAppUrl(catalog.whatsApp, `Olá, quero receber opções exclusivas do catálogo ${catalogUrl}`), "_blank", "noopener,noreferrer")
                   }}
                   className="h-12 rounded-full bg-[#f4fbf6] px-6 text-base font-medium text-[#3e9651] shadow-[0_10px_22px_rgba(61,151,81,0.08)] hover:bg-[#eef9f1] hover:text-[#2f7c40]"
                 >
@@ -642,7 +642,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
           </>
         ) : (
           <div className="rounded-[1.75rem] border border-black/[0.05] bg-white px-6 py-16 text-center text-sm text-[#6B7280] shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
-            Nenhum imovel encontrado para essa busca.
+            Nenhum imóvel encontrado para essa busca.
           </div>
         )}
       </div>
@@ -653,7 +653,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
             <div className="grid max-h-[92vh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
               <div className="border-b border-black/[0.06] p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
-                <DialogDescription className="sr-only">Detalhes do imovel selecionado.</DialogDescription>
+                <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
                 <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#f4f6f4]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -686,7 +686,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                 </div>
                 {selectedProperty.description ? (
                   <div className="mt-6">
-                    <p className="text-sm font-medium text-[#374151]">Descricao</p>
+                    <p className="text-sm font-medium text-[#374151]">Descrição</p>
                     <p className="mt-3 break-words text-sm leading-7 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
@@ -695,7 +695,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                     <MessageCircle className="size-4" />
                     Tenho interesse
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imovel")} className="h-11 rounded-full border border-black/[0.06] bg-white px-5 text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]">
+                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className="h-11 rounded-full border border-black/[0.06] bg-white px-5 text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]">
                     <Share2 className="size-4" />
                     Compartilhar
                   </Button>
@@ -710,7 +710,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
         <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-black/[0.05] bg-white text-[#1f2937] shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:max-w-lg">
           {leadDraft ? (
             <>
-              <DialogTitle className="text-2xl text-[#050505]">Gostou deste imovel?</DialogTitle>
+              <DialogTitle className="text-2xl text-[#050505]">Gostou deste imóvel?</DialogTitle>
               <DialogDescription className="text-[#6B7280]">
                 Para falar com o corretor, me diga seu nome.
               </DialogDescription>
@@ -968,7 +968,7 @@ function rankProperties(
         property,
         compatible,
         score,
-        matchLabel: score >= 28 ? "Destaque" : score >= 16 ? "Selecionado" : "Boa opcao",
+        matchLabel: score >= 28 ? "Destaque" : score >= 16 ? "Selecionado" : "Boa opção",
       }
     })
     .filter((item) => item.compatible)
@@ -1295,7 +1295,7 @@ function CatalogImagePlaceholder() {
 
 function getSuggestionIcon(suggestion: string) {
   if (suggestion === "Mais filtros") return <SlidersHorizontal className="size-4 text-[#6a6a6a]" />
-  if (suggestion === "Ate R$ 1 milhao") return <CircleDollarSign className="size-4 text-[#6a6a6a]" />
+  if (suggestion === "Até R$ 1 milhão") return <CircleDollarSign className="size-4 text-[#6a6a6a]" />
   if (suggestion === "Frente mar") return <Sparkles className="size-4 text-[#6a6a6a]" />
   if (suggestion === "Investimento") return <Building2 className="size-4 text-[#6a6a6a]" />
   return <Home className="size-4 text-[#6a6a6a]" />

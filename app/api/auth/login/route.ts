@@ -26,14 +26,14 @@ export async function POST(request: NextRequest) {
       }
 
       if (!isValidPin(pin)) {
-        return NextResponse.json({ error: "Informe um PIN valido com 6 digitos." }, { status: 400 })
+        return NextResponse.json({ error: "Informe um PIN válido com 6 dígitos." }, { status: 400 })
       }
 
       const trustedDevice = await resolveTrustedDevice(request).catch(() => null)
 
       if (!trustedDevice?.user?.pinHash) {
         return NextResponse.json(
-          { error: "PIN indisponivel para este dispositivo. Entre com email e senha para continuar." },
+          { error: "PIN indisponível para este dispositivo. Entre com email e senha para continuar." },
           { status: 400 },
         )
       }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       const pinMatches = await comparePin(pin, trustedDevice.user.pinHash)
 
       if (!pinMatches) {
-        return NextResponse.json({ error: "PIN invalido." }, { status: 401 })
+        return NextResponse.json({ error: "PIN inválido." }, { status: 401 })
       }
 
       const user = await prisma.user.findUnique({
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       })
 
       if (!user) {
-        return NextResponse.json({ error: "PIN invalido." }, { status: 401 })
+        return NextResponse.json({ error: "PIN inválido." }, { status: 401 })
       }
 
       const token = await createAuthToken({
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email e senha sao obrigatorios." }, { status: 400 })
+      return NextResponse.json({ error: "Email e senha são obrigatórios." }, { status: 400 })
     }
 
     const user = await prisma.user.findUnique({
@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: "Credenciais invalidas." }, { status: 401 })
+      return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
     }
 
     if (typeof user.passwordHash !== "string" || user.passwordHash.length === 0) {
-      return NextResponse.json({ error: "Credenciais invalidas." }, { status: 401 })
+      return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
     }
 
     let passwordMatches = false
@@ -96,11 +96,11 @@ export async function POST(request: NextRequest) {
         message: error instanceof Error ? error.message : "unknown",
       })
 
-      return NextResponse.json({ error: "Nao foi possivel validar suas credenciais agora." }, { status: 500 })
+      return NextResponse.json({ error: "Não foi possível validar suas credenciais agora." }, { status: 500 })
     }
 
     if (!passwordMatches) {
-      return NextResponse.json({ error: "Credenciais invalidas." }, { status: 401 })
+      return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
     }
 
     const token = await createAuthToken({
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     if (isDatabaseUnavailableError(error)) {
       return NextResponse.json(
-        { error: "O servico de autenticacao esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de autenticação está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

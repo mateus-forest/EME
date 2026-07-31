@@ -18,32 +18,32 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const trustedDevice = await resolveTrustedDevice(request)
   if (!trustedDevice || trustedDevice.userId !== user.id) {
     return NextResponse.json(
-      { error: "Ative este dispositivo como confiavel antes de habilitar a biometria." },
+      { error: "Ative este dispositivo como confiável antes de habilitar a biometria." },
       { status: 400 },
     )
   }
 
   const actionToken = request.cookies.get(WEBAUTHN_ACTION_COOKIE_NAME)?.value
   if (!actionToken) {
-    return NextResponse.json({ error: "Desafio biometrico nao encontrado." }, { status: 400 })
+    return NextResponse.json({ error: "Desafio biométrico não encontrado." }, { status: 400 })
   }
 
   const action = await verifyWebAuthnActionToken(actionToken).catch(() => null)
   if (!action || action.purpose !== "registration" || action.userId !== user.id || action.deviceId !== trustedDevice.id) {
-    const response = NextResponse.json({ error: "Desafio biometrico invalido." }, { status: 400 })
+    const response = NextResponse.json({ error: "Desafio biométrico inválido." }, { status: 400 })
     clearWebAuthnActionCookie(response)
     return response
   }
 
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== "object") {
-    const response = NextResponse.json({ error: "Resposta biometrica invalida." }, { status: 400 })
+    const response = NextResponse.json({ error: "Resposta biométrica inválida." }, { status: 400 })
     clearWebAuthnActionCookie(response)
     return response
   }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (!verification?.verified || !verification.registrationInfo) {
-    const response = NextResponse.json({ error: "Nao foi possivel concluir a biometria." }, { status: 400 })
+    const response = NextResponse.json({ error: "Não foi possível concluir a biometria." }, { status: 400 })
     clearWebAuthnActionCookie(response)
     return response
   }

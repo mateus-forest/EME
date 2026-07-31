@@ -8,7 +8,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.ADMIN])
@@ -24,7 +24,7 @@ export async function GET() {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico administrativo esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço administrativo está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }

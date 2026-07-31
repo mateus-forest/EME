@@ -24,11 +24,11 @@ export async function GET(
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
-    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
   }
 
   try {
@@ -36,7 +36,7 @@ export async function GET(
     const campaign = await getStudioCampaignById(user, id)
 
     if (!campaign) {
-      return NextResponse.json({ error: "Campanha nao encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 })
     }
 
     const asset = campaign.assets.find((item) => item.id === assetId)
@@ -68,7 +68,7 @@ export async function GET(
     }
 
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O servico do Studio IA esta indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do Studio IA está indisponível no momento." }, { status: 503 })
     }
 
     return NextResponse.json({ error: "Nao foi possivel renderizar o criativo do Studio IA." }, { status: 500 })

@@ -55,11 +55,11 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   })
 
   if (!property) {
-    return NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 })
+    return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
   }
 
   if (!user.broker || property.brokerId !== user.broker.id) {
-    return NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido a este imóvel." }, { status: 403 })
   }
 
   return property
@@ -126,7 +126,7 @@ async function resolveJobDocument(requestId: string, brokerId: string) {
   })
 
   if (!document) {
-    return NextResponse.json({ error: "Solicitacao de video nao encontrada." }, { status: 404 })
+    return NextResponse.json({ error: "Solicitação de vídeo não encontrada." }, { status: 404 })
   }
 
   return document
@@ -417,11 +417,11 @@ async function syncStudioVideoCampaign(input: {
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER || !user.broker) {
-    return NextResponse.json({ error: "Acesso nao permitido para este fluxo." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este fluxo." }, { status: 403 })
   }
 
   try {
@@ -500,11 +500,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER || !user.broker) {
-    return NextResponse.json({ error: "Acesso nao permitido para este fluxo." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este fluxo." }, { status: 403 })
   }
 
   try {
@@ -806,7 +806,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
         { status: 503 },
       )
     }
@@ -874,11 +874,11 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER || !user.broker) {
-    return NextResponse.json({ error: "Acesso nao permitido para este fluxo." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso não permitido para este fluxo." }, { status: 403 })
   }
 
   try {

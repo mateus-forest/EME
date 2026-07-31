@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 const filters: Array<{ label: string; value: AppointmentFilter }> = [
   { label: "Hoje", value: "today" },
-  { label: "Amanha", value: "tomorrow" },
+  { label: "Amanhã", value: "tomorrow" },
   { label: "Semana", value: "week" },
   { label: "Todos", value: "all" },
 ]
@@ -43,7 +43,7 @@ const appointmentTypeLabels: Record<AppointmentType, string> = {
 
 const appointmentStatusLabels: Record<AppointmentStatus, string> = {
   pending: "Pendente",
-  done: "Concluido",
+  done: "Concluído",
   cancelled: "Cancelado",
 }
 
@@ -86,7 +86,7 @@ export function BrokerAgendaPage() {
       const loadedEvents = await appointments.list(nextFilter)
       setEvents(loadedEvents)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel carregar os compromissos.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível carregar os compromissos.")
     } finally {
       setIsLoading(false)
     }
@@ -103,7 +103,7 @@ export function BrokerAgendaPage() {
 
     return [
       { label: "Pendentes", value: String(pending), tone: "text-[#009b3a]" },
-      { label: "Concluidos", value: String(done), tone: "text-[#050505]" },
+      { label: "Concluídos", value: String(done), tone: "text-[#050505]" },
       { label: "Cancelados", value: String(cancelled), tone: "text-[#7B8491]" },
     ]
   }, [events])
@@ -155,7 +155,7 @@ export function BrokerAgendaPage() {
       setFeedback(editingId ? "Compromisso atualizado." : "Compromisso criado.")
       resetForm()
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel salvar o compromisso.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível salvar o compromisso.")
     } finally {
       setIsSaving(false)
     }
@@ -174,7 +174,7 @@ export function BrokerAgendaPage() {
 
       setEvents((current) => sortAppointments(current.map((event) => (event.id === updatedEvent.id ? updatedEvent : event))))
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel atualizar o compromisso.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o compromisso.")
     }
   }
 
@@ -190,7 +190,7 @@ export function BrokerAgendaPage() {
                   Compromissos
                 </CardTitle>
                 <p className="mt-1 text-sm text-[#6B7280]">
-                  Veja o que precisa de atencao agora e conclua o essencial sem excesso de informacao.
+                  Veja o que precisa de atenção agora e conclua o essencial sem excesso de informação.
                 </p>
               </div>
 
@@ -336,8 +336,8 @@ export function BrokerAgendaPage() {
               <CardTitle className="text-lg text-[#050505]">{isEditing ? "Editar compromisso" : "Novo compromisso"}</CardTitle>
               <p className="text-sm text-[#6B7280]">
                 {isEditing
-                  ? "Atualize apenas o necessario. O restante da agenda continua intacto."
-                  : "Crie um compromisso em poucos campos e siga com a operacao."}
+                  ? "Atualize apenas o necessário. O restante da agenda continua intacto."
+                  : "Crie um compromisso em poucos campos e siga com a operação."}
               </p>
             </CardHeader>
             <CardContent className="grid gap-3 p-5 pt-0">
@@ -379,7 +379,7 @@ export function BrokerAgendaPage() {
               <Textarea
                 value={draft.notes}
                 onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
-                placeholder="Observacao opcional"
+                placeholder="Observação opcional"
                 className="min-h-24 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"
               />
 
@@ -390,7 +390,7 @@ export function BrokerAgendaPage() {
                   onClick={submitForm}
                   className="h-11 flex-1 rounded-xl bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                 >
-                  {isSaving ? "Salvando..." : isEditing ? "Salvar alteracoes" : "Criar compromisso"}
+                  {isSaving ? "Salvando..." : isEditing ? "Salvar alterações" : "Criar compromisso"}
                 </Button>
 
                 {isEditing ? (
@@ -400,7 +400,7 @@ export function BrokerAgendaPage() {
                     onClick={resetForm}
                     className="h-11 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                   >
-                    Cancelar edicao
+                    Cancelar edição
                   </Button>
                 ) : null}
               </div>
@@ -411,7 +411,7 @@ export function BrokerAgendaPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <Sparkles className="size-5 text-[#009b3a]" />
-                Proximo foco
+                Próximo foco
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 pt-0">
@@ -425,7 +425,7 @@ export function BrokerAgendaPage() {
                 </div>
               ) : (
                 <div className="rounded-[1.25rem] border border-[#009b3a]/16 bg-[#009b3a]/[0.06] p-4 text-sm leading-6 text-[#009b3a]">
-                  Nenhum compromisso pendente agora. Quando voce criar ou reabrir um item, ele aparece aqui.
+                  Nenhum compromisso pendente agora. Quando você criar ou reabrir um item, ele aparece aqui.
                 </div>
               )}
             </CardContent>
@@ -446,7 +446,7 @@ function sortAppointments(events: Appointment[]) {
 
 function formatAppointmentDate(dateValue: string, time: string) {
   const date = new Date(`${dateValue}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return time || "Data nao informada"
+  if (Number.isNaN(date.getTime())) return time || "Data não informada"
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -458,10 +458,10 @@ function formatAppointmentDate(dateValue: string, time: string) {
     date.getTime() === today.getTime()
       ? "Hoje"
       : date.getTime() === tomorrow.getTime()
-        ? "Amanha"
+        ? "Amanhã"
         : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
 
-  return `${label}${time ? ` as ${time}` : ""}`
+  return `${label}${time ? ` às ${time}` : ""}`
 }
 
 function EmptyAppointmentsState({ filter }: { filter: AppointmentFilter }) {
@@ -469,9 +469,9 @@ function EmptyAppointmentsState({ filter }: { filter: AppointmentFilter }) {
     filter === "today"
       ? "Nenhum compromisso para hoje."
       : filter === "tomorrow"
-        ? "Nenhum compromisso para amanha."
+        ? "Nenhum compromisso para amanhã."
         : filter === "week"
-          ? "Sua semana esta livre por enquanto."
+          ? "Sua semana está livre por enquanto."
           : "Nenhum compromisso cadastrado ainda."
 
   return (

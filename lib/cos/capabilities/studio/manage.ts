@@ -90,13 +90,13 @@ async function createDeterministicStudioCampaign(input: {
 
 export const studioGenerateDescriptionCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const property = await resolvePropertyForStudio(brokerId, getPayloadRecord({ brokerId, userId, message: "", action: "general", payload }))
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const narrative = buildPropertyNarrative(property)
   const description = `${narrative.title} em ${narrative.location}, com ${narrative.highlight.toLowerCase()} e valor de referência em R$ ${(narrative.price / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. ${narrative.description}`
 
   return {
-    response: `Descricao sugerida:\n\n${description}`,
+    response: `Descrição sugerida:\n\n${description}`,
     metadata: {
       propertyId: property.id,
       generatedDescription: description,
@@ -118,7 +118,7 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
     }
   }
 
-  const refined = `${baseText}\n\nCTA sugerido: fale comigo para receber a apresentacao completa e agendar sua visita.`
+  const refined = `${baseText}\n\nCTA sugerido: fale comigo para receber a apresentação completa e agendar sua visita.`
 
   return {
     response: `Texto refinado:\n\n${refined}`,
@@ -130,7 +130,7 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
 
 export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const property = await resolvePropertyForStudio(brokerId, getPayloadRecord({ brokerId, userId, message: "", action: "general", payload }))
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const narrative = buildPropertyNarrative(property)
   const campaign = await createDeterministicStudioCampaign({
@@ -174,7 +174,7 @@ export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ b
 
 export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const property = await resolvePropertyForStudio(brokerId, getPayloadRecord({ brokerId, userId, message: "", action: "general", payload }))
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const narrative = buildPropertyNarrative(property)
   const campaign = await createDeterministicStudioCampaign({
@@ -221,7 +221,7 @@ export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ 
 
 export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const property = await resolvePropertyForStudio(brokerId, getPayloadRecord({ brokerId, userId, message: "", action: "general", payload }))
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   return {
     response: `Campanha de Facebook preparada para ${property.title}.\n\nUse a mesma base aprovada de Instagram com foco em alcance local.`,
@@ -235,7 +235,7 @@ export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ b
 
 export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const property = await resolvePropertyForStudio(brokerId, getPayloadRecord({ brokerId, userId, message: "", action: "general", payload }))
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const narrative = buildPropertyNarrative(property)
   const campaign = await createDeterministicStudioCampaign({
@@ -271,7 +271,7 @@ export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brok
 
 export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const property = await resolvePropertyForStudio(brokerId, getPayloadRecord({ brokerId, userId, message: "", action: "general", payload }))
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const narrative = buildPropertyNarrative(property)
 
@@ -292,7 +292,7 @@ export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brok
 export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message: "", action: "general", payload })
   const propertyId = getEntityIdFromPayload(payloadRecord, "property")
-  if (!propertyId) return requiredSelectionResponse("imovel", "propertyId")
+  if (!propertyId) return requiredSelectionResponse("imóvel", "propertyId")
 
   const { user } = await getBrokerUserContext(brokerId, userId)
   if (!user) throw new Error("COS_STUDIO_USER_NOT_FOUND")
@@ -304,7 +304,7 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
 
   if (!latest) {
     return {
-      response: "Nao encontrei campanha anterior para regenerar. Posso criar uma nova campanha de Instagram primeiro.",
+      response: "Não encontrei campanha anterior para regenerar. Posso criar uma nova campanha de Instagram primeiro.",
       metadata: {
         required: ["campaignId"],
         noCharge: true,
@@ -339,7 +339,7 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
   })
 
   return {
-    response: `Campanha regenerada com sucesso.\n\nNova versao: ${regenerated.version}`,
+    response: `Campanha regenerada com sucesso.\n\nNova versão: ${regenerated.version}`,
     metadata: {
       campaignId: regenerated.id,
       propertyId,

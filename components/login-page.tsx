@@ -70,7 +70,7 @@ export function LoginPage() {
     setIsRecoverySubmitting(true)
 
     window.setTimeout(() => {
-      setRecoveryFeedback("Se existir uma conta com este email, voce recebera instrucoes para redefinir sua senha.")
+      setRecoveryFeedback("Se existir uma conta com este email, você receberá instruções para redefinir sua senha.")
       setRecoveryEmail("")
       setIsRecoverySubmitting(false)
     }, 500)
@@ -83,7 +83,7 @@ export function LoginPage() {
         subtitle={subtitle}
         footer={
           <p className="text-sm text-[#6B7280]">
-            Ainda nao tem conta?{" "}
+            Ainda não tem conta?{" "}
             <Link href="/cadastro" className="font-semibold text-[#00C853] hover:text-[#00E676]">
               Comece agora
             </Link>
@@ -155,7 +155,7 @@ export function LoginPage() {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-sm font-medium text-[#374151]">PIN de 6 digitos</label>
+                  <label className="text-sm font-medium text-[#374151]">PIN de 6 dígitos</label>
                   {trustedDevice?.emailMasked ? <span className="text-xs text-[#6B7280]">{trustedDevice.emailMasked}</span> : null}
                 </div>
                 <PinCodeInput value={pin} onChange={setPin} autoFocus />
@@ -219,7 +219,7 @@ export function LoginPage() {
             <DialogHeader className="space-y-2 text-left">
               <DialogTitle className="text-2xl font-semibold text-[#111111]">Recuperar senha</DialogTitle>
               <DialogDescription className="text-sm leading-6 text-[#6B7280]">
-                Informe seu email para solicitar a redefinicao de senha quando a integracao com backend estiver conectada.
+                Informe seu email para solicitar a redefinição de senha quando a integração com backend estiver conectada.
               </DialogDescription>
             </DialogHeader>
 
@@ -258,7 +258,7 @@ export function LoginPage() {
                   type="submit"
                   className="h-11 rounded-xl bg-[#00C853] px-5 text-sm font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
                 >
-                  {isRecoverySubmitting ? "Enviando..." : "Enviar instrucoes"}
+                  {isRecoverySubmitting ? "Enviando..." : "Enviar instruções"}
                 </Button>
               </div>
             </form>

@@ -22,7 +22,7 @@ export function AdminRevenuePage() {
   const { insights, isLoading, error } = useAdminInsights()
 
   return (
-    <AdminPageShell title="Receita" subtitle="Dashboard financeiro do Admin com recorrencia, crescimento e risco">
+    <AdminPageShell title="Receita" subtitle="Dashboard financeiro do Admin com recorrência, crescimento e risco">
       {isLoading && !insights ? <EmeLoading message="Carregando receita..." /> : null}
       {error ? <div className="mb-5 rounded-[1.25rem] border border-[#f3d4d4] bg-[#fff3f3] px-4 py-3 text-sm text-[#b42318]">{error}</div> : null}
 
@@ -31,8 +31,8 @@ export function AdminRevenuePage() {
           <AdminMetricGrid>
             <AdminMetricCard label="MRR" value={formatCurrency(insights.revenue.mrr)} icon={<Wallet className="size-5" />} />
             <AdminMetricCard label="ARR" value={formatCurrency(insights.revenue.arr)} icon={<DollarSign className="size-5" />} />
-            <AdminMetricCard label="Ticket medio" value={formatCurrency(insights.revenue.averageTicket)} icon={<CreditCard className="size-5" />} />
-            <AdminMetricCard label="Inadimplencia" value={String(insights.revenue.delinquency)} icon={<TrendingDown className="size-5" />} tone="warning" />
+            <AdminMetricCard label="Ticket médio" value={formatCurrency(insights.revenue.averageTicket)} icon={<CreditCard className="size-5" />} />
+            <AdminMetricCard label="Inadimplência" value={String(insights.revenue.delinquency)} icon={<TrendingDown className="size-5" />} tone="warning" />
           </AdminMetricGrid>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
@@ -47,7 +47,7 @@ export function AdminRevenuePage() {
                   { label: "Downgrades", value: String(insights.revenue.downgrades) },
                   { label: "Cancelamentos", value: String(insights.revenue.cancellations) },
                   { label: "LTV", value: formatCurrency(insights.revenue.ltv) },
-                  { label: "Inadimplencia", value: String(insights.revenue.delinquency) },
+                  { label: "Inadimplência", value: String(insights.revenue.delinquency) },
                   { label: "Atualizado em", value: new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(insights.generatedAt)) },
                 ]}
               />
@@ -58,15 +58,15 @@ export function AdminRevenuePage() {
                 items={[
                   { label: "Plano atual", value: insights.revenue.mrr > 0 ? "Base recorrente ativa" : "Sem receita recorrente" },
                   { label: "Risco", value: insights.revenue.delinquency > 0 ? "Cobrar e recuperar" : "Controlado" },
-                  { label: "Expansao", value: insights.revenue.upgrades > 0 ? "Ha sinais de upgrade" : "Acompanhar contas com potencial" },
-                  { label: "Retencao", value: insights.analytics.retention == null ? "Sem base" : `${insights.analytics.retention}%` },
+                  { label: "Expansão", value: insights.revenue.upgrades > 0 ? "Há sinais de upgrade" : "Acompanhar contas com potencial" },
+                  { label: "Retenção", value: insights.analytics.retention == null ? "Sem base" : `${insights.analytics.retention}%` },
                 ]}
               />
             </AdminSurface>
           </section>
 
           <section className="grid gap-5 xl:grid-cols-3">
-            <AdminMiniChart title="Receita ativa por mes" subtitle="Base mensal observada." points={insights.revenue.monthlySeries} />
+            <AdminMiniChart title="Receita ativa por mês" subtitle="Base mensal observada." points={insights.revenue.monthlySeries} />
             <AdminMetricCard label="Crescimento" value={insights.revenue.growth == null ? "Sem base" : `${insights.revenue.growth}%`} icon={<TrendingUp className="size-5" />} tone="success" />
             <AdminMetricCard label="Movimento comercial" value={`${insights.revenue.upgrades + insights.revenue.downgrades} mudanças`} icon={<RefreshCw className="size-5" />} />
           </section>

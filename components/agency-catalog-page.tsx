@@ -89,7 +89,7 @@ export function AgencyCatalogPage() {
       setDraftSettings((current) => ({ ...current, logoUrl }))
       setSaveFeedback("")
     } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel preparar o logo.")
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível preparar o logo.")
     }
   }
 

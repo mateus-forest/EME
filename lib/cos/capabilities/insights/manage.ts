@@ -24,7 +24,7 @@ export const financeReceivableCapability: CosCapabilityHandler = async ({ broker
   const estimatedReceivable = estimateCommissionTotal(totalPublishedValue, commissionPercent)
 
   return {
-    response: `Recebiveis previstos:\n\n- Imoveis publicados: ${published.length}\n- Carteira publicada: ${formatAssessorPropertyPrice(totalPublishedValue)}\n- Comissao potencial: ${formatAssessorPropertyPrice(estimatedReceivable)}`,
+    response: `Recebíveis previstos:\n\n- Imóveis publicados: ${published.length}\n- Carteira publicada: ${formatAssessorPropertyPrice(totalPublishedValue)}\n- Comissão potencial: ${formatAssessorPropertyPrice(estimatedReceivable)}`,
     metadata: {
       publishedProperties: published.length,
       totalPublishedValue,
@@ -40,7 +40,7 @@ export const financePayableCapability: CosCapabilityHandler = async ({ brokerId 
   const payableEstimate = pendingContracts * 15000
 
   return {
-    response: `Contas a pagar conhecidas:\n\n- Contratos em andamento: ${pendingContracts}\n- Provisao operacional estimada: ${formatAssessorPropertyPrice(payableEstimate)}\n- Observacao: ainda nao ha um contas a pagar estruturado, entao a leitura usa os compromissos contratuais conhecidos.`,
+    response: `Contas a pagar conhecidas:\n\n- Contratos em andamento: ${pendingContracts}\n- Provisão operacional estimada: ${formatAssessorPropertyPrice(payableEstimate)}\n- Observação: ainda não há um contas a pagar estruturado, então a leitura usa os compromissos contratuais conhecidos.`,
     metadata: {
       pendingContracts,
       payableEstimate,
@@ -58,7 +58,7 @@ export const financeForecastCapability: CosCapabilityHandler = async ({ brokerId
   const projectedRevenue = Math.round(estimateCommissionTotal(totalPublishedValue, commissionPercent) * Math.min(1, activeLeads / Math.max(1, activeProperties.length)))
 
   return {
-    response: `Previsao financeira:\n\n- Leads em andamento: ${activeLeads}\n- Imoveis ativos: ${activeProperties.length}\n- Receita potencial projetada: ${formatAssessorPropertyPrice(projectedRevenue)}`,
+    response: `Previsão financeira:\n\n- Leads em andamento: ${activeLeads}\n- Imóveis ativos: ${activeProperties.length}\n- Receita potencial projetada: ${formatAssessorPropertyPrice(projectedRevenue)}`,
     metadata: {
       activeLeads,
       activeProperties: activeProperties.length,
@@ -75,7 +75,7 @@ export const financeCommissionCapability: CosCapabilityHandler = async ({ broker
   const commissionEstimate = estimateCommissionTotal(totalPortfolioValue, commissionPercent)
 
   return {
-    response: `Comissao prevista da carteira:\n\n- Percentual de referencia: ${commissionPercent}%\n- Volume em carteira: ${formatAssessorPropertyPrice(totalPortfolioValue)}\n- Comissao potencial: ${formatAssessorPropertyPrice(commissionEstimate)}`,
+    response: `Comissão prevista da carteira:\n\n- Percentual de referência: ${commissionPercent}%\n- Volume em carteira: ${formatAssessorPropertyPrice(totalPortfolioValue)}\n- Comissão potencial: ${formatAssessorPropertyPrice(commissionEstimate)}`,
     metadata: {
       commissionPercent,
       totalPortfolioValue,
@@ -94,7 +94,7 @@ export const financeCashflowCapability: CosCapabilityHandler = async ({ brokerId
   const outflow = summary.contracts.filter((item) => item.status === "draft").length * 7000
 
   return {
-    response: `Fluxo de caixa operacional:\n\n- Entradas potenciais: ${formatAssessorPropertyPrice(inflow)}\n- Saidas estimadas: ${formatAssessorPropertyPrice(outflow)}\n- Saldo operacional: ${formatAssessorPropertyPrice(inflow - outflow)}`,
+    response: `Fluxo de caixa operacional:\n\n- Entradas potenciais: ${formatAssessorPropertyPrice(inflow)}\n- Saídas estimadas: ${formatAssessorPropertyPrice(outflow)}\n- Saldo operacional: ${formatAssessorPropertyPrice(inflow - outflow)}`,
     metadata: {
       inflow,
       outflow,
@@ -110,7 +110,7 @@ export const analyticsPerformanceCapability: CosCapabilityHandler = async ({ bro
   const leadsWon = summary.leads.filter((lead) => lead.status === LeadStatus.WON).length
 
   return {
-    response: `Performance comercial:\n\n- Visualizacoes: ${views}\n- Cliques no WhatsApp: ${whatsappClicks}\n- Leads convertidos: ${leadsWon}\n- Imoveis publicados: ${summary.properties.filter((item) => item.published).length}`,
+    response: `Performance comercial:\n\n- Visualizações: ${views}\n- Cliques no WhatsApp: ${whatsappClicks}\n- Leads convertidos: ${leadsWon}\n- Imóveis publicados: ${summary.properties.filter((item) => item.published).length}`,
     metadata: {
       views,
       whatsappClicks,
@@ -126,7 +126,7 @@ export const analyticsSalesCapability: CosCapabilityHandler = async ({ brokerId 
   const lost = summary.leads.filter((lead) => lead.status === LeadStatus.LOST).length
 
   return {
-    response: `Analise de vendas:\n\n- Em negociacao: ${negotiating}\n- Convertidos: ${won}\n- Perdidos: ${lost}`,
+    response: `Análise de vendas:\n\n- Em negociação: ${negotiating}\n- Convertidos: ${won}\n- Perdidos: ${lost}`,
     metadata: {
       negotiating,
       won,
@@ -142,7 +142,7 @@ export const analyticsPropertiesCapability: CosCapabilityHandler = async ({ brok
   const paused = summary.properties.filter((item) => item.status === PropertyStatus.PAUSED).length
 
   return {
-    response: `Analise de imoveis:\n\n- Publicados: ${published}\n- Rascunhos: ${drafts}\n- Pausados: ${paused}`,
+    response: `Análise de imóveis:\n\n- Publicados: ${published}\n- Rascunhos: ${drafts}\n- Pausados: ${paused}`,
     metadata: {
       published,
       drafts,
@@ -158,7 +158,7 @@ export const analyticsLeadsCapability: CosCapabilityHandler = async ({ brokerId 
   const negotiating = summary.leads.filter((lead) => lead.status === LeadStatus.NEGOTIATING).length
 
   return {
-    response: `Analise de leads:\n\n- Novos: ${newLeads}\n- Em atendimento: ${contacted}\n- Em negociacao: ${negotiating}`,
+    response: `Análise de leads:\n\n- Novos: ${newLeads}\n- Em atendimento: ${contacted}\n- Em negociação: ${negotiating}`,
     metadata: {
       newLeads,
       contacted,
@@ -170,10 +170,10 @@ export const analyticsLeadsCapability: CosCapabilityHandler = async ({ brokerId 
 export const publishCatalogCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
   const propertyId = getEntityIdFromPayload(payloadRecord, "property")
-  if (!propertyId) return requiredSelectionResponse("imovel", "propertyId")
+  if (!propertyId) return requiredSelectionResponse("imóvel", "propertyId")
 
   const property = await prisma.property.findFirst({ where: { id: propertyId, brokerId } })
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const updated = await prisma.property.update({
     where: { id: property.id },
@@ -185,7 +185,7 @@ export const publishCatalogCapability: CosCapabilityHandler = async ({ brokerId,
   const broker = await prisma.broker.findUnique({ where: { id: brokerId }, select: { catalogSlug: true } })
 
   return {
-    response: `Imovel publicado no catalogo.\n\n${updated.title}\nhttps://www.meueme.com/catalogo/${broker?.catalogSlug ?? ""}`,
+    response: `Imóvel publicado no catálogo.\n\n${updated.title}\nhttps://www.meueme.com/catalogo/${broker?.catalogSlug ?? ""}`,
     metadata: {
       propertyId: updated.id,
       published: true,
@@ -198,10 +198,10 @@ export const publishCatalogCapability: CosCapabilityHandler = async ({ brokerId,
 export const unpublishCatalogCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
   const propertyId = getEntityIdFromPayload(payloadRecord, "property")
-  if (!propertyId) return requiredSelectionResponse("imovel", "propertyId")
+  if (!propertyId) return requiredSelectionResponse("imóvel", "propertyId")
 
   const property = await prisma.property.findFirst({ where: { id: propertyId, brokerId } })
-  if (!property) return requiredSelectionResponse("imovel", "propertyId")
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const updated = await prisma.property.update({
     where: { id: property.id },
@@ -212,7 +212,7 @@ export const unpublishCatalogCapability: CosCapabilityHandler = async ({ brokerI
   })
 
   return {
-    response: `Imovel removido do catalogo publico.\n\n${updated.title}`,
+    response: `Imóvel removido do catálogo público.\n\n${updated.title}`,
     metadata: {
       propertyId: updated.id,
       published: false,
@@ -226,7 +226,7 @@ export const shareCatalogCapability: CosCapabilityHandler = async ({ brokerId })
   const url = broker?.catalogSlug ? `https://www.meueme.com/catalogo/${broker.catalogSlug}` : null
 
   return {
-    response: url ? `Link publico do catalogo:\n\n${url}` : "Ainda nao encontrei um slug publico para este catalogo.",
+    response: url ? `Link público do catálogo:\n\n${url}` : "Ainda não encontrei um slug público para este catálogo.",
     metadata: {
       catalogUrl: url,
     },
@@ -240,7 +240,7 @@ export const catalogStatsCapability: CosCapabilityHandler = async ({ brokerId })
   const whatsappClicks = sumEventCount(summary.events, ["whatsapp_click"])
 
   return {
-    response: `Estatisticas do catalogo:\n\n- Imoveis publicados: ${published}\n- Visualizacoes: ${views}\n- Cliques no WhatsApp: ${whatsappClicks}`,
+    response: `Estatísticas do catálogo:\n\n- Imóveis publicados: ${published}\n- Visualizações: ${views}\n- Cliques no WhatsApp: ${whatsappClicks}`,
     metadata: {
       published,
       views,

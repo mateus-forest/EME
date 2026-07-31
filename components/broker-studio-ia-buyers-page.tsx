@@ -41,11 +41,11 @@ const audienceOptions: AudienceProfile[] = ["Primeiro imovel", "Familia", "Inves
 const channelOptions: MainChannel[] = ["Instagram", "Facebook", "Google", "WhatsApp", "Portais imobiliarios"]
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
-  { id: "selection", label: "Selecao" },
-  { id: "configuration", label: "Configuracao" },
+  { id: "selection", label: "Seleção" },
+  { id: "configuration", label: "Configuração" },
   { id: "processing", label: "Processamento" },
   { id: "result", label: "Resultado" },
-  { id: "approval", label: "Aprovacao" },
+  { id: "approval", label: "Aprovação" },
 ]
 
 export function BrokerStudioIaBuyersPage() {
@@ -180,7 +180,7 @@ export function BrokerStudioIaBuyersPage() {
       const data = (await response.json().catch(() => null)) as (BuyerStrategyPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
 
       if (!response.ok || !data) {
-        throw new Error(data?.error || "Nao foi possivel gerar a estrategia para atrair compradores.")
+        throw new Error(data?.error || "Não foi possível gerar a estratégia para atrair compradores.")
       }
 
       setPreview({
@@ -206,7 +206,7 @@ export function BrokerStudioIaBuyersPage() {
       })
       setCurrentStep("result")
     } catch (caughtError) {
-      setGenerationError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel gerar a estrategia.")
+      setGenerationError(caughtError instanceof Error ? caughtError.message : "Não foi possível gerar a estratégia.")
       setCurrentStep("configuration")
     } finally {
       setIsSubmitting(false)
@@ -262,9 +262,9 @@ export function BrokerStudioIaBuyersPage() {
 
   const visualSummary = useMemo(
     () => [
-      { label: "Publico", value: selectedAudience },
+      { label: "Público", value: selectedAudience },
       { label: "Canal principal", value: selectedChannel },
-      { label: "Versao", value: resultVersion > 0 ? `${resultVersion}` : "Ainda nao gerada" },
+      { label: "Versão", value: resultVersion > 0 ? `${resultVersion}` : "Ainda não gerada" },
     ],
     [resultVersion, selectedAudience, selectedChannel],
   )
@@ -283,7 +283,7 @@ export function BrokerStudioIaBuyersPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Atrair compradores</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione o imovel, defina o publico ideal, escolha o canal principal e gere uma estrategia real completa para atracao de interessados.
+                Selecione o imóvel, defina o público ideal, escolha o canal principal e gere uma estratégia real completa para atração de interessados.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -327,7 +327,7 @@ export function BrokerStudioIaBuyersPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                O Studio reaproveita a mesma experiencia em etapas e agora gera o conteudo real no servidor para este fluxo.
+                O Studio reaproveita a mesma experiência em etapas e agora gera o conteúdo real no servidor para este fluxo.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
@@ -339,7 +339,7 @@ export function BrokerStudioIaBuyersPage() {
                   <div>
                     <p className="text-base font-semibold text-[#050505]">Atrair compradores</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      Organize publico, canal e mensagem principal para gerar uma estrategia comercial real do imovel.
+                      Organize público, canal e mensagem principal para gerar uma estratégia comercial real do imóvel.
                     </p>
                   </div>
                 </div>
@@ -348,12 +348,12 @@ export function BrokerStudioIaBuyersPage() {
               <div className="grid gap-4">
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imovel</p>
-                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponivel(is)</span>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imóvel</p>
+                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponível(is)</span>
                   </div>
 
                   {isLoading ? (
-                    <EmeLoading compact message="Carregando imoveis do corretor..." className="mt-3" />
+                    <EmeLoading compact message="Carregando imóveis do corretor..." className="mt-3" />
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
@@ -395,7 +395,7 @@ export function BrokerStudioIaBuyersPage() {
                               </div>
                               <div className="grid gap-2 sm:grid-cols-2">
                                 <InfoTile label="Valor" value={selectedProperty.price} />
-                                <InfoTile label="Localizacao" value={`${selectedProperty.neighborhood}, ${selectedProperty.city}`} />
+                                <InfoTile label="Localização" value={`${selectedProperty.neighborhood}, ${selectedProperty.city}`} />
                               </div>
                             </div>
                           </div>
@@ -408,7 +408,7 @@ export function BrokerStudioIaBuyersPage() {
                         disabled={!canAdvanceToConfiguration}
                         className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                       >
-                        Avancar para configuracao
+                        Avançar para configuração
                         <ArrowRight className="size-4" />
                       </Button>
                     </div>
@@ -418,12 +418,12 @@ export function BrokerStudioIaBuyersPage() {
                 </div>
 
                 <div className={`rounded-[1.25rem] border p-4 ${currentStep === "selection" ? "border-black/[0.06] bg-[#f6f7f4] opacity-65" : "border-black/[0.06] bg-[#fbfbf8]"}`}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuracao</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">2. Configuração</p>
 
                   {selectedProperty ? (
                     <div className="mt-3 grid gap-4">
                       <div>
-                        <p className="text-sm font-medium text-[#050505]">Escolha o perfil do publico</p>
+                        <p className="text-sm font-medium text-[#050505]">Escolha o perfil do público</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {audienceOptions.map((audience) => (
                             <button
@@ -460,7 +460,7 @@ export function BrokerStudioIaBuyersPage() {
                         disabled={!canProcess}
                         className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60"
                       >
-                        {isSubmitting ? "Gerando estrategia" : "Gerar estrategia"}
+                        {isSubmitting ? "Gerando estratégia" : "Gerar estratégia"}
                         <ArrowRight className="size-4" />
                       </Button>
                       {generationError ? (
@@ -468,7 +468,7 @@ export function BrokerStudioIaBuyersPage() {
                       ) : null}
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-[#6B7280]">Escolha um imovel primeiro para liberar a configuracao.</p>
+                    <p className="mt-3 text-sm text-[#6B7280]">Escolha um imóvel primeiro para liberar a configuração.</p>
                   )}
                 </div>
               </div>
@@ -488,10 +488,10 @@ export function BrokerStudioIaBuyersPage() {
               ))}
 
               <div className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Aprovacoes da estrategia</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Aprovações da estratégia</p>
                 <p className="mt-2 text-sm font-semibold text-[#050505]">{approvedBlocksCount} de 7 blocos revisados</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                  Cada bloco da estrategia pode ser aprovado individualmente para manter o mesmo padrao de revisao do Studio IA.
+                  Cada bloco da estratégia pode ser aprovado individualmente para manter o mesmo padrão de revisão do Studio IA.
                 </p>
               </div>
             </CardContent>
@@ -501,23 +501,23 @@ export function BrokerStudioIaBuyersPage() {
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
-              <CardTitle className="text-xl text-[#050505]">Resultado e aprovacao</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Resultado e aprovação</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Revise a estrategia gerada, aprove cada bloco e finalize a versao quando estiver pronta.
+                Revise a estratégia gerada, aprove cada bloco e finalize a versão quando estiver pronta.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0">
               {currentStep === "processing" ? (
                 <EmeLoading
-                  message="Gerando estrategia com IA"
-                  description={`Montando a estrategia para ${selectedAudience.toLowerCase()} com foco principal em ${selectedChannel.toLowerCase()}.`}
+                  message="Gerando estratégia com IA"
+                  description={`Montando a estratégia para ${selectedAudience.toLowerCase()} com foco principal em ${selectedChannel.toLowerCase()}.`}
                   className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
                 />
               ) : currentStep === "result" || currentStep === "approval" ? (
                 <div className="grid gap-4">
                   <div className="grid gap-4 xl:grid-cols-2">
                     <PreviewCard
-                      title="Publico recomendado"
+                      title="Público recomendado"
                       approved={approvedBlocks.audience}
                       onApprove={() => toggleBlockApproval("audience")}
                       content={
@@ -528,7 +528,7 @@ export function BrokerStudioIaBuyersPage() {
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-[#050505]">{preview?.audience}</p>
-                              <p className="mt-1 text-sm text-[#6B7280]">Perfil sugerido para o imovel selecionado.</p>
+                              <p className="mt-1 text-sm text-[#6B7280]">Perfil sugerido para o imóvel selecionado.</p>
                             </div>
                           </div>
                         </div>
@@ -536,7 +536,7 @@ export function BrokerStudioIaBuyersPage() {
                     />
 
                     <PreviewCard
-                      title="Estrategia sugerida"
+                      title="Estratégia sugerida"
                       approved={approvedBlocks.strategy}
                       onApprove={() => toggleBlockApproval("strategy")}
                       content={<p className="rounded-[1.15rem] border border-black/[0.06] bg-white p-4 text-sm leading-6 text-[#5F6B7A]">{preview?.strategy}</p>}
@@ -552,7 +552,7 @@ export function BrokerStudioIaBuyersPage() {
                             {coverImage ? (
                               <>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={coverImage} alt="Preview da estrategia" className="h-full w-full object-cover" />
+                                <img src={coverImage} alt="Preview da estratégia" className="h-full w-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
                               </>
                             ) : null}
@@ -580,7 +580,7 @@ export function BrokerStudioIaBuyersPage() {
                     />
 
                     <PreviewCard
-                      title="Cronograma de divulgacao"
+                      title="Cronograma de divulgação"
                       approved={approvedBlocks.timeline}
                       onApprove={() => toggleBlockApproval("timeline")}
                       content={
@@ -605,10 +605,10 @@ export function BrokerStudioIaBuyersPage() {
                     />
 
                     <PreviewCard
-                      title="Estimativa de geracao de leads"
+                      title="Estimativa de geração de leads"
                       approved={approvedBlocks.leads}
                       onApprove={() => toggleBlockApproval("leads")}
-                      content={<MetricPreview value={preview?.leads ?? "--"} description="Estimativa simulada de interessados qualificados gerados pela estrategia." />}
+                      content={<MetricPreview value={preview?.leads ?? "--"} description="Estimativa simulada de interessados qualificados gerados pela estratégia." />}
                     />
                   </div>
 
@@ -616,12 +616,12 @@ export function BrokerStudioIaBuyersPage() {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-base font-semibold text-[#050505]">
-                          {currentStep === "approval" ? "Estrategia aprovada com sucesso" : "Estrategia pronta para revisao"}
+                          {currentStep === "approval" ? "Estratégia aprovada com sucesso" : "Estratégia pronta para revisão"}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                           {currentStep === "approval"
-                            ? `A estrategia versao ${approvedVersion ?? resultVersion} foi aprovada para ${selectedAudience.toLowerCase()} no canal ${selectedChannel.toLowerCase()}.`
-                            : "Revise os blocos da estrategia, aprove os itens desejados e finalize ou gere outra versao."}
+                            ? `A estratégia versão ${approvedVersion ?? resultVersion} foi aprovada para ${selectedAudience.toLowerCase()} no canal ${selectedChannel.toLowerCase()}.`
+                            : "Revise os blocos da estratégia, aprove os itens desejados e finalize ou gere outra versão."}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -632,7 +632,7 @@ export function BrokerStudioIaBuyersPage() {
                               onClick={approveStrategy}
                               className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]"
                             >
-                              Aprovar estrategia
+                              Aprovar estratégia
                               <CheckCircle2 className="size-4" />
                             </Button>
                             <Button
@@ -641,7 +641,7 @@ export function BrokerStudioIaBuyersPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar nova versao
+                              Gerar nova versão
                               <RefreshCcw className="size-4" />
                             </Button>
                             <Button
@@ -663,7 +663,7 @@ export function BrokerStudioIaBuyersPage() {
                               onClick={generateAnotherVersion}
                               className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
                             >
-                              Gerar nova versao
+                              Gerar nova versão
                               <RefreshCcw className="size-4" />
                             </Button>
                             <Button
@@ -685,9 +685,9 @@ export function BrokerStudioIaBuyersPage() {
               ) : (
                 <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-6 text-center">
                   <ImagePlus className="size-8 text-[#8B95A1]" />
-                  <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma estrategia gerada ainda</p>
+                  <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma estratégia gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                    Avance pelas etapas de selecao e configuracao para iniciar a geracao desta estrategia.
+                    Avance pelas etapas de seleção e configuração para iniciar a geração desta estratégia.
                   </p>
                 </div>
               )}
@@ -786,25 +786,25 @@ function buildStatusItems(step: StudioStep) {
       title: "Etapa atual",
       value:
         step === "selection"
-          ? "Selecao"
+          ? "Seleção"
           : step === "configuration"
-            ? "Configuracao"
+            ? "Configuração"
             : step === "processing"
-              ? "Geracao com IA"
+              ? "Geração com IA"
               : step === "result"
                 ? "Resultado"
-                : "Aprovacao",
-      description: "O Studio reaproveita a mesma jornada por etapas para manter consistencia e permitir novas versoes da estrategia.",
+                : "Aprovação",
+      description: "O Studio reaproveita a mesma jornada por etapas para manter consistência e permitir novas versões da estratégia.",
     },
     {
-      title: "Integracoes",
+      title: "Integrações",
       value: "OpenAI",
-      description: "Este fluxo gera a estrategia real no servidor com OpenAI, sem expor chaves no cliente.",
+      description: "Este fluxo gera a estratégia real no servidor com OpenAI, sem expor chaves no cliente.",
     },
     {
-      title: "Persistencia",
+      title: "Persistência",
       value: "Sem alterar banco",
-      description: "As aprovacoes e versoes desta estrategia continuam apenas na sessao atual, preservando a arquitetura do portal.",
+      description: "As aprovações e versões desta estratégia continuam apenas na sessão atual, preservando a arquitetura do portal.",
     },
   ]
 }
@@ -817,12 +817,12 @@ function EmptyPropertiesState() {
           <ImagePlus className="size-4.5" />
         </div>
         <div>
-          <p className="font-semibold text-[#050505]">Nenhum imovel disponivel</p>
+          <p className="font-semibold text-[#050505]">Nenhum imóvel disponível</p>
           <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-            Cadastre ou publique um imovel para iniciar este fluxo do Studio IA.
+            Cadastre ou publique um imóvel para iniciar este fluxo do Studio IA.
           </p>
           <Button asChild className="mt-3 h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
-            <Link href="/corretor/novo-imovel">Cadastrar imovel</Link>
+            <Link href="/corretor/novo-imovel">Cadastrar imóvel</Link>
           </Button>
         </div>
       </div>

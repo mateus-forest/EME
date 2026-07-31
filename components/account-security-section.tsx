@@ -71,7 +71,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
 
   const lastAccessLabel = security.lastAccessAt
     ? format(new Date(security.lastAccessAt), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })
-    : "Ainda sem autenticacao neste dispositivo"
+    : "Ainda sem autenticação neste dispositivo"
 
   async function handleTrustedDeviceToggle() {
     setFeedback(null)
@@ -81,15 +81,15 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
       if (security.trustedDeviceEnabled) {
         await deactivateTrustedDevice()
         setFeedbackTone("success")
-        setFeedback("Dispositivo confiavel desativado com sucesso.")
+        setFeedback("Dispositivo confiável desativado com sucesso.")
       } else {
         await activateTrustedDevice()
         setFeedbackTone("success")
-        setFeedback("Este dispositivo agora esta marcado como confiavel.")
+        setFeedback("Este dispositivo agora está marcado como confiável.")
       }
     } catch (error) {
       setFeedbackTone("error")
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel atualizar este dispositivo.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar este dispositivo.")
     } finally {
       setIsWorking(false)
     }
@@ -111,7 +111,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
       }
     } catch (error) {
       setFeedbackTone("error")
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel atualizar a biometria.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar a biometria.")
     } finally {
       setIsWorking(false)
     }
@@ -129,13 +129,13 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
     if (pinMode === "set") {
       if (normalizePin(newPin).length !== PIN_LENGTH) {
         setFeedbackTone("error")
-        setFeedback("Informe um PIN valido com 6 digitos.")
+        setFeedback("Informe um PIN válido com 6 dígitos.")
         return
       }
 
       if (normalizePin(confirmPin) !== normalizePin(newPin)) {
         setFeedbackTone("error")
-        setFeedback("A confirmacao do PIN nao confere.")
+        setFeedback("A confirmação do PIN não confere.")
         return
       }
     }
@@ -152,7 +152,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
       setFeedback(pinMode === "remove" ? "PIN removido com sucesso." : "PIN salvo com sucesso.")
     } catch (error) {
       setFeedbackTone("error")
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel atualizar o PIN.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o PIN.")
     } finally {
       setIsWorking(false)
     }
@@ -165,11 +165,11 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
           <span className={cn("flex size-10 items-center justify-center rounded-2xl border", theme.iconWrap)}>
             <ShieldCheck className="size-4.5" />
           </span>
-          Seguranca
+          Segurança
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 p-6 pt-0">
-        {isLoading ? <EmeLoading compact message="Carregando seguranca..." /> : null}
+        {isLoading ? <EmeLoading compact message="Carregando segurança..." /> : null}
 
         {feedback ? (
           <div
@@ -186,11 +186,11 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
         <div className={cn("grid gap-3 rounded-[1.25rem] border p-4", theme.row)}>
           <SecurityRow
             icon={<LaptopMinimal className="size-4" />}
-            title="Dispositivo confiavel"
+            title="Dispositivo confiável"
             description={
               security.trustedDeviceEnabled
                 ? "Ativado para este navegador e aparelho."
-                : "Exija email e senha sempre que este dispositivo nao estiver confiavel."
+                : "Exija email e senha sempre que este dispositivo não estiver confiável."
             }
             value={security.trustedDeviceEnabled ? "Ativado" : "Desativado"}
             action={
@@ -210,7 +210,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
           <SecurityRow
             icon={<KeyRound className="size-4" />}
             title="PIN"
-            description="Fallback automatico para entrar quando a biometria nao estiver disponivel."
+            description="Fallback automático para entrar quando a biometria não estiver disponível."
             value={security.pinConfigured ? "Configurado" : "Configurar"}
             action={
               <div className="flex flex-wrap gap-2">
@@ -255,7 +255,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
 
               {pinMode === "set" ? (
                 <>
-                  <PinField label="Novo PIN de 6 digitos" value={newPin} onChange={setNewPin} labelClassName={theme.label} />
+                  <PinField label="Novo PIN de 6 dígitos" value={newPin} onChange={setNewPin} labelClassName={theme.label} />
                   <PinField label="Confirmar PIN" value={confirmPin} onChange={setConfirmPin} labelClassName={theme.label} />
                 </>
               ) : null}
@@ -291,7 +291,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
             title="Biometria"
             description={
               security.trustedDeviceEnabled
-                ? "Usa Face ID, Touch ID, Android biometrico ou Windows Hello via WebAuthn."
+                ? "Usa Face ID, Touch ID, Android biométrico ou Windows Hello via WebAuthn."
                 : "Ative primeiro o dispositivo confiavel para usar biometria."
             }
             value={security.biometricEnabled ? "Ativada" : "Desativada"}
@@ -311,8 +311,8 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
 
           <SecurityRow
             icon={<Smartphone className="size-4" />}
-            title="Ultimo acesso"
-            description="Atualizado automaticamente a cada autenticacao bem-sucedida neste dispositivo."
+            title="Último acesso"
+            description="Atualizado automaticamente a cada autenticação bem-sucedida neste dispositivo."
             value={lastAccessLabel}
             theme={theme}
           />
@@ -323,7 +323,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
             <div>
               <p className={cn("text-sm font-semibold", theme.text)}>Dispositivos conectados</p>
               <p className={cn("mt-1 text-sm", theme.subtitle)}>
-                Estrutura pronta para futuras acoes remotas e gerenciamento detalhado.
+                Estrutura pronta para futuras ações remotas e gerenciamento detalhado.
               </p>
             </div>
             <span className={cn("text-xs uppercase tracking-[0.18em]", theme.muted)}>Futuro</span>
@@ -343,7 +343,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
                       </p>
                       <p className={cn("mt-1 text-xs", theme.subtitle)}>
                         {device.lastAccessAt
-                          ? `Ultimo acesso em ${format(new Date(device.lastAccessAt), "dd/MM/yyyy 'as' HH:mm", {
+                          ? `Último acesso em ${format(new Date(device.lastAccessAt), "dd/MM/yyyy 'as' HH:mm", {
                               locale: ptBR,
                             })}`
                           : "Sem acessos registrados ainda"}

@@ -102,7 +102,7 @@ export function AdminUsersPage() {
 
   return (
     <AdminPageShell
-      title="Usuarios"
+      title="Usuários"
       subtitle="Central administrativa com contexto de plano, uso de IA e saúde de cada conta"
       headerControls={
         <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
@@ -124,10 +124,10 @@ export function AdminUsersPage() {
 
       <div className="grid gap-5">
         <AdminMetricGrid>
-          <AdminMetricCard label="Total de usuarios" value={String(insights?.users.total ?? users.length)} icon={<Users className="size-5" />} />
+          <AdminMetricCard label="Total de usuários" value={String(insights?.users.total ?? users.length)} icon={<Users className="size-5" />} />
           <AdminMetricCard label="Novos em 7 dias" value={String(insights?.users.newLast7Days ?? 0)} icon={<Sparkles className="size-5" />} />
           <AdminMetricCard label="Ativos hoje" value={String(insights?.users.activeToday ?? users.filter((item) => item.status === "Ativo").length)} icon={<ShieldCheck className="size-5" />} />
-          <AdminMetricCard label="Em avaliacao" value={String(insights?.users.trial ?? users.filter((item) => item.plan === "Sem plano").length)} icon={<Users className="size-5" />} />
+          <AdminMetricCard label="Em avaliação" value={String(insights?.users.trial ?? users.filter((item) => item.plan === "Sem plano").length)} icon={<Users className="size-5" />} />
         </AdminMetricGrid>
 
         <AdminSurface title="Filtros operacionais" subtitle="Refine por tipo, status, plano e texto para chegar rapidamente na conta certa.">
@@ -146,7 +146,7 @@ export function AdminUsersPage() {
                 </FilterChip>
               ))}
             </FilterGroup>
-            <FilterGroup title="Periodo">
+            <FilterGroup title="Período">
               <div className="rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#6B7280]">
                 Novos usuários nos últimos 7 dias: <span className="font-semibold text-[#111827]">{insights?.users.newLast7Days ?? 0}</span>
               </div>
@@ -154,9 +154,9 @@ export function AdminUsersPage() {
           </div>
         </AdminSurface>
 
-        <AdminSurface title="Base de usuarios" subtitle="Dados de conta, plano e ações rápidas sem sair da listagem.">
+        <AdminSurface title="Base de usuários" subtitle="Dados de conta, plano e ações rápidas sem sair da listagem.">
           <AdminDataTable
-            columns={["Nome", "Tipo", "Status", "Plano", "Email", "Criacao", "Acoes"]}
+            columns={["Nome", "Tipo", "Status", "Plano", "Email", "Criação", "Ações"]}
             rows={filteredUsers.map((user) => [
               <div key={`${user.id}-name`}>
                 <p className="font-semibold text-[#111827]">{user.name}</p>
@@ -199,16 +199,16 @@ export function AdminUsersPage() {
                   { label: "Plano", value: selectedUser.plan },
                   { label: "Email", value: selectedUser.email },
                   { label: "WhatsApp", value: selectedUser.whatsApp },
-                  { label: "Criacao", value: selectedUser.createdAt },
-                  { label: "Creditos atuais", value: String(selectedInsight?.creditsBalance ?? 0) },
+                  { label: "Criação", value: selectedUser.createdAt },
+                  { label: "Créditos atuais", value: String(selectedInsight?.creditsBalance ?? 0) },
                   { label: "Consumo IA", value: String(selectedInsight?.creditsUsed ?? 0) },
                   { label: "Studio IA", value: `${selectedInsight?.studioActions ?? 0} ações` },
                   { label: "Imagens", value: String(selectedInsight?.imageGenerations ?? 0) },
                   { label: "Videos", value: String(selectedInsight?.videoGenerations ?? 0) },
                   { label: "COS", value: `${selectedInsight?.cosActions ?? 0} ações` },
-                  { label: "Ultimo acesso", value: selectedInsight?.lastAccess ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedInsight.lastAccess)) : "Sem atividade recente" },
+                  { label: "Último acesso", value: selectedInsight?.lastAccess ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedInsight.lastAccess)) : "Sem atividade recente" },
                   { label: "Dispositivos", value: selectedInsight?.devicesLabel || "Sem telemetria" },
-                  { label: "Historico", value: selectedInsight?.historyLabel || "Sem histórico adicional" },
+                  { label: "Histórico", value: selectedInsight?.historyLabel || "Sem histórico adicional" },
                   { label: "Assinatura", value: selectedInsight?.subscriptionLabel || "Sem assinatura ativa" },
                   { label: "Financeiro", value: selectedInsight?.financeLabel || "Sem dados financeiros" },
                 ]}
@@ -227,7 +227,7 @@ export function AdminUsersPage() {
 
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => { setEditingUser(selectedUser); setSelectedUser(null) }} className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#111827]">
-                  Editar usuario
+                  Editar usuário
                 </Button>
               </DialogFooter>
             </>
@@ -261,7 +261,7 @@ function UserEditDialog({
         {draft ? (
           <>
             <DialogHeader>
-              <DialogTitle>Editar usuario</DialogTitle>
+              <DialogTitle>Editar usuário</DialogTitle>
               <DialogDescription className="text-[#6B7280]">Ajuste os dados principais sem sair da central de usuários.</DialogDescription>
             </DialogHeader>
 
@@ -277,7 +277,7 @@ function UserEditDialog({
                 Cancelar
               </Button>
               <Button type="button" onClick={() => onSave(draft)} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
-                Salvar alteracoes
+                Salvar alterações
               </Button>
             </DialogFooter>
           </>

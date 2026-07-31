@@ -66,7 +66,7 @@ export function AdminBrokersPage() {
       setBrokers(brokers.map((current) => (current.id === broker.id ? updated : current)))
       setSelectedBroker((current) => (current?.id === broker.id ? updated : current))
       setEditingBroker((current) => (current?.id === broker.id ? updated : current))
-      setFeedback(`${updated.name} agora est? ${updated.status.toLowerCase()}.`)
+      setFeedback(`${updated.name} agora está ${updated.status.toLowerCase()}.`)
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o status do corretor.")
     }
@@ -90,7 +90,7 @@ export function AdminBrokersPage() {
         setBrokers(brokers.map((current) => (current.id === broker.id ? result.item! : current)))
         setSelectedBroker((current) => (current?.id === broker.id ? result.item! : current))
         setEditingBroker((current) => (current?.id === broker.id ? result.item! : current))
-        setFeedback(`${result.item.name} possui v?nculos e foi inativado.`)
+        setFeedback(`${result.item.name} possui vínculos e foi inativado.`)
       }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o corretor.")

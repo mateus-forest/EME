@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic"
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
   try {
     const { id } = await context.params
@@ -24,7 +24,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     })
 
     if (!document) {
-      return NextResponse.json({ error: "Contrato nao encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
     }
 
     const actionType = "generate_contract_pdf"
@@ -53,9 +53,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "Servico de contratos indisponivel no momento." }, { status: 503 })
+      return NextResponse.json({ error: "Serviço de contratos indisponível no momento." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Nao foi possivel preparar o PDF." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível preparar o PDF." }, { status: 500 })
   }
 }

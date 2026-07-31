@@ -20,9 +20,9 @@ export function AdminAiConsumptionPage() {
 
   if (isLoading) {
     return (
-      <AdminPageShell title="Monetizacao" subtitle="Inventario operacional, custos reais e estrategia de planos do EME">
+      <AdminPageShell title="Monetização" subtitle="Inventário operacional, custos reais e estratégia de planos do EME">
         <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-          <CardContent className="px-6 py-6 text-sm text-[#6B7280]">Carregando estudo completo de monetizacao...</CardContent>
+          <CardContent className="px-6 py-6 text-sm text-[#6B7280]">Carregando estudo completo de monetização...</CardContent>
         </Card>
       </AdminPageShell>
     )
@@ -30,17 +30,17 @@ export function AdminAiConsumptionPage() {
 
   if (error || !report) {
     return (
-      <AdminPageShell title="Monetizacao" subtitle="Inventario operacional, custos reais e estrategia de planos do EME">
+      <AdminPageShell title="Monetização" subtitle="Inventário operacional, custos reais e estratégia de planos do EME">
         <AdminEmptyState
           icon={DollarSign}
-          title="Nao foi possivel carregar o estudo"
-          description={error || "O dashboard de monetizacao nao retornou dados neste momento."}
+          title="Não foi possível carregar o estudo"
+          description={error || "O dashboard de monetização não retornou dados neste momento."}
         >
           <AdminStructureCards
             items={[
-              "Inventario de operacoes com custo real ou estimado",
+              "Inventário de operações com custo real ou estimado",
               "Planos sugeridos com margem por perfil",
-              "Ranking de modulos, operacoes e contas mais caras",
+              "Ranking de módulos, operações e contas mais caras",
             ]}
           />
         </AdminEmptyState>
@@ -52,8 +52,8 @@ export function AdminAiConsumptionPage() {
 
   return (
     <AdminPageShell
-      title="Monetizacao"
-      subtitle={`Baseado no codigo atual do EME e na telemetria operacional registrada ate ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(report.generatedAt))}`}
+      title="Monetização"
+      subtitle={`Baseado no código atual do EME e na telemetria operacional registrada até ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(report.generatedAt))}`}
     >
       <div className="grid gap-5">
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -65,9 +65,9 @@ export function AdminAiConsumptionPage() {
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">Operacoes mais caras</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Operações mais caras</CardTitle>
               <p className="text-sm leading-6 text-[#6B7280]">
-                Custos por operacao calculados a partir da telemetria recente ou, na ausencia de uso, pela estimativa do catalogo.
+                Custos por operação calculados a partir da telemetria recente ou, na ausência de uso, pela estimativa do catálogo.
               </p>
             </CardHeader>
             <CardContent className="grid gap-3 px-6 pb-6 pt-0">
@@ -79,18 +79,18 @@ export function AdminAiConsumptionPage() {
                       <p className="mt-1 text-sm text-[#6B7280]">{item.module} · {item.provider} · {item.model}</p>
                     </div>
                     <span className="rounded-full border border-black/[0.06] bg-white px-3 py-1 text-xs text-[#4B5563]">
-                      {formatBRL(item.monthlyCostBrl)}/mes
+                      {formatBRL(item.monthlyCostBrl)}/mês
                     </span>
                   </div>
                   <div className="mt-3 grid gap-2 text-sm text-[#4B5563] sm:grid-cols-2 xl:grid-cols-4">
-                    <Info label="Operacao" value={item.operationKey} />
+                    <Info label="Operação" value={item.operationKey} />
                     <Info label="Capacidade" value={item.capability} />
-                    <Info label="Media" value={formatBRL(item.avgCostBrl)} />
-                    <Info label="Creditos" value={String(item.suggestedCredits)} />
+                    <Info label="Média" value={formatBRL(item.avgCostBrl)} />
+                    <Info label="Créditos" value={String(item.suggestedCredits)} />
                     <Info label="Requests" value={formatNumber(item.requestCount)} />
                     <Info label="Input" value={formatNumber(item.avgInputTokens)} />
                     <Info label="Output" value={formatNumber(item.avgOutputTokens)} />
-                    <Info label="Cache" value={item.cacheable ? "Sim" : "Nao"} />
+                    <Info label="Cache" value={item.cacheable ? "Sim" : "Não"} />
                   </div>
                 </div>
               ))}
@@ -102,14 +102,14 @@ export function AdminAiConsumptionPage() {
               icon={TrendingUp}
               title="Rankings"
               items={[
-                `Operacao lider: ${report.ranking.expensiveOperations[0]?.label || "-"}`,
-                `Modulo lider: ${report.ranking.expensiveModules[0]?.label || "-"}`,
+                `Operação líder: ${report.ranking.expensiveOperations[0]?.label || "-"}`,
+                `Módulo líder: ${report.ranking.expensiveModules[0]?.label || "-"}`,
                 `Plano mais custoso: ${report.ranking.expensivePlans[0]?.helper || report.ranking.expensivePlans[0]?.label || "-"}`,
               ]}
             />
             <InsightCard
               icon={Layers3}
-              title="Distribuicao"
+              title="Distribuição"
               items={[
                 `Top modelo: ${report.distribution.costByModel[0]?.label || "-"}`,
                 `Top capability: ${report.distribution.costByCapability[0]?.label || "-"}`,
@@ -118,11 +118,11 @@ export function AdminAiConsumptionPage() {
             />
             <InsightCard
               icon={Sparkles}
-              title="Referencia de pricing"
+              title="Referência de pricing"
               items={[
-                `Cambio USD/BRL: ${report.pricingReference.usdToBrlRate.toFixed(4)}`,
-                `Data de referencia: ${report.pricingReference.usdToBrlDate}`,
-                "OpenAI e Luma baseados em precos oficiais consultados nesta sprint.",
+                `Câmbio USD/BRL: ${report.pricingReference.usdToBrlRate.toFixed(4)}`,
+                `Data de referência: ${report.pricingReference.usdToBrlDate}`,
+                "OpenAI e Luma baseados em preços oficiais consultados nesta sprint.",
               ]}
             />
           </div>
@@ -131,16 +131,16 @@ export function AdminAiConsumptionPage() {
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <TableCard
             icon={BarChart3}
-            title="Distribuicao por capability"
+            title="Distribuição por capability"
             rows={report.distribution.costByCapability.slice(0, 8).map((item) => ({
               label: item.label,
               value: formatBRL(item.value),
-              helper: item.helper || "Capability registrada no catalogo do COS/Studio",
+              helper: item.helper || "Capability registrada no catálogo do COS/Studio",
             }))}
           />
           <TableCard
             icon={DollarSign}
-            title="Distribuicao por modelo"
+            title="Distribuição por modelo"
             rows={report.distribution.costByModel.slice(0, 8).map((item) => ({
               label: item.label,
               value: formatBRL(item.value),
@@ -153,7 +153,7 @@ export function AdminAiConsumptionPage() {
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-[#050505]">Planos sugeridos</CardTitle>
             <p className="text-sm leading-6 text-[#6B7280]">
-              Estrategia de monetizacao baseada no custo operacional real do EME, buscando simplicidade, margem alta e espaco para escala.
+              Estratégia de monetização baseada no custo operacional real do EME, buscando simplicidade, margem alta e espaço para escala.
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 px-6 pb-6 pt-0 xl:grid-cols-4">
@@ -169,8 +169,8 @@ export function AdminAiConsumptionPage() {
                   </span>
                 </div>
                 <div className="mt-4 grid gap-2 text-sm text-[#4B5563]">
-                  <Info label="Imoveis" value={formatNumber(plan.propertyLimit)} />
-                  <Info label="Creditos" value={formatNumber(plan.monthlyCredits)} />
+                  <Info label="Imóveis" value={formatNumber(plan.propertyLimit)} />
+                  <Info label="Créditos" value={formatNumber(plan.monthlyCredits)} />
                   <Info label="Custo estimado" value={formatBRL(plan.estimatedMonthlyCostBrl)} />
                   <Info label="Margem" value={`${formatBRL(plan.estimatedMarginBrl)} · ${plan.estimatedMarginPercent}%`} />
                 </div>
@@ -183,7 +183,7 @@ export function AdminAiConsumptionPage() {
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
             <CardHeader className="px-6 py-5">
-              <CardTitle className="text-xl text-[#050505]">Sistema de creditos sugerido</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Sistema de créditos sugerido</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 px-6 pb-6 pt-0">
               {report.creditSystem.map((item) => (
@@ -193,7 +193,7 @@ export function AdminAiConsumptionPage() {
                     <p className="text-sm text-[#6B7280]">{item.module} · {item.operationKey}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-[#050505]">{item.suggestedCredits} creditos</p>
+                    <p className="text-sm font-semibold text-[#050505]">{item.suggestedCredits} créditos</p>
                     <p className="text-xs text-[#6B7280]">{formatBRL(item.estimatedCostBrl)}</p>
                   </div>
                 </div>
@@ -210,7 +210,7 @@ export function AdminAiConsumptionPage() {
                 <div key={pack.key} className="flex flex-wrap items-center justify-between gap-3 rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
                   <div>
                     <p className="font-medium text-[#050505]">{pack.label}</p>
-                    <p className="text-sm text-[#6B7280]">{pack.credits ? `${pack.credits} creditos adicionais` : `${pack.properties} imoveis adicionais`}</p>
+                    <p className="text-sm text-[#6B7280]">{pack.credits ? `${pack.credits} créditos adicionais` : `${pack.properties} imóveis adicionais`}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-[#050505]">{pack.price}</p>
@@ -223,9 +223,9 @@ export function AdminAiConsumptionPage() {
         </section>
 
         <section className="grid gap-5 xl:grid-cols-3">
-          <SeriesCard title="Relatorio diario" points={report.reports.dailyCostBrl} />
-          <SeriesCard title="Relatorio semanal" points={report.reports.weeklyCostBrl} />
-          <SeriesCard title="Relatorio mensal" points={report.reports.monthlyCostBrl} />
+          <SeriesCard title="Relatório diário" points={report.reports.dailyCostBrl} />
+          <SeriesCard title="Relatório semanal" points={report.reports.weeklyCostBrl} />
+          <SeriesCard title="Relatório mensal" points={report.reports.monthlyCostBrl} />
         </section>
       </div>
     </AdminPageShell>

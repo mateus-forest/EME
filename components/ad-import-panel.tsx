@@ -71,7 +71,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       .catch(() => {
         if (!isMounted) return
         setAiImportEnabled(false)
-        setAiImportReason("Nao foi possivel validar os recursos de importacao neste ambiente.")
+        setAiImportReason("Não foi possível validar os recursos de importação neste ambiente.")
       })
 
     return () => {
@@ -121,12 +121,12 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
     const isXml = file.name.toLowerCase().endsWith(".xml") || ["text/xml", "application/xml"].includes(file.type)
     if (!isXml) {
-      setFeedback("Envie um arquivo XML valido para revisar antes de importar.")
+      setFeedback("Envie um arquivo XML válido para revisar antes de importar.")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setFeedback("O XML deve ter ate 5 MB.")
+      setFeedback("O XML deve ter até 5 MB.")
       return
     }
 
@@ -138,9 +138,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
     try {
       const result = await previewPropertyXml({ file })
-      applyDrafts(result.drafts, result.drafts.length > 1 ? "XML analisado. Revise e salve um imovel por vez." : "XML analisado. Revise as informacoes antes de salvar.")
+      applyDrafts(result.drafts, result.drafts.length > 1 ? "XML analisado. Revise e salve um imóvel por vez." : "XML analisado. Revise as informações antes de salvar.")
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsExtracting(false)
     }
@@ -160,9 +160,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
     try {
       const result = await previewPropertyXml({ sourceUrl: xmlSourceUrl.trim() })
-      applyDrafts(result.drafts, result.drafts.length > 1 ? "XML analisado. Revise e salve um imovel por vez." : "XML analisado. Revise as informacoes antes de salvar.")
+      applyDrafts(result.drafts, result.drafts.length > 1 ? "XML analisado. Revise e salve um imóvel por vez." : "XML analisado. Revise as informações antes de salvar.")
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel analisar o XML.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível analisar o XML.")
     } finally {
       setIsExtracting(false)
     }
@@ -170,12 +170,12 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
   async function handleExtract() {
     if (!aiImportEnabled) {
-      setFeedback(aiImportReason || "A importacao inteligente nao esta disponivel neste ambiente.")
+      setFeedback(aiImportReason || "A importação inteligente não está disponível neste ambiente.")
       return
     }
 
     if (!sourceUrl.trim() && !image) {
-      setFeedback("Informe o link do anuncio, envie uma imagem ou use XML para iniciar a extracao.")
+      setFeedback("Informe o link do anúncio, envie uma imagem ou use XML para iniciar a extração.")
       return
     }
 
@@ -190,11 +190,11 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       applyDrafts(
         result.drafts,
         result.drafts.length > 1
-          ? "Varios imoveis foram identificados. Escolha quais deseja cadastrar e revise cada previa."
-          : "Dados extraidos. Revise as informacoes antes de salvar.",
+          ? "Vários imóveis foram identificados. Escolha quais deseja cadastrar e revise cada prévia."
+          : "Dados extraídos. Revise as informações antes de salvar.",
       )
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel extrair os dados do anuncio.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível extrair os dados do anúncio.")
     } finally {
       setIsExtracting(false)
     }
@@ -211,13 +211,13 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       const remainingEntries = draftEntries.filter((entry) => entry.id !== selectedDraftId)
       setDraftEntries(remainingEntries)
       setSelectedDraftId(remainingEntries[0]?.id ?? "")
-      setFeedback(remainingEntries.length > 0 ? "Imovel salvo. Revise o proximo item antes de confirmar." : "Imovel criado como rascunho.")
+      setFeedback(remainingEntries.length > 0 ? "Imóvel salvo. Revise o próximo item antes de confirmar." : "Imóvel criado como rascunho.")
       if (remainingEntries.length === 0) {
         resetInputs()
       }
       await onImported()
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar o imovel.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível criar o imóvel.")
     } finally {
       setIsSaving(false)
     }
@@ -226,7 +226,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   async function handleConfirmSelected() {
     const selectedEntries = draftEntries.filter((entry) => selectedDraftIds.includes(entry.id))
     if (selectedEntries.length === 0) {
-      setFeedback("Selecione pelo menos um imovel para cadastrar.")
+      setFeedback("Selecione pelo menos um imóvel para cadastrar.")
       return
     }
 
@@ -244,15 +244,15 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
       setSelectedDraftIds(remainingEntries.map((entry) => entry.id))
       setFeedback(
         remainingEntries.length > 0
-          ? "Imoveis selecionados salvos. Revise os demais antes de confirmar."
-          : "Imoveis selecionados criados como rascunho.",
+          ? "Imóveis selecionados salvos. Revise os demais antes de confirmar."
+          : "Imóveis selecionados criados como rascunho.",
       )
       if (remainingEntries.length === 0) {
         resetInputs()
       }
       await onImported()
     } catch (caughtError) {
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel criar os imoveis selecionados.")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível criar os imóveis selecionados.")
     } finally {
       setIsSaving(false)
     }
@@ -264,9 +264,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
   return (
     <div className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
       <div>
-        <h3 className="text-lg font-semibold text-[#111111]">Importar imovel</h3>
+        <h3 className="text-lg font-semibold text-[#111111]">Importar imóvel</h3>
         <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-          XML, URL de XML, link do anuncio e print/imagem alimentam a mesma previa revisavel antes do cadastro.
+          XML, URL de XML, link do anúncio e print/imagem alimentam a mesma prévia revisável antes do cadastro.
         </p>
       </div>
 
@@ -278,14 +278,14 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               <Upload className="size-8 text-[#009b3a]" />
               <div>
                 <h4 className="text-lg font-semibold text-[#111111]">Importar XML</h4>
-                <p className="mt-2 text-sm leading-6 text-[#6B7280]">Upload do XML para leitura, extracao e previa antes do salvamento.</p>
+                <p className="mt-2 text-sm leading-6 text-[#6B7280]">Upload do XML para leitura, extração e prévia antes do salvamento.</p>
               </div>
             </label>
             <div className="grid min-h-44 gap-3 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
               <FileCode2 className="size-8 text-[#009b3a]" />
               <div>
                 <h4 className="text-lg font-semibold text-[#111111]">Importar XML por URL</h4>
-                <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole a URL do XML e gere a mesma previa revisavel.</p>
+                <p className="mt-2 text-sm leading-6 text-[#6B7280]">Cole a URL do XML e gere a mesma prévia revisável.</p>
               </div>
               <Input
                 value={xmlSourceUrl}
@@ -307,14 +307,14 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
 
           <div className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
             <div>
-              <h4 className="text-lg font-semibold text-[#111111]">Importar anuncio</h4>
+              <h4 className="text-lg font-semibold text-[#111111]">Importar anúncio</h4>
               <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                Use o link do anuncio, uma foto, um print ou uma captura de tela para extrair os dados com IA.
+                Use o link do anúncio, uma foto, um print ou uma captura de tela para extrair os dados com IA.
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-2">
-                <span className="text-sm font-medium text-[#5F6B7A]">Link do anuncio</span>
+                <span className="text-sm font-medium text-[#5F6B7A]">Link do anúncio</span>
                 <div className="relative">
                   <LinkIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" />
                   <Input
@@ -356,7 +356,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           {draftEntries.length > 1 ? (
             <div className="grid gap-3 rounded-[1rem] border border-black/[0.06] bg-white p-4">
               <div>
-                <p className="text-sm font-medium text-[#111111]">Previa revisavel</p>
+                <p className="text-sm font-medium text-[#111111]">Prévia revisável</p>
                 <p className="mt-1 text-sm text-[#6B7280]">Selecione o item que deseja revisar e salvar agora.</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -377,9 +377,9 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
                         className="mt-0.5 size-4 rounded border-black/[0.12]"
                       />
                       <button type="button" onClick={() => setSelectedDraftId(entry.id)} className="min-w-0 flex-1 text-left">
-                        <p className="text-sm font-medium text-[#111111]">{entry.draft.title || `Imovel ${index + 1}`}</p>
+                        <p className="text-sm font-medium text-[#111111]">{entry.draft.title || `Imóvel ${index + 1}`}</p>
                         <p className="mt-1 text-xs text-[#6B7280]">
-                          {[entry.draft.neighborhood, entry.draft.city].filter(Boolean).join(", ") || "Localizacao pendente"}
+                          {[entry.draft.neighborhood, entry.draft.city].filter(Boolean).join(", ") || "Localização pendente"}
                         </p>
                       </button>
                     </label>
@@ -390,19 +390,19 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           ) : null}
 
           <div className="rounded-[1rem] border border-black/[0.06] bg-white px-4 py-3 text-sm text-[#5F6B7A]">
-            Revise as informacoes antes de salvar.
+            Revise as informações antes de salvar.
             {fieldsToReview.length > 0 ? ` Campos para revisar: ${fieldsToReview.join(", ")}.` : null}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <DraftField label="Titulo">
+            <DraftField label="Título">
               <Input
                 value={currentDraft.title}
                 onChange={(event) => updateDraft("title", event.target.value)}
                 className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
               />
             </DraftField>
-            <DraftField label="Preco">
+            <DraftField label="Preço">
               <Input
                 value={currentDraft.price}
                 onChange={(event) => updateDraft("price", formatCurrencyInput(event.target.value))}
@@ -437,14 +437,14 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
                 className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
               />
             </DraftField>
-            <DraftField label="Area">
+            <DraftField label="Área">
               <Input
                 value={currentDraft.area}
                 onChange={(event) => updateDraft("area", event.target.value)}
                 className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
               />
             </DraftField>
-            <DraftField label="Endereco">
+            <DraftField label="Endereço">
               <Input
                 value={currentDraft.address}
                 onChange={(event) => updateDraft("address", event.target.value)}
@@ -461,12 +461,12 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <NumberInput label="Dormitorios" value={currentDraft.bedrooms} onChange={(value) => updateDraft("bedrooms", value)} />
+            <NumberInput label="Dormitórios" value={currentDraft.bedrooms} onChange={(value) => updateDraft("bedrooms", value)} />
             <NumberInput label="Banheiros" value={currentDraft.bathrooms} onChange={(value) => updateDraft("bathrooms", value)} />
             <NumberInput label="Garagens" value={currentDraft.parking} onChange={(value) => updateDraft("parking", value)} />
           </div>
 
-          <DraftField label="Descricao">
+          <DraftField label="Descrição">
             <Textarea
               value={currentDraft.description}
               onChange={(event) => updateDraft("description", event.target.value)}
@@ -474,7 +474,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
             />
           </DraftField>
 
-          <DraftField label="Caracteristicas">
+          <DraftField label="Características">
             <Input
               value={currentDraft.features.join(", ")}
               onChange={(event) =>
@@ -508,7 +508,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
           </DraftField>
 
           {currentDraft.notes ? (
-            <DraftField label="Referencia">
+            <DraftField label="Referência">
               <Input
                 value={currentDraft.notes}
                 onChange={(event) => updateDraft("notes", event.target.value)}
@@ -534,7 +534,7 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               disabled={isSaving}
               className="h-10 rounded-xl bg-[#00C853] px-4 text-sm font-semibold text-black hover:bg-[#00E676] disabled:opacity-60"
             >
-              {isSaving ? "Salvando..." : "Salvar imovel"}
+              {isSaving ? "Salvando..." : "Salvar imóvel"}
             </Button>
             <Button
               type="button"

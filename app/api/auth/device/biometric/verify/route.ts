@@ -21,13 +21,13 @@ export async function POST(request: NextRequest) {
   const actionToken = request.cookies.get(WEBAUTHN_ACTION_COOKIE_NAME)?.value
 
   if (!actionToken) {
-    return NextResponse.json({ error: "Desafio biometrico nao encontrado. Tente novamente." }, { status: 400 })
+    return NextResponse.json({ error: "Desafio biométrico não encontrado. Tente novamente." }, { status: 400 })
   }
 
   const trustedDevice = await resolveTrustedDevice(request)
 
   if (!trustedDevice) {
-    const response = NextResponse.json({ error: "Dispositivo confiavel nao encontrado." }, { status: 401 })
+    const response = NextResponse.json({ error: "Dispositivo confiável não encontrado." }, { status: 401 })
     clearTrustedDeviceCookie(response)
     clearWebAuthnActionCookie(response)
     return response
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const action = await verifyWebAuthnActionToken(actionToken).catch(() => null)
 
   if (!action || action.purpose !== "authentication" || action.deviceId !== trustedDevice.id || action.userId !== trustedDevice.userId) {
-    const response = NextResponse.json({ error: "Desafio biometrico invalido." }, { status: 400 })
+    const response = NextResponse.json({ error: "Desafio biométrico inválido." }, { status: 400 })
     clearWebAuthnActionCookie(response)
     return response
   }
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   const responseBody = body?.response
 
   if (!responseBody || typeof responseBody !== "object") {
-    const response = NextResponse.json({ error: "Resposta biometrica invalida." }, { status: 400 })
+    const response = NextResponse.json({ error: "Resposta biométrica inválida." }, { status: 400 })
     clearWebAuthnActionCookie(response)
     return response
   }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   const storedCredential = trustedDevice.passkeyCredentials.find((credential) => credential.credentialId === credentialId)
 
   if (!storedCredential) {
-    const response = NextResponse.json({ error: "Credencial biometrica nao encontrada para este dispositivo." }, { status: 404 })
+    const response = NextResponse.json({ error: "Credencial biométrica não encontrada para este dispositivo." }, { status: 404 })
     clearWebAuthnActionCookie(response)
     return response
   }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (!verification?.verified) {
-    const response = NextResponse.json({ error: "Nao foi possivel validar a biometria." }, { status: 401 })
+    const response = NextResponse.json({ error: "Não foi possível validar a biometria." }, { status: 401 })
     clearWebAuthnActionCookie(response)
     return response
   }
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (!user) {
-    const response = NextResponse.json({ error: "Usuario nao encontrado." }, { status: 404 })
+    const response = NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 })
     clearTrustedDeviceCookie(response)
     clearWebAuthnActionCookie(response)
     return response

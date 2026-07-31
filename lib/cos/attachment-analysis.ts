@@ -52,24 +52,24 @@ function buildPrimarySourceInstruction() {
 function summarizePropertyDraft(draft: AdImportDraft) {
   return [
     draft.type ? `- Tipo: ${draft.type}` : "",
-    draft.title ? `- Titulo sugerido: ${draft.title}` : "",
+    draft.title ? `- Título sugerido: ${draft.title}` : "",
     draft.city ? `- Cidade: ${draft.city}` : "",
     draft.neighborhood ? `- Bairro: ${draft.neighborhood}` : "",
-    draft.address ? `- Endereco: ${draft.address}` : "",
-    draft.area ? `- Area: ${draft.area}` : "",
-    draft.bedrooms ? `- Dormitorios: ${draft.bedrooms}` : "",
+    draft.address ? `- Endereço: ${draft.address}` : "",
+    draft.area ? `- Área: ${draft.area}` : "",
+    draft.bedrooms ? `- Dormitórios: ${draft.bedrooms}` : "",
     draft.bathrooms ? `- Banheiros: ${draft.bathrooms}` : "",
     draft.parking ? `- Vagas: ${draft.parking}` : "",
     draft.price ? `- Valor: ${draft.price}` : "",
-    draft.features.length > 0 ? `- Caracteristicas: ${draft.features.join(", ")}` : "",
+    draft.features.length > 0 ? `- Características: ${draft.features.join(", ")}` : "",
   ].filter(Boolean)
 }
 
 function buildPropertyConfirmationText(draft: AdImportDraft) {
   const summary = summarizePropertyDraft(draft)
-  if (summary.length === 0) return "Encontrei informacoes no anexo. Deseja criar este imovel?"
+  if (summary.length === 0) return "Encontrei informações no anexo. Deseja criar este imóvel?"
 
-  return ["Encontrei estas informacoes:", "", ...summary, "", "Deseja criar este imovel?"].join("\n")
+  return ["Encontrei estas informações:", "", ...summary, "", "Deseja criar este imóvel?"].join("\n")
 }
 
 function mapDraftTypeToPropertyType(type: AdImportDraft["type"]) {

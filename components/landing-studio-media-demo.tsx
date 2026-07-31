@@ -21,21 +21,21 @@ export function LandingStudioMediaDemo() {
       <div className="max-w-[1180px]">
         <div className="inline-flex items-center gap-2 rounded-full border border-[#dce9df] bg-[#f7fbf8] px-4 py-2 text-sm font-medium text-[#16a34a]">
           <Sparkles className="size-4" />
-          COMO FUNCIONA NA PRATICA
+          COMO FUNCIONA NA PRÁTICA
         </div>
 
         <h2 className="mt-5 text-[2.05rem] font-semibold leading-[1.08] tracking-[-0.055em] text-[#111111] sm:text-[2.85rem]">
-          Do imovel real ao conteudo que vende, em minutos.
+          Do imóvel real ao conteúdo que vende, em minutos.
         </h2>
         <p className="mt-3 max-w-[42rem] text-[0.98rem] leading-7 text-[#5f6973]">
-          A IA transforma fotos e ideias em imagens profissionais e videos prontos para redes sociais e portais.
+          A IA transforma fotos e ideias em imagens profissionais e vídeos prontos para redes sociais e portais.
         </p>
 
         <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1fr)_62px_minmax(0,1fr)_62px_minmax(0,1fr)_62px_minmax(0,1fr)]">
           <DemoStageCard
             step="1"
             title="Envie a foto"
-            subtitle="Do imovel ou da obra."
+            subtitle="Do imóvel ou da obra."
             status="Foto enviada"
             image={demoFrames.original}
             state="image"
@@ -43,9 +43,9 @@ export function LandingStudioMediaDemo() {
           <StageArrow />
           <DemoStageCard
             step="2"
-            title="IA cria o cenario"
-            subtitle="Transforma o espaco."
-            status="Gerando cenario..."
+            title="IA cria o cenário"
+            subtitle="Transforma o espaço."
+            status="Gerando cenário..."
             image={demoFrames.final}
             state="processing"
           />
@@ -70,10 +70,10 @@ export function LandingStudioMediaDemo() {
               </span>
               <div>
                 <p className="text-[1.45rem] font-semibold tracking-[-0.04em] text-[#111111]">
-                  Seu proximo anuncio pode ser o melhor de todos.
+                  Seu próximo anúncio pode ser o melhor de todos.
                 </p>
                 <p className="mt-1.5 text-[13px] text-[#667085]">
-                  Teste gratis • Sem compromisso • Cancelar quando quiser
+                  Teste grátis • Sem compromisso • Cancelar quando quiser
                 </p>
               </div>
             </div>
@@ -158,7 +158,7 @@ function DemoVideoCard({
           4
         </span>
         <div>
-          <p className="text-[0.96rem] font-semibold text-[#111111]">Video pronto</p>
+          <p className="text-[0.96rem] font-semibold text-[#111111]">Vídeo pronto</p>
           <p className="mt-1 text-[13px] text-[#667085]">Pronto para postar e vender.</p>
         </div>
       </div>
@@ -167,7 +167,7 @@ function DemoVideoCard({
         <div className="flex items-center justify-between gap-3 border-b border-black/[0.05] px-4 py-2.5">
           <div className="flex items-center gap-2 text-[13px] font-medium text-[#111111]">
             <span className="inline-flex size-2.5 rounded-full bg-[#16a34a]" />
-            Video final
+            Vídeo final
           </div>
           <div className="flex items-center gap-2 text-[11px] text-[#667085]">
             <span className="rounded-full bg-white px-2.5 py-1">Muted</span>
@@ -180,7 +180,7 @@ function DemoVideoCard({
           {!demoVideoSrc || videoFailed ? (
             <Image
               src={demoPoster}
-              alt="Fallback visual da demonstracao de video do Studio IA"
+              alt="Fallback visual da demonstração de vídeo do Studio IA"
               fill
               className="object-cover"
               sizes="(min-width: 1280px) 18vw, 100vw"
@@ -205,7 +205,7 @@ function DemoVideoCard({
       <div className="mt-[-1.15rem] px-2">
         <div className="inline-flex items-center gap-2 rounded-[12px] border border-black/[0.045] bg-white px-3.5 py-1.5 text-[13px] text-[#334155] shadow-[0_10px_18px_rgba(15,23,42,0.07)]">
           <CheckCircle2 className="size-4 text-[#16a34a]" />
-          Video concluido!
+          Vídeo concluído!
         </div>
       </div>
     </article>
