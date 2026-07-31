@@ -330,7 +330,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
               </div>
             </div>
 
-            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] grid-cols-2 lg:border-l lg:border-[#f0e9e1] sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.35fr]">
+            <div className="grid overflow-hidden rounded-[1.6rem] bg-[#fdfcfa] grid-cols-2 sm:grid-cols-2 lg:border-l lg:border-[#f0e9e1] lg:grid-cols-2">
               <MetricStat icon={Home} label="Imoveis" value={String(properties.length)} />
               <MetricStat icon={MapPin} label="Cidades" value={cities.length ? String(cities.length) : "A consultar"} />
               <MetricStat
@@ -338,6 +338,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                 label="Faixa de preco"
                 value={priceRange}
                 fullWidthOnMobile
+                fullWidthOnDesktop
                 valueClassName="whitespace-nowrap text-[1.45rem] sm:text-[1.7rem]"
               />
             </div>
@@ -346,18 +347,18 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
         ) : null}
 
         {!listingOnly ? (
-        <section className="rounded-[2rem] bg-white px-5 py-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10">
+        <section className="rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10">
           <div className="mx-auto max-w-none">
-            <h2 className="text-[1.55rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
+            <h2 className="text-[1.3rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
               Encontre seu proximo imovel
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[#6b6b6b] sm:text-[0.98rem] sm:leading-7">
+            <p className="mt-1.5 text-[13px] leading-5 text-[#6b6b6b] sm:mt-2 sm:text-[0.98rem] sm:leading-7">
               Busque por bairro, cidade ou caracteristica.
             </p>
 
-            <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_170px]">
+            <div className="mt-4 grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_170px]">
               <div className="relative min-w-0">
-                <Search className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-[#9a9a9a]" />
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-[#9a9a9a] sm:left-5 sm:size-5" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -365,19 +366,19 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Ex.: apartamento em Porto Alegre ate 900 mil com 2 quartos e vaga"
-                  className="h-[3.6rem] rounded-[1rem] border-transparent bg-white pl-12 pr-4 text-sm text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8] sm:text-base"
+                  className="h-[3rem] rounded-[0.95rem] border-transparent bg-white pl-11 pr-4 text-[13px] text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8] sm:h-[3.6rem] sm:rounded-[1rem] sm:pl-12 sm:text-base"
                 />
               </div>
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-[3.6rem] rounded-[1rem] bg-[#17181d] px-6 text-base font-medium text-white shadow-[0_14px_30px_rgba(23,24,29,0.16)] hover:bg-[#111216]"
+                className="h-[3rem] rounded-[0.95rem] bg-[#17181d] px-5 text-sm font-medium text-white shadow-[0_14px_30px_rgba(23,24,29,0.16)] hover:bg-[#111216] sm:h-[3.6rem] sm:rounded-[1rem] sm:px-6 sm:text-base"
               >
                 Buscar
               </Button>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2.5">
+            <div className="mt-3 flex flex-wrap gap-2">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
@@ -390,7 +391,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
 
                     setSearch(suggestion)
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#efe8df] bg-white px-4 py-2.5 text-[13px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5]"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#efe8df] bg-white px-3 py-[0.42rem] text-[11px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[13px]"
                 >
                   {getSuggestionIcon(suggestion)}
                   {suggestion}
@@ -1238,18 +1239,22 @@ function MetricStat({
   label,
   value,
   fullWidthOnMobile = false,
+  fullWidthOnDesktop = false,
   valueClassName = "",
 }: {
   icon: typeof Home
   label: string
   value: string
   fullWidthOnMobile?: boolean
+  fullWidthOnDesktop?: boolean
   valueClassName?: string
 }) {
   return (
     <div
-      className={`flex min-h-[110px] flex-col items-center justify-center gap-2.5 border-b border-[#eee6de] px-4 py-4 text-center last:border-b-0 sm:min-h-[128px] sm:border-b-0 sm:border-r last:sm:border-r-0 ${
+      className={`flex min-h-[110px] flex-col items-center justify-center gap-2.5 border-b border-[#eee6de] px-4 py-4 text-center last:border-b-0 sm:min-h-[128px] sm:border-b-0 sm:border-r last:sm:border-r-0 lg:min-h-[118px] ${
         fullWidthOnMobile ? "col-span-2" : ""
+      } ${
+        fullWidthOnDesktop ? "lg:col-span-2 lg:border-r-0" : ""
       }`}
     >
       <div className="flex size-9 items-center justify-center rounded-full bg-[#f4faf5] text-[#3e9651] sm:size-10">

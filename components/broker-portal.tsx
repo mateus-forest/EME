@@ -380,7 +380,7 @@ export function BrokerPortal() {
                         ))}
                       </div>
 
-                      <div className="mt-auto w-full pt-16 sm:pt-20">
+                      <div className="mt-auto w-full pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pt-16 sm:pt-20 lg:pb-4">
                         <div className="flex flex-col items-end gap-2">
                           <MobileOperationHealthTrigger
                             operationHealth={operationHealth}
@@ -514,7 +514,7 @@ export function BrokerPortal() {
                     ) : null}
                   </div>
 
-                  <div className="mt-auto px-1 pb-1 pt-2">
+                  <div className="mt-auto px-1 pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pt-2 lg:pb-4">
                     <div className="flex flex-col items-end gap-2">
                       <MobileOperationHealthTrigger
                         operationHealth={operationHealth}

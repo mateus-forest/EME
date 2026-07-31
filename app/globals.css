@@ -193,9 +193,8 @@
 
   .pwa-sticky-composer {
     position: sticky;
-    bottom: 0;
+    bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
     z-index: 10;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
     background:
       linear-gradient(180deg, rgba(244, 241, 235, 0), rgba(244, 241, 235, 0.58) 24%, rgba(244, 241, 235, 0.78) 56%, rgba(244, 241, 235, 0.9) 100%);
     backdrop-filter: blur(10px);
