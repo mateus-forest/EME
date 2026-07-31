@@ -5,85 +5,56 @@ import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 
 import { AuthShell } from "@/components/auth-shell"
-import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { usePremiumLogin } from "@/components/use-premium-login"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
-import { PIN_LENGTH, normalizePin } from "@/lib/pin-auth"
-
-type LoginMethod = "password" | "pin"
 
 export function LoginPage() {
   const router = useRouter()
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [pin, setPin] = useState("")
-  const [loginError, setLoginError] = useState("")
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [recoveryEmail, setRecoveryEmail] = useState("")
   const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false)
   const [recoveryFeedback, setRecoveryFeedback] = useState("")
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setIsSubmitting(true)
-    setLoginError("")
-
-    const payload = {
-      method: loginMethod,
-      email: email.trim().toLowerCase(),
-      password,
-      pin: normalizePin(pin),
-    }
-
-    if (loginMethod === "pin") {
-      if (payload.pin.length !== PIN_LENGTH) {
-        setLoginError("Informe seu PIN.")
-        setIsSubmitting(false)
-        return
-      }
-    } else if (!payload.email || !payload.password) {
-      setLoginError("Email e senha sao obrigatorios.")
-      setIsSubmitting(false)
-      return
-    }
-
-    try {
-      clearLegacyAuthState()
-
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      })
-
-      const data = (await response.json().catch(() => null)) as
-        | { user: AuthenticatedUser }
-        | { error?: string }
-        | null
-
-      if (!response.ok || !data || !("user" in data)) {
-        setLoginError(data && "error" in data && data.error ? data.error : "Nao foi possivel entrar agora.")
-        return
-      }
-
+  const {
+    mode,
+    heading,
+    trustedDevice,
+    email,
+    password,
+    pin,
+    error,
+    isSubmitting,
+    setEmail,
+    setPassword,
+    setPin,
+    submitPassword,
+    submitPin,
+    retryBiometric,
+    useAnotherAccount,
+  } = usePremiumLogin((user: AuthenticatedUser) => {
       const next =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("next")
           : null
-      const fallbackRoute = getDefaultRouteByRole(data.user.role)
+      const fallbackRoute = getDefaultRouteByRole(user.role)
       const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
 
       router.push(targetRoute)
-    } finally {
-      setIsSubmitting(false)
+    })
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (mode === "pin") {
+      await submitPin()
+      return
     }
+
+    await submitPassword()
   }
 
   const handleRecoverySubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -100,8 +71,14 @@ export function LoginPage() {
   return (
     <>
       <AuthShell
-        title="Entrar"
-        subtitle="Acesse sua conta para continuar publicando, gerenciando e acompanhando seus resultados."
+        title={heading}
+        subtitle={
+          mode === "pin" && trustedDevice
+            ? `Este dispositivo esta confiavel. Se a biometria nao responder, use seu PIN de 6 digitos para continuar.`
+            : mode === "biometric" && trustedDevice
+              ? `Tentando autenticar ${trustedDevice.userName} com biometria neste dispositivo confiavel.`
+              : "Acesse sua conta para continuar publicando, gerenciando e acompanhando seus resultados."
+        }
         footer={
           <p className="text-sm text-[#6B7280]">
             Ainda nao tem conta?{" "}
@@ -112,47 +89,48 @@ export function LoginPage() {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-2 rounded-[1.25rem] border border-[#E5E7EB] bg-[#F8FAF9] p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMethod("password")
-                setLoginError("")
-              }}
-              className={`h-11 rounded-[0.95rem] text-sm font-medium transition-colors ${
-                loginMethod === "password"
-                  ? "bg-white text-[#111111] shadow-sm"
-                  : "text-[#6B7280] hover:text-[#111111]"
-              }`}
-            >
-              Email e senha
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMethod("pin")
-                setLoginError("")
-              }}
-              className={`h-11 rounded-[0.95rem] text-sm font-medium transition-colors ${
-                loginMethod === "pin"
-                  ? "bg-white text-[#111111] shadow-sm"
-                  : "text-[#6B7280] hover:text-[#111111]"
-              }`}
-            >
-              Entrar com PIN
-            </button>
-          </div>
-
-          {loginMethod === "pin" ? (
+          {mode === "loading" || mode === "biometric" ? (
+            <div className="rounded-[1.5rem] border border-[#E5E7EB] bg-[#F8FAF9] px-5 py-6 text-center">
+              <p className="text-sm font-medium text-[#111111]">
+                {mode === "biometric" ? "Aguardando biometria..." : "Preparando seu dispositivo..."}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                {mode === "biometric" && trustedDevice
+                  ? `Aprove o Face ID, Touch ID, Android biometrico ou Windows Hello para entrar como ${trustedDevice.userName}.`
+                  : "Estamos identificando se este dispositivo ja foi confiado anteriormente."}
+              </p>
+              {mode === "biometric" ? (
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void retryBiometric()}
+                    disabled={isSubmitting}
+                    className="h-11 rounded-xl border border-[#E5E7EB] bg-white px-4 text-[#111111] shadow-sm hover:bg-[#F8FAF9]"
+                  >
+                    Tentar novamente
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={useAnotherAccount}
+                    className="h-11 rounded-xl border border-[#E5E7EB] bg-white px-4 text-[#111111] shadow-sm hover:bg-[#F8FAF9]"
+                  >
+                    Usar email e senha
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : mode === "pin" ? (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#374151]">
-                PIN
-              </label>
-              <PinCodeInput
-                value={pin}
-                onChange={setPin}
-                autoFocus
-              />
+              <label className="text-sm font-medium text-[#374151]">PIN de 6 digitos</label>
+              <PinCodeInput value={pin} onChange={setPin} autoFocus />
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-[#6B7280]">{trustedDevice?.emailMasked}</span>
+                <button type="button" onClick={useAnotherAccount} className="font-medium text-[#00A844] transition-colors hover:text-[#00C853]">
+                  Usar outra conta
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -201,18 +179,18 @@ export function LoginPage() {
             </>
           )}
 
-          {loginError && (
+          {error && (
             <div className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {loginError}
+              {error}
             </div>
           )}
 
           <Button
             type="submit"
-            disabled={isSubmitting || (loginMethod === "pin" && normalizePin(pin).length !== PIN_LENGTH)}
+            disabled={isSubmitting || mode === "loading" || mode === "biometric" || (mode === "pin" && pin.length < 6)}
             className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
           >
-            {isSubmitting ? "Entrando..." : loginMethod === "pin" ? "Entrar com PIN" : "Entrar"}
+            {isSubmitting ? "Entrando..." : mode === "pin" ? "Entrar com PIN" : "Entrar"}
           </Button>
         </form>
 

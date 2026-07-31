@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Camera, CheckCircle2, LockKeyhole, ShieldCheck, UserRound } from "lucide-react"
 
 import { AgencyPageShell } from "@/components/agency-page-shell"
+import { AccountSecuritySection } from "@/components/account-security-section"
 import { useAgencyProfile } from "@/components/use-agency-profile"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -218,6 +219,8 @@ function AccountForm() {
           </CardContent>
         </Card>
       </div>
+
+      <AccountSecuritySection variant="dark" />
 
       <div className="flex flex-col gap-4 rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.9),rgba(14,14,14,0.86))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.14)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 text-sm text-white/55">

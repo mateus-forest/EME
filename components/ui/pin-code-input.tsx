@@ -118,7 +118,7 @@ export function PinCodeInput({
             event.preventDefault()
           }}
           className={cn(
-            "h-14 w-12 rounded-2xl border border-black/[0.08] bg-white text-center text-xl font-semibold tracking-[0.08em] text-[#111111] outline-none transition-[border-color,box-shadow] focus:border-[#00C853] focus:shadow-[0_0_0_3px_rgba(0,200,83,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-16 sm:w-14 sm:text-2xl",
+            "h-12 w-10 rounded-2xl border border-black/[0.08] bg-white text-center text-lg font-semibold tracking-[0.08em] text-[#111111] outline-none transition-[border-color,box-shadow] focus:border-[#00C853] focus:shadow-[0_0_0_3px_rgba(0,200,83,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-14 sm:w-12 sm:text-xl",
             inputClassName,
           )}
         />

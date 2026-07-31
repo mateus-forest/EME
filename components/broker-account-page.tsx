@@ -4,15 +4,14 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Camera, CheckCircle2, LockKeyhole, ShieldCheck, UserRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { AccountSecuritySection } from "@/components/account-security-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PinCodeInput } from "@/components/ui/pin-code-input"
 import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProfile } from "@/components/use-broker-profile"
-import { PIN_LENGTH, normalizePin } from "@/lib/pin-auth"
 
 export function BrokerAccountPage() {
   return (
@@ -33,16 +32,10 @@ function AccountForm() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [pinMode, setPinMode] = useState<"set" | "remove" | null>(null)
-  const [pinPassword, setPinPassword] = useState("")
-  const [pinCurrent, setPinCurrent] = useState("")
-  const [pinNew, setPinNew] = useState("")
-  const [pinConfirm, setPinConfirm] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [feedback, setFeedback] = useState<string | null>(null)
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("success")
   const [isSaving, setIsSaving] = useState(false)
-  const [isSavingPin, setIsSavingPin] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -52,11 +45,6 @@ function AccountForm() {
     setWhatsApp(profile.whatsApp)
     setPhotoUrl(profile.photoUrl)
     setDescription(profile.description)
-    setPinMode(null)
-    setPinPassword("")
-    setPinCurrent("")
-    setPinNew("")
-    setPinConfirm("")
   }, [profile])
 
   function validate() {
@@ -141,68 +129,6 @@ function AccountForm() {
     } catch {
       setFeedbackTone("error")
       setFeedback("Não foi possível atualizar a foto agora.")
-    }
-  }
-
-  async function handlePinSubmit() {
-    setFeedback(null)
-
-    if (!pinMode) return
-
-    if (!pinPassword.trim()) {
-      setFeedbackTone("error")
-      setFeedback("Informe sua senha atual para continuar.")
-      return
-    }
-
-    if (pinMode === "set") {
-      if (normalizePin(pinNew).length !== PIN_LENGTH) {
-        setFeedbackTone("error")
-        setFeedback("Informe um PIN valido com 4 digitos.")
-        return
-      }
-
-      if (normalizePin(pinConfirm) !== normalizePin(pinNew)) {
-        setFeedbackTone("error")
-        setFeedback("A confirmacao do PIN nao confere.")
-        return
-      }
-    }
-
-    if (pinMode === "remove" && normalizePin(pinCurrent).length !== PIN_LENGTH) {
-      setFeedbackTone("error")
-      setFeedback("Informe o PIN atual para remover este acesso.")
-      return
-    }
-
-    setIsSavingPin(true)
-
-    try {
-      await saveProfile({
-        fullName,
-        email,
-        creci,
-        whatsApp,
-        photoUrl,
-        description,
-        currentPassword: pinPassword,
-        currentPin: pinCurrent,
-        newPin: pinNew,
-        pinAction: pinMode,
-      })
-
-      setPinMode(null)
-      setPinPassword("")
-      setPinCurrent("")
-      setPinNew("")
-      setPinConfirm("")
-      setFeedbackTone("success")
-      setFeedback(pinMode === "remove" ? "PIN removido com sucesso." : "PIN salvo com sucesso.")
-    } catch (error) {
-      setFeedbackTone("error")
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel atualizar o PIN agora.")
-    } finally {
-      setIsSavingPin(false)
     }
   }
 
@@ -322,130 +248,9 @@ function AccountForm() {
             <Field id="confirmPassword" label="Confirmar nova senha" type="password" value={confirmPassword} onChange={setConfirmPassword} error={errors.confirmPassword} placeholder="Repita a nova senha" />
           </CardContent>
         </Card>
-
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
-                <LockKeyhole className="size-4.5" />
-              </span>
-              PIN de acesso
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 p-6 pt-0">
-            <div className="flex items-center justify-between gap-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-[#050505]">
-                  {profile.pinConfigured ? "PIN configurado" : "PIN nao configurado"}
-                </p>
-                <p className="mt-1 text-sm text-[#6B7280]">
-                  Use um codigo numerico de 4 digitos para entrar com mais rapidez.
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setPinMode("set")
-                    setPinCurrent("")
-                    setPinNew("")
-                    setPinConfirm("")
-                    setPinPassword("")
-                  }}
-                  className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white"
-                >
-                  {profile.pinConfigured ? "Alterar PIN" : "Configurar PIN"}
-                </Button>
-                {profile.pinConfigured ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setPinMode("remove")
-                      setPinCurrent("")
-                      setPinNew("")
-                      setPinConfirm("")
-                      setPinPassword("")
-                    }}
-                    className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#b42318] hover:bg-white"
-                  >
-                    Remover PIN
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            {pinMode ? (
-              <div className="grid gap-4 rounded-[1.25rem] border border-black/[0.06] bg-white/70 p-4">
-                <Field
-                  id="pinPassword"
-                  label="Senha atual"
-                  type="password"
-                  value={pinPassword}
-                  onChange={setPinPassword}
-                  placeholder="Digite sua senha atual"
-                />
-
-                {pinMode === "set" ? (
-                  <>
-                    <div className="grid gap-2">
-                      <Label className="text-sm font-medium text-[#5F6B7A]">Novo PIN</Label>
-                      <PinCodeInput value={pinNew} onChange={setPinNew} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label className="text-sm font-medium text-[#5F6B7A]">Confirmar PIN</Label>
-                      <PinCodeInput value={pinConfirm} onChange={setPinConfirm} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="grid gap-2">
-                    <Label className="text-sm font-medium text-[#5F6B7A]">PIN atual</Label>
-                    <PinCodeInput value={pinCurrent} onChange={setPinCurrent} />
-                  </div>
-                )}
-
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setPinMode(null)
-                      setPinPassword("")
-                      setPinCurrent("")
-                      setPinNew("")
-                      setPinConfirm("")
-                    }}
-                    className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => void handlePinSubmit()}
-                    disabled={
-                      isSavingPin ||
-                      !pinPassword.trim() ||
-                      (pinMode === "set"
-                        ? normalizePin(pinNew).length !== PIN_LENGTH || normalizePin(pinConfirm).length !== PIN_LENGTH
-                        : normalizePin(pinCurrent).length !== PIN_LENGTH)
-                    }
-                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
-                  >
-                    {isSavingPin
-                      ? "Salvando..."
-                      : pinMode === "remove"
-                        ? "Remover PIN"
-                        : profile.pinConfigured
-                          ? "Alterar PIN"
-                          : "Configurar PIN"}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
       </div>
+
+      <AccountSecuritySection />
 
       <div className="flex flex-col gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 text-sm text-[#6B7280]">

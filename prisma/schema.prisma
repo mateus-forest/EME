@@ -135,6 +135,52 @@ model User {
   aiAssistantInteractions AiAssistantInteraction[]
   emeMessages          EmeMessage[]
   studioCampaigns      StudioCampaign[]
+  trustedDevices       UserTrustedDevice[]
+  passkeyCredentials   UserPasskeyCredential[]
+}
+
+model UserTrustedDevice {
+  id                   String                  @id @default(cuid())
+  userId               String
+  tokenHash            String                  @unique
+  label                String
+  browser              String?
+  platform             String?
+  userAgent            String?
+  biometricEnabled     Boolean                 @default(false)
+  pinFailures          Int                     @default(0)
+  lastAccessAt         DateTime?
+  lastPasswordLoginAt  DateTime?
+  lastPinLoginAt       DateTime?
+  lastBiometricLoginAt DateTime?
+  trustedAt            DateTime                @default(now())
+  revokedAt            DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passkeyCredentials   UserPasskeyCredential[]
+
+  @@index([userId, revokedAt])
+  @@index([userId, lastAccessAt])
+}
+
+model UserPasskeyCredential {
+  id          String   @id @default(cuid())
+  userId      String
+  deviceId    String
+  credentialId String  @unique
+  publicKey   Bytes
+  counter     Int      @default(0)
+  transports  Json?
+  deviceType  String?
+  backedUp    Boolean  @default(false)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device      UserTrustedDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, deviceId])
 }
 
 model Broker {

@@ -1,6 +1,7 @@
 import { compare, hash } from "bcryptjs"
 
-export const PIN_LENGTH = 4
+export const PIN_LENGTH = 6
+export const PIN_MAX_FAILURES = 3
 
 export function normalizePin(value: unknown) {
   return typeof value === "string" ? value.replace(/\D/g, "").slice(0, PIN_LENGTH) : ""

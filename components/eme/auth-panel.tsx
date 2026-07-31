@@ -5,12 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import { X } from "lucide-react"
 
-import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { usePremiumLogin } from "@/components/use-premium-login"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
-import { PIN_LENGTH, normalizePin } from "@/lib/pin-auth"
 
 export type AuthMode = "login" | "signup"
-type LoginMethod = "password" | "pin"
 
 export function AuthPanel({
   mode,
@@ -24,15 +23,34 @@ export function AuthPanel({
   const router = useRouter()
   const searchParams = useSearchParams()
   const isLogin = mode === "login"
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  const [signupEmail, setSignupEmail] = useState("")
   const [creci, setCreci] = useState("")
-  const [password, setPassword] = useState("")
-  const [pin, setPin] = useState("")
+  const [signupPassword, setSignupPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
+  const {
+    mode: loginMode,
+    trustedDevice,
+    email,
+    password,
+    pin,
+    isSubmitting: isLoginSubmitting,
+    setEmail,
+    setPassword,
+    setPin,
+    submitPassword,
+    submitPin,
+    retryBiometric,
+    useAnotherAccount,
+  } = usePremiumLogin((user: AuthenticatedUser) => {
+    const next = searchParams.get("next")
+    const fallbackRoute = getDefaultRouteByRole(user.role)
+    const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
+
+    router.push(targetRoute)
+  })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -44,85 +62,42 @@ export function AuthPanel({
 
   useEffect(() => {
     setError("")
-    setLoginMethod("password")
   }, [mode])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setIsSubmitting(true)
     setError("")
 
     if (isLogin) {
-      const payload = {
-        method: loginMethod,
-        email: email.trim().toLowerCase(),
-        password,
-        pin: normalizePin(pin),
-      }
-
-      if (loginMethod === "pin") {
-        if (payload.pin.length !== PIN_LENGTH) {
-          setError("PIN obrigatorio.")
-          setIsSubmitting(false)
-          return
-        }
-      } else if (!payload.email || !payload.password) {
-        setError("Email e senha sao obrigatorios.")
-        setIsSubmitting(false)
-        return
-      }
-
       try {
-        clearLegacyAuthState()
-
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        })
-
-        const data = (await response.json().catch(() => null)) as
-          | { user: AuthenticatedUser }
-          | { error?: string }
-          | null
-
-        if (!response.ok || !data || !("user" in data)) {
-          setError(data && "error" in data && data.error ? data.error : "Nao foi possivel entrar agora.")
-          return
+        if (loginMode === "pin") {
+          await submitPin()
+        } else {
+          await submitPassword()
         }
-
-        const next = searchParams.get("next")
-        const fallbackRoute = getDefaultRouteByRole(data.user.role)
-        const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
-
-        router.push(targetRoute)
-        return
-      } finally {
-        setIsSubmitting(false)
+      } catch (caughtError) {
+        setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel entrar agora.")
       }
+
+      return
     }
 
     const trimmedName = name.trim()
-    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedEmail = signupEmail.trim().toLowerCase()
 
-    if (!trimmedName || !normalizedEmail || !password) {
+    if (!trimmedName || !normalizedEmail || !signupPassword) {
       setError("Nome, email e senha sao obrigatorios.")
-      setIsSubmitting(false)
       return
     }
 
-    if (password !== confirmPassword) {
+    if (signupPassword !== confirmPassword) {
       setError("As senhas nao coincidem.")
-      setIsSubmitting(false)
       return
     }
+
+    setIsSubmitting(true)
 
     try {
-      clearLegacyAuthState()
-
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -134,7 +109,7 @@ export function AuthPanel({
           name: trimmedName,
           email: normalizedEmail,
           creci: creci.trim(),
-          password,
+          password: signupPassword,
         }),
       })
 
@@ -210,39 +185,6 @@ export function AuthPanel({
                 </div>
 
                 <form className="mt-6 flex flex-col gap-3 sm:mt-7" onSubmit={handleSubmit}>
-                  {isLogin ? (
-                    <div className="grid grid-cols-2 gap-2 rounded-[1.25rem] border border-foreground/10 bg-[#F8FAF9] p-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLoginMethod("password")
-                          setError("")
-                        }}
-                        className={`h-11 rounded-[0.95rem] text-sm font-medium transition-colors ${
-                          loginMethod === "password"
-                            ? "bg-white text-[#111111] shadow-sm"
-                            : "text-foreground/55 hover:text-foreground"
-                        }`}
-                      >
-                        Email e senha
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLoginMethod("pin")
-                          setError("")
-                        }}
-                        className={`h-11 rounded-[0.95rem] text-sm font-medium transition-colors ${
-                          loginMethod === "pin"
-                            ? "bg-white text-[#111111] shadow-sm"
-                            : "text-foreground/55 hover:text-foreground"
-                        }`}
-                      >
-                        Entrar com PIN
-                      </button>
-                    </div>
-                  ) : null}
-
                   {!isLogin && (
                     <Field
                       label="Nome"
@@ -265,10 +207,45 @@ export function AuthPanel({
                     />
                   )}
 
-                  {isLogin && loginMethod === "pin" ? (
+                  {isLogin && (loginMode === "loading" || loginMode === "biometric") ? (
+                    <div className="rounded-[1.5rem] border border-foreground/10 bg-[#F8FAF9] px-4 py-5 text-center">
+                      <p className="text-sm font-medium text-foreground">
+                        {loginMode === "biometric" ? "Aguardando biometria..." : "Preparando seu dispositivo..."}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-foreground/65">
+                        {loginMode === "biometric" && trustedDevice
+                          ? `Aprove a biometria para entrar como ${trustedDevice.userName}.`
+                          : "Estamos verificando se este dispositivo pode acessar sua conta de forma premium."}
+                      </p>
+                      {loginMode === "biometric" ? (
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void retryBiometric()}
+                            className="rounded-full border border-foreground/12 bg-white px-4 py-2 text-[13px] font-medium text-foreground/85"
+                          >
+                            Tentar novamente
+                          </button>
+                          <button
+                            type="button"
+                            onClick={useAnotherAccount}
+                            className="rounded-full border border-foreground/12 bg-white px-4 py-2 text-[13px] font-medium text-foreground/85"
+                          >
+                            Usar email e senha
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : isLogin && loginMode === "pin" ? (
                     <div className="grid gap-1.5">
-                      <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN</span>
+                      <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN de 6 digitos</span>
                       <PinCodeInput value={pin} onChange={setPin} autoFocus />
+                      <div className="flex items-center justify-between gap-2 text-[12.5px]">
+                        <span className="text-foreground/55">{trustedDevice?.emailMasked}</span>
+                        <button type="button" onClick={useAnotherAccount} className="font-medium text-eme transition-colors hover:text-eme-dark">
+                          Usar outra conta
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -277,16 +254,16 @@ export function AuthPanel({
                         type="email"
                         autoComplete="email"
                         placeholder="voce@email.com"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
+                        value={isLogin ? email : signupEmail}
+                        onChange={(event) => (isLogin ? setEmail(event.target.value) : setSignupEmail(event.target.value))}
                       />
                       <Field
                         label="Senha"
                         type="password"
                         autoComplete={isLogin ? "current-password" : "new-password"}
                         placeholder="........"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
+                        value={isLogin ? password : signupPassword}
+                        onChange={(event) => (isLogin ? setPassword(event.target.value) : setSignupPassword(event.target.value))}
                       />
                     </>
                   )}
@@ -310,15 +287,15 @@ export function AuthPanel({
 
                   <button
                     type="submit"
-                    disabled={isSubmitting || (isLogin && loginMethod === "pin" && normalizePin(pin).length !== PIN_LENGTH)}
+                    disabled={isSubmitting || isLoginSubmitting || (isLogin && (loginMode === "loading" || loginMode === "biometric"))}
                     className="eme-gradient mt-2 w-full rounded-full py-3 text-[14px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-12px_rgba(28,120,60,0.65)] transition-[transform,filter] duration-200 ease-out hover:-translate-y-0.5"
                   >
-                    {isSubmitting
+                    {isSubmitting || isLoginSubmitting
                       ? isLogin
                         ? "Entrando..."
                         : "Criando conta..."
                       : isLogin
-                        ? loginMethod === "pin"
+                        ? loginMode === "pin"
                           ? "Entrar com PIN"
                           : "Entrar"
                         : "Criar conta"}

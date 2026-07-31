@@ -1,10 +1,12 @@
 import { compare } from "bcryptjs"
 import { NextRequest, NextResponse } from "next/server"
 
-import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
-import { authUserSelect, isPrismaSchemaMismatch } from "@/lib/auth-route"
+import { resolveTrustedDevice } from "@/lib/auth-device"
+import { isDatabaseUnavailableError } from "@/lib/auth-errors"
+import { authUserSelect } from "@/lib/auth-route"
 import { comparePin, isValidPin, normalizePin } from "@/lib/pin-auth"
+import { clearTrustedDeviceCookie } from "@/lib/premium-auth"
 import { prisma } from "@/lib/prisma"
 import { buildSessionProfile } from "@/lib/session-profile"
 
@@ -24,47 +26,26 @@ export async function POST(request: NextRequest) {
       }
 
       if (!isValidPin(pin)) {
-        return NextResponse.json({ error: "Informe um PIN valido com 4 digitos." }, { status: 400 })
+        return NextResponse.json({ error: "Informe um PIN valido com 6 digitos." }, { status: 400 })
       }
 
-      let usersWithPin: Array<{ id: string; pinHash: string | null }> = []
+      const trustedDevice = await resolveTrustedDevice(request).catch(() => null)
 
-      try {
-        usersWithPin = await prisma.user.findMany({
-          where: {
-            pinHash: {
-              not: null,
-            },
-          },
-          select: {
-            id: true,
-            pinHash: true,
-          },
-        })
-      } catch (error) {
-        if (isPrismaSchemaMismatch(error)) {
-          return NextResponse.json(
-            { error: "O login por PIN ainda nao esta disponivel nesta base. Aplique a migration pendente e tente novamente." },
-            { status: 503 },
-          )
-        }
-
-        throw error
+      if (!trustedDevice?.user?.pinHash) {
+        return NextResponse.json(
+          { error: "PIN indisponivel para este dispositivo. Entre com email e senha para continuar." },
+          { status: 400 },
+        )
       }
 
-      const matchingUserIds: string[] = []
-      for (const candidate of usersWithPin) {
-        if (await comparePin(pin, candidate.pinHash)) {
-          matchingUserIds.push(candidate.id)
-        }
-      }
+      const pinMatches = await comparePin(pin, trustedDevice.user.pinHash)
 
-      if (matchingUserIds.length !== 1) {
+      if (!pinMatches) {
         return NextResponse.json({ error: "PIN invalido." }, { status: 401 })
       }
 
       const user = await prisma.user.findUnique({
-        where: { id: matchingUserIds[0] },
+        where: { id: trustedDevice.userId },
         select: authUserSelect,
       })
 
@@ -85,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email e senha são obrigatórios." }, { status: 400 })
+      return NextResponse.json({ error: "Email e senha sao obrigatorios." }, { status: 400 })
     }
 
     const user = await prisma.user.findUnique({
@@ -97,11 +78,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
+      return NextResponse.json({ error: "Credenciais invalidas." }, { status: 401 })
     }
 
     if (typeof user.passwordHash !== "string" || user.passwordHash.length === 0) {
-      return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
+      return NextResponse.json({ error: "Credenciais invalidas." }, { status: 401 })
     }
 
     let passwordMatches = false
@@ -115,11 +96,11 @@ export async function POST(request: NextRequest) {
         message: error instanceof Error ? error.message : "unknown",
       })
 
-      return NextResponse.json({ error: "Não foi possível validar suas credenciais agora." }, { status: 500 })
+      return NextResponse.json({ error: "Nao foi possivel validar suas credenciais agora." }, { status: 500 })
     }
 
     if (!passwordMatches) {
-      return NextResponse.json({ error: "Credenciais inválidas." }, { status: 401 })
+      return NextResponse.json({ error: "Credenciais invalidas." }, { status: 401 })
     }
 
     const token = await createAuthToken({
@@ -131,6 +112,25 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ user: buildSessionProfile(user) })
     response.headers.set("Cache-Control", "no-store, max-age=0")
 
+    const trustedDevice = await resolveTrustedDevice(request).catch(() => null)
+
+    if (trustedDevice) {
+      if (trustedDevice.userId === user.id) {
+        await prisma.userTrustedDevice
+          .update({
+            where: { id: trustedDevice.id },
+            data: {
+              pinFailures: 0,
+              lastAccessAt: new Date(),
+              lastPasswordLoginAt: new Date(),
+            },
+          })
+          .catch(() => null)
+      } else {
+        clearTrustedDeviceCookie(response)
+      }
+    }
+
     setAuthCookie(response, token)
 
     return response
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     if (isDatabaseUnavailableError(error)) {
       return NextResponse.json(
-        { error: "O serviço de autenticação está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O servico de autenticacao esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
     }
