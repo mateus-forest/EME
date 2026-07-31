@@ -99,10 +99,15 @@ const premiumFeatureOrder = ["assessor_eme", "analytics", "documents", "agenda",
 function buildPlanHighlights(plan: PlanItem) {
   return [
     `Ate ${plan.propertyLimit} imoveis`,
-    `${plan.monthlyAiCredits} creditos IA por mes`,
-    plan.features.includes("assessor_eme") ? "COS e Studio IA ativos" : "",
-    plan.features.includes("analytics") || plan.features.includes("all") ? "Analytics e desempenho" : "",
+    `${plan.monthlyAiCredits} Operacoes Inteligentes por mes`,
+    "Sistema Operacional EME completo",
   ].filter(Boolean)
+}
+
+function getPlanAudience(planKey: string) {
+  if (planKey === "free") return "Para conhecer o EME."
+  if (planKey === "pro") return "Para corretores autonomos."
+  return "Para operacoes maiores."
 }
 
 function formatHistoryDate(value: string) {
@@ -163,8 +168,8 @@ export function BrokerPlanPage() {
   const creditRemaining = Math.max(0, creditBalance)
   const creditRatio = creditMonthly ? Math.min(1, creditUsed / creditMonthly) : 0
   const creditLimitLabel = planSnapshot
-    ? `${creditUsed} usados / ${creditMonthly} do plano`
-    : "Carregando creditos IA"
+    ? `${creditUsed} usadas / ${creditMonthly} do plano`
+    : "Carregando Operacoes Inteligentes"
 
   const hasReachedPropertyLimit = Boolean(propertyLimits && propertyRemaining <= 0)
   const propertyUsageWidth = getUsageWidth(propertyUsed, propertyTotal)
@@ -178,7 +183,7 @@ export function BrokerPlanPage() {
     : "Carregando dados reais do plano."
 
   const propertyLimitMessage = getLimitMessage(propertyRemaining, "imoveis")
-  const creditLimitMessage = getLimitMessage(Math.max(0, creditMonthly - creditUsed), "creditos IA do plano")
+  const creditLimitMessage = getLimitMessage(Math.max(0, creditMonthly - creditUsed), "Operacoes Inteligentes do plano")
 
   const includedFeatures = useMemo(() => {
     const features = currentPlan?.features ?? []
@@ -190,8 +195,12 @@ export function BrokerPlanPage() {
     [planSnapshot?.packages],
   )
   const propertyPackages = useMemo(
-    () => (planSnapshot?.packages ?? []).filter((item) => item.type === "property"),
+    () => (planSnapshot?.packages ?? []).filter((item) => item.type === "property").slice(0, 1),
     [planSnapshot?.packages],
+  )
+  const visiblePlans = useMemo(
+    () => (planSnapshot?.plans ?? []).filter((plan) => plan.key !== "growth"),
+    [planSnapshot?.plans],
   )
 
   useEffect(() => {
@@ -294,12 +303,12 @@ export function BrokerPlanPage() {
                   toneClass={getUsageTone(propertyRatio)}
                 />
                 <CompactMetricCard
-                  label="Creditos IA"
+                  label="Operacoes Inteligentes"
                   value={planSnapshot ? `${creditUsed}/${creditMonthly}` : "-"}
                   caption={planSnapshot ? `${creditBalance} disponiveis` : "Sincronizando"}
                   toneClass={getUsageTone(creditRatio)}
                 />
-                <CompactMetricCard label="Upgrade" value="Pro e Growth" caption="Mais Studio IA, COS e analytics" />
+                <CompactMetricCard label="Capacidade" value="Free, Pro e Scale" caption="Tres planos para ritmos diferentes de operacao" />
               </div>
             </CardContent>
           </Card>
@@ -312,8 +321,8 @@ export function BrokerPlanPage() {
               </h3>
               <div className="mt-4 grid gap-3">
                 <UpgradeBenefit icon={Sparkles} title="Studio IA e videos" description="Mais folga para gerar conteudo visual pronto para venda." />
-                <UpgradeBenefit icon={Bot} title="COS com mais escala" description="Credito IA e uso assistido para manter a operacao fluindo." />
-                <UpgradeBenefit icon={ChartColumn} title="Analytics e desempenho" description="Mais visibilidade para ajustar a operacao com seguranca." />
+                <UpgradeBenefit icon={Bot} title="COS com mais escala" description="Mais Operacoes Inteligentes para manter a operacao fluindo." />
+                <UpgradeBenefit icon={ChartColumn} title="Capacidade de carteira" description="Mais imoveis ativos para sustentar crescimento sem interrupcao." />
               </div>
               <Button
                 type="button"
@@ -346,11 +355,11 @@ export function BrokerPlanPage() {
                 alert={Boolean(propertyLimitMessage)}
               />
               <UsageCard
-                label="Creditos IA"
+                label="Operacoes Inteligentes"
                 value={creditLimitLabel}
                 progressWidth={creditUsageWidth}
                 progressTone="bg-[#009b3a]"
-                helper={creditLimitMessage || "Acompanhe o consumo mensal de IA do seu plano atual."}
+                helper={creditLimitMessage || "Acompanhe o consumo mensal das Operacoes Inteligentes do seu plano atual."}
                 alert={Boolean(creditLimitMessage)}
               />
             </CardContent>
@@ -380,7 +389,7 @@ export function BrokerPlanPage() {
                   <div className="flex size-9 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                     <Sparkles className="size-4.5" />
                   </div>
-                  <p className="text-sm text-[#4B5563]">{currentPlan.monthlyAiCredits} creditos IA por mes</p>
+                  <p className="text-sm text-[#4B5563]">{currentPlan.monthlyAiCredits} Operacoes Inteligentes por mes</p>
                 </div>
               ) : null}
             </CardContent>
@@ -391,10 +400,10 @@ export function BrokerPlanPage() {
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Planos disponiveis</CardTitle>
-              <p className="text-sm text-[#6B7280]">Compare a fase atual da operacao com o que cada plano libera no portal.</p>
+              <p className="text-sm text-[#6B7280]">Escolha a capacidade operacional ideal para o ritmo da sua carteira.</p>
             </CardHeader>
             <CardContent className="grid gap-4 p-5 pt-0 lg:grid-cols-3">
-              {(planSnapshot?.plans ?? []).map((plan) => {
+              {visiblePlans.map((plan) => {
                 const isCurrent = plan.key === currentPlan?.key
                 const isRecommended = plan.key === "pro"
 
@@ -420,9 +429,7 @@ export function BrokerPlanPage() {
                       </div>
                       <h3 className="mt-4 text-[1.25rem] font-semibold text-[#050505]">{plan.name}</h3>
                       <p className="mt-2 text-[1.9rem] font-semibold text-[#009b3a]">{plan.price}</p>
-                      <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">
-                        {plan.propertyLimit} imoveis no plano e {plan.monthlyAiCredits} creditos IA por mes.
-                      </p>
+                      <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">{getPlanAudience(plan.key)}</p>
 
                       <div className="mt-5 grid gap-3">
                         {buildPlanHighlights(plan).map((highlight) => (
@@ -433,11 +440,11 @@ export function BrokerPlanPage() {
                         ))}
                         <div className="flex items-start gap-2 text-sm text-[#5F6B7A]">
                           <Video className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
-                          <span>{plan.monthlyAiCredits > 0 ? "Fluxos de video e Studio IA com mais folego de uso" : "Uso inicial para organizar a operacao"}</span>
+                          <span>{plan.key === "free" ? "Base ideal para validar o produto no dia a dia" : "Mais folga para Studio IA, campanhas, videos e automacoes"}</span>
                         </div>
                         <div className="flex items-start gap-2 text-sm text-[#5F6B7A]">
                           <Bot className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
-                          <span>{plan.features.includes("assessor_eme") || plan.features.includes("all") ? "COS com mais capacidade operacional" : "Base do portal e estrutura essencial"}</span>
+                          <span>{plan.features.includes("assessor_eme") || plan.features.includes("all") ? "COS pronto para operar sua rotina com mais profundidade" : "Base do portal e estrutura essencial"}</span>
                         </div>
                       </div>
                     </div>
@@ -452,7 +459,7 @@ export function BrokerPlanPage() {
                           : "mt-6 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                       }
                     >
-                      {isCurrent ? "Plano atual" : "Solicitar upgrade"}
+                      {isCurrent ? "Plano atual" : plan.key === "pro" ? "Assinar Pro" : "Assinar Scale"}
                     </Button>
                   </div>
                 )
@@ -466,24 +473,34 @@ export function BrokerPlanPage() {
           </Card>
         </ResponsiveCollapsibleSection>
 
+        <Card className="rounded-[1.45rem] border-black/[0.06] bg-[#fbfbf8]/95 py-0 shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
+          <CardContent className="p-5">
+            <p className="text-sm leading-7 text-[#4B5563]">
+              <span className="font-semibold text-[#050505]">Todos os planos incluem:</span>{" "}
+              COS • Cadastro Inteligente • Carteira • Catalogo Publico • Studio IA • Propostas • Contratos • Agenda •
+              Financeiro • Desempenho • Historico • Login com PIN e Face ID.
+            </p>
+          </CardContent>
+        </Card>
+
         <ResponsiveCollapsibleSection title="Pacotes extras">
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Pacotes extras</CardTitle>
               <p className="text-sm text-[#6B7280]">
-                Pacotes extras sao compra unica. Creditos IA entram na carteira da conta e imoveis extras aumentam permanentemente o limite.
+                Amplie a operacao sem trocar de plano quando precisar de mais capacidade.
               </p>
             </CardHeader>
             <CardContent className="grid gap-5 p-5 pt-0 xl:grid-cols-2">
               <PackageCategory
-                title="Creditos IA"
-                description="Amplie a capacidade do COS, do Studio IA e dos fluxos de geracao conforme a demanda da operacao."
+                title="Operacoes Inteligentes Extras"
+                description="Os pacotes ficam acumulados na conta e so sao consumidos quando o limite mensal do plano e atingido."
                 items={creditPackages}
                 onRequest={registerCommercialRequest}
               />
               <PackageCategory
-                title="Capacidade adicional de imoveis"
-                description="Aumente o limite permanente da conta para sustentar mais publicacoes e crescimento de carteira."
+                title="Capacidade Extra"
+                description="Aumente permanentemente a capacidade da sua carteira."
                 items={propertyPackages}
                 onRequest={registerCommercialRequest}
               />
@@ -496,10 +513,10 @@ export function BrokerPlanPage() {
             <div className="max-w-[40rem]">
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">Subir de nivel</p>
               <h3 className="mt-2 text-[1.35rem] font-semibold text-[#050505]">
-                Destrave mais Studio IA, videos, COS e analytics para operar com mais margem.
+                Destrave mais capacidade operacional para publicar, atender e executar sem interrupcao.
               </h3>
               <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                Se sua carteira esta crescendo ou o limite esta proximo, o upgrade ajuda a manter publicacao, atendimento e geracao de conteudo sem interrupcao.
+                Se sua carteira esta crescendo ou o limite esta proximo, o upgrade ajuda a manter publicacao, atendimento e geracao de conteudo no mesmo ritmo da operacao.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -533,7 +550,7 @@ export function BrokerPlanPage() {
         <ResponsiveCollapsibleSection title="Historico de creditos">
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-5 py-5">
-              <CardTitle className="text-xl text-[#050505]">Historico de creditos IA</CardTitle>
+              <CardTitle className="text-xl text-[#050505]">Historico de Operacoes Inteligentes</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-5 pt-0">
               {planSnapshot?.credits.history.length ? (
@@ -671,7 +688,7 @@ function PackageCategory({
                 onClick={() => void onRequest("Solicitar pacote", `${item.label} - ${item.price}`)}
                 className="mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
               >
-                Solicitar pacote
+                Comprar
               </Button>
             </div>
           )

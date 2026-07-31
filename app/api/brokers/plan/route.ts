@@ -16,11 +16,13 @@ function formatBRLFromCents(value: number) {
 }
 
 function serializePlan(plan: (typeof EME_PLANS)[keyof typeof EME_PLANS]) {
+  const price = plan.priceCents === 0 ? "R$ 0" : `${formatBRLFromCents(plan.priceCents)}/mês`
+
   return {
     key: plan.key,
     name: plan.name,
     priceCents: plan.priceCents,
-    price: plan.priceCents === 0 ? "R$ 0" : `${formatBRLFromCents(plan.priceCents)}/mês`,
+    price,
     propertyLimit: plan.propertyLimit,
     monthlyAiCredits: plan.monthlyAiCredits,
     initialAiCredits: plan.initialAiCredits,
