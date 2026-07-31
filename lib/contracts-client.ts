@@ -1,6 +1,7 @@
 "use client"
 
 import type { ContractStatus, ContractType } from "@/lib/contract-template"
+import type { ContractAttachment, ContractSource } from "@/lib/contract-template"
 
 export type ContractFilterStatus = "all" | ContractStatus
 
@@ -20,6 +21,8 @@ export type ContractRecord = {
   amountLabel: string
   textPreview: string
   content: {
+    source?: ContractSource
+    attachment?: ContractAttachment | null
     html?: string
     financial: {
       amountLabel?: string | null
@@ -40,6 +43,26 @@ export type ContractRecord = {
     clauses: string[]
     reviewNotes: string[]
   }
+}
+
+export type ContractAttachmentDraft = {
+  leadId: string
+  propertyId: string
+  kind: ContractType
+  title?: string
+  notes?: string
+  file: File
+  status?: ContractStatus
+}
+
+export type ContractAttachmentUpdateDraft = {
+  leadId: string
+  propertyId: string
+  kind: ContractType
+  title?: string
+  notes?: string
+  file?: File | null
+  status?: ContractStatus
 }
 
 export type ContractDraft = {
@@ -149,6 +172,28 @@ export const contracts = {
     return data.contract
   },
 
+  async attach(payload: ContractAttachmentDraft) {
+    const formData = new FormData()
+    formData.append("leadId", payload.leadId)
+    if (payload.propertyId) formData.append("propertyId", payload.propertyId)
+    formData.append("kind", payload.kind)
+    if (payload.title?.trim()) formData.append("title", payload.title.trim())
+    if (payload.notes?.trim()) formData.append("notes", payload.notes.trim())
+    if (payload.status) formData.append("status", payload.status)
+    formData.append("file", payload.file)
+
+    const response = await fetch("/api/brokers/contracts", {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    })
+    const data = await parseContractResponse(response)
+    if (!data.contract) {
+      throw new Error("Nao foi possivel anexar o contrato.")
+    }
+    return data.contract
+  },
+
   async update(id: string, payload: Partial<ContractDraft> & { status?: ContractStatus }) {
     const response = await fetch(`/api/brokers/contracts/${id}`, {
       method: "PATCH",
@@ -159,6 +204,28 @@ export const contracts = {
     const data = await parseContractResponse(response)
     if (!data.contract) {
       throw new Error("Nao foi possivel atualizar o contrato.")
+    }
+    return data.contract
+  },
+
+  async updateAttachment(id: string, payload: ContractAttachmentUpdateDraft) {
+    const formData = new FormData()
+    formData.append("leadId", payload.leadId)
+    if (payload.propertyId) formData.append("propertyId", payload.propertyId)
+    formData.append("kind", payload.kind)
+    if (payload.title?.trim()) formData.append("title", payload.title.trim())
+    if (payload.notes?.trim()) formData.append("notes", payload.notes.trim())
+    if (payload.status) formData.append("status", payload.status)
+    if (payload.file) formData.append("file", payload.file)
+
+    const response = await fetch(`/api/brokers/contracts/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      body: formData,
+    })
+    const data = await parseContractResponse(response)
+    if (!data.contract) {
+      throw new Error("Nao foi possivel atualizar o contrato anexado.")
     }
     return data.contract
   },

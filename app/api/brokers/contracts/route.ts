@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { saveBrokerContractFile } from "@/lib/broker-document-storage"
 import {
+  buildExternalContractAttachmentHtml,
   buildContractHtml,
   contractHtmlToText,
   contractTypeOptions,
   createContractContent,
+  isExternalContractContent,
   normalizeContractStatus,
   normalizeContractType,
   parseContractAmount,
   parseContractContent,
   stringifyContractContent,
+  type ContractAttachment,
   type ContractContent,
 } from "@/lib/contract-template"
 import { UserRole } from "@/lib/prisma-enums"
@@ -60,6 +64,10 @@ function serializeContract(document: {
 }) {
   const content = parseContractContent(document.content)
   const status = normalizeContractStatus(document.status) ?? "draft"
+  const amountLabel = isExternalContractContent(content)
+    ? content.attachment?.fileName ?? content.financial.amountLabel ?? ""
+    : content.financial.amountLabel ?? ""
+  const textPreview = contractHtmlToText(content.html).slice(0, 320)
 
   return {
     id: document.id,
@@ -75,8 +83,8 @@ function serializeContract(document: {
     authorName: content.authorName,
     leadName: content.lead?.name ?? "",
     propertyTitle: content.property?.title ?? "",
-    amountLabel: content.financial.amountLabel ?? "",
-    textPreview: contractHtmlToText(content.html).slice(0, 320),
+    amountLabel,
+    textPreview,
     content,
   }
 }
@@ -225,6 +233,96 @@ async function buildPersistedContract(input: {
   }
 }
 
+async function loadLeadAndProperty(input: { brokerId: string; leadId: string; propertyId?: string | null }) {
+  const [lead, property] = await Promise.all([
+    prisma.lead.findFirst({
+      where: { id: input.leadId, brokerId: input.brokerId },
+      select: { id: true, name: true, phone: true, email: true },
+    }),
+    input.propertyId
+      ? prisma.property.findFirst({
+          where: { id: input.propertyId, brokerId: input.brokerId },
+          select: {
+            id: true,
+            publicCode: true,
+            title: true,
+            city: true,
+            neighborhood: true,
+            type: true,
+            purpose: true,
+            price: true,
+            bedrooms: true,
+            parkingSpots: true,
+          },
+        })
+      : Promise.resolve(null),
+  ])
+
+  if (!lead) throw new Error("Selecione um cliente valido.")
+  if (input.propertyId && !property) throw new Error("Selecione um imovel valido.")
+
+  return { lead, property }
+}
+
+function createExternalContractContent(input: {
+  kind: string
+  title: string
+  status?: string
+  userName: string
+  userEmail?: string | null
+  lead: Awaited<ReturnType<typeof loadLeadAndProperty>>["lead"]
+  property: Awaited<ReturnType<typeof loadLeadAndProperty>>["property"]
+  attachment: ContractAttachment
+  notes?: string
+}) {
+  const contractType = normalizeContractType(input.kind)
+  if (!contractType) {
+    throw new Error("Selecione um tipo de contrato valido.")
+  }
+  const status = normalizeContractStatus(input.status) ?? "draft"
+
+  const content = createContractContent({
+    kind: contractType,
+    title: input.title,
+    status,
+    authorName: input.userName,
+    authorEmail: input.userEmail,
+    lead: {
+      id: input.lead.id,
+      name: input.lead.name,
+      phone: input.lead.phone,
+      email: input.lead.email,
+    },
+    property: input.property
+      ? {
+          id: input.property.id,
+          publicCode: input.property.publicCode,
+          title: input.property.title,
+          city: input.property.city,
+          neighborhood: input.property.neighborhood,
+          type: input.property.type,
+          purpose: input.property.purpose,
+          price: input.property.price,
+          bedrooms: input.property.bedrooms,
+          parkingSpots: input.property.parkingSpots,
+        }
+      : null,
+    financial: {
+      additionalConditions: input.notes || null,
+    },
+  })
+
+  content.source = "external"
+  content.attachment = input.attachment
+  content.reviewNotes = [
+    `Documento externo anexado: ${input.attachment.fileName}.`,
+    input.property?.title ? `Imovel vinculado: ${input.property.title}.` : "Sem imovel vinculado.",
+    input.notes ? `Observacoes: ${input.notes}` : "Sem observacoes complementares.",
+  ]
+  content.html = buildExternalContractAttachmentHtml(content)
+  return content
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
@@ -273,6 +371,80 @@ export async function POST(request: NextRequest) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const contentType = request.headers.get("content-type") || ""
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData()
+      const leadId = cleanText(formData.get("leadId"), 80)
+      const propertyId = cleanText(formData.get("propertyId"), 80)
+      const kind = cleanText(formData.get("kind"), 80)
+      const titleInput = cleanText(formData.get("title"), 160)
+      const notes = cleanText(formData.get("notes"), 2000)
+      const status = cleanText(formData.get("status"), 40)
+      const fileEntry = formData.get("file")
+
+      if (!leadId) return NextResponse.json({ error: "Selecione o cliente." }, { status: 400 })
+      if (!(fileEntry instanceof File) || fileEntry.size <= 0) {
+        return NextResponse.json({ error: "Selecione um arquivo PDF, DOC ou DOCX." }, { status: 400 })
+      }
+
+      const allowedTypes = new Set([
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ])
+      if (!allowedTypes.has(fileEntry.type)) {
+        return NextResponse.json({ error: "Envie um arquivo em PDF, DOC ou DOCX." }, { status: 400 })
+      }
+
+      const { lead, property } = await loadLeadAndProperty({
+        brokerId: auth.broker!.id,
+        leadId,
+        propertyId: propertyId || null,
+      })
+      const uploaded = await saveBrokerContractFile({ brokerId: auth.broker!.id, file: fileEntry })
+      const nextTitle =
+        titleInput ||
+        cleanText(fileEntry.name.replace(/\.[^.]+$/, ""), 160) ||
+        buildContractTitle(kind, lead.name, property?.title ?? null)
+      const content = createExternalContractContent({
+        kind,
+        title: nextTitle,
+        status,
+        userName: auth.name,
+        userEmail: auth.email,
+        lead,
+        property,
+        attachment: {
+          ...uploaded,
+          notes: notes || null,
+        },
+        notes,
+      })
+
+      const document = await prisma.brokerDocument.create({
+        data: {
+          brokerId: auth.broker!.id,
+          leadId: lead.id,
+          propertyId: property?.id ?? null,
+          type: "contract",
+          title: content.title,
+          content: stringifyContractContent(content),
+          status: content.status,
+        },
+      })
+
+      return NextResponse.json(
+        {
+          contract: serializeContract({
+            ...document,
+            leadId: lead.id,
+            propertyId: property?.id ?? null,
+          }),
+        },
+        { status: 201 },
+      )
+    }
+
     const body = await request.json().catch(() => null)
     const leadId = cleanText(body?.leadId, 80)
     const propertyId = cleanText(body?.propertyId, 80)

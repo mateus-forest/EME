@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { deleteBrokerContractFile, saveBrokerContractFile } from "@/lib/broker-document-storage"
 import {
+  buildExternalContractAttachmentHtml,
   buildContractHtml,
+  isExternalContractContent,
   contractHtmlToText,
   createContractContent,
   normalizeContractStatus,
@@ -37,6 +40,9 @@ function serializeContract(document: {
 }) {
   const content = parseContractContent(document.content)
   const status = normalizeContractStatus(document.status) ?? "draft"
+  const amountLabel = isExternalContractContent(content)
+    ? content.attachment?.fileName ?? content.financial.amountLabel ?? ""
+    : content.financial.amountLabel ?? ""
 
   return {
     id: document.id,
@@ -52,7 +58,7 @@ function serializeContract(document: {
     authorName: content.authorName,
     leadName: content.lead?.name ?? "",
     propertyTitle: content.property?.title ?? "",
-    amountLabel: content.financial.amountLabel ?? "",
+    amountLabel,
     textPreview: contractHtmlToText(content.html).slice(0, 320),
     content,
   }
@@ -105,12 +111,151 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   try {
     const { id } = await context.params
-    const body = await request.json().catch(() => null)
     const found = await getContractOr404(id, auth.broker!.id)
     if (found instanceof NextResponse) return found
+    const contentType = request.headers.get("content-type") || ""
+    const parsed = parseContractContent(found.content)
+
+    if (contentType.includes("multipart/form-data")) {
+      if (!isExternalContractContent(parsed)) {
+        return NextResponse.json({ error: "Somente contratos anexados aceitam atualizacao por upload." }, { status: 400 })
+      }
+
+      const formData = await request.formData()
+      const leadId = cleanText(formData.get("leadId"), 80)
+      const propertyId = cleanText(formData.get("propertyId"), 80)
+      const kind = cleanText(formData.get("kind"), 80) || parsed.kind
+      const title = cleanText(formData.get("title"), 160) || found.title
+      const notes = cleanText(formData.get("notes"), 2000)
+      const status = normalizeContractStatus(formData.get("status")) ?? normalizeContractStatus(found.status) ?? "draft"
+      const fileEntry = formData.get("file")
+
+      if (!leadId) return NextResponse.json({ error: "Selecione o cliente." }, { status: 400 })
+
+      const [lead, property] = await Promise.all([
+        prisma.lead.findFirst({
+          where: { id: leadId, brokerId: auth.broker!.id },
+          select: { id: true, name: true, phone: true, email: true },
+        }),
+        propertyId
+          ? prisma.property.findFirst({
+              where: { id: propertyId, brokerId: auth.broker!.id },
+              select: {
+                id: true,
+                publicCode: true,
+                title: true,
+                city: true,
+                neighborhood: true,
+                type: true,
+                purpose: true,
+                price: true,
+                bedrooms: true,
+                parkingSpots: true,
+              },
+            })
+          : Promise.resolve(null),
+      ])
+
+      if (!lead) return NextResponse.json({ error: "Selecione um cliente valido." }, { status: 400 })
+      if (propertyId && !property) return NextResponse.json({ error: "Selecione um imovel valido." }, { status: 400 })
+
+      const nextAttachment = { ...(parsed.attachment ?? {}) }
+      if (fileEntry instanceof File && fileEntry.size > 0) {
+        const allowedTypes = new Set([
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ])
+        if (!allowedTypes.has(fileEntry.type)) {
+          return NextResponse.json({ error: "Envie um arquivo em PDF, DOC ou DOCX." }, { status: 400 })
+        }
+
+        const uploaded = await saveBrokerContractFile({ brokerId: auth.broker!.id, file: fileEntry })
+        if (parsed.attachment?.fileUrl) {
+          await deleteBrokerContractFile(parsed.attachment.fileUrl)
+        }
+        nextAttachment.fileName = uploaded.fileName
+        nextAttachment.fileUrl = uploaded.fileUrl
+        nextAttachment.mimeType = uploaded.mimeType
+        nextAttachment.fileSize = uploaded.fileSize
+      }
+
+      nextAttachment.notes = notes || null
+
+      const contractType = normalizeContractType(kind)
+      if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato valido." }, { status: 400 })
+
+      const nextContent = createContractContent({
+        kind: contractType,
+        title,
+        status,
+        version: parsed.version + 1,
+        authorName: auth.name,
+        authorEmail: auth.email,
+        createdAt: parsed.createdAt,
+        updatedAt: new Date().toISOString(),
+        lead: {
+          id: lead.id,
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email,
+        },
+        property: property
+          ? {
+              id: property.id,
+              publicCode: property.publicCode,
+              title: property.title,
+              city: property.city,
+              neighborhood: property.neighborhood,
+              type: property.type,
+              purpose: property.purpose,
+              price: property.price,
+              bedrooms: property.bedrooms,
+              parkingSpots: property.parkingSpots,
+            }
+          : null,
+        financial: {
+          additionalConditions: notes || null,
+        },
+      })
+
+      nextContent.source = "external"
+      nextContent.attachment = {
+        fileName: String(nextAttachment.fileName || parsed.attachment?.fileName || "documento"),
+        fileUrl: String(nextAttachment.fileUrl || parsed.attachment?.fileUrl || ""),
+        mimeType: String(nextAttachment.mimeType || parsed.attachment?.mimeType || "application/octet-stream"),
+        fileSize:
+          typeof nextAttachment.fileSize === "number"
+            ? nextAttachment.fileSize
+            : typeof parsed.attachment?.fileSize === "number"
+              ? parsed.attachment.fileSize
+              : null,
+        notes: notes || null,
+      }
+      nextContent.reviewNotes = [
+        `Documento externo anexado: ${nextContent.attachment.fileName}.`,
+        property?.title ? `Imovel vinculado: ${property.title}.` : "Sem imovel vinculado.",
+        notes ? `Observacoes: ${notes}` : "Sem observacoes complementares.",
+      ]
+      nextContent.html = buildExternalContractAttachmentHtml(nextContent)
+
+      const updated = await prisma.brokerDocument.update({
+        where: { id: found.id },
+        data: {
+          leadId: lead.id,
+          propertyId: property?.id ?? null,
+          title: nextContent.title,
+          status,
+          content: stringifyContractContent(nextContent),
+        },
+      })
+
+      return NextResponse.json({ contract: serializeContract(updated) })
+    }
+
+    const body = await request.json().catch(() => null)
 
     if (body?.action === "duplicate") {
-      const parsed = parseContractContent(found.content)
       const duplicate = await prisma.brokerDocument.create({
         data: {
           brokerId: auth.broker!.id,
@@ -133,7 +278,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ contract: serializeContract(duplicate) })
     }
 
-    const parsed = parseContractContent(found.content)
     const nextStatus = normalizeContractStatus(body?.status) ?? normalizeContractStatus(found.status) ?? "draft"
     const nextLeadId = cleanText(body?.leadId, 80) || found.leadId || ""
     const nextPropertyId = cleanText(body?.propertyId, 80) || found.propertyId || ""
@@ -249,8 +393,12 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     const { id } = await context.params
     const found = await getContractOr404(id, auth.broker!.id)
     if (found instanceof NextResponse) return found
+    const parsed = parseContractContent(found.content)
 
     await prisma.brokerDocument.delete({ where: { id: found.id } })
+    if (parsed.attachment?.fileUrl) {
+      await deleteBrokerContractFile(parsed.attachment.fileUrl)
+    }
     return NextResponse.json({ success: true })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {

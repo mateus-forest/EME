@@ -78,10 +78,21 @@ type ContractFinancial = {
   additionalConditions?: string | null
 }
 
+export type ContractSource = "generated" | "external"
+
+export type ContractAttachment = {
+  fileName: string
+  fileUrl: string
+  mimeType: string
+  fileSize: number | null
+  notes?: string | null
+}
+
 export type ContractContent = {
   version: number
   kind: ContractType
   status: ContractStatus
+  source?: ContractSource
   title: string
   authorName: string
   authorEmail?: string | null
@@ -92,6 +103,7 @@ export type ContractContent = {
   financial: ContractFinancial
   clauses: string[]
   reviewNotes: string[]
+  attachment?: ContractAttachment | null
   html: string
 }
 
@@ -106,6 +118,21 @@ function escapeHtml(value?: string | number | null, fallback?: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+}
+
+function escapeAttachmentHtml(value?: string | number | null, fallback = "") {
+  return valueOrFallback(value, fallback)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+function formatAttachmentSize(bytes?: number | null) {
+  if (!bytes || bytes <= 0) return "Tamanho nao informado"
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${bytes} B`
 }
 
 function propertyTypeLabel(type?: string | null) {
@@ -2835,6 +2862,10 @@ function buildGenericContractHtml(content: ContractContent) {
 }
 
 export function buildContractHtml(content: ContractContent) {
+  if (content.source === "external" && content.attachment) {
+    return buildExternalContractAttachmentHtml(content)
+  }
+
   if (content.kind === "Compra e venda") {
     return buildOfficialSaleContractHtml(content)
   }
@@ -2872,6 +2903,153 @@ export function buildContractHtml(content: ContractContent) {
   }
 
   return buildGenericContractHtml(content)
+}
+
+export function isExternalContractContent(content: Pick<ContractContent, "source" | "attachment"> | null | undefined) {
+  return content?.source === "external" && Boolean(content.attachment?.fileUrl)
+}
+
+export function buildExternalContractAttachmentHtml(content: ContractContent) {
+  const attachment = content.attachment
+  const leadName = content.lead?.name || "Cliente nao vinculado"
+  const propertyName = content.property?.title || "Imovel nao vinculado"
+  const notes = attachment?.notes || content.financial.additionalConditions || "Sem observacoes complementares."
+  const mimeLabel = attachment?.mimeType || "Documento externo"
+  const fileName = attachment?.fileName || "Arquivo anexado"
+  const fileSize = formatAttachmentSize(attachment?.fileSize)
+
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeAttachmentHtml(content.title)}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f3f5f2;
+        color: #0f1720;
+      }
+      .page {
+        width: 100%;
+        min-height: 100vh;
+        padding: 40px 28px;
+      }
+      .sheet {
+        max-width: 920px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 28px;
+        padding: 48px;
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.08);
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 999px;
+        padding: 10px 16px;
+        background: rgba(0, 155, 58, 0.08);
+        color: #009b3a;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 22px 0 10px;
+        font-size: 40px;
+        line-height: 1.04;
+        letter-spacing: -0.06em;
+      }
+      p {
+        margin: 0;
+        color: #5f6b7a;
+        line-height: 1.7;
+      }
+      .grid {
+        display: grid;
+        gap: 16px;
+        margin-top: 32px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .card {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 22px;
+        padding: 22px;
+        background: #fcfcfa;
+      }
+      .label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: #8b95a1;
+        margin-bottom: 10px;
+      }
+      .value {
+        font-size: 19px;
+        font-weight: 600;
+        color: #050505;
+        line-height: 1.4;
+      }
+      .notes {
+        margin-top: 16px;
+        white-space: pre-wrap;
+      }
+      @media print {
+        body { background: white; }
+        .page { padding: 0; }
+        .sheet {
+          box-shadow: none;
+          border-radius: 0;
+          max-width: none;
+          min-height: 100vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="sheet">
+        <span class="eyebrow">Contrato anexado</span>
+        <h1>${escapeAttachmentHtml(content.title)}</h1>
+        <p>Documento externo armazenado na biblioteca de contratos do EME, disponivel para busca, historico e acesso pelo COS.</p>
+        <div class="grid">
+          <article class="card">
+            <div class="label">Cliente</div>
+            <div class="value">${escapeAttachmentHtml(leadName)}</div>
+          </article>
+          <article class="card">
+            <div class="label">Imovel</div>
+            <div class="value">${escapeAttachmentHtml(propertyName)}</div>
+          </article>
+          <article class="card">
+            <div class="label">Tipo</div>
+            <div class="value">${escapeAttachmentHtml(content.kind)}</div>
+          </article>
+          <article class="card">
+            <div class="label">Status</div>
+            <div class="value">${escapeAttachmentHtml(contractStatusLabel(content.status))}</div>
+          </article>
+          <article class="card">
+            <div class="label">Arquivo</div>
+            <div class="value">${escapeAttachmentHtml(fileName)}</div>
+            <p class="notes">${escapeAttachmentHtml(mimeLabel)} • ${escapeAttachmentHtml(fileSize)}</p>
+          </article>
+          <article class="card">
+            <div class="label">Observacoes</div>
+            <p class="notes">${escapeAttachmentHtml(notes)}</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>`
 }
 
 export function stringifyContractContent(content: ContractContent) {

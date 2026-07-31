@@ -2,7 +2,13 @@ import "server-only"
 
 import type { Prisma } from "@prisma/client"
 
-import { contractHtmlToText, normalizeContractStatus, parseContractContent, stringifyContractContent } from "@/lib/contract-template"
+import {
+  contractHtmlToText,
+  isExternalContractContent,
+  normalizeContractStatus,
+  parseContractContent,
+  stringifyContractContent,
+} from "@/lib/contract-template"
 import { prisma } from "@/lib/prisma"
 
 import { cleanText, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
@@ -183,12 +189,17 @@ export const downloadContractCapability: CosCapabilityHandler = async ({ brokerI
   const contract = await resolveContract(brokerId, payloadRecord)
   if (!contract) return requiredSelectionResponse("contrato", "contractId")
 
+  const parsed = parseContractContent(contract.content)
+  const downloadPath = isExternalContractContent(parsed)
+    ? `/api/brokers/contracts/${contract.id}/file`
+    : `/corretor/contratos/${contract.id}`
+
   return {
-    response: `PDF do contrato pronto para abertura em nova aba.\n\n/corretor/contratos/${contract.id}`,
+    response: `Contrato pronto para abertura em nova aba.\n\n${downloadPath}`,
     metadata: {
       documentId: contract.id,
       contractId: contract.id,
-      downloadPath: `/corretor/contratos/${contract.id}`,
+      downloadPath,
       leadId: contract.leadId,
       propertyId: contract.propertyId,
     },
@@ -221,4 +232,3 @@ export const contractHistoryCapability: CosCapabilityHandler = async ({ brokerId
     },
   }
 }
-

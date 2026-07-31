@@ -8,9 +8,11 @@ import {
   CheckCircle2,
   CopyPlus,
   Download,
+  ExternalLink,
   FilePenLine,
   FileSignature,
   PencilLine,
+  Paperclip,
   Plus,
   Search,
   Send,
@@ -48,6 +50,8 @@ import {
   contracts,
   getContractStatusLabel,
   getContractStatusTone,
+  type ContractAttachmentUpdateDraft,
+  type ContractAttachmentDraft,
   type ContractDraft,
   type ContractFilterStatus,
   type ContractRecord,
@@ -143,6 +147,24 @@ const emptyDraft: ContractDraft = {
   reviewNotesText: "",
 }
 
+type ContractAttachmentForm = {
+  leadId: string
+  propertyId: string
+  kind: ContractType
+  title: string
+  notes: string
+  status: ContractStatus
+}
+
+const emptyAttachmentDraft: ContractAttachmentForm = {
+  leadId: "",
+  propertyId: "",
+  kind: contractTypeOptions[0],
+  title: "",
+  notes: "",
+  status: "draft",
+}
+
 const statusActions: ContractStatus[] = [
   "draft",
   "awaiting_signature",
@@ -172,6 +194,14 @@ function formatDateTime(value: string) {
 function normalizeTitle(kind: ContractType, lead?: LeadRecord | null, property?: PropertyApiItem | null) {
   const reference = lead?.name || property?.title || "rascunho"
   return `Contrato ${kind} - ${reference}`.slice(0, 160)
+}
+
+function isExternalContract(contract: ContractRecord | null | undefined) {
+  return contract?.content.source === "external" && Boolean(contract.content.attachment?.fileUrl)
+}
+
+function buildAttachedContractRoute(contractId: string, download = false) {
+  return `/api/brokers/contracts/${contractId}/file${download ? "?download=1" : ""}`
 }
 
 function isResidentialLease(kind: ContractType) {
@@ -1699,8 +1729,12 @@ export function BrokerContractsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isStatusSaving, setIsStatusSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isAttachDialogOpen, setIsAttachDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingAttachmentId, setEditingAttachmentId] = useState<string | null>(null)
   const [draft, setDraft] = useState<ContractDraft>(emptyDraft)
+  const [attachmentDraft, setAttachmentDraft] = useState<ContractAttachmentForm>(emptyAttachmentDraft)
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [titleCustomized, setTitleCustomized] = useState(false)
   const [amountCustomized, setAmountCustomized] = useState(false)
   const [commissionCustomized, setCommissionCustomized] = useState(false)
@@ -1752,6 +1786,7 @@ export function BrokerContractsPage() {
     () => properties.find((property) => property.id === selectedContract?.propertyId) ?? null,
     [properties, selectedContract?.propertyId],
   )
+  const selectedContractIsExternal = useMemo(() => isExternalContract(selectedContract), [selectedContract])
 
   const loadContracts = useCallback(
     async (preferredId?: string | null) => {
@@ -1914,6 +1949,28 @@ export function BrokerContractsPage() {
   }, [brokerProfile, draft.kind, selectedContract?.kind, selectedContractLead, selectedContractProperty])
 
   const contractHealthIndicators = useMemo(() => {
+    if (selectedContractIsExternal) {
+      const fileScore = selectedContract?.content.attachment?.fileUrl ? 100 : 0
+      const clientScore = selectedContract?.leadName ? 100 : 0
+      const propertyScore = selectedContract?.propertyTitle ? 100 : 80
+      const notesScore = selectedContract?.content.attachment?.notes ? 100 : 72
+      const signatureScore =
+        selectedContract?.status === "signed" || selectedContract?.status === "completed"
+          ? 100
+          : selectedContract?.status === "awaiting_signature"
+            ? 80
+            : 64
+
+      return [
+        { label: "Arquivo", score: fileScore },
+        { label: "Cliente", score: clientScore },
+        { label: "Imovel", score: propertyScore },
+        { label: "Modelo", score: selectedContract?.kind ? 100 : 0 },
+        { label: "Contexto", score: notesScore },
+        { label: "Assinaturas", score: signatureScore },
+      ]
+    }
+
     const clientScore = scoreSection(selectedWorkspaceSections.find((section) => section.key === "client")?.items ?? [])
     const landlordScore = scoreSection(
       selectedWorkspaceSections.find((section) => section.key === "landlord")?.items ?? [],
@@ -2218,7 +2275,7 @@ export function BrokerContractsPage() {
       { label: "Negociação", score: negotiationScore },
       { label: "Assinaturas", score: signatureScore },
     ]
-  }, [brokerProfile?.agencyName, brokerProfile?.name, selectedContract, selectedContractProperty, selectedWorkspaceSections])
+  }, [brokerProfile?.agencyName, brokerProfile?.name, selectedContract, selectedContractIsExternal, selectedContractProperty, selectedWorkspaceSections])
 
   const contractHealthScore = useMemo(() => {
     if (!selectedContract) return 0
@@ -2230,6 +2287,15 @@ export function BrokerContractsPage() {
 
   const contractPendingHighlights = useMemo(() => {
     if (!selectedContract) return []
+    if (selectedContractIsExternal) {
+      return [
+        !selectedContract.leadName ? "Cliente vinculado" : null,
+        !selectedContract.content.attachment?.fileUrl ? "Arquivo do contrato" : null,
+        !selectedContract.content.attachment?.mimeType ? "Tipo do documento" : null,
+        !selectedContract.kind ? "Modelo do contrato" : null,
+        selectedContract.status === "draft" ? "Fluxo de assinatura" : null,
+      ].filter((item): item is string => Boolean(item))
+    }
 
     if (selectedContract.kind === "Locacao residencial") {
       return [
@@ -2330,6 +2396,7 @@ export function BrokerContractsPage() {
     ].filter((item): item is string => Boolean(item))
   }, [
     selectedContract,
+    selectedContractIsExternal,
     selectedContractLead?.identification.cpfCnpj,
     selectedContractLead?.identification.rg,
     selectedContractProperty?.legal.registryNumber,
@@ -2340,6 +2407,37 @@ export function BrokerContractsPage() {
 
   const contractValidationItems = useMemo(() => {
     if (!selectedContract) return []
+    if (selectedContractIsExternal) {
+      return [
+        {
+          label: "Arquivo anexado",
+          detail: selectedContract.content.attachment?.fileName || "Arquivo principal ainda nao enviado.",
+          done: Boolean(selectedContract.content.attachment?.fileUrl),
+        },
+        {
+          label: "Cliente vinculado",
+          detail: selectedContract.leadName || "Cliente ainda nao vinculado.",
+          done: Boolean(selectedContract.leadName),
+        },
+        {
+          label: "Imovel relacionado",
+          detail: selectedContract.propertyTitle || "Contrato anexado sem imovel vinculado.",
+          done: Boolean(selectedContract.propertyTitle),
+        },
+        {
+          label: "Tipo do documento",
+          detail: selectedContract.kind || "Tipo ainda nao informado.",
+          done: Boolean(selectedContract.kind),
+        },
+        {
+          label: "Observacoes",
+          detail:
+            selectedContract.content.attachment?.notes ||
+            "Sem observacoes complementares. Adicione contexto se quiser facilitar busca e uso pelo COS.",
+          done: Boolean(selectedContract.content.attachment?.notes),
+        },
+      ]
+    }
 
     if (selectedContract.kind === "Locacao residencial") {
       return [
@@ -2649,6 +2747,7 @@ export function BrokerContractsPage() {
     ]
   }, [
     selectedContract,
+    selectedContractIsExternal,
     selectedContractLead?.identification.cpfCnpj,
     selectedContractProperty?.legal.registryNumber,
     selectedContractProperty?.legal.registryOffice,
@@ -2698,7 +2797,29 @@ export function BrokerContractsPage() {
     setIsDialogOpen(true)
   }
 
+  function openAttachDialog() {
+    setEditingAttachmentId(null)
+    setAttachmentDraft({ ...emptyAttachmentDraft })
+    setAttachmentFile(null)
+    setIsAttachDialogOpen(true)
+  }
+
   function openEditDialog(contract: ContractRecord) {
+    if (isExternalContract(contract)) {
+      setEditingAttachmentId(contract.id)
+      setAttachmentDraft({
+        leadId: contract.leadId ?? "",
+        propertyId: contract.propertyId ?? "",
+        kind: contract.kind,
+        title: contract.title,
+        notes: contract.content.attachment?.notes ?? contract.content.financial.additionalConditions ?? "",
+        status: contract.status,
+      })
+      setAttachmentFile(null)
+      setIsAttachDialogOpen(true)
+      return
+    }
+
     setEditingId(contract.id)
     setDraft({
       title: contract.title,
@@ -2745,6 +2866,52 @@ export function BrokerContractsPage() {
 
   function openWorkspaceRoute(route: string) {
     window.open(route, "_blank", "noopener,noreferrer")
+  }
+
+  async function saveAttachedContract() {
+    if (!attachmentDraft.leadId) {
+      setFeedback("Selecione o cliente para anexar o contrato.")
+      return
+    }
+
+    if (!editingAttachmentId && !attachmentFile) {
+      setFeedback("Selecione um arquivo PDF, DOC ou DOCX.")
+      return
+    }
+
+    setIsSaving(true)
+    setFeedback("")
+    try {
+      const payloadBase: Omit<ContractAttachmentDraft, "file"> = {
+        leadId: attachmentDraft.leadId,
+        propertyId: attachmentDraft.propertyId,
+        kind: attachmentDraft.kind,
+        title: attachmentDraft.title.trim(),
+        notes: attachmentDraft.notes.trim(),
+        status: attachmentDraft.status,
+      }
+
+      const contract = editingAttachmentId
+        ? await contracts.updateAttachment(editingAttachmentId, {
+            ...(payloadBase as ContractAttachmentUpdateDraft),
+            file: attachmentFile,
+          })
+        : await contracts.attach({
+            ...payloadBase,
+            file: attachmentFile as File,
+          })
+
+      setFeedback(editingAttachmentId ? "Contrato anexado atualizado com sucesso." : "Contrato anexado com sucesso.")
+      setIsAttachDialogOpen(false)
+      setAttachmentDraft({ ...emptyAttachmentDraft })
+      setAttachmentFile(null)
+      setEditingAttachmentId(null)
+      await loadContracts(contract.id)
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Nao foi possivel salvar o contrato anexado.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   async function saveContract() {
@@ -2819,6 +2986,12 @@ export function BrokerContractsPage() {
     if (!selectedContract) return
 
     try {
+      if (selectedContractIsExternal) {
+        window.open(buildAttachedContractRoute(selectedContract.id), "_blank", "noopener,noreferrer")
+        setFeedback("Arquivo anexado aberto em nova aba.")
+        return
+      }
+
       await contracts.generate(selectedContract.id)
       const html = buildContractExportHtml({
         contract: selectedContract,
@@ -2831,6 +3004,11 @@ export function BrokerContractsPage() {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Nao foi possivel preparar o PDF.")
     }
+  }
+
+  function openAttachedContract(download = false) {
+    if (!selectedContract) return
+    window.open(buildAttachedContractRoute(selectedContract.id, download), "_blank", "noopener,noreferrer")
   }
 
   function updateDraftField(key: keyof ContractDraft, value: string) {
@@ -2871,7 +3049,7 @@ export function BrokerContractsPage() {
         </CardHeader>
 
         <CardContent className="grid gap-5 p-6">
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="relative">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#8B95A1]" />
@@ -2897,14 +3075,25 @@ export function BrokerContractsPage() {
               </select>
             </div>
 
-            <Button
-              type="button"
-              onClick={openCreateDialog}
-              className="h-11 rounded-xl bg-[#009b3a] px-4 text-white shadow-[0_10px_24px_rgba(0,155,58,0.18)] hover:bg-[#008633]"
-            >
-              <Plus className="size-4" />
-              Novo contrato
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={openAttachDialog}
+                className="h-11 rounded-xl border border-black/[0.06] bg-white px-4 text-[#111111] hover:bg-white"
+              >
+                <Paperclip className="size-4" />
+                Anexar contrato
+              </Button>
+              <Button
+                type="button"
+                onClick={openCreateDialog}
+                className="h-11 rounded-xl bg-[#009b3a] px-4 text-white shadow-[0_10px_24px_rgba(0,155,58,0.18)] hover:bg-[#008633]"
+              >
+                <Plus className="size-4" />
+                Novo contrato
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -3021,8 +3210,8 @@ export function BrokerContractsPage() {
                         onClick={exportPdf}
                         className="h-10 rounded-xl bg-[#111111] px-4 text-white hover:bg-[#050505]"
                       >
-                        <Download className="size-4" />
-                        Gerar PDF
+                        {selectedContractIsExternal ? <ExternalLink className="size-4" /> : <Download className="size-4" />}
+                        {selectedContractIsExternal ? "Abrir arquivo" : "Gerar PDF"}
                       </Button>
                       <Button
                         type="button"
@@ -3056,6 +3245,17 @@ export function BrokerContractsPage() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
+                          {selectedContractIsExternal ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => openAttachedContract(true)}
+                              className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-white"
+                            >
+                              <Download className="size-4" />
+                              Baixar
+                            </Button>
+                          ) : null}
                           <Button
                             type="button"
                             variant="ghost"
@@ -3079,16 +3279,25 @@ export function BrokerContractsPage() {
 
                       <div className="aspect-[210/297] overflow-hidden rounded-[1.6rem] bg-[#f3f3ef] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] sm:p-4">
                         <div className="h-full overflow-hidden rounded-[1.25rem] bg-white shadow-[0_24px_50px_rgba(15,23,42,0.08)]">
-                          <iframe
-                            title={`Preview de ${selectedContract.title}`}
-                            srcDoc={buildContractExportHtml({
-                              contract: selectedContract,
-                              property: selectedContractProperty,
-                              lead: selectedContractLead,
-                              broker: brokerProfile,
-                            })}
-                            className="h-full w-full bg-white"
-                          />
+                          {selectedContractIsExternal &&
+                          selectedContract.content.attachment?.mimeType === "application/pdf" ? (
+                            <iframe
+                              title={`Preview de ${selectedContract.title}`}
+                              src={buildAttachedContractRoute(selectedContract.id)}
+                              className="h-full w-full bg-white"
+                            />
+                          ) : (
+                            <iframe
+                              title={`Preview de ${selectedContract.title}`}
+                              srcDoc={buildContractExportHtml({
+                                contract: selectedContract,
+                                property: selectedContractProperty,
+                                lead: selectedContractLead,
+                                broker: brokerProfile,
+                              })}
+                              className="h-full w-full bg-white"
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -3632,6 +3841,151 @@ export function BrokerContractsPage() {
                 className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
               >
                 {isSaving ? "Salvando..." : editingId ? "Salvar alteracoes" : "Criar contrato"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAttachDialogOpen} onOpenChange={setIsAttachDialogOpen}>
+        <DialogContent className="max-w-[34rem] rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0">
+          <DialogHeader className="border-b border-black/[0.06] px-6 py-5">
+            <DialogTitle className="flex items-center gap-2 text-xl text-[#050505]">
+              <Paperclip className="size-5 text-[#009b3a]" />
+              {editingAttachmentId ? "Editar contrato anexado" : "Anexar contrato"}
+            </DialogTitle>
+            <DialogDescription className="text-[#6B7280]">
+              Armazene contratos externos na mesma biblioteca do EME, com cliente, imovel e categoria sincronizados para busca e uso pelo COS.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 px-6 py-5">
+            <label className="grid gap-2 text-sm text-[#5F6B7A]">
+              Cliente
+              <select
+                value={attachmentDraft.leadId}
+                onChange={(event) => setAttachmentDraft((current) => ({ ...current, leadId: event.target.value }))}
+                className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
+              >
+                <option value="">Selecione um cliente</option>
+                {leads.map((lead) => (
+                  <option key={lead.id} value={lead.id}>
+                    {lead.name || lead.phone || "Cliente sem nome"}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm text-[#5F6B7A]">
+              Imovel
+              <select
+                value={attachmentDraft.propertyId}
+                onChange={(event) => setAttachmentDraft((current) => ({ ...current, propertyId: event.target.value }))}
+                className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
+              >
+                <option value="">Sem imovel vinculado</option>
+                {properties.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm text-[#5F6B7A]">
+                Tipo do documento
+                <select
+                  value={attachmentDraft.kind}
+                  onChange={(event) =>
+                    setAttachmentDraft((current) => ({ ...current, kind: event.target.value as ContractType }))
+                  }
+                  className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
+                >
+                  {contractTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm text-[#5F6B7A]">
+                Status
+                <select
+                  value={attachmentDraft.status}
+                  onChange={(event) =>
+                    setAttachmentDraft((current) => ({ ...current, status: event.target.value as ContractStatus }))
+                  }
+                  className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
+                >
+                  {statusActions.map((item) => (
+                    <option key={item} value={item}>
+                      {getContractStatusLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="grid gap-2 text-sm text-[#5F6B7A]">
+              Nome do documento
+              <Input
+                value={attachmentDraft.title}
+                onChange={(event) => setAttachmentDraft((current) => ({ ...current, title: event.target.value }))}
+                placeholder="Se vazio, o nome do arquivo sera utilizado"
+                className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm text-[#5F6B7A]">
+              Upload
+              <Input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                className="h-auto rounded-xl border-black/[0.08] bg-white py-3 text-[#050505]"
+              />
+              <p className="text-xs text-[#8B95A1]">
+                {attachmentFile
+                  ? `Arquivo selecionado: ${attachmentFile.name}`
+                  : editingAttachmentId
+                    ? `Arquivo atual: ${selectedContract?.content.attachment?.fileName || "mantido"}`
+                    : "Aceita PDF, DOC e DOCX."}
+              </p>
+            </label>
+
+            <label className="grid gap-2 text-sm text-[#5F6B7A]">
+              Observacoes
+              <Textarea
+                value={attachmentDraft.notes}
+                onChange={(event) => setAttachmentDraft((current) => ({ ...current, notes: event.target.value }))}
+                placeholder="Contexto adicional para facilitar busca, historico e uso pelo COS."
+                className="min-h-28 rounded-xl border-black/[0.08] bg-white text-[#050505]"
+              />
+            </label>
+          </div>
+
+          <DialogFooter className="border-t border-black/[0.06] px-6 py-5 sm:justify-between">
+            <p className="text-sm text-[#6B7280]">
+              O contrato anexado entra na mesma biblioteca, filtros e historicos do workspace de contratos.
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsAttachDialogOpen(false)}
+                className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void saveAttachedContract()}
+                disabled={isSaving}
+                className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
+              >
+                {isSaving ? "Salvando..." : editingAttachmentId ? "Salvar alteracoes" : "Anexar contrato"}
               </Button>
             </div>
           </DialogFooter>
