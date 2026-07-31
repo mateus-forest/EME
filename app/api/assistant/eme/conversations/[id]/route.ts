@@ -22,6 +22,16 @@ type ConversationMessage = {
   createdAt: string
 }
 
+type PendingConfirmationAttachment = {
+  id: string
+  name: string
+  type: string
+  size: number
+  category: "image" | "document" | "video" | "files"
+  dataUrl?: string
+  textContent?: string
+}
+
 function metadataRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
@@ -32,6 +42,32 @@ function metadataText(metadata: Record<string, unknown>, key: string) {
 
 function metadataBoolean(metadata: Record<string, unknown>, key: string) {
   return metadata[key] === true
+}
+
+function metadataAttachments(metadata: Record<string, unknown>) {
+  const value = metadata.attachments
+  if (!Array.isArray(value)) return [] as PendingConfirmationAttachment[]
+
+  return value
+    .map((item) => (item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : null))
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .map((item): PendingConfirmationAttachment => {
+      const category =
+        item.category === "image" || item.category === "document" || item.category === "video" || item.category === "files"
+          ? item.category
+          : "files"
+
+      return {
+        id: typeof item.id === "string" ? item.id : "",
+        name: typeof item.name === "string" ? item.name : "",
+        type: typeof item.type === "string" ? item.type : "application/octet-stream",
+        size: typeof item.size === "number" ? item.size : 0,
+        category,
+        dataUrl: typeof item.dataUrl === "string" ? item.dataUrl : undefined,
+        textContent: typeof item.textContent === "string" ? item.textContent : undefined,
+      }
+    })
+    .filter((item) => item.id && item.name)
 }
 
 function serializeConversation(document: { id: string; title: string; createdAt: Date; updatedAt: Date }) {
@@ -54,15 +90,26 @@ function mapConversationMessages(rows: Array<{
   createdAt: Date
 }>): {
   messages: ConversationMessage[]
-  pendingConfirmation: { action: string; sourceMessage: string; sourceInteractionId: string } | null
+  pendingConfirmation: {
+    action: string
+    sourceMessage: string
+    sourceInteractionId: string
+    attachments?: PendingConfirmationAttachment[]
+  } | null
 } {
   const messages: ConversationMessage[] = []
-  let pendingConfirmation: { action: string; sourceMessage: string; sourceInteractionId: string } | null = null
+  let pendingConfirmation: {
+    action: string
+    sourceMessage: string
+    sourceInteractionId: string
+    attachments?: PendingConfirmationAttachment[]
+  } | null = null
 
   for (const row of rows) {
     const metadata = metadataRecord(row.metadata)
     const displayMessage = metadataText(metadata, "displayMessage") || row.message
     const confirmRequired = metadataBoolean(metadata, "confirmationRequired") && row.actionStatus === "needs_confirmation"
+    const attachments = metadataAttachments(metadata)
     const createdAt = row.createdAt.toISOString()
 
     if (displayMessage) {
@@ -95,6 +142,7 @@ function mapConversationMessages(rows: Array<{
         action: row.actionType,
         sourceMessage: row.message,
         sourceInteractionId: row.id,
+        attachments,
       }
     }
 

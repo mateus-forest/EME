@@ -20,6 +20,19 @@ export async function formatCosExecutionPlanResponse(input: {
   plan: CosExecutionPlan
   result: CosExecutionPlanResult
 }) {
+  if (input.result.status === "awaiting_input" && input.result.interruptedStep?.result) {
+    return input.result.interruptedStep.result.response
+  }
+
+  if (input.result.status === "failed") {
+    return (
+      input.result.interruptedStep?.result?.response?.trim() ||
+      "NÃ£o consegui concluir isso agora. Pode me pedir novamente de outra forma?"
+    )
+  }
+
+  const executedSteps = input.result.executedSteps.filter((step) => Boolean(step.result?.response?.trim()))
+
   if (input.result.steps.length === 1) {
     const step = input.result.steps[0]
     return formatCosCapabilityResponse({
@@ -30,33 +43,29 @@ export async function formatCosExecutionPlanResponse(input: {
     })
   }
 
-  if (input.result.status === "awaiting_input" && input.result.interruptedStep?.result) {
-    return input.result.interruptedStep.result.response
+  if (executedSteps.length === 1) {
+    const step = executedSteps[0]
+    return formatCosCapabilityResponse({
+      message: input.message,
+      action: step.action,
+      capability: step.plan.capability,
+      actionResponse: step.result?.response ?? "",
+    })
   }
 
-  if (input.result.status === "failed") {
-    return (
-      input.result.interruptedStep?.result?.response?.trim() ||
-      "Não consegui concluir isso agora. Pode me pedir novamente de outra forma?"
-    )
-  }
-
-  const stepResponses = input.result.completedSteps
+  const stepResponses = executedSteps
     .map((step) => step.result?.response?.trim() || "")
     .filter(Boolean)
 
   if (stepResponses.length === 0) {
-    return "Concluído."
+    return "ConcluÃ­do."
   }
 
   if (stepResponses.length === 1) {
     return stepResponses[0]
   }
 
-  const summarized = stepResponses.map((response) => summarizeExecutionResponse(response))
-  const unique = Array.from(new Set(summarized.filter(Boolean)))
-
-  return ["Concluí isso para você:", ...unique.map((response) => `• ${response}`)].join("\n")
+  return summarizeExecutionResponse(stepResponses[stepResponses.length - 1] ?? "") || stepResponses[0]
 }
 
 function summarizeExecutionResponse(response: string) {

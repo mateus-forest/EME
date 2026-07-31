@@ -38,6 +38,7 @@ export type PendingConfirmation = {
   action: string
   sourceMessage: string
   sourceInteractionId: string
+  attachments?: CosComposerAttachment[]
 }
 
 type AssistantMessageResponse = {
@@ -334,6 +335,7 @@ export function useCosConversations({
           action: assistantMessage.action,
           sourceMessage: normalizedMessage,
           sourceInteractionId: assistantMessage.id,
+          attachments: options?.attachments ?? [],
         })
         setChatFeedback("Aguardando sua confirmacao.")
       } else {
@@ -376,6 +378,7 @@ export function useCosConversations({
       confirm: true,
       action: pendingConfirmation.action,
       visibleMessage: "Confirmar",
+      attachments: pendingConfirmation.attachments ?? [],
     })
   }, [pendingConfirmation, sendCosMessage])
 
@@ -385,6 +388,7 @@ export function useCosConversations({
       cancel: true,
       action: pendingConfirmation.action,
       visibleMessage: "Cancelar",
+      attachments: pendingConfirmation.attachments ?? [],
     })
   }, [pendingConfirmation, sendCosMessage])
 
