@@ -29,7 +29,6 @@ import { Button } from "@/components/ui/button"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { AssistantCredits, useCosConversations } from "@/components/use-cos-conversations"
 import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
-import { COS_QUICK_ACTIONS } from "@/lib/cos-quick-actions"
 import type { ContractRecord } from "@/lib/contracts-client"
 import type { LeadRecord } from "@/lib/lead-contract"
 
@@ -94,7 +93,6 @@ export function BrokerPortal() {
     isBootstrappingConversation,
     inputRef,
     setChatFeedback,
-    createConversation,
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,
@@ -181,43 +179,18 @@ export function BrokerPortal() {
   const hasResolvedBrokerName = profile.fullName.trim().length > 0
   const greetingLabel = brokerFirstName ? `Ola, ${brokerFirstName}.` : "Ola."
 
-  const quickActions = [
-    {
-      label: "Proximo passo",
-      icon: Sparkles,
-      onClick: () => setIsNextStepModalOpen(true),
-    },
-    {
-      label: "Studio IA",
-      icon: Bot,
-      href: "/corretor/studio-ia",
-    },
-    {
-      label: "Novo imovel",
-      icon: Building2,
-      href: "/corretor/novo-imovel",
-      onClick: hasReachedLimit ? () => setIsLimitModalOpen(true) : undefined,
-    },
-    {
-      label: "Compromissos",
-      icon: CalendarDays,
-      href: "/corretor/agenda",
-    },
-  ]
   const nextStepSuggestions: NextStepSuggestion[] = [
-    { label: "Ver proximos compromissos", message: "Minha agenda de amanha" },
-    { label: "Analisar carteira", message: "Analisar carteira" },
-    { label: "Revisar clientes", message: "Revisar clientes" },
-    { label: "Consultar desempenho", message: "Consultar desempenho" },
-    { label: "Analisar financeiro", message: "Analisar financeiro" },
-    { label: "Ver notificacoes", message: "Minhas notificacoes" },
+    { label: "Cadastrar cliente", message: "Quero cadastrar um cliente." },
+    { label: "Buscar imovel", message: "Quero buscar um imovel." },
+    { label: "Criar imovel", message: "Quero criar um imovel." },
+    { label: "Ultimos leads", message: "Mostre meus ultimos leads." },
+    { label: "Agenda de hoje", message: "Mostre minha agenda de hoje." },
+    { label: "Criar campanha", message: "Quero criar uma campanha para Instagram." },
+    { label: "Gerar contrato", message: "Quero gerar um contrato." },
+    { label: "Publicar catalogo", message: "Quero publicar um imovel no catalogo." },
     { label: "Conversar com o COS", focusOnly: true },
   ]
-  const primaryCosSuggestions = [
-    { label: "Proximos compromissos", message: "Me mostre meus proximos compromissos" },
-    { label: "Revisar clientes", message: "Revisar clientes" },
-    { label: "Analisar carteira", message: "Analisar carteira" },
-  ] satisfies NextStepSuggestion[]
+  const primaryCosSuggestions = nextStepSuggestions.filter((item): item is Exclude<NextStepSuggestion, { focusOnly: true }> => !item.focusOnly)
   const isBootstrapPending = isProfileLoading || isBootstrappingConversation
   const isConversationEmpty = !isBootstrapPending && !isConversationLoading && conversation.length === 0
 
@@ -229,14 +202,14 @@ export function BrokerPortal() {
     activeConversation?.title && activeConversation.title !== DEFAULT_COS_CONVERSATION_TITLE,
   )
 
-  async function handleSubmit(promptOverride?: string) {
-    const normalizedPrompt = (promptOverride ?? prompt).trim()
+  async function handleSubmit(input?: { promptOverride?: string; attachments?: import("@/components/cos-prompt-composer").CosComposerAttachment[] }) {
+    const normalizedPrompt = (input?.promptOverride ?? prompt).trim()
     if (!normalizedPrompt) {
       setChatFeedback("Digite uma mensagem para o COS.")
       return
     }
 
-    await sendCosMessage(normalizedPrompt)
+    await sendCosMessage(normalizedPrompt, { attachments: input?.attachments })
     setPrompt("")
   }
 
@@ -275,7 +248,7 @@ export function BrokerPortal() {
     ].join("\n")
 
     await sendCosMessage(
-      `Analise minha operacao com base nas pendencias reais abaixo e inicie um workflow pratico. Nao quero um resumo estatistico. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual proxima acao devo executar em cada frente. Considere especialmente imoveis incompletos, clientes sem dados obrigatorios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos proximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
+      `Analise minha operacao com base nas pendencias reais abaixo. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual proxima acao devo executar em cada frente. Considere especialmente imoveis incompletos, clientes sem dados obrigatorios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos proximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
       { visibleMessage: "Ver detalhes da operacao" },
     )
     setPrompt("")
@@ -367,7 +340,7 @@ export function BrokerPortal() {
                         </h1>
                       </div>
 
-                      <div className="mt-4 flex w-full max-w-[26rem] flex-wrap items-center justify-center gap-2 sm:mt-5 sm:max-w-none sm:gap-2.5">
+                      <div className="mt-4 flex w-full max-w-[34rem] flex-wrap items-center justify-center gap-2 sm:mt-5 sm:max-w-[42rem] sm:gap-2.5">
                         {primaryCosSuggestions.map((suggestion) => (
                           <button
                             key={suggestion.label}
@@ -455,12 +428,7 @@ export function BrokerPortal() {
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{item.content}</p>
-                            {item.role === "assistant" && item.actionStatus ? (
-                              <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#8a97a8]">
-                                {formatCosStatus(item.actionStatus)}
-                              </p>
-                            ) : null}
-                            {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
+                    {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <Button
                                   type="button"
@@ -508,10 +476,6 @@ export function BrokerPortal() {
                     prompt={prompt}
                     setPrompt={setPrompt}
                     onSubmit={handleSubmit}
-                    onNewConversation={async () => {
-                      await createConversation()
-                    }}
-                    quickActions={COS_QUICK_ACTIONS}
                     disabled={isSending || isConversationLoading}
                     inputRef={inputRef}
                     feedback={chatFeedback}
@@ -672,14 +636,6 @@ export function BrokerPortal() {
   )
 }
 
-function formatCosStatus(status: string) {
-  if (status === "needs_confirmation") return "Aguardando confirmacao"
-  if (status === "processing") return "Em processamento"
-  if (status === "unsupported") return "Fora do escopo da Home"
-  if (status === "error") return "Erro"
-  if (status === "cancelled") return "Cancelado"
-  return "Concluido"
-}
 
 function averageScore(scores: number[]) {
   if (scores.length === 0) return 100

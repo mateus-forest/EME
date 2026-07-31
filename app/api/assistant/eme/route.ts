@@ -17,7 +17,6 @@ import {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
   formatCosExecutionPlanResponse,
-  formatWorkflowProgress,
   getActiveWorkflow,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
@@ -112,10 +111,6 @@ function buildCosHomeConfirmationResponse(action: AssessorAction) {
   return getCosCapabilityConfirmationMessage(action)
 }
 
-function formatWorkflowResponse(baseResponse: string, progress: string) {
-  return `${progress}\n\n${baseResponse}`.trim()
-}
-
 async function touchCosConversation(input: {
   conversation: { id: string; title: string } | null
   message: string
@@ -141,6 +136,54 @@ async function resolveCosConversation(brokerId: string, conversationId: string) 
     },
     select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
   })
+}
+
+type CosIncomingAttachment = {
+  id: string
+  name: string
+  type: string
+  size: number
+  category: "image" | "document" | "video" | "files"
+  dataUrl?: string
+  textContent?: string
+}
+
+function sanitizeIncomingAttachments(value: unknown) {
+  if (!Array.isArray(value)) return [] as CosIncomingAttachment[]
+
+  return value
+    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .map((item) => ({
+      id: cleanText(item.id, 80) || crypto.randomUUID(),
+      name: cleanText(item.name, 240),
+      type: cleanText(item.type, 120) || "application/octet-stream",
+      size: typeof item.size === "number" ? item.size : 0,
+      category: (cleanText(item.category, 20) as CosIncomingAttachment["category"]) || "files",
+      dataUrl: cleanText(item.dataUrl, 2_000_000) || undefined,
+      textContent: cleanText(item.textContent, 120_000) || undefined,
+    }))
+    .filter((item) => item.name)
+}
+
+function buildExecutionMessage(message: string, attachments: CosIncomingAttachment[]) {
+  if (attachments.length === 0) return message
+
+  const attachmentLines = attachments.map((attachment) => `- ${attachment.name} (${attachment.category})`)
+  const textSnippets = attachments
+    .filter((attachment) => attachment.textContent)
+    .slice(0, 2)
+    .map((attachment) => `${attachment.name}:\n${attachment.textContent}`)
+
+  return [
+    message,
+    "",
+    "Arquivos anexados:",
+    ...attachmentLines,
+    ...(textSnippets.length > 0 ? ["", "Conteudo de apoio:", ...textSnippets] : []),
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
 async function persistConversationWorkflow(conversationId: string, workflow: CosWorkflow | null) {
@@ -283,6 +326,8 @@ export async function POST(request: NextRequest) {
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
   const isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
+  const attachments = sanitizeIncomingAttachments(body?.attachments)
+  const executionMessage = buildExecutionMessage(message, attachments)
   let creditsUsed = 1
 
   if (!message) {
@@ -364,7 +409,7 @@ export async function POST(request: NextRequest) {
           },
           () =>
             planCosExecution({
-              message,
+              message: executionMessage,
               requestedAction,
               pendingContext,
               surface,
@@ -376,7 +421,7 @@ export async function POST(request: NextRequest) {
 
     if (isCancellation) {
       const cancelledWorkflow = resumableWorkflow ? cancelWorkflow(resumableWorkflow) : null
-      const responseText = cancelledWorkflow ? "Tudo bem. Workflow cancelado." : "Tudo bem. Nao executei a alteracao."
+      const responseText = cancelledWorkflow ? "Tudo bem. Nao vou continuar com isso." : "Tudo bem. Nao executei a alteracao."
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
@@ -387,6 +432,7 @@ export async function POST(request: NextRequest) {
         workflow: workflowMetadata(cancelledWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
+        attachments,
       } as Prisma.InputJsonObject
 
       const [updatedBroker, persistedConversation, touchedConversation] = await Promise.all([
@@ -457,7 +503,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (resumableWorkflow?.pendingInput?.field === "confirmation" && !shouldConfirmWorkflowMessage(message, Boolean(body?.confirm))) {
-      const responseText = formatWorkflowResponse(buildCosHomeConfirmationResponse(action), formatWorkflowProgress(resumableWorkflow))
+      const responseText = buildCosHomeConfirmationResponse(action)
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
@@ -468,6 +514,7 @@ export async function POST(request: NextRequest) {
         workflow: workflowMetadata(resumableWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
+        attachments,
       } as Prisma.InputJsonObject
 
       const [updatedBroker, updatedConversation] = await Promise.all([
@@ -523,10 +570,7 @@ export async function POST(request: NextRequest) {
         conversationId: conversationDocument?.id ?? "ephemeral",
         plan: executionPlan,
       })
-      const responseText = formatWorkflowResponse(
-        executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action),
-        formatWorkflowProgress(pendingWorkflow),
-      )
+      const responseText = executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action)
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: action,
@@ -538,6 +582,7 @@ export async function POST(request: NextRequest) {
         workflow: workflowMetadata(pendingWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
+        attachments,
       } as Prisma.InputJsonObject
 
       const [updatedBroker, _persistedConversation, updatedConversation] = await Promise.all([
@@ -634,9 +679,10 @@ export async function POST(request: NextRequest) {
             workflow,
             brokerId: user.broker!.id,
             userId: user.id,
-            message,
+            message: executionMessage,
             confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
             workspace,
+            payload: attachments.length > 0 ? { attachments } : undefined,
           }),
       )
 
@@ -679,11 +725,10 @@ export async function POST(request: NextRequest) {
 
       const planForFormatting = executionPlan ?? rebuildExecutionPlanFromWorkflow(workflow)
       responseText = await formatCosExecutionPlanResponse({
-        message,
+        message: executionMessage,
         plan: planForFormatting,
         result: executionResult,
       })
-      responseText = formatWorkflowResponse(responseText, formatWorkflowProgress(updatedWorkflow))
 
       console.info("[cos][workflow]", {
         workflowId: updatedWorkflow.id,
@@ -741,6 +786,7 @@ export async function POST(request: NextRequest) {
       workflow: workflowMetadata(updatedWorkflow),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
+      attachments,
     } as Prisma.InputJsonObject
 
     const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([

@@ -210,8 +210,8 @@ function buildConfirmationMessage(steps: CosExecutionStep[]) {
   if (steps.length === 0) return null
   if (steps.length === 1) return getCosCapabilityConfirmationMessage(steps[0].action)
 
-  const labels = steps.map((step, index) => `${index + 1}. ${step.plan.capability.title}`)
-  return ["Posso executar este plano agora:", ...labels, "", "Deseja confirmar?"].join("\n")
+  const labels = steps.map((step) => `• ${step.plan.capability.title}`)
+  return ["Vou cuidar disso agora:", ...labels, "", "Posso continuar?"].join("\n")
 }
 
 function buildTelemetry(input: {

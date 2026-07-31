@@ -1,37 +1,43 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { RefObject } from "react"
-import { BookOpen, Building2, CalendarDays, Clapperboard, ImagePlus, Mic, Plus, Send, Sparkles, Square, UserSearch, UsersRound } from "lucide-react"
+import type { ChangeEvent, RefObject } from "react"
+import {
+  FileText,
+  Files,
+  ImageIcon,
+  Mic,
+  Paperclip,
+  Send,
+  Square,
+  Video,
+  X,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-export type CosQuickActionGroup = "Sistema" | "Clientes" | "Imoveis" | "Agenda" | "Leads" | "Studio IA"
-
-export type CosQuickAction = {
-  label: string
-  message?: string
-  onSelect?: () => void | Promise<void>
-  group: CosQuickActionGroup
-  icon: "help" | "client" | "property" | "agenda" | "leads" | "instagram" | "video"
+export type CosComposerAttachment = {
+  id: string
+  name: string
+  type: string
+  size: number
+  category: "image" | "document" | "video" | "files"
+  dataUrl?: string
+  textContent?: string
 }
 
 type CosPromptComposerProps = {
   prompt: string
   setPrompt: (value: string) => void
-  onSubmit: (promptOverride?: string) => Promise<void> | void
-  onNewConversation: () => Promise<void> | void
-  quickActions: CosQuickAction[]
+  onSubmit: (input?: { promptOverride?: string; attachments?: CosComposerAttachment[] }) => Promise<void> | void
   disabled?: boolean
   inputRef: RefObject<HTMLTextAreaElement | null>
   feedback?: string
@@ -62,12 +68,19 @@ type SpeechRecognitionEventLike = {
   }>
 }
 
+type AttachmentPickerMode = "image" | "document" | "video" | "files"
+
+const ACCEPT_MAP: Record<AttachmentPickerMode, string> = {
+  image: "image/*",
+  document: ".pdf,.doc,.docx,.xml,.txt,.csv,.json",
+  video: "video/*",
+  files: "*",
+}
+
 export function CosPromptComposer({
   prompt,
   setPrompt,
   onSubmit,
-  onNewConversation,
-  quickActions,
   disabled = false,
   inputRef,
   feedback,
@@ -76,11 +89,15 @@ export function CosPromptComposer({
 }: CosPromptComposerProps) {
   const [micState, setMicState] = useState<"idle" | "recording" | "processing" | "error">("idle")
   const [micError, setMicError] = useState("")
+  const [attachments, setAttachments] = useState<CosComposerAttachment[]>([])
+  const [pickerMode, setPickerMode] = useState<AttachmentPickerMode>("files")
+  const [isPreparingAttachments, setIsPreparingAttachments] = useState(false)
   const recognitionRef = useRef<BrowserSpeechRecognitionInstance | null>(null)
   const promptBeforeMicRef = useRef("")
   const micStateRef = useRef<"idle" | "recording" | "processing" | "error">("idle")
   const micHadErrorRef = useRef(false)
   const transcriptRef = useRef("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function updateMicState(nextState: "idle" | "recording" | "processing" | "error") {
     micStateRef.current = nextState
@@ -97,19 +114,6 @@ export function CosPromptComposer({
 
     return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
   }, [])
-
-  const groupedQuickActions = useMemo(() => {
-    return quickActions.reduce<Array<{ group: CosQuickActionGroup; items: CosQuickAction[] }>>((acc, action) => {
-      const lastGroup = acc[acc.length - 1]
-      if (lastGroup?.group === action.group) {
-        lastGroup.items.push(action)
-        return acc
-      }
-
-      acc.push({ group: action.group, items: [action] })
-      return acc
-    }, [])
-  }, [quickActions])
 
   useEffect(() => {
     return () => {
@@ -185,7 +189,7 @@ export function CosPromptComposer({
         updateMicState("processing")
         window.setTimeout(async () => {
           if (!promptBeforeMicRef.current.trim()) {
-            await onSubmit(finalPrompt)
+            await onSubmit({ promptOverride: finalPrompt, attachments })
           } else {
             setPrompt(finalPrompt)
           }
@@ -201,6 +205,35 @@ export function CosPromptComposer({
     }
   }
 
+  function openPicker(mode: AttachmentPickerMode) {
+    setPickerMode(mode)
+    window.setTimeout(() => fileInputRef.current?.click(), 0)
+  }
+
+  async function handleAttachmentSelection(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ""
+    if (files.length === 0) return
+
+    setIsPreparingAttachments(true)
+    try {
+      const nextAttachments = await Promise.all(files.map((file) => serializeAttachment(file, pickerMode)))
+      setAttachments((current) => {
+        const existingKeys = new Set(current.map((item) => `${item.name}:${item.size}:${item.type}`))
+        const unique = nextAttachments.filter((item) => !existingKeys.has(`${item.name}:${item.size}:${item.type}`))
+        return [...current, ...unique]
+      })
+    } finally {
+      setIsPreparingAttachments(false)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    }
+  }
+
+  async function handleSubmit() {
+    await onSubmit({ attachments })
+    setAttachments([])
+  }
+
   return (
     <div
       className={cn(
@@ -209,13 +242,44 @@ export function CosPromptComposer({
         containerClassName,
       )}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        hidden
+        accept={ACCEPT_MAP[pickerMode]}
+        multiple
+        onChange={(event) => void handleAttachmentSelection(event)}
+      />
+
       <form
         onSubmit={(event) => {
           event.preventDefault()
-          void onSubmit()
+          void handleSubmit()
         }}
         className="flex min-w-0 flex-col gap-1.5"
       >
+        {attachments.length > 0 ? (
+          <div className="mb-1 flex flex-wrap gap-2 px-1">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-black/[0.06] bg-white/92 px-3 py-2 text-sm text-[#273444] shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
+              >
+                <AttachmentIcon category={attachment.category} className="size-4 shrink-0 text-[#6f7f97]" />
+                <span className="truncate">{attachment.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
+                  className="rounded-full p-0.5 text-[#7a8798] transition-colors hover:bg-black/[0.04] hover:text-[#111111]"
+                  aria-label={`Remover ${attachment.name}`}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         <div className="flex min-w-0 items-end gap-2 rounded-[1.2rem] border border-black/[0.06] bg-white/94 px-2 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:rounded-[1.35rem] sm:border-black/[0.07] sm:bg-white sm:shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -223,47 +287,30 @@ export function CosPromptComposer({
                 type="button"
                 size="icon"
                 variant="ghost"
-                disabled={disabled}
+                disabled={disabled || isPreparingAttachments}
                 className="size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8]"
-                aria-label="Abrir acoes do COS"
+                aria-label="Adicionar anexos ao COS"
               >
-                <Plus className="size-4" />
+                <Paperclip className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-72 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-              <DropdownMenuItem
-                onSelect={() => void onNewConversation()}
-                className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
-              >
-                <Sparkles className="mr-2 size-4" />
-                Nova conversa
+            <DropdownMenuContent align="start" className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+              <DropdownMenuItem onSelect={() => openPicker("image")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                <ImageIcon className="mr-2 size-4 text-[#7B8491]" />
+                Imagem
               </DropdownMenuItem>
-              {groupedQuickActions.map((group, index) => (
-                <div key={group.group}>
-                  <DropdownMenuSeparator className="bg-black/[0.06]" />
-                  <DropdownMenuLabel className="pb-1 text-[#6B7280]">{group.group}</DropdownMenuLabel>
-                  {group.items.map((action) => (
-                    <DropdownMenuItem
-                      key={action.label}
-                      onSelect={() => {
-                        if (action.onSelect) {
-                          void action.onSelect()
-                          return
-                        }
-
-                        if (action.message) {
-                          setPrompt(action.message)
-                          void onSubmit(action.message)
-                        }
-                      }}
-                      className={`rounded-xl text-[#050505] focus:bg-[#f6f7f4] ${index === groupedQuickActions.length - 1 ? "" : ""}`}
-                    >
-                      <QuickActionIcon icon={action.icon} />
-                      {action.label}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              ))}
+              <DropdownMenuItem onSelect={() => openPicker("document")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                <FileText className="mr-2 size-4 text-[#7B8491]" />
+                Documento
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPicker("video")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                <Video className="mr-2 size-4 text-[#7B8491]" />
+                Video
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPicker("files")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
+                <Files className="mr-2 size-4 text-[#7B8491]" />
+                Multiplos arquivos
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -286,7 +333,7 @@ export function CosPromptComposer({
             size="icon"
             variant="ghost"
             onClick={() => void handleMicToggle()}
-            disabled={disabled}
+            disabled={disabled || isPreparingAttachments}
             className={`size-9 shrink-0 rounded-full border border-black/[0.05] bg-[#f7f4ef] text-[#5F6B7A] hover:bg-white hover:text-[#050505] disabled:opacity-60 sm:border-black/[0.06] sm:bg-[#fbfbf8] ${
               micState === "recording" ? "border-[#009b3a]/30 bg-[#effaf3] text-[#009b3a]" : ""
             }`}
@@ -298,7 +345,7 @@ export function CosPromptComposer({
           <Button
             type="submit"
             size="icon"
-            disabled={disabled}
+            disabled={disabled || isPreparingAttachments}
             className="size-10 shrink-0 rounded-full bg-[#111111] text-white shadow-none hover:bg-[#050505] disabled:opacity-60"
             aria-label="Enviar mensagem ao COS"
           >
@@ -308,13 +355,15 @@ export function CosPromptComposer({
 
         <div className="hidden min-h-5 items-center justify-between gap-3 px-1 sm:flex">
           <p className={`text-xs leading-5 ${micState === "error" ? "text-[#b42318]" : "text-[#6f7f97]"}`}>
-            {micState === "recording"
-              ? "Gravando..."
-              : micState === "processing"
-                ? "Processando audio..."
-                : micState === "error"
-                  ? micError
-                  : feedback || ""}
+            {isPreparingAttachments
+              ? "Preparando anexos..."
+              : micState === "recording"
+                ? "Gravando..."
+                : micState === "processing"
+                  ? "Processando audio..."
+                  : micState === "error"
+                    ? micError
+                    : feedback || ""}
           </p>
         </div>
       </form>
@@ -322,16 +371,53 @@ export function CosPromptComposer({
   )
 }
 
-function QuickActionIcon({ icon }: { icon: CosQuickAction["icon"] }) {
-  const className = "mr-2 size-4 text-[#7B8491]"
+function AttachmentIcon({ category, className }: { category: CosComposerAttachment["category"]; className?: string }) {
+  if (category === "image") return <ImageIcon className={className} />
+  if (category === "video") return <Video className={className} />
+  if (category === "document") return <FileText className={className} />
+  return <Files className={className} />
+}
 
-  if (icon === "help") return <BookOpen className={className} />
-  if (icon === "client") return <UserSearch className={className} />
-  if (icon === "property") return <Building2 className={className} />
-  if (icon === "agenda") return <CalendarDays className={className} />
-  if (icon === "leads") return <UsersRound className={className} />
-  if (icon === "instagram") return <ImagePlus className={className} />
-  return <Clapperboard className={className} />
+async function serializeAttachment(file: File, category: AttachmentPickerMode): Promise<CosComposerAttachment> {
+  const serialized: CosComposerAttachment = {
+    id: crypto.randomUUID(),
+    name: file.name,
+    type: file.type || "application/octet-stream",
+    size: file.size,
+    category,
+  }
+
+  if (category === "image" && file.size <= 8 * 1024 * 1024) {
+    serialized.dataUrl = await readFileAsDataUrl(file)
+  }
+
+  if (shouldReadAsText(file)) {
+    const content = await file.text()
+    serialized.textContent = content.slice(0, 120_000)
+  }
+
+  return serialized
+}
+
+function shouldReadAsText(file: File) {
+  const name = file.name.toLowerCase()
+  return (
+    file.type.includes("xml") ||
+    file.type.startsWith("text/") ||
+    name.endsWith(".xml") ||
+    name.endsWith(".txt") ||
+    name.endsWith(".csv") ||
+    name.endsWith(".json")
+  )
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "")
+    reader.onerror = () => reject(new Error("Nao foi possivel ler o anexo."))
+    reader.readAsDataURL(file)
+  })
 }
 
 function resolveMicErrorMessage(errorCode: string) {

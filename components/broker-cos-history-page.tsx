@@ -11,7 +11,6 @@ import {
   CosConversationSummary,
   useCosConversations,
 } from "@/components/use-cos-conversations"
-import { COS_QUICK_ACTIONS } from "@/lib/cos-quick-actions"
 
 type AssistantBootstrapResponse = {
   credits?: AssistantCredits
@@ -101,14 +100,14 @@ export function BrokerCosHistoryPage() {
       .filter((group) => group.items.length > 0)
   }, [filteredConversations])
 
-  async function handleSubmit(promptOverride?: string) {
-    const normalizedPrompt = (promptOverride ?? prompt).trim()
+  async function handleSubmit(input?: { promptOverride?: string; attachments?: import("@/components/cos-prompt-composer").CosComposerAttachment[] }) {
+    const normalizedPrompt = (input?.promptOverride ?? prompt).trim()
     if (!normalizedPrompt) {
       setChatFeedback("Digite uma mensagem para o COS.")
       return
     }
 
-    await sendCosMessage(normalizedPrompt)
+    await sendCosMessage(normalizedPrompt, { attachments: input?.attachments })
     setPrompt("")
   }
 
@@ -254,11 +253,6 @@ export function BrokerCosHistoryPage() {
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{item.content}</p>
-                    {item.role === "assistant" && item.actionStatus ? (
-                      <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#8a97a8]">
-                        {formatCosStatus(item.actionStatus)}
-                      </p>
-                    ) : null}
                     {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Button
@@ -297,10 +291,6 @@ export function BrokerCosHistoryPage() {
             prompt={prompt}
             setPrompt={setPrompt}
             onSubmit={handleSubmit}
-            onNewConversation={async () => {
-              await createConversation()
-            }}
-            quickActions={COS_QUICK_ACTIONS}
             disabled={isSending || isConversationLoading}
             inputRef={inputRef}
             feedback={chatFeedback}
@@ -344,11 +334,3 @@ function formatConversationTimestamp(isoDate: string) {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
 }
 
-function formatCosStatus(status: string) {
-  if (status === "needs_confirmation") return "Aguardando confirmacao"
-  if (status === "processing") return "Em processamento"
-  if (status === "unsupported") return "Fora do escopo da Home"
-  if (status === "error") return "Erro"
-  if (status === "cancelled") return "Cancelado"
-  return "Concluido"
-}

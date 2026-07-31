@@ -278,6 +278,7 @@ export async function resumeWorkflowExecution(input: {
   message: string
   confirm?: boolean
   workspace: CosWorkspaceContext | null
+  payload?: Record<string, unknown>
 }) {
   const plan = rebuildExecutionPlanFromWorkflow(input.workflow)
   const payload = buildResumePayload({
@@ -285,6 +286,7 @@ export async function resumeWorkflowExecution(input: {
     message: input.message,
     workspace: input.workspace,
   })
+  Object.assign(payload, input.payload ?? {})
 
   return executeCosExecutionPlan({
     plan,

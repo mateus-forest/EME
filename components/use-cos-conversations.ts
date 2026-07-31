@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import { usePathname } from "next/navigation"
+import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
 import type { CosWorkspaceContext } from "@/lib/cos/types"
@@ -247,6 +248,7 @@ export function useCosConversations({
       visibleMessage?: string
       cancel?: boolean
       workspaceContext?: Partial<CosWorkspaceContext> | null
+      attachments?: CosComposerAttachment[]
     },
   ) => {
     const normalizedMessage = messageToSend.trim()
@@ -296,6 +298,7 @@ export function useCosConversations({
           action: options?.action,
           confirm: Boolean(options?.confirm),
           cancel: Boolean(options?.cancel),
+          attachments: options?.attachments ?? [],
           source,
           conversationId: activeConversationId || undefined,
           workspace: messageWorkspaceContext,
@@ -332,7 +335,7 @@ export function useCosConversations({
           sourceMessage: normalizedMessage,
           sourceInteractionId: assistantMessage.id,
         })
-        setChatFeedback("Confirmacao pendente para alterar dados.")
+        setChatFeedback("Aguardando sua confirmacao.")
       } else {
         setPendingConfirmation(null)
         setChatFeedback(
