@@ -3848,7 +3848,7 @@ export function BrokerContractsPage() {
       </Dialog>
 
       <Dialog open={isAttachDialogOpen} onOpenChange={setIsAttachDialogOpen}>
-        <DialogContent className="max-w-[34rem] rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0">
+        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[34rem] overflow-hidden rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0 sm:max-h-[calc(100vh-4rem)]">
           <DialogHeader className="border-b border-black/[0.06] px-6 py-5">
             <DialogTitle className="flex items-center gap-2 text-xl text-[#050505]">
               <Paperclip className="size-5 text-[#009b3a]" />
@@ -3859,7 +3859,7 @@ export function BrokerContractsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 px-6 py-5">
+          <div className="grid max-h-[min(70vh,calc(100vh-15rem))] gap-4 overflow-y-auto px-6 py-5 sm:max-h-[min(72vh,calc(100vh-16rem))]">
             <label className="grid gap-2 text-sm text-[#5F6B7A]">
               Cliente
               <select

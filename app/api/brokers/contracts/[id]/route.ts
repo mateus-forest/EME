@@ -16,6 +16,13 @@ import {
 } from "@/lib/contract-template"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
+import { parseEntityDocuments } from "@/lib/legal-entities"
+import {
+  buildLinkedContractDocument,
+  removeLinkedContractDocument,
+  upsertLinkedContractDocument,
+} from "@/lib/linked-contract-document"
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
@@ -86,6 +93,58 @@ async function getContractOr404(id: string, brokerId: string) {
   }
 
   return contract
+}
+
+async function syncLeadLinkedContractDocument(input: {
+  leadId: string
+  contractId: string
+  title: string
+  kind: string
+  attachment: NonNullable<ReturnType<typeof parseContractContent>["attachment"]>
+  updatedAt: string
+}) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: input.leadId },
+    select: { documentsData: true },
+  })
+
+  if (!lead) return
+
+  const linkedDocument = normalizeEntityDocumentForStorage(
+    buildLinkedContractDocument({
+      contractId: input.contractId,
+      title: input.title,
+      kind: input.kind as ReturnType<typeof parseContractContent>["kind"],
+      attachment: input.attachment,
+      updatedAt: input.updatedAt,
+    }),
+    cleanText,
+  )
+
+  await prisma.lead.update({
+    where: { id: input.leadId },
+    data: {
+      documentsData: upsertLinkedContractDocument(parseEntityDocuments(lead.documentsData), linkedDocument),
+    },
+  })
+}
+
+async function removeLeadLinkedContractDocument(input: { leadId: string | null; contractId: string }) {
+  if (!input.leadId) return
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: input.leadId },
+    select: { documentsData: true },
+  })
+
+  if (!lead) return
+
+  await prisma.lead.update({
+    where: { id: input.leadId },
+    data: {
+      documentsData: removeLinkedContractDocument(parseEntityDocuments(lead.documentsData), input.contractId),
+    },
+  })
 }
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -250,6 +309,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         },
       })
 
+      await removeLeadLinkedContractDocument({ leadId: found.leadId, contractId: found.id })
+      await syncLeadLinkedContractDocument({
+        leadId: lead.id,
+        contractId: updated.id,
+        title: nextContent.title,
+        kind: nextContent.kind,
+        attachment: nextContent.attachment!,
+        updatedAt: updated.updatedAt.toISOString(),
+      })
+
       return NextResponse.json({ contract: serializeContract(updated) })
     }
 
@@ -374,6 +443,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       },
     })
 
+    if (isExternalContractContent(nextContent) && nextContent.attachment) {
+      await removeLeadLinkedContractDocument({ leadId: found.leadId, contractId: found.id })
+      await syncLeadLinkedContractDocument({
+        leadId: lead.id,
+        contractId: updated.id,
+        title: nextContent.title,
+        kind: nextContent.kind,
+        attachment: nextContent.attachment,
+        updatedAt: updated.updatedAt.toISOString(),
+      })
+    }
+
     return NextResponse.json({ contract: serializeContract(updated) })
   } catch (caughtError) {
     const message = caughtError instanceof Error ? caughtError.message : ""
@@ -395,6 +476,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     if (found instanceof NextResponse) return found
     const parsed = parseContractContent(found.content)
 
+    await removeLeadLinkedContractDocument({ leadId: found.leadId, contractId: found.id })
     await prisma.brokerDocument.delete({ where: { id: found.id } })
     if (parsed.attachment?.fileUrl) {
       await deleteBrokerContractFile(parsed.attachment.fileUrl)

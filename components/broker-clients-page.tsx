@@ -437,6 +437,33 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
     setSelectedClientDraft((current) => ({ ...current, documents: [...current.documents, ...uploaded] }))
   }
 
+  async function removeSelectedClientDocument(document: EntityDocumentRecord) {
+    if (!selectedClient?.id) return
+    if (!window.confirm(`Deseja remover o documento "${document.name}" deste cliente?`)) return
+
+    setFeedback("")
+
+    try {
+      const response = await fetch(`/api/leads/${selectedClient.id}/documents/${document.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        cache: "no-store",
+      })
+      const data = (await response.json().catch(() => null)) as { lead?: LeadRecord; error?: string } | null
+
+      if (!response.ok || !data?.lead) {
+        throw new Error(data?.error || "Nao foi possivel remover o documento.")
+      }
+
+      syncClientInState(data.lead)
+      setFeedbackTone("success")
+      setFeedback("Documento removido com sucesso.")
+    } catch (caughtError) {
+      setFeedbackTone("error")
+      setFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel remover o documento.")
+    }
+  }
+
   function syncClientInState(lead: LeadRecord) {
     setClients((current) => current.map((item) => (item.id === lead.id ? lead : item)))
     setSelectedClient(lead)
@@ -706,7 +733,11 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
                         </label>
                       ))}
                     </div>
-                    <DocumentList leadId={selectedClientDraft.id} documents={selectedClientDraft.documents} />
+                    <DocumentList
+                      leadId={selectedClientDraft.id}
+                      documents={selectedClientDraft.documents}
+                      onDelete={(document) => void removeSelectedClientDocument(document)}
+                    />
                   </section>
                 </div>
 
@@ -900,7 +931,15 @@ function QualityCard({ score, pending }: { score: number; pending: string[] }) {
   )
 }
 
-function DocumentList({ documents, leadId }: { documents: EntityDocumentRecord[]; leadId?: string }) {
+function DocumentList({
+  documents,
+  leadId,
+  onDelete,
+}: {
+  documents: EntityDocumentRecord[]
+  leadId?: string
+  onDelete?: (document: EntityDocumentRecord) => void
+}) {
   if (!documents.length) {
     return <p className="text-sm text-[#8B95A1]">Nenhum documento anexado ainda.</p>
   }
@@ -908,14 +947,28 @@ function DocumentList({ documents, leadId }: { documents: EntityDocumentRecord[]
   return (
     <div className="grid gap-2">
       {documents.map((document) => (
-        <button
+        <div
           key={document.id}
-          type="button"
-          onClick={() => void openClientDocumentPreview(document, leadId)}
-          className="rounded-xl border border-black/[0.06] bg-white px-3 py-2 text-sm text-[#4B5563]"
+          className="flex items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-3 py-2 text-sm text-[#4B5563]"
         >
-          {document.label}: {document.name}
-        </button>
+          <button
+            type="button"
+            onClick={() => void openClientDocumentPreview(document, leadId)}
+            className="min-w-0 flex-1 truncate text-left"
+          >
+            {document.label}: {document.name}
+          </button>
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={() => onDelete(document)}
+              className="shrink-0 rounded-full p-1 text-[#8B95A1] transition-colors hover:bg-[#f5f5f1] hover:text-[#b42318]"
+              aria-label={`Remover documento ${document.name}`}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          ) : null}
+        </div>
       ))}
     </div>
   )

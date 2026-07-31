@@ -19,6 +19,9 @@ import {
 } from "@/lib/contract-template"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
+import { parseEntityDocuments } from "@/lib/legal-entities"
+import { buildLinkedContractDocument, upsertLinkedContractDocument } from "@/lib/linked-contract-document"
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
@@ -264,6 +267,41 @@ async function loadLeadAndProperty(input: { brokerId: string; leadId: string; pr
   return { lead, property }
 }
 
+async function syncLeadLinkedContractDocument(input: {
+  leadId: string
+  contractId: string
+  title: string
+  kind: string
+  attachment: ContractAttachment
+  updatedAt: string
+}) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: input.leadId },
+    select: { documentsData: true },
+  })
+
+  if (!lead) return
+
+  const documents = parseEntityDocuments(lead.documentsData)
+  const linkedDocument = normalizeEntityDocumentForStorage(
+    buildLinkedContractDocument({
+      contractId: input.contractId,
+      title: input.title,
+      kind: input.kind as typeof contractTypeOptions[number],
+      attachment: input.attachment,
+      updatedAt: input.updatedAt,
+    }),
+    cleanText,
+  )
+
+  await prisma.lead.update({
+    where: { id: input.leadId },
+    data: {
+      documentsData: upsertLinkedContractDocument(documents, linkedDocument),
+    },
+  })
+}
+
 function createExternalContractContent(input: {
   kind: string
   title: string
@@ -431,6 +469,15 @@ export async function POST(request: NextRequest) {
           content: stringifyContractContent(content),
           status: content.status,
         },
+      })
+
+      await syncLeadLinkedContractDocument({
+        leadId: lead.id,
+        contractId: document.id,
+        title: content.title,
+        kind: content.kind,
+        attachment: content.attachment!,
+        updatedAt: document.updatedAt.toISOString(),
       })
 
       return NextResponse.json(

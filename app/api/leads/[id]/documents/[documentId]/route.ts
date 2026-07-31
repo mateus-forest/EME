@@ -7,7 +7,7 @@ import {
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
 import { buildDocumentDisposition, parseDocumentPayload } from "@/lib/entity-document"
-import { canAccessLead } from "@/lib/lead-contract"
+import { canAccessLead, leadInclude, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
 
@@ -82,5 +82,70 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     }
 
     return NextResponse.json({ error: "Erro interno ao abrir documento do cliente." }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; documentId: string }> },
+) {
+  const { error, user } = await getAuthenticatedUser()
+
+  if (error || !user) {
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+  }
+
+  try {
+    const { id, documentId } = await params
+    const lead = await prisma.lead.findUnique({
+      where: { id },
+      select: {
+        brokerId: true,
+        agencyId: true,
+        documentsData: true,
+      },
+    })
+
+    if (!lead) {
+      return NextResponse.json({ error: "Lead nao encontrado." }, { status: 404 })
+    }
+
+    if (!canAccessLead(user, lead)) {
+      return NextResponse.json({ error: "Acesso nao permitido para este lead." }, { status: 403 })
+    }
+
+    const documents = parseEntityDocuments(lead.documentsData)
+    const nextDocuments = documents.filter((document) => document.id !== documentId)
+
+    if (nextDocuments.length === documents.length) {
+      return NextResponse.json({ error: "Documento nao encontrado." }, { status: 404 })
+    }
+
+    const updatedLead = await prisma.lead.update({
+      where: { id },
+      data: {
+        documentsData: nextDocuments,
+      },
+      include: leadInclude,
+    })
+
+    return NextResponse.json({ lead: serializeLead(updatedLead) })
+  } catch (caughtError) {
+    console.error("[api][leads][documents] delete failed", {
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+    })
+
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json(
+        { error: "O servico de documentos do cliente esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { status: 503 },
+      )
+    }
+
+    if (isPrismaSchemaMismatch(caughtError)) {
+      return prismaSchemaMismatchResponse("Clientes / exclusao de documentos")
+    }
+
+    return NextResponse.json({ error: "Erro interno ao remover documento do cliente." }, { status: 500 })
   }
 }
