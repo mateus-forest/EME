@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { ChangeEvent, RefObject } from "react"
+import type { ChangeEvent, ReactNode, RefObject } from "react"
 import {
+  ChevronDown,
+  ChevronRight,
   FileText,
   Files,
   HelpCircle,
@@ -24,9 +26,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
@@ -117,6 +116,8 @@ export function CosPromptComposer({
   const [attachments, setAttachments] = useState<CosComposerAttachment[]>([])
   const [pickerMode, setPickerMode] = useState<AttachmentPickerMode>("files")
   const [isPreparingAttachments, setIsPreparingAttachments] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [expandedMenuGroup, setExpandedMenuGroup] = useState<string | null>(null)
   const recognitionRef = useRef<BrowserSpeechRecognitionInstance | null>(null)
   const promptBeforeMicRef = useRef("")
   const micStateRef = useRef<"idle" | "recording" | "processing" | "error">("idle")
@@ -261,6 +262,24 @@ export function CosPromptComposer({
 
   async function handleMenuAction(action: CosPromptComposerMenuAction) {
     await onMenuAction?.(action)
+    setIsMenuOpen(false)
+    setExpandedMenuGroup(null)
+  }
+
+  async function handleNewConversation() {
+    await onNewConversation?.()
+    setIsMenuOpen(false)
+    setExpandedMenuGroup(null)
+  }
+
+  function toggleMenuGroup(groupId: string) {
+    setExpandedMenuGroup((current) => (current === groupId ? null : groupId))
+  }
+
+  async function handlePickerSelection(mode: AttachmentPickerMode) {
+    openPicker(mode)
+    setIsMenuOpen(false)
+    setExpandedMenuGroup(null)
   }
 
   return (
@@ -310,7 +329,13 @@ export function CosPromptComposer({
         ) : null}
 
         <div className="flex min-w-0 items-end gap-2 rounded-[1.2rem] border border-black/[0.06] bg-white/94 px-2 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:rounded-[1.35rem] sm:border-black/[0.07] sm:bg-white sm:shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
-          <DropdownMenu>
+          <DropdownMenu
+            open={isMenuOpen}
+            onOpenChange={(nextOpen) => {
+              setIsMenuOpen(nextOpen)
+              if (!nextOpen) setExpandedMenuGroup(null)
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
@@ -330,7 +355,7 @@ export function CosPromptComposer({
               {onNewConversation ? (
                 <>
                   <DropdownMenuItem
-                    onSelect={() => void onNewConversation()}
+                    onSelect={() => void handleNewConversation()}
                     className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
                   >
                     <MessageSquarePlus className="mr-2 size-4 text-[#7B8491]" />
@@ -339,52 +364,54 @@ export function CosPromptComposer({
                   <DropdownMenuSeparator className="my-1 bg-black/[0.06]" />
                 </>
               ) : null}
-
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                  <Paperclip className="mr-2 size-4 text-[#7B8491]" />
-                  Anexar
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-56 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-                  <DropdownMenuItem onSelect={() => openPicker("image")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                    <ImageIcon className="mr-2 size-4 text-[#7B8491]" />
-                    Imagem
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => openPicker("document")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                    <FileText className="mr-2 size-4 text-[#7B8491]" />
-                    Documento
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => openPicker("video")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                    <Video className="mr-2 size-4 text-[#7B8491]" />
-                    Vídeo
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => openPicker("files")} className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                    <Files className="mr-2 size-4 text-[#7B8491]" />
-                    Múltiplos arquivos
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <MenuGroup
+                icon={<Paperclip className="size-4 text-[#7B8491]" />}
+                label="Anexar"
+                isExpanded={expandedMenuGroup === "attach"}
+                onToggle={() => toggleMenuGroup("attach")}
+              >
+                <MenuLeaf
+                  icon={<ImageIcon className="size-4 text-[#7B8491]" />}
+                  label="Imagem"
+                  onSelect={() => void handlePickerSelection("image")}
+                />
+                <MenuLeaf
+                  icon={<FileText className="size-4 text-[#7B8491]" />}
+                  label="Documento"
+                  onSelect={() => void handlePickerSelection("document")}
+                />
+                <MenuLeaf
+                  icon={<Video className="size-4 text-[#7B8491]" />}
+                  label="Vídeo"
+                  onSelect={() => void handlePickerSelection("video")}
+                />
+                <MenuLeaf
+                  icon={<Files className="size-4 text-[#7B8491]" />}
+                  label="Múltiplos arquivos"
+                  onSelect={() => void handlePickerSelection("files")}
+                />
+              </MenuGroup>
 
               {menuGroups?.map((group) => (
-                <DropdownMenuSub key={group.id}>
-                  <DropdownMenuSubTrigger className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]">
-                    {group.id === "skills" ? <Sparkles className="mr-2 size-4 text-[#7B8491]" /> : null}
-                    {group.id === "queries" ? <Search className="mr-2 size-4 text-[#7B8491]" /> : null}
-                    {group.id === "help" ? <HelpCircle className="mr-2 size-4 text-[#7B8491]" /> : null}
-                    {group.label}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-                    {group.items.map((item) => (
-                      <DropdownMenuItem
-                        key={item.id}
-                        onSelect={() => void handleMenuAction(item)}
-                        className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
-                      >
-                        {item.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                <MenuGroup
+                  key={group.id}
+                  icon={
+                    group.id === "skills" ? <Sparkles className="size-4 text-[#7B8491]" /> :
+                    group.id === "queries" ? <Search className="size-4 text-[#7B8491]" /> :
+                    <HelpCircle className="size-4 text-[#7B8491]" />
+                  }
+                  label={group.label}
+                  isExpanded={expandedMenuGroup === group.id}
+                  onToggle={() => toggleMenuGroup(group.id)}
+                >
+                  {group.items.map((item) => (
+                    <MenuLeaf
+                      key={item.id}
+                      label={item.label}
+                      onSelect={() => void handleMenuAction(item)}
+                    />
+                  ))}
+                </MenuGroup>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -451,6 +478,57 @@ function AttachmentIcon({ category, className }: { category: CosComposerAttachme
   if (category === "video") return <Video className={className} />
   if (category === "document") return <FileText className={className} />
   return <Files className={className} />
+}
+
+function MenuGroup({
+  icon,
+  label,
+  isExpanded,
+  onToggle,
+  children,
+}: {
+  icon: ReactNode
+  label: string
+  isExpanded: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm text-[#050505] transition-colors hover:bg-[#f6f7f4]"
+        aria-expanded={isExpanded}
+      >
+        {icon}
+        <span className="flex-1">{label}</span>
+        {isExpanded ? <ChevronDown className="size-4 text-[#7B8491]" /> : <ChevronRight className="size-4 text-[#7B8491]" />}
+      </button>
+      {isExpanded ? <div className="mt-1 grid gap-1 pl-3">{children}</div> : null}
+    </div>
+  )
+}
+
+function MenuLeaf({
+  icon,
+  label,
+  onSelect,
+}: {
+  icon?: ReactNode
+  label: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm text-[#273444] transition-colors hover:bg-[#f6f7f4]"
+    >
+      {icon ? icon : <span className="size-4" />}
+      <span>{label}</span>
+    </button>
+  )
 }
 
 async function serializeAttachment(file: File, category: AttachmentPickerMode): Promise<CosComposerAttachment> {
