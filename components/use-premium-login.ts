@@ -13,87 +13,55 @@ import {
   type TrustedDeviceStatus,
 } from "@/lib/premium-auth-client"
 
-type PremiumLoginMode = "loading" | "password" | "pin" | "biometric"
+function getBiometricLabel() {
+  if (typeof navigator === "undefined") return "Entrar com biometria"
+
+  const userAgent = navigator.userAgent.toLowerCase()
+
+  if (userAgent.includes("iphone") || userAgent.includes("ipad") || userAgent.includes("mac os")) {
+    return "Entrar com Face ID / Touch ID"
+  }
+
+  if (userAgent.includes("windows")) {
+    return "Entrar com Windows Hello"
+  }
+
+  return "Entrar com biometria"
+}
 
 export function usePremiumLogin(onAuthenticated: (user: AuthenticatedUser) => void) {
-  const [mode, setMode] = useState<PremiumLoginMode>("loading")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [pin, setPin] = useState("")
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCheckingDevice, setIsCheckingDevice] = useState(true)
   const [trustedStatus, setTrustedStatus] = useState<TrustedDeviceStatus | null>(null)
-  const [ignoreTrustedDevice, setIgnoreTrustedDevice] = useState(false)
+  const [canUseBiometric, setCanUseBiometric] = useState(false)
 
   const trustedDevice = trustedStatus?.trusted ? trustedStatus.device ?? null : null
 
-  const resolveMode = useCallback(
-    async (status: TrustedDeviceStatus | null) => {
-      if (ignoreTrustedDevice || !status?.trusted || !status.device) {
-        setMode("password")
-        return
-      }
-
-      const canUseBiometric = status.device.biometricEnabled && supportsPlatformBiometrics() && (await canUsePlatformBiometrics())
-
-      if (canUseBiometric) {
-        setMode("biometric")
-        return
-      }
-
-      if (status.device.pinConfigured) {
-        setMode("pin")
-        return
-      }
-
-      setMode("password")
-    },
-    [ignoreTrustedDevice],
-  )
-
   const refreshTrustedStatus = useCallback(async () => {
-    setMode("loading")
-    setError("")
+    setIsCheckingDevice(true)
 
-    const status = await fetchTrustedDeviceStatus().catch(() => null)
-    setTrustedStatus(status)
-    await resolveMode(status)
-  }, [resolveMode])
+    try {
+      const status = await fetchTrustedDeviceStatus().catch(() => null)
+      setTrustedStatus(status)
+
+      if (status?.trusted && status.device?.biometricEnabled && supportsPlatformBiometrics()) {
+        const available = await canUsePlatformBiometrics()
+        setCanUseBiometric(available)
+      } else {
+        setCanUseBiometric(false)
+      }
+    } finally {
+      setIsCheckingDevice(false)
+    }
+  }, [])
 
   useEffect(() => {
     void refreshTrustedStatus()
   }, [refreshTrustedStatus])
-
-  const triggerBiometric = useCallback(async () => {
-    if (!trustedDevice?.biometricEnabled || ignoreTrustedDevice) return
-
-    setIsSubmitting(true)
-    setError("")
-
-    try {
-      const user = await loginWithTrustedBiometrics()
-      onAuthenticated(user)
-      return
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : "Nao foi possivel validar a biometria."
-
-      if (trustedDevice.pinConfigured) {
-        setMode("pin")
-        setError(message)
-      } else {
-        setMode("password")
-        setError(message)
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [ignoreTrustedDevice, onAuthenticated, trustedDevice])
-
-  useEffect(() => {
-    if (mode === "biometric") {
-      void triggerBiometric()
-    }
-  }, [mode, triggerBiometric])
 
   const submitPassword = useCallback(async () => {
     setIsSubmitting(true)
@@ -110,6 +78,11 @@ export function usePremiumLogin(onAuthenticated: (user: AuthenticatedUser) => vo
   }, [email, onAuthenticated, password])
 
   const submitPin = useCallback(async () => {
+    if (!trustedDevice?.pinConfigured) {
+      setError("Voce ainda nao configurou um PIN de acesso. Entre com e-mail e senha e configure em Conta -> Seguranca.")
+      return
+    }
+
     setIsSubmitting(true)
     setError("")
 
@@ -118,52 +91,52 @@ export function usePremiumLogin(onAuthenticated: (user: AuthenticatedUser) => vo
       onAuthenticated(user)
     } catch (caughtError) {
       const nextError = caughtError instanceof Error ? caughtError : new Error("Nao foi possivel validar o PIN.")
-      const fallback = "fallback" in nextError ? (nextError as Error & { fallback?: string }).fallback : undefined
-
-      if (fallback === "password") {
-        setMode("password")
-      }
-
       setError(nextError.message)
     } finally {
       setIsSubmitting(false)
     }
-  }, [onAuthenticated, pin])
+  }, [onAuthenticated, pin, trustedDevice])
 
-  const useAnotherAccount = useCallback(() => {
-    setIgnoreTrustedDevice(true)
-    setMode("password")
-    setPin("")
+  const submitBiometric = useCallback(async () => {
+    if (!trustedDevice?.biometricEnabled || !canUseBiometric) {
+      setError("A biometria nao esta disponivel neste dispositivo.")
+      return
+    }
+
+    setIsSubmitting(true)
     setError("")
-  }, [])
 
-  const heading = useMemo(() => {
-    if (mode === "pin" && trustedDevice) {
-      return `Bem-vindo de volta, ${trustedDevice.userName}.`
+    try {
+      const user = await loginWithTrustedBiometrics()
+      onAuthenticated(user)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel validar a biometria.")
+    } finally {
+      setIsSubmitting(false)
     }
+  }, [canUseBiometric, onAuthenticated, trustedDevice])
 
-    if (mode === "biometric" && trustedDevice) {
-      return `Autenticando ${trustedDevice.userName}...`
-    }
-
-    return "Entrar"
-  }, [mode, trustedDevice])
+  const biometricLabel = useMemo(() => getBiometricLabel(), [])
 
   return {
-    mode,
+    heading: "Entrar",
     email,
     password,
     pin,
     error,
-    heading,
     isSubmitting,
+    isCheckingDevice,
     trustedDevice,
+    pinAvailable: Boolean(trustedDevice?.pinConfigured),
+    biometricAvailable: Boolean(trustedDevice?.biometricEnabled && canUseBiometric),
+    biometricLabel,
     setEmail,
     setPassword,
     setPin,
+    setError,
     submitPassword,
     submitPin,
-    useAnotherAccount,
-    retryBiometric: triggerBiometric,
+    submitBiometric,
+    refreshTrustedStatus,
   }
 }

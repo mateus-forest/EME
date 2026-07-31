@@ -2,15 +2,19 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { Fingerprint, KeyRound, LockKeyhole } from "lucide-react"
+import { FormEvent, useMemo, useState, type ReactNode } from "react"
 
 import { AuthShell } from "@/components/auth-shell"
-import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
 import { usePremiumLogin } from "@/components/use-premium-login"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
+import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { cn } from "@/lib/utils"
+
+type LoginMethod = "password" | "pin"
 
 export function LoginPage() {
   const router = useRouter()
@@ -18,9 +22,9 @@ export function LoginPage() {
   const [recoveryEmail, setRecoveryEmail] = useState("")
   const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false)
   const [recoveryFeedback, setRecoveryFeedback] = useState("")
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
 
   const {
-    mode,
     heading,
     trustedDevice,
     email,
@@ -28,28 +32,40 @@ export function LoginPage() {
     pin,
     error,
     isSubmitting,
+    isCheckingDevice,
+    pinAvailable,
+    biometricAvailable,
+    biometricLabel,
     setEmail,
     setPassword,
     setPin,
     submitPassword,
     submitPin,
-    retryBiometric,
-    useAnotherAccount,
+    submitBiometric,
   } = usePremiumLogin((user: AuthenticatedUser) => {
-      const next =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("next")
-          : null
-      const fallbackRoute = getDefaultRouteByRole(user.role)
-      const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
+    const next = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null
+    const fallbackRoute = getDefaultRouteByRole(user.role)
+    const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
 
-      router.push(targetRoute)
-    })
+    router.push(targetRoute)
+  })
+
+  const subtitle = useMemo(() => {
+    if (loginMethod === "pin") {
+      if (trustedDevice?.userName) {
+        return `Use o PIN configurado para ${trustedDevice.userName} neste dispositivo confiavel.`
+      }
+
+      return "O acesso por PIN fica disponivel depois que voce configura a seguranca deste dispositivo."
+    }
+
+    return "Acesse sua conta para continuar publicando, gerenciando e acompanhando seus resultados."
+  }, [loginMethod, trustedDevice])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (mode === "pin") {
+    if (loginMethod === "pin") {
       await submitPin()
       return
     }
@@ -72,13 +88,7 @@ export function LoginPage() {
     <>
       <AuthShell
         title={heading}
-        subtitle={
-          mode === "pin" && trustedDevice
-            ? `Este dispositivo esta confiavel. Se a biometria nao responder, use seu PIN de 6 digitos para continuar.`
-            : mode === "biometric" && trustedDevice
-              ? `Tentando autenticar ${trustedDevice.userName} com biometria neste dispositivo confiavel.`
-              : "Acesse sua conta para continuar publicando, gerenciando e acompanhando seus resultados."
-        }
+        subtitle={subtitle}
         footer={
           <p className="text-sm text-[#6B7280]">
             Ainda nao tem conta?{" "}
@@ -88,125 +98,124 @@ export function LoginPage() {
           </p>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {mode === "loading" || mode === "biometric" ? (
-            <div className="rounded-[1.5rem] border border-[#E5E7EB] bg-[#F8FAF9] px-5 py-6 text-center">
-              <p className="text-sm font-medium text-[#111111]">
-                {mode === "biometric" ? "Aguardando biometria..." : "Preparando seu dispositivo..."}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                {mode === "biometric" && trustedDevice
-                  ? `Aprove o Face ID, Touch ID, Android biometrico ou Windows Hello para entrar como ${trustedDevice.userName}.`
-                  : "Estamos identificando se este dispositivo ja foi confiado anteriormente."}
-              </p>
-              {mode === "biometric" ? (
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void retryBiometric()}
-                    disabled={isSubmitting}
-                    className="h-11 rounded-xl border border-[#E5E7EB] bg-white px-4 text-[#111111] shadow-sm hover:bg-[#F8FAF9]"
-                  >
-                    Tentar novamente
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={useAnotherAccount}
-                    className="h-11 rounded-xl border border-[#E5E7EB] bg-white px-4 text-[#111111] shadow-sm hover:bg-[#F8FAF9]"
-                  >
-                    Usar email e senha
-                  </Button>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <MethodButton
+              active={loginMethod === "password"}
+              icon={<LockKeyhole className="size-4" />}
+              label="Email e senha"
+              onClick={() => setLoginMethod("password")}
+            />
+            <MethodButton
+              active={loginMethod === "pin"}
+              icon={<KeyRound className="size-4" />}
+              label="Entrar com PIN"
+              onClick={() => setLoginMethod("pin")}
+            />
+          </div>
+
+          {biometricAvailable ? (
+            <button
+              type="button"
+              onClick={() => void submitBiometric()}
+              disabled={isSubmitting || isCheckingDevice}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAF9] px-4 text-sm font-medium text-[#111111] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Fingerprint className="size-4 text-[#00A844]" />
+              {biometricLabel}
+            </button>
+          ) : null}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {loginMethod === "password" ? (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-[#374151]">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="voce@exemplo.com"
+                    required
+                    className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
+                  />
                 </div>
-              ) : null}
-            </div>
-          ) : mode === "pin" ? (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#374151]">PIN de 6 digitos</label>
-              <PinCodeInput value={pin} onChange={setPin} autoFocus />
-              <div className="flex items-center justify-between gap-2 text-sm">
-                <span className="text-[#6B7280]">{trustedDevice?.emailMasked}</span>
-                <button type="button" onClick={useAnotherAccount} className="font-medium text-[#00A844] transition-colors hover:text-[#00C853]">
-                  Usar outra conta
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-[#374151]">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="voce@exemplo.com"
-                  required
-                  className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
-                />
-              </div>
 
-              <div className="space-y-2">
-                <label htmlFor="senha" className="text-sm font-medium text-[#374151]">
-                  Senha
-                </label>
-                <Input
-                  id="senha"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Sua senha"
-                  required
-                  className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
-                />
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRecoveryEmail(email)
-                      setRecoveryFeedback("")
-                      setForgotPasswordOpen(true)
-                    }}
-                    className="text-sm font-medium text-[#00A844] transition-colors hover:text-[#00C853]"
-                  >
-                    Esqueci minha senha?
-                  </button>
+                <div className="space-y-2">
+                  <label htmlFor="senha" className="text-sm font-medium text-[#374151]">
+                    Senha
+                  </label>
+                  <Input
+                    id="senha"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Sua senha"
+                    required
+                    className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecoveryEmail(email)
+                        setRecoveryFeedback("")
+                        setForgotPasswordOpen(true)
+                      }}
+                      className="text-sm font-medium text-[#00A844] transition-colors hover:text-[#00C853]"
+                    >
+                      Esqueci minha senha?
+                    </button>
+                  </div>
                 </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-sm font-medium text-[#374151]">PIN de 6 digitos</label>
+                  {trustedDevice?.emailMasked ? <span className="text-xs text-[#6B7280]">{trustedDevice.emailMasked}</span> : null}
+                </div>
+                <PinCodeInput value={pin} onChange={setPin} autoFocus />
+                {!pinAvailable ? (
+                  <p className="text-xs leading-5 text-[#6B7280]">
+                    O PIN so funciona em um dispositivo confiavel com seguranca configurada.
+                  </p>
+                ) : null}
               </div>
-            </>
-          )}
+            )}
 
-          {error && (
-            <div className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+            {error ? (
+              <div className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
 
-          <Button
-            type="submit"
-            disabled={isSubmitting || mode === "loading" || mode === "biometric" || (mode === "pin" && pin.length < 6)}
-            className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
+            <Button
+              type="submit"
+              disabled={isSubmitting || (loginMethod === "pin" && pinAvailable && pin.length < 6)}
+              className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
+            >
+              {isSubmitting ? "Entrando..." : loginMethod === "pin" ? "Entrar com PIN" : "Entrar"}
+            </Button>
+          </form>
+
+          <div className="my-5 flex items-center gap-4">
+            <span className="h-px flex-1 bg-[#E5E7EB]" />
+            <span className="text-[12px] font-medium tracking-wide text-[#98A2B3]">ou</span>
+            <span className="h-px flex-1 bg-[#E5E7EB]" />
+          </div>
+
+          <button
+            type="button"
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#E5E7EB] bg-white text-[14px] font-medium text-[#111111] transition-colors hover:bg-[#F8FAF9]"
           >
-            {isSubmitting ? "Entrando..." : mode === "pin" ? "Entrar com PIN" : "Entrar"}
-          </Button>
-        </form>
-
-        <div className="my-5 flex items-center gap-4">
-          <span className="h-px flex-1 bg-[#E5E7EB]" />
-          <span className="text-[12px] font-medium tracking-wide text-[#98A2B3]">ou</span>
-          <span className="h-px flex-1 bg-[#E5E7EB]" />
+            <GoogleMark />
+            Continuar com Google
+          </button>
         </div>
-
-        <button
-          type="button"
-          className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#E5E7EB] bg-white text-[14px] font-medium text-[#111111] transition-colors hover:bg-[#F8FAF9]"
-        >
-          <GoogleMark />
-          Continuar com Google
-        </button>
       </AuthShell>
 
       <Dialog
@@ -243,11 +252,11 @@ export function LoginPage() {
                 />
               </div>
 
-              {recoveryFeedback && (
+              {recoveryFeedback ? (
                 <div className="rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#00A844]">
                   {recoveryFeedback}
                 </div>
-              )}
+              ) : null}
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
@@ -270,6 +279,34 @@ export function LoginPage() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function MethodButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors",
+        active
+          ? "border-[#00C853]/30 bg-[#00C853]/10 text-[#0c7c32]"
+          : "border-[#E5E7EB] bg-white text-[#4B5563] hover:bg-[#F8FAF9]",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 

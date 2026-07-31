@@ -1,15 +1,17 @@
 "use client"
 
-import { useEffect, useState, type FormEvent, type InputHTMLAttributes } from "react"
+import { useEffect, useMemo, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
-import { X } from "lucide-react"
+import { Fingerprint, KeyRound, LockKeyhole, X } from "lucide-react"
 
-import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
 import { usePremiumLogin } from "@/components/use-premium-login"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
+import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { cn } from "@/lib/utils"
 
 export type AuthMode = "login" | "signup"
+type LoginMethod = "password" | "pin"
 
 export function AuthPanel({
   mode,
@@ -30,20 +32,25 @@ export function AuthPanel({
   const [signupPassword, setSignupPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
+
   const {
-    mode: loginMode,
     trustedDevice,
     email,
     password,
     pin,
+    error: loginError,
     isSubmitting: isLoginSubmitting,
+    isCheckingDevice,
+    pinAvailable,
+    biometricAvailable,
+    biometricLabel,
     setEmail,
     setPassword,
     setPin,
     submitPassword,
     submitPin,
-    retryBiometric,
-    useAnotherAccount,
+    submitBiometric,
   } = usePremiumLogin((user: AuthenticatedUser) => {
     const next = searchParams.get("next")
     const fallbackRoute = getDefaultRouteByRole(user.role)
@@ -62,7 +69,23 @@ export function AuthPanel({
 
   useEffect(() => {
     setError("")
-  }, [mode])
+  }, [mode, loginMethod])
+
+  const helperText = useMemo(() => {
+    if (!isLogin) {
+      return "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliario."
+    }
+
+    if (loginMethod === "pin") {
+      if (trustedDevice?.userName) {
+        return `Use o PIN configurado para ${trustedDevice.userName} neste dispositivo confiavel.`
+      }
+
+      return "O acesso por PIN fica disponivel depois que voce configura a seguranca deste dispositivo."
+    }
+
+    return "Continue para acessar o seu Sistema Operacional."
+  }, [isLogin, loginMethod, trustedDevice])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -70,7 +93,7 @@ export function AuthPanel({
 
     if (isLogin) {
       try {
-        if (loginMode === "pin") {
+        if (loginMethod === "pin") {
           await submitPin()
         } else {
           await submitPassword()
@@ -113,10 +136,7 @@ export function AuthPanel({
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as
-        | { user: AuthenticatedUser }
-        | { error?: string }
-        | null
+      const data = (await response.json().catch(() => null)) as { user: AuthenticatedUser } | { error?: string } | null
 
       if (!response.ok || !data || !("user" in data)) {
         setError(data && "error" in data && data.error ? data.error : "Nao foi possivel criar sua conta agora.")
@@ -178,131 +198,143 @@ export function AuthPanel({
                     {isLogin ? "Bem-vindo de volta." : "Comece a vender mais."}
                   </h2>
                   <p className="mt-2 text-pretty text-[13px] leading-relaxed text-foreground/70 sm:mt-2.5 sm:text-[14px]">
-                    {isLogin
-                      ? "Continue para acessar o seu Sistema Operacional."
-                      : "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliario."}
+                    {helperText}
                   </p>
                 </div>
 
                 <form className="mt-6 flex flex-col gap-3 sm:mt-7" onSubmit={handleSubmit}>
-                  {!isLogin && (
-                    <Field
-                      label="Nome"
-                      type="text"
-                      autoComplete="name"
-                      placeholder="Seu nome completo"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                    />
-                  )}
-
-                  {!isLogin && (
-                    <Field
-                      label="CRECI"
-                      type="text"
-                      autoComplete="off"
-                      placeholder="000000-F"
-                      value={creci}
-                      onChange={(event) => setCreci(event.target.value)}
-                    />
-                  )}
-
-                  {isLogin && (loginMode === "loading" || loginMode === "biometric") ? (
-                    <div className="rounded-[1.5rem] border border-foreground/10 bg-[#F8FAF9] px-4 py-5 text-center">
-                      <p className="text-sm font-medium text-foreground">
-                        {loginMode === "biometric" ? "Aguardando biometria..." : "Preparando seu dispositivo..."}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-foreground/65">
-                        {loginMode === "biometric" && trustedDevice
-                          ? `Aprove a biometria para entrar como ${trustedDevice.userName}.`
-                          : "Estamos verificando se este dispositivo pode acessar sua conta de forma premium."}
-                      </p>
-                      {loginMode === "biometric" ? (
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void retryBiometric()}
-                            className="rounded-full border border-foreground/12 bg-white px-4 py-2 text-[13px] font-medium text-foreground/85"
-                          >
-                            Tentar novamente
-                          </button>
-                          <button
-                            type="button"
-                            onClick={useAnotherAccount}
-                            className="rounded-full border border-foreground/12 bg-white px-4 py-2 text-[13px] font-medium text-foreground/85"
-                          >
-                            Usar email e senha
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : isLogin && loginMode === "pin" ? (
-                    <div className="grid gap-1.5">
-                      <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN de 6 digitos</span>
-                      <PinCodeInput value={pin} onChange={setPin} autoFocus />
-                      <div className="flex items-center justify-between gap-2 text-[12.5px]">
-                        <span className="text-foreground/55">{trustedDevice?.emailMasked}</span>
-                        <button type="button" onClick={useAnotherAccount} className="font-medium text-eme transition-colors hover:text-eme-dark">
-                          Usar outra conta
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+                  {!isLogin ? (
                     <>
+                      <Field
+                        label="Nome"
+                        type="text"
+                        autoComplete="name"
+                        placeholder="Seu nome completo"
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                      />
+                      <Field
+                        label="CRECI"
+                        type="text"
+                        autoComplete="off"
+                        placeholder="000000-F"
+                        value={creci}
+                        onChange={(event) => setCreci(event.target.value)}
+                      />
                       <Field
                         label="Email"
                         type="email"
                         autoComplete="email"
                         placeholder="voce@email.com"
-                        value={isLogin ? email : signupEmail}
-                        onChange={(event) => (isLogin ? setEmail(event.target.value) : setSignupEmail(event.target.value))}
+                        value={signupEmail}
+                        onChange={(event) => setSignupEmail(event.target.value)}
                       />
                       <Field
                         label="Senha"
                         type="password"
-                        autoComplete={isLogin ? "current-password" : "new-password"}
+                        autoComplete="new-password"
                         placeholder="........"
-                        value={isLogin ? password : signupPassword}
-                        onChange={(event) => (isLogin ? setPassword(event.target.value) : setSignupPassword(event.target.value))}
+                        value={signupPassword}
+                        onChange={(event) => setSignupPassword(event.target.value)}
                       />
+                      <Field
+                        label="Confirmar senha"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="........"
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <MethodButton
+                          active={loginMethod === "password"}
+                          icon={<LockKeyhole className="size-4" />}
+                          label="Email e senha"
+                          onClick={() => setLoginMethod("password")}
+                        />
+                        <MethodButton
+                          active={loginMethod === "pin"}
+                          icon={<KeyRound className="size-4" />}
+                          label="Entrar com PIN"
+                          onClick={() => setLoginMethod("pin")}
+                        />
+                      </div>
+
+                      {biometricAvailable ? (
+                        <button
+                          type="button"
+                          onClick={() => void submitBiometric()}
+                          disabled={isLoginSubmitting || isCheckingDevice}
+                          className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-foreground/12 bg-[#F8FAF9] px-4 text-[13px] font-medium text-foreground/85 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Fingerprint className="size-4 text-eme" />
+                          {biometricLabel}
+                        </button>
+                      ) : null}
+
+                      {loginMethod === "password" ? (
+                        <>
+                          <Field
+                            label="Email"
+                            type="email"
+                            autoComplete="email"
+                            placeholder="voce@email.com"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                          />
+                          <Field
+                            label="Senha"
+                            type="password"
+                            autoComplete="current-password"
+                            placeholder="........"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                          />
+                        </>
+                      ) : (
+                        <div className="grid gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN de 6 digitos</span>
+                            {trustedDevice?.emailMasked ? <span className="text-[12px] text-foreground/50">{trustedDevice.emailMasked}</span> : null}
+                          </div>
+                          <PinCodeInput value={pin} onChange={setPin} autoFocus />
+                          {!pinAvailable ? (
+                            <p className="text-[12px] leading-5 text-foreground/55">
+                              O PIN so funciona em um dispositivo confiavel com seguranca configurada.
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
                     </>
                   )}
 
-                  {!isLogin && (
-                    <Field
-                      label="Confirmar senha"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="........"
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                    />
-                  )}
-
-                  {error ? (
+                  {(error || loginError) ? (
                     <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-                      {error}
+                      {error || loginError}
                     </div>
                   ) : null}
 
                   <button
                     type="submit"
-                    disabled={isSubmitting || isLoginSubmitting || (isLogin && (loginMode === "loading" || loginMode === "biometric"))}
-                    className="eme-gradient mt-2 w-full rounded-full py-3 text-[14px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-12px_rgba(28,120,60,0.65)] transition-[transform,filter] duration-200 ease-out hover:-translate-y-0.5"
+                    disabled={isSubmitting || isLoginSubmitting || (isLogin && loginMethod === "pin" && pinAvailable && pin.length < 6)}
+                    className="eme-gradient mt-2 w-full rounded-full py-3 text-[14px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-12px_rgba(28,120,60,0.65)] transition-[transform,filter] duration-200 ease-out hover:-translate-y-0.5 disabled:opacity-70"
                   >
                     {isSubmitting || isLoginSubmitting
                       ? isLogin
                         ? "Entrando..."
                         : "Criando conta..."
                       : isLogin
-                        ? loginMode === "pin"
+                        ? loginMethod === "pin"
                           ? "Entrar com PIN"
                           : "Entrar"
                         : "Criar conta"}
                   </button>
                 </form>
 
-                {isLogin && (
+                {isLogin ? (
                   <>
                     <div className="my-5 flex items-center gap-4">
                       <span className="h-px flex-1 bg-foreground/10" />
@@ -317,7 +349,7 @@ export function AuthPanel({
                       Continuar com Google
                     </button>
                   </>
-                )}
+                ) : null}
 
                 <p className="mt-5 text-center text-[13px] text-foreground/65 sm:mt-6 sm:text-[13.5px]">
                   {isLogin ? "Ainda nao possui uma conta? " : "Ja possui uma conta? "}
@@ -335,6 +367,34 @@ export function AuthPanel({
         </motion.div>
       </div>
     </div>
+  )
+}
+
+function MethodButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex h-11 items-center justify-center gap-2 rounded-2xl border px-4 text-[13px] font-medium transition-colors",
+        active
+          ? "border-eme/20 bg-eme/10 text-eme-dark"
+          : "border-foreground/12 bg-white text-foreground/70 hover:bg-[#F8FAF9]",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 
