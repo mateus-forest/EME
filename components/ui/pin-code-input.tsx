@@ -51,7 +51,7 @@ export function PinCodeInput({
   }
 
   return (
-    <div className={cn("flex items-center justify-center gap-2 sm:gap-3", className)} role="group" aria-label={ariaLabel}>
+    <div className={cn("flex items-center justify-center gap-2.5 sm:gap-3.5", className)} role="group" aria-label={ariaLabel}>
       {digits.map((digit, index) => (
         <input
           key={index}
@@ -118,7 +118,7 @@ export function PinCodeInput({
             event.preventDefault()
           }}
           className={cn(
-            "h-12 w-10 rounded-2xl border border-black/[0.08] bg-white text-center text-lg font-semibold tracking-[0.08em] text-[#111111] outline-none transition-[border-color,box-shadow] focus:border-[#00C853] focus:shadow-[0_0_0_3px_rgba(0,200,83,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-14 sm:w-12 sm:text-xl",
+            "h-14 w-11 rounded-[1.35rem] border border-black/[0.08] bg-[linear-gradient(180deg,#ffffff_0%,#fbfbfb_100%)] text-center text-[1.1rem] font-semibold tracking-[0.1em] text-[#111111] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.35)] outline-none transition-[border-color,box-shadow,transform] duration-200 focus:-translate-y-0.5 focus:border-[#00C853] focus:shadow-[0_0_0_3px_rgba(0,200,83,0.14),0_18px_36px_-22px_rgba(0,0,0,0.28)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-[3.75rem] sm:w-[3.15rem] sm:text-[1.22rem]",
             inputClassName,
           )}
         />

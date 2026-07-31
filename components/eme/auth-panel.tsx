@@ -76,16 +76,8 @@ export function AuthPanel({
       return "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliario."
     }
 
-    if (loginMethod === "pin") {
-      if (trustedDevice?.userName) {
-        return `Use o PIN configurado para ${trustedDevice.userName} neste dispositivo confiavel.`
-      }
-
-      return "O acesso por PIN fica disponivel depois que voce configura a seguranca deste dispositivo."
-    }
-
     return "Continue para acessar o seu Sistema Operacional."
-  }, [isLogin, loginMethod, trustedDevice])
+  }, [isLogin])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -263,18 +255,6 @@ export function AuthPanel({
                         />
                       </div>
 
-                      {biometricAvailable ? (
-                        <button
-                          type="button"
-                          onClick={() => void submitBiometric()}
-                          disabled={isLoginSubmitting || isCheckingDevice}
-                          className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-foreground/12 bg-[#F8FAF9] px-4 text-[13px] font-medium text-foreground/85 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Fingerprint className="size-4 text-eme" />
-                          {biometricLabel}
-                        </button>
-                      ) : null}
-
                       {loginMethod === "password" ? (
                         <>
                           <Field
@@ -295,17 +275,12 @@ export function AuthPanel({
                           />
                         </>
                       ) : (
-                        <div className="grid gap-1.5">
+                        <div className="grid gap-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN de 6 digitos</span>
                             {trustedDevice?.emailMasked ? <span className="text-[12px] text-foreground/50">{trustedDevice.emailMasked}</span> : null}
                           </div>
                           <PinCodeInput value={pin} onChange={setPin} autoFocus />
-                          {!pinAvailable ? (
-                            <p className="text-[12px] leading-5 text-foreground/55">
-                              O PIN so funciona em um dispositivo confiavel com seguranca configurada.
-                            </p>
-                          ) : null}
                         </div>
                       )}
                     </>
@@ -327,11 +302,21 @@ export function AuthPanel({
                         ? "Entrando..."
                         : "Criando conta..."
                       : isLogin
-                        ? loginMethod === "pin"
-                          ? "Entrar com PIN"
-                          : "Entrar"
+                        ? "Entrar"
                         : "Criar conta"}
                   </button>
+
+                  {isLogin && loginMethod === "pin" && biometricAvailable ? (
+                    <button
+                      type="button"
+                      onClick={() => void submitBiometric()}
+                      disabled={isLoginSubmitting || isCheckingDevice}
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-foreground/12 bg-[#F8FAF9] px-4 text-[13px] font-medium text-foreground/85 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Fingerprint className="size-4 text-eme" />
+                      {biometricLabel}
+                    </button>
+                  ) : null}
                 </form>
 
                 {isLogin ? (

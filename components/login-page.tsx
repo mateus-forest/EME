@@ -51,16 +51,8 @@ export function LoginPage() {
   })
 
   const subtitle = useMemo(() => {
-    if (loginMethod === "pin") {
-      if (trustedDevice?.userName) {
-        return `Use o PIN configurado para ${trustedDevice.userName} neste dispositivo confiavel.`
-      }
-
-      return "O acesso por PIN fica disponivel depois que voce configura a seguranca deste dispositivo."
-    }
-
     return "Acesse sua conta para continuar publicando, gerenciando e acompanhando seus resultados."
-  }, [loginMethod, trustedDevice])
+  }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -114,18 +106,6 @@ export function LoginPage() {
             />
           </div>
 
-          {biometricAvailable ? (
-            <button
-              type="button"
-              onClick={() => void submitBiometric()}
-              disabled={isSubmitting || isCheckingDevice}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAF9] px-4 text-sm font-medium text-[#111111] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Fingerprint className="size-4 text-[#00A844]" />
-              {biometricLabel}
-            </button>
-          ) : null}
-
           <form onSubmit={handleSubmit} className="space-y-5">
             {loginMethod === "password" ? (
               <>
@@ -173,17 +153,12 @@ export function LoginPage() {
                 </div>
               </>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-sm font-medium text-[#374151]">PIN de 6 digitos</label>
                   {trustedDevice?.emailMasked ? <span className="text-xs text-[#6B7280]">{trustedDevice.emailMasked}</span> : null}
                 </div>
                 <PinCodeInput value={pin} onChange={setPin} autoFocus />
-                {!pinAvailable ? (
-                  <p className="text-xs leading-5 text-[#6B7280]">
-                    O PIN so funciona em um dispositivo confiavel com seguranca configurada.
-                  </p>
-                ) : null}
               </div>
             )}
 
@@ -198,8 +173,20 @@ export function LoginPage() {
               disabled={isSubmitting || (loginMethod === "pin" && pinAvailable && pin.length < 6)}
               className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
             >
-              {isSubmitting ? "Entrando..." : loginMethod === "pin" ? "Entrar com PIN" : "Entrar"}
+              {isSubmitting ? "Entrando..." : "Entrar"}
             </Button>
+
+            {loginMethod === "pin" && biometricAvailable ? (
+              <button
+                type="button"
+                onClick={() => void submitBiometric()}
+                disabled={isSubmitting || isCheckingDevice}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAF9] px-4 text-sm font-medium text-[#111111] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Fingerprint className="size-4 text-[#00A844]" />
+                {biometricLabel}
+              </button>
+            ) : null}
           </form>
 
           <div className="my-5 flex items-center gap-4">
