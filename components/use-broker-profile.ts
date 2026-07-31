@@ -15,6 +15,7 @@ export type BrokerProfile = {
   whatsApp: string
   photoUrl: string
   description: string
+  pinConfigured: boolean
 }
 
 const PROFILE_UPDATED_EVENT = "eme-broker-profile-updated"
@@ -30,6 +31,7 @@ const defaultProfile: BrokerProfile = {
   whatsApp: "",
   photoUrl: "",
   description: "",
+  pinConfigured: false,
 }
 
 function normalizeProfile(payload?: Partial<BrokerProfile>) {
@@ -66,6 +68,7 @@ export function useBrokerProfile() {
               photoUrl: string
               creci: string
               description: string
+              pinConfigured?: boolean
             }
           }
         | null
@@ -91,6 +94,7 @@ export function useBrokerProfile() {
           whatsApp: data.profile.phone,
           photoUrl: data.profile.photoUrl,
           description: data.profile.description,
+          pinConfigured: Boolean(data.profile.pinConfigured),
         }),
       )
     } finally {
@@ -123,6 +127,9 @@ export function useBrokerProfile() {
     updates: Partial<BrokerProfile> & {
       currentPassword?: string
       newPassword?: string
+      pinAction?: "set" | "remove"
+      currentPin?: string
+      newPin?: string
     },
   ) {
     const response = await fetch("/api/brokers/me", {
@@ -141,6 +148,9 @@ export function useBrokerProfile() {
         photoUrl: updates.photoUrl,
         currentPassword: updates.currentPassword,
         newPassword: updates.newPassword,
+        pinAction: updates.pinAction,
+        currentPin: updates.currentPin,
+        newPin: updates.newPin,
       }),
     })
 
@@ -158,6 +168,7 @@ export function useBrokerProfile() {
             creci: string
             description: string
             photoUrl: string
+            pinConfigured?: boolean
           }
         }
       | null
@@ -177,6 +188,7 @@ export function useBrokerProfile() {
       creci: data.profile.creci,
       description: data.profile.description,
       photoUrl: data.profile.photoUrl,
+      pinConfigured: Boolean(data.profile.pinConfigured),
     })
 
     setProfileState(nextProfile)

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
 import { authUserInclude } from "@/lib/auth-route"
+import { comparePin, isValidPin, normalizePin } from "@/lib/pin-auth"
 import { prisma } from "@/lib/prisma"
 import { buildSessionProfile } from "@/lib/session-profile"
 
@@ -15,17 +16,59 @@ export async function POST(request: NextRequest) {
     const method = typeof body?.method === "string" ? body.method : "password"
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const password = typeof body?.password === "string" ? body.password : ""
-    const pin = typeof body?.pin === "string" ? body.pin.trim() : ""
+    const pin = normalizePin(body?.pin)
 
     if (method === "pin") {
       if (!pin) {
         return NextResponse.json({ error: "Informe o PIN para continuar." }, { status: 400 })
       }
 
-      return NextResponse.json(
-        { error: "Entrar com PIN ainda nao esta disponivel. Configure esse acesso futuramente em Conta > Seguranca." },
-        { status: 501 },
-      )
+      if (!isValidPin(pin)) {
+        return NextResponse.json({ error: "Informe um PIN valido com 4 digitos." }, { status: 400 })
+      }
+
+      const usersWithPin = await prisma.user.findMany({
+        where: {
+          pinHash: {
+            not: null,
+          },
+        },
+        select: {
+          id: true,
+          pinHash: true,
+        },
+      })
+
+      const matchingUserIds: string[] = []
+      for (const candidate of usersWithPin) {
+        if (await comparePin(pin, candidate.pinHash)) {
+          matchingUserIds.push(candidate.id)
+        }
+      }
+
+      if (matchingUserIds.length !== 1) {
+        return NextResponse.json({ error: "PIN invalido." }, { status: 401 })
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: matchingUserIds[0] },
+        include: authUserInclude,
+      })
+
+      if (!user) {
+        return NextResponse.json({ error: "PIN invalido." }, { status: 401 })
+      }
+
+      const token = await createAuthToken({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      })
+
+      const response = NextResponse.json({ user: buildSessionProfile(user) })
+      response.headers.set("Cache-Control", "no-store, max-age=0")
+      setAuthCookie(response, token)
+      return response
     }
 
     if (!email || !password) {

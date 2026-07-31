@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "motion/react"
 import { X } from "lucide-react"
 
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { PinCodeInput } from "@/components/ui/pin-code-input"
+import { PIN_LENGTH, normalizePin } from "@/lib/pin-auth"
 
 export type AuthMode = "login" | "signup"
 type LoginMethod = "password" | "pin"
@@ -55,11 +57,11 @@ export function AuthPanel({
         method: loginMethod,
         email: email.trim().toLowerCase(),
         password,
-        pin: pin.trim(),
+        pin: normalizePin(pin),
       }
 
       if (loginMethod === "pin") {
-        if (!payload.pin) {
+        if (payload.pin.length !== PIN_LENGTH) {
           setError("PIN obrigatorio.")
           setIsSubmitting(false)
           return
@@ -265,18 +267,8 @@ export function AuthPanel({
 
                   {isLogin && loginMethod === "pin" ? (
                     <div className="grid gap-1.5">
-                      <Field
-                        label="PIN"
-                        type="password"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        placeholder="Digite seu PIN"
-                        value={pin}
-                        onChange={(event) => setPin(event.target.value)}
-                      />
-                      <p className="text-[12.5px] leading-6 text-foreground/55">
-                        Fluxo preparado para futura configuracao em Conta &gt; Seguranca.
-                      </p>
+                      <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">PIN</span>
+                      <PinCodeInput value={pin} onChange={setPin} autoFocus />
                     </div>
                   ) : (
                     <>
@@ -318,7 +310,7 @@ export function AuthPanel({
 
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (isLogin && loginMethod === "pin" && normalizePin(pin).length !== PIN_LENGTH)}
                     className="eme-gradient mt-2 w-full rounded-full py-3 text-[14px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-12px_rgba(28,120,60,0.65)] transition-[transform,filter] duration-200 ease-out hover:-translate-y-0.5"
                   >
                     {isSubmitting

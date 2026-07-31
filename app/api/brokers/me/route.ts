@@ -1,21 +1,13 @@
-import {
-  UserRole } from "@/lib/prisma-enums"
-import {
-  compare,
-  hash } from "bcryptjs"
-import { NextRequest,
-  NextResponse } from "next/server"
-import type { Broker } from "@/lib/prisma-model-types"
+import { compare, hash } from "bcryptjs"
+import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { comparePin, hashPin, isValidPin, normalizePin } from "@/lib/pin-auth"
+import type { Broker, User } from "@/lib/prisma-model-types"
+import { UserRole } from "@/lib/prisma-enums"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
-type BrokerProfileUser = {
-  id: string
-  name: string
-  email: string
-  phone: string | null
-  photoUrl: string | null
+type BrokerProfileUser = Pick<User, "id" | "name" | "email" | "phone" | "photoUrl" | "passwordHash" | "pinHash"> & {
   broker:
     | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description"> & {
         agency?: {
@@ -43,6 +35,7 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     accountType: user.broker.agencyId ? "BROKER_AGENCY" : "BROKER_INDEPENDENT",
     creci: user.broker.creci ?? "",
     description: user.broker.description ?? "",
+    pinConfigured: Boolean(user.pinHash),
   }
 }
 
@@ -52,7 +45,7 @@ export async function GET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -60,7 +53,7 @@ export async function GET() {
 
   const profile = buildBrokerProfile(user)
   if (!profile) {
-    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
   }
 
   const response = NextResponse.json({ profile })
@@ -72,17 +65,17 @@ export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
 
   if (!user.broker) {
-    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
+    return NextResponse.json({ error: "Corretor nao encontrado para esta conta." }, { status: 404 })
   }
 
-  const broker = user.broker
+  const brokerId = user.broker.id
 
   try {
     const body = await request.json().catch(() => null)
@@ -94,33 +87,80 @@ export async function PATCH(request: NextRequest) {
     const photoUrl = typeof body?.photoUrl === "string" ? body.photoUrl.trim() : ""
     const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : ""
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : ""
+    const pinAction = body?.pinAction === "set" || body?.pinAction === "remove" ? body.pinAction : null
+    const currentPin = normalizePin(body?.currentPin)
+    const newPin = normalizePin(body?.newPin)
 
     if (!name || !email || !phone || !creci) {
-      return NextResponse.json({ error: "Nome, email, telefone e CRECI são obrigatórios." }, { status: 400 })
+      return NextResponse.json({ error: "Nome, email, telefone e CRECI sao obrigatorios." }, { status: 400 })
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Informe um email válido." }, { status: 400 })
+      return NextResponse.json({ error: "Informe um email valido." }, { status: 400 })
     }
 
-    const isChangingPassword = Boolean(currentPassword || newPassword)
+    const needsPasswordConfirmation = Boolean(currentPassword || newPassword || pinAction)
     let passwordHash: string | undefined
+    let pinHash: string | null | undefined
 
-    if (isChangingPassword) {
-      if (!currentPassword || !newPassword) {
-        return NextResponse.json({ error: "Informe a senha atual e a nova senha." }, { status: 400 })
+    if (needsPasswordConfirmation) {
+      if (!currentPassword) {
+        return NextResponse.json({ error: "Informe sua senha atual para confirmar esta alteracao." }, { status: 400 })
       }
 
       if (!user.passwordHash) {
-        return NextResponse.json({ error: "Não foi possível validar a senha atual." }, { status: 400 })
+        return NextResponse.json({ error: "Nao foi possivel validar a senha atual." }, { status: 400 })
       }
 
       const passwordMatches = await compare(currentPassword, user.passwordHash)
       if (!passwordMatches) {
-        return NextResponse.json({ error: "A senha atual está incorreta." }, { status: 400 })
+        return NextResponse.json({ error: "A senha atual esta incorreta." }, { status: 400 })
+      }
+    }
+
+    if (newPassword) {
+      passwordHash = await hash(newPassword, 10)
+    }
+
+    if (pinAction === "set") {
+      if (!isValidPin(newPin)) {
+        return NextResponse.json({ error: "Informe um PIN valido com 4 digitos." }, { status: 400 })
       }
 
-      passwordHash = await hash(newPassword, 10)
+      const usersWithPin = await prisma.user.findMany({
+        where: {
+          id: { not: user.id },
+          pinHash: { not: null },
+        },
+        select: {
+          pinHash: true,
+        },
+      })
+
+      for (const candidate of usersWithPin) {
+        if (await comparePin(newPin, candidate.pinHash)) {
+          return NextResponse.json({ error: "Este PIN ja esta em uso. Escolha outro codigo de 4 digitos." }, { status: 400 })
+        }
+      }
+
+      pinHash = await hashPin(newPin)
+    }
+
+    if (pinAction === "remove") {
+      if (!user.pinHash) {
+        return NextResponse.json({ error: "Nenhum PIN esta configurado para esta conta." }, { status: 400 })
+      }
+
+      if (!isValidPin(currentPin)) {
+        return NextResponse.json({ error: "Informe o PIN atual para remover este acesso." }, { status: 400 })
+      }
+
+      const currentPinMatches = await comparePin(currentPin, user.pinHash)
+      if (!currentPinMatches) {
+        return NextResponse.json({ error: "O PIN atual esta incorreto." }, { status: 400 })
+      }
+
+      pinHash = null
     }
 
     const emailOwner = await prisma.user.findFirst({
@@ -132,7 +172,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     if (emailOwner) {
-      return NextResponse.json({ error: "Já existe uma conta com este email." }, { status: 400 })
+      return NextResponse.json({ error: "Ja existe uma conta com este email." }, { status: 400 })
     }
 
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
@@ -144,6 +184,7 @@ export async function PATCH(request: NextRequest) {
           phone,
           photoUrl: photoUrl || null,
           ...(passwordHash ? { passwordHash } : {}),
+          ...(pinHash !== undefined ? { pinHash } : {}),
         },
         include: {
           broker: true,
@@ -152,7 +193,7 @@ export async function PATCH(request: NextRequest) {
       })
 
       await tx.broker.update({
-        where: { id: broker.id },
+        where: { id: brokerId },
         data: {
           phone,
           creci,
@@ -170,7 +211,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     const response = NextResponse.json({
-      profile: buildBrokerProfile(updated),
+      profile: buildBrokerProfile(updated as BrokerProfileUser | null),
     })
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
@@ -181,7 +222,7 @@ export async function PATCH(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de conta está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O servico de conta esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
     }

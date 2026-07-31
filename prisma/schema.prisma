@@ -119,6 +119,7 @@ model User {
   name                 String
   email                String                        @unique
   passwordHash         String
+  pinHash              String?
   role                 UserRole
   phone                String?
   photoUrl             String?

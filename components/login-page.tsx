@@ -9,6 +9,8 @@ import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } f
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { PinCodeInput } from "@/components/ui/pin-code-input"
+import { PIN_LENGTH, normalizePin } from "@/lib/pin-auth"
 
 type LoginMethod = "password" | "pin"
 
@@ -34,11 +36,11 @@ export function LoginPage() {
       method: loginMethod,
       email: email.trim().toLowerCase(),
       password,
-      pin: pin.trim(),
+      pin: normalizePin(pin),
     }
 
     if (loginMethod === "pin") {
-      if (!payload.pin) {
+      if (payload.pin.length !== PIN_LENGTH) {
         setLoginError("Informe seu PIN.")
         setIsSubmitting(false)
         return
@@ -143,22 +145,14 @@ export function LoginPage() {
 
           {loginMethod === "pin" ? (
             <div className="space-y-2">
-              <label htmlFor="pin" className="text-sm font-medium text-[#374151]">
+              <label className="text-sm font-medium text-[#374151]">
                 PIN
               </label>
-              <Input
-                id="pin"
-                type="password"
-                inputMode="numeric"
+              <PinCodeInput
                 value={pin}
-                onChange={(event) => setPin(event.target.value)}
-                placeholder="Digite seu PIN"
-                required
-                className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
+                onChange={setPin}
+                autoFocus
               />
-              <p className="text-sm leading-6 text-[#6B7280]">
-                Fluxo preparado para futura configuracao em Conta &gt; Seguranca.
-              </p>
             </div>
           ) : (
             <>
@@ -215,6 +209,7 @@ export function LoginPage() {
 
           <Button
             type="submit"
+            disabled={isSubmitting || (loginMethod === "pin" && normalizePin(pin).length !== PIN_LENGTH)}
             className="h-12 w-full rounded-xl bg-[#00C853] text-base font-semibold text-black shadow-lg shadow-[#00C853]/12 hover:bg-[#00E676]"
           >
             {isSubmitting ? "Entrando..." : loginMethod === "pin" ? "Entrar com PIN" : "Entrar"}

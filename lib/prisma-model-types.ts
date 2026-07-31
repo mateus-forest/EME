@@ -16,6 +16,7 @@ export type User = {
   name: string
   email: string
   passwordHash: string
+  pinHash: string | null
   role: UserRole
   phone: string | null
   photoUrl: string | null
