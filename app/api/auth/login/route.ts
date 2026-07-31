@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
-import { authUserInclude } from "@/lib/auth-route"
+import { authUserSelect, isPrismaSchemaMismatch } from "@/lib/auth-route"
 import { comparePin, isValidPin, normalizePin } from "@/lib/pin-auth"
 import { prisma } from "@/lib/prisma"
 import { buildSessionProfile } from "@/lib/session-profile"
@@ -27,17 +27,30 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Informe um PIN valido com 4 digitos." }, { status: 400 })
       }
 
-      const usersWithPin = await prisma.user.findMany({
-        where: {
-          pinHash: {
-            not: null,
+      let usersWithPin: Array<{ id: string; pinHash: string | null }> = []
+
+      try {
+        usersWithPin = await prisma.user.findMany({
+          where: {
+            pinHash: {
+              not: null,
+            },
           },
-        },
-        select: {
-          id: true,
-          pinHash: true,
-        },
-      })
+          select: {
+            id: true,
+            pinHash: true,
+          },
+        })
+      } catch (error) {
+        if (isPrismaSchemaMismatch(error)) {
+          return NextResponse.json(
+            { error: "O login por PIN ainda nao esta disponivel nesta base. Aplique a migration pendente e tente novamente." },
+            { status: 503 },
+          )
+        }
+
+        throw error
+      }
 
       const matchingUserIds: string[] = []
       for (const candidate of usersWithPin) {
@@ -52,7 +65,7 @@ export async function POST(request: NextRequest) {
 
       const user = await prisma.user.findUnique({
         where: { id: matchingUserIds[0] },
-        include: authUserInclude,
+        select: authUserSelect,
       })
 
       if (!user) {
@@ -77,7 +90,10 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: authUserInclude,
+      select: {
+        ...authUserSelect,
+        passwordHash: true,
+      },
     })
 
     if (!user) {

@@ -1,0 +1,2 @@
+-- No-op migration to preserve Prisma migration history integrity.
+-- The related schema changes were not kept in the application code.

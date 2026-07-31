@@ -1,13 +1,14 @@
 import { compare, hash } from "bcryptjs"
 import { NextRequest, NextResponse } from "next/server"
 
-import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { ensureRole, getAuthenticatedUserWithSensitiveFields, isPrismaSchemaMismatch, isPrismaUnavailable } from "@/lib/auth-route"
 import { comparePin, hashPin, isValidPin, normalizePin } from "@/lib/pin-auth"
 import type { Broker, User } from "@/lib/prisma-model-types"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 type BrokerProfileUser = Pick<User, "id" | "name" | "email" | "phone" | "photoUrl" | "passwordHash" | "pinHash"> & {
+  pinSchemaAvailable?: boolean
   broker:
     | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description"> & {
         agency?: {
@@ -42,7 +43,7 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const { error, user } = await getAuthenticatedUser()
+  const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
@@ -62,7 +63,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const { error, user } = await getAuthenticatedUser()
+  const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
@@ -123,19 +124,39 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (pinAction === "set") {
+      if (user.pinSchemaAvailable === false) {
+        return NextResponse.json(
+          { error: "O PIN ainda nao pode ser configurado nesta base porque a migration necessaria nao foi aplicada." },
+          { status: 503 },
+        )
+      }
+
       if (!isValidPin(newPin)) {
         return NextResponse.json({ error: "Informe um PIN valido com 4 digitos." }, { status: 400 })
       }
 
-      const usersWithPin = await prisma.user.findMany({
-        where: {
-          id: { not: user.id },
-          pinHash: { not: null },
-        },
-        select: {
-          pinHash: true,
-        },
-      })
+      let usersWithPin: Array<{ pinHash: string | null }> = []
+
+      try {
+        usersWithPin = await prisma.user.findMany({
+          where: {
+            id: { not: user.id },
+            pinHash: { not: null },
+          },
+          select: {
+            pinHash: true,
+          },
+        })
+      } catch (error) {
+        if (isPrismaSchemaMismatch(error)) {
+          return NextResponse.json(
+            { error: "O PIN ainda nao pode ser configurado nesta base porque a migration necessaria nao foi aplicada." },
+            { status: 503 },
+          )
+        }
+
+        throw error
+      }
 
       for (const candidate of usersWithPin) {
         if (await comparePin(newPin, candidate.pinHash)) {
@@ -147,6 +168,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (pinAction === "remove") {
+      if (user.pinSchemaAvailable === false) {
+        return NextResponse.json(
+          { error: "O PIN ainda nao pode ser removido nesta base porque a migration necessaria nao foi aplicada." },
+          { status: 503 },
+        )
+      }
+
       if (!user.pinHash) {
         return NextResponse.json({ error: "Nenhum PIN esta configurado para esta conta." }, { status: 400 })
       }

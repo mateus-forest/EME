@@ -7,7 +7,7 @@ import { NextRequest,
   NextResponse } from "next/server"
 import type { Agency } from "@/lib/prisma-model-types"
 
-import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { ensureRole, getAuthenticatedUserWithPassword, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 type AgencyProfileUser = {
@@ -35,7 +35,7 @@ function buildAgencyProfile(user: AgencyProfileUser | null) {
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const { error, user } = await getAuthenticatedUser()
+  const { error, user } = await getAuthenticatedUserWithPassword()
 
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
@@ -55,7 +55,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const { error, user } = await getAuthenticatedUser()
+  const { error, user } = await getAuthenticatedUserWithPassword()
 
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
