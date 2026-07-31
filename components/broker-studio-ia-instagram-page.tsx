@@ -554,22 +554,8 @@ export function BrokerStudioIaInstagramPage() {
                             <img src={postFeedPreviewSrc} alt="Preview do post feed" className="aspect-square w-full object-cover" />
                           </div>
                         ) : (
-                          <div className="overflow-hidden rounded-[1.2rem] border border-black/[0.06] bg-white">
-                            <div className="relative aspect-square bg-[#dfe8df]">
-                              {coverImage ? (
-                                <>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={coverImage} alt="Preview do post feed" className="h-full w-full object-cover" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-                                </>
-                              ) : null}
-                              <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                                <p className="text-[11px] uppercase tracking-[0.18em] text-white/80">{selectedGoal}</p>
-                                <p className="mt-2 text-xl font-semibold">{preview?.postFeed.title}</p>
-                                <p className="mt-1 text-sm text-white/85">{preview?.postFeed.highlight}</p>
-                              </div>
-                            </div>
-                            <div className="px-4 py-3 text-sm text-[#5F6B7A]">{preview?.postFeed.support}</div>
+                          <div className="flex aspect-square items-center justify-center rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-6 text-center text-sm text-[#6B7280]">
+                            O preview oficial do template sera exibido assim que a campanha estiver disponivel.
                           </div>
                         )
                       }
@@ -585,11 +571,8 @@ export function BrokerStudioIaInstagramPage() {
                             <img src={storyPreviewSrc} alt="Preview do story" className="aspect-[9/16] w-full object-cover" />
                           </div>
                         ) : (
-                          <div className="mx-auto aspect-[9/16] w-full max-w-[14rem] overflow-hidden rounded-[1.6rem] border border-black/[0.06] bg-[linear-gradient(180deg,#0f172a_0%,#1f3d2f_100%)] p-4 text-white">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-white/70">{preview?.story.kicker}</p>
-                            <p className="mt-8 text-2xl font-semibold leading-tight">{preview?.story.line1}</p>
-                            <p className="mt-3 text-base text-white/80">{preview?.story.line2}</p>
-                            <div className="mt-auto rounded-full bg-white/12 px-3 py-2 text-sm">{selectedIdentity}</div>
+                          <div className="mx-auto flex aspect-[9/16] w-full max-w-[14rem] items-center justify-center rounded-[1.6rem] border border-black/[0.06] bg-[#fbfbf8] p-6 text-center text-sm text-[#6B7280]">
+                            O preview oficial do template sera exibido assim que a campanha estiver disponivel.
                           </div>
                         )
                       }

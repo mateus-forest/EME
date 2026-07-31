@@ -363,18 +363,18 @@ export function getEditableStudioAssetFields(
         value: readString(content.title),
       },
       {
-        id: "highlight",
+        id: "subtitle",
         label: "Subtitulo",
         kind: "text",
         placeholder: "Oportunidade premium",
-        value: readString(content.highlight),
+        value: readString(content.subtitle) || readString(content.highlight),
       },
       {
-        id: "support",
-        label: "Descricao de apoio",
+        id: "description",
+        label: "Descricao",
         kind: "textarea",
         placeholder: "Texto curto de apoio para reforcar a campanha.",
-        value: readString(content.support),
+        value: readString(content.description) || readString(content.support),
       },
       {
         id: "location",
@@ -382,6 +382,15 @@ export function getEditableStudioAssetFields(
         kind: "text",
         placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
         value: readString(content.location),
+      },
+      {
+        id: "features",
+        label: "Caracteristicas",
+        kind: "tags",
+        placeholder: "Area privativa\n3 banheiros\n2 vagas",
+        value: Array.isArray(content.features)
+          ? content.features.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join("\n")
+          : "",
       },
       {
         id: "price",
@@ -403,25 +412,25 @@ export function getEditableStudioAssetFields(
   if (asset.assetKey === "story") {
     return [
       {
-        id: "kicker",
+        id: "title",
+        label: "Titulo principal",
+        kind: "text",
+        placeholder: campaign.property?.title || "Sala comercial disponivel",
+        value: readString(content.title) || [readString(content.line1), readString(content.line2)].filter(Boolean).join(" "),
+      },
+      {
+        id: "subtitle",
         label: "Subtitulo",
         kind: "text",
         placeholder: "Oportunidade premium",
-        value: readString(content.kicker),
+        value: readString(content.subtitle) || readString(content.kicker),
       },
       {
-        id: "line1",
-        label: "Titulo linha 1",
-        kind: "text",
-        placeholder: campaign.property?.title || "Sala comercial",
-        value: readString(content.line1),
-      },
-      {
-        id: "line2",
-        label: "Titulo linha 2",
-        kind: "text",
-        placeholder: "Disponivel",
-        value: readString(content.line2),
+        id: "description",
+        label: "Descricao",
+        kind: "textarea",
+        placeholder: "Texto curto de apoio para reforcar a campanha.",
+        value: readString(content.description),
       },
       {
         id: "location",
@@ -429,6 +438,15 @@ export function getEditableStudioAssetFields(
         kind: "text",
         placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
         value: readString(content.location),
+      },
+      {
+        id: "features",
+        label: "Caracteristicas",
+        kind: "tags",
+        placeholder: "Area privativa\n3 banheiros\n2 vagas",
+        value: Array.isArray(content.features)
+          ? content.features.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join("\n")
+          : "",
       },
       {
         id: "price",
@@ -509,6 +527,7 @@ export function applyEditedStudioAssetFields(
   const normalized = Object.fromEntries(
     Object.entries(values).map(([key, value]) => [key, value.trim()]),
   )
+  const current = asRecord(asset.content)
 
   if (asset.assetKey === "hashtags") {
     return normalized.body
@@ -518,11 +537,26 @@ export function applyEditedStudioAssetFields(
       .map((item) => (item.startsWith("#") ? item : `#${item.replace(/^#+/, "")}`))
   }
 
+  if (asset.assetKey === "post_feed" || asset.assetKey === "story") {
+    const nextContent = {
+      ...current,
+      ...normalized,
+    } as Record<string, unknown>
+
+    if (typeof normalized.features === "string") {
+      nextContent.features = normalized.features
+        .split(/\r?\n|,/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    }
+
+    return nextContent
+  }
+
   if (asset.assetKey === "caption" || asset.assetKey === "cta" || asset.type === "COPY") {
     return normalized.body || ""
   }
 
-  const current = asRecord(asset.content)
   return {
     ...current,
     ...normalized,

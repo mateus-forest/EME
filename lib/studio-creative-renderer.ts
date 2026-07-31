@@ -10,34 +10,61 @@ export type StudioCreativeFormat =
   | "whatsapp"
   | "catalog"
 
+type StudioTemplateId = "instagram-feed-official" | "instagram-story-official"
+
+type StudioTemplateDefinition = {
+  id: StudioTemplateId
+  format: StudioCreativeFormat
+  width: number
+  height: number
+  render: (payload: StudioCreativePayload) => string
+}
+
+type StudioCreativePayload = {
+  width: number
+  height: number
+  badgeLabel: string
+  title: string
+  subtitle: string
+  description: string
+  location: string
+  features: string[]
+  price: string
+  metricLabel: string
+  metricSupport: string
+  ctaLabel: string
+  ctaSupport: string
+  footer: string
+  propertyImageSrc: string | null
+  officialLogoDataUri: string
+  gradientId: string
+  waveId: string
+}
+
+type StudioFeatureItem = {
+  icon: "location" | "area" | "bath" | "car" | "bed"
+  line1: string
+  line2?: string
+}
+
 const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
 const STUDIO_RENDER_FONT_FAMILY = "Arial, Helvetica, sans-serif"
 
-type CreativeLayout = {
-  badgeX: number
-  badgeY: number
-  badgeWidth: number
-  badgeHeight: number
-  logoX: number
-  logoY: number
-  logoWidth: number
-  logoHeight: number
-  categoryX: number
-  categoryY: number
-  categoryMaxWidth: number
-  titleX: number
-  titleY: number
-  titleMaxWidth: number
-  dividerX: number
-  dividerY: number
-  dividerWidth: number
-  summaryX: number
-  summaryY: number
-  summaryWidth: number
-  pricePanelX: number
-  pricePanelY: number
-  pricePanelWidth: number
-  pricePanelHeight: number
+const TEMPLATES: Record<StudioTemplateId, StudioTemplateDefinition> = {
+  "instagram-feed-official": {
+    id: "instagram-feed-official",
+    format: "feed",
+    width: 1080,
+    height: 1080,
+    render: renderInstagramFeedTemplate,
+  },
+  "instagram-story-official": {
+    id: "instagram-story-official",
+    format: "story",
+    width: 1080,
+    height: 1920,
+    render: renderInstagramStoryTemplate,
+  },
 }
 
 export function getStudioCreativeRenderPath(campaignId: string, assetId: string) {
@@ -50,7 +77,7 @@ export function getStudioCreativeFilename(campaign: StudioCampaignRecord, asset:
 }
 
 export function isSyntheticStudioCreative(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  return Boolean(resolveStudioCreativeFormat(campaign, asset))
+  return Boolean(resolveStudioTemplate(campaign, asset))
 }
 
 export function getOfficialStudioLogoPath() {
@@ -61,12 +88,7 @@ export function resolveStudioCreativeFormat(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
 ): StudioCreativeFormat | null {
-  const format = readAssetFormat(asset)
-  if (format) return format
-
-  if (campaign.kind === "INSTAGRAM" && asset.assetKey === "post_feed") return "feed"
-  if (campaign.kind === "INSTAGRAM" && asset.assetKey === "story") return "story"
-  return null
+  return resolveStudioTemplate(campaign, asset)?.format ?? null
 }
 
 export function renderStudioCreativeSvg(
@@ -75,270 +97,305 @@ export function renderStudioCreativeSvg(
   officialLogoDataUri: string,
   propertyImageSrc?: string | null,
 ) {
-  const format = resolveStudioCreativeFormat(campaign, asset)
-  if (!format) return null
+  const template = resolveStudioTemplate(campaign, asset)
+  if (!template) return null
 
-  return renderUnifiedCreative(campaign, asset, officialLogoDataUri, propertyImageSrc ?? null, format)
+  const payload = buildStudioCreativePayload({
+    campaign,
+    asset,
+    template,
+    officialLogoDataUri,
+    propertyImageSrc: propertyImageSrc ?? null,
+  })
+
+  return template.render(payload)
 }
 
-function renderUnifiedCreative(
-  campaign: StudioCampaignRecord,
-  asset: CampaignAssetRecord,
-  officialLogoDataUri: string,
-  propertyImageSrc: string | null,
-  format: StudioCreativeFormat,
-) {
-  const dimensions = getCreativeDimensions(format)
-  const layout = getCreativeLayout(dimensions.width, dimensions.height)
-  const imageSrc = propertyImageSrc || resolveCampaignImage(campaign)
-  const badge = resolveCampaignBadge(campaign)
-  const category = resolveSupportLabel(campaign, asset)
-  const categoryLayout = fitSingleLineText(
-    category,
-    layout.categoryMaxWidth,
-    dimensions.height > dimensions.width ? 30 : 34,
-    dimensions.height > dimensions.width ? 20 : 24,
-    0.24,
-  )
-  const hero = resolvePrimaryHeadline(campaign, asset)
-  const heroLayout = fitMultilineText(
-    hero,
-    layout.titleMaxWidth,
-    dimensions.height > dimensions.width ? 112 : 132,
-    dimensions.height > dimensions.width ? 62 : 76,
-    2,
-  )
-  const summary = buildSummaryItems(campaign, asset).slice(0, 4)
-  const price = resolveDisplayedPrice(campaign, asset)
-  const ctaLayout = fitMultilineText(
-    resolveDisplayedCta(asset),
-    Math.max(210, layout.pricePanelWidth * 0.28),
-    dimensions.height > dimensions.width ? 24 : 26,
-    18,
-    2,
-  )
-  const gradientId = `studio-overlay-${campaign.id}-${asset.id}`
-  const waveId = `studio-wave-${campaign.id}-${asset.id}`
+function resolveStudioTemplate(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
+  const format = readAssetFormat(asset)
+  if (format === "feed") return TEMPLATES["instagram-feed-official"]
+  if (format === "story") return TEMPLATES["instagram-story-official"]
+
+  if (campaign.kind === "INSTAGRAM" && asset.assetKey === "post_feed") return TEMPLATES["instagram-feed-official"]
+  if (campaign.kind === "INSTAGRAM" && asset.assetKey === "story") return TEMPLATES["instagram-story-official"]
+
+  return null
+}
+
+function buildStudioCreativePayload(input: {
+  campaign: StudioCampaignRecord
+  asset: CampaignAssetRecord
+  template: StudioTemplateDefinition
+  officialLogoDataUri: string
+  propertyImageSrc: string | null
+}): StudioCreativePayload {
+  const content = asRecord(input.asset.content)
+  const title = resolveDisplayTitle(input.asset, content, input.campaign)
+  const subtitle = resolveDisplaySubtitle(input.asset, content, input.campaign)
+  const description = readPreferredString(content, ["description", "support"])
+  const location = resolveDisplayLocation(input.campaign, content)
+  const features = resolveDisplayFeatures(input.campaign, content)
+  const price = resolveDisplayPrice(input.campaign, content)
+  const metric = resolveMetric(input.campaign, content, price)
+  const ctaSupport = readPreferredString(content, ["cta"]) || "Fale com um corretor"
+  const badgeLabel = resolveCampaignBadge(input.campaign)
+  const gradientToken = sanitizeFileName(`${input.campaign.id}-${input.asset.id}-${input.template.id}`)
+
+  return {
+    width: input.template.width,
+    height: input.template.height,
+    badgeLabel,
+    title,
+    subtitle,
+    description,
+    location,
+    features,
+    price,
+    metricLabel: metric.label,
+    metricSupport: metric.support,
+    ctaLabel: "AGENDE UMA VISITA",
+    ctaSupport,
+    footer: "EME • SOLUCOES PARA CORRETORES",
+    propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
+    officialLogoDataUri: input.officialLogoDataUri,
+    gradientId: `studio-gradient-${gradientToken}`,
+    waveId: `studio-wave-${gradientToken}`,
+  }
+}
+
+function renderInstagramFeedTemplate(payload: StudioCreativePayload) {
+  const titleLayout = fitMultilineText(payload.title, 430, 62, 40, 3)
+  const subtitleLayout = fitMultilineText(payload.subtitle, 430, 56, 34, 2)
+  const locationItem = buildLocationFeature(payload.location)
+  const featureItems = [locationItem, ...payload.features.map((feature) => buildFeatureItem(feature))].slice(0, 3)
+  const badgeWidth = Math.max(268, Math.min(390, 92 + payload.badgeLabel.length * 16))
+  const ctaSecondary = fitMultilineText(payload.ctaSupport, 242, 23, 18, 2)
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimensions.width} ${dimensions.height}" width="${dimensions.width}" height="${dimensions.height}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
-    `<linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">`,
-    `<stop offset="0%" stop-color="rgba(4,23,11,0.72)" />`,
-    `<stop offset="30%" stop-color="rgba(4,28,13,0.56)" />`,
-    `<stop offset="60%" stop-color="rgba(4,20,10,0.18)" />`,
-    `<stop offset="100%" stop-color="rgba(0,0,0,0.03)" />`,
+    `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="0.88" y2="0.82">`,
+    `<stop offset="0%" stop-color="rgba(2,14,7,0.92)" />`,
+    `<stop offset="36%" stop-color="rgba(3,16,9,0.78)" />`,
+    `<stop offset="62%" stop-color="rgba(4,18,10,0.46)" />`,
+    `<stop offset="100%" stop-color="rgba(5,18,10,0.04)" />`,
     "</linearGradient>",
-    `<radialGradient id="${waveId}" cx="82%" cy="100%" r="72%">`,
-    `<stop offset="0%" stop-color="rgba(138,255,160,0.58)" />`,
-    `<stop offset="38%" stop-color="rgba(42,178,66,0.34)" />`,
-    `<stop offset="76%" stop-color="rgba(19,88,34,0.08)" />`,
-    `<stop offset="100%" stop-color="rgba(19,88,34,0)" />`,
+    `<radialGradient id="${payload.waveId}" cx="94%" cy="100%" r="68%">`,
+    `<stop offset="0%" stop-color="rgba(123,226,63,0.24)" />`,
+    `<stop offset="60%" stop-color="rgba(123,226,63,0.08)" />`,
+    `<stop offset="100%" stop-color="rgba(123,226,63,0)" />`,
     "</radialGradient>",
     "</defs>",
-    renderBackgroundImage(imageSrc, dimensions.width, dimensions.height),
-    `<rect width="${dimensions.width}" height="${dimensions.height}" fill="url(#${gradientId})" />`,
-    renderLeftOverlay(dimensions.width, dimensions.height),
-    renderWaveDecoration(dimensions.width, dimensions.height, waveId),
-    renderBadge(badge, layout.badgeX, layout.badgeY, layout.badgeWidth, layout.badgeHeight),
-    renderLogo(officialLogoDataUri, layout.logoX, layout.logoY, layout.logoWidth, layout.logoHeight),
-    renderSingleLineText(category, layout.categoryX, layout.categoryY, categoryLayout.fontSize, "700", "#7be23f", categoryLayout.letterSpacing),
-    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0),
-    renderDivider(layout.dividerX, layout.dividerY, layout.dividerWidth),
-    renderSummaryItems(summary, layout.summaryX, layout.summaryY, layout.summaryWidth, dimensions.height > dimensions.width),
-    renderUnifiedPricePanel({
-      x: layout.pricePanelX,
-      y: layout.pricePanelY,
-      width: layout.pricePanelWidth,
-      height: layout.pricePanelHeight,
-      price,
-      ctaLines: ctaLayout.lines,
-      ctaFontSize: ctaLayout.fontSize,
-      ctaLineHeight: ctaLayout.lineHeight,
-      portrait: dimensions.height > dimensions.width,
+    renderBackgroundImage(payload.propertyImageSrc, payload.width, payload.height),
+    `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
+    renderLeftOverlay(payload.width, payload.height, false),
+    renderBottomWave(payload.width, payload.height, payload.waveId, false),
+    renderBadge(payload.badgeLabel, 68, 58, badgeWidth, 60),
+    renderLogo(payload.officialLogoDataUri, 915, 46, 146, 68),
+    renderMultilineText(titleLayout.lines, 70, 320, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
+    renderMultilineText(subtitleLayout.lines, 70, 320 + titleLayout.blockHeight + 24, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
+    renderDivider(70, 520, 96),
+    renderFeatureRow(featureItems, 70, 584, 468),
+    renderMetricPanel({
+      x: 68,
+      y: 905,
+      width: 584,
+      height: 128,
+      metricLabel: payload.metricLabel,
+      metricValue: payload.price,
+      metricSupport: payload.metricSupport,
+      ctaLabel: payload.ctaLabel,
+      ctaLines: ctaSecondary.lines,
+      ctaFontSize: ctaSecondary.fontSize,
+      ctaLineHeight: ctaSecondary.lineHeight,
     }),
+    "</svg>",
+  ].join("")
+}
+
+function renderInstagramStoryTemplate(payload: StudioCreativePayload) {
+  const titleLayout = fitMultilineText(payload.title, 420, 72, 46, 3)
+  const subtitleLayout = fitMultilineText(payload.subtitle, 420, 68, 40, 2)
+  const locationItem = buildLocationFeature(payload.location)
+  const featureItems = [locationItem, ...payload.features.map((feature) => buildFeatureItem(feature))].slice(0, 3)
+  const badgeWidth = Math.max(338, Math.min(468, 124 + payload.badgeLabel.length * 16))
+  const ctaSecondary = fitMultilineText(payload.ctaSupport, 334, 28, 22, 2)
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
+    "<defs>",
+    `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="0.92" y2="0.88">`,
+    `<stop offset="0%" stop-color="rgba(2,14,7,0.94)" />`,
+    `<stop offset="34%" stop-color="rgba(3,16,9,0.82)" />`,
+    `<stop offset="62%" stop-color="rgba(4,18,10,0.5)" />`,
+    `<stop offset="100%" stop-color="rgba(5,18,10,0.05)" />`,
+    "</linearGradient>",
+    `<radialGradient id="${payload.waveId}" cx="96%" cy="100%" r="70%">`,
+    `<stop offset="0%" stop-color="rgba(123,226,63,0.22)" />`,
+    `<stop offset="62%" stop-color="rgba(123,226,63,0.08)" />`,
+    `<stop offset="100%" stop-color="rgba(123,226,63,0)" />`,
+    "</radialGradient>",
+    "</defs>",
+    renderBackgroundImage(payload.propertyImageSrc, payload.width, payload.height),
+    `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
+    renderLeftOverlay(payload.width, payload.height, true),
+    renderBottomWave(payload.width, payload.height, payload.waveId, true),
+    renderBadge(payload.badgeLabel, 80, 92, badgeWidth, 66),
+    renderLogo(payload.officialLogoDataUri, 810, 78, 184, 82),
+    renderMultilineText(titleLayout.lines, 82, 440, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
+    renderMultilineText(subtitleLayout.lines, 82, 440 + titleLayout.blockHeight + 22, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
+    renderDivider(82, 770, 104),
+    renderFeatureStack(featureItems, 82, 842, 360),
+    renderMetricPanel({
+      x: 80,
+      y: 1472,
+      width: 916,
+      height: 182,
+      metricLabel: payload.metricLabel,
+      metricValue: payload.price,
+      metricSupport: payload.metricSupport,
+      ctaLabel: payload.ctaLabel,
+      ctaLines: ctaSecondary.lines,
+      ctaFontSize: ctaSecondary.fontSize,
+      ctaLineHeight: ctaSecondary.lineHeight,
+    }),
+    renderSingleLineText(payload.footer, 540, 1808, 16, "500", "#f7f7f7", 0.26, "middle"),
     "</svg>",
   ].join("")
 }
 
 function renderBackgroundImage(imageSrc: string | null, width: number, height: number) {
   if (!imageSrc) {
-    return `<rect width="${width}" height="${height}" fill="#05110a" />`
+    return `<rect width="${width}" height="${height}" fill="#06110a" />`
   }
 
   return `<image href="${escapeXml(imageSrc)}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" />`
 }
 
-function renderLeftOverlay(width: number, height: number) {
-  const portraitBoost = Math.max(0, height / width - 1)
-  const widthRatio = 0.49 + portraitBoost * 0.035
-  const control1 = 0.18 - portraitBoost * 0.01
-  const control2 = 0.56 + portraitBoost * 0.02
-  const lowerX = 0.31 - portraitBoost * 0.016
-  return `<path d="M0 0 H${Math.round(width * widthRatio)} C${Math.round(width * 0.52)} ${Math.round(height * control1)} ${Math.round(width * 0.55)} ${Math.round(height * control2)} ${Math.round(width * lowerX)} ${Math.round(height * 0.88)} C${Math.round(width * 0.18)} ${Math.round(height * 1.01)} ${Math.round(width * 0.06)} ${Math.round(height * 1.01)} 0 ${height} Z" fill="rgba(3,18,9,0.34)" />`
+function renderLeftOverlay(width: number, height: number, portrait: boolean) {
+  if (portrait) {
+    return `<path d="M0 0 H560 C612 272 600 766 482 1162 C412 1410 208 1718 0 ${height} Z" fill="rgba(2,12,7,0.38)" />`
+  }
+
+  return `<path d="M0 0 H534 C594 210 604 506 542 784 C482 960 288 1046 0 ${height} Z" fill="rgba(2,12,7,0.38)" />`
 }
 
-function renderWaveDecoration(width: number, height: number, waveId: string) {
-  const endY = Math.round(height * 0.975)
+function renderBottomWave(width: number, height: number, waveId: string, portrait: boolean) {
+  if (portrait) {
+    return [
+      `<path d="M628 ${height} C756 ${height - 146} 898 ${height - 218} ${width} ${height - 168} L${width} ${height} Z" fill="url(#${waveId})" />`,
+      `<path d="M628 ${height} C760 ${height - 150} 908 ${height - 222} ${width} ${height - 176}" fill="none" stroke="rgba(123,226,63,0.72)" stroke-width="2.2" />`,
+    ].join("")
+  }
 
   return [
-    `<path d="M${Math.round(width * 0.6)} ${height} C${Math.round(width * 0.72)} ${Math.round(height * 0.93)} ${Math.round(width * 0.84)} ${Math.round(height * 0.82)} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.56" />`,
-    `<path d="M${Math.round(width * 0.58)} ${height} C${Math.round(width * 0.72)} ${Math.round(height * 0.92)} ${Math.round(width * 0.86)} ${Math.round(height * 0.84)} ${width} ${Math.round(height * 0.91)}" fill="none" stroke="rgba(123,226,63,0.24)" stroke-width="1.6" />`,
-    `<path d="M${Math.round(width * 0.68)} ${height} C${Math.round(width * 0.8)} ${Math.round(height * 0.94)} ${Math.round(width * 0.9)} ${Math.round(height * 0.88)} ${width} ${Math.round(height * 0.956)}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.9" />`,
+    `<path d="M820 ${height} C928 ${height - 120} 1012 ${height - 136} ${width} ${height - 102} L${width} ${height} Z" fill="url(#${waveId})" />`,
+    `<path d="M818 ${height} C926 ${height - 124} 1018 ${height - 142} ${width} ${height - 108}" fill="none" stroke="rgba(123,226,63,0.72)" stroke-width="2" />`,
   ].join("")
 }
 
 function renderBadge(label: string, x: number, y: number, width: number, height: number) {
+  const centerY = Math.round(height / 2)
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(28,138,50,0.78)" stroke="rgba(123,226,63,0.72)" stroke-width="2" />`,
-    `<circle cx="40" cy="${Math.round(height / 2)}" r="17" fill="rgba(255,255,255,0.05)" />`,
-    `<path d="M40 ${Math.round(height / 2) - 14} L44 ${Math.round(height / 2) - 4} L54 ${Math.round(height / 2)} L44 ${Math.round(height / 2) + 4} L40 ${Math.round(height / 2) + 14} L36 ${Math.round(height / 2) + 4} L26 ${Math.round(height / 2)} L36 ${Math.round(height / 2) - 4} Z" fill="#ffffff" />`,
-    renderSingleLineText(label, 78, Math.round(height / 2) + 9, 21, "700", "#ffffff", 0.045),
+    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="rgba(123,226,63,0.88)" stroke-width="2.1" />`,
+    renderFeatureIcon("badge", 22, centerY - 18, "#ffffff"),
+    renderSingleLineText(label, 82, centerY + 9, 22, "500", "#ffffff", 0.01),
     "</g>",
   ].join("")
 }
 
 function renderLogo(logoDataUri: string, x: number, y: number, width: number, height: number) {
-  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${Math.round(width * 1.26)}" height="${Math.round(height * 1.26)}" preserveAspectRatio="xMaxYMid meet" />`
-}
-
-function renderSingleLineText(
-  text: string,
-  x: number,
-  y: number,
-  fontSize: number,
-  fontWeight: string,
-  color: string,
-  letterSpacingEm = 0,
-) {
-  return `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(text)}</text>`
-}
-
-function renderMultilineText(
-  lines: string[],
-  x: number,
-  y: number,
-  fontSize: number,
-  fontWeight: string,
-  color: string,
-  lineHeight: number,
-  letterSpacingEm = 0,
-) {
-  return [
-    `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">`,
-    ...lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`),
-    "</text>",
-  ].join("")
+  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`
 }
 
 function renderDivider(x: number, y: number, width: number) {
-  return `<rect x="${x}" y="${y}" width="${width}" height="5" rx="2.5" fill="#73df30" />`
+  return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="#73df30" />`
 }
 
-function renderSummaryItems(
-  items: Array<{ icon: string; value: string; support?: string }>,
-  x: number,
-  y: number,
-  availableWidth: number,
-  portrait: boolean,
-) {
-  if (portrait) {
-    return items
-      .map((item, index) => {
-        const offsetY = index * 104
-        const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, Math.max(300, availableWidth - 72), 20, 17, 2)
-
-        return [
-          `<g transform="translate(${x} ${y + offsetY})">`,
-          renderFeatureIcon(item.icon, 0, 4, "#73df30"),
-          renderMultilineText(valueLayout.lines, 84, 26, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
-          "</g>",
-        ].join("")
-      })
-      .join("")
-  }
-
-  const count = Math.max(items.length, 1)
-  const cardWidth = Math.floor(availableWidth / count)
+function renderFeatureRow(items: StudioFeatureItem[], x: number, y: number, width: number) {
+  const columnWidth = Math.floor(width / Math.max(items.length, 1))
 
   return items
     .map((item, index) => {
-      const originX = x + index * cardWidth
-      const valueLayout = fitMultilineText(
-        `${item.value}${item.support ? `\n${item.support}` : ""}`,
-        cardWidth - 86,
-        23,
-        17,
-        item.support ? 2 : 1,
-      )
+      const originX = x + index * columnWidth
+      const lines = [item.line1, item.line2].filter(Boolean) as string[]
+      const textLayout = fitMultilineText(lines.join("\n"), columnWidth - 70, 18, 14, 3)
 
       return [
         `<g transform="translate(${originX} ${y})">`,
-        renderFeatureIcon(item.icon, 0, 8, "#73df30"),
-        renderMultilineText(valueLayout.lines, 62, 34, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
-        index < items.length - 1 ? `<rect x="${cardWidth - 24}" y="10" width="1.2" height="96" fill="rgba(255,255,255,0.16)" />` : "",
+        renderFeatureIcon(item.icon, 0, 0, "#73df30"),
+        renderMultilineText(textLayout.lines, 0, 112, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
+        index < items.length - 1
+          ? `<rect x="${columnWidth - 26}" y="6" width="1.2" height="124" fill="rgba(255,255,255,0.22)" />`
+          : "",
         "</g>",
       ].join("")
     })
     .join("")
 }
 
-function renderUnifiedPricePanel(input: {
+function renderFeatureStack(items: StudioFeatureItem[], x: number, y: number, width: number) {
+  return items
+    .map((item, index) => {
+      const offsetY = index * 184
+      const textLayout = fitMultilineText([item.line1, item.line2].filter(Boolean).join("\n"), width - 132, 20, 16, 3)
+
+      return [
+        `<g transform="translate(${x} ${y + offsetY})">`,
+        renderFeatureIcon(item.icon, 0, 6, "#73df30"),
+        renderMultilineText(textLayout.lines, 136, 46, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
+        index < items.length - 1 ? `<rect x="0" y="130" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
+        "</g>",
+      ].join("")
+    })
+    .join("")
+}
+
+function renderMetricPanel(input: {
   x: number
   y: number
   width: number
   height: number
-  price: string
+  metricLabel: string
+  metricValue: string
+  metricSupport: string
+  ctaLabel: string
   ctaLines: string[]
   ctaFontSize: number
   ctaLineHeight: number
-  portrait: boolean
 }) {
-  const dividerX = Math.round(input.width * (input.portrait ? 0.56 : 0.58))
-  const ctaWidth = input.width - dividerX - 38
-  const innerHeight = input.height - 40
-
+  const dividerX = Math.round(input.width * 0.41)
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="28" fill="rgba(3,15,8,0.28)" stroke="rgba(123,226,63,0.34)" stroke-width="1.35" />`,
-    renderSingleLineText("PRE\u00c7O", 34, 40, 20, "500", "#ffffff", 0.02),
-    renderSingleLineText(input.price, 34, 88, input.portrait ? 40 : 44, "800", "#73df30", 0),
-    `<rect x="${dividerX}" y="20" width="1" height="${input.height - 40}" fill="rgba(255,255,255,0.14)" />`,
-    `<g transform="translate(${dividerX + 20} 20)">`,
-    `<rect width="${ctaWidth}" height="${innerHeight}" rx="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
-    renderFeatureIcon("calendar", 18, Math.max(8, Math.round((innerHeight - 58) / 2)), "#73df30"),
-    renderMultilineText(
-      input.ctaLines,
-      78,
-      Math.round(innerHeight / 2) - (input.ctaLines.length > 1 ? input.ctaLineHeight * 0.35 : -8),
-      input.ctaFontSize,
-      "700",
-      "#ffffff",
-      input.ctaLineHeight,
-      0.01,
-    ),
-    "</g>",
+    `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(5,14,8,0.42)" stroke="rgba(123,226,63,0.72)" stroke-width="1.6" />`,
+    renderSingleLineText(input.metricLabel, 34, 40, 20, "500", "#ffffff", 0.01),
+    renderSingleLineText(input.metricValue, 34, 94, input.width > 700 ? 44 : 38, "700", "#73df30", 0),
+    input.metricSupport ? renderSingleLineText(input.metricSupport, 34, 128, 18, "400", "#ffffff", 0) : "",
+    `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
+    renderFeatureIcon("calendar", dividerX + 28, Math.round((input.height - 62) / 2), "#73df30"),
+    renderSingleLineText(input.ctaLabel, dividerX + 140, 72, 18, "500", "#ffffff", 0.01),
+    renderMultilineText(input.ctaLines, dividerX + 140, 118, input.ctaFontSize, "500", "#73df30", input.ctaLineHeight, 0),
     "</g>",
   ].join("")
 }
 
-function renderFeatureIcon(type: string, x: number, y: number, color: string) {
+function renderFeatureIcon(type: "location" | "area" | "bath" | "car" | "bed" | "calendar" | "badge", x: number, y: number, color: string) {
   switch (type) {
     case "location":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M28 54 C16 37 10 28 10 19 C10 8 18 0 28 0 C38 0 46 8 46 19 C46 28 40 37 28 54 Z" /><circle cx="28" cy="19" r="8" /></g>`
+      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M26 54 C15 38 10 29 10 20 C10 9 18 0 28 0 C38 0 46 9 46 20 C46 29 41 38 30 54 Z" /><circle cx="28" cy="20" r="8" /></g>`
     case "area":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="40" height="40" rx="3" /><path d="M18 6 V46 M34 6 V46 M6 18 H46 M6 34 H46" /></g>`
+      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="38" height="38" rx="2" /><path d="M8 28 H46 M27 8 V46" /></g>`
     case "bath":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6 H42 V26 C42 37 35 44 28 44 C21 44 14 37 14 26 Z" /><path d="M10 26 H46" /><path d="M18 44 V54" /><path d="M38 44 V54" /></g>`
+      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8 H42 V26 C42 38 35 46 28 46 C21 46 14 38 14 26 Z" /><path d="M10 26 H46" /><path d="M20 46 V56" /><path d="M36 46 V56" /></g>`
     case "car":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 32 L16 16 H40 L46 32 V42 H10 Z" /><circle cx="18" cy="42" r="6" /><circle cx="38" cy="42" r="6" /><path d="M10 32 H46" /></g>`
+      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 34 L17 16 H39 L46 34 V43 H10 Z" /><circle cx="18" cy="43" r="6" /><circle cx="38" cy="43" r="6" /><path d="M10 34 H46" /></g>`
     case "bed":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 30 V14 H20 C26 14 30 18 30 24 V30" /><path d="M10 30 H46 V50" /><path d="M10 50 V24 H46 V50" /></g>`
+      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 34 V18 H22 C27 18 30 21 30 26 V34" /><path d="M10 34 H46 V50" /><path d="M10 50 V28 H46 V50" /></g>`
     case "calendar":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="10" width="40" height="38" rx="6" /><path d="M18 2 V16 M38 2 V16 M8 20 H48 M18 28 H20 M28 28 H30 M38 28 H40 M18 38 H20 M28 38 H30" /><path d="M34 50 L50 34" /><path d="M50 40 V34 H44" /></g>`
-    default:
-      return `<g transform="translate(${x} ${y})"><circle cx="28" cy="28" r="10" fill="${color}" /></g>`
+      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="10" width="42" height="40" rx="7" /><path d="M18 2 V16 M40 2 V16 M8 20 H50 M18 30 H20 M29 30 H31 M40 30 H42 M18 40 H20 M29 40 H31" /><path d="M35 51 L52 34" /><path d="M52 40 V34 H46" /></g>`
+    case "badge":
+      return `<g transform="translate(${x} ${y})"><path d="M18 0 L24 12 L38 18 L24 24 L18 38 L12 24 L0 18 L12 12 Z" fill="${color}" /></g>`
   }
 }
 
@@ -348,87 +405,119 @@ function resolveCampaignImage(campaign: StudioCampaignRecord) {
 
 function resolveCampaignBadge(campaign: StudioCampaignRecord) {
   const goal = campaign.goal?.trim()
-  if (!goal) return "DESTAQUE"
+  if (!goal) return "OPORTUNIDADE"
 
   const normalized = goal
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
 
-  if (normalized === "LANCAMENTO") return "LAN\u00c7AMENTO"
+  if (normalized === "LANCAMENTO") return "LANCAMENTO"
   return goal.toUpperCase()
 }
 
-function resolveSupportLabel(_campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  const content = asRecord(asset.content)
-  const preferred =
-    readString(content.subtitle) ||
-    readString(content.category) ||
-    readString(content.highlight) ||
-    readString(content.kicker)
-  if (preferred) return preferred.toUpperCase()
-
-  return "OPORTUNIDADE PREMIUM"
+function resolveDisplayTitle(asset: CampaignAssetRecord, content: Record<string, unknown>, campaign: StudioCampaignRecord) {
+  return (
+    readPreferredString(content, ["title"]) ||
+    [readPreferredString(content, ["line1"]), readPreferredString(content, ["line2"])].filter(Boolean).join(" ") ||
+    buildDefaultHeadline(campaign)
+  )
 }
 
-function resolvePrimaryHeadline(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  const content = asRecord(asset.content)
-  const preferred = readString(content.title) || [readString(content.line1), readString(content.line2)].filter(Boolean).join("\n")
-  if (preferred) return preferred.toUpperCase()
-
-  return buildDefaultHeadline(campaign).toUpperCase()
+function resolveDisplaySubtitle(asset: CampaignAssetRecord, content: Record<string, unknown>, campaign: StudioCampaignRecord) {
+  return (
+    readPreferredString(content, ["subtitle", "highlight", "kicker"]) ||
+    (asset.assetKey === "story" ? "Seu proximo endereco comercial" : "Pronto para destacar este imovel")
+  )
 }
 
-function buildDefaultHeadline(campaign: StudioCampaignRecord) {
-  const typeLabel = mapPropertyTypeLabel(campaign.property?.type).toUpperCase()
-  return `${typeLabel}\n${mapPurposeHeadline(campaign.property?.purpose)}`
+function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
+  return readPreferredString(content, ["location"]) || [campaign.property?.neighborhood, campaign.property?.city].filter(Boolean).join("\n")
 }
 
-function buildSummaryItems(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  const content = asRecord(asset.content)
-  const area = readString(content.area) || readAreaLabel(campaign)
-  const locationOverride = readString(content.location)
-  const location = locationOverride || [readString(content.neighborhood) || campaign.property?.neighborhood, readString(content.city) || campaign.property?.city].filter(Boolean).join("\n")
-  const items: Array<{ icon: string; value: string; support?: string }> = []
+function resolveDisplayFeatures(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
+  const explicit = normalizeStringList(content.features)
+  if (explicit.length > 0) return explicit.slice(0, 3)
 
-  if (location) {
-    const [headline, support] = location.split("\n")
-    items.push({ icon: "location", value: headline || "", support: support || undefined })
-  }
-
-  if (area) {
-    items.push({ icon: "area", value: area, support: "\u00c1REA \u00daTIL" })
-  } else if ((campaign.property?.bedrooms ?? 0) > 0) {
-    items.push({ icon: "bed", value: `${campaign.property?.bedrooms} DORM${campaign.property?.bedrooms === 1 ? "" : "S"}` })
-  }
-
+  const derived: string[] = []
+  const area = readAreaLabel(campaign)
+  if (area) derived.push(`${area} | Area privativa`)
   if ((campaign.property?.bathrooms ?? 0) > 0) {
-    items.push({ icon: "bath", value: `${campaign.property?.bathrooms} BANHEIRO${campaign.property?.bathrooms === 1 ? "" : "S"}` })
+    derived.push(`${campaign.property?.bathrooms} banheiro${campaign.property?.bathrooms === 1 ? "" : "s"}`)
   }
-
   if ((campaign.property?.parkingSpots ?? 0) > 0) {
-    items.push({ icon: "car", value: `${campaign.property?.parkingSpots} VAGA${campaign.property?.parkingSpots === 1 ? "" : "S"}` })
+    derived.push(`${campaign.property?.parkingSpots} vaga${campaign.property?.parkingSpots === 1 ? "" : "s"}`)
+  }
+  if (derived.length < 3 && (campaign.property?.bedrooms ?? 0) > 0) {
+    derived.push(`${campaign.property?.bedrooms} dormitorio${campaign.property?.bedrooms === 1 ? "" : "s"}`)
   }
 
-  return items.slice(0, 4)
+  return derived.slice(0, 3)
 }
 
-function fitSingleLineText(
-  text: string,
-  maxWidth: number,
-  maxFontSize: number,
-  minFontSize: number,
-  desiredLetterSpacing = 0.2,
-) {
-  const normalized = text.replace(/\s+/g, " ").trim()
-  for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 2) {
-    const estimatedWidth = normalized.length * fontSize * (0.63 + desiredLetterSpacing * 0.35)
-    if (estimatedWidth <= maxWidth) {
-      return { fontSize, letterSpacing: desiredLetterSpacing }
-    }
-  }
+function resolveDisplayPrice(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
+  return readPreferredString(content, ["price"]) || formatPriceLabel(campaign.property?.price)
+}
 
-  return { fontSize: minFontSize, letterSpacing: Math.max(0.1, desiredLetterSpacing - 0.08) }
+function resolveMetric(campaign: StudioCampaignRecord, content: Record<string, unknown>, price: string) {
+  const areaLabel = readAreaLabel(campaign)
+  const description = readPreferredString(content, ["description", "support"])
+
+  return {
+    label: readPreferredString(content, ["metricLabel"]) || "PRECO",
+    support: readPreferredString(content, ["metricSupport"]) || description || areaLabel || "",
+    value: price,
+  }
+}
+
+function buildLocationFeature(location: string): StudioFeatureItem {
+  const [line1, line2] = location
+    .split(/\n|,\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  return {
+    icon: "location",
+    line1: line1 || "Localizacao",
+    line2: line2 || undefined,
+  }
+}
+
+function buildFeatureItem(feature: string): StudioFeatureItem {
+  const normalized = feature.trim()
+  const [line1, line2] = normalized.includes("|")
+    ? normalized.split("|").map((item) => item.trim())
+    : splitFeatureLines(normalized)
+
+  return {
+    icon: inferFeatureIcon(normalized),
+    line1,
+    line2: line2 || undefined,
+  }
+}
+
+function splitFeatureLines(value: string) {
+  const parts = value.split(/\n/).map((item) => item.trim()).filter(Boolean)
+  if (parts.length > 1) return [parts[0], parts.slice(1).join(" ")]
+
+  const words = value.split(/\s+/)
+  if (words.length <= 2) return [value, ""]
+
+  const middle = Math.ceil(words.length / 2)
+  return [words.slice(0, middle).join(" "), words.slice(middle).join(" ")]
+}
+
+function inferFeatureIcon(value: string): StudioFeatureItem["icon"] {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+
+  if (normalized.includes("banh")) return "bath"
+  if (normalized.includes("vaga") || normalized.includes("garag") || normalized.includes("estacion")) return "car"
+  if (normalized.includes("dorm") || normalized.includes("suite") || normalized.includes("quarto")) return "bed"
+  if (normalized.includes("m2") || normalized.includes("m²") || normalized.includes("area")) return "area"
+  return "area"
 }
 
 function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, minFontSize: number, maxLines: number) {
@@ -438,37 +527,35 @@ function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, m
     .filter(Boolean)
 
   if (sourceLines.length > 1) {
-    for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 4) {
-      const capacity = Math.max(6, Math.floor(maxWidth / (fontSize * 0.58)))
-      const lines = sourceLines.flatMap((line) => wrapText(line, capacity, 1))
-      if (lines.length <= maxLines && lines.every((line) => line.length <= capacity + 2)) {
-        return {
-          lines,
-          fontSize,
-          lineHeight: Math.round(fontSize * 0.94),
-        }
+    for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 2) {
+      const capacity = Math.max(5, Math.floor(maxWidth / (fontSize * 0.56)))
+      const lines = sourceLines.flatMap((line) => wrapText(line, capacity, 2))
+      if (lines.length <= maxLines) {
+        const lineHeight = Math.round(fontSize * 0.94)
+        return { lines, fontSize, lineHeight, blockHeight: lineHeight * Math.max(lines.length - 1, 0) }
       }
     }
   }
 
   const normalized = sourceLines.length ? sourceLines.join(" ") : text.replace(/\s+/g, " ").trim()
 
-  for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 4) {
-    const capacity = Math.max(6, Math.floor(maxWidth / (fontSize * 0.58)))
+  for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 2) {
+    const capacity = Math.max(5, Math.floor(maxWidth / (fontSize * 0.56)))
     const lines = wrapText(normalized, capacity, maxLines)
     if (lines.length <= maxLines) {
-      return {
-        lines,
-        fontSize,
-        lineHeight: Math.round(fontSize * 0.94),
-      }
+      const lineHeight = Math.round(fontSize * 0.94)
+      return { lines, fontSize, lineHeight, blockHeight: lineHeight * Math.max(lines.length - 1, 0) }
     }
   }
 
+  const fallbackCapacity = Math.max(5, Math.floor(maxWidth / (minFontSize * 0.56)))
+  const fallbackLines = wrapText(normalized, fallbackCapacity, maxLines)
+  const fallbackLineHeight = Math.round(minFontSize * 0.94)
   return {
-    lines: wrapText(normalized, Math.max(6, Math.floor(maxWidth / (minFontSize * 0.58))), maxLines),
+    lines: fallbackLines,
     fontSize: minFontSize,
-    lineHeight: Math.round(minFontSize * 0.94),
+    lineHeight: fallbackLineHeight,
+    blockHeight: fallbackLineHeight * Math.max(fallbackLines.length - 1, 0),
   }
 }
 
@@ -493,6 +580,15 @@ function wrapText(text: string, maxCharsPerLine: number, maxLines: number) {
   return lines.slice(0, maxLines)
 }
 
+function buildDefaultHeadline(campaign: StudioCampaignRecord) {
+  const propertyTitle = campaign.property?.title?.trim()
+  if (propertyTitle) return propertyTitle
+
+  const typeLabel = mapPropertyTypeLabel(campaign.property?.type)
+  const purposeLabel = mapPurposeHeadline(campaign.property?.purpose)
+  return `${typeLabel} ${purposeLabel}`.trim()
+}
+
 function mapPropertyTypeLabel(value: string | null | undefined) {
   switch ((value || "").toUpperCase()) {
     case "HOUSE":
@@ -514,15 +610,17 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
 
 function mapPurposeHeadline(value: string | null | undefined) {
   const normalized = (value || "").toUpperCase()
-  if (normalized.includes("RENT") || normalized.includes("LOC")) return "PARA ALUGAR"
-  return "\u00c0 VENDA"
+  if (normalized.includes("RENT") || normalized.includes("LOC")) return "para locacao"
+  return "em destaque"
 }
 
 function readAreaLabel(campaign: StudioCampaignRecord) {
   const legal = asRecord(campaign.property?.legalData)
-  const area = readString(legal.privateArea) || readString(legal.totalArea)
+  const area = readPreferredString(legal, ["privateArea", "totalArea"])
   if (!area) return null
-  return /\d\s*m/i.test(area) ? area.replace(/m(?:²)?/i, "m\u00b2") : `${area} m\u00b2`
+
+  const normalized = area.replace(/m(?:2|²)?/gi, "m²").trim()
+  return /\d\s*m²/i.test(normalized) ? normalized : `${normalized} m²`
 }
 
 function formatPriceLabel(value: number | null | undefined) {
@@ -534,19 +632,9 @@ function formatPriceLabel(value: number | null | undefined) {
   }).format(value / 100)
 }
 
-function resolveDisplayedPrice(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
-  const content = asRecord(asset.content)
-  return readString(content.price) || formatPriceLabel(campaign.property?.price)
-}
-
-function resolveDisplayedCta(asset: CampaignAssetRecord) {
-  const content = asRecord(asset.content)
-  return readString(content.cta) || "AGENDE SUA VISITA"
-}
-
 function readAssetFormat(asset: CampaignAssetRecord): StudioCreativeFormat | null {
   const metadata = asRecord(asset.metadata)
-  const format = readString(metadata.format)
+  const format = readPreferredString(metadata, ["format"])
 
   switch (format) {
     case "instagram_post_feed":
@@ -566,51 +654,34 @@ function readAssetFormat(asset: CampaignAssetRecord): StudioCreativeFormat | nul
   }
 }
 
-function getCreativeDimensions(format: StudioCreativeFormat) {
-  switch (format) {
-    case "story":
-      return { width: 1080, height: 1920 }
-    case "reels_cover":
-      return { width: 1080, height: 1350 }
-    case "thumbnail":
-    case "whatsapp":
-      return { width: 1080, height: 1080 }
-    case "catalog":
-      return { width: 1600, height: 900 }
-    case "feed":
-    default:
-      return { width: 1080, height: 1080 }
-  }
+function renderSingleLineText(
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number,
+  fontWeight: string,
+  color: string,
+  letterSpacingEm = 0,
+  anchor: "start" | "middle" | "end" = "start",
+) {
+  return `<text x="${x}" y="${y}" fill="${color}" text-anchor="${anchor}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(text)}</text>`
 }
 
-function getCreativeLayout(width: number, height: number): CreativeLayout {
-  const portraitBoost = Math.max(0, height / width - 1)
-  return {
-    badgeX: Math.round(width * 0.06),
-    badgeY: Math.round(height * (0.058 - portraitBoost * 0.012)),
-    badgeWidth: Math.round(width * (0.23 + portraitBoost * 0.055)),
-    badgeHeight: Math.round(height * Math.max(0.037, 0.048 - portraitBoost * 0.01)),
-    logoX: width - Math.round(width * 0.202),
-    logoY: Math.round(height * (0.05 - portraitBoost * 0.008)),
-    logoWidth: Math.round(width * 0.132),
-    logoHeight: Math.round(height * Math.max(0.037, 0.051 - portraitBoost * 0.009)),
-    categoryX: Math.round(width * 0.068),
-    categoryY: Math.round(height * (0.215 + portraitBoost * 0.145)),
-    categoryMaxWidth: Math.round(width * (0.42 + portraitBoost * 0.08)),
-    titleX: Math.round(width * 0.065),
-    titleY: Math.round(height * (0.298 + portraitBoost * 0.14)),
-    titleMaxWidth: Math.round(width * (0.47 + portraitBoost * 0.12)),
-    dividerX: Math.round(width * 0.067),
-    dividerY: Math.round(height * (0.468 + portraitBoost * 0.135)),
-    dividerWidth: Math.round(width * 0.078),
-    summaryX: Math.round(width * 0.067),
-    summaryY: Math.round(height * (0.507 + portraitBoost * 0.14)),
-    summaryWidth: Math.round(width * (0.66 - Math.min(portraitBoost * 0.08, 0.08))),
-    pricePanelX: Math.round(width * 0.058),
-    pricePanelY: height - Math.round(height * (0.145 + portraitBoost * 0.012)),
-    pricePanelWidth: Math.min(Math.round(width * (0.59 + portraitBoost * 0.1)), width - Math.round(width * 0.116)),
-    pricePanelHeight: Math.round(height * Math.max(0.082, 0.098 - portraitBoost * 0.013)),
-  }
+function renderMultilineText(
+  lines: string[],
+  x: number,
+  y: number,
+  fontSize: number,
+  fontWeight: string,
+  color: string,
+  lineHeight: number,
+  letterSpacingEm = 0,
+) {
+  return [
+    `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">`,
+    ...lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`),
+    "</text>",
+  ].join("")
 }
 
 function sanitizeFileName(value: string) {
@@ -635,6 +706,20 @@ function asRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
-function readString(value: unknown) {
-  return typeof value === "string" ? value.trim() : ""
+function readPreferredString(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+
+  return ""
+}
+
+function normalizeStringList(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
