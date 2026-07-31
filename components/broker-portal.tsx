@@ -275,7 +275,7 @@ export function BrokerPortal() {
     ].join("\n")
 
     await sendCosMessage(
-      `Analise minha operacao e conduza um workflow pratico com base nas pendencias reais abaixo. Priorize o que exige acao imediata, agrupe por categoria e me diga por onde comecar.\n\n${operationalSummary}`,
+      `Analise minha operacao com base nas pendencias reais abaixo e inicie um workflow pratico. Nao quero um resumo estatistico. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual proxima acao devo executar em cada frente. Considere especialmente imoveis incompletos, clientes sem dados obrigatorios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos proximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
       { visibleMessage: "Ver detalhes da operacao" },
     )
     setPrompt("")
@@ -359,36 +359,28 @@ export function BrokerPortal() {
             <div className="min-h-0">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
-                  <div className="flex flex-1 flex-col justify-center">
-                    <div className="mx-auto flex w-full max-w-[48rem] flex-col items-center text-center">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/12 bg-white/75 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[#0d7a39]">
-                        <Sparkles className="size-3.5" />
-                        Centro operacional EME
-                      </div>
-                      <div className="mt-6 min-h-[2.75rem] sm:min-h-[3.75rem]">
+                  <div className="flex flex-1 flex-col">
+                    <div className="mx-auto flex h-full w-full max-w-[48rem] flex-col items-center px-1 text-center">
+                      <div className="pt-8 sm:pt-10">
                         <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
                           {greetingLabel}
                         </h1>
                       </div>
-                      <p className="mt-3 max-w-[38rem] text-sm leading-7 text-[#667085] sm:text-[1rem]">
-                        O COS esta no centro da sua operacao para destravar clientes, catalogo, documentos,
-                        contratos e agenda sem trocar de tela.
-                      </p>
 
-                      <div className="mt-7 flex w-full flex-wrap items-center justify-center gap-2.5">
+                      <div className="mt-4 flex w-full max-w-[26rem] flex-wrap items-center justify-center gap-2 sm:mt-5 sm:max-w-none sm:gap-2.5">
                         {primaryCosSuggestions.map((suggestion) => (
                           <button
                             key={suggestion.label}
                             type="button"
                             onClick={() => void handleNextStepSuggestion(suggestion)}
-                            className="inline-flex min-h-10 items-center justify-center rounded-full border border-black/[0.06] bg-white/88 px-4 py-2 text-sm font-medium text-[#273444] transition-colors hover:bg-white"
+                            className="inline-flex min-h-9 items-center justify-center rounded-full border border-black/[0.06] bg-white/88 px-3.5 py-1.5 text-[13px] font-medium text-[#273444] transition-colors hover:bg-white sm:min-h-10 sm:px-4 sm:py-2 sm:text-sm"
                           >
                             {suggestion.label}
                           </button>
                         ))}
                       </div>
 
-                      <div className="mt-10 w-full">
+                      <div className="mt-auto w-full pt-16 sm:pt-20">
                         <div className="flex flex-col items-end gap-2">
                           <MobileOperationHealthTrigger
                             operationHealth={operationHealth}
