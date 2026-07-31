@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 
 export type CosQuickActionGroup = "Sistema" | "Clientes" | "Imoveis" | "Agenda" | "Leads" | "Studio IA"
 
@@ -34,6 +35,8 @@ type CosPromptComposerProps = {
   disabled?: boolean
   inputRef: RefObject<HTMLTextAreaElement | null>
   feedback?: string
+  sticky?: boolean
+  containerClassName?: string
 }
 
 type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionInstance
@@ -68,6 +71,8 @@ export function CosPromptComposer({
   disabled = false,
   inputRef,
   feedback,
+  sticky = true,
+  containerClassName,
 }: CosPromptComposerProps) {
   const [micState, setMicState] = useState<"idle" | "recording" | "processing" | "error">("idle")
   const [micError, setMicError] = useState("")
@@ -197,7 +202,13 @@ export function CosPromptComposer({
   }
 
   return (
-    <div className="pwa-sticky-composer mx-auto w-full max-w-[44rem] px-0 pt-1 sm:px-0">
+    <div
+      className={cn(
+        sticky && "pwa-sticky-composer",
+        "mx-auto w-full max-w-[44rem] px-0 pt-1 sm:px-0",
+        containerClassName,
+      )}
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault()

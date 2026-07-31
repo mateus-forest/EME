@@ -356,7 +356,7 @@ export function BrokerPortal() {
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
         <section className="min-h-full w-full bg-[#f4f1eb]">
           <div className="mx-auto grid min-h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[86rem] gap-6 px-4 pb-5 pt-2 sm:px-6 lg:min-h-[calc(100dvh_-_1.5rem)] lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
-            <div className="min-h-0">
+            <div className="relative min-h-0 pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
                   <div className="flex flex-1 flex-col">
@@ -380,27 +380,7 @@ export function BrokerPortal() {
                         ))}
                       </div>
 
-                      <div className="mt-auto w-full pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pt-16 sm:pt-20 lg:pb-4">
-                        <div className="flex flex-col items-end gap-2">
-                          <MobileOperationHealthTrigger
-                            operationHealth={operationHealth}
-                            pendingCount={visiblePendingCount}
-                            onClick={() => setIsMobileOperationHealthOpen(true)}
-                          />
-                          <CosPromptComposer
-                            prompt={prompt}
-                            setPrompt={setPrompt}
-                            onSubmit={handleSubmit}
-                            onNewConversation={async () => {
-                              await createConversation()
-                            }}
-                            quickActions={COS_QUICK_ACTIONS}
-                            disabled={isSending || isConversationLoading}
-                            inputRef={inputRef}
-                            feedback={chatFeedback}
-                          />
-                        </div>
-                      </div>
+                      <div className="mt-16 w-full pt-16 sm:mt-20 sm:pt-20" />
                     </div>
                   </div>
 
@@ -450,7 +430,7 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-2">
+                  <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
                     {isBootstrapPending ? (
                       <CosConversationSkeleton />
                     ) : isConversationLoading ? (
@@ -514,29 +494,31 @@ export function BrokerPortal() {
                     ) : null}
                   </div>
 
-                  <div className="mt-auto px-1 pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pt-2 lg:pb-4">
-                    <div className="flex flex-col items-end gap-2">
-                      <MobileOperationHealthTrigger
-                        operationHealth={operationHealth}
-                        pendingCount={visiblePendingCount}
-                        onClick={() => setIsMobileOperationHealthOpen(true)}
-                      />
-                      <CosPromptComposer
-                        prompt={prompt}
-                        setPrompt={setPrompt}
-                        onSubmit={handleSubmit}
-                        onNewConversation={async () => {
-                          await createConversation()
-                        }}
-                        quickActions={COS_QUICK_ACTIONS}
-                        disabled={isSending || isConversationLoading}
-                        inputRef={inputRef}
-                        feedback={chatFeedback}
-                      />
-                    </div>
-                  </div>
                 </div>
               )}
+
+              <div className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+40px)] z-20">
+                <div className="mx-auto flex w-full max-w-[48rem] flex-col items-end gap-2 px-1 pointer-events-auto">
+                  <MobileOperationHealthTrigger
+                    operationHealth={operationHealth}
+                    pendingCount={visiblePendingCount}
+                    onClick={() => setIsMobileOperationHealthOpen(true)}
+                  />
+                  <CosPromptComposer
+                    prompt={prompt}
+                    setPrompt={setPrompt}
+                    onSubmit={handleSubmit}
+                    onNewConversation={async () => {
+                      await createConversation()
+                    }}
+                    quickActions={COS_QUICK_ACTIONS}
+                    disabled={isSending || isConversationLoading}
+                    inputRef={inputRef}
+                    feedback={chatFeedback}
+                    sticky={false}
+                  />
+                </div>
+              </div>
             </div>
 
             <aside className="hidden lg:flex lg:min-h-full lg:flex-col lg:justify-end">
