@@ -15,6 +15,8 @@ function cleanText(value: string | null, maxLength: number) {
   return value?.trim().slice(0, maxLength) ?? ""
 }
 
+const CATALOG_SEARCH_SOURCE = "catalog"
+
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
@@ -108,6 +110,7 @@ export async function GET(request: NextRequest) {
       prisma.searchEvent.findMany({
         where: {
           brokerId: user.broker.id,
+          source: CATALOG_SEARCH_SOURCE,
           ...(periodStart ? { createdAt: { gte: periodStart } } : {}),
           ...(search ? { query: { contains: search, mode: "insensitive" as const } } : {}),
         },

@@ -212,7 +212,7 @@ export function BrokerAnalyticsPage() {
               </div>
             )) : (
               <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">
-                As buscas feitas no catálogo e no WhatsApp aparecerão aqui.
+                As buscas feitas no catálogo público aparecerão aqui.
               </div>
             )}
           </CardContent>
