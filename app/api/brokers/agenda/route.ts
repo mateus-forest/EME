@@ -160,7 +160,7 @@ export async function PATCH(request: NextRequest) {
     const existingEvent = await prisma.agendaEvent.findFirst({
       where: { id, brokerId: user.broker.id },
     })
-    if (!existingEvent) return NextResponse.json({ error: "Compromisso nÃ£o encontrado." }, { status: 404 })
+    if (!existingEvent) return NextResponse.json({ error: "Compromisso não encontrado." }, { status: 404 })
 
     const nextStatus = agendaStatuses.includes(body?.status) ? body.status : existingEvent.status
     const nextTitle = cleanText(body?.title, 160) || existingEvent.title

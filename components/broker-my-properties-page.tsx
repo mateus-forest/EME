@@ -381,7 +381,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
           : current,
       )
     } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "NÃ£o foi possÃ­vel localizar o CEP.")
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível localizar o CEP.")
     } finally {
       setIsLoadingCep(false)
     }
@@ -658,15 +658,15 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <Field label="Vagas"><CounterInput value={editingProperty.parking} onChange={(value) => updateField("parking", value)} /></Field>
                         <Field label="Cidade"><Input value={editingProperty.city} onChange={(event) => updateField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Bairro"><Input value={editingProperty.neighborhood} onChange={(event) => updateField("neighborhood", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="ProprietÃ¡rio"><Input value={editingProperty.ownerName} onChange={(event) => updateField("ownerName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Proprietário"><Input value={editingProperty.ownerName} onChange={(event) => updateField("ownerName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                       </div>
                     </section>
 
                     <section className="grid gap-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <h3 className="text-lg font-semibold text-[#050505]">Cadastro jurÃ­dico</h3>
-                          <p className="mt-1 text-sm text-[#6B7280]">O contrato consome matrÃ­cula, cartÃ³rio, endereÃ§o e Ã¡reas diretamente daqui.</p>
+                          <h3 className="text-lg font-semibold text-[#050505]">Cadastro jurídico</h3>
+                          <p className="mt-1 text-sm text-[#6B7280]">O contrato consome matrícula, cartório, endereço e áreas diretamente daqui.</p>
                         </div>
                         <div className="rounded-[1rem] border border-black/[0.06] bg-white px-4 py-3">
                           <p className="text-xs uppercase tracking-[0.18em] text-[#8B95A1]">Cadastro</p>
@@ -687,27 +687,27 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <Field label="NÃºmero"><Input value={editingProperty.legal.number} onChange={(event) => updateLegalField("number", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Número"><Input value={editingProperty.legal.number} onChange={(event) => updateLegalField("number", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Complemento"><Input value={editingProperty.legal.complement} onChange={(event) => updateLegalField("complement", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Bairro jurÃ­dico"><Input value={editingProperty.legal.district} onChange={(event) => updateLegalField("district", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Bairro jurídico"><Input value={editingProperty.legal.district} onChange={(event) => updateLegalField("district", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Estado"><Input value={editingProperty.legal.state} onChange={(event) => updateLegalField("state", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Cidade jurÃ­dica"><Input value={editingProperty.legal.city} onChange={(event) => updateLegalField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="MatrÃ­cula"><Input value={editingProperty.legal.registryNumber} onChange={(event) => updateLegalField("registryNumber", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="CartÃ³rio"><Input value={editingProperty.legal.registryOffice} onChange={(event) => updateLegalField("registryOffice", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Cidade jurídica"><Input value={editingProperty.legal.city} onChange={(event) => updateLegalField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Matrícula"><Input value={editingProperty.legal.registryNumber} onChange={(event) => updateLegalField("registryNumber", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Cartório"><Input value={editingProperty.legal.registryOffice} onChange={(event) => updateLegalField("registryOffice", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Livro"><Input value={editingProperty.legal.registryBook} onChange={(event) => updateLegalField("registryBook", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Folha"><Input value={editingProperty.legal.registryPage} onChange={(event) => updateLegalField("registryPage", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Cadastro municipal"><Input value={editingProperty.legal.municipalRegistration} onChange={(event) => updateLegalField("municipalRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="InscriÃ§Ã£o imobiliÃ¡ria"><Input value={editingProperty.legal.taxRegistration} onChange={(event) => updateLegalField("taxRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Inscrição imobiliária"><Input value={editingProperty.legal.taxRegistration} onChange={(event) => updateLegalField("taxRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="IPTU"><Input value={editingProperty.legal.iptuValue} onChange={(event) => updateLegalField("iptuValue", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Ãrea privativa"><Input value={editingProperty.legal.privateArea} onChange={(event) => updateLegalField("privateArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Ãrea total"><Input value={editingProperty.legal.totalArea} onChange={(event) => updateLegalField("totalArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="FraÃ§Ã£o ideal"><Input value={editingProperty.legal.idealFraction} onChange={(event) => updateLegalField("idealFraction", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="CondomÃ­nio"><Input value={editingProperty.legal.condominiumName} onChange={(event) => updateLegalField("condominiumName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Taxa de condomÃ­nio"><Input value={editingProperty.legal.condominiumFee} onChange={(event) => updateLegalField("condominiumFee", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Área privativa"><Input value={editingProperty.legal.privateArea} onChange={(event) => updateLegalField("privateArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Área total"><Input value={editingProperty.legal.totalArea} onChange={(event) => updateLegalField("totalArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Fração ideal"><Input value={editingProperty.legal.idealFraction} onChange={(event) => updateLegalField("idealFraction", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Condomínio"><Input value={editingProperty.legal.condominiumName} onChange={(event) => updateLegalField("condominiumName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Taxa de condomínio"><Input value={editingProperty.legal.condominiumFee} onChange={(event) => updateLegalField("condominiumFee", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Taxas adicionais"><Input value={editingProperty.legal.additionalFees} onChange={(event) => updateLegalField("additionalFees", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                       </div>
 
-                      <Field label="ObservaÃ§Ãµes jurÃ­dicas">
+                      <Field label="Observações jurídicas">
                         <Textarea value={editingProperty.legal.legalNotes} onChange={(event) => updateLegalField("legalNotes", event.target.value)} className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505]" />
                       </Field>
 
@@ -877,7 +877,7 @@ function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error("NÃ£o foi possÃ­vel ler o arquivo selecionado."))
+    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo selecionado."))
     reader.readAsDataURL(file)
   })
 }

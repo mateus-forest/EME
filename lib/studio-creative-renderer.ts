@@ -522,7 +522,7 @@ function readAreaLabel(campaign: StudioCampaignRecord) {
   const legal = asRecord(campaign.property?.legalData)
   const area = readString(legal.privateArea) || readString(legal.totalArea)
   if (!area) return null
-  return /\d\s*m/i.test(area) ? area.replace(/m(?:Â)?²?/i, "m\u00b2") : `${area} m\u00b2`
+  return /\d\s*m/i.test(area) ? area.replace(/m(?:²)?/i, "m\u00b2") : `${area} m\u00b2`
 }
 
 function formatPriceLabel(value: number | null | undefined) {

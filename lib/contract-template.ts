@@ -146,7 +146,7 @@ function propertyTypeLabel(type?: string | null) {
 }
 
 function propertyPurposeLabel(purpose?: string | null) {
-  if (purpose === "RENT" || purpose === "Locacao" || purpose === "LocaÃ§Ã£o") return "Locacao"
+  if (purpose === "RENT" || purpose === "Locacao" || purpose === "Locação") return "Locacao"
   return "Venda"
 }
 
@@ -3039,7 +3039,7 @@ export function buildExternalContractAttachmentHtml(content: ContractContent) {
           <article class="card">
             <div class="label">Arquivo</div>
             <div class="value">${escapeAttachmentHtml(fileName)}</div>
-            <p class="notes">${escapeAttachmentHtml(mimeLabel)} • ${escapeAttachmentHtml(fileSize)}</p>
+            <p class="notes">${escapeAttachmentHtml(mimeLabel)} â€¢ ${escapeAttachmentHtml(fileSize)}</p>
           </article>
           <article class="card">
             <div class="label">Observacoes</div>
