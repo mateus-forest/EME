@@ -11,6 +11,7 @@ export type StudioCreativeFormat =
   | "catalog"
 
 const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
+const STUDIO_RENDER_FONT_FAMILY = "Arial, Helvetica, sans-serif"
 
 type CreativeLayout = {
   badgeX: number
@@ -211,7 +212,7 @@ function renderSingleLineText(
   color: string,
   letterSpacingEm = 0,
 ) {
-  return `<text x="${x}" y="${y}" fill="${color}" font-family="Geist, Arial, sans-serif" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(text)}</text>`
+  return `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(text)}</text>`
 }
 
 function renderMultilineText(
@@ -225,7 +226,7 @@ function renderMultilineText(
   letterSpacingEm = 0,
 ) {
   return [
-    `<text x="${x}" y="${y}" fill="${color}" font-family="Geist, Arial, sans-serif" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">`,
+    `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">`,
     ...lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`),
     "</text>",
   ].join("")
