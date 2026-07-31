@@ -12,6 +12,32 @@ export type StudioCreativeFormat =
 
 const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
 
+type CreativeLayout = {
+  badgeX: number
+  badgeY: number
+  badgeWidth: number
+  badgeHeight: number
+  logoX: number
+  logoY: number
+  logoWidth: number
+  logoHeight: number
+  categoryX: number
+  categoryY: number
+  titleX: number
+  titleY: number
+  titleMaxWidth: number
+  dividerX: number
+  dividerY: number
+  dividerWidth: number
+  summaryX: number
+  summaryY: number
+  summaryWidth: number
+  pricePanelX: number
+  pricePanelY: number
+  pricePanelWidth: number
+  pricePanelHeight: number
+}
+
 export function getStudioCreativeRenderPath(campaignId: string, assetId: string) {
   return `/api/studio-ia/campaigns/${encodeURIComponent(campaignId)}/assets/${encodeURIComponent(assetId)}/render`
 }
@@ -69,57 +95,53 @@ function renderFeedCreative(
   format: Exclude<StudioCreativeFormat, "story" | "reels_cover">,
 ) {
   const dimensions = getFeedDimensions(format)
+  const layout = getCreativeLayout(dimensions.width, dimensions.height, "feed")
   const imageUrl = resolveCampaignImage(campaign)
   const badge = resolveCampaignBadge(campaign)
   const category = resolveCategoryLabel(campaign)
   const hero = resolveFeedHero(campaign, asset)
-  const heroLayout = fitMultilineText(hero, dimensions.width * 0.6, 168, 92, 2)
+  const heroLayout = fitMultilineText(hero, layout.titleMaxWidth, 164, 88, 3)
   const summary = buildSummaryItems(campaign)
   const price = formatPriceLabel(campaign.property?.price)
-  const cta = "AGENDE\nSUA VISITA"
-  const ctaFont = fitMultilineText(cta, 190, 38, 28, 2)
+  const ctaLayout = fitMultilineText("AGENDE SUA VISITA", Math.max(170, layout.pricePanelWidth * 0.26), 30, 22, 2)
   const gradientId = `studio-overlay-${campaign.id}-${asset.id}`
   const waveId = `studio-wave-${campaign.id}-${asset.id}`
-  const shadowId = `studio-shadow-${campaign.id}-${asset.id}`
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimensions.width} ${dimensions.height}" width="${dimensions.width}" height="${dimensions.height}">`,
     "<defs>",
     `<linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">`,
-    `<stop offset="0%" stop-color="rgba(2,31,14,0.96)" />`,
-    `<stop offset="36%" stop-color="rgba(3,44,18,0.92)" />`,
-    `<stop offset="64%" stop-color="rgba(5,22,12,0.42)" />`,
-    `<stop offset="100%" stop-color="rgba(5,22,12,0.06)" />`,
+    `<stop offset="0%" stop-color="rgba(3,22,11,0.88)" />`,
+    `<stop offset="34%" stop-color="rgba(5,33,15,0.72)" />`,
+    `<stop offset="66%" stop-color="rgba(4,20,10,0.24)" />`,
+    `<stop offset="100%" stop-color="rgba(4,20,10,0.02)" />`,
     "</linearGradient>",
     `<radialGradient id="${waveId}" cx="80%" cy="100%" r="70%">`,
-    `<stop offset="0%" stop-color="rgba(120,255,142,0.92)" />`,
-    `<stop offset="34%" stop-color="rgba(49,198,74,0.68)" />`,
-    `<stop offset="75%" stop-color="rgba(20,92,34,0.18)" />`,
+    `<stop offset="0%" stop-color="rgba(138,255,160,0.82)" />`,
+    `<stop offset="34%" stop-color="rgba(55,198,79,0.52)" />`,
+    `<stop offset="75%" stop-color="rgba(20,92,34,0.12)" />`,
     `<stop offset="100%" stop-color="rgba(20,92,34,0)" />`,
     "</radialGradient>",
-    `<filter id="${shadowId}" x="-30%" y="-30%" width="160%" height="160%">`,
-    `<feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="rgba(0,0,0,0.22)" />`,
-    "</filter>",
     "</defs>",
     renderBackgroundImage(imageUrl, dimensions.width, dimensions.height),
     `<rect width="${dimensions.width}" height="${dimensions.height}" fill="url(#${gradientId})" />`,
-    `<path d="M0 0 H${Math.round(dimensions.width * 0.54)} C${Math.round(dimensions.width * 0.58)} ${Math.round(dimensions.height * 0.26)} ${Math.round(dimensions.width * 0.56)} ${Math.round(dimensions.height * 0.78)} 0 ${dimensions.height} Z" fill="rgba(2,24,12,0.68)" />`,
+    renderLeftOverlay(dimensions.width, dimensions.height, "feed"),
     renderWaveDecoration(dimensions.width, dimensions.height, waveId),
-    renderBadge(badge, 68, 86, 280, 64),
-    renderLogo(officialLogoDataUri, dimensions.width - 214, 74, 142, 58),
-    renderSingleLineText(category, 86, 360, 24, "700", "#7be23f", 0.32),
-    renderMultilineText(heroLayout.lines, 82, 428, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0.01),
-    renderDivider(84, 760, 86),
-    renderSummaryGrid(summary, 84, 818, dimensions.width - 168),
+    renderBadge(badge, layout.badgeX, layout.badgeY, layout.badgeWidth, layout.badgeHeight),
+    renderLogo(officialLogoDataUri, layout.logoX, layout.logoY, layout.logoWidth, layout.logoHeight),
+    renderSingleLineText(category, layout.categoryX, layout.categoryY, 24, "700", "#7be23f", 0.28),
+    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0.005),
+    renderDivider(layout.dividerX, layout.dividerY, layout.dividerWidth),
+    renderSummaryGrid(summary, layout.summaryX, layout.summaryY, layout.summaryWidth),
     renderPriceCtaPanel({
-      x: 72,
-      y: dimensions.height - 254,
-      width: Math.min(650, dimensions.width - 144),
-      height: 132,
+      x: layout.pricePanelX,
+      y: layout.pricePanelY,
+      width: layout.pricePanelWidth,
+      height: layout.pricePanelHeight,
       price,
-      ctaLines: ctaFont.lines,
-      ctaFontSize: ctaFont.fontSize,
-      ctaLineHeight: ctaFont.lineHeight,
+      ctaLines: ctaLayout.lines,
+      ctaFontSize: ctaLayout.fontSize,
+      ctaLineHeight: ctaLayout.lineHeight,
     }),
     "</svg>",
   ].join("")
@@ -132,13 +154,15 @@ function renderStoryCreative(
   format: "story" | "reels_cover",
 ) {
   const dimensions = format === "reels_cover" ? { width: 1080, height: 1350 } : { width: 1080, height: 1920 }
+  const layout = getCreativeLayout(dimensions.width, dimensions.height, "story")
   const imageUrl = resolveCampaignImage(campaign)
   const badge = resolveCampaignBadge(campaign)
   const category = resolveCategoryLabel(campaign)
   const hero = resolveStoryHero(campaign, asset)
-  const heroLayout = fitMultilineText(hero, 720, 112, 72, 3)
+  const heroLayout = fitMultilineText(hero, layout.titleMaxWidth, 110, 70, 3)
   const summary = buildSummaryItems(campaign).slice(0, 4)
   const price = formatPriceLabel(campaign.property?.price)
+  const ctaLayout = fitMultilineText("AGENDE SUA VISITA", Math.max(190, layout.pricePanelWidth * 0.32), 28, 22, 2)
   const gradientId = `studio-story-overlay-${campaign.id}-${asset.id}`
   const waveId = `studio-story-wave-${campaign.id}-${asset.id}`
 
@@ -146,29 +170,38 @@ function renderStoryCreative(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimensions.width} ${dimensions.height}" width="${dimensions.width}" height="${dimensions.height}">`,
     "<defs>",
     `<linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">`,
-    `<stop offset="0%" stop-color="rgba(1,33,13,0.98)" />`,
-    `<stop offset="28%" stop-color="rgba(2,37,14,0.92)" />`,
-    `<stop offset="58%" stop-color="rgba(5,22,12,0.48)" />`,
-    `<stop offset="100%" stop-color="rgba(0,0,0,0.10)" />`,
+    `<stop offset="0%" stop-color="rgba(3,22,11,0.9)" />`,
+    `<stop offset="28%" stop-color="rgba(4,28,13,0.8)" />`,
+    `<stop offset="58%" stop-color="rgba(4,20,10,0.28)" />`,
+    `<stop offset="100%" stop-color="rgba(0,0,0,0.04)" />`,
     "</linearGradient>",
     `<radialGradient id="${waveId}" cx="82%" cy="100%" r="72%">`,
-    `<stop offset="0%" stop-color="rgba(125,255,148,0.98)" />`,
-    `<stop offset="38%" stop-color="rgba(42,178,66,0.66)" />`,
-    `<stop offset="76%" stop-color="rgba(19,88,34,0.18)" />`,
+    `<stop offset="0%" stop-color="rgba(138,255,160,0.84)" />`,
+    `<stop offset="38%" stop-color="rgba(42,178,66,0.54)" />`,
+    `<stop offset="76%" stop-color="rgba(19,88,34,0.12)" />`,
     `<stop offset="100%" stop-color="rgba(19,88,34,0)" />`,
     "</radialGradient>",
     "</defs>",
     renderBackgroundImage(imageUrl, dimensions.width, dimensions.height),
     `<rect width="${dimensions.width}" height="${dimensions.height}" fill="url(#${gradientId})" />`,
-    `<path d="M0 0 H${Math.round(dimensions.width * 0.56)} C${Math.round(dimensions.width * 0.6)} ${Math.round(dimensions.height * 0.24)} ${Math.round(dimensions.width * 0.58)} ${Math.round(dimensions.height * 0.82)} 0 ${dimensions.height} Z" fill="rgba(1,22,10,0.78)" />`,
+    renderLeftOverlay(dimensions.width, dimensions.height, "story"),
     renderWaveDecoration(dimensions.width, dimensions.height, waveId),
-    renderBadge(badge, 72, 84, 324, 70),
-    renderLogo(officialLogoDataUri, dimensions.width - 250, 86, 170, 70),
-    renderSingleLineText(category, 84, format === "reels_cover" ? 790 : 810, 22, "700", "#7be23f", 0.34),
-    renderMultilineText(heroLayout.lines, 80, format === "reels_cover" ? 872 : 892, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0.01),
-    renderDivider(84, format === "reels_cover" ? 1198 : 1218, 92),
-    renderStorySummary(summary, 84, format === "reels_cover" ? 1260 : 1288),
-    renderStoryPricePanel(78, dimensions.height - 338, 430, 136, price),
+    renderBadge(badge, layout.badgeX, layout.badgeY, layout.badgeWidth, layout.badgeHeight),
+    renderLogo(officialLogoDataUri, layout.logoX, layout.logoY, layout.logoWidth, layout.logoHeight),
+    renderSingleLineText(category, layout.categoryX, layout.categoryY, 22, "700", "#7be23f", 0.28),
+    renderMultilineText(heroLayout.lines, layout.titleX, layout.titleY, heroLayout.fontSize, "800", "#ffffff", heroLayout.lineHeight, 0.005),
+    renderDivider(layout.dividerX, layout.dividerY, layout.dividerWidth),
+    renderStorySummary(summary, layout.summaryX, layout.summaryY),
+    renderStoryPricePanel(
+      layout.pricePanelX,
+      layout.pricePanelY,
+      layout.pricePanelWidth,
+      layout.pricePanelHeight,
+      price,
+      ctaLayout.lines,
+      ctaLayout.fontSize,
+      ctaLayout.lineHeight,
+    ),
     "</svg>",
   ].join("")
 }
@@ -181,31 +214,39 @@ function renderBackgroundImage(imageUrl: string | null, width: number, height: n
   return `<image href="${escapeXml(imageUrl)}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" />`
 }
 
+function renderLeftOverlay(width: number, height: number, variant: "feed" | "story") {
+  const widthRatio = variant === "feed" ? 0.52 : 0.54
+  const control1 = variant === "feed" ? 0.17 : 0.16
+  const control2 = variant === "feed" ? 0.56 : 0.58
+  const lowerX = variant === "feed" ? 0.36 : 0.34
+
+  return `<path d="M0 0 H${Math.round(width * widthRatio)} C${Math.round(width * 0.56)} ${Math.round(height * control1)} ${Math.round(width * 0.6)} ${Math.round(height * control2)} ${Math.round(width * lowerX)} ${Math.round(height * 0.88)} C${Math.round(width * 0.22)} ${Math.round(height * 1.03)} ${Math.round(width * 0.08)} ${Math.round(height * 1.02)} 0 ${height} Z" fill="rgba(3,18,9,0.54)" />`
+}
+
 function renderWaveDecoration(width: number, height: number, waveId: string) {
-  const startY = Math.round(height * 0.79)
-  const endY = Math.round(height * 0.98)
+  const endY = Math.round(height * 0.975)
 
   return [
-    `<path d="M${Math.round(width * 0.52)} ${height} C${Math.round(width * 0.68)} ${Math.round(height * 0.9)} ${Math.round(width * 0.82)} ${startY} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.92" />`,
-    `<path d="M${Math.round(width * 0.48)} ${height} C${Math.round(width * 0.67)} ${Math.round(height * 0.88)} ${Math.round(width * 0.84)} ${Math.round(height * 0.82)} ${width} ${Math.round(height * 0.9)}" fill="none" stroke="rgba(123,226,63,0.42)" stroke-width="2.2" />`,
-    `<path d="M${Math.round(width * 0.58)} ${height} C${Math.round(width * 0.76)} ${Math.round(height * 0.92)} ${Math.round(width * 0.88)} ${Math.round(height * 0.84)} ${width} ${Math.round(height * 0.94)}" fill="none" stroke="rgba(199,255,210,0.24)" stroke-width="1.4" />`,
-    `<path d="M${Math.round(width * 0.66)} ${height} C${Math.round(width * 0.82)} ${Math.round(height * 0.93)} ${Math.round(width * 0.92)} ${Math.round(height * 0.88)} ${width} ${Math.round(height * 0.965)}" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1" />`,
+    `<path d="M${Math.round(width * 0.5)} ${height} C${Math.round(width * 0.64)} ${Math.round(height * 0.92)} ${Math.round(width * 0.8)} ${Math.round(height * 0.76)} ${width} ${endY} L${width} ${height} Z" fill="url(#${waveId})" opacity="0.8" />`,
+    `<path d="M${Math.round(width * 0.46)} ${height} C${Math.round(width * 0.65)} ${Math.round(height * 0.9)} ${Math.round(width * 0.82)} ${Math.round(height * 0.8)} ${width} ${Math.round(height * 0.885)}" fill="none" stroke="rgba(123,226,63,0.34)" stroke-width="2" />`,
+    `<path d="M${Math.round(width * 0.57)} ${height} C${Math.round(width * 0.75)} ${Math.round(height * 0.93)} ${Math.round(width * 0.88)} ${Math.round(height * 0.84)} ${width} ${Math.round(height * 0.935)}" fill="none" stroke="rgba(199,255,210,0.18)" stroke-width="1.25" />`,
+    `<path d="M${Math.round(width * 0.65)} ${height} C${Math.round(width * 0.81)} ${Math.round(height * 0.94)} ${Math.round(width * 0.92)} ${Math.round(height * 0.88)} ${width} ${Math.round(height * 0.962)}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="0.9" />`,
   ].join("")
 }
 
 function renderBadge(label: string, x: number, y: number, width: number, height: number) {
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(30,144,51,0.84)" stroke="rgba(123,226,63,0.9)" stroke-width="2.4" />`,
-    `<circle cx="40" cy="${Math.round(height / 2)}" r="18" fill="rgba(255,255,255,0.06)" />`,
+    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(28,138,50,0.78)" stroke="rgba(123,226,63,0.72)" stroke-width="2" />`,
+    `<circle cx="40" cy="${Math.round(height / 2)}" r="17" fill="rgba(255,255,255,0.05)" />`,
     `<path d="M40 ${Math.round(height / 2) - 14} L44 ${Math.round(height / 2) - 4} L54 ${Math.round(height / 2)} L44 ${Math.round(height / 2) + 4} L40 ${Math.round(height / 2) + 14} L36 ${Math.round(height / 2) + 4} L26 ${Math.round(height / 2)} L36 ${Math.round(height / 2) - 4} Z" fill="#ffffff" />`,
-    renderSingleLineText(label, 78, Math.round(height / 2) + 10, 22, "700", "#ffffff", 0.06),
+    renderSingleLineText(label, 78, Math.round(height / 2) + 9, 21, "700", "#ffffff", 0.045),
     "</g>",
   ].join("")
 }
 
 function renderLogo(logoDataUri: string, x: number, y: number, width: number, height: number) {
-  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMaxYMid meet" />`
+  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${Math.round(width * 1.15)}" height="${Math.round(height * 1.15)}" preserveAspectRatio="xMaxYMid meet" />`
 }
 
 function renderSingleLineText(
@@ -238,7 +279,7 @@ function renderMultilineText(
 }
 
 function renderDivider(x: number, y: number, width: number) {
-  return `<rect x="${x}" y="${y}" width="${width}" height="6" rx="3" fill="#73df30" />`
+  return `<rect x="${x}" y="${y}" width="${width}" height="5" rx="2.5" fill="#73df30" />`
 }
 
 function renderSummaryGrid(
@@ -247,18 +288,25 @@ function renderSummaryGrid(
   y: number,
   availableWidth: number,
 ) {
-  const cardWidth = Math.floor(availableWidth / Math.max(items.length, 1))
+  const count = Math.max(items.length, 1)
+  const cardWidth = Math.floor(availableWidth / count)
 
   return items
     .map((item, index) => {
       const originX = x + index * cardWidth
-      const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, cardWidth - 72, 24, 18, item.support ? 2 : 1)
+      const valueLayout = fitMultilineText(
+        `${item.value}${item.support ? `\n${item.support}` : ""}`,
+        cardWidth - 86,
+        23,
+        17,
+        item.support ? 2 : 1,
+      )
 
       return [
         `<g transform="translate(${originX} ${y})">`,
-        renderFeatureIcon(item.icon, 0, 0, "#73df30"),
-        renderMultilineText(valueLayout.lines, 56, 28, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
-        index < items.length - 1 ? `<rect x="${cardWidth - 20}" y="6" width="1.4" height="104" fill="rgba(255,255,255,0.22)" />` : "",
+        renderFeatureIcon(item.icon, 0, 8, "#73df30"),
+        renderMultilineText(valueLayout.lines, 62, 34, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
+        index < items.length - 1 ? `<rect x="${cardWidth - 24}" y="10" width="1.2" height="96" fill="rgba(255,255,255,0.16)" />` : "",
         "</g>",
       ].join("")
     })
@@ -269,12 +317,12 @@ function renderStorySummary(items: Array<{ icon: string; value: string; support?
   return items
     .map((item, index) => {
       const offsetY = index * 118
-      const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, 340, 18, 18, 2)
+      const valueLayout = fitMultilineText(`${item.value}${item.support ? `\n${item.support}` : ""}`, 332, 21, 18, 2)
 
       return [
         `<g transform="translate(${x} ${y + offsetY})">`,
-        renderFeatureIcon(item.icon, 0, 0, "#73df30"),
-        renderMultilineText(valueLayout.lines, 96, 22, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
+        renderFeatureIcon(item.icon, 0, 6, "#73df30"),
+        renderMultilineText(valueLayout.lines, 88, 28, valueLayout.fontSize, "500", "#ffffff", valueLayout.lineHeight, 0),
         "</g>",
       ].join("")
     })
@@ -292,27 +340,45 @@ function renderPriceCtaPanel(input: {
   ctaLineHeight: number
 }) {
   const dividerX = Math.round(input.width * 0.6)
+  const ctaWidth = input.width - dividerX - 44
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="34" fill="rgba(0,0,0,0.18)" stroke="rgba(123,226,63,0.62)" stroke-width="2.1" />`,
-    renderSingleLineText("PREÇO:", 36, 50, 24, "500", "#ffffff", 0),
-    renderSingleLineText(input.price, 36, 96, 52, "800", "#73df30", 0),
-    `<rect x="${dividerX}" y="26" width="1.4" height="${input.height - 52}" fill="rgba(255,255,255,0.2)" />`,
-    `<g transform="translate(${dividerX + 38} 34)">`,
-    renderFeatureIcon("calendar", 0, 0, "#73df30"),
-    renderMultilineText(input.ctaLines, 64, 28, input.ctaFontSize, "700", "#ffffff", input.ctaLineHeight, 0),
+    `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(3,15,8,0.32)" stroke="rgba(123,226,63,0.46)" stroke-width="1.6" />`,
+    renderSingleLineText("PRECO", 34, 42, 21, "500", "#ffffff", 0.02),
+    renderSingleLineText(input.price, 34, 98, 50, "800", "#73df30", 0),
+    `<rect x="${dividerX}" y="24" width="1.1" height="${input.height - 48}" fill="rgba(255,255,255,0.14)" />`,
+    `<g transform="translate(${dividerX + 28} 24)">`,
+    `<rect width="${ctaWidth}" height="${input.height - 48}" rx="22" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
+    renderFeatureIcon("calendar", 18, 16, "#73df30"),
+    renderMultilineText(input.ctaLines, 80, 36, input.ctaFontSize, "700", "#ffffff", input.ctaLineHeight, 0.01),
     "</g>",
     "</g>",
   ].join("")
 }
 
-function renderStoryPricePanel(x: number, y: number, width: number, height: number, price: string) {
+function renderStoryPricePanel(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  price: string,
+  ctaLines: string[],
+  ctaFontSize: number,
+  ctaLineHeight: number,
+) {
+  const ctaWidth = Math.max(248, Math.round(width * 0.48))
+
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="28" fill="rgba(5,20,10,0.48)" stroke="rgba(123,226,63,0.56)" stroke-width="1.8" />`,
-    renderSingleLineText("PREÇO", 34, 44, 21, "500", "#ffffff", 0),
-    renderSingleLineText(price, 34, 108, 54, "800", "#73df30", 0),
+    `<rect width="${width}" height="${height}" rx="28" fill="rgba(3,15,8,0.34)" stroke="rgba(123,226,63,0.44)" stroke-width="1.5" />`,
+    renderSingleLineText("PRECO", 34, 42, 20, "500", "#ffffff", 0.02),
+    renderSingleLineText(price, 34, 102, 50, "800", "#73df30", 0),
+    `<g transform="translate(${width - ctaWidth - 24} ${Math.round((height - 78) / 2)})">`,
+    `<rect width="${ctaWidth}" height="78" rx="22" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`,
+    renderFeatureIcon("calendar", 16, 12, "#73df30"),
+    renderMultilineText(ctaLines, 78, 32, ctaFontSize, "700", "#ffffff", ctaLineHeight, 0.01),
+    "</g>",
     "</g>",
   ].join("")
 }
@@ -403,17 +469,17 @@ function buildSummaryItems(campaign: StudioCampaignRecord) {
   }
 
   if (area) {
-    items.push({ icon: "area", value: area, support: "Área útil" })
+    items.push({ icon: "area", value: area, support: "AREA UTIL" })
   } else if ((campaign.property?.bedrooms ?? 0) > 0) {
-    items.push({ icon: "bed", value: `${campaign.property?.bedrooms} dormitório${campaign.property?.bedrooms === 1 ? "" : "s"}` })
+    items.push({ icon: "bed", value: `${campaign.property?.bedrooms} DORM${campaign.property?.bedrooms === 1 ? "" : "S"}` })
   }
 
   if ((campaign.property?.bathrooms ?? 0) > 0) {
-    items.push({ icon: "bath", value: `${campaign.property?.bathrooms} banheiro${campaign.property?.bathrooms === 1 ? "" : "s"}` })
+    items.push({ icon: "bath", value: `${campaign.property?.bathrooms} BANHEIRO${campaign.property?.bathrooms === 1 ? "" : "S"}` })
   }
 
   if ((campaign.property?.parkingSpots ?? 0) > 0) {
-    items.push({ icon: "car", value: `${campaign.property?.parkingSpots} vaga${campaign.property?.parkingSpots === 1 ? "" : "s"}` })
+    items.push({ icon: "car", value: `${campaign.property?.parkingSpots} VAGA${campaign.property?.parkingSpots === 1 ? "" : "S"}` })
   }
 
   return items.slice(0, 4)
@@ -429,7 +495,7 @@ function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, m
       return {
         lines,
         fontSize,
-        lineHeight: Math.round(fontSize * 0.96),
+        lineHeight: Math.round(fontSize * 0.94),
       }
     }
   }
@@ -437,7 +503,7 @@ function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, m
   return {
     lines: wrapText(normalized, Math.max(6, Math.floor(maxWidth / (minFontSize * 0.58))), maxLines),
     fontSize: minFontSize,
-    lineHeight: Math.round(minFontSize * 0.96),
+    lineHeight: Math.round(minFontSize * 0.94),
   }
 }
 
@@ -472,7 +538,7 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
     case "LAND":
       return "Terreno"
     case "OFFICE":
-      return "Escritório"
+      return "Escritorio"
     case "STORE":
       return "Loja"
     case "PENTHOUSE":
@@ -485,7 +551,7 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
 function mapPurposeHeadline(value: string | null | undefined) {
   const normalized = (value || "").toUpperCase()
   if (normalized.includes("RENT") || normalized.includes("LOC")) return "PARA ALUGAR"
-  return "À VENDA"
+  return "A VENDA"
 }
 
 function readAreaLabel(campaign: StudioCampaignRecord) {
@@ -537,6 +603,62 @@ function getFeedDimensions(format: Exclude<StudioCreativeFormat, "story" | "reel
     case "feed":
     default:
       return { width: 1254, height: 1254 }
+  }
+}
+
+function getCreativeLayout(width: number, height: number, variant: "feed" | "story"): CreativeLayout {
+  if (variant === "story") {
+    return {
+      badgeX: Math.round(width * 0.067),
+      badgeY: Math.round(height * 0.044),
+      badgeWidth: Math.round(width * 0.284),
+      badgeHeight: Math.round(height * 0.037),
+      logoX: width - Math.round(width * 0.232),
+      logoY: Math.round(height * 0.045),
+      logoWidth: Math.round(width * 0.182),
+      logoHeight: Math.round(height * 0.042),
+      categoryX: Math.round(width * 0.078),
+      categoryY: Math.round(height * 0.422),
+      titleX: Math.round(width * 0.074),
+      titleY: Math.round(height * 0.468),
+      titleMaxWidth: Math.round(width * 0.68),
+      dividerX: Math.round(width * 0.078),
+      dividerY: Math.round(height * 0.64),
+      dividerWidth: Math.round(width * 0.086),
+      summaryX: Math.round(width * 0.076),
+      summaryY: Math.round(height * 0.675),
+      summaryWidth: Math.round(width * 0.44),
+      pricePanelX: Math.round(width * 0.072),
+      pricePanelY: height - Math.round(height * 0.176),
+      pricePanelWidth: Math.round(width * 0.71),
+      pricePanelHeight: Math.round(height * 0.09),
+    }
+  }
+
+  return {
+    badgeX: Math.round(width * 0.054),
+    badgeY: Math.round(height * 0.068),
+    badgeWidth: Math.round(width * 0.228),
+    badgeHeight: Math.round(height * 0.052),
+    logoX: width - Math.round(width * 0.197),
+    logoY: Math.round(height * 0.059),
+    logoWidth: Math.round(width * 0.13),
+    logoHeight: Math.round(height * 0.053),
+    categoryX: Math.round(width * 0.068),
+    categoryY: Math.round(height * 0.292),
+    titleX: Math.round(width * 0.065),
+    titleY: Math.round(height * 0.35),
+    titleMaxWidth: Math.round(width * 0.58),
+    dividerX: Math.round(width * 0.067),
+    dividerY: Math.round(height * 0.53),
+    dividerWidth: Math.round(width * 0.074),
+    summaryX: Math.round(width * 0.067),
+    summaryY: Math.round(height * 0.574),
+    summaryWidth: width - Math.round(width * 0.134),
+    pricePanelX: Math.round(width * 0.058),
+    pricePanelY: height - Math.round(height * 0.19),
+    pricePanelWidth: Math.min(Math.round(width * 0.55), width - Math.round(width * 0.116)),
+    pricePanelHeight: Math.round(height * 0.112),
   }
 }
 
