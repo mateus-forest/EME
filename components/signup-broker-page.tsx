@@ -15,6 +15,7 @@ export function SignupBrokerPage() {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [creci, setCreci] = useState("")
+  const [cnpj, setCnpj] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
 
@@ -38,6 +39,7 @@ export function SignupBrokerPage() {
           email,
           phone,
           creci,
+          cnpj,
           password,
         }),
       })
@@ -119,6 +121,19 @@ export function SignupBrokerPage() {
             onChange={(event) => setCreci(event.target.value)}
             placeholder="123456"
             required
+            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="cnpj" className="text-sm font-medium text-[#374151]">
+            CNPJ
+          </label>
+          <Input
+            id="cnpj"
+            value={cnpj}
+            onChange={(event) => setCnpj(event.target.value)}
+            placeholder="00.000.000/0000-00"
             className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
           />
         </div>

@@ -8,6 +8,7 @@ import { X } from "lucide-react"
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
 
 export type AuthMode = "login" | "signup"
+type LoginMethod = "password" | "pin"
 
 export function AuthPanel({
   mode,
@@ -21,10 +22,13 @@ export function AuthPanel({
   const router = useRouter()
   const searchParams = useSearchParams()
   const isLogin = mode === "login"
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [cnpj, setCnpj] = useState("")
   const [password, setPassword] = useState("")
+  const [pin, setPin] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
 
@@ -38,6 +42,7 @@ export function AuthPanel({
 
   useEffect(() => {
     setError("")
+    setLoginMethod("password")
   }, [mode])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -47,11 +52,19 @@ export function AuthPanel({
 
     if (isLogin) {
       const payload = {
+        method: loginMethod,
         email: email.trim().toLowerCase(),
         password,
+        pin: pin.trim(),
       }
 
-      if (!payload.email || !payload.password) {
+      if (loginMethod === "pin") {
+        if (!payload.pin) {
+          setError("PIN obrigatorio.")
+          setIsSubmitting(false)
+          return
+        }
+      } else if (!payload.email || !payload.password) {
         setError("Email e senha sao obrigatorios.")
         setIsSubmitting(false)
         return
@@ -118,6 +131,7 @@ export function AuthPanel({
           role: "BROKER",
           name: trimmedName,
           email: normalizedEmail,
+          cnpj: cnpj.trim(),
           password,
         }),
       })
@@ -164,7 +178,7 @@ export function AuthPanel({
           exit={{ x: 72, opacity: 0, filter: "blur(10px)" }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="relative overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.94)] px-5 py-6 shadow-[0_26px_70px_-54px_rgba(20,52,36,0.4)] backdrop-blur-xl sm:rounded-[30px] sm:px-10 sm:py-8 sm:bg-[rgba(255,255,255,0.9)] sm:px-12 sm:py-9">
+          <div className="relative overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.94)] px-5 py-6 shadow-[0_26px_70px_-54px_rgba(20,52,36,0.4)] backdrop-blur-xl sm:rounded-[30px] sm:bg-[rgba(255,255,255,0.9)] sm:px-12 sm:py-9">
             <button
               type="button"
               aria-label="Fechar"
@@ -194,6 +208,39 @@ export function AuthPanel({
                 </div>
 
                 <form className="mt-6 flex flex-col gap-3 sm:mt-7" onSubmit={handleSubmit}>
+                  {isLogin ? (
+                    <div className="grid grid-cols-2 gap-2 rounded-[1.25rem] border border-foreground/10 bg-[#F8FAF9] p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginMethod("password")
+                          setError("")
+                        }}
+                        className={`h-11 rounded-[0.95rem] text-sm font-medium transition-colors ${
+                          loginMethod === "password"
+                            ? "bg-white text-[#111111] shadow-sm"
+                            : "text-foreground/55 hover:text-foreground"
+                        }`}
+                      >
+                        Email e senha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginMethod("pin")
+                          setError("")
+                        }}
+                        className={`h-11 rounded-[0.95rem] text-sm font-medium transition-colors ${
+                          loginMethod === "pin"
+                            ? "bg-white text-[#111111] shadow-sm"
+                            : "text-foreground/55 hover:text-foreground"
+                        }`}
+                      >
+                        Entrar com PIN
+                      </button>
+                    </div>
+                  ) : null}
+
                   {!isLogin && (
                     <Field
                       label="Nome"
@@ -204,22 +251,54 @@ export function AuthPanel({
                       onChange={(event) => setName(event.target.value)}
                     />
                   )}
-                  <Field
-                    label="Email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="voce@email.com"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                  <Field
-                    label="Senha"
-                    type="password"
-                    autoComplete={isLogin ? "current-password" : "new-password"}
-                    placeholder="........"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
+
+                  {!isLogin && (
+                    <Field
+                      label="CNPJ"
+                      type="text"
+                      autoComplete="off"
+                      placeholder="00.000.000/0000-00"
+                      value={cnpj}
+                      onChange={(event) => setCnpj(event.target.value)}
+                    />
+                  )}
+
+                  {isLogin && loginMethod === "pin" ? (
+                    <div className="grid gap-1.5">
+                      <Field
+                        label="PIN"
+                        type="password"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="Digite seu PIN"
+                        value={pin}
+                        onChange={(event) => setPin(event.target.value)}
+                      />
+                      <p className="text-[12.5px] leading-6 text-foreground/55">
+                        Fluxo preparado para futura configuracao em Conta &gt; Seguranca.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Field
+                        label="Email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="voce@email.com"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                      />
+                      <Field
+                        label="Senha"
+                        type="password"
+                        autoComplete={isLogin ? "current-password" : "new-password"}
+                        placeholder="........"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                      />
+                    </>
+                  )}
+
                   {!isLogin && (
                     <Field
                       label="Confirmar senha"
@@ -242,7 +321,15 @@ export function AuthPanel({
                     disabled={isSubmitting}
                     className="eme-gradient mt-2 w-full rounded-full py-3 text-[14px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-12px_rgba(28,120,60,0.65)] transition-[transform,filter] duration-200 ease-out hover:-translate-y-0.5"
                   >
-                    {isSubmitting ? (isLogin ? "Entrando..." : "Criando conta...") : isLogin ? "Entrar" : "Criar conta"}
+                    {isSubmitting
+                      ? isLogin
+                        ? "Entrando..."
+                        : "Criando conta..."
+                      : isLogin
+                        ? loginMethod === "pin"
+                          ? "Entrar com PIN"
+                          : "Entrar"
+                        : "Criar conta"}
                   </button>
                 </form>
 
@@ -255,7 +342,7 @@ export function AuthPanel({
                     </div>
                     <button
                       type="button"
-                    className="flex w-full items-center justify-center gap-3 rounded-full border border-foreground/12 bg-white py-2.5 text-[14px] font-medium tracking-tight text-foreground/85 transition-colors duration-200 hover:bg-white"
+                      className="flex w-full items-center justify-center gap-3 rounded-full border border-foreground/12 bg-white py-2.5 text-[14px] font-medium tracking-tight text-foreground/85 transition-colors duration-200 hover:bg-white"
                     >
                       <GoogleMark />
                       Continuar com Google

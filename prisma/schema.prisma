@@ -144,6 +144,7 @@ model Broker {
   catalogSlug String     @unique
   status      BrokerAccountStatus @default(ACTIVE)
   creci       String?
+  cnpj        String?
   description String?
   aiCreditsBalance Int      @default(10)
   aiCreditsUsedThisMonth Int @default(0)

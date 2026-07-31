@@ -12,8 +12,21 @@ export const dynamic = "force-dynamic"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
+    const method = typeof body?.method === "string" ? body.method : "password"
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const password = typeof body?.password === "string" ? body.password : ""
+    const pin = typeof body?.pin === "string" ? body.pin.trim() : ""
+
+    if (method === "pin") {
+      if (!pin) {
+        return NextResponse.json({ error: "Informe o PIN para continuar." }, { status: 400 })
+      }
+
+      return NextResponse.json(
+        { error: "Entrar com PIN ainda nao esta disponivel. Configure esse acesso futuramente em Conta > Seguranca." },
+        { status: 501 },
+      )
+    }
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email e senha são obrigatórios." }, { status: 400 })

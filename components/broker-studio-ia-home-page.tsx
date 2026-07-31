@@ -96,9 +96,9 @@ export function BrokerStudioIaHomePage() {
                 <Bot className="size-3.5" />
                 Studio IA
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Acoes orientadas a resultado</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Central de criacao com IA</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Escolha o objetivo comercial e siga para o fluxo certo. O Studio IA concentra as proximas automacoes do Portal do Corretor sem alterar sua operacao atual.
+                Crie campanhas, imagens, videos, anuncios e conteudos para divulgar seus imoveis com inteligencia artificial.
               </p>
             </div>
           </div>

@@ -1,0 +1,2 @@
+ALTER TABLE "Broker"
+ADD COLUMN "cnpj" TEXT;

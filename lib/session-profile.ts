@@ -5,7 +5,7 @@ type SessionProfileUser = Pick<
   User,
   "id" | "name" | "email" | "role" | "plan" | "subscriptionStatus" | "stripeCustomerId" | "stripeSubscriptionId" | "phone" | "photoUrl"
 > & {
-  broker: (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description" | "catalogSlug"> & { agencyId: string | null }) | null
+  broker: (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "cnpj" | "description" | "catalogSlug"> & { agencyId: string | null }) | null
   ownedAgency: Pick<Agency, "id" | "name" | "phone" | "cnpj" | "logoUrl" | "catalogSlug"> | null
 }
 
@@ -30,6 +30,7 @@ export type SessionProfile = {
     agencyId: string | null
     phone: string
     creci: string
+    cnpj: string
     description: string
     catalogSlug: string
   } | null
@@ -73,6 +74,7 @@ export function buildSessionProfile(user: SessionProfileUser): SessionProfile {
           agencyId: null,
           phone: user.broker.phone,
           creci: user.broker.creci ?? "",
+          cnpj: user.broker.cnpj ?? "",
           description: user.broker.description ?? "",
           catalogSlug: user.broker.catalogSlug,
         }

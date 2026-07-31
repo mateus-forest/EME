@@ -25,6 +25,7 @@ function AccountForm() {
   const [fullName, setFullName] = useState(profile.fullName)
   const [email, setEmail] = useState(profile.email)
   const [creci, setCreci] = useState(profile.creci)
+  const [cnpj, setCnpj] = useState(profile.cnpj)
   const [whatsApp, setWhatsApp] = useState(profile.whatsApp)
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl)
   const [description, setDescription] = useState(profile.description)
@@ -41,6 +42,7 @@ function AccountForm() {
     setFullName(profile.fullName)
     setEmail(profile.email)
     setCreci(profile.creci)
+    setCnpj(profile.cnpj)
     setWhatsApp(profile.whatsApp)
     setPhotoUrl(profile.photoUrl)
     setDescription(profile.description)
@@ -95,6 +97,7 @@ function AccountForm() {
         fullName,
         email,
         creci,
+        cnpj,
         whatsApp,
         photoUrl,
         description,
@@ -201,6 +204,8 @@ function AccountForm() {
               <Field id="email" label="Email" type="email" value={email} onChange={setEmail} error={errors.email} placeholder="voce@exemplo.com" />
               <Field id="creci" label="CRECI" value={creci} onChange={setCreci} error={errors.creci} placeholder="000000-F" />
             </div>
+
+            <Field id="cnpj" label="CNPJ" value={cnpj} onChange={setCnpj} error={errors.cnpj} placeholder="00.000.000/0000-00" />
 
             <div className="grid gap-2">
               <Field

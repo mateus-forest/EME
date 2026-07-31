@@ -17,7 +17,7 @@ type BrokerProfileUser = {
   phone: string | null
   photoUrl: string | null
   broker:
-    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description"> & {
+    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "cnpj" | "description"> & {
         agency?: {
           id: string
           name: string
@@ -42,6 +42,7 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     agencyName: user.broker.agency?.name ?? "",
     accountType: user.broker.agencyId ? "BROKER_AGENCY" : "BROKER_INDEPENDENT",
     creci: user.broker.creci ?? "",
+    cnpj: user.broker.cnpj ?? "",
     description: user.broker.description ?? "",
   }
 }
@@ -90,6 +91,7 @@ export async function PATCH(request: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const phone = typeof body?.phone === "string" ? body.phone.trim() : ""
     const creci = typeof body?.creci === "string" ? body.creci.trim() : ""
+    const cnpj = typeof body?.cnpj === "string" ? body.cnpj.trim() : ""
     const description = typeof body?.description === "string" ? body.description.trim() : ""
     const photoUrl = typeof body?.photoUrl === "string" ? body.photoUrl.trim() : ""
     const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : ""
@@ -156,6 +158,7 @@ export async function PATCH(request: NextRequest) {
         data: {
           phone,
           creci,
+          cnpj: cnpj || null,
           description: description || null,
         },
       })

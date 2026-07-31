@@ -34,6 +34,7 @@ export type Broker = {
   catalogSlug: string
   status: BrokerAccountStatus
   creci: string | null
+  cnpj: string | null
   description: string | null
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number

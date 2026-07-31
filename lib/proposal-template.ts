@@ -33,7 +33,7 @@ type ProposalBroker = {
 
 function valueOrFallback(value?: string | number | null) {
   if (value === 0) return "0"
-  return value ? String(value) : "Nao informado"
+  return value ? String(value) : "—"
 }
 
 function escapeHtml(value?: string | number | null) {
@@ -60,9 +60,12 @@ function propertyTypeLabel(type?: string | null) {
 }
 
 function initials(value?: string | null) {
-  const parts = valueOrFallback(value)
+  const resolved = valueOrFallback(value)
+  if (resolved === "—") return "EM"
+
+  const parts = resolved
     .split(/\s+/)
-    .filter((part) => part && part !== "Nao" && part !== "informado")
+    .filter((part) => part && part !== "—")
   return (parts[0]?.[0] ?? "E") + (parts[1]?.[0] ?? "M")
 }
 
@@ -124,10 +127,10 @@ export function buildProposalHtml(input: {
   const property = input.property
   const lead = input.lead
   const broker = input.broker
-  const price = property?.price ? formatCurrencyBRLFromCents(property.price) : "Nao informado"
+  const price = property?.price ? formatCurrencyBRLFromCents(property.price) : "—"
   const generatedAt = new Date().toLocaleDateString("pt-BR")
   const conditions = typeof input.conditions === "string" ? { notes: input.conditions } : input.conditions
-  const validity = conditions?.validity || "Nao informado"
+  const validity = conditions?.validity || "—"
   const brokerName = valueOrFallback(broker?.name)
   const leadName = valueOrFallback(lead?.name)
   const purpose = propertyPurposeLabel(property?.purpose)
@@ -138,7 +141,7 @@ export function buildProposalHtml(input: {
   const brokerQrCodeUrl = buildQrCodeUrl(brokerWhatsappUrl)
   const proposalOnlineUrl = ""
   const proposalQrCodeUrl = buildQrCodeUrl(proposalOnlineUrl)
-  const finalNotes = conditions?.notes || input.notes || "Nao informado"
+  const finalNotes = conditions?.notes || input.notes || "—"
   const propertyHighlights = extractPropertyHighlights(property?.description)
 
   return `<!doctype html>
