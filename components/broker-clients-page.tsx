@@ -10,7 +10,6 @@ import {
   Phone,
   Search,
   ShieldCheck,
-  Sparkles,
   Trash2,
   Trophy,
   Upload,
@@ -445,31 +444,24 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
     dispatchEntitySync({ type: "lead", entityId: lead.id })
   }
 
+  const openCreateClientModal = useCallback(() => {
+    setClientDraft(emptyClientForm)
+    setIsCreateClientOpen(true)
+  }, [])
+
   return (
-    <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionOnClick={() => setIsCreateClientOpen(true)}>
+    <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionOnClick={openCreateClientModal}>
       <div className="grid gap-5">
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
-                <Sparkles className="size-3.5" />
-                Entidade jurídica
-              </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Clientes</h2>
+              <h2 className="text-3xl font-semibold tracking-tight text-[#050505]">Clientes</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                O contrato não pede dados repetidos. O cadastro do cliente agora concentra identificação, endereço, documentos e pendências jurídicas.
+                Sua carteira de clientes organizada em um unico lugar.
               </p>
             </div>
-            <Button
-              type="button"
-              onClick={() => setIsCreateClientOpen(true)}
-              className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
-            >
-              + Novo cliente
-            </Button>
           </div>
         </section>
-
         <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
             {clientStages.map((stage, index) => (

@@ -3027,7 +3027,7 @@ export function BrokerContractsPage() {
                 Contratos
               </CardTitle>
               <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                Um workspace premium para negociar, revisar e assinar documentos com o preview sempre no centro da atencao.
+                Workspace para criar, anexar e armazenar contratos e documentos da sua operacao.
               </p>
             </div>
 

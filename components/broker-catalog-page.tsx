@@ -295,16 +295,6 @@ export function BrokerCatalogPage() {
                             />
                           </div>
                         </div>
-                        <div className="grid gap-2 sm:flex sm:flex-row sm:flex-wrap">
-                          <Button type="button" variant="ghost" onClick={copyCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
-                            <Copy className="size-4" />
-                            {copyFeedback ? "Link copiado" : "Copiar link"}
-                          </Button>
-                          <Button type="button" variant="ghost" onClick={openCatalogLink} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505] sm:w-auto sm:rounded-full">
-                            <PencilLine className="size-4" />
-                            Abrir link
-                          </Button>
-                        </div>
                       </div>
                     </label>
                   </div>
