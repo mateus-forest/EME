@@ -11,6 +11,7 @@ import {
   CosConversationSummary,
   useCosConversations,
 } from "@/components/use-cos-conversations"
+import { COS_QUICK_ACTIONS } from "@/lib/cos-quick-actions"
 
 type AssistantBootstrapResponse = {
   credits?: AssistantCredits
@@ -299,12 +300,7 @@ export function BrokerCosHistoryPage() {
             onNewConversation={async () => {
               await createConversation()
             }}
-            quickActions={[
-              { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
-              { label: "Minha agenda", message: "Minha agenda de amanha" },
-              { label: "Analisar financeiro", message: "Analisar financeiro" },
-              { label: "Ver notificacoes", message: "Minhas notificacoes" },
-            ]}
+            quickActions={COS_QUICK_ACTIONS}
             disabled={isSending || isConversationLoading}
             inputRef={inputRef}
             feedback={chatFeedback}

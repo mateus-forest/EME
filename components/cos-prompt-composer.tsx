@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { RefObject } from "react"
-import { Mic, Plus, Send, Sparkles, Square, Wand2 } from "lucide-react"
+import { BookOpen, Building2, CalendarDays, Clapperboard, ImagePlus, Mic, Plus, Send, Sparkles, Square, UserSearch, UsersRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,10 +15,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 
-type QuickAction = {
+export type CosQuickActionGroup = "Sistema" | "Clientes" | "Imoveis" | "Agenda" | "Leads" | "Studio IA"
+
+export type CosQuickAction = {
   label: string
   message?: string
   onSelect?: () => void | Promise<void>
+  group: CosQuickActionGroup
+  icon: "help" | "client" | "property" | "agenda" | "leads" | "instagram" | "video"
 }
 
 type CosPromptComposerProps = {
@@ -26,7 +30,7 @@ type CosPromptComposerProps = {
   setPrompt: (value: string) => void
   onSubmit: (promptOverride?: string) => Promise<void> | void
   onNewConversation: () => Promise<void> | void
-  quickActions: QuickAction[]
+  quickActions: CosQuickAction[]
   disabled?: boolean
   inputRef: RefObject<HTMLTextAreaElement | null>
   feedback?: string
@@ -88,6 +92,19 @@ export function CosPromptComposer({
 
     return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
   }, [])
+
+  const groupedQuickActions = useMemo(() => {
+    return quickActions.reduce<Array<{ group: CosQuickActionGroup; items: CosQuickAction[] }>>((acc, action) => {
+      const lastGroup = acc[acc.length - 1]
+      if (lastGroup?.group === action.group) {
+        lastGroup.items.push(action)
+        return acc
+      }
+
+      acc.push({ group: action.group, items: [action] })
+      return acc
+    }, [])
+  }, [quickActions])
 
   useEffect(() => {
     return () => {
@@ -210,27 +227,31 @@ export function CosPromptComposer({
                 <Sparkles className="mr-2 size-4" />
                 Nova conversa
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-black/[0.06]" />
-              <DropdownMenuLabel className="text-[#6B7280]">Acoes rapidas</DropdownMenuLabel>
-              {quickActions.map((action) => (
-                <DropdownMenuItem
-                  key={action.label}
-                  onSelect={() => {
-                    if (action.onSelect) {
-                      void action.onSelect()
-                      return
-                    }
+              {groupedQuickActions.map((group, index) => (
+                <div key={group.group}>
+                  <DropdownMenuSeparator className="bg-black/[0.06]" />
+                  <DropdownMenuLabel className="pb-1 text-[#6B7280]">{group.group}</DropdownMenuLabel>
+                  {group.items.map((action) => (
+                    <DropdownMenuItem
+                      key={action.label}
+                      onSelect={() => {
+                        if (action.onSelect) {
+                          void action.onSelect()
+                          return
+                        }
 
-                    if (action.message) {
-                      setPrompt(action.message)
-                      window.setTimeout(() => inputRef.current?.focus(), 0)
-                    }
-                  }}
-                  className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
-                >
-                  <Wand2 className="mr-2 size-4 text-[#7B8491]" />
-                  {action.label}
-                </DropdownMenuItem>
+                        if (action.message) {
+                          setPrompt(action.message)
+                          void onSubmit(action.message)
+                        }
+                      }}
+                      className={`rounded-xl text-[#050505] focus:bg-[#f6f7f4] ${index === groupedQuickActions.length - 1 ? "" : ""}`}
+                    >
+                      <QuickActionIcon icon={action.icon} />
+                      {action.label}
+                    </DropdownMenuItem>
+                  ))}
+                </div>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -288,6 +309,18 @@ export function CosPromptComposer({
       </form>
     </div>
   )
+}
+
+function QuickActionIcon({ icon }: { icon: CosQuickAction["icon"] }) {
+  const className = "mr-2 size-4 text-[#7B8491]"
+
+  if (icon === "help") return <BookOpen className={className} />
+  if (icon === "client") return <UserSearch className={className} />
+  if (icon === "property") return <Building2 className={className} />
+  if (icon === "agenda") return <CalendarDays className={className} />
+  if (icon === "leads") return <UsersRound className={className} />
+  if (icon === "instagram") return <ImagePlus className={className} />
+  return <Clapperboard className={className} />
 }
 
 function resolveMicErrorMessage(errorCode: string) {

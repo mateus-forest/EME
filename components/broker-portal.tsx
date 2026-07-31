@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { AssistantCredits, useCosConversations } from "@/components/use-cos-conversations"
 import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
+import { COS_QUICK_ACTIONS } from "@/lib/cos-quick-actions"
 import type { ContractRecord } from "@/lib/contracts-client"
 import type { LeadRecord } from "@/lib/lead-contract"
 
@@ -366,12 +367,7 @@ export function BrokerPortal() {
                             onNewConversation={async () => {
                               await createConversation()
                             }}
-                            quickActions={[
-                              { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
-                              { label: "Minha agenda", message: "Minha agenda de amanha" },
-                              { label: "Analisar financeiro", message: "Analisar financeiro" },
-                              { label: "Ver notificacoes", message: "Minhas notificacoes" },
-                            ]}
+                            quickActions={COS_QUICK_ACTIONS}
                             disabled={isSending || isConversationLoading}
                             inputRef={inputRef}
                             feedback={chatFeedback}
@@ -505,12 +501,7 @@ export function BrokerPortal() {
                         onNewConversation={async () => {
                           await createConversation()
                         }}
-                        quickActions={[
-                          { label: "Buscar imovel", message: "Buscar imovel: apartamento ate 900 mil em Porto Alegre" },
-                          { label: "Minha agenda", message: "Minha agenda de amanha" },
-                          { label: "Analisar financeiro", message: "Analisar financeiro" },
-                          { label: "Ver notificacoes", message: "Minhas notificacoes" },
-                        ]}
+                        quickActions={COS_QUICK_ACTIONS}
                         disabled={isSending || isConversationLoading}
                         inputRef={inputRef}
                         feedback={chatFeedback}
