@@ -5,6 +5,10 @@ export function getLinkedContractDocumentId(contractId: string) {
   return `contract:${contractId}`
 }
 
+export function getContractIdFromLinkedDocumentId(documentId: string) {
+  return documentId.startsWith("contract:") ? documentId.slice("contract:".length) : null
+}
+
 export function buildLinkedContractDocument(input: {
   contractId: string
   title: string

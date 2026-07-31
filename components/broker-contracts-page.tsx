@@ -1651,9 +1651,9 @@ function PreviewInfo({
   value: string
 }) {
   return (
-    <div className="rounded-[1.1rem] bg-[#f7f7f4] px-3.5 py-3">
+    <div className="min-w-0 rounded-[1.1rem] bg-[#f7f7f4] px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[#8B95A1]">{label}</p>
-      <p className="mt-2 text-sm font-medium text-[#050505]">{value || "—"}</p>
+      <p className="mt-2 truncate text-sm font-medium text-[#050505]">{value || "—"}</p>
     </div>
   )
 }
@@ -3213,14 +3213,16 @@ export function BrokerContractsPage() {
                         {selectedContractIsExternal ? <ExternalLink className="size-4" /> : <Download className="size-4" />}
                         {selectedContractIsExternal ? "Abrir arquivo" : "Gerar PDF"}
                       </Button>
-                      <Button
-                        type="button"
-                        onClick={() => void updateContractStatus("signed")}
-                        className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
-                      >
-                        <CheckCheck className="size-4" />
-                        Assinar
-                      </Button>
+                      {!selectedContractIsExternal ? (
+                        <Button
+                          type="button"
+                          onClick={() => void updateContractStatus("signed")}
+                          className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
+                        >
+                          <CheckCheck className="size-4" />
+                          Assinar
+                        </Button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -3265,15 +3267,17 @@ export function BrokerContractsPage() {
                             <CopyPlus className="size-4" />
                             Duplicar
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => void updateContractStatus("awaiting_signature")}
-                            className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-white"
-                          >
-                            <Send className="size-4" />
-                            Enviar
-                          </Button>
+                          {!selectedContractIsExternal ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void updateContractStatus("awaiting_signature")}
+                              className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-white"
+                            >
+                              <Send className="size-4" />
+                              Enviar
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
 

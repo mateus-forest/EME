@@ -347,6 +347,121 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ contract: serializeContract(duplicate) })
     }
 
+    if (isExternalContractContent(parsed) && parsed.attachment) {
+      const nextStatus = normalizeContractStatus(body?.status) ?? normalizeContractStatus(found.status) ?? "draft"
+      const nextLeadId = cleanText(body?.leadId, 80) || found.leadId || ""
+      const nextPropertyId = cleanText(body?.propertyId, 80) || found.propertyId || ""
+      const nextKind = cleanText(body?.kind, 80) || parsed.kind
+
+      const [lead, property] = await Promise.all([
+        prisma.lead.findFirst({
+          where: { id: nextLeadId, brokerId: auth.broker!.id },
+          select: { id: true, name: true, phone: true, email: true },
+        }),
+        nextPropertyId
+          ? prisma.property.findFirst({
+              where: { id: nextPropertyId, brokerId: auth.broker!.id },
+              select: {
+                id: true,
+                publicCode: true,
+                title: true,
+                city: true,
+                neighborhood: true,
+                type: true,
+                purpose: true,
+                price: true,
+                bedrooms: true,
+                parkingSpots: true,
+              },
+            })
+          : Promise.resolve(null),
+      ])
+
+      if (!lead) return NextResponse.json({ error: "Selecione um cliente valido." }, { status: 400 })
+      if (nextPropertyId && !property) return NextResponse.json({ error: "Selecione um imovel valido." }, { status: 400 })
+
+      const contractType = normalizeContractType(nextKind)
+      if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato valido." }, { status: 400 })
+
+      const nextContent = createContractContent({
+        kind: contractType,
+        title: cleanText(body?.title, 160) || parsed.title,
+        status: nextStatus,
+        version: parsed.version + 1,
+        authorName: auth.name,
+        authorEmail: auth.email,
+        createdAt: parsed.createdAt,
+        updatedAt: new Date().toISOString(),
+        lead: {
+          id: lead.id,
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email,
+        },
+        property: property
+          ? {
+              id: property.id,
+              publicCode: property.publicCode,
+              title: property.title,
+              city: property.city,
+              neighborhood: property.neighborhood,
+              type: property.type,
+              purpose: property.purpose,
+              price: property.price,
+              bedrooms: property.bedrooms,
+              parkingSpots: property.parkingSpots,
+            }
+          : null,
+        financial: {
+          ...parsed.financial,
+          additionalConditions:
+            cleanText(body?.additionalConditions, 2000) ||
+            parsed.attachment?.notes ||
+            parsed.financial.additionalConditions ||
+            null,
+        },
+      })
+
+      nextContent.source = "external"
+      nextContent.attachment = {
+        ...parsed.attachment,
+        notes:
+          cleanText(body?.additionalConditions, 2000) ||
+          parsed.attachment?.notes ||
+          parsed.financial.additionalConditions ||
+          null,
+      }
+      nextContent.reviewNotes = [
+        `Documento externo anexado: ${nextContent.attachment.fileName}.`,
+        property?.title ? `Imovel vinculado: ${property.title}.` : "Sem imovel vinculado.",
+        nextContent.attachment.notes ? `Observacoes: ${nextContent.attachment.notes}` : "Sem observacoes complementares.",
+      ]
+      nextContent.html = buildExternalContractAttachmentHtml(nextContent)
+
+      const updated = await prisma.brokerDocument.update({
+        where: { id: found.id },
+        data: {
+          leadId: lead.id,
+          propertyId: property?.id ?? null,
+          title: nextContent.title,
+          status: nextStatus,
+          content: stringifyContractContent(nextContent),
+        },
+      })
+
+      await removeLeadLinkedContractDocument({ leadId: found.leadId, contractId: found.id })
+      await syncLeadLinkedContractDocument({
+        leadId: lead.id,
+        contractId: updated.id,
+        title: nextContent.title,
+        kind: nextContent.kind,
+        attachment: nextContent.attachment,
+        updatedAt: updated.updatedAt.toISOString(),
+      })
+
+      return NextResponse.json({ contract: serializeContract(updated) })
+    }
+
     const nextStatus = normalizeContractStatus(body?.status) ?? normalizeContractStatus(found.status) ?? "draft"
     const nextLeadId = cleanText(body?.leadId, 80) || found.leadId || ""
     const nextPropertyId = cleanText(body?.propertyId, 80) || found.propertyId || ""

@@ -9,6 +9,7 @@ import {
 import { buildDocumentDisposition, parseDocumentPayload } from "@/lib/entity-document"
 import { canAccessLead, leadInclude, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
+import { getContractIdFromLinkedDocumentId } from "@/lib/linked-contract-document"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string; documentId: string }> }) {
@@ -41,6 +42,26 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     if (!document) {
       return NextResponse.json({ error: "Documento nao encontrado." }, { status: 404 })
+    }
+
+    const linkedContractId = getContractIdFromLinkedDocumentId(document.id)
+    if (linkedContractId) {
+      const contract = await prisma.brokerDocument.findFirst({
+        where: {
+          id: linkedContractId,
+          type: "contract",
+          leadId: id,
+          ...(lead.brokerId ? { brokerId: lead.brokerId } : {}),
+        },
+        select: { id: true },
+      })
+
+      if (!contract) {
+        return NextResponse.json({ error: "Contrato anexado nao encontrado." }, { status: 404 })
+      }
+
+      const fileUrl = new URL(`/api/brokers/contracts/${encodeURIComponent(contract.id)}/file`, _request.url)
+      return NextResponse.redirect(fileUrl, { status: 307 })
     }
 
     const payload = parseDocumentPayload(document)
