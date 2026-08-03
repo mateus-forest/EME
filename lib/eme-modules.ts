@@ -19,9 +19,19 @@ export type EmeModule = {
   priorityMobile: boolean
   tagline: string
   longDescription: string
-  benefits: string[]
+  benefits: Array<
+    | string
+    | {
+        title: string
+        description?: string
+      }
+  >
   cta: string
   mockup: string
+  demoLink?: string
+  demoLabel?: string
+  demoBadge?: string
+  demoHint?: string
 }
 
 export const emeModules: EmeModule[] = [
@@ -86,16 +96,37 @@ export const emeModules: EmeModule[] = [
     icon: BookOpen,
     angle: 45,
     priorityMobile: true,
-    tagline: "Apresente seus imoveis com elegancia.",
+    tagline: "Catálogo de imóveis que impressiona e converte.",
     longDescription:
-      "Crie catalogos bonitos e compartilhaveis em um toque. Envie para o cliente por qualquer canal e acompanhe o interesse em cada imovel.",
+      "Apresente seus imóveis com design profissional, informações completas e uma experiência impecável. Compartilhe facilmente com seus clientes por qualquer canal e acompanhe o interesse em cada imóvel.",
     benefits: [
-      "Catalogos premium prontos em segundos",
-      "Compartilhamento por link ou mensagem",
-      "Acompanhamento de visualizacoes",
+      {
+        title: "Catálogos modernos e responsivos",
+        description: "Experiência perfeita no computador ou celular.",
+      },
+      {
+        title: "Link compartilhável com sua marca",
+        description: "Personalize e compartilhe por qualquer canal.",
+      },
+      {
+        title: "Registro e catálogo de leads automático",
+        description: "Cada visita e interesse é registrado automaticamente.",
+      },
+      {
+        title: "Atualizações em tempo real",
+        description: "Imóveis sempre atualizados sem retrabalho.",
+      },
+      {
+        title: "Mais profissionalismo e credibilidade",
+        description: "Sua marca apresentada com o padrão que você merece.",
+      },
     ],
-    cta: "Conhecer modulo",
-    mockup: "/mockups/catalogo.png",
+    cta: "Explorar catálogo",
+    mockup: "/mockups/catalogo-premium.png",
+    demoLabel: "Ver exemplo de catálogo online",
+    demoLink: "https://www.meueme.com/catalogo/mateus-forest",
+    demoBadge: "PERSONALIZÁVEL",
+    demoHint: "Seu link pode ser personalizado com sua marca.",
   },
   {
     id: "studio-ia",

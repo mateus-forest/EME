@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { motion } from "motion/react"
-import { Check, X } from "lucide-react"
+import { ArrowUpRight, Check, Link2, X } from "lucide-react"
 import Image from "next/image"
 
 import type { EmeModule } from "@/lib/eme-modules"
@@ -66,6 +66,7 @@ export function ExpandedModulePanel({
 
   const geo = open ? target : start
   const Icon = module.icon
+  const isCatalogModule = module.id === "catalogo"
 
   return (
     <>
@@ -137,9 +138,15 @@ export function ExpandedModulePanel({
           animate={{ opacity: open ? 1 : 0 }}
           transition={{ duration: open ? 0.4 : 0.18, delay: open ? 0.18 : 0 }}
         >
-          <div className="relative flex min-h-0 basis-[52%] items-center justify-center overflow-hidden p-4 md:basis-auto md:flex-1 md:p-8">
+          <div
+            className={`relative flex min-h-0 items-center justify-center overflow-hidden ${
+              isCatalogModule
+                ? "basis-[44%] px-3 pb-2 pt-5 md:basis-[52%] md:px-5 md:py-8"
+                : "basis-[52%] p-4 md:basis-auto md:flex-1 md:p-8"
+            }`}
+          >
             <motion.div
-              className="relative h-full w-full"
+              className={`relative w-full ${isCatalogModule ? "h-full max-h-[300px] md:max-h-none" : "h-full"}`}
               animate={{ opacity: open ? 1 : 0, scale: open ? 1 : 0.94 }}
               transition={{ duration: 0.5, delay: open ? 0.2 : 0, ease: [0.22, 1, 0.36, 1] }}
             >
@@ -148,13 +155,17 @@ export function ExpandedModulePanel({
                 alt={`Mockup do módulo ${module.name}`}
                 fill
                 sizes="(max-width: 768px) 90vw, 45vw"
-                className="object-contain"
+                className={`object-contain ${isCatalogModule ? "drop-shadow-[0_36px_70px_rgba(20,38,28,0.16)]" : ""}`}
                 priority
               />
             </motion.div>
           </div>
 
-          <div className="flex flex-1 flex-col justify-center gap-2.5 overflow-y-auto px-6 pb-6 pt-1 md:gap-5 md:overflow-visible md:px-8 md:py-10 md:pr-14">
+          <div
+            className={`flex flex-1 flex-col justify-center overflow-y-auto px-6 pb-6 pt-1 md:overflow-visible md:px-8 md:py-10 ${
+              isCatalogModule ? "gap-4 md:pr-12" : "gap-2.5 md:gap-5 md:pr-14"
+            }`}
+          >
             <div className="flex items-center gap-2.5">
               <Icon className="h-5 w-5 text-eme md:h-6 md:w-6" strokeWidth={1.5} aria-hidden />
               <span className="text-[10.5px] font-medium uppercase tracking-[0.32em] text-eme/70 md:text-[11px]">
@@ -167,27 +178,82 @@ export function ExpandedModulePanel({
             </h2>
 
             <div className="min-h-0 overflow-y-auto pr-1 md:overflow-visible md:pr-0">
-              <p className="max-w-md text-pretty text-[13px] leading-relaxed text-muted-foreground md:text-[14.5px]">
+              <p
+                className={`text-pretty text-[13px] leading-relaxed text-muted-foreground md:text-[14.5px] ${
+                  isCatalogModule ? "max-w-lg" : "max-w-md"
+                }`}
+              >
                 {module.longDescription}
               </p>
 
-              <ul className="mt-4 flex flex-col gap-2 md:mt-5 md:gap-2.5">
-                {module.benefits.map((b) => (
-                  <li key={b} className="flex items-start gap-2.5 text-[12.5px] text-foreground/90 md:text-[14px]">
-                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-eme-soft md:h-5 md:w-5">
+              <ul className={`flex flex-col ${isCatalogModule ? "mt-5 gap-3.5 md:mt-6" : "mt-4 gap-2 md:mt-5 md:gap-2.5"}`}>
+                {module.benefits.map((benefit) => (
+                  <li
+                    key={typeof benefit === "string" ? benefit : benefit.title}
+                    className={`flex items-start gap-2.5 text-foreground/90 ${isCatalogModule ? "text-[13px] md:text-[14px]" : "text-[12.5px] md:text-[14px]"}`}
+                  >
+                    <span
+                      className={`mt-0.5 flex shrink-0 items-center justify-center rounded-full bg-eme-soft ${
+                        isCatalogModule ? "h-5 w-5 md:h-6 md:w-6" : "h-4 w-4 md:h-5 md:w-5"
+                      }`}
+                    >
                       <Check className="h-2.5 w-2.5 text-eme md:h-3 md:w-3" strokeWidth={2.5} aria-hidden />
                     </span>
-                    <span className="leading-snug">{b}</span>
+                    {typeof benefit === "string" ? (
+                      <span className="leading-snug">{benefit}</span>
+                    ) : (
+                      <span className="space-y-0.5">
+                        <span className="block font-medium leading-snug text-foreground">{benefit.title}</span>
+                        {benefit.description ? (
+                          <span className="block leading-snug text-muted-foreground">{benefit.description}</span>
+                        ) : null}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
 
-              <div className="pt-4 md:pt-5">
+              {isCatalogModule && module.demoLink ? (
+                <div className="mt-6 rounded-[22px] border border-black/[0.06] bg-white/90 p-4 shadow-[0_18px_50px_-30px_rgba(17,24,39,0.28)]">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f7f4] text-[#5b6575]">
+                      <Link2 className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-medium tracking-tight text-[#465162]">{module.demoLabel}</span>
+                        {module.demoBadge ? (
+                          <span className="rounded-full bg-[#e6f6eb] px-2.5 py-1 text-[9.5px] font-semibold tracking-[0.18em] text-[#4b9c63]">
+                            {module.demoBadge}
+                          </span>
+                        ) : null}
+                      </div>
+                      <a
+                        href={module.demoLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex max-w-full items-center gap-2 text-[13px] leading-snug text-[#4f7cff] transition-colors hover:text-[#305ee6]"
+                      >
+                        <span className="truncate">{module.demoLink}</span>
+                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
+                      </a>
+                      {module.demoHint ? (
+                        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{module.demoHint}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={isCatalogModule ? "pt-5 md:pt-6" : "pt-4 md:pt-5"}>
                 <button
                   type="button"
-                  className="rounded-full bg-eme px-6 py-2.5 text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-14px_rgba(28,120,60,0.7)] transition-transform hover:-translate-y-0.5 md:text-[14px]"
+                  className={`inline-flex items-center gap-2 rounded-full bg-eme text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-14px_rgba(28,120,60,0.7)] transition-transform hover:-translate-y-0.5 md:text-[14px] ${
+                    isCatalogModule ? "px-6 py-3" : "px-6 py-2.5"
+                  }`}
                 >
-                  {module.cta}
+                  <span>{module.cta}</span>
+                  {isCatalogModule ? <ArrowUpRight className="h-4 w-4" strokeWidth={1.9} aria-hidden /> : null}
                 </button>
               </div>
             </div>
