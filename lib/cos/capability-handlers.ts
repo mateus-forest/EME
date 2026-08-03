@@ -37,6 +37,7 @@ import {
   unpublishCatalogCapability,
 } from "@/lib/cos/capabilities/insights/manage"
 import {
+  attachLeadDocumentCapability,
   convertLeadCapability,
   deleteLeadCapability,
   findLeadCapability,
@@ -98,6 +99,7 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "lead.find": findLeadCapability,
   "lead.timeline": leadTimelineCapability,
   "lead.convert": convertLeadCapability,
+  "lead.attach_document": attachLeadDocumentCapability,
   "finance.receivable": financeReceivableCapability,
   "finance.payable": financePayableCapability,
   "finance.forecast": financeForecastCapability,

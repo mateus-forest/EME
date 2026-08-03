@@ -30,6 +30,30 @@ export function getPayloadRecord(input: CosCapabilityExecutionInput) {
   return asRecord(input.payload)
 }
 
+export type CosPayloadAttachment = {
+  id: string
+  name: string
+  type: string
+  category: string
+  dataUrl?: string
+}
+
+export function getAttachmentsFromPayload(payload: Record<string, unknown>): CosPayloadAttachment[] {
+  const attachments = payload.attachments
+  if (!Array.isArray(attachments)) return []
+
+  return attachments
+    .map((item) => asRecord(item))
+    .filter((item) => typeof item.name === "string" && item.name)
+    .map((item) => ({
+      id: cleanText(item.id, 80),
+      name: cleanText(item.name, 240),
+      type: cleanText(item.type, 120),
+      category: cleanText(item.category, 20),
+      dataUrl: typeof item.dataUrl === "string" && item.dataUrl ? item.dataUrl : undefined,
+    }))
+}
+
 export function getWorkspaceFromPayload(payload: Record<string, unknown>): CosWorkspaceContext | null {
   const workspace = asRecord(payload.workspace)
   if (!workspace.surface || !workspace.page || !workspace.entity) return null

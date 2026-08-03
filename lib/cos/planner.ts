@@ -294,6 +294,10 @@ function scoreCapability(
     score += 1.6
     reasons.push("verbo de atualizacao")
   }
+  if (verbHint === "attach" && descriptor.id.includes(".attach_document")) {
+    score += 2.4
+    reasons.push("verbo de anexar")
+  }
   if (verbHint === "complete" && descriptor.id.includes(".complete")) {
     score += 1.2
     reasons.push("verbo de conclusao")

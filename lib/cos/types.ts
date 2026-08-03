@@ -20,6 +20,7 @@ export type CosCapabilityId =
   | "lead.find"
   | "lead.timeline"
   | "lead.convert"
+  | "lead.attach_document"
   | "operation.summary"
   | "finance.summary"
   | "finance.receivable"

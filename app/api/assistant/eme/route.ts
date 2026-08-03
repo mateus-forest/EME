@@ -149,6 +149,17 @@ type CosIncomingAttachment = {
   textContent?: string
 }
 
+// Base64 inflates raw bytes by ~4/3; this comfortably covers the largest file the
+// composer will inline (8MB image / 5MB PDF) without truncating (and corrupting) it.
+const MAX_INCOMING_ATTACHMENT_DATA_URL_LENGTH = 12_000_000
+
+function sanitizeIncomingAttachmentDataUrl(value: unknown) {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.length > MAX_INCOMING_ATTACHMENT_DATA_URL_LENGTH) return undefined
+  return trimmed
+}
+
 function sanitizeIncomingAttachments(value: unknown) {
   if (!Array.isArray(value)) return [] as CosIncomingAttachment[]
 
@@ -161,7 +172,7 @@ function sanitizeIncomingAttachments(value: unknown) {
       type: cleanText(item.type, 120) || "application/octet-stream",
       size: typeof item.size === "number" ? item.size : 0,
       category: (cleanText(item.category, 20) as CosIncomingAttachment["category"]) || "files",
-      dataUrl: cleanText(item.dataUrl, 2_000_000) || undefined,
+      dataUrl: sanitizeIncomingAttachmentDataUrl(item.dataUrl),
       textContent: cleanText(item.textContent, 120_000) || undefined,
     }))
     .filter((item) => item.name)

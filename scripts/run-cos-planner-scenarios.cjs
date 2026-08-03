@@ -64,6 +64,7 @@ const { planCosCapability } = require(path.join(repoRoot, "lib/cos/planner.ts"))
 const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-planner.ts"))
 const { extractClientIdentity, detectNamedClientReference } = require(path.join(repoRoot, "lib/cos/entity-extraction.ts"))
 const { parsePropertyDraftData } = require(path.join(repoRoot, "lib/eme-backend.ts"))
+const { getAttachmentsFromPayload } = require(path.join(repoRoot, "lib/cos/capabilities/shared.ts"))
 const {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
@@ -149,10 +150,12 @@ const capabilityScenarios = [
   { message: "Cadastre um cliente chamado lucas.", surface: "portal", expectedAction: "createLead" },
   { message: "Cadastre esse imovel, casa em condominio.", surface: "portal", expectedAction: "createPropertyDraft" },
   {
+    // Ate a Sprint 9, isto so garantia de NAO virar createLead (caia no fallback "general").
+    // A partir da Sprint 10b existe uma capability real para o pedido, entao o esperado evoluiu.
     message: "Anexe esse documento ao cliente carlos.",
     surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
+    expectedAction: "ATTACH_LEAD_DOCUMENT",
+    expectedSource: "catalog",
   },
 
   // Sprint 9 — variacoes de linguagem natural por verbo de acao (create)
@@ -169,18 +172,18 @@ const capabilityScenarios = [
   { message: "Edite os dados do cliente marcos.", surface: "portal", expectedAction: "UPDATE_LEAD" },
   { message: "Corrija os dados do cliente paula.", surface: "portal", expectedAction: "UPDATE_LEAD" },
 
-  // Sprint 9 — variacoes de linguagem natural por verbo de acao (attach): nunca deve virar createLead
+  // Sprint 10b — variacoes de linguagem natural por verbo de acao (attach): resolvem para a capability real
   {
     message: "Vincule este documento ao cliente marina.",
     surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
+    expectedAction: "ATTACH_LEAD_DOCUMENT",
+    expectedSource: "catalog",
   },
   {
     message: "Junte este documento ao cliente roberta.",
     surface: "portal",
-    expectedAction: "general",
-    expectedSource: "legacy",
+    expectedAction: "ATTACH_LEAD_DOCUMENT",
+    expectedSource: "catalog",
   },
 ]
 
@@ -292,6 +295,18 @@ async function main() {
       run: () => detectNamedClientReference("Cadastre um cliente chamado lucas."),
       expected: null,
     },
+
+    // Sprint 10b — resolucao de entidade para anexar documento a cliente existente
+    {
+      label: "sprint10b: 'vincule' reconhece cliente referenciado",
+      run: () => detectNamedClientReference("Vincule este documento ao cliente marina."),
+      expected: "Marina",
+    },
+    {
+      label: "sprint10b: 'junte' reconhece cliente referenciado mesmo com 'arquivo' em vez de 'documento'",
+      run: () => detectNamedClientReference("Junte este arquivo ao cliente roberta."),
+      expected: "Roberta",
+    },
   ]
 
   for (const scenario of entityExtractionScenarios) {
@@ -309,7 +324,35 @@ async function main() {
     )
   }
 
-  console.log(`Validated ${entityExtractionScenarios.length} entity-extraction scenarios and property draft field isolation successfully.`)
+  const attachmentPayloadScenarios = [
+    {
+      label: "payload sem attachments retorna lista vazia",
+      run: () => getAttachmentsFromPayload({}),
+      expected: [],
+    },
+    {
+      label: "attachment com dataUrl preserva o dataUrl",
+      run: () =>
+        getAttachmentsFromPayload({
+          attachments: [{ id: "a1", name: "contrato.pdf", type: "application/pdf", category: "document", dataUrl: "data:application/pdf;base64,AAA=" }],
+        }),
+      expected: [{ id: "a1", name: "contrato.pdf", type: "application/pdf", category: "document", dataUrl: "data:application/pdf;base64,AAA=" }],
+    },
+    {
+      label: "attachment sem dataUrl (ex.: doc nao suportado) fica sem dataUrl, nao quebra",
+      run: () => getAttachmentsFromPayload({ attachments: [{ id: "a2", name: "planta.docx", type: "application/msword", category: "document" }] }),
+      expected: [{ id: "a2", name: "planta.docx", type: "application/msword", category: "document", dataUrl: undefined }],
+    },
+  ]
+
+  for (const scenario of attachmentPayloadScenarios) {
+    const actual = scenario.run()
+    assert.deepStrictEqual(actual, scenario.expected, `Payload "${scenario.label}" deveria retornar ${JSON.stringify(scenario.expected)}, mas retornou ${JSON.stringify(actual)}.`)
+  }
+
+  console.log(
+    `Validated ${entityExtractionScenarios.length} entity-extraction scenarios, property draft field isolation, and ${attachmentPayloadScenarios.length} attachment-payload scenarios successfully.`,
+  )
 
   const executionResults = []
   for (const scenario of deterministicExecutionScenarios) {

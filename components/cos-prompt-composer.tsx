@@ -531,6 +531,9 @@ function MenuLeaf({
   )
 }
 
+const MAX_INLINE_ATTACHMENT_BYTES = 8 * 1024 * 1024
+const MAX_INLINE_DOCUMENT_BYTES = 5 * 1024 * 1024
+
 async function serializeAttachment(file: File, category: AttachmentPickerMode): Promise<CosComposerAttachment> {
   const serialized: CosComposerAttachment = {
     id: crypto.randomUUID(),
@@ -540,7 +543,11 @@ async function serializeAttachment(file: File, category: AttachmentPickerMode): 
     category,
   }
 
-  if (category === "image" && file.size <= 8 * 1024 * 1024) {
+  if (category === "image" && file.size <= MAX_INLINE_ATTACHMENT_BYTES) {
+    serialized.dataUrl = await readFileAsDataUrl(file)
+  }
+
+  if (isPdfFile(file) && file.size <= MAX_INLINE_DOCUMENT_BYTES) {
     serialized.dataUrl = await readFileAsDataUrl(file)
   }
 
@@ -550,6 +557,10 @@ async function serializeAttachment(file: File, category: AttachmentPickerMode): 
   }
 
   return serialized
+}
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
 }
 
 function shouldReadAsText(file: File) {
