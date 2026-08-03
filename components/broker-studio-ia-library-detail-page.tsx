@@ -11,6 +11,7 @@ import {
   Eye,
   Film,
   ImageIcon,
+  MoreHorizontal,
   Pencil,
   RefreshCcw,
   Trash2,
@@ -27,6 +28,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -381,7 +388,6 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                       onReject={() => handleAssetStatus(asset.id, "REJECTED")}
                       onDelete={() => handleDeleteAsset(asset)}
                       onCopyCaption={() => handleCopyCaption(asset)}
-                      onCopyPrompt={() => handleCopyPrompt(asset)}
                     />
                   ))}
                 </div>
@@ -518,7 +524,6 @@ function AssetCard({
   onReject,
   onDelete,
   onCopyCaption,
-  onCopyPrompt,
 }: {
   asset: AssetRecord
   campaign: StudioCampaignRecord
@@ -531,7 +536,6 @@ function AssetCard({
   onReject: () => void
   onDelete: () => void
   onCopyCaption: () => void
-  onCopyPrompt: () => void
 }) {
   const textPreview = getAssetDisplayText(asset)
   const previewSrc = getAssetPreviewSource(campaign, asset)
@@ -540,7 +544,6 @@ function AssetCard({
   const canOpen = Boolean(getAssetOpenDescriptor(campaign, asset))
   const canDownload = Boolean(getAssetDownloadDescriptor(campaign, asset)) && asset.type !== "COPY" && asset.type !== "CAROUSEL"
   const canCopyText = Boolean(textPreview.trim())
-  const canCopyPrompt = Boolean((asset.promptRevised || asset.prompt || "").trim())
   const canEdit = ["APPROVED", "PUBLISHED"].includes(campaign.status) && isTextEditableAsset(campaign, asset)
   const regenerateBasePath = getStudioCampaignWorkspacePath(campaign.kind)
   const regenerateHref = regenerateBasePath
@@ -598,21 +601,54 @@ function AssetCard({
         )}
 
         <div className="grid gap-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ActionButton icon={Eye} label="Visualizar" onClick={onPreview} disabled={!canPreview} tone="primary" />
             <ActionButton icon={Download} label={actionLabels.download} onClick={onDownload} disabled={!canDownload} tone="primary" />
             <ActionButton icon={Pencil} label="Editar texto" onClick={onEdit} disabled={!canEdit} tone="primary" />
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            <ActionButton icon={ArrowUpRight} label={actionLabels.open} onClick={onOpen} disabled={!canOpen} tone="secondary" />
-            <ActionButton icon={Copy} label={actionLabels.copy} onClick={onCopyCaption} disabled={!canCopyText} tone="secondary" />
-            <ActionButton icon={Copy} label={actionLabels.prompt} onClick={onCopyPrompt} disabled={!canCopyPrompt} tone="secondary" />
-            {regenerateHref ? (
-              <ActionLink icon={RefreshCcw} label="Regenerar" href={regenerateHref} tone="secondary" />
-            ) : (
-              <ActionButton icon={RefreshCcw} label="Regenerar" onClick={() => undefined} disabled tone="secondary" />
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-xl border-black/[0.06] bg-white/72 px-3 text-sm text-[#44505f] transition-colors hover:border-[#009b3a]/16 hover:bg-[#f5faf6] hover:text-[#0a8f3d]"
+                >
+                  <MoreHorizontal className="size-4" />
+                  Mais
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl"
+              >
+                <DropdownMenuItem
+                  onSelect={canOpen ? onOpen : undefined}
+                  disabled={!canOpen}
+                  className="rounded-xl text-[#44505f] focus:bg-[#f5faf6] focus:text-[#0a8f3d]"
+                >
+                  <ArrowUpRight className="size-4 text-[#7b8491]" />
+                  {actionLabels.open}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={canCopyText ? onCopyCaption : undefined}
+                  disabled={!canCopyText}
+                  className="rounded-xl text-[#44505f] focus:bg-[#f5faf6] focus:text-[#0a8f3d]"
+                >
+                  <Copy className="size-4 text-[#7b8491]" />
+                  {actionLabels.copy}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={regenerateHref ? () => {
+                    window.location.href = regenerateHref
+                  } : undefined}
+                  disabled={!regenerateHref}
+                  className="rounded-xl text-[#44505f] focus:bg-[#f5faf6] focus:text-[#0a8f3d]"
+                >
+                  <RefreshCcw className="size-4 text-[#7b8491]" />
+                  Regenerar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -685,55 +721,3 @@ function ActionButton({
   )
 }
 
-function ActionLink({
-  icon: Icon,
-  label,
-  href,
-  disabled,
-  download,
-  tone = "secondary",
-}: {
-  icon: typeof Eye
-  label: string
-  href?: string | null
-  disabled?: boolean
-  download?: boolean
-  tone?: "primary" | "secondary"
-}) {
-  if (!href || disabled) {
-    return (
-      <Button
-        type="button"
-        variant="outline"
-        disabled
-        className={cn(
-          "h-8 rounded-xl border px-3 text-sm text-[#98a2b3]",
-          tone === "primary" ? "border-[#009b3a]/10 bg-[#f7fbf8]" : "border-black/[0.06] bg-white/72",
-        )}
-      >
-        <Icon className="size-4" />
-        {label}
-      </Button>
-    )
-  }
-
-  return (
-    <Button
-      asChild
-      type="button"
-      variant="outline"
-      className={cn(
-        "h-8 rounded-xl px-3 text-sm transition-colors",
-        tone === "primary" &&
-          "border border-[#009b3a]/14 bg-[#f7fbf8] text-[#174c2f] shadow-[0_8px_20px_rgba(15,23,42,0.04)] hover:border-[#009b3a]/24 hover:bg-[#eef9f1] hover:text-[#0a8f3d]",
-        tone === "secondary" &&
-          "border border-black/[0.06] bg-white/72 text-[#44505f] hover:border-[#009b3a]/16 hover:bg-[#f5faf6] hover:text-[#0a8f3d]",
-      )}
-    >
-      <a href={href} target="_blank" rel="noreferrer" download={download}>
-        <Icon className="size-4" />
-        {label}
-      </a>
-    </Button>
-  )
-}
