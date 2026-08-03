@@ -597,26 +597,31 @@ function AssetCard({
           </div>
         )}
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          <ActionButton icon={Pencil} label="Editar texto" onClick={onEdit} disabled={!canEdit} />
-          <ActionButton icon={Eye} label="Visualizar" onClick={onPreview} disabled={!canPreview} />
-          <ActionButton icon={ArrowUpRight} label={actionLabels.open} onClick={onOpen} disabled={!canOpen} />
-          <ActionButton icon={Download} label={actionLabels.download} onClick={onDownload} disabled={!canDownload} />
-          <ActionButton icon={Copy} label={actionLabels.copy} onClick={onCopyCaption} disabled={!canCopyText} />
-          <ActionButton icon={Copy} label={actionLabels.prompt} onClick={onCopyPrompt} disabled={!canCopyPrompt} />
-          {regenerateHref ? (
-            <ActionLink icon={RefreshCcw} label="Regenerar" href={regenerateHref} />
-          ) : (
-            <ActionButton icon={RefreshCcw} label="Regenerar" onClick={() => undefined} disabled />
-          )}
+        <div className="grid gap-3">
+          <div className="flex flex-wrap gap-2">
+            <ActionButton icon={Eye} label="Visualizar" onClick={onPreview} disabled={!canPreview} tone="primary" />
+            <ActionButton icon={Download} label={actionLabels.download} onClick={onDownload} disabled={!canDownload} tone="primary" />
+            <ActionButton icon={Pencil} label="Editar texto" onClick={onEdit} disabled={!canEdit} tone="primary" />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <ActionButton icon={ArrowUpRight} label={actionLabels.open} onClick={onOpen} disabled={!canOpen} tone="secondary" />
+            <ActionButton icon={Copy} label={actionLabels.copy} onClick={onCopyCaption} disabled={!canCopyText} tone="secondary" />
+            <ActionButton icon={Copy} label={actionLabels.prompt} onClick={onCopyPrompt} disabled={!canCopyPrompt} tone="secondary" />
+            {regenerateHref ? (
+              <ActionLink icon={RefreshCcw} label="Regenerar" href={regenerateHref} tone="secondary" />
+            ) : (
+              <ActionButton icon={RefreshCcw} label="Regenerar" onClick={() => undefined} disabled tone="secondary" />
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 border-t border-black/[0.06] pt-3">
           <Button
             type="button"
             onClick={onApprove}
             disabled={isUpdating}
-            className="h-9 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]"
+            className="h-8.5 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,155,58,0.16)] hover:bg-[#008633] hover:shadow-[0_12px_28px_rgba(0,155,58,0.2)]"
           >
             <Check className="size-4" />
             Aprovar
@@ -626,7 +631,7 @@ function AssetCard({
             variant="outline"
             onClick={onReject}
             disabled={isUpdating}
-            className="h-8 rounded-xl border-black/[0.08] bg-transparent px-3 text-[#44505f] hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
+            className="h-8 rounded-xl border-black/[0.08] bg-white/70 px-3 text-sm text-[#44505f] hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
           >
             <X className="size-4" />
             Rejeitar
@@ -636,7 +641,7 @@ function AssetCard({
             variant="outline"
             onClick={onDelete}
             disabled={isUpdating}
-            className="h-8 rounded-xl border-[#f3d0d0] bg-transparent px-3 text-[#c24141] hover:bg-[#fff5f5] hover:text-[#c24141]"
+            className="h-8 rounded-xl border-[#f3d0d0] bg-white/70 px-3 text-sm text-[#c24141] hover:border-[#e8b5b5] hover:bg-[#fff5f5] hover:text-[#c24141]"
           >
             <Trash2 className="size-4" />
             Excluir
@@ -652,11 +657,13 @@ function ActionButton({
   label,
   onClick,
   disabled,
+  tone = "secondary",
 }: {
   icon: typeof Eye
   label: string
   onClick: () => void
   disabled?: boolean
+  tone?: "primary" | "secondary"
 }) {
   return (
     <Button
@@ -664,7 +671,13 @@ function ActionButton({
       variant="outline"
       onClick={onClick}
       disabled={disabled}
-      className="h-8 justify-start rounded-xl border-black/[0.06] bg-transparent px-3 text-[#44505f] transition-colors hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
+      className={cn(
+        "h-8 rounded-xl px-3 text-sm transition-colors",
+        tone === "primary" &&
+          "border border-[#009b3a]/14 bg-[#f7fbf8] text-[#174c2f] shadow-[0_8px_20px_rgba(15,23,42,0.04)] hover:border-[#009b3a]/24 hover:bg-[#eef9f1] hover:text-[#0a8f3d]",
+        tone === "secondary" &&
+          "border border-black/[0.06] bg-white/72 text-[#44505f] hover:border-[#009b3a]/16 hover:bg-[#f5faf6] hover:text-[#0a8f3d]",
+      )}
     >
       <Icon className="size-4" />
       {label}
@@ -678,16 +691,26 @@ function ActionLink({
   href,
   disabled,
   download,
+  tone = "secondary",
 }: {
   icon: typeof Eye
   label: string
   href?: string | null
   disabled?: boolean
   download?: boolean
+  tone?: "primary" | "secondary"
 }) {
   if (!href || disabled) {
     return (
-      <Button type="button" variant="outline" disabled className="h-8 justify-start rounded-xl border-black/[0.06] bg-transparent px-3 text-[#98a2b3]">
+      <Button
+        type="button"
+        variant="outline"
+        disabled
+        className={cn(
+          "h-8 rounded-xl border px-3 text-sm text-[#98a2b3]",
+          tone === "primary" ? "border-[#009b3a]/10 bg-[#f7fbf8]" : "border-black/[0.06] bg-white/72",
+        )}
+      >
         <Icon className="size-4" />
         {label}
       </Button>
@@ -699,7 +722,13 @@ function ActionLink({
       asChild
       type="button"
       variant="outline"
-      className="h-8 justify-start rounded-xl border-black/[0.06] bg-transparent px-3 text-[#44505f] transition-colors hover:border-[#009b3a]/18 hover:bg-[#eef9f1] hover:text-[#0a8f3d]"
+      className={cn(
+        "h-8 rounded-xl px-3 text-sm transition-colors",
+        tone === "primary" &&
+          "border border-[#009b3a]/14 bg-[#f7fbf8] text-[#174c2f] shadow-[0_8px_20px_rgba(15,23,42,0.04)] hover:border-[#009b3a]/24 hover:bg-[#eef9f1] hover:text-[#0a8f3d]",
+        tone === "secondary" &&
+          "border border-black/[0.06] bg-white/72 text-[#44505f] hover:border-[#009b3a]/16 hover:bg-[#f5faf6] hover:text-[#0a8f3d]",
+      )}
     >
       <a href={href} target="_blank" rel="noreferrer" download={download}>
         <Icon className="size-4" />
