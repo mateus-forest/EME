@@ -214,6 +214,38 @@ export function isEntityDocumentRecordLike(value: unknown): value is EntityDocum
   )
 }
 
+type LeadDocumentCandidate = { id: string; name: string }
+
+export function isLeadDocumentCandidateArray(value: unknown): value is LeadDocumentCandidate[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => {
+      if (!item || typeof item !== "object") return false
+      const candidate = item as Record<string, unknown>
+      return typeof candidate.id === "string" && typeof candidate.name === "string"
+    })
+  )
+}
+
+const ORDINAL_WORDS = ["primeiro", "segundo", "terceiro", "quarto", "quinto"]
+
+// Mesmo padrao de lib/eme-backend.ts's resolvePropertyChoice: indice numerico/ordinal,
+// ou substring mutua entre a resposta do usuario e o nome do candidato.
+export function resolveLeadDocumentCandidateChoice(message: string, candidates: LeadDocumentCandidate[]): LeadDocumentCandidate | null {
+  const normalized = normalizeText(message)
+  const ordinalIndex = ORDINAL_WORDS.findIndex((word) => normalized.includes(word))
+  const index = /^\d+$/.test(normalized) ? Number(normalized) - 1 : ordinalIndex
+  if (index >= 0 && candidates[index]) return candidates[index]
+
+  return (
+    candidates.find((candidate) => {
+      const normalizedName = normalizeText(candidate.name)
+      return Boolean(normalizedName) && (normalizedName.includes(normalized) || normalized.includes(normalizedName))
+    }) ?? null
+  )
+}
+
 async function finalizeLeadDocumentAttachment(brokerId: string, leadId: string, record: EntityDocumentRecord) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, brokerId } })
   if (!lead) {
@@ -249,9 +281,9 @@ async function finalizeLeadDocumentAttachment(brokerId: string, leadId: string, 
 }
 
 export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingContext }) => {
-  // Segundo turno: usuario confirmou. leadId e record ja foram resolvidos e validados
-  // no primeiro turno e voltam intactos via pendingContext.parsedData — nao re-resolve nada.
-  if (pendingContext?.action === "ATTACH_LEAD_DOCUMENT" && pendingContext.parsedData) {
+  // Terceiro turno: usuario confirmou. leadId e record ja foram resolvidos e validados
+  // em turnos anteriores e voltam intactos via pendingContext.parsedData — nao re-resolve nada.
+  if (pendingContext?.action === "ATTACH_LEAD_DOCUMENT" && pendingContext.missingField === "confirmation" && pendingContext.parsedData) {
     const pendingLeadId = typeof pendingContext.parsedData.leadId === "string" ? pendingContext.parsedData.leadId : ""
     const pendingRecord = pendingContext.parsedData.record
     if (pendingLeadId && isEntityDocumentRecordLike(pendingRecord)) {
@@ -259,7 +291,33 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
     }
   }
 
-  // Primeiro turno: resolve cliente + anexo, mas so pede confirmacao — nao grava ainda.
+  // Segundo turno (so quando havia ambiguidade): usuario respondeu qual cliente quis dizer.
+  // Resolve a escolha entre os candidatos salvos e pede confirmacao final — ainda nao grava.
+  if (pendingContext?.action === "ATTACH_LEAD_DOCUMENT" && pendingContext.missingField === "lead" && pendingContext.parsedData) {
+    const pendingCandidates = pendingContext.parsedData.candidates
+    const pendingRecord = pendingContext.parsedData.record
+    if (isLeadDocumentCandidateArray(pendingCandidates) && isEntityDocumentRecordLike(pendingRecord)) {
+      const chosen = resolveLeadDocumentCandidateChoice(message, pendingCandidates)
+      if (!chosen) {
+        return {
+          response: `Ainda não entendi qual cliente você quer usar. Os candidatos eram: ${pendingCandidates.map((candidate) => candidate.name).join(", ")}. Tente novamente com o nome completo.`,
+          metadata: { noCharge: true },
+        }
+      }
+
+      return {
+        response: `Encontrei o cliente ${chosen.name}. Posso anexar o documento "${pendingRecord.name}" a ele? Deseja confirmar?`,
+        metadata: {
+          required: ["confirmation"],
+          noCharge: true,
+          matchedByName: true,
+          parsedData: { leadId: chosen.id, record: pendingRecord },
+        },
+      }
+    }
+  }
+
+  // Primeiro turno: resolve cliente + anexo do zero.
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
   const namedClientReference = detectNamedClientReference(message)
   if (!namedClientReference) {
@@ -294,19 +352,27 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
     }
   }
 
-  if (matches.length > 1) {
-    return {
-      response: `Encontrei ${matches.length} clientes chamados "${namedClientReference}": ${matches.map((item) => item.name ?? "Sem nome").join(", ")}. Me diga qual deles para eu continuar.`,
-      metadata: { noCharge: true, matchedByName: true, ambiguous: true, leadIds: matches.map((item) => item.id) },
-    }
-  }
-
-  const lead = matches[0]
   const record = buildEntityDocumentRecord({
     name: documentAttachment.name,
     type: documentAttachment.type,
     dataUrl: documentAttachment.dataUrl,
   })
+
+  if (matches.length > 1) {
+    const candidates: LeadDocumentCandidate[] = matches.map((item) => ({ id: item.id, name: item.name ?? "Sem nome" }))
+    return {
+      response: `Encontrei ${matches.length} clientes chamados "${namedClientReference}": ${candidates.map((candidate) => candidate.name).join(", ")}. Qual deles devo usar?`,
+      metadata: {
+        required: ["lead"],
+        noCharge: true,
+        matchedByName: true,
+        ambiguous: true,
+        parsedData: { candidates, record },
+      },
+    }
+  }
+
+  const lead = matches[0]
 
   return {
     response: `Encontrei o cliente ${lead.name ?? namedClientReference}. Posso anexar o documento "${record.name}" a ele? Deseja confirmar?`,

@@ -65,7 +65,11 @@ const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-plan
 const { extractClientIdentity, detectNamedClientReference } = require(path.join(repoRoot, "lib/cos/entity-extraction.ts"))
 const { parsePropertyDraftData } = require(path.join(repoRoot, "lib/eme-backend.ts"))
 const { getAttachmentsFromPayload } = require(path.join(repoRoot, "lib/cos/capabilities/shared.ts"))
-const { isEntityDocumentRecordLike } = require(path.join(repoRoot, "lib/cos/capabilities/lead/manage.ts"))
+const {
+  isEntityDocumentRecordLike,
+  isLeadDocumentCandidateArray,
+  resolveLeadDocumentCandidateChoice,
+} = require(path.join(repoRoot, "lib/cos/capabilities/lead/manage.ts"))
 const {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
@@ -200,6 +204,35 @@ const capabilityScenarios = [
       missingField: "confirmation",
       parsedData: {
         leadId: "lead_123",
+        record: {
+          id: "doc_123",
+          label: "Documento anexado via Assessor",
+          name: "contrato.pdf",
+          url: "data:application/pdf;base64,AAA=",
+          mimeType: "application/pdf",
+          uploadedAt: "2026-07-30T10:00:00.000Z",
+        },
+      },
+      createdAt: new Date("2026-07-30T10:00:00.000Z"),
+    },
+  },
+
+  // Sprint 11a — segundo turno do fluxo de 3 (ambiguidade -> escolha -> confirmacao):
+  // a resposta de texto livre ("Carlos Silva") tambem so resolve de volta para
+  // ATTACH_LEAD_DOCUMENT por causa do pendingContext deixado pelo 1o turno (ambiguidade).
+  {
+    message: "Carlos Silva.",
+    surface: "portal",
+    expectedAction: "ATTACH_LEAD_DOCUMENT",
+    expectedSource: "legacy",
+    pendingContext: {
+      action: "ATTACH_LEAD_DOCUMENT",
+      missingField: "lead",
+      parsedData: {
+        candidates: [
+          { id: "lead_1", name: "Carlos Silva" },
+          { id: "lead_2", name: "Carlos Souza" },
+        ],
         record: {
           id: "doc_123",
           label: "Documento anexado via Assessor",
@@ -411,8 +444,54 @@ async function main() {
     assert.strictEqual(actual, scenario.expected, `Resume "${scenario.label}" deveria retornar ${scenario.expected}, mas retornou ${actual}.`)
   }
 
+  // Sprint 11a — resolucao da escolha de candidato em texto livre (2o turno do fluxo de
+  // ambiguidade), mesmo padrao de lib/eme-backend.ts's resolvePropertyChoice.
+  const leadCandidates = [
+    { id: "lead_1", name: "Carlos Silva" },
+    { id: "lead_2", name: "Carlos Souza" },
+  ]
+  const candidateChoiceScenarios = [
+    {
+      label: "nome exato resolve o candidato certo",
+      run: () => resolveLeadDocumentCandidateChoice("Carlos Silva", leadCandidates),
+      expected: leadCandidates[0],
+    },
+    {
+      label: "indice numerico resolve por posicao",
+      run: () => resolveLeadDocumentCandidateChoice("2", leadCandidates),
+      expected: leadCandidates[1],
+    },
+    {
+      label: "ordinal por extenso resolve por posicao",
+      run: () => resolveLeadDocumentCandidateChoice("o segundo", leadCandidates),
+      expected: leadCandidates[1],
+    },
+    {
+      label: "resposta sem relacao com nenhum candidato retorna null",
+      run: () => resolveLeadDocumentCandidateChoice("Mariana Costa", leadCandidates),
+      expected: null,
+    },
+  ]
+
+  for (const scenario of candidateChoiceScenarios) {
+    const actual = scenario.run()
+    assert.deepStrictEqual(actual, scenario.expected, `Escolha "${scenario.label}" deveria retornar ${JSON.stringify(scenario.expected)}, mas retornou ${JSON.stringify(actual)}.`)
+  }
+
+  const candidateArrayScenarios = [
+    { label: "array valido de candidatos", run: () => isLeadDocumentCandidateArray(leadCandidates), expected: true },
+    { label: "array vazio nao conta como candidatos validos", run: () => isLeadDocumentCandidateArray([]), expected: false },
+    { label: "item sem name e invalido", run: () => isLeadDocumentCandidateArray([{ id: "lead_1" }]), expected: false },
+    { label: "nao-array e invalido", run: () => isLeadDocumentCandidateArray("lead_1"), expected: false },
+  ]
+
+  for (const scenario of candidateArrayScenarios) {
+    const actual = scenario.run()
+    assert.strictEqual(actual, scenario.expected, `Validacao "${scenario.label}" deveria retornar ${scenario.expected}, mas retornou ${actual}.`)
+  }
+
   console.log(
-    `Validated ${entityExtractionScenarios.length} entity-extraction scenarios, property draft field isolation, ${attachmentPayloadScenarios.length} attachment-payload scenarios, and ${pendingResumeScenarios.length} pending-resume scenarios successfully.`,
+    `Validated ${entityExtractionScenarios.length} entity-extraction scenarios, property draft field isolation, ${attachmentPayloadScenarios.length} attachment-payload scenarios, ${pendingResumeScenarios.length} pending-resume scenarios, and ${candidateChoiceScenarios.length + candidateArrayScenarios.length} ambiguity-resolution scenarios successfully.`,
   )
 
   const executionResults = []
