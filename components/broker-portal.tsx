@@ -93,7 +93,6 @@ export function BrokerPortal() {
     assistantEnabled,
     assistantCredits,
     setAssistantCredits,
-    bootstrapEnabled: !isProfileLoading,
     source: "cos_home",
   })
 

@@ -394,11 +394,19 @@ export function useCosConversations({
 
   useEffect(() => {
     if (!bootstrapEnabled) {
-      setIsBootstrappingConversation(true)
+      // Bootstrap hasn't run yet: keep the skeleton up. If it already ran,
+      // this flag flipping off later (e.g. an unrelated loading state this
+      // caller ties it to) must not re-hide an already-loaded conversation.
+      if (!hasBootstrappedRef.current) {
+        setIsBootstrappingConversation(true)
+      }
       return
     }
 
-    if (hasBootstrappedRef.current) return
+    if (hasBootstrappedRef.current) {
+      setIsBootstrappingConversation(false)
+      return
+    }
     hasBootstrappedRef.current = true
 
     setIsBootstrappingConversation(true)
@@ -412,7 +420,11 @@ export function useCosConversations({
         }
         return null
       })
-      .catch(() => null)
+      .catch(() => {
+        if (isMountedRef.current) {
+          setChatFeedback("Não foi possível carregar o histórico do COS. Tente novamente.")
+        }
+      })
       .finally(() => {
         if (isMountedRef.current) {
           setIsBootstrappingConversation(false)
