@@ -1,6 +1,7 @@
 import "server-only"
 
 import { extractPropertyFromAd, type AdImportDraft } from "@/lib/property-ad-import"
+import { savePropertyImageFromDataUrl } from "@/lib/property-storage"
 
 export type CosAttachmentAnalysisInput = {
   message: string
@@ -20,6 +21,7 @@ export type CosAttachmentAnalysis = {
   propertyDrafts: AdImportDraft[]
   primaryPropertyDraft: AdImportDraft | null
   propertyConfirmationText: string | null
+  imageUrl: string | null
 }
 
 const PROPERTY_INTENT_TOKENS = ["imovel", "anuncio", "catalogo", "publique", "publicar", "cadastre", "cadastrar", "crie", "criar", "campanha"]
@@ -96,7 +98,7 @@ function inferPropertyPurpose(message: string) {
   return normalized.includes("aluguel") || normalized.includes("locacao") ? "RENT" : "SALE"
 }
 
-export function mapAttachmentDraftToPendingPropertyData(draft: AdImportDraft, message: string) {
+export function mapAttachmentDraftToPendingPropertyData(draft: AdImportDraft, message: string, imageUrl?: string | null) {
   return {
     title: draft.title || draft.type || "Imovel em rascunho",
     description: draft.description || "",
@@ -115,6 +117,7 @@ export function mapAttachmentDraftToPendingPropertyData(draft: AdImportDraft, me
     lowConfidenceFields: draft.lowConfidenceFields,
     missingFields: draft.missingFields,
     status: draft.status,
+    imageUrl: imageUrl || "",
   }
 }
 
@@ -126,12 +129,14 @@ async function analyzePropertyAttachments(input: CosAttachmentAnalysisInput) {
     .join("\n\n")
     .slice(0, 12_000)
 
+  const result = { propertyDrafts: [] as AdImportDraft[], imageUrl: null as string | null }
+
   if (!imageAttachment && !textContent) {
-    return [] as AdImportDraft[]
+    return result
   }
 
   try {
-    return await extractPropertyFromAd({
+    result.propertyDrafts = await extractPropertyFromAd({
       adText: textContent,
       sourceUrl: "",
       notes: input.message,
@@ -144,8 +149,20 @@ async function analyzePropertyAttachments(input: CosAttachmentAnalysisInput) {
       hasImage: Boolean(imageAttachment),
       hasText: Boolean(textContent),
     })
-    return []
   }
+
+  if (imageAttachment?.dataUrl) {
+    try {
+      result.imageUrl = await savePropertyImageFromDataUrl(imageAttachment.dataUrl)
+    } catch (error) {
+      console.error("[cos][attachment-analysis][image-upload]", {
+        message: error instanceof Error ? error.message : "unknown",
+        attachmentName: imageAttachment.name,
+      })
+    }
+  }
+
+  return result
 }
 
 export async function analyzeCosAttachments(input: CosAttachmentAnalysisInput): Promise<CosAttachmentAnalysis> {
@@ -155,11 +172,14 @@ export async function analyzeCosAttachments(input: CosAttachmentAnalysisInput): 
       propertyDrafts: [],
       primaryPropertyDraft: null,
       propertyConfirmationText: null,
+      imageUrl: null,
     }
   }
 
   const attachmentLines = buildAttachmentLines(input.attachments)
-  const propertyDrafts = hasPropertyIntent(input.message) ? await analyzePropertyAttachments(input) : []
+  const { propertyDrafts, imageUrl } = hasPropertyIntent(input.message)
+    ? await analyzePropertyAttachments(input)
+    : { propertyDrafts: [] as AdImportDraft[], imageUrl: null as string | null }
   const primaryPropertyDraft = propertyDrafts[0] ?? null
   const propertySummary = primaryPropertyDraft ? summarizePropertyDraft(primaryPropertyDraft) : []
 
@@ -180,5 +200,6 @@ export async function analyzeCosAttachments(input: CosAttachmentAnalysisInput): 
     propertyDrafts,
     primaryPropertyDraft,
     propertyConfirmationText: primaryPropertyDraft ? buildPropertyConfirmationText(primaryPropertyDraft) : null,
+    imageUrl,
   }
 }

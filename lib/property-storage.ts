@@ -15,10 +15,14 @@ function getStorageConfig() {
   }
 }
 
-function getImageExtension(file: File) {
-  if (file.type === "image/png") return ".png"
-  if (file.type === "image/webp") return ".webp"
+function getImageExtensionFromMimeType(mimeType: string) {
+  if (mimeType === "image/png") return ".png"
+  if (mimeType === "image/webp") return ".webp"
   return ".jpg"
+}
+
+function getImageExtension(file: File) {
+  return getImageExtensionFromMimeType(file.type)
 }
 
 function getAudioExtension(file: File) {
@@ -112,6 +116,22 @@ export async function savePropertyImage(propertyId: string, file: File) {
     file,
     folder: "images",
     extension: getImageExtension(file),
+  })
+}
+
+export async function savePropertyImageFromDataUrl(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;,]+)?(?:;[^,]*)?,([\s\S]+)$/)
+  if (!match) throw new Error("Formato de imagem inválido para upload.")
+
+  const mimeType = match[1] || "image/jpeg"
+  const buffer = Buffer.from(match[2], "base64")
+
+  return uploadPropertyBuffer({
+    propertyId: randomUUID(),
+    buffer,
+    folder: "images",
+    extension: getImageExtensionFromMimeType(mimeType),
+    contentType: mimeType,
   })
 }
 

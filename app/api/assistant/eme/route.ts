@@ -380,6 +380,7 @@ export async function POST(request: NextRequest) {
           propertyDrafts: [],
           primaryPropertyDraft: null,
           propertyConfirmationText: null,
+          imageUrl: null,
         }
       : await analyzeCosAttachments({
           message,
@@ -572,7 +573,7 @@ export async function POST(request: NextRequest) {
       if (pendingWorkflow.pendingInput?.action === "createPropertyDraft" && attachmentAnalysis.primaryPropertyDraft) {
         pendingWorkflow.pendingInput = {
           ...pendingWorkflow.pendingInput,
-          parsedData: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message),
+          parsedData: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message, attachmentAnalysis.imageUrl),
         }
       }
       const responseText = executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action)
@@ -587,7 +588,7 @@ export async function POST(request: NextRequest) {
         attachmentAnalysis: attachmentAnalysis.primaryPropertyDraft
           ? {
               propertyDrafts: attachmentAnalysis.propertyDrafts.length,
-              primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message),
+              primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message, attachmentAnalysis.imageUrl),
             }
           : null,
         workflow: workflowMetadata(pendingWorkflow),
@@ -797,7 +798,7 @@ export async function POST(request: NextRequest) {
       attachmentAnalysis: attachmentAnalysis.primaryPropertyDraft
         ? {
             propertyDrafts: attachmentAnalysis.propertyDrafts.length,
-            primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message),
+            primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message, attachmentAnalysis.imageUrl),
           }
         : null,
       workflow: workflowMetadata(updatedWorkflow),

@@ -1886,7 +1886,8 @@ Revise e preencha os dados restantes antes de enviar.`,
         parsedPriceRaw: messagePrice?.raw ?? payloadPrice?.raw ?? (cleanText(pendingDraft.parsedPriceRaw, 80) || parsedDraft.parsedPriceRaw),
         parsedPriceFinal: resolvedPrice || null,
         priceOutOfRange,
-      } as ReturnType<typeof parsePropertyDraftData>
+        imageUrl: cleanText(pendingDraft.imageUrl, 2000),
+      } as ReturnType<typeof parsePropertyDraftData> & { imageUrl: string }
       if (draft.priceOutOfRange) {
         return {
           response: "O valor informado parece alto demais. Pode confirmar o valor do imóvel?",
@@ -1943,6 +1944,7 @@ Revise e preencha os dados restantes antes de enviar.`,
           status: PropertyStatus.DRAFT,
           published: false,
           brokerId,
+          imageUrls: draft.imageUrl ? [draft.imageUrl] : undefined,
         },
       })
       await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
@@ -1962,26 +1964,7 @@ ${missingFields.length ? `Faltou preencher: ${missingFields.join(" e ")}.
           durationMs: Date.now() - startedAt,
           mediaHandling: {
             prepared: true,
-            status: "not_saved_without_media_storage_binding",
-          },
-        },
-        propertyId: property.id,
-      }
-      await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
-      return {
-        response: "Imóvel criado em rascunho ✅\nRevise os dados no painel antes de publicar.",
-        metadata: {
-          propertyId: property.id,
-          publicCode: property.publicCode,
-          parsedData: draft,
-          parsedPriceRaw: draft.parsedPriceRaw,
-          parsedPriceFinal: draft.parsedPriceFinal,
-          actionStatus: "success",
-          durationMs: Date.now() - startedAt,
-          futureActions: ["agenda_eme", "follow_up", "documents", "proposals", "ad_publication"],
-          mediaHandling: {
-            prepared: true,
-            status: "waiting_storage_binding",
+            status: draft.imageUrl ? "saved" : "no_image_provided",
           },
         },
         propertyId: property.id,
