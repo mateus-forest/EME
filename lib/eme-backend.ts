@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma"
 import { extractPropertyPublicCode, findPropertyByBrokerPublicCode, getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { contractHtmlToText, createContractContent, parseContractContent, stringifyContractContent } from "@/lib/contract-template"
 import { buildProposalHtml, proposalHtmlToText } from "@/lib/proposal-template"
+import { detectNamedClientReference, extractClientIdentity } from "@/lib/cos/entity-extraction"
 
 export const assessorActions = [
   "general",
@@ -219,24 +220,8 @@ function isLikelyUnknownAssessorMessage(message: string, action: AssessorAction)
 }
 
 function extractLeadData(message: string) {
-  const withoutCommands = message
-    .replace(/\b(?:cadastrar|cadastre|criar|crie|novo|nova|lead|contato|cliente|esse|essa|este|esta)\b/gi, " ")
-    .replace(/[:;]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-  const phoneMatch = withoutCommands.replace(/\D/g, "").match(/(\d{10,13})/)
-  const phone = phoneMatch?.[1] ?? ""
-  const phoneStart = phone ? withoutCommands.search(new RegExp(phone.split("").join("\\D*"))) : -1
-  const rawName = phoneStart >= 0 ? withoutCommands.slice(0, phoneStart) : withoutCommands
-  const name = cleanText(
-    rawName
-      .replace(/[,]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
-    120,
-  )
-
-  return { name, phone }
+  const extracted = extractClientIdentity(message)
+  return { name: cleanText(extracted.name, 120), phone: extracted.phone }
 }
 
 function parseLeadStatusFromText(message: string): LeadStatus {
@@ -381,7 +366,7 @@ function parseFixedPropertyDraftCommand(message: string) {
   }
 }
 
-function parsePropertyDraftData(message: string, payload?: Record<string, unknown>) {
+export function parsePropertyDraftData(message: string, payload?: Record<string, unknown>) {
   const normalized = normalizeForIntent(message)
   const fixedCommand = parseFixedPropertyDraftCommand(message)
   const type = inferPropertyTypeFromText(message) ?? "APARTMENT"
@@ -1092,6 +1077,33 @@ export async function runLegacyAssessorAction({
     return {
       response: "Não encontrei seu cadastro de corretor vinculado a este WhatsApp.",
       metadata: { noCharge: true, errorReason: "broker_not_found" },
+    }
+  }
+
+  const namedClientReference = detectNamedClientReference(message)
+  if (namedClientReference) {
+    const matches = await prisma.lead.findMany({
+      where: { brokerId, name: { contains: namedClientReference, mode: "insensitive" } },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+    })
+    if (matches.length === 1) {
+      const lead = matches[0]
+      return {
+        response: `Encontrei o cliente ${lead.name ?? namedClientReference}. Ainda não consigo executar essa ação automaticamente, mas já localizei o cadastro certo — em breve isso será liberado por aqui.`,
+        metadata: { leadId: lead.id, matchedByName: true, resolvedExisting: true },
+        leadId: lead.id,
+      }
+    }
+    if (matches.length > 1) {
+      return {
+        response: `Encontrei ${matches.length} clientes chamados "${namedClientReference}": ${matches.map((item) => item.name ?? "Sem nome").join(", ")}. Me diga qual deles para eu continuar.`,
+        metadata: { leadIds: matches.map((item) => item.id), matchedByName: true, ambiguous: true },
+      }
+    }
+    return {
+      response: `Não encontrei nenhum cliente chamado "${namedClientReference}".`,
+      metadata: { matchedByName: true, resolvedExisting: false },
     }
   }
 

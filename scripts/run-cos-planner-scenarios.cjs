@@ -62,6 +62,8 @@ Module._extensions[".tsx"] = transpileTypeScript
 
 const { planCosCapability } = require(path.join(repoRoot, "lib/cos/planner.ts"))
 const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-planner.ts"))
+const { extractClientIdentity, detectNamedClientReference } = require(path.join(repoRoot, "lib/cos/entity-extraction.ts"))
+const { parsePropertyDraftData } = require(path.join(repoRoot, "lib/eme-backend.ts"))
 const {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
@@ -142,6 +144,44 @@ const capabilityScenarios = [
     expectedSource: "catalog",
     expectedContextOrigin: "workspace",
   },
+
+  // Sprint 9 — casos reais de producao
+  { message: "Cadastre um cliente chamado lucas.", surface: "portal", expectedAction: "createLead" },
+  { message: "Cadastre esse imovel, casa em condominio.", surface: "portal", expectedAction: "createPropertyDraft" },
+  {
+    message: "Anexe esse documento ao cliente carlos.",
+    surface: "portal",
+    expectedAction: "general",
+    expectedSource: "legacy",
+  },
+
+  // Sprint 9 — variacoes de linguagem natural por verbo de acao (create)
+  { message: "Crie um novo cliente chamado Pedro.", surface: "portal", expectedAction: "createLead" },
+  { message: "Adicione um cliente chamado Ana.", surface: "portal", expectedAction: "createLead" },
+
+  // Sprint 9 — variacoes de linguagem natural por verbo de acao (search)
+  { message: "Busque apartamentos em Porto Alegre.", surface: "portal", expectedAction: "searchProperties" },
+  { message: "Encontre casas com 3 quartos.", surface: "portal", expectedAction: "searchProperties" },
+  { message: "Traga opcoes de apartamentos ate 500 mil.", surface: "portal", expectedAction: "searchProperties" },
+
+  // Sprint 9 — variacoes de linguagem natural por verbo de acao (update)
+  { message: "Atualize o cliente joao.", surface: "portal", expectedAction: "UPDATE_LEAD" },
+  { message: "Edite os dados do cliente marcos.", surface: "portal", expectedAction: "UPDATE_LEAD" },
+  { message: "Corrija os dados do cliente paula.", surface: "portal", expectedAction: "UPDATE_LEAD" },
+
+  // Sprint 9 — variacoes de linguagem natural por verbo de acao (attach): nunca deve virar createLead
+  {
+    message: "Vincule este documento ao cliente marina.",
+    surface: "portal",
+    expectedAction: "general",
+    expectedSource: "legacy",
+  },
+  {
+    message: "Junte este documento ao cliente roberta.",
+    surface: "portal",
+    expectedAction: "general",
+    expectedSource: "legacy",
+  },
 ]
 
 const deterministicExecutionScenarios = [
@@ -220,6 +260,56 @@ async function main() {
   })
 
   console.table(capabilityResults)
+
+  const entityExtractionScenarios = [
+    {
+      label: "case1: nome apos marcador 'chamado'",
+      run: () => extractClientIdentity("Cadastre um cliente chamado lucas.").name,
+      expected: "Lucas",
+    },
+    {
+      label: "case1-b: nome apos marcador 'chamada'",
+      run: () => extractClientIdentity("Cadastre uma cliente chamada Fernanda.").name,
+      expected: "Fernanda",
+    },
+    {
+      label: "sem marcador nem nome confiavel deve ficar vazio",
+      run: () => extractClientIdentity("Cadastre este cliente.").name,
+      expected: "",
+    },
+    {
+      label: "case4: nome nunca deve ser a frase de comando",
+      run: () => extractClientIdentity("Anexe esse documento ao cliente carlos.").name,
+      expected: "",
+    },
+    {
+      label: "case4: deteccao de referencia a cliente existente",
+      run: () => detectNamedClientReference("Anexe esse documento ao cliente carlos."),
+      expected: "Carlos",
+    },
+    {
+      label: "verbo de create nao deve disparar deteccao de referencia existente",
+      run: () => detectNamedClientReference("Cadastre um cliente chamado lucas."),
+      expected: null,
+    },
+  ]
+
+  for (const scenario of entityExtractionScenarios) {
+    const actual = scenario.run()
+    assert.strictEqual(actual, scenario.expected, `Extracao "${scenario.label}" deveria retornar ${JSON.stringify(scenario.expected)}, mas retornou ${JSON.stringify(actual)}.`)
+  }
+
+  const case2Draft = parsePropertyDraftData("Cadastre esse imovel, casa em condominio.")
+  const case2RawMessage = "Cadastre esse imovel, casa em condominio."
+  for (const field of ["title", "city", "neighborhood", "description"]) {
+    assert.notStrictEqual(
+      case2Draft[field],
+      case2RawMessage,
+      `Campo "${field}" do rascunho de imovel nao pode conter a frase de comando bruta.`,
+    )
+  }
+
+  console.log(`Validated ${entityExtractionScenarios.length} entity-extraction scenarios and property draft field isolation successfully.`)
 
   const executionResults = []
   for (const scenario of deterministicExecutionScenarios) {

@@ -63,9 +63,16 @@ const GENERIC_TOKENS = new Set([
 ])
 
 const STRONG_VERBS = {
-  create: ["criar", "gere", "gerar", "cadastrar", "cadastre", "novo", "nova"],
-  list: ["listar", "lista", "mostrar", "mostre", "quais", "ver"],
-  update: ["atualizar", "atualize", "melhorar", "melhore", "revisar", "revise"],
+  create: ["criar", "crie", "gere", "gerar", "cadastrar", "cadastre", "adicionar", "adicione", "novo", "nova"],
+  search: [
+    "buscar", "busque", "encontrar", "encontre", "trazer", "traga", "procurar", "procure",
+    "localizar", "localize", "quero ver", "listar", "lista", "mostrar", "mostre", "quais", "ver",
+  ],
+  update: [
+    "atualizar", "atualize", "editar", "edite", "mudar", "mude", "corrigir", "corrija",
+    "melhorar", "melhore", "revisar", "revise", "ajustar", "ajuste",
+  ],
+  attach: ["anexar", "anexe", "vincular", "vincule", "juntar", "junte"],
   complete: ["concluir", "conclua", "marcar", "marque", "feito", "finalizar"],
 }
 
@@ -123,8 +130,9 @@ function buildCapabilitySearchDocument(descriptor: CosCapabilityDescriptor) {
 function inferVerbHint(normalizedMessage: string) {
   if (STRONG_VERBS.create.some((token) => normalizedMessage.includes(token))) return "create"
   if (STRONG_VERBS.complete.some((token) => normalizedMessage.includes(token))) return "complete"
+  if (STRONG_VERBS.attach.some((token) => normalizedMessage.includes(token))) return "attach"
   if (STRONG_VERBS.update.some((token) => normalizedMessage.includes(token))) return "update"
-  if (STRONG_VERBS.list.some((token) => normalizedMessage.includes(token))) return "list"
+  if (STRONG_VERBS.search.some((token) => normalizedMessage.includes(token))) return "search"
   return null
 }
 
@@ -267,15 +275,23 @@ function scoreCapability(
 
   const verbHint = inferVerbHint(normalizedMessage)
   if (verbHint === "create" && descriptor.mutatesData) {
-    score += 1.2
+    score += 2.6
     reasons.push("verbo de criacao")
   }
-  if (verbHint === "list" && !descriptor.mutatesData && descriptor.id.includes(".list")) {
-    score += 1.2
-    reasons.push("verbo de listagem")
+  if (verbHint === "create" && !descriptor.mutatesData) {
+    score -= 2.2
+    reasons.push("verbo de criacao penaliza leitura")
   }
-  if (verbHint === "update" && descriptor.id.includes(".improve")) {
-    score += 1.2
+  if (verbHint === "search" && !descriptor.mutatesData) {
+    score += 1.4
+    reasons.push("verbo de busca")
+  }
+  if (verbHint === "search" && descriptor.mutatesData) {
+    score -= 1.2
+    reasons.push("verbo de busca penaliza mutacao")
+  }
+  if (verbHint === "update" && (descriptor.id.includes(".update") || descriptor.id.includes(".improve"))) {
+    score += 1.6
     reasons.push("verbo de atualizacao")
   }
   if (verbHint === "complete" && descriptor.id.includes(".complete")) {
