@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   Clock3,
   FileText,
@@ -169,10 +169,13 @@ const statusLabelOverrides: Record<LeadRecord["status"], string> = {
   ARCHIVED: "Arquivado",
 }
 
-export function BrokerClientsPage({ initialClientId }: { initialClientId?: string }) {
+export function BrokerClientsPage() {
   const router = useRouter()
+  const params = useParams<{ id?: string }>()
+  const routeClientId = typeof params?.id === "string" ? params.id : undefined
   const { properties } = useBrokerProperties()
   const [clients, setClients] = useState<LeadRecord[]>([])
+  const [hasLoadedClients, setHasLoadedClients] = useState(false)
   const [feedback, setFeedback] = useState("")
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("error")
   const [search, setSearch] = useState("")
@@ -205,10 +208,14 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
   }, [])
 
   useEffect(() => {
-    if (!initialClientId || !clients.length) return
-    const client = clients.find((item) => item.id === initialClientId)
-    if (client) openClient(client)
-  }, [clients, initialClientId, openClient])
+    if (!routeClientId || !clients.length) return
+    if (selectedClient?.id === routeClientId) return
+    const client = clients.find((item) => item.id === routeClientId)
+    if (client) {
+      setSelectedClient(client)
+      setSelectedClientDraft(mapLeadToForm(client))
+    }
+  }, [clients, routeClientId, selectedClient])
 
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -247,9 +254,11 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
     if (!response.ok) {
       setFeedbackTone("error")
       setFeedback(data?.error || "Não foi possível carregar seus clientes.")
+      setHasLoadedClients(true)
       return
     }
     setClients(data?.leads ?? [])
+    setHasLoadedClients(true)
   }
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
@@ -498,7 +507,11 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
                     <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
                       <stage.icon className="size-4.5" />
                     </div>
-                    <p className="break-words text-2xl font-semibold text-[#050505] sm:text-3xl">{values[index]}</p>
+                    {hasLoadedClients ? (
+                      <p className="break-words text-2xl font-semibold text-[#050505] sm:text-3xl">{values[index]}</p>
+                    ) : (
+                      <div className="h-8 w-10 animate-pulse rounded-full bg-[#eef1ec]" />
+                    )}
                   </div>
                   <CardTitle className="pt-3 text-base text-[#050505]">{stage.title}</CardTitle>
                 </CardHeader>
@@ -548,6 +561,15 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
               }`}
             >
               {feedback}
+            </div>
+          ) : !hasLoadedClients ? (
+            <div className="grid gap-3">
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className="h-24 animate-pulse rounded-[1.25rem] border border-black/[0.06] bg-white/60"
+                />
+              ))}
             </div>
           ) : filteredClients.length > 0 ? (
             <div className="grid gap-3">
@@ -778,7 +800,15 @@ export function BrokerClientsPage({ initialClientId }: { initialClientId?: strin
               </div>
 
               <div className="flex flex-wrap justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setSelectedClient(null)} className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563]">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedClient(null)
+                    router.push("/corretor/clientes")
+                  }}
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563]"
+                >
                   Fechar
                 </Button>
                 <Button type="button" disabled={isSavingClient} onClick={() => void saveSelectedClient()} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white">
