@@ -201,7 +201,65 @@ function buildEntityDocumentRecord(attachment: { name: string; type: string; dat
   }
 }
 
-export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
+export function isEntityDocumentRecordLike(value: unknown): value is EntityDocumentRecord {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.id === "string" &&
+    typeof record.label === "string" &&
+    typeof record.name === "string" &&
+    typeof record.url === "string" &&
+    typeof record.mimeType === "string" &&
+    typeof record.uploadedAt === "string"
+  )
+}
+
+async function finalizeLeadDocumentAttachment(brokerId: string, leadId: string, record: EntityDocumentRecord) {
+  const lead = await prisma.lead.findFirst({ where: { id: leadId, brokerId } })
+  if (!lead) {
+    return {
+      response: "Não encontrei mais o cliente selecionado. Tente anexar o documento novamente.",
+      metadata: { noCharge: true },
+    }
+  }
+
+  try {
+    const existingDocuments = parseEntityDocuments(lead.documentsData)
+    const nextDocuments = [...existingDocuments, record].map((document) => normalizeEntityDocumentForStorage(document, cleanText))
+    const updated = await prisma.lead.update({
+      where: { id: lead.id },
+      data: { documentsData: nextDocuments },
+    })
+
+    return {
+      response: `Documento "${record.name}" anexado ao cliente ${updated.name ?? "selecionado"} ✅`,
+      metadata: { leadId: updated.id, documentId: record.id, matchedByName: true },
+      leadId: updated.id,
+    }
+  } catch (error) {
+    console.error("[cos][lead][attach-document] failed", {
+      message: error instanceof Error ? error.message : "unknown",
+      leadId: lead.id,
+    })
+    return {
+      response: "Não consegui salvar o documento agora. Tente novamente em instantes.",
+      metadata: { noCharge: true },
+    }
+  }
+}
+
+export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingContext }) => {
+  // Segundo turno: usuario confirmou. leadId e record ja foram resolvidos e validados
+  // no primeiro turno e voltam intactos via pendingContext.parsedData — nao re-resolve nada.
+  if (pendingContext?.action === "ATTACH_LEAD_DOCUMENT" && pendingContext.parsedData) {
+    const pendingLeadId = typeof pendingContext.parsedData.leadId === "string" ? pendingContext.parsedData.leadId : ""
+    const pendingRecord = pendingContext.parsedData.record
+    if (pendingLeadId && isEntityDocumentRecordLike(pendingRecord)) {
+      return finalizeLeadDocumentAttachment(brokerId, pendingLeadId, pendingRecord)
+    }
+  }
+
+  // Primeiro turno: resolve cliente + anexo, mas so pede confirmacao — nao grava ainda.
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
   const namedClientReference = detectNamedClientReference(message)
   if (!namedClientReference) {
@@ -250,28 +308,14 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
     dataUrl: documentAttachment.dataUrl,
   })
 
-  try {
-    const existingDocuments = parseEntityDocuments(lead.documentsData)
-    const nextDocuments = [...existingDocuments, record].map((document) => normalizeEntityDocumentForStorage(document, cleanText))
-    const updated = await prisma.lead.update({
-      where: { id: lead.id },
-      data: { documentsData: nextDocuments },
-    })
-
-    return {
-      response: `Documento "${record.name}" anexado ao cliente ${updated.name ?? namedClientReference} ✅`,
-      metadata: { leadId: updated.id, documentId: record.id, matchedByName: true },
-      leadId: updated.id,
-    }
-  } catch (error) {
-    console.error("[cos][lead][attach-document] failed", {
-      message: error instanceof Error ? error.message : "unknown",
-      leadId: lead.id,
-    })
-    return {
-      response: "Não consegui salvar o documento agora. Tente novamente em instantes.",
-      metadata: { noCharge: true },
-    }
+  return {
+    response: `Encontrei o cliente ${lead.name ?? namedClientReference}. Posso anexar o documento "${record.name}" a ele? Deseja confirmar?`,
+    metadata: {
+      required: ["confirmation"],
+      noCharge: true,
+      matchedByName: true,
+      parsedData: { leadId: lead.id, record },
+    },
   }
 }
 

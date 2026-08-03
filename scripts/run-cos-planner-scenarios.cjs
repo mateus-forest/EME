@@ -65,6 +65,7 @@ const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-plan
 const { extractClientIdentity, detectNamedClientReference } = require(path.join(repoRoot, "lib/cos/entity-extraction.ts"))
 const { parsePropertyDraftData } = require(path.join(repoRoot, "lib/eme-backend.ts"))
 const { getAttachmentsFromPayload } = require(path.join(repoRoot, "lib/cos/capabilities/shared.ts"))
+const { isEntityDocumentRecordLike } = require(path.join(repoRoot, "lib/cos/capabilities/lead/manage.ts"))
 const {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
@@ -184,6 +185,32 @@ const capabilityScenarios = [
     surface: "portal",
     expectedAction: "ATTACH_LEAD_DOCUMENT",
     expectedSource: "catalog",
+  },
+
+  // Sprint 10b (correcao pos-push) — segundo turno do fluxo de confirmacao: a resposta
+  // "Sim." nao carrega nenhum sinal textual de "anexar", entao so resolve para
+  // ATTACH_LEAD_DOCUMENT de novo por causa do pendingContext deixado pelo 1o turno.
+  {
+    message: "Sim.",
+    surface: "portal",
+    expectedAction: "ATTACH_LEAD_DOCUMENT",
+    expectedSource: "legacy",
+    pendingContext: {
+      action: "ATTACH_LEAD_DOCUMENT",
+      missingField: "confirmation",
+      parsedData: {
+        leadId: "lead_123",
+        record: {
+          id: "doc_123",
+          label: "Documento anexado via Assessor",
+          name: "contrato.pdf",
+          url: "data:application/pdf;base64,AAA=",
+          mimeType: "application/pdf",
+          uploadedAt: "2026-07-30T10:00:00.000Z",
+        },
+      },
+      createdAt: new Date("2026-07-30T10:00:00.000Z"),
+    },
   },
 ]
 
@@ -350,8 +377,42 @@ async function main() {
     assert.deepStrictEqual(actual, scenario.expected, `Payload "${scenario.label}" deveria retornar ${JSON.stringify(scenario.expected)}, mas retornou ${JSON.stringify(actual)}.`)
   }
 
+  // Sprint 10b (correcao pos-push) — validacao do parsedData que volta no 2o turno da
+  // confirmacao de lead.attach_document. So o formato e checado aqui (puro); a escrita
+  // real em Lead.documentsData exige Prisma e nao roda neste harness.
+  const pendingResumeScenarios = [
+    {
+      label: "record completo (formato salvo no 1o turno) e reconhecido",
+      run: () =>
+        isEntityDocumentRecordLike({
+          id: "doc_123",
+          label: "Documento anexado via Assessor",
+          name: "contrato.pdf",
+          url: "data:application/pdf;base64,AAA=",
+          mimeType: "application/pdf",
+          uploadedAt: "2026-07-30T10:00:00.000Z",
+        }),
+      expected: true,
+    },
+    {
+      label: "record sem url (parsedData corrompido/incompleto) e rejeitado",
+      run: () => isEntityDocumentRecordLike({ id: "doc_123", label: "x", name: "contrato.pdf", mimeType: "application/pdf", uploadedAt: "2026-07-30T10:00:00.000Z" }),
+      expected: false,
+    },
+    {
+      label: "valor nao-objeto e rejeitado",
+      run: () => isEntityDocumentRecordLike("contrato.pdf"),
+      expected: false,
+    },
+  ]
+
+  for (const scenario of pendingResumeScenarios) {
+    const actual = scenario.run()
+    assert.strictEqual(actual, scenario.expected, `Resume "${scenario.label}" deveria retornar ${scenario.expected}, mas retornou ${actual}.`)
+  }
+
   console.log(
-    `Validated ${entityExtractionScenarios.length} entity-extraction scenarios, property draft field isolation, and ${attachmentPayloadScenarios.length} attachment-payload scenarios successfully.`,
+    `Validated ${entityExtractionScenarios.length} entity-extraction scenarios, property draft field isolation, ${attachmentPayloadScenarios.length} attachment-payload scenarios, and ${pendingResumeScenarios.length} pending-resume scenarios successfully.`,
   )
 
   const executionResults = []
