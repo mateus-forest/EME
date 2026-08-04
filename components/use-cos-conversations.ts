@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import { usePathname } from "next/navigation"
 import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
@@ -160,20 +160,24 @@ export function useCosConversations({
   workspaceContext,
 }: UseCosConversationsOptions) {
   const pathname = usePathname()
-  const [conversation, setConversation] = useState<CosConversationItem[]>([])
-  const [conversations, setConversations] = useState<CosConversationSummary[]>([])
-  const [activeConversationId, setActiveConversationId] = useState("")
-  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null)
+  const initialCacheRef = useRef<CosConversationCache | null>(null)
+  if (initialCacheRef.current === null) {
+    initialCacheRef.current = readConversationCache()
+  }
+
+  const [conversation, setConversation] = useState<CosConversationItem[]>(() => initialCacheRef.current?.conversation ?? [])
+  const [conversations, setConversations] = useState<CosConversationSummary[]>(() => initialCacheRef.current?.conversations ?? [])
+  const [activeConversationId, setActiveConversationId] = useState(() => initialCacheRef.current?.activeConversationId ?? "")
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(() => initialCacheRef.current?.pendingConfirmation ?? null)
   const [chatFeedback, setChatFeedback] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isConversationLoading, setIsConversationLoading] = useState(false)
-  const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(true)
+  const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(() => !initialCacheRef.current)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
   const isMountedRef = useRef(true)
   const conversationListRequestIdRef = useRef(0)
   const openConversationRequestIdRef = useRef(0)
-  const hydratedFromCacheRef = useRef(false)
 
   const resolvedWorkspaceContext = useMemo(
     () =>
@@ -486,20 +490,6 @@ export function useCosConversations({
     await sendCosMessage(option.label, { visibleMessage: option.label })
   }, [pendingConfirmation, sendCosMessage])
 
-  useLayoutEffect(() => {
-    if (hydratedFromCacheRef.current) return
-    hydratedFromCacheRef.current = true
-
-    const cached = readConversationCache()
-    if (!cached) return
-
-    setConversation(cached.conversation)
-    setConversations(cached.conversations)
-    setActiveConversationId(cached.activeConversationId)
-    setPendingConfirmation(cached.pendingConfirmation)
-    setIsBootstrappingConversation(false)
-  }, [])
-
   useEffect(() => {
     writeConversationCache({
       conversation,
@@ -526,7 +516,7 @@ export function useCosConversations({
     }
     hasBootstrappedRef.current = true
 
-    const cached = readConversationCache()
+    const cached = initialCacheRef.current
 
     setIsBootstrappingConversation(!cached)
     if (!cached) {

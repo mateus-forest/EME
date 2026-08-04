@@ -60,7 +60,7 @@ type FinancialConfigResponse = {
 
 export function BrokerPortal() {
   const { properties, isLoading: isPropertiesLoading } = useBrokerProperties()
-  const { profile } = useBrokerProfile()
+  const { profile, isLoading: isProfileLoading } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
@@ -189,9 +189,8 @@ export function BrokerPortal() {
   const hasResolvedBrokerName = profile.fullName.trim().length > 0
   const greetingLabel = brokerFirstName ? `Olá, ${brokerFirstName}.` : "Olá."
 
-  const isBootstrapPending = isBootstrappingConversation
-  const showConversationSkeleton = isBootstrapPending || (isConversationLoading && conversation.length === 0)
-  const isConversationEmpty = !showConversationSkeleton && conversation.length === 0
+  const hasVisibleConversation = conversation.length > 0
+  const isConversationEmpty = !isBootstrappingConversation && !isConversationLoading && !hasVisibleConversation
   const composerMenuGroups = useMemo<CosPromptComposerMenuGroup[]>(
     () =>
       [
@@ -411,9 +410,17 @@ export function BrokerPortal() {
                   <div className="flex flex-1 flex-col">
                     <div className="mx-auto flex h-full w-full max-w-[48rem] flex-col items-center px-1 text-center">
                       <div className="pt-8 sm:pt-10">
-                        <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
-                          {greetingLabel}
-                        </h1>
+                        {hasResolvedBrokerName ? (
+                          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
+                            {greetingLabel}
+                          </h1>
+                        ) : isProfileLoading ? (
+                          <div className="mx-auto h-12 w-56 rounded-full bg-[#e9ece6] animate-pulse sm:h-14 sm:w-72" />
+                        ) : (
+                          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
+                            {greetingLabel}
+                          </h1>
+                        )}
                       </div>
 
                       <div className="mt-16 w-full pt-16 sm:mt-20 sm:pt-20" />
@@ -442,14 +449,16 @@ export function BrokerPortal() {
                           <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#111111]">
                             {greetingLabel}
                           </h1>
-                        ) : (
+                        ) : isProfileLoading ? (
                           <div className="h-8 w-40 rounded-full bg-[#e9ece6] animate-pulse" />
+                        ) : (
+                          <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#111111]">
+                            {greetingLabel}
+                          </h1>
                         )}
                       </div>
                       {showConversationTitle ? (
                         <p className="mt-3 truncate text-sm font-medium text-[#111111]">{activeConversation?.title}</p>
-                      ) : showConversationSkeleton ? (
-                        <div className="mt-3 h-5 w-56 rounded-full bg-[#eef1ec] animate-pulse" />
                       ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7a8798]">
@@ -463,11 +472,7 @@ export function BrokerPortal() {
                   </div>
 
                   <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
-                    {showConversationSkeleton ? (
-                      <CosConversationSkeleton />
-                    ) : null}
-
-                    {!showConversationSkeleton &&
+                    {hasVisibleConversation &&
                       conversation.map((item) => (
                         <div
                           key={item.id}
