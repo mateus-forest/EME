@@ -241,7 +241,7 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
     renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
     renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(70, dividerY, 96),
-    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 940),
+    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 235),
     renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
@@ -390,9 +390,13 @@ function renderDivider(x: number, y: number, width: number) {
   return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="#73df30" />`
 }
 
-function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, width: number) {
-  const columnWidth = Math.floor(width / Math.max(items.length, 1))
-
+// columnWidth is a fixed per-item budget, not a total row width divided by item count: with a
+// fixed total, fewer items (e.g. 3 instead of 4 when the property has no area on file) stretched
+// each column wider, leaving uneven leftover space after each item's actual (shorter) text before
+// hitting the next divider — items *looked* unevenly spaced even though the column boundaries
+// were mathematically even. A constant column width keeps the same visual rhythm regardless of
+// how many items are actually present; the row is simply shorter with fewer of them.
+function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, columnWidth: number) {
   return items
     .map((item, index) => {
       const originX = x + index * columnWidth
