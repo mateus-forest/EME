@@ -48,7 +48,7 @@ type StudioFeatureItem = {
 }
 
 const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
-const STUDIO_RENDER_FONT_FAMILY = "Arial, Helvetica, sans-serif"
+const STUDIO_RENDER_FONT_FAMILY = "'DejaVu Sans', 'Arial Unicode MS', Arial, Helvetica, sans-serif"
 
 const TEMPLATES: Record<StudioTemplateId, StudioTemplateDefinition> = {
   "instagram-feed-official": {
@@ -136,8 +136,8 @@ function buildStudioCreativePayload(input: {
   const location = resolveDisplayLocation(input.campaign, content)
   const features = resolveDisplayFeatures(input.campaign, content)
   const price = resolveDisplayPrice(input.campaign, content)
-  const metric = resolveMetric(input.campaign, content, price)
-  const ctaSupport = readPreferredString(content, ["cta"]) || "Fale com um corretor"
+  const metric = resolveMetric(input.campaign, content)
+  const ctaSupport = resolveDisplayCta(input.campaign, content)
   const badgeLabel = resolveCampaignBadge(input.campaign)
   const gradientToken = sanitizeFileName(`${input.campaign.id}-${input.asset.id}-${input.template.id}`)
 
@@ -155,7 +155,7 @@ function buildStudioCreativePayload(input: {
     metricSupport: metric.support,
     ctaLabel: "AGENDE UMA VISITA",
     ctaSupport,
-    footer: "EME • SOLUCOES PARA CORRETORES",
+    footer: "EME • SOLUÇÕES PARA CORRETORES",
     propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
     officialLogoDataUri: input.officialLogoDataUri,
     gradientId: `studio-gradient-${gradientToken}`,
@@ -412,11 +412,15 @@ function resolveCampaignBadge(campaign: StudioCampaignRecord) {
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
 
-  if (normalized === "LANCAMENTO") return "LANCAMENTO"
-  return goal.toUpperCase()
+  if (normalized === "LANCAMENTO") return "LANÇAMENTO"
+  return normalizeStudioText(goal.toUpperCase())
 }
 
 function resolveDisplayTitle(asset: CampaignAssetRecord, content: Record<string, unknown>, campaign: StudioCampaignRecord) {
+  if (asset.assetKey === "story") {
+    return readPreferredString(content, ["title", "line1"]) || buildDefaultHeadline(campaign)
+  }
+
   return (
     readPreferredString(content, ["title"]) ||
     [readPreferredString(content, ["line1"]), readPreferredString(content, ["line2"])].filter(Boolean).join(" ") ||
@@ -424,11 +428,12 @@ function resolveDisplayTitle(asset: CampaignAssetRecord, content: Record<string,
   )
 }
 
-function resolveDisplaySubtitle(asset: CampaignAssetRecord, content: Record<string, unknown>, campaign: StudioCampaignRecord) {
-  return (
-    readPreferredString(content, ["subtitle", "highlight", "kicker"]) ||
-    (asset.assetKey === "story" ? "Seu proximo endereco comercial" : "Pronto para destacar este imovel")
-  )
+function resolveDisplaySubtitle(asset: CampaignAssetRecord, content: Record<string, unknown>, _campaign: StudioCampaignRecord) {
+  if (asset.assetKey === "story") {
+    return readPreferredString(content, ["subtitle", "line2", "kicker"]) || "Seu próximo endereço comercial"
+  }
+
+  return readPreferredString(content, ["subtitle", "highlight", "kicker"]) || "Pronto para destacar este imóvel"
 }
 
 function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
@@ -441,7 +446,7 @@ function resolveDisplayFeatures(campaign: StudioCampaignRecord, content: Record<
 
   const derived: string[] = []
   const area = readAreaLabel(campaign)
-  if (area) derived.push(`${area} | Area privativa`)
+  if (area) derived.push(`${area} | Área privativa`)
   if ((campaign.property?.bathrooms ?? 0) > 0) {
     derived.push(`${campaign.property?.bathrooms} banheiro${campaign.property?.bathrooms === 1 ? "" : "s"}`)
   }
@@ -449,7 +454,7 @@ function resolveDisplayFeatures(campaign: StudioCampaignRecord, content: Record<
     derived.push(`${campaign.property?.parkingSpots} vaga${campaign.property?.parkingSpots === 1 ? "" : "s"}`)
   }
   if (derived.length < 3 && (campaign.property?.bedrooms ?? 0) > 0) {
-    derived.push(`${campaign.property?.bedrooms} dormitorio${campaign.property?.bedrooms === 1 ? "" : "s"}`)
+    derived.push(`${campaign.property?.bedrooms} dormitório${campaign.property?.bedrooms === 1 ? "" : "s"}`)
   }
 
   return derived.slice(0, 3)
@@ -459,15 +464,26 @@ function resolveDisplayPrice(campaign: StudioCampaignRecord, content: Record<str
   return readPreferredString(content, ["price"]) || formatPriceLabel(campaign.property?.price)
 }
 
-function resolveMetric(campaign: StudioCampaignRecord, content: Record<string, unknown>, price: string) {
+function resolveMetric(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   const areaLabel = readAreaLabel(campaign)
   const description = readPreferredString(content, ["description", "support"])
 
   return {
-    label: readPreferredString(content, ["metricLabel"]) || "PRECO",
+    label: readPreferredString(content, ["metricLabel"]) || "PREÇO",
     support: readPreferredString(content, ["metricSupport"]) || description || areaLabel || "",
-    value: price,
   }
+}
+
+function resolveDisplayCta(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
+  const inlineCta = readPreferredString(content, ["cta"])
+  if (inlineCta) return inlineCta
+
+  const ctaAsset = campaign.assets.find((asset) => asset.assetKey === "cta")
+  if (typeof ctaAsset?.content === "string" && ctaAsset.content.trim()) {
+    return normalizeStudioText(ctaAsset.content)
+  }
+
+  return "Fale com um corretor"
 }
 
 function buildLocationFeature(location: string): StudioFeatureItem {
@@ -478,7 +494,7 @@ function buildLocationFeature(location: string): StudioFeatureItem {
 
   return {
     icon: "location",
-    line1: line1 || "Localizacao",
+    line1: line1 || "Localização",
     line2: line2 || undefined,
   }
 }
@@ -582,7 +598,7 @@ function wrapText(text: string, maxCharsPerLine: number, maxLines: number) {
 
 function buildDefaultHeadline(campaign: StudioCampaignRecord) {
   const propertyTitle = campaign.property?.title?.trim()
-  if (propertyTitle) return propertyTitle
+  if (propertyTitle) return normalizeStudioText(propertyTitle)
 
   const typeLabel = mapPropertyTypeLabel(campaign.property?.type)
   const purposeLabel = mapPurposeHeadline(campaign.property?.purpose)
@@ -598,7 +614,7 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
     case "LAND":
       return "Terreno"
     case "OFFICE":
-      return "Escritorio"
+      return "Escritório"
     case "STORE":
       return "Loja"
     case "PENTHOUSE":
@@ -610,7 +626,7 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
 
 function mapPurposeHeadline(value: string | null | undefined) {
   const normalized = (value || "").toUpperCase()
-  if (normalized.includes("RENT") || normalized.includes("LOC")) return "para locacao"
+  if (normalized.includes("RENT") || normalized.includes("LOC")) return "para locação"
   return "em destaque"
 }
 
@@ -664,7 +680,7 @@ function renderSingleLineText(
   letterSpacingEm = 0,
   anchor: "start" | "middle" | "end" = "start",
 ) {
-  return `<text x="${x}" y="${y}" fill="${color}" text-anchor="${anchor}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(text)}</text>`
+  return `<text x="${x}" y="${y}" fill="${color}" text-anchor="${anchor}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(normalizeStudioText(text))}</text>`
 }
 
 function renderMultilineText(
@@ -679,7 +695,7 @@ function renderMultilineText(
 ) {
   return [
     `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">`,
-    ...lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`),
+    ...lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(normalizeStudioText(line))}</tspan>`),
     "</text>",
   ].join("")
 }
@@ -709,7 +725,7 @@ function asRecord(value: unknown) {
 function readPreferredString(record: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = record[key]
-    if (typeof value === "string" && value.trim()) return value.trim()
+    if (typeof value === "string" && value.trim()) return normalizeStudioText(value.trim())
   }
 
   return ""
@@ -720,6 +736,46 @@ function normalizeStringList(value: unknown) {
 
   return value
     .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
+    .map((item) => normalizeStudioText(item.trim()))
     .filter(Boolean)
+}
+
+function normalizeStudioText(value: string) {
+  let normalized = value
+  const replacements: Array<[string, string]> = [
+    ["Ã¡", "á"],
+    ["Ã ", "à"],
+    ["Ã¢", "â"],
+    ["Ã£", "ã"],
+    ["Ã¤", "ä"],
+    ["Ã©", "é"],
+    ["Ãª", "ê"],
+    ["Ã­", "í"],
+    ["Ã³", "ó"],
+    ["Ã´", "ô"],
+    ["Ãµ", "õ"],
+    ["Ãº", "ú"],
+    ["Ã§", "ç"],
+    ["Ã‰", "É"],
+    ["ÃŠ", "Ê"],
+    ["Ã“", "Ó"],
+    ["Ã”", "Ô"],
+    ["Ãš", "Ú"],
+    ["Ã‡", "Ç"],
+    ["Â²", "²"],
+    ["â€¢", "•"],
+    ["â€“", "–"],
+    ["â€”", "—"],
+    ["â€˜", "‘"],
+    ["â€™", "’"],
+    ["â€œ", "“"],
+    ["â€\u009d", "”"],
+    ["\uFFFD", ""],
+  ]
+
+  for (const [search, replacement] of replacements) {
+    normalized = normalized.replaceAll(search, replacement)
+  }
+
+  return normalized
 }

@@ -567,11 +567,11 @@ export function BrokerStudioIaInstagramPage() {
                       onApprove={() => toggleItemApproval("story")}
                       content={
                         storyPreviewSrc ? (
-                          <div className="mx-auto w-full max-w-[14rem] overflow-hidden rounded-[1.6rem] border border-black/[0.06] bg-white">
-                            <img src={storyPreviewSrc} alt="Preview do story" className="aspect-[9/16] w-full object-cover" />
+                          <div className="mx-auto w-full max-w-[20rem] overflow-hidden rounded-[1.6rem] border border-black/[0.06] bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+                            <img src={storyPreviewSrc} alt="Preview do story" className="aspect-[9/16] w-full object-contain bg-[#f8faf8]" />
                           </div>
                         ) : (
-                          <div className="mx-auto flex aspect-[9/16] w-full max-w-[14rem] items-center justify-center rounded-[1.6rem] border border-black/[0.06] bg-[#fbfbf8] p-6 text-center text-sm text-[#6B7280]">
+                          <div className="mx-auto flex aspect-[9/16] w-full max-w-[20rem] items-center justify-center rounded-[1.6rem] border border-black/[0.06] bg-[#fbfbf8] p-6 text-center text-sm text-[#6B7280]">
                             O preview oficial do template sera exibido assim que a campanha estiver disponivel.
                           </div>
                         )

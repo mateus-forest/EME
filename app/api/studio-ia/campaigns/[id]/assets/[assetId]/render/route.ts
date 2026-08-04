@@ -51,7 +51,9 @@ export async function GET(
     }
 
     const sharp = (await import("sharp")).default
-    const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
+    const pngBuffer = await sharp(Buffer.from(svg), { density: 216 })
+      .png()
+      .toBuffer()
     const shouldDownload = request.nextUrl.searchParams.get("download") === "1"
 
     return new NextResponse(pngBuffer, {

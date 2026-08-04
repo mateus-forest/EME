@@ -110,6 +110,10 @@ function openDescriptor(descriptor: ReturnType<typeof getAssetOpenDescriptor>) {
   window.open(descriptor.src, "_blank", "noopener,noreferrer")
 }
 
+function isPortraitStudioAsset(asset: AssetRecord) {
+  return asset.assetKey === "story" || asset.type === "STORY"
+}
+
 export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: string }) {
   const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [previewAsset, setPreviewAsset] = useState<AssetRecord | null>(null)
@@ -415,7 +419,10 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   <img
                     src={getAssetPreviewSource(campaign, previewAsset) || ""}
                     alt={previewAsset.label || "Asset"}
-                    className="max-h-[60vh] w-full rounded-[1.25rem] object-contain bg-[#f8faf8]"
+                    className={cn(
+                      "rounded-[1.25rem] object-contain bg-[#f8faf8]",
+                      isPortraitStudioAsset(previewAsset) ? "mx-auto max-h-[72vh] w-auto max-w-full" : "max-h-[60vh] w-full",
+                    )}
                   />
                 )
               ) : (
@@ -545,6 +552,7 @@ function AssetCard({
   const canDownload = Boolean(getAssetDownloadDescriptor(campaign, asset)) && asset.type !== "COPY" && asset.type !== "CAROUSEL"
   const canCopyText = Boolean(textPreview.trim())
   const canEdit = ["APPROVED", "PUBLISHED"].includes(campaign.status) && isTextEditableAsset(campaign, asset)
+  const isPortrait = isPortraitStudioAsset(asset)
   const regenerateBasePath = getStudioCampaignWorkspacePath(campaign.kind)
   const regenerateHref = regenerateBasePath
     ? `${regenerateBasePath}?propertyId=${encodeURIComponent(campaign.propertyId ?? "")}&campaignId=${encodeURIComponent(campaign.id)}&assetKey=${encodeURIComponent(asset.assetKey)}`
@@ -578,7 +586,10 @@ function AssetCard({
           <button
             type="button"
             onClick={onPreview}
-            className="overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f9faf9] text-left"
+            className={cn(
+              "overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f9faf9] text-left",
+              isPortrait && "mx-auto w-full max-w-[18rem]",
+            )}
           >
             {asset.type === "VIDEO" && asset.fileUrl ? (
               <div className="relative flex aspect-[1.5/1] items-center justify-center bg-[#111111] text-white">
@@ -590,7 +601,14 @@ function AssetCard({
                 </div>
               </div>
             ) : (
-              <img src={previewSrc} alt={asset.label || "Preview do asset"} className="aspect-[1.5/1] w-full object-cover" />
+              <img
+                src={previewSrc}
+                alt={asset.label || "Preview do asset"}
+                className={cn(
+                  "w-full bg-[#f8faf8]",
+                  isPortrait ? "aspect-[9/16] object-contain" : "aspect-[1.5/1] object-cover",
+                )}
+              />
             )}
           </button>
         ) : (
