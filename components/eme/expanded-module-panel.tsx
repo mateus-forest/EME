@@ -9,10 +9,22 @@ import type { EmeModule } from "@/lib/eme-modules"
 
 type Rect = { left: number; top: number; width: number; height: number }
 
-function computeTarget(): Rect {
+const COS_MODAL_ASPECT_RATIO = 1151.25 / 768
+
+function computeTarget(isCosModule: boolean): Rect {
   const vw = window.innerWidth
   const vh = window.innerHeight
   const isMobile = vw < 768
+
+  if (isCosModule) {
+    const maxWidth = isMobile ? vw * 0.92 : Math.min(1080, vw * 0.92)
+    const maxHeight = isMobile ? vh * 0.84 : Math.min(720, vh * 0.86)
+    const widthFromHeight = maxHeight * COS_MODAL_ASPECT_RATIO
+    const width = Math.min(maxWidth, widthFromHeight)
+    const height = width / COS_MODAL_ASPECT_RATIO
+    return { left: (vw - width) / 2, top: (vh - height) / 2, width, height }
+  }
+
   const width = isMobile ? vw * 0.92 : Math.min(950, vw * 0.92)
   const height = isMobile ? Math.min(vh * 0.84, 660) : Math.min(560, vh * 0.86)
   return { left: (vw - width) / 2, top: (vh - height) / 2, width, height }
@@ -31,20 +43,21 @@ export function ExpandedModulePanel({
   const [target, setTarget] = useState<Rect | null>(null)
   const [open, setOpen] = useState(false)
   const closingRef = useRef(false)
+  const isCosModule = module.id === "cos"
 
   useLayoutEffect(() => {
     const r = originEl.getBoundingClientRect()
     setStart({ left: r.left, top: r.top, width: r.width, height: r.height })
-    setTarget(computeTarget())
+    setTarget(computeTarget(isCosModule))
     const id = requestAnimationFrame(() => setOpen(true))
     return () => cancelAnimationFrame(id)
-  }, [originEl])
+  }, [isCosModule, originEl])
 
   useEffect(() => {
-    const onResize = () => setTarget(computeTarget())
+    const onResize = () => setTarget(computeTarget(isCosModule))
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
-  }, [])
+  }, [isCosModule])
 
   const handleClose = useCallback(() => {
     if (closingRef.current) return
@@ -66,10 +79,67 @@ export function ExpandedModulePanel({
 
   const geo = open ? target : start
   const Icon = module.icon
-  const isCosModule = module.id === "cos"
   const isCatalogModule = module.id === "catalogo"
   const isContractsModule = module.id === "contratos"
   const isProposalsModule = module.id === "propostas"
+
+  if (isCosModule) {
+    return (
+      <>
+        <div className="fixed inset-0 z-[65] bg-[rgba(14,18,22,0.78)] backdrop-blur-[4px]" onClick={handleClose} aria-hidden />
+
+        <motion.section
+          role="dialog"
+          aria-label={module.name}
+          aria-modal={false}
+          className="fixed z-[70] cursor-default overflow-hidden border border-white/70 bg-white"
+          initial={false}
+          animate={{
+            left: geo.left,
+            top: geo.top,
+            width: geo.width,
+            height: geo.height,
+            borderRadius: open ? 34 : 30,
+          }}
+          transition={{ type: "spring", stiffness: 200, damping: 30, mass: 0.9 }}
+          onAnimationComplete={() => {
+            if (!open && closingRef.current) onClose()
+          }}
+          style={{
+            boxShadow:
+              "0 60px 120px -40px rgba(28,52,40,0.55), 0 18px 40px -20px rgba(28,52,40,0.35)",
+          }}
+        >
+          <motion.button
+            type="button"
+            onClick={handleClose}
+            aria-label="Fechar"
+            className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-graphite/15 bg-white/80 text-graphite backdrop-blur-sm transition-colors hover:bg-white"
+            animate={{ opacity: open ? 1 : 0 }}
+            transition={{ duration: 0.2, delay: open ? 0.15 : 0 }}
+          >
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </motion.button>
+
+          <motion.div
+            className="absolute inset-[6px] overflow-hidden"
+            style={{ borderRadius: open ? 28 : 24 }}
+            animate={{ opacity: open ? 1 : 0, scale: open ? 1 : 0.98 }}
+            transition={{ duration: open ? 0.4 : 0.18, delay: open ? 0.18 : 0 }}
+          >
+            <Image
+              src={module.mockup || "/placeholder.svg"}
+              alt={`Mockup do módulo ${module.name}`}
+              fill
+              sizes="(max-width: 768px) 92vw, 92vw"
+              className="object-fill"
+              priority
+            />
+          </motion.div>
+        </motion.section>
+      </>
+    )
+  }
 
   return (
     <>
