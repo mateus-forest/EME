@@ -37,6 +37,7 @@ type StudioCreativePayload = {
   price: string
   metricLabel: string
   metricSupport: string
+  ctaLabel: string
   footer: string
   propertyImageSrc: string | null
   officialLogoDataUri: string
@@ -186,13 +187,14 @@ function buildStudioCreativePayload(input: {
 }): StudioCreativePayload {
   const content = asRecord(input.asset.content)
   const eyebrow = mapPropertyTypeLabel(input.campaign.property?.type).toUpperCase()
-  const title = resolveDisplayTitle(input.campaign)
+  const title = resolveDisplayTitle(input.campaign, content)
   const location = resolveDisplayLocation(input.campaign, content)
   const areaLabel = readAreaLabel(input.campaign)
   const features = resolveDisplayFeatures(input.campaign, content)
   const price = resolveDisplayPrice(input.campaign, content)
   const metric = resolveMetric(content)
   const badgeLabel = resolveCampaignBadge(input.campaign)
+  const ctaLabel = resolveDisplayCta(content)
   const gradientToken = sanitizeFileName(`${input.campaign.id}-${input.asset.id}-${input.template.id}`)
 
   return {
@@ -207,6 +209,7 @@ function buildStudioCreativePayload(input: {
     price,
     metricLabel: metric.label,
     metricSupport: metric.support,
+    ctaLabel,
     footer: "EME • SOLUÇÕES PARA CORRETORES",
     propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
     officialLogoDataUri: input.officialLogoDataUri,
@@ -229,6 +232,9 @@ async function renderInstagramFeedTemplate(
     .filter((item): item is StudioFeatureItem => Boolean(item))
     .slice(0, 4)
 
+  const ctaLayout = fitMultilineText(payload.ctaLabel, CTA_MAX_WIDTH, CTA_MAX_FONT_SIZE, CTA_MIN_FONT_SIZE, CTA_MAX_LINES)
+  const ctaConfig = { lines: ctaLayout.lines, fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
+
   const [badgeBox, metricPanelBox] = await Promise.all([
     computeBadgeBox(measure, payload.badgeLabel),
     computeMetricPanelBox(measure, {
@@ -236,7 +242,7 @@ async function renderInstagramFeedTemplate(
       metricValue: payload.price,
       metricValueFontSize: 38,
       metricSupport: payload.metricSupport,
-      cta: { lines: ["AGENDE", "SUA VISITA"], fontSize: 20, lineHeight: 24 },
+      cta: ctaConfig,
     }),
   ])
 
@@ -279,7 +285,7 @@ async function renderInstagramFeedTemplate(
       metricValue: payload.price,
       metricValueFontSize: 38,
       metricSupport: payload.metricSupport,
-      cta: { lines: ["AGENDE", "SUA VISITA"], fontSize: 20, lineHeight: 24 },
+      cta: ctaConfig,
     }),
     "</svg>",
   ].join("")
@@ -408,6 +414,15 @@ const PANEL_PADDING_X = 34
 const PANEL_VERTICAL_PADDING = 28
 const PANEL_DIVIDER_GAP = 30
 const PANEL_ICON_TEXT_GAP = 26
+
+// CTA text wrap budget (Feed only — Story's price panel has no CTA column). A max width bounds how
+// wide a single unwrapped line can get before wrapText breaks it, so a long custom CTA can't blow
+// up the panel width unboundedly; 2 lines with a shrink-then-truncate-with-ellipsis fallback mirror
+// the same protection already used for the title (fitMultilineText, see resolveDisplayTitle).
+const CTA_MAX_WIDTH = 170
+const CTA_MAX_FONT_SIZE = 20
+const CTA_MIN_FONT_SIZE = 16
+const CTA_MAX_LINES = 2
 
 // Container = measured content + fixed padding, never a fixed total size. Width comes from a real
 // glyph-ink measurement of the label (via `measure`, backed by the same sharp text rasterizer that
@@ -669,17 +684,31 @@ function resolveCampaignBadge(campaign: StudioCampaignRecord) {
   return normalizeStudioText(goal.toUpperCase())
 }
 
-// Deliberately not sourced from the AI-generated title/highlight text (postFeed.title,
-// story.line1/line2): those are free-form marketing copy of unpredictable length, which is
-// exactly what caused the earlier overlap/truncation bugs. The approved design wants a short,
-// bold "ACTION + LOCATION" heading (e.g. "À VENDA • JARDINS"), which is reliably built from the
-// same structured property fields used elsewhere in this file, not natural-language content.
-function resolveDisplayTitle(campaign: StudioCampaignRecord) {
+// A broker-edited content.title (from the campaign's text-edit form) takes priority when present;
+// otherwise falls back to the deterministic short, bold "ACTION + LOCATION" heading (e.g.
+// "À VENDA • JARDINS") built from structured property fields — unchanged default behavior for
+// campaigns that never touched the title field. Either way the result is just a plain string fed
+// into the same fitMultilineText/stackTextBlockY pipeline as before (2-line cap, shrink-then-
+// truncate-with-ellipsis), so a long custom title degrades the same safe way the AI-generated
+// free text that caused the original overlap/truncation bugs was made to.
+function resolveDisplayTitle(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
+  const custom = readPreferredString(content, ["title"])
+  if (custom) return custom.toUpperCase()
+
   const action = mapPropertyAction(campaign.property?.purpose)
   const location = campaign.property?.neighborhood?.trim() || campaign.property?.city?.trim()
   if (!location) return action
 
   return `${action} • ${normalizeStudioText(location).toUpperCase()}`
+}
+
+// Same idea as resolveDisplayTitle: broker-edited content.cta wins, falling back to the design's
+// original default line when the field was never touched. Uppercased to match the template's
+// bold-caps CTA styling either way. The actual line-wrapping/shrink/truncation happens where this
+// is consumed (renderInstagramFeedTemplate), via the same fitMultilineText used for title/features.
+function resolveDisplayCta(content: Record<string, unknown>) {
+  const custom = readPreferredString(content, ["cta"])
+  return (custom || "Agende sua visita").toUpperCase()
 }
 
 // Uppercase, bold action word for the new title. A grammatically correct Portuguese preposition

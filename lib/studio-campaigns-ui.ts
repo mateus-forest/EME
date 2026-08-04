@@ -192,9 +192,14 @@ function resolveVisualAssetDescriptor(
   }
 
   if (isSyntheticStudioCreative(campaign, asset)) {
+    // Cache-busted with the asset's own updatedAt (bumped by Prisma's @updatedAt on every content
+    // edit): the render path itself is otherwise a stable URL for the asset's lifetime, so without
+    // this an <img> re-rendered with the same src never re-fetches after a text edit — the browser
+    // just keeps showing the previously decoded bitmap until a hard reload.
+    const versionParam = asset.updatedAt ? `?v=${encodeURIComponent(asset.updatedAt)}` : ""
     return {
       kind: "synthetic-image",
-      src: getStudioCreativeRenderPath(campaign.id, asset.id),
+      src: `${getStudioCreativeRenderPath(campaign.id, asset.id)}${versionParam}`,
       filename: getStudioCreativeFilename(campaign, asset),
     }
   }
@@ -323,7 +328,7 @@ export function getAssetDownloadDescriptor(campaign: StudioCampaignRecord, asset
 
   return {
     ...descriptor,
-    src: `${descriptor.src}?download=1`,
+    src: `${descriptor.src}${descriptor.src.includes("?") ? "&" : "?"}download=1`,
   }
 }
 
@@ -359,22 +364,8 @@ export function getEditableStudioAssetFields(
         id: "title",
         label: "Titulo principal",
         kind: "text",
-        placeholder: campaign.property?.title || "Sala comercial disponivel",
+        placeholder: "Deixe em branco para usar o padrao automatico (acao + localizacao)",
         value: readString(content.title),
-      },
-      {
-        id: "subtitle",
-        label: "Subtitulo",
-        kind: "text",
-        placeholder: "Oportunidade premium",
-        value: readString(content.subtitle) || readString(content.highlight),
-      },
-      {
-        id: "description",
-        label: "Descricao",
-        kind: "textarea",
-        placeholder: "Texto curto de apoio para reforcar a campanha.",
-        value: readString(content.description) || readString(content.support),
       },
       {
         id: "location",
@@ -410,27 +401,16 @@ export function getEditableStudioAssetFields(
   }
 
   if (asset.assetKey === "story") {
+    // No "cta" field here: the Story template has no CTA/calendar section in its price panel
+    // (see lib/studio-creative-renderer.ts renderInstagramStoryTemplate) — offering it would
+    // resurrect exactly the "field with no renderer effect" problem this cleanup exists to fix.
     return [
       {
         id: "title",
         label: "Titulo principal",
         kind: "text",
-        placeholder: campaign.property?.title || "Sala comercial disponivel",
+        placeholder: "Deixe em branco para usar o padrao automatico (acao + localizacao)",
         value: readString(content.title) || [readString(content.line1), readString(content.line2)].filter(Boolean).join(" "),
-      },
-      {
-        id: "subtitle",
-        label: "Subtitulo",
-        kind: "text",
-        placeholder: "Oportunidade premium",
-        value: readString(content.subtitle) || readString(content.kicker),
-      },
-      {
-        id: "description",
-        label: "Descricao",
-        kind: "textarea",
-        placeholder: "Texto curto de apoio para reforcar a campanha.",
-        value: readString(content.description),
       },
       {
         id: "location",
@@ -454,13 +434,6 @@ export function getEditableStudioAssetFields(
         kind: "text",
         placeholder: formatEditablePrice(campaign.property?.price) || "R$ 1.780.000",
         value: readString(content.price),
-      },
-      {
-        id: "cta",
-        label: "CTA",
-        kind: "text",
-        placeholder: "Agende sua visita",
-        value: readString(content.cta),
       },
     ]
   }
