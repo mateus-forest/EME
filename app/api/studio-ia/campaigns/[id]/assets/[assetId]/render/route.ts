@@ -9,7 +9,14 @@ import {
   isPrismaUnavailable,
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
-import { getOfficialStudioLogoPath, renderStudioCreativeSvg } from "@/lib/studio-creative-renderer"
+import {
+  escapeXml,
+  getOfficialStudioLogoPath,
+  renderStudioCreativeLayers,
+  STUDIO_FONT_ASCENT_RATIO,
+  STUDIO_FONT_ASSETS,
+} from "@/lib/studio-creative-renderer"
+import type { StudioTextRun } from "@/lib/studio-creative-renderer"
 import { getStudioCampaignById } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -45,15 +52,13 @@ export async function GET(
     }
 
     const propertyImageDataUri = await getPropertyImageDataUri(campaign.property?.imageUrls?.[0])
-    const svg = renderStudioCreativeSvg(campaign, asset, await getOfficialStudioLogoDataUri(), propertyImageDataUri)
-    if (!svg) {
+    const layers = renderStudioCreativeLayers(campaign, asset, await getOfficialStudioLogoDataUri(), propertyImageDataUri)
+    if (!layers) {
       return NextResponse.json({ error: "Este asset nao possui renderizacao visual oficial." }, { status: 404 })
     }
 
     const sharp = (await import("sharp")).default
-    const pngBuffer = await sharp(Buffer.from(svg), { density: 216 })
-      .png()
-      .toBuffer()
+    const pngBuffer = await renderStudioCreativePng(sharp, layers.svg, layers.textRuns)
     const shouldDownload = request.nextUrl.searchParams.get("download") === "1"
 
     return new NextResponse(pngBuffer, {
@@ -104,4 +109,99 @@ async function getPropertyImageDataUri(imageUrl: string | null | undefined) {
   } catch {
     return null
   }
+}
+
+type SharpFactory = typeof import("sharp")
+
+type StudioTextLine = {
+  text: string
+  x: number
+  y: number
+  fontSize: number
+  fontWeight: StudioTextRun["fontWeight"]
+  color: string
+  letterSpacingEm: number
+  anchor: StudioTextRun["anchor"]
+}
+
+// Rasterization density for the background SVG. librsvg treats the unitless width/height on
+// the root <svg> (e.g. 1080) as being at the default 72dpi, so rendering at 216dpi scales the
+// actual output bitmap to 3x those nominal dimensions (3240px for a "1080" feed creative). Text
+// layers are composited in that same final pixel space, so every text coordinate below is scaled
+// by DENSITY_SCALE to match — using the nominal payload coordinates directly would place text at
+// roughly a third of its intended position and size.
+const STUDIO_RENDER_DENSITY = 216
+const DENSITY_SCALE = STUDIO_RENDER_DENSITY / 72
+
+// The background (gradients, badge shapes, icons, property photo) is still one SVG rasterized
+// by sharp/librsvg, same as before. Text is rasterized separately, one line at a time, via
+// sharp's native text renderer pointed at the embedded Geist font file (see
+// lib/studio-creative-renderer.ts for why: librsvg in this environment doesn't honor @font-face
+// or FONTCONFIG_FILE overrides, so a font-family string in the SVG can silently fall back to
+// whatever font happens to be installed on the host, or nothing at all in production), then
+// composited on top in a single pass.
+async function renderStudioCreativePng(sharp: SharpFactory, svg: string, textRuns: StudioTextRun[]) {
+  const lines = textRuns.flatMap(flattenTextRun)
+
+  const composites = await Promise.all(
+    lines.map(async (line) => {
+      const fontAsset = STUDIO_FONT_ASSETS[line.fontWeight]
+      const fontfile = path.join(process.cwd(), "public", "fonts", "geist", fontAsset.file)
+      const fontSizePx = line.fontSize * DENSITY_SCALE
+      const xPx = line.x * DENSITY_SCALE
+      const yPx = line.y * DENSITY_SCALE
+      const letterSpacingAttr = line.letterSpacingEm
+        ? ` letter_spacing="${Math.round(line.letterSpacingEm * fontSizePx * 1024)}"`
+        : ""
+      const markup = `<span foreground="${escapeXml(line.color)}" size="${Math.round(fontSizePx * 1024)}"${letterSpacingAttr}>${escapeXml(line.text)}</span>`
+
+      const buffer = await sharp({
+        text: {
+          text: markup,
+          font: fontAsset.family,
+          fontfile,
+          rgba: true,
+          dpi: 72,
+        },
+      })
+        .png()
+        .toBuffer()
+
+      const { width, height } = await sharp(buffer).metadata()
+      const left = Math.round(resolveTextLeft(line.anchor, xPx, width ?? 0))
+      const top = Math.round(yPx - fontSizePx * STUDIO_FONT_ASCENT_RATIO)
+
+      return { input: buffer, left, top, width: width ?? 0, height: height ?? 0 }
+    }),
+  )
+
+  const validComposites = composites
+    .filter((composite) => composite.width > 0 && composite.height > 0)
+    .map(({ input, left, top }) => ({ input, left, top }))
+
+  return sharp(Buffer.from(svg), { density: STUDIO_RENDER_DENSITY })
+    .composite(validComposites)
+    .png()
+    .toBuffer()
+}
+
+function flattenTextRun(run: StudioTextRun): StudioTextLine[] {
+  return run.lines
+    .filter(Boolean)
+    .map((text, index) => ({
+      text,
+      x: run.x,
+      y: run.y + index * run.lineHeight,
+      fontSize: run.fontSize,
+      fontWeight: run.fontWeight,
+      color: run.color,
+      letterSpacingEm: run.letterSpacingEm,
+      anchor: run.anchor,
+    }))
+}
+
+function resolveTextLeft(anchor: StudioTextRun["anchor"], x: number, width: number) {
+  if (anchor === "middle") return x - width / 2
+  if (anchor === "end") return x - width
+  return x
 }

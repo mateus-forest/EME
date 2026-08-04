@@ -17,7 +17,12 @@ type StudioTemplateDefinition = {
   format: StudioCreativeFormat
   width: number
   height: number
-  render: (payload: StudioCreativePayload) => string
+  render: (payload: StudioCreativePayload) => StudioCreativeRenderResult
+}
+
+export type StudioCreativeRenderResult = {
+  svg: string
+  textRuns: StudioTextRun[]
 }
 
 type StudioCreativePayload = {
@@ -47,8 +52,40 @@ type StudioFeatureItem = {
   line2?: string
 }
 
+export type StudioFontWeight = "400" | "500" | "700"
+
+export type StudioTextRun = {
+  x: number
+  y: number
+  lines: string[]
+  fontSize: number
+  fontWeight: StudioFontWeight
+  color: string
+  letterSpacingEm: number
+  lineHeight: number
+  anchor: "start" | "middle" | "end"
+}
+
 const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
-const STUDIO_RENDER_FONT_FAMILY = "'DejaVu Sans', 'Arial Unicode MS', Arial, Helvetica, sans-serif"
+
+// Embedded directly (public/fonts/geist/*.ttf) and rasterized per text run via sharp's native
+// text renderer with an explicit `fontfile`, instead of a CSS font-family resolved through the
+// render environment's fontconfig/SVG @font-face support — neither is reliably available in
+// production (SVG <text> there rendered as tofu boxes). The family name is only a label; the
+// file is what actually selects the glyphs, so there is no dependency on server font config.
+export const STUDIO_FONT_FALLBACK = "Arial, sans-serif"
+export const STUDIO_FONT_ASSETS: Record<StudioFontWeight, { file: string; family: string }> = {
+  "400": { file: "Geist-Regular.ttf", family: `Geist, ${STUDIO_FONT_FALLBACK}` },
+  "500": { file: "Geist-Medium.ttf", family: `Geist Medium, ${STUDIO_FONT_FALLBACK}` },
+  "700": { file: "Geist-Bold.ttf", family: `Geist Bold, ${STUDIO_FONT_FALLBACK}` },
+}
+export const STUDIO_FONT_DIR = "/fonts/geist"
+
+// Measured from the embedded Geist TTFs' `hhea` table (ascender 1005 / unitsPerEm 1000). sharp's
+// text rasterizer ink-crops each run to its glyphs, so the returned buffer carries no baseline
+// metadata; this ratio converts the baseline-anchored `y` coordinates used throughout this file
+// (SVG <text> semantics) into a top-left compositing offset.
+export const STUDIO_FONT_ASCENT_RATIO = 1.005
 
 const TEMPLATES: Record<StudioTemplateId, StudioTemplateDefinition> = {
   "instagram-feed-official": {
@@ -91,12 +128,12 @@ export function resolveStudioCreativeFormat(
   return resolveStudioTemplate(campaign, asset)?.format ?? null
 }
 
-export function renderStudioCreativeSvg(
+export function renderStudioCreativeLayers(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
   officialLogoDataUri: string,
   propertyImageSrc?: string | null,
-) {
+): StudioCreativeRenderResult | null {
   const template = resolveStudioTemplate(campaign, asset)
   if (!template) return null
 
@@ -163,7 +200,8 @@ function buildStudioCreativePayload(input: {
   }
 }
 
-function renderInstagramFeedTemplate(payload: StudioCreativePayload) {
+function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCreativeRenderResult {
+  const textRuns: StudioTextRun[] = []
   const titleLayout = fitMultilineText(payload.title, 430, 62, 40, 3)
   const subtitleLayout = fitMultilineText(payload.subtitle, 430, 56, 34, 2)
   const locationItem = buildLocationFeature(payload.location)
@@ -171,7 +209,7 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload) {
   const badgeWidth = Math.max(268, Math.min(390, 92 + payload.badgeLabel.length * 16))
   const ctaSecondary = fitMultilineText(payload.ctaSupport, 242, 23, 18, 2)
 
-  return [
+  const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
     `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="0.88" y2="0.82">`,
@@ -190,13 +228,13 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload) {
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, false),
     renderBottomWave(payload.width, payload.height, payload.waveId, false),
-    renderBadge(payload.badgeLabel, 68, 58, badgeWidth, 60),
+    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeWidth, 60),
     renderLogo(payload.officialLogoDataUri, 915, 46, 146, 68),
-    renderMultilineText(titleLayout.lines, 70, 320, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
-    renderMultilineText(subtitleLayout.lines, 70, 320 + titleLayout.blockHeight + 24, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
+    renderMultilineText(textRuns, titleLayout.lines, 70, 320, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
+    renderMultilineText(textRuns, subtitleLayout.lines, 70, 320 + titleLayout.blockHeight + 24, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
     renderDivider(70, 520, 96),
-    renderFeatureRow(featureItems, 70, 584, 468),
-    renderMetricPanel({
+    renderFeatureRow(textRuns, featureItems, 70, 584, 468),
+    renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
       width: 584,
@@ -211,9 +249,12 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload) {
     }),
     "</svg>",
   ].join("")
+
+  return { svg, textRuns }
 }
 
-function renderInstagramStoryTemplate(payload: StudioCreativePayload) {
+function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCreativeRenderResult {
+  const textRuns: StudioTextRun[] = []
   const titleLayout = fitMultilineText(payload.title, 420, 72, 46, 3)
   const subtitleLayout = fitMultilineText(payload.subtitle, 420, 68, 40, 2)
   const locationItem = buildLocationFeature(payload.location)
@@ -221,7 +262,7 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload) {
   const badgeWidth = Math.max(338, Math.min(468, 124 + payload.badgeLabel.length * 16))
   const ctaSecondary = fitMultilineText(payload.ctaSupport, 334, 28, 22, 2)
 
-  return [
+  const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
     `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="0.92" y2="0.88">`,
@@ -240,13 +281,13 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload) {
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, true),
     renderBottomWave(payload.width, payload.height, payload.waveId, true),
-    renderBadge(payload.badgeLabel, 80, 92, badgeWidth, 66),
+    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeWidth, 66),
     renderLogo(payload.officialLogoDataUri, 810, 78, 184, 82),
-    renderMultilineText(titleLayout.lines, 82, 440, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
-    renderMultilineText(subtitleLayout.lines, 82, 440 + titleLayout.blockHeight + 22, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
+    renderMultilineText(textRuns, titleLayout.lines, 82, 440, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
+    renderMultilineText(textRuns, subtitleLayout.lines, 82, 440 + titleLayout.blockHeight + 22, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
     renderDivider(82, 770, 104),
-    renderFeatureStack(featureItems, 82, 842, 360),
-    renderMetricPanel({
+    renderFeatureStack(textRuns, featureItems, 82, 842, 360),
+    renderMetricPanel(textRuns, {
       x: 80,
       y: 1472,
       width: 916,
@@ -259,9 +300,11 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload) {
       ctaFontSize: ctaSecondary.fontSize,
       ctaLineHeight: ctaSecondary.lineHeight,
     }),
-    renderSingleLineText(payload.footer, 540, 1808, 16, "500", "#f7f7f7", 0.26, "middle"),
+    renderSingleLineText(textRuns, payload.footer, 540, 1808, 16, "500", "#f7f7f7", 0.26, "middle"),
     "</svg>",
   ].join("")
+
+  return { svg, textRuns }
 }
 
 function renderBackgroundImage(imageSrc: string | null, width: number, height: number) {
@@ -294,14 +337,14 @@ function renderBottomWave(width: number, height: number, waveId: string, portrai
   ].join("")
 }
 
-function renderBadge(label: string, x: number, y: number, width: number, height: number) {
+function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number) {
   const centerY = Math.round(height / 2)
   return [
     `<g transform="translate(${x} ${y})">`,
     `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="rgba(123,226,63,0.88)" stroke-width="2.1" />`,
     renderFeatureIcon("badge", 22, centerY - 18, "#ffffff"),
-    renderSingleLineText(label, 82, centerY + 9, 22, "500", "#ffffff", 0.01),
     "</g>",
+    renderSingleLineText(runs, label, x + 82, y + centerY + 9, 22, "500", "#ffffff", 0.01),
   ].join("")
 }
 
@@ -313,7 +356,7 @@ function renderDivider(x: number, y: number, width: number) {
   return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="#73df30" />`
 }
 
-function renderFeatureRow(items: StudioFeatureItem[], x: number, y: number, width: number) {
+function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, width: number) {
   const columnWidth = Math.floor(width / Math.max(items.length, 1))
 
   return items
@@ -325,34 +368,35 @@ function renderFeatureRow(items: StudioFeatureItem[], x: number, y: number, widt
       return [
         `<g transform="translate(${originX} ${y})">`,
         renderFeatureIcon(item.icon, 0, 0, "#73df30"),
-        renderMultilineText(textLayout.lines, 0, 112, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
         index < items.length - 1
           ? `<rect x="${columnWidth - 26}" y="6" width="1.2" height="124" fill="rgba(255,255,255,0.22)" />`
           : "",
         "</g>",
+        renderMultilineText(runs, textLayout.lines, originX, y + 112, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
       ].join("")
     })
     .join("")
 }
 
-function renderFeatureStack(items: StudioFeatureItem[], x: number, y: number, width: number) {
+function renderFeatureStack(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, width: number) {
   return items
     .map((item, index) => {
       const offsetY = index * 184
+      const groupY = y + offsetY
       const textLayout = fitMultilineText([item.line1, item.line2].filter(Boolean).join("\n"), width - 132, 20, 16, 3)
 
       return [
-        `<g transform="translate(${x} ${y + offsetY})">`,
+        `<g transform="translate(${x} ${groupY})">`,
         renderFeatureIcon(item.icon, 0, 6, "#73df30"),
-        renderMultilineText(textLayout.lines, 136, 46, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
         index < items.length - 1 ? `<rect x="0" y="130" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
         "</g>",
+        renderMultilineText(runs, textLayout.lines, x + 136, groupY + 46, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
       ].join("")
     })
     .join("")
 }
 
-function renderMetricPanel(input: {
+function renderMetricPanel(runs: StudioTextRun[], input: {
   x: number
   y: number
   width: number
@@ -369,14 +413,14 @@ function renderMetricPanel(input: {
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
     `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(5,14,8,0.42)" stroke="rgba(123,226,63,0.72)" stroke-width="1.6" />`,
-    renderSingleLineText(input.metricLabel, 34, 40, 20, "500", "#ffffff", 0.01),
-    renderSingleLineText(input.metricValue, 34, 94, input.width > 700 ? 44 : 38, "700", "#73df30", 0),
-    input.metricSupport ? renderSingleLineText(input.metricSupport, 34, 128, 18, "400", "#ffffff", 0) : "",
     `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
     renderFeatureIcon("calendar", dividerX + 28, Math.round((input.height - 62) / 2), "#73df30"),
-    renderSingleLineText(input.ctaLabel, dividerX + 140, 72, 18, "500", "#ffffff", 0.01),
-    renderMultilineText(input.ctaLines, dividerX + 140, 118, input.ctaFontSize, "500", "#73df30", input.ctaLineHeight, 0),
     "</g>",
+    renderSingleLineText(runs, input.metricLabel, input.x + 34, input.y + 40, 20, "500", "#ffffff", 0.01),
+    renderSingleLineText(runs, input.metricValue, input.x + 34, input.y + 94, input.width > 700 ? 44 : 38, "700", "#73df30", 0),
+    input.metricSupport ? renderSingleLineText(runs, input.metricSupport, input.x + 34, input.y + 128, 18, "400", "#ffffff", 0) : "",
+    renderSingleLineText(runs, input.ctaLabel, input.x + dividerX + 140, input.y + 72, 18, "500", "#ffffff", 0.01),
+    renderMultilineText(runs, input.ctaLines, input.x + dividerX + 140, input.y + 118, input.ctaFontSize, "500", "#73df30", input.ctaLineHeight, 0),
   ].join("")
 }
 
@@ -671,33 +715,60 @@ function readAssetFormat(asset: CampaignAssetRecord): StudioCreativeFormat | nul
 }
 
 function renderSingleLineText(
+  runs: StudioTextRun[],
   text: string,
   x: number,
   y: number,
   fontSize: number,
-  fontWeight: string,
+  fontWeight: StudioFontWeight,
   color: string,
   letterSpacingEm = 0,
   anchor: "start" | "middle" | "end" = "start",
 ) {
-  return `<text x="${x}" y="${y}" fill="${color}" text-anchor="${anchor}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">${escapeXml(normalizeStudioText(text))}</text>`
+  if (!text) return ""
+
+  runs.push({
+    x,
+    y,
+    lines: [normalizeStudioText(text)],
+    fontSize,
+    fontWeight,
+    color,
+    letterSpacingEm,
+    lineHeight: 0,
+    anchor,
+  })
+
+  return ""
 }
 
 function renderMultilineText(
+  runs: StudioTextRun[],
   lines: string[],
   x: number,
   y: number,
   fontSize: number,
-  fontWeight: string,
+  fontWeight: StudioFontWeight,
   color: string,
   lineHeight: number,
   letterSpacingEm = 0,
 ) {
-  return [
-    `<text x="${x}" y="${y}" fill="${color}" font-family="${STUDIO_RENDER_FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacingEm}em">`,
-    ...lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(normalizeStudioText(line))}</tspan>`),
-    "</text>",
-  ].join("")
+  const normalizedLines = lines.filter(Boolean).map(normalizeStudioText)
+  if (!normalizedLines.length) return ""
+
+  runs.push({
+    x,
+    y,
+    lines: normalizedLines,
+    fontSize,
+    fontWeight,
+    color,
+    letterSpacingEm,
+    lineHeight,
+    anchor: "start",
+  })
+
+  return ""
 }
 
 function sanitizeFileName(value: string) {
@@ -709,7 +780,7 @@ function sanitizeFileName(value: string) {
     .replace(/^-+|-+$/g, "") || "studio-eme"
 }
 
-function escapeXml(value: string) {
+export function escapeXml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
