@@ -1,13 +1,13 @@
 import type { LucideIcon } from "lucide-react"
 import {
-  BookOpen,
-  CalendarDays,
-  FileText,
-  Home,
-  ShieldCheck,
   Sparkles,
   Users,
+  Home,
+  BookOpen,
   WandSparkles,
+  FileText,
+  ShieldCheck,
+  CalendarDays,
 } from "lucide-react"
 
 export type EmeModule = {
@@ -15,25 +15,36 @@ export type EmeModule = {
   name: string
   description: string
   icon: LucideIcon
+  /** Base angle (degrees) on the orbit. 0 = front-center, grows clockwise.
+   *  All eight modules are spaced by a uniform 45° step (no manual offsets) so
+   *  the ring keeps a perfectly continuous rhythm — every card is placed by the
+   *  exact same orbital formula and none can drift or read as isolated. */
   angle: number
+  /** Kept visible on small screens when true. */
   priorityMobile: boolean
+
+  // ---- Phase 4: the content the card reveals when it expands --------------
+  /** One-line headline shown large inside the expanded panel. */
   tagline: string
+  /** 2–3 line description. */
   longDescription: string
-  benefits: Array<
-    | string
-    | {
-        title: string
-        description?: string
-      }
-  >
+  /** Key benefits, shown as a short checklist. */
+  benefits: string[]
+  /** Call-to-action label. */
   cta: string
+  /** Premium device mockup for the panel's left side. */
   mockup: string
-  demoLink?: string
-  demoLabel?: string
-  demoBadge?: string
-  demoHint?: string
+  /** How the mockup fills the panel's left column.
+   *  - "contain" (default): centred with padding — for single-device renders.
+   *  - "cover": full-bleed edge-to-edge — for full device scenes (e.g. COS). */
+  mockupFit?: "contain" | "cover"
 }
 
+/**
+ * The eight modules that orbit the EME logo.
+ * `angle` places each card around an elliptical orbit and is the single value
+ * that scroll interaction offsets to rotate the whole universe.
+ */
 export const emeModules: EmeModule[] = [
   {
     id: "cos",
@@ -54,7 +65,8 @@ export const emeModules: EmeModule[] = [
       "Ensina e orienta no uso do sistema",
     ],
     cta: "Conhecer módulo",
-    mockup: "/mockups/cos-banner-eme.svg",
+    mockup: "/modals/cos.png",
+    mockupFit: "cover",
   },
   {
     id: "clientes",
@@ -63,38 +75,40 @@ export const emeModules: EmeModule[] = [
     icon: Users,
     angle: 315,
     priorityMobile: true,
-    tagline: "Todo relacionamento, organizado em um so lugar.",
+    tagline: "Todo relacionamento, organizado em um só lugar.",
     longDescription:
-      "Centralize contatos, historico e preferencias de cada cliente. Acompanhe cada negociacao e nunca mais perca uma oportunidade por falta de follow-up.",
+      "Centralize clientes, documentos, histórico e oportunidades. O EME acompanha cada contato desde o primeiro interesse até o fechamento do negócio.",
     benefits: [
-      "Historico completo de cada contato",
-      "Lembretes de follow-up automaticos",
-      "Segmentacao por interesse e estagio",
+      "Cadastro completo de clientes",
+      "Registro automático de leads do catálogo",
+      "Histórico e documentos centralizados",
+      "Acompanhamento do funil de atendimento",
     ],
-    cta: "Conhecer modulo",
-    mockup: "/mockups/clientes.png",
+    cta: "Conhecer módulo",
+    mockup: "/modals/clientes.png",
   },
   {
     id: "imoveis",
-    name: "Imoveis",
+    name: "Imóveis",
     description: "Sua carteira conectada",
     icon: Home,
     angle: 0,
     priorityMobile: true,
-    tagline: "Sua carteira de imoveis, sempre conectada.",
+    tagline: "Sua carteira de imóveis, sempre atualizada.",
     longDescription:
-      "Gerencie toda a sua carteira com fotos, detalhes e disponibilidade em tempo real. Encontre o imovel certo para cada cliente em segundos.",
+      "Cadastre imóveis manualmente, com IA ou importe anúncios em segundos. O EME organiza toda sua carteira automaticamente para você vender mais.",
     benefits: [
-      "Cadastro rico com fotos e detalhes",
-      "Busca inteligente por perfil de cliente",
-      "Disponibilidade atualizada em tempo real",
+      "Cadastro inteligente com IA",
+      "Cadastro manual tradicional",
+      "Importação por XML, URL, anúncio ou imagem",
+      "Importação em massa de imóveis",
     ],
-    cta: "Conhecer modulo",
-    mockup: "/mockups/imoveis.png",
+    cta: "Conhecer módulo",
+    mockup: "/modals/imoveis.png",
   },
   {
     id: "catalogo",
-    name: "Catalogo",
+    name: "Catálogo",
     description: "Apresente e compartilhe",
     icon: BookOpen,
     angle: 45,
@@ -103,33 +117,14 @@ export const emeModules: EmeModule[] = [
     longDescription:
       "Apresente seus imóveis com design profissional, informações completas e uma experiência impecável. Compartilhe facilmente com seus clientes por qualquer canal e acompanhe o interesse em cada imóvel.",
     benefits: [
-      {
-        title: "Catálogos modernos e responsivos",
-        description: "Experiência perfeita no computador ou celular.",
-      },
-      {
-        title: "Link compartilhável com sua marca",
-        description: "Personalize e compartilhe por qualquer canal.",
-      },
-      {
-        title: "Registro e catálogo de leads automático",
-        description: "Cada visita e interesse é registrado automaticamente.",
-      },
-      {
-        title: "Atualizações em tempo real",
-        description: "Imóveis sempre atualizados sem retrabalho.",
-      },
-      {
-        title: "Mais profissionalismo e credibilidade",
-        description: "Sua marca apresentada com o padrão que você merece.",
-      },
+      "Catálogos modernos e responsivos",
+      "Link compartilhável com sua marca",
+      "Registro automático de leads",
+      "Atualizações em tempo real",
+      "Mais profissionalismo e credibilidade",
     ],
-    cta: "Explorar catálogo",
-    mockup: "/mockups/catalogo-premium.png",
-    demoLabel: "Ver exemplo de catálogo online",
-    demoLink: "https://www.meueme.com/catalogo/mateus-forest",
-    demoBadge: "PERSONALIZÁVEL",
-    demoHint: "Seu link pode ser personalizado com sua marca.",
+    cta: "Conhecer módulo",
+    mockup: "/modals/catalogo.png",
   },
   {
     id: "studio-ia",
@@ -138,21 +133,24 @@ export const emeModules: EmeModule[] = [
     icon: WandSparkles,
     angle: 90,
     priorityMobile: false,
-    tagline: "Campanhas profissionais, criadas com IA.",
+    tagline: "Sua central de criação com Inteligência Artificial.",
     longDescription:
-      "Gere artes, textos e campanhas de marketing para seus imoveis em minutos. O Studio IA cuida da criacao para voce cuidar das vendas.",
+      "Crie campanhas, vídeos e conteúdos profissionais em minutos. O Studio IA reúne todas as ferramentas para divulgar imóveis, captar proprietários e acelerar suas vendas.",
     benefits: [
-      "Artes e posts gerados automaticamente",
-      "Textos persuasivos para cada imovel",
-      "Campanhas prontas para redes sociais",
+      "Criativos para Instagram automaticamente",
+      "Vídeos profissionais dos imóveis",
+      "Transformação de obra em imóvel pronto",
+      "Campanhas para vender imóveis",
+      "Campanhas para captar proprietários",
+      "Biblioteca inteligente de conteúdos",
     ],
-    cta: "Explorar modulo",
-    mockup: "/mockups/studio-ia.png",
+    cta: "Explorar módulo",
+    mockup: "/modals/studio-ia.png",
   },
   {
     id: "propostas",
     name: "Propostas",
-    description: "Negociacoes mais simples",
+    description: "Negociações mais simples",
     icon: FileText,
     angle: 135,
     priorityMobile: false,
@@ -166,13 +164,14 @@ export const emeModules: EmeModule[] = [
       "Mais agilidade, mais resultados",
     ],
     cta: "Conhecer módulo",
-    mockup: "/mockups/propostas-premium.png",
+    mockup: "/modals/propostas.png",
   },
   {
     id: "contratos",
     name: "Contratos",
     description: "Documentos em poucos passos",
     icon: ShieldCheck,
+    // Front-centre of the ring, on the uniform 45° grid — no manual offset.
     angle: 180,
     priorityMobile: false,
     tagline: "Contratos organizados, sem burocracia.",
@@ -184,12 +183,12 @@ export const emeModules: EmeModule[] = [
       "Tudo organizado em um só lugar",
     ],
     cta: "Conhecer módulo",
-    mockup: "/mockups/contratos-premium.png",
+    mockup: "/modals/contratos.png",
   },
   {
     id: "agenda",
     name: "Compromissos",
-    description: "Sua rotina sob controle",
+    description: "Sua rotina organizada",
     icon: CalendarDays,
     angle: 225,
     priorityMobile: false,
@@ -198,11 +197,11 @@ export const emeModules: EmeModule[] = [
       "Organize visitas, reuniões e lembretes em um só lugar. Sincronize tudo e nunca mais perca um horário importante.",
     benefits: [
       "Agendamento rápido de compromissos",
-      "Lembretes automáticos para você e o cliente",
+      "Lembretes automáticos",
       "Sincronização com seu calendário",
-      "Acompanhamento claro do que precisa ser feito",
+      "Acompanhamento claro das atividades",
     ],
     cta: "Conhecer módulo",
-    mockup: "/mockups/compromissos-premium.png",
+    mockup: "/modals/agenda.png",
   },
 ]
