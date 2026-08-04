@@ -87,11 +87,7 @@ const ATTACH_UPDATE_VERBS =
 const NAMED_CLIENT_REFERENCE_PATTERN =
   /\b(?:cliente|lead|contato)\s+([\p{L}][\p{L}'’-]*(?:\s+[\p{L}][\p{L}'’-]*){0,2})/iu
 
-// Detects messages that reference an *existing* named client via an attach/update-style
-// verb (e.g. "Anexe esse documento ao cliente carlos"), as opposed to a create request.
-export function detectNamedClientReference(message: string): string | null {
-  if (!ATTACH_UPDATE_VERBS.test(message)) return null
-
+function extractNamedClientReference(message: string): string | null {
   const match = message.match(NAMED_CLIENT_REFERENCE_PATTERN)
   if (!match?.[1]) return null
 
@@ -99,4 +95,22 @@ export function detectNamedClientReference(message: string): string | null {
   if (!name || RESIDUAL_INSTRUCTION_PATTERN.test(name)) return null
 
   return titleCase(name)
+}
+
+// Detects messages that reference an *existing* named client via an attach/update-style
+// verb (e.g. "Anexe esse documento ao cliente carlos"), as opposed to a create request.
+export function detectNamedClientReference(message: string): string | null {
+  if (!ATTACH_UPDATE_VERBS.test(message)) return null
+  return extractNamedClientReference(message)
+}
+
+const DELETE_CLIENT_VERBS = /\b(exclua|excluir|delete|deletar|apague|apagar|remova|remover)\b/i
+
+// Same shape as detectNamedClientReference, gated on delete-style verbs instead — kept separate
+// rather than folding into ATTACH_UPDATE_VERBS since that regex is also relied on by the
+// attach/update misclassification guard in lib/eme-backend.ts, which shouldn't start intercepting
+// delete messages too.
+export function detectNamedClientReferenceForDeletion(message: string): string | null {
+  if (!DELETE_CLIENT_VERBS.test(message)) return null
+  return extractNamedClientReference(message)
 }

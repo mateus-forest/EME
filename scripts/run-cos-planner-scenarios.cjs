@@ -62,7 +62,11 @@ Module._extensions[".tsx"] = transpileTypeScript
 
 const { planCosCapability } = require(path.join(repoRoot, "lib/cos/planner.ts"))
 const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-planner.ts"))
-const { extractClientIdentity, detectNamedClientReference } = require(path.join(repoRoot, "lib/cos/entity-extraction.ts"))
+const {
+  extractClientIdentity,
+  detectNamedClientReference,
+  detectNamedClientReferenceForDeletion,
+} = require(path.join(repoRoot, "lib/cos/entity-extraction.ts"))
 const { parsePropertyDraftData } = require(path.join(repoRoot, "lib/eme-backend.ts"))
 const { getAttachmentsFromPayload } = require(path.join(repoRoot, "lib/cos/capabilities/shared.ts"))
 const {
@@ -245,6 +249,48 @@ const capabilityScenarios = [
       createdAt: new Date("2026-07-30T10:00:00.000Z"),
     },
   },
+
+  // Bug 3 — exclusao permanente de cliente via COS: primeiro turno resolve para a
+  // capability modular real (nao mais o "arquivar" antigo, sem capability dedicada).
+  {
+    message: "Exclua o cliente Carlos.",
+    surface: "portal",
+    expectedAction: "DELETE_LEAD",
+    expectedSource: "catalog",
+  },
+  // Segundo turno (confirmacao): "Sim." nao carrega nenhum sinal textual de "excluir", entao
+  // so resolve para DELETE_LEAD de novo por causa do pendingContext deixado pelo 1o turno.
+  {
+    message: "Sim.",
+    surface: "portal",
+    expectedAction: "DELETE_LEAD",
+    expectedSource: "legacy",
+    pendingContext: {
+      action: "DELETE_LEAD",
+      missingField: "confirmation",
+      parsedData: { leadId: "lead_123", leadName: "Carlos Silva" },
+      createdAt: new Date("2026-07-30T10:00:00.000Z"),
+    },
+  },
+  // Segundo turno (ambiguidade -> escolha): mesma logica, resposta de texto livre volta
+  // para DELETE_LEAD por causa do pendingContext deixado pelo 1o turno.
+  {
+    message: "Carlos Silva.",
+    surface: "portal",
+    expectedAction: "DELETE_LEAD",
+    expectedSource: "legacy",
+    pendingContext: {
+      action: "DELETE_LEAD",
+      missingField: "lead",
+      parsedData: {
+        candidates: [
+          { id: "lead_1", name: "Carlos Silva" },
+          { id: "lead_2", name: "Carlos Souza" },
+        ],
+      },
+      createdAt: new Date("2026-07-30T10:00:00.000Z"),
+    },
+  },
 ]
 
 const deterministicExecutionScenarios = [
@@ -366,6 +412,34 @@ async function main() {
       label: "sprint10b: 'junte' reconhece cliente referenciado mesmo com 'arquivo' em vez de 'documento'",
       run: () => detectNamedClientReference("Junte este arquivo ao cliente roberta."),
       expected: "Roberta",
+    },
+
+    // Bug 3 — deteccao de referencia a cliente existente para exclusao (verbos separados dos
+    // de anexar/atualizar, para nao acionar o guard universal de anexar/atualizar em eme-backend.ts)
+    {
+      label: "bug3: 'exclua' reconhece cliente referenciado",
+      run: () => detectNamedClientReferenceForDeletion("Exclua o cliente carlos."),
+      expected: "Carlos",
+    },
+    {
+      label: "bug3: 'apague' reconhece cliente referenciado",
+      run: () => detectNamedClientReferenceForDeletion("Apague o cliente mariana."),
+      expected: "Mariana",
+    },
+    {
+      label: "bug3: 'remova' reconhece cliente referenciado",
+      run: () => detectNamedClientReferenceForDeletion("Remova o lead roberto silva."),
+      expected: "Roberto Silva",
+    },
+    {
+      label: "bug3: verbo de anexar nao deve disparar deteccao de referencia para exclusao",
+      run: () => detectNamedClientReferenceForDeletion("Anexe esse documento ao cliente carlos."),
+      expected: null,
+    },
+    {
+      label: "bug3: verbo de exclusao nao deve disparar a deteccao generica de anexar/atualizar",
+      run: () => detectNamedClientReference("Exclua o cliente carlos."),
+      expected: null,
     },
   ]
 

@@ -81,18 +81,22 @@ export const leadEntityModule: CosEntityModule = {
       descriptor: {
         id: "lead.delete",
         action: "DELETE_LEAD",
-        title: "Cliente removido",
-        description: "Arquiva ou remove o cliente selecionado da operação.",
+        title: "Cliente excluído",
+        description: "Exclui permanentemente o cliente selecionado da operação, após confirmação explícita com o nome do cliente.",
         domain: "lead",
         entity: "lead",
         aliases: ["apagar cliente", "excluir cliente", "deletar cliente"],
         responseMode: "raw",
         source: "modular",
         mutatesData: true,
-        requiresConfirmation: true,
-        requiresSelection: true,
+        // false, not true: confirmation is handled manually inside the handler (same as
+        // lead.attach_document below) so it can show the actually-resolved client's name and
+        // handle 0/1/>1 matches — the plan-level auto-confirmation this would otherwise trigger
+        // (execution-planner.ts) runs before the handler ever executes, so it can only show a
+        // generic "deseja confirmar?" with no name at all.
+        requiresConfirmation: false,
+        requiresSelection: false,
         surfaces: ["portal", "cos_home", "whatsapp"],
-        confirmationMessage: "Posso remover este cliente agora. Deseja confirmar?",
       },
     },
     {

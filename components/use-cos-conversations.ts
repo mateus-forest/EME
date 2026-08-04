@@ -7,6 +7,7 @@ import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
 import type { CosWorkspaceContext } from "@/lib/cos/types"
+import { dispatchEntitySync } from "@/lib/entity-sync"
 
 export type AssistantCredits = {
   balance: number
@@ -59,6 +60,7 @@ type AssistantMessageResponse = {
   confirmRequired?: boolean
   conversation?: CosConversationSummary | null
   metadata?: {
+    leadId?: unknown
     workflow?: {
       pendingInput?: {
         parsedData?: {
@@ -402,6 +404,17 @@ export function useCosConversations({
 
       if (data?.conversation) {
         setActiveConversationId(data.conversation.id)
+      }
+
+      // The Clientes list (broker-clients-page.tsx) has its own local fetch + entity-sync
+      // subscription with zero visibility into server-side COS capability code — a mutation
+      // there is otherwise invisible to it until a manual reload. dispatchEntitySync is the same
+      // browser-only pub-sub the list already listens to for edits made from its own "Excluir"
+      // button; this just fires it for the COS-driven deletion too, once the turn that actually
+      // completed the delete comes back (not the confirmation/ambiguity prompts along the way).
+      if (data?.action === "DELETE_LEAD" && data?.actionStatus === "success") {
+        const deletedLeadId = typeof data?.metadata?.leadId === "string" ? data.metadata.leadId : undefined
+        dispatchEntitySync({ type: "lead", entityId: deletedLeadId })
       }
 
       const responseOptions = parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.parsedData?.options)

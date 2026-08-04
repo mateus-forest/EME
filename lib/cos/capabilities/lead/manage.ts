@@ -3,7 +3,7 @@ import "server-only"
 import { LeadStatus } from "@/lib/prisma-enums"
 
 import { prisma } from "@/lib/prisma"
-import { detectNamedClientReference } from "@/lib/cos/entity-extraction"
+import { detectNamedClientReference, detectNamedClientReferenceForDeletion } from "@/lib/cos/entity-extraction"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
 import { parseEntityDocuments, type EntityDocumentRecord } from "@/lib/legal-entities"
 
@@ -74,23 +74,138 @@ export const updateLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
   }
 }
 
-export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
-  const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
-  const lead = await resolveLead(brokerId, payloadRecord, message)
-  if (!lead) return requiredSelectionResponse("cliente", "leadId")
+async function finalizeLeadDeletion(brokerId: string, leadId: string, fallbackName: string) {
+  const lead = await prisma.lead.findFirst({ where: { id: leadId, brokerId } })
+  if (!lead) {
+    return {
+      response: "Não encontrei mais esse cliente — ele já deve ter sido excluído.",
+      metadata: { noCharge: true },
+    }
+  }
 
-  const updated = await prisma.lead.update({
-    where: { id: lead.id },
-    data: { status: LeadStatus.ARCHIVED },
-  })
+  const name = lead.name ?? fallbackName
+
+  try {
+    await prisma.lead.delete({ where: { id: lead.id } })
+
+    return {
+      response: `Cliente excluído permanentemente.\n\n${name}`,
+      metadata: { leadId: lead.id, leadDeleted: true },
+      leadId: lead.id,
+    }
+  } catch (error) {
+    console.error("[cos][lead][delete] failed", {
+      message: error instanceof Error ? error.message : "unknown",
+      leadId: lead.id,
+    })
+    return {
+      response: "Não consegui excluir o cliente agora. Tente novamente em instantes.",
+      metadata: { noCharge: true },
+    }
+  }
+}
+
+// Permanent delete, not archive: EmeMessage/AgendaEvent/BrokerDocument all reference Lead with
+// onDelete: SetNull in prisma/schema.prisma (they lose the link, not the row), and
+// AiAssistantInteraction.leadId isn't even a real FK — so a direct delete can't strand a
+// constraint or orphan a row. Same three-phase confirm pattern as attachLeadDocumentCapability:
+// resolve by name (0/1/>1), confirm with the exact resolved name, only mutate on the "sim".
+export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingContext }) => {
+  // Terceiro turno: usuario confirmou a exclusao. leadId/leadName ja foram resolvidos em
+  // turnos anteriores e voltam intactos via pendingContext.parsedData — exclui de verdade agora.
+  if (pendingContext?.action === "DELETE_LEAD" && pendingContext.missingField === "confirmation" && pendingContext.parsedData) {
+    const pendingLeadId = typeof pendingContext.parsedData.leadId === "string" ? pendingContext.parsedData.leadId : ""
+    const pendingLeadName = typeof pendingContext.parsedData.leadName === "string" ? pendingContext.parsedData.leadName : "Cliente sem nome"
+    if (pendingLeadId) {
+      return finalizeLeadDeletion(brokerId, pendingLeadId, pendingLeadName)
+    }
+  }
+
+  // Segundo turno (so quando havia ambiguidade): usuario respondeu qual cliente quis dizer.
+  // Reaproveita a mesma resolucao de candidato por ordinal/substring ja usada no anexo de
+  // documento — nao grava nada ainda, so avanca para a confirmacao final.
+  if (pendingContext?.action === "DELETE_LEAD" && pendingContext.missingField === "lead" && pendingContext.parsedData) {
+    const pendingCandidates = pendingContext.parsedData.candidates
+    if (isLeadDocumentCandidateArray(pendingCandidates)) {
+      const chosen = resolveLeadDocumentCandidateChoice(message, pendingCandidates)
+      if (!chosen) {
+        return {
+          response: `Ainda não entendi qual cliente você quer excluir. Os candidatos eram: ${pendingCandidates.map((candidate) => candidate.name).join(", ")}. Tente novamente com o nome completo.`,
+          metadata: { noCharge: true },
+        }
+      }
+
+      return {
+        response: `Encontrei o cliente ${chosen.name}. Essa exclusão é permanente e não pode ser desfeita. Confirma?`,
+        metadata: {
+          required: ["confirmation"],
+          noCharge: true,
+          matchedByName: true,
+          parsedData: { leadId: chosen.id, leadName: chosen.name },
+        },
+      }
+    }
+  }
+
+  // Primeiro turno: resolve o cliente do zero, por id direto (workspace da tela atual) ou por nome.
+  const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
+  const directLeadId = getEntityIdFromPayload(payloadRecord, "lead")
+
+  let matches: LeadDocumentCandidate[]
+
+  if (directLeadId) {
+    const lead = await prisma.lead.findFirst({ where: { id: directLeadId, brokerId } })
+    matches = lead ? [{ id: lead.id, name: lead.name ?? "Sem nome" }] : []
+  } else {
+    const namedClientReference = detectNamedClientReferenceForDeletion(message)
+    if (!namedClientReference) {
+      return {
+        response: 'Não entendi qual cliente devo excluir. Tente assim: "Exclua o cliente <nome>".',
+        metadata: { noCharge: true },
+      }
+    }
+
+    const found = await prisma.lead.findMany({
+      where: { brokerId, name: { contains: namedClientReference, mode: "insensitive" } },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+    })
+    matches = found.map((item) => ({ id: item.id, name: item.name ?? "Sem nome" }))
+  }
+
+  if (matches.length === 0) {
+    return {
+      response: "Não encontrei nenhum cliente correspondente. Confirme o nome e tente novamente.",
+      metadata: { noCharge: true, matchedByName: true },
+    }
+  }
+
+  if (matches.length > 1) {
+    return {
+      response: `Encontrei ${matches.length} clientes com esse nome: ${matches.map((candidate) => candidate.name).join(", ")}. Qual deles devo excluir?`,
+      metadata: {
+        required: ["lead"],
+        noCharge: true,
+        matchedByName: true,
+        ambiguous: true,
+        parsedData: {
+          candidates: matches,
+          options: matches.map((candidate) => ({ id: candidate.id, label: candidate.name })),
+        },
+      },
+    }
+  }
+
+  const target = matches[0]
 
   return {
-    response: `Cliente arquivado com sucesso.\n\n${updated.name ?? "Cliente sem nome"}`,
+    response: `Encontrei o cliente ${target.name}. Essa exclusão é permanente e não pode ser desfeita. Confirma?`,
     metadata: {
-      leadId: updated.id,
-      leadStatus: updated.status,
+      required: ["confirmation"],
+      noCharge: true,
+      matchedByName: true,
+      parsedData: { leadId: target.id, leadName: target.name },
     },
-    leadId: updated.id,
   }
 }
 
