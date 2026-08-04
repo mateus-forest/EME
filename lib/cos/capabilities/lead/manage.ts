@@ -367,7 +367,11 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
         noCharge: true,
         matchedByName: true,
         ambiguous: true,
-        parsedData: { candidates, record },
+        parsedData: {
+          candidates,
+          record,
+          options: candidates.map((candidate) => ({ id: candidate.id, label: candidate.name })),
+        },
       },
     }
   }

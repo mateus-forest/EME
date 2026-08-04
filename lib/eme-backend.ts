@@ -1648,13 +1648,13 @@ Revise e preencha os dados restantes antes de enviar.`,
         }
       }
       if (properties.length > 1) {
+        const propertyOptions = properties.map((property) => ({ id: property.id, title: property.title }))
         return {
           response: `Encontrei mais de um imóvel:\n\n${properties
             .map((property, index) => `${index + 1}. ${property.title} — ${property.neighborhood ?? property.city} — ${formatAssessorPropertyPrice(property.price)}`)
             .join("\n")}\n\nQual deles você quer?`,
           metadata: {
             required: ["propertyChoice"],
-            propertyOptions: properties.map((property) => ({ id: property.id, title: property.title })),
             propertyIds: properties.map((property) => property.id),
             propertySearchFilters: filters,
             resultCount: properties.length,
@@ -1663,6 +1663,16 @@ Revise e preencha os dados restantes antes de enviar.`,
             parsedPriceFinal: filters.parsedPriceFinal,
             actionStatus: "success",
             durationMs: Date.now() - startedAt,
+            // propertyOptions precisa ficar aninhado em parsedData: updateWorkflowFromExecutionResult
+            // so copia para pendingInput.parsedData o que estiver aqui dentro, nao no nivel raiz.
+            parsedData: {
+              propertyOptions,
+              options: properties.map((property) => ({
+                id: property.id,
+                label: property.title,
+                description: `${property.neighborhood ?? property.city} — ${formatAssessorPropertyPrice(property.price)}`,
+              })),
+            },
           },
         }
       }

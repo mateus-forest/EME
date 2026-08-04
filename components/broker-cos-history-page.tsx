@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MessageCircle, Pencil, Trash2 } from "lucide-react"
 
+import { CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import { Button } from "@/components/ui/button"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -44,6 +45,7 @@ export function BrokerCosHistoryPage() {
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,
+    selectPendingOption,
   } = useCosConversations({
     assistantEnabled,
     assistantCredits,
@@ -253,27 +255,14 @@ export function BrokerCosHistoryPage() {
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{item.content}</p>
-                    {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          onClick={() => void confirmPendingAction()}
-                          disabled={isSending}
-                          className="h-9 rounded-full bg-[#111111] px-4 text-xs font-semibold text-white hover:bg-[#050505] disabled:opacity-60"
-                        >
-                          Confirmar
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => void cancelPendingAction()}
-                          disabled={isSending}
-                          className="h-9 rounded-full border border-black/[0.08] px-4 text-xs text-[#4B5563] hover:bg-white"
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    ) : null}
+                    <CosPendingAction
+                      item={item}
+                      pendingConfirmation={pendingConfirmation}
+                      isSending={isSending}
+                      onConfirm={() => void confirmPendingAction()}
+                      onCancel={() => void cancelPendingAction()}
+                      onSelectOption={(option) => void selectPendingOption(option)}
+                    />
                   </div>
                 </div>
               ))}
