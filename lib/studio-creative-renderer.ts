@@ -352,6 +352,12 @@ const BADGE_ICON_LEFT_PAD = 22
 const BADGE_ICON_WIDTH = 38
 const BADGE_ICON_TEXT_GAP = 22
 const BADGE_FONT_SIZE = 22
+// Local SVG-path bounds of the "badge" icon in renderFeatureIcon (a star spanning y 0-38, no
+// top offset) and the "calendar" icon (y 2-51, so a 2px top offset before its own 49px height) —
+// needed to center each icon by its actual ink, not an eyeballed height.
+const BADGE_ICON_HEIGHT = 38
+const CALENDAR_ICON_TOP = 2
+const CALENDAR_ICON_HEIGHT = 49
 
 // Symmetric content-fit width (left icon pad == right text pad), replacing a fixed heuristic
 // that was tuned by eye against the old broken-font render and left the label visibly off-center
@@ -363,17 +369,16 @@ function measureBadgeWidth(label: string, minWidth: number) {
 }
 
 function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number) {
-  const centerY = Math.round(height / 2)
   return [
     `<g transform="translate(${x} ${y})">`,
     `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="rgba(123,226,63,0.88)" stroke-width="2.1" />`,
-    renderFeatureIcon("badge", BADGE_ICON_LEFT_PAD, centerY - 18, "#ffffff"),
+    renderFeatureIcon("badge", BADGE_ICON_LEFT_PAD, centerIconY(height, 0, BADGE_ICON_HEIGHT), "#ffffff"),
     "</g>",
     renderSingleLineText(
       runs,
       label,
       x + BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP,
-      y + centerY + 9,
+      y + centerTextBlockY(height, BADGE_FONT_SIZE, 0, 1),
       BADGE_FONT_SIZE,
       "500",
       "#ffffff",
@@ -450,6 +455,31 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   cta?: { lines: string[]; fontSize: number; lineHeight: number }
 }) {
   const dividerX = input.cta ? Math.round(input.width * 0.41) : 0
+  const panelPaddingX = 34
+  const labelFontSize = 20
+  const supportFontSize = 18
+  const stackGap = 12
+
+  // Relative positions first (as if the label/value/support stack started at y=0), then shift
+  // the whole stack so it's vertically centered in the panel. Anchoring from a fixed top padding
+  // instead left a large asymmetric gap under the content whenever the panel was taller than the
+  // text stack (Story's CTA-less, single-column panel especially) — this centers it against the
+  // panel's actual height instead.
+  const relativeLabelY = Math.round(labelFontSize * STUDIO_FONT_ASCENT_RATIO)
+  const relativeValueY = stackTextBlockY(relativeLabelY, 0, labelFontSize, stackGap, input.metricValueFontSize)
+  const relativeSupportY = input.metricSupport
+    ? stackTextBlockY(relativeValueY, 0, input.metricValueFontSize, stackGap - 4, supportFontSize)
+    : null
+  const stackBottomFontSize = relativeSupportY !== null ? supportFontSize : input.metricValueFontSize
+  const stackBottom = (relativeSupportY ?? relativeValueY) + stackBottomFontSize * STUDIO_FONT_DESCENT_RATIO
+  const stackOffset = Math.round((input.height - stackBottom) / 2)
+
+  const labelY = relativeLabelY + stackOffset
+  const valueY = relativeValueY + stackOffset
+  const supportY = relativeSupportY !== null ? relativeSupportY + stackOffset : null
+
+  const ctaIconY = input.cta ? centerIconY(input.height, CALENDAR_ICON_TOP, CALENDAR_ICON_HEIGHT) : 0
+  const ctaTextY = input.cta ? centerTextBlockY(input.height, input.cta.fontSize, input.cta.lineHeight, input.cta.lines.length) : 0
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
@@ -457,19 +487,21 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
     input.cta
       ? [
           `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
-          renderFeatureIcon("calendar", dividerX + 28, Math.round((input.height - 62) / 2), "#73df30"),
+          renderFeatureIcon("calendar", dividerX + 28, ctaIconY, "#73df30"),
         ].join("")
       : "",
     "</g>",
-    renderSingleLineText(runs, input.metricLabel, input.x + 34, input.y + 40, 20, "500", "#ffffff", 0.01),
-    renderSingleLineText(runs, input.metricValue, input.x + 34, input.y + 94, input.metricValueFontSize, "700", "#73df30", 0),
-    input.metricSupport ? renderSingleLineText(runs, input.metricSupport, input.x + 34, input.y + 128, 18, "400", "#ffffff", 0) : "",
+    renderSingleLineText(runs, input.metricLabel, input.x + panelPaddingX, input.y + labelY, labelFontSize, "500", "#ffffff", 0.01),
+    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "700", "#73df30", 0),
+    supportY !== null
+      ? renderSingleLineText(runs, input.metricSupport, input.x + panelPaddingX, input.y + supportY, supportFontSize, "400", "#ffffff", 0)
+      : "",
     input.cta
       ? renderMultilineText(
           runs,
           input.cta.lines,
           input.x + dividerX + 140,
-          input.y + Math.round(input.height / 2) - 4,
+          input.y + ctaTextY,
           input.cta.fontSize,
           "700",
           "#ffffff",
@@ -659,6 +691,24 @@ function stackTextBlockY(
       gap +
       nextFontSize * STUDIO_FONT_ASCENT_RATIO,
   )
+}
+
+// Baseline that vertically centers a `lineCount`-line block (line 1's baseline) inside a
+// container of `containerHeight`, using the same ascent/descent metrics as stackTextBlockY. With
+// lineCount 1 this centers a single line by its real ink metrics instead of a fixed guess (badge
+// label, or any other single-line container content).
+function centerTextBlockY(containerHeight: number, fontSize: number, lineHeight: number, lineCount: number) {
+  const blockHeight = Math.max(0, lineCount - 1) * lineHeight + fontSize * (STUDIO_FONT_ASCENT_RATIO + STUDIO_FONT_DESCENT_RATIO)
+  const topY = (containerHeight - blockHeight) / 2
+  return Math.round(topY + fontSize * STUDIO_FONT_ASCENT_RATIO)
+}
+
+// Top-left y that vertically centers an icon of known local-path bounds [iconTop, iconTop +
+// iconHeight] inside a container of containerHeight — mirrors centerTextBlockY but for the fixed
+// SVG icon shapes in renderFeatureIcon, whose bounds aren't all flush with y=0 (e.g. "calendar"
+// starts 2px down).
+function centerIconY(containerHeight: number, iconTop: number, iconHeight: number) {
+  return Math.round(containerHeight / 2 - iconTop - iconHeight / 2)
 }
 
 function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, minFontSize: number, maxLines: number) {
