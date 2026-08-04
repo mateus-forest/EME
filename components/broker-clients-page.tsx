@@ -78,6 +78,13 @@ type ClientForm = {
   documents: EntityDocumentRecord[]
 }
 
+type FeedbackTone = "success" | "error" | "warning"
+
+type FloatingToast = {
+  message: string
+  tone: FeedbackTone
+}
+
 const emptyClientForm: ClientForm = {
   name: "",
   email: "",
@@ -176,8 +183,8 @@ export function BrokerClientsPage() {
   const { properties } = useBrokerProperties()
   const [clients, setClients] = useState<LeadRecord[]>([])
   const [hasLoadedClients, setHasLoadedClients] = useState(false)
-  const [feedback, setFeedback] = useState("")
-  const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("error")
+  const [toast, setToast] = useState<FloatingToast | null>(null)
+  const [isToastVisible, setIsToastVisible] = useState(false)
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<ClientFilterId>("all")
   const [selectedClient, setSelectedClient] = useState<LeadRecord | null>(null)
@@ -191,6 +198,8 @@ export function BrokerClientsPage() {
   const [clientDraft, setClientDraft] = useState<ClientForm>(emptyClientForm)
   const clientsRequestIdRef = useRef(0)
   const ignoredLeadSyncEventsRef = useRef(0)
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const toastDismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openClient = useCallback((client: LeadRecord) => {
     router.push(`/corretor/clientes/${client.id}`)
@@ -231,6 +240,28 @@ export function BrokerClientsPage() {
   const broadcastLeadSync = useCallback((entityId: string) => {
     ignoredLeadSyncEventsRef.current += 1
     dispatchEntitySync({ type: "lead", entityId })
+  }, [])
+
+  const showToast = useCallback((message: string, tone: FeedbackTone) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+    if (toastDismissTimeoutRef.current) clearTimeout(toastDismissTimeoutRef.current)
+
+    setToast({ message, tone })
+    setIsToastVisible(true)
+
+    toastTimeoutRef.current = setTimeout(() => {
+      setIsToastVisible(false)
+      toastDismissTimeoutRef.current = setTimeout(() => {
+        setToast(null)
+      }, 220)
+    }, 3000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+      if (toastDismissTimeoutRef.current) clearTimeout(toastDismissTimeoutRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -283,8 +314,7 @@ export function BrokerClientsPage() {
     }
     if (!response.ok) {
       if (!options?.suppressErrorFeedback) {
-        setFeedbackTone("error")
-        setFeedback(data?.error || "Não foi possível carregar seus clientes.")
+        showToast(data?.error || "Não foi possível carregar seus clientes.", "error")
       }
       setHasLoadedClients(true)
       return null
@@ -293,7 +323,7 @@ export function BrokerClientsPage() {
     applyClientsState(nextClients, { removedClientId: options?.removedClientId })
     setHasLoadedClients(true)
     return nextClients
-  }, [applyClientsState])
+  }, [applyClientsState, showToast])
 
   useEffect(() => {
     void loadClients()
@@ -312,7 +342,6 @@ export function BrokerClientsPage() {
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
     setIsUpdatingStatus(true)
-    setFeedback("")
 
     try {
       const response = await fetch(`/api/leads/${client.id}`, {
@@ -330,8 +359,7 @@ export function BrokerClientsPage() {
 
       syncClientInState(data.lead)
     } catch (caughtError) {
-      setFeedbackTone("error")
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do cliente.")
+      showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do cliente.", "error")
     } finally {
       setIsUpdatingStatus(false)
     }
@@ -340,7 +368,6 @@ export function BrokerClientsPage() {
   async function saveSelectedClient() {
     if (!selectedClient) return
     setIsSavingClient(true)
-    setFeedback("")
 
     try {
       const response = await fetch(`/api/leads/${selectedClient.id}`, {
@@ -355,11 +382,9 @@ export function BrokerClientsPage() {
         throw new Error(data?.error || "Não foi possível salvar o cliente.")
       }
       syncClientInState(data.lead)
-      setFeedbackTone("success")
-      setFeedback("Cliente atualizado com sucesso.")
+      showToast("Cliente atualizado com sucesso.", "success")
     } catch (caughtError) {
-      setFeedbackTone("error")
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar o cliente.")
+      showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar o cliente.", "error")
     } finally {
       setIsSavingClient(false)
     }
@@ -369,7 +394,6 @@ export function BrokerClientsPage() {
     if (!window.confirm(`Deseja excluir ${client.name || "este cliente"} da sua carteira?`)) return
 
     setIsDeletingClient(true)
-    setFeedback("")
 
     try {
       const response = await fetch(`/api/leads/${client.id}`, {
@@ -390,11 +414,9 @@ export function BrokerClientsPage() {
       }
 
       broadcastLeadSync(deletedClientId)
-      setFeedbackTone("success")
-      setFeedback("Cliente removido da carteira.")
+      showToast("Cliente removido da carteira.", "success")
     } catch (caughtError) {
-      setFeedbackTone("error")
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível excluir o cliente.")
+      showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível excluir o cliente.", "error")
     } finally {
       setIsDeletingClient(false)
     }
@@ -402,7 +424,6 @@ export function BrokerClientsPage() {
 
   async function createClient() {
     setIsCreatingClient(true)
-    setFeedback("")
 
     try {
       const response = await fetch("/api/brokers/leads", {
@@ -426,11 +447,9 @@ export function BrokerClientsPage() {
       broadcastLeadSync(data.lead.id)
       setIsCreateClientOpen(false)
       setClientDraft(emptyClientForm)
-      setFeedbackTone("success")
-      setFeedback("Cliente cadastrado com sucesso.")
+      showToast("Cliente cadastrado com sucesso.", "success")
     } catch (caughtError) {
-      setFeedbackTone("error")
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível cadastrar o cliente.")
+      showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível cadastrar o cliente.", "error")
     } finally {
       setIsCreatingClient(false)
     }
@@ -470,8 +489,7 @@ export function BrokerClientsPage() {
         }))
       }
     } catch (error) {
-      setFeedbackTone("error")
-      setFeedback(error instanceof Error ? error.message : "Não foi possível localizar o CEP.")
+      showToast(error instanceof Error ? error.message : "Não foi possível localizar o CEP.", "error")
     } finally {
       setIsLoadingCep(false)
     }
@@ -506,8 +524,6 @@ export function BrokerClientsPage() {
     if (!selectedClient?.id) return
     if (!window.confirm(`Deseja remover o documento "${document.name}" deste cliente?`)) return
 
-    setFeedback("")
-
     try {
       const response = await fetch(`/api/leads/${selectedClient.id}/documents/${document.id}`, {
         method: "DELETE",
@@ -521,11 +537,9 @@ export function BrokerClientsPage() {
       }
 
       syncClientInState(data.lead)
-      setFeedbackTone("success")
-      setFeedback("Documento removido com sucesso.")
+      showToast("Documento removido com sucesso.", "success")
     } catch (caughtError) {
-      setFeedbackTone("error")
-      setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível remover o documento.")
+      showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível remover o documento.", "error")
     }
   }
 
@@ -544,6 +558,23 @@ export function BrokerClientsPage() {
   return (
     <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionOnClick={openCreateClientModal}>
       <div className="grid gap-5">
+        {toast ? (
+          <div className="pointer-events-none fixed inset-x-0 top-24 z-50 flex justify-center px-4">
+            <div
+              className={`w-fit max-w-[calc(100vw-2rem)] rounded-full border px-4 py-2.5 text-sm shadow-[0_20px_40px_rgba(15,23,42,0.10)] backdrop-blur-md transition-all duration-200 ${
+                isToastVisible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+              } ${
+                toast.tone === "success"
+                  ? "border-[#009b3a]/15 bg-[#eef9f1]/95 text-[#0b7a33]"
+                  : toast.tone === "warning"
+                    ? "border-[#f2c94c]/30 bg-[#fff9e7]/95 text-[#946200]"
+                    : "border-red-500/15 bg-[#fff1f1]/95 text-red-700"
+              }`}
+            >
+              {toast.message}
+            </div>
+          </div>
+        ) : null}
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -608,17 +639,7 @@ export function BrokerClientsPage() {
         </section>
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
-          {feedback ? (
-            <div
-              className={`rounded-[1.25rem] px-4 py-3 text-sm ${
-                feedbackTone === "success"
-                  ? "border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#0b7a33]"
-                  : "border border-red-500/20 bg-red-500/10 text-red-700"
-              }`}
-            >
-              {feedback}
-            </div>
-          ) : !hasLoadedClients ? (
+          {!hasLoadedClients ? (
             <div className="grid gap-3">
               {[0, 1, 2].map((index) => (
                 <div
