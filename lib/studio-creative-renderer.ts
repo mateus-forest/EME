@@ -17,7 +17,7 @@ type StudioTemplateDefinition = {
   format: StudioCreativeFormat
   width: number
   height: number
-  render: (payload: StudioCreativePayload) => StudioCreativeRenderResult
+  render: (payload: StudioCreativePayload, measure: StudioTextMeasurer) => Promise<StudioCreativeRenderResult>
 }
 
 export type StudioCreativeRenderResult = {
@@ -63,6 +63,19 @@ export type StudioTextRun = {
   lineHeight: number
   anchor: "start" | "middle" | "end"
 }
+
+// Real ink-bbox measurement of a single line, via the same sharp text rasterizer used to draw it
+// (see lib/studio-text-metrics.server.ts) — implemented outside this file and injected here so
+// this module (also imported by client bundles through lib/studio-campaigns-ui.ts) never touches
+// sharp/fs directly. Container sizing below uses this for WIDTH only; height stays derived from
+// the fixed ascent/descent ratios so it doesn't jitter per-string based on which glyphs happen to
+// have descenders.
+export type StudioTextMeasurer = (
+  text: string,
+  fontSize: number,
+  fontWeight: StudioFontWeight,
+  letterSpacingEm?: number,
+) => Promise<{ width: number; height: number }>
 
 const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
 
@@ -132,12 +145,13 @@ export function resolveStudioCreativeFormat(
   return resolveStudioTemplate(campaign, asset)?.format ?? null
 }
 
-export function renderStudioCreativeLayers(
+export async function renderStudioCreativeLayers(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
   officialLogoDataUri: string,
-  propertyImageSrc?: string | null,
-): StudioCreativeRenderResult | null {
+  propertyImageSrc: string | null | undefined,
+  measure: StudioTextMeasurer,
+): Promise<StudioCreativeRenderResult | null> {
   const template = resolveStudioTemplate(campaign, asset)
   if (!template) return null
 
@@ -149,7 +163,7 @@ export function renderStudioCreativeLayers(
     propertyImageSrc: propertyImageSrc ?? null,
   })
 
-  return template.render(payload)
+  return template.render(payload, measure)
 }
 
 function resolveStudioTemplate(campaign: StudioCampaignRecord, asset: CampaignAssetRecord) {
@@ -201,7 +215,10 @@ function buildStudioCreativePayload(input: {
   }
 }
 
-function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCreativeRenderResult {
+async function renderInstagramFeedTemplate(
+  payload: StudioCreativePayload,
+  measure: StudioTextMeasurer,
+): Promise<StudioCreativeRenderResult> {
   const textRuns: StudioTextRun[] = []
   const eyebrowFontSize = 20
   const eyebrowY = 270
@@ -211,7 +228,17 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
   const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
     .filter((item): item is StudioFeatureItem => Boolean(item))
     .slice(0, 4)
-  const badgeWidth = measureBadgeWidth(payload.badgeLabel, 220)
+
+  const [badgeBox, metricPanelBox] = await Promise.all([
+    computeBadgeBox(measure, payload.badgeLabel),
+    computeMetricPanelBox(measure, {
+      metricLabel: payload.metricLabel,
+      metricValue: payload.price,
+      metricValueFontSize: 38,
+      metricSupport: payload.metricSupport,
+      cta: { lines: ["AGENDE", "SUA VISITA"], fontSize: 20, lineHeight: 24 },
+    }),
+  ])
 
   const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 10, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
@@ -236,7 +263,7 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, false),
     renderBottomWave(payload.width, payload.height, payload.waveId, false),
-    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeWidth, 60),
+    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeBox.width, badgeBox.height),
     renderLogo(payload.officialLogoDataUri, 915, 46, 146, 68),
     renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
     renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
@@ -245,8 +272,9 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
     renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
-      width: 584,
-      height: 128,
+      width: metricPanelBox.width,
+      height: metricPanelBox.height,
+      stackColumnWidth: metricPanelBox.stackColumnWidth,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
       metricValueFontSize: 38,
@@ -259,7 +287,10 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
   return { svg, textRuns }
 }
 
-function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCreativeRenderResult {
+async function renderInstagramStoryTemplate(
+  payload: StudioCreativePayload,
+  measure: StudioTextMeasurer,
+): Promise<StudioCreativeRenderResult> {
   const textRuns: StudioTextRun[] = []
   const eyebrowFontSize = 22
   const eyebrowY = 390
@@ -269,7 +300,16 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCre
   const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
     .filter((item): item is StudioFeatureItem => Boolean(item))
     .slice(0, 4)
-  const badgeWidth = measureBadgeWidth(payload.badgeLabel, 300)
+
+  const [badgeBox, metricPanelBox] = await Promise.all([
+    computeBadgeBox(measure, payload.badgeLabel),
+    computeMetricPanelBox(measure, {
+      metricLabel: payload.metricLabel,
+      metricValue: payload.price,
+      metricValueFontSize: 40,
+      metricSupport: payload.metricSupport,
+    }),
+  ])
 
   const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
@@ -295,7 +335,7 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCre
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, true),
     renderBottomWave(payload.width, payload.height, payload.waveId, true),
-    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeWidth, 66),
+    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeBox.width, badgeBox.height),
     renderLogo(payload.officialLogoDataUri, 810, 78, 184, 82),
     renderSingleLineText(textRuns, payload.eyebrow, 82, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
     renderMultilineText(textRuns, titleLayout.lines, 82, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
@@ -304,8 +344,9 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCre
     renderMetricPanel(textRuns, {
       x: 80,
       y: 1560,
-      width: 460,
-      height: 150,
+      width: metricPanelBox.width,
+      height: metricPanelBox.height,
+      stackColumnWidth: metricPanelBox.stackColumnWidth,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
       metricValueFontSize: 40,
@@ -352,20 +393,95 @@ const BADGE_ICON_LEFT_PAD = 22
 const BADGE_ICON_WIDTH = 38
 const BADGE_ICON_TEXT_GAP = 22
 const BADGE_FONT_SIZE = 22
+const BADGE_VERTICAL_PADDING = 14
 // Local SVG-path bounds of the "badge" icon in renderFeatureIcon (a star spanning y 0-38, no
 // top offset) and the "calendar" icon (y 2-51, so a 2px top offset before its own 49px height) —
 // needed to center each icon by its actual ink, not an eyeballed height.
 const BADGE_ICON_HEIGHT = 38
 const CALENDAR_ICON_TOP = 2
 const CALENDAR_ICON_HEIGHT = 49
+// Horizontal ink bounds of the "calendar" icon path (rect x 8-50, arrow reaching ~x54) — same
+// role as BADGE_ICON_WIDTH: a fixed glyph-art size, not a text-content measurement.
+const CALENDAR_ICON_WIDTH = 54
 
-// Symmetric content-fit width (left icon pad == right text pad), replacing a fixed heuristic
-// that was tuned by eye against the old broken-font render and left the label visibly off-center
-// inside the pill once real glyph widths showed up.
-function measureBadgeWidth(label: string, minWidth: number) {
-  const textWidth = label.length * BADGE_FONT_SIZE * 0.56
-  const contentWidth = BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP + textWidth + BADGE_ICON_LEFT_PAD
-  return Math.max(minWidth, Math.round(contentWidth))
+const PANEL_PADDING_X = 34
+const PANEL_VERTICAL_PADDING = 28
+const PANEL_DIVIDER_GAP = 30
+const PANEL_ICON_TEXT_GAP = 26
+
+// Container = measured content + fixed padding, never a fixed total size. Width comes from a real
+// glyph-ink measurement of the label (via `measure`, backed by the same sharp text rasterizer that
+// actually draws it — see StudioTextMeasurer); height comes from the icon/text ascent+descent
+// metrics already established for this renderer, so it doesn't jitter per-string based on which
+// glyphs happen to have descenders.
+async function computeBadgeBox(measure: StudioTextMeasurer, label: string) {
+  const { width: textWidth } = await measure(label, BADGE_FONT_SIZE, "500", 0.01)
+  const textInkHeight = BADGE_FONT_SIZE * (STUDIO_FONT_ASCENT_RATIO + STUDIO_FONT_DESCENT_RATIO)
+
+  const width = BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP + Math.ceil(textWidth) + BADGE_ICON_LEFT_PAD
+  const height = Math.round(Math.max(BADGE_ICON_HEIGHT, textInkHeight) + BADGE_VERTICAL_PADDING * 2)
+
+  return { width, height }
+}
+
+// Same principle as computeBadgeBox, for the price panel (both the Feed variant, with a CTA
+// column right of a divider, and the Story variant, which is just the label+value(+support) stack
+// with no CTA/divider at all). `stackColumnWidth` is returned alongside width/height so the drawing
+// function below can place the divider and CTA column at the exact edge of the real content
+// instead of a fraction of a fixed panel width.
+async function computeMetricPanelBox(
+  measure: StudioTextMeasurer,
+  input: {
+    metricLabel: string
+    metricValue: string
+    metricValueFontSize: number
+    metricSupport: string
+    cta?: { lines: string[]; fontSize: number; lineHeight: number }
+  },
+) {
+  const labelFontSize = 20
+  const supportFontSize = 18
+  const stackGap = 12
+
+  const [labelBox, valueBox, supportBox] = await Promise.all([
+    measure(input.metricLabel, labelFontSize, "500", 0.01),
+    measure(input.metricValue, input.metricValueFontSize, "700", 0),
+    measure(input.metricSupport, supportFontSize, "400", 0),
+  ])
+  const stackColumnWidth = Math.ceil(Math.max(labelBox.width, valueBox.width, supportBox.width))
+
+  const relativeLabelY = Math.round(labelFontSize * STUDIO_FONT_ASCENT_RATIO)
+  const relativeValueY = stackTextBlockY(relativeLabelY, 0, labelFontSize, stackGap, input.metricValueFontSize)
+  const relativeSupportY = input.metricSupport
+    ? stackTextBlockY(relativeValueY, 0, input.metricValueFontSize, stackGap - 4, supportFontSize)
+    : null
+  const stackBottomFontSize = relativeSupportY !== null ? supportFontSize : input.metricValueFontSize
+  const stackHeight = (relativeSupportY ?? relativeValueY) + stackBottomFontSize * STUDIO_FONT_DESCENT_RATIO
+
+  let ctaColumnWidth = 0
+  let ctaHeight = 0
+  if (input.cta) {
+    const ctaBoxes = await Promise.all(input.cta.lines.map((line) => measure(line, input.cta!.fontSize, "700", 0)))
+    ctaColumnWidth = Math.ceil(Math.max(...ctaBoxes.map((box) => box.width)))
+    ctaHeight =
+      Math.max(0, input.cta.lines.length - 1) * input.cta.lineHeight +
+      input.cta.fontSize * (STUDIO_FONT_ASCENT_RATIO + STUDIO_FONT_DESCENT_RATIO)
+  }
+
+  const contentHeight = Math.max(stackHeight, ctaHeight, input.cta ? CALENDAR_ICON_HEIGHT : 0)
+  const height = Math.round(contentHeight + PANEL_VERTICAL_PADDING * 2)
+
+  const width = input.cta
+    ? PANEL_PADDING_X +
+      stackColumnWidth +
+      PANEL_DIVIDER_GAP * 2 +
+      CALENDAR_ICON_WIDTH +
+      PANEL_ICON_TEXT_GAP +
+      ctaColumnWidth +
+      PANEL_PADDING_X
+    : PANEL_PADDING_X * 2 + stackColumnWidth
+
+  return { width: Math.round(width), height, stackColumnWidth }
 }
 
 function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number) {
@@ -446,6 +562,10 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   y: number
   width: number
   height: number
+  // Real measured width of the label/value/support text stack (see computeMetricPanelBox) — the
+  // divider and CTA column are placed at the exact edge of that content, with a fixed gap on each
+  // side, instead of a fraction of the panel's total width.
+  stackColumnWidth: number
   metricLabel: string
   metricValue: string
   metricValueFontSize: number
@@ -454,8 +574,9 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   // by side) — omit entirely rather than rendering an empty divider.
   cta?: { lines: string[]; fontSize: number; lineHeight: number }
 }) {
-  const dividerX = input.cta ? Math.round(input.width * 0.41) : 0
-  const panelPaddingX = 34
+  const dividerX = input.cta ? Math.round(PANEL_PADDING_X + input.stackColumnWidth + PANEL_DIVIDER_GAP) : 0
+  const iconX = dividerX + PANEL_DIVIDER_GAP
+  const panelPaddingX = PANEL_PADDING_X
   const labelFontSize = 20
   const supportFontSize = 18
   const stackGap = 12
@@ -487,7 +608,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
     input.cta
       ? [
           `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
-          renderFeatureIcon("calendar", dividerX + 28, ctaIconY, "#73df30"),
+          renderFeatureIcon("calendar", iconX, ctaIconY, "#73df30"),
         ].join("")
       : "",
     "</g>",
@@ -500,7 +621,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
       ? renderMultilineText(
           runs,
           input.cta.lines,
-          input.x + dividerX + 140,
+          input.x + iconX + CALENDAR_ICON_WIDTH + PANEL_ICON_TEXT_GAP,
           input.y + ctaTextY,
           input.cta.fontSize,
           "700",

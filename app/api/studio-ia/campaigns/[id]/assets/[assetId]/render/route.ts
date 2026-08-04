@@ -17,6 +17,7 @@ import {
   STUDIO_FONT_ASSETS,
 } from "@/lib/studio-creative-renderer"
 import type { StudioTextRun } from "@/lib/studio-creative-renderer"
+import { createStudioTextMeasurer } from "@/lib/studio-text-metrics.server"
 import { getStudioCampaignById } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -52,12 +53,19 @@ export async function GET(
     }
 
     const propertyImageDataUri = await getPropertyImageDataUri(campaign.property?.imageUrls?.[0])
-    const layers = renderStudioCreativeLayers(campaign, asset, await getOfficialStudioLogoDataUri(), propertyImageDataUri)
+    const sharp = (await import("sharp")).default
+    const measure = createStudioTextMeasurer(sharp)
+    const layers = await renderStudioCreativeLayers(
+      campaign,
+      asset,
+      await getOfficialStudioLogoDataUri(),
+      propertyImageDataUri,
+      measure,
+    )
     if (!layers) {
       return NextResponse.json({ error: "Este asset nao possui renderizacao visual oficial." }, { status: 404 })
     }
 
-    const sharp = (await import("sharp")).default
     const pngBuffer = await renderStudioCreativePng(sharp, layers.svg, layers.textRuns)
     const shouldDownload = request.nextUrl.searchParams.get("download") === "1"
 
