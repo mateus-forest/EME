@@ -78,6 +78,13 @@ export const assessorActions = [
   "STUDIO_GENERATE_STORY",
   "STUDIO_IMPROVE_TEXT",
   "STUDIO_REGENERATE",
+  "help_first_steps",
+  "help_use_cos",
+  "help_register_properties",
+  "help_manage_clients",
+  "help_contracts_proposals",
+  "help_marketing_studio",
+  "help_general_question",
 ] as const
 
 export type AssessorAction = (typeof assessorActions)[number]
@@ -148,6 +155,13 @@ const assessorActionRegistry: Record<AssessorAction, { visualAction: string; fut
   STUDIO_GENERATE_STORY: { visualAction: "Story gerado", futureReady: true },
   STUDIO_IMPROVE_TEXT: { visualAction: "Texto refinado", futureReady: true },
   STUDIO_REGENERATE: { visualAction: "Campanha regenerada", futureReady: true },
+  help_first_steps: { visualAction: "Ajuda: primeiros passos" },
+  help_use_cos: { visualAction: "Ajuda: como usar o COS" },
+  help_register_properties: { visualAction: "Ajuda: cadastrar imóveis" },
+  help_manage_clients: { visualAction: "Ajuda: gerenciar clientes" },
+  help_contracts_proposals: { visualAction: "Ajuda: contratos e propostas" },
+  help_marketing_studio: { visualAction: "Ajuda: marketing e Studio IA" },
+  help_general_question: { visualAction: "Ajuda: dúvida geral" },
 }
 
 export function cleanText(value: unknown, maxLength: number) {

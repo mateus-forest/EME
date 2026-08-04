@@ -20,6 +20,15 @@ import {
   cancelContractCapability,
 } from "@/lib/cos/capabilities/contract/manage"
 import { financialSummaryCapability } from "@/lib/cos/capabilities/finance/summary"
+import {
+  helpContractsProposalsCapability,
+  helpFirstStepsCapability,
+  helpGeneralQuestionCapability,
+  helpManageClientsCapability,
+  helpMarketingStudioCapability,
+  helpRegisterPropertiesCapability,
+  helpUseCosCapability,
+} from "@/lib/cos/capabilities/help/manage"
 import { leadSummaryCapability } from "@/lib/cos/capabilities/lead/summary"
 import {
   analyticsLeadsCapability,
@@ -117,4 +126,11 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "studio.generateStory": studioGenerateStoryCapability,
   "studio.improveText": studioImproveTextCapability,
   "studio.regenerate": studioRegenerateCapability,
+  "help.first_steps": helpFirstStepsCapability,
+  "help.use_cos": helpUseCosCapability,
+  "help.register_properties": helpRegisterPropertiesCapability,
+  "help.manage_clients": helpManageClientsCapability,
+  "help.contracts_proposals": helpContractsProposalsCapability,
+  "help.marketing_studio": helpMarketingStudioCapability,
+  "help.general_question": helpGeneralQuestionCapability,
 }

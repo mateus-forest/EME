@@ -252,12 +252,12 @@ export function BrokerPortal() {
     setPrompt("")
   }
 
-  async function handleConversationSuggestion(selection: { label: string; message: string }) {
-    await sendCosMessage(selection.message, { visibleMessage: selection.label })
+  async function handleConversationSuggestion(selection: { label: string; message: string; action?: string }) {
+    await sendCosMessage(selection.message, { visibleMessage: selection.label, action: selection.action })
   }
 
   async function handleMenuAction(action: CosPromptComposerMenuAction) {
-    const actionMap: Record<string, { label: string; message: string }> = {
+    const actionMap: Record<string, { label: string; message: string; action?: string }> = {
       register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente." },
       create_property: { label: "Criar imóvel", message: "Quero criar um imóvel." },
       attach_contract: { label: "Anexar contrato", message: "Quero anexar um contrato." },
@@ -268,13 +268,45 @@ export function BrokerPortal() {
       today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje." },
       latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads." },
       latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados." },
-      help_first_steps: { label: "Primeiros passos", message: "Quais são os primeiros passos para começar a usar o EME?" },
-      help_use_cos: { label: "Como usar o COS", message: "Como posso usar melhor o COS no dia a dia?" },
-      help_register_properties: { label: "Como cadastrar imóveis", message: "Como cadastrar imóveis no EME?" },
-      help_manage_clients: { label: "Como gerenciar clientes", message: "Como gerenciar meus clientes no EME?" },
-      help_contracts_proposals: { label: "Contratos e propostas", message: "Como funcionam contratos e propostas no EME?" },
-      help_marketing_studio: { label: "Marketing e Studio IA", message: "Como usar o Studio IA e o marketing do EME?" },
-      help_general_question: { label: "Tirar uma dúvida", message: "Preciso de ajuda para entender uma funcionalidade do EME." },
+      // As 7 entradas de ajuda passam `action` com o próprio id do botão — isso deixa a
+      // classificação no backend determinística (casa direto contra o Capability Registry,
+      // sem depender da cadeia de regex de inferAssessorAction) e conecta cada botão à sua
+      // capability dedicada de ajuda, que responde usando o manual oficial do sistema.
+      help_first_steps: {
+        label: "Primeiros passos",
+        message: "Quais são os primeiros passos para começar a usar o EME?",
+        action: "help_first_steps",
+      },
+      help_use_cos: {
+        label: "Como usar o COS",
+        message: "Como posso usar melhor o COS no dia a dia?",
+        action: "help_use_cos",
+      },
+      help_register_properties: {
+        label: "Como cadastrar imóveis",
+        message: "Como cadastrar imóveis no EME?",
+        action: "help_register_properties",
+      },
+      help_manage_clients: {
+        label: "Como gerenciar clientes",
+        message: "Como gerenciar meus clientes no EME?",
+        action: "help_manage_clients",
+      },
+      help_contracts_proposals: {
+        label: "Contratos e propostas",
+        message: "Como funcionam contratos e propostas no EME?",
+        action: "help_contracts_proposals",
+      },
+      help_marketing_studio: {
+        label: "Marketing e Studio IA",
+        message: "Como usar o Studio IA e o marketing do EME?",
+        action: "help_marketing_studio",
+      },
+      help_general_question: {
+        label: "Tirar uma dúvida",
+        message: "Preciso de ajuda para entender uma funcionalidade do EME.",
+        action: "help_general_question",
+      },
     }
 
     const selection = actionMap[action.id]

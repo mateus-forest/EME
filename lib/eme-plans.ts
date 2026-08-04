@@ -28,6 +28,13 @@ export type EmeCreditActionKey =
   | "smart_import_image"
   | "smart_import_print"
   | "smart_import_text"
+  | "help_first_steps"
+  | "help_use_cos"
+  | "help_register_properties"
+  | "help_manage_clients"
+  | "help_contracts_proposals"
+  | "help_marketing_studio"
+  | "help_general_question"
 
 export const EME_PLANS = {
   free: {
@@ -141,6 +148,15 @@ export const EME_CREDIT_COSTS = {
   smart_import_image: 5,
   smart_import_print: 5,
   smart_import_text: 4,
+  // Conversar com o COS (incluindo pedir ajuda) é ilimitado — essas 7 capabilities nunca
+  // consomem Operações Inteligentes/créditos, ao contrário de ações que alteram dados.
+  help_first_steps: 0,
+  help_use_cos: 0,
+  help_register_properties: 0,
+  help_manage_clients: 0,
+  help_contracts_proposals: 0,
+  help_marketing_studio: 0,
+  help_general_question: 0,
 } as const satisfies Record<EmeCreditActionKey, number>
 
 export const EME_PROPERTY_LIMIT_MESSAGE =

@@ -319,7 +319,12 @@ export async function POST(request: NextRequest) {
   const isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
   const attachments = sanitizeIncomingAttachments(body?.attachments)
-  let creditsUsed = 1
+  // Pre-flight estimate used only to gate on balance before the real plan is known. Defaults to 1
+  // like before for the vast majority of messages (no requestedAction at all). When a known free
+  // action is requested (the 7 COS help capabilities), this must be 0 too — otherwise a broker at
+  // 0 credit balance would be blocked from even asking for help, contradicting "conversar com o
+  // COS é ilimitado".
+  let creditsUsed: number = requestedAction ? getEmeCreditCost(requestedAction) : 1
 
   if (!message) {
     return NextResponse.json({ error: "Digite uma mensagem para o Assessor EME." }, { status: 400 })

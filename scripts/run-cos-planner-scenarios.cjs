@@ -334,10 +334,85 @@ const deterministicExecutionScenarios = [
   },
 ]
 
+// Sprint 13: the 7 COS "Ajuda" menu buttons now send their own id as requestedAction, which must
+// resolve deterministically to their dedicated help.* capability — bypassing inferAssessorAction's
+// regex entirely. The "Como cadastrar imoveis" scenario documents the actual bug found in
+// investigation (message text alone collides with createPropertyDraft's regex) and proves the fix
+// (requestedAction present) routes correctly despite that collision.
+const helpCapabilityScenarios = [
+  {
+    message: "Quais são os primeiros passos para começar a usar o EME?",
+    requestedAction: "help_first_steps",
+    surface: "portal",
+    expectedAction: "help_first_steps",
+    expectedCapabilityId: "help.first_steps",
+  },
+  {
+    message: "Como posso usar melhor o COS no dia a dia?",
+    requestedAction: "help_use_cos",
+    surface: "portal",
+    expectedAction: "help_use_cos",
+    expectedCapabilityId: "help.use_cos",
+  },
+  {
+    message: "Como cadastrar imóveis no EME?",
+    requestedAction: "help_register_properties",
+    surface: "portal",
+    expectedAction: "help_register_properties",
+    expectedCapabilityId: "help.register_properties",
+  },
+  {
+    message: "Como gerenciar meus clientes no EME?",
+    requestedAction: "help_manage_clients",
+    surface: "portal",
+    expectedAction: "help_manage_clients",
+    expectedCapabilityId: "help.manage_clients",
+  },
+  {
+    message: "Como funcionam contratos e propostas no EME?",
+    requestedAction: "help_contracts_proposals",
+    surface: "portal",
+    expectedAction: "help_contracts_proposals",
+    expectedCapabilityId: "help.contracts_proposals",
+  },
+  {
+    message: "Como usar o Studio IA e o marketing do EME?",
+    requestedAction: "help_marketing_studio",
+    surface: "portal",
+    expectedAction: "help_marketing_studio",
+    expectedCapabilityId: "help.marketing_studio",
+  },
+  {
+    message: "Preciso de ajuda para entender uma funcionalidade do EME.",
+    requestedAction: "help_general_question",
+    surface: "portal",
+    expectedAction: "help_general_question",
+    expectedCapabilityId: "help.general_question",
+  },
+  // Without requestedAction, the exact same message text is a known pre-existing regex collision
+  // (inferAssessorAction: "cadastrar" + "imoveis" both present) — documents the bug the
+  // investigation found, and confirms it's still there in the absence of the fix (i.e. nothing
+  // about legacy classification itself was changed, only the new opt-in requestedAction path).
+  {
+    message: "Como cadastrar imóveis no EME?",
+    surface: "portal",
+    expectedAction: "createPropertyDraft",
+    expectedSource: "legacy",
+  },
+  // Regression: ordinary typed commands (no requestedAction) must keep resolving exactly as
+  // before the help capabilities were added.
+  {
+    message: "Cadastre um cliente chamado Lucas.",
+    surface: "portal",
+    expectedAction: "createLead",
+  },
+]
+
 async function main() {
-  const capabilityResults = capabilityScenarios.map((scenario) => {
+  const capabilityResults = [...capabilityScenarios, ...helpCapabilityScenarios].map((scenario) => {
     const plan = planCosCapability({
       message: scenario.message,
+      requestedAction: scenario.requestedAction,
       surface: scenario.surface,
       pendingContext: scenario.pendingContext ?? null,
       workspace: scenario.workspace ?? null,
@@ -347,6 +422,14 @@ async function main() {
 
     if (scenario.expectedSource) {
       assert.strictEqual(plan.source, scenario.expectedSource, `Mensagem "${scenario.message}" deveria usar source=${scenario.expectedSource}, mas usou ${plan.source}.`)
+    }
+
+    if (scenario.expectedCapabilityId) {
+      assert.strictEqual(
+        plan.capabilityId,
+        scenario.expectedCapabilityId,
+        `Mensagem "${scenario.message}" deveria usar capabilityId=${scenario.expectedCapabilityId}, mas usou ${plan.capabilityId}.`,
+      )
     }
 
     if (scenario.expectedContextOrigin) {

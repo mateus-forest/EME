@@ -68,6 +68,13 @@ export type CosCapabilityId =
   | "studio.generateStory"
   | "studio.improveText"
   | "studio.regenerate"
+  | "help.first_steps"
+  | "help.use_cos"
+  | "help.register_properties"
+  | "help.manage_clients"
+  | "help.contracts_proposals"
+  | "help.marketing_studio"
+  | "help.general_question"
 
 export type CosActionResult = {
   response: string
