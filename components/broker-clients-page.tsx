@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
@@ -189,6 +189,8 @@ export function BrokerClientsPage() {
   const [isDeletingClient, setIsDeletingClient] = useState(false)
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [clientDraft, setClientDraft] = useState<ClientForm>(emptyClientForm)
+  const clientsRequestIdRef = useRef(0)
+  const ignoredLeadSyncEventsRef = useRef(0)
 
   const openClient = useCallback((client: LeadRecord) => {
     router.push(`/corretor/clientes/${client.id}`)
@@ -196,15 +198,39 @@ export function BrokerClientsPage() {
     setSelectedClientDraft(mapLeadToForm(client))
   }, [router])
 
-  useEffect(() => {
-    void loadClients()
-    const unsubscribe = subscribeEntitySync((message) => {
-      if (message.type === "lead") {
-        void loadClients()
-      }
-    })
+  const applyClientsState = useCallback((nextClients: LeadRecord[], options?: { removedClientId?: string }) => {
+    setClients(nextClients)
 
-    return unsubscribe
+    const removedClientId = options?.removedClientId
+    const nextSelectedClientId =
+      removedClientId && selectedClient?.id === removedClientId ? null : (routeClientId ?? selectedClient?.id ?? null)
+
+    if (!nextSelectedClientId) {
+      if (removedClientId && selectedClient?.id === removedClientId) {
+        setSelectedClient(null)
+        setSelectedClientDraft(emptyClientForm)
+      }
+      return
+    }
+
+    const nextSelectedClient = nextClients.find((item) => item.id === nextSelectedClientId) ?? null
+
+    if (!nextSelectedClient) {
+      setSelectedClient(null)
+      setSelectedClientDraft(emptyClientForm)
+      if (routeClientId === nextSelectedClientId) {
+        router.push("/corretor/clientes")
+      }
+      return
+    }
+
+    setSelectedClient(nextSelectedClient)
+    setSelectedClientDraft(mapLeadToForm(nextSelectedClient))
+  }, [routeClientId, router, selectedClient?.id])
+
+  const broadcastLeadSync = useCallback((entityId: string) => {
+    ignoredLeadSyncEventsRef.current += 1
+    dispatchEntitySync({ type: "lead", entityId })
   }, [])
 
   useEffect(() => {
@@ -248,20 +274,41 @@ export function BrokerClientsPage() {
     [clients],
   )
 
-  async function loadClients() {
+  const loadClients = useCallback(async (options?: { suppressErrorFeedback?: boolean; removedClientId?: string }) => {
+    const requestId = ++clientsRequestIdRef.current
     const response = await fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
     const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[]; error?: string } | null
+    if (requestId !== clientsRequestIdRef.current) {
+      return null
+    }
     if (!response.ok) {
-      setFeedbackTone("error")
-      setFeedback(data?.error || "Não foi possível carregar seus clientes.")
+      if (!options?.suppressErrorFeedback) {
+        setFeedbackTone("error")
+        setFeedback(data?.error || "Não foi possível carregar seus clientes.")
+      }
       setHasLoadedClients(true)
-      return []
+      return null
     }
     const nextClients = data?.leads ?? []
-    setClients(nextClients)
+    applyClientsState(nextClients, { removedClientId: options?.removedClientId })
     setHasLoadedClients(true)
     return nextClients
-  }
+  }, [applyClientsState])
+
+  useEffect(() => {
+    void loadClients()
+    const unsubscribe = subscribeEntitySync((message) => {
+      if (message.type === "lead") {
+        if (ignoredLeadSyncEventsRef.current > 0) {
+          ignoredLeadSyncEventsRef.current -= 1
+          return
+        }
+        void loadClients()
+      }
+    })
+
+    return unsubscribe
+  }, [loadClients])
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
     setIsUpdatingStatus(true)
@@ -337,16 +384,14 @@ export function BrokerClientsPage() {
       }
 
       const deletedClientId = data.id || client.id
-      const nextClients = await loadClients()
+      const nextClients = await loadClients({ suppressErrorFeedback: true, removedClientId: deletedClientId })
+      if (!nextClients || nextClients.some((item) => item.id === deletedClientId)) {
+        throw new Error("Não foi possível excluir o cliente.")
+      }
 
-      setSelectedClient((current) => (current?.id === deletedClientId ? null : current))
-      setSelectedClientDraft((current) => (current.id === deletedClientId ? emptyClientForm : current))
-      dispatchEntitySync({ type: "lead", entityId: deletedClientId })
+      broadcastLeadSync(deletedClientId)
       setFeedbackTone("success")
       setFeedback("Cliente removido da carteira.")
-      if (!nextClients.some((item) => item.id === deletedClientId)) {
-        router.push("/corretor/clientes")
-      }
     } catch (caughtError) {
       setFeedbackTone("error")
       setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível excluir o cliente.")
@@ -373,8 +418,12 @@ export function BrokerClientsPage() {
         throw new Error(data?.error || "Não foi possível cadastrar o cliente.")
       }
 
-      setClients((current) => [data.lead!, ...current.filter((item) => item.id !== data.lead!.id)])
-      dispatchEntitySync({ type: "lead", entityId: data.lead.id })
+      const nextClients = await loadClients({ suppressErrorFeedback: true })
+      if (!nextClients || !nextClients.some((item) => item.id === data.lead!.id)) {
+        throw new Error("Não foi possível cadastrar o cliente.")
+      }
+
+      broadcastLeadSync(data.lead.id)
       setIsCreateClientOpen(false)
       setClientDraft(emptyClientForm)
       setFeedbackTone("success")
@@ -484,7 +533,7 @@ export function BrokerClientsPage() {
     setClients((current) => current.map((item) => (item.id === lead.id ? lead : item)))
     setSelectedClient(lead)
     setSelectedClientDraft(mapLeadToForm(lead))
-    dispatchEntitySync({ type: "lead", entityId: lead.id })
+    broadcastLeadSync(lead.id)
   }
 
   const openCreateClientModal = useCallback(() => {
