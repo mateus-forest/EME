@@ -171,16 +171,16 @@ export const emeModules: EmeModule[] = [
     icon: ShieldCheck,
     angle: 180,
     priorityMobile: false,
-    tagline: "Contratos digitais, seguros e sem burocracia.",
+    tagline: "Contratos organizados, sem burocracia.",
     longDescription:
-      "Gere e assine contratos digitalmente com total seguranca juridica. Todo o processo acontece em poucos passos, com validade legal garantida.",
+      "Crie ou anexe contratos e documentos com total segurança. Tudo organizado para você focar no que importa: seus negócios.",
     benefits: [
-      "Assinatura digital com validade legal",
-      "Modelos revisados e seguros",
-      "Armazenamento organizado e protegido",
+      "Modelos prontos e personalizáveis",
+      "Anexe contratos e documentos",
+      "Tudo organizado em um só lugar",
     ],
-    cta: "Conhecer modulo",
-    mockup: "/mockups/contratos.png",
+    cta: "Conhecer módulo",
+    mockup: "/mockups/contratos-premium.png",
   },
   {
     id: "agenda",

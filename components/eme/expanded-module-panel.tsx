@@ -67,6 +67,7 @@ export function ExpandedModulePanel({
   const geo = open ? target : start
   const Icon = module.icon
   const isCatalogModule = module.id === "catalogo"
+  const isContractsModule = module.id === "contratos"
 
   return (
     <>
@@ -134,7 +135,7 @@ export function ExpandedModulePanel({
         </motion.button>
 
         <motion.div
-          className="relative flex h-full w-full flex-col md:flex-row"
+          className={`relative flex h-full w-full flex-col ${isContractsModule ? "md:flex-row-reverse" : "md:flex-row"}`}
           animate={{ opacity: open ? 1 : 0 }}
           transition={{ duration: open ? 0.4 : 0.18, delay: open ? 0.18 : 0 }}
         >
@@ -142,11 +143,19 @@ export function ExpandedModulePanel({
             className={`relative flex min-h-0 items-center justify-center overflow-hidden ${
               isCatalogModule
                 ? "basis-[44%] px-3 pb-2 pt-5 md:basis-[52%] md:px-5 md:py-8"
+                : isContractsModule
+                  ? "basis-[50%] px-2 pb-0 pt-4 md:basis-[48%] md:px-3 md:py-4"
                 : "basis-[52%] p-4 md:basis-auto md:flex-1 md:p-8"
             }`}
           >
             <motion.div
-              className={`relative w-full ${isCatalogModule ? "h-full max-h-[300px] md:max-h-none" : "h-full"}`}
+              className={`relative w-full ${
+                isCatalogModule
+                  ? "h-full max-h-[300px] md:max-h-none"
+                  : isContractsModule
+                    ? "h-full min-h-[280px] overflow-hidden rounded-[30px] md:min-h-0 md:rounded-[36px]"
+                    : "h-full"
+              }`}
               animate={{ opacity: open ? 1 : 0, scale: open ? 1 : 0.94 }}
               transition={{ duration: 0.5, delay: open ? 0.2 : 0, ease: [0.22, 1, 0.36, 1] }}
             >
@@ -155,7 +164,13 @@ export function ExpandedModulePanel({
                 alt={`Mockup do módulo ${module.name}`}
                 fill
                 sizes="(max-width: 768px) 90vw, 45vw"
-                className={`object-contain ${isCatalogModule ? "drop-shadow-[0_36px_70px_rgba(20,38,28,0.16)]" : ""}`}
+                className={`${
+                  isContractsModule
+                    ? "object-cover object-[76%_52%] md:object-[78%_50%]"
+                    : "object-contain"
+                } ${isCatalogModule ? "drop-shadow-[0_36px_70px_rgba(20,38,28,0.16)]" : ""} ${
+                  isContractsModule ? "drop-shadow-[0_28px_70px_rgba(17,24,39,0.14)]" : ""
+                }`}
                 priority
               />
             </motion.div>
@@ -163,7 +178,11 @@ export function ExpandedModulePanel({
 
           <div
             className={`flex flex-1 flex-col justify-center overflow-y-auto px-6 pb-6 pt-1 md:overflow-visible md:px-8 md:py-10 ${
-              isCatalogModule ? "gap-4 md:pr-12" : "gap-2.5 md:gap-5 md:pr-14"
+              isCatalogModule
+                ? "gap-4 md:pr-12"
+                : isContractsModule
+                  ? "gap-4 md:pl-12 md:pr-10"
+                  : "gap-2.5 md:gap-5 md:pr-14"
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -180,21 +199,31 @@ export function ExpandedModulePanel({
             <div className="min-h-0 overflow-y-auto pr-1 md:overflow-visible md:pr-0">
               <p
                 className={`text-pretty text-[13px] leading-relaxed text-muted-foreground md:text-[14.5px] ${
-                  isCatalogModule ? "max-w-lg" : "max-w-md"
+                  isCatalogModule ? "max-w-lg" : isContractsModule ? "max-w-[28rem]" : "max-w-md"
                 }`}
               >
                 {module.longDescription}
               </p>
 
-              <ul className={`flex flex-col ${isCatalogModule ? "mt-5 gap-3.5 md:mt-6" : "mt-4 gap-2 md:mt-5 md:gap-2.5"}`}>
+              <ul
+                className={`flex flex-col ${
+                  isCatalogModule
+                    ? "mt-5 gap-3.5 md:mt-6"
+                    : isContractsModule
+                      ? "mt-6 gap-4"
+                      : "mt-4 gap-2 md:mt-5 md:gap-2.5"
+                }`}
+              >
                 {module.benefits.map((benefit) => (
                   <li
                     key={typeof benefit === "string" ? benefit : benefit.title}
-                    className={`flex items-start gap-2.5 text-foreground/90 ${isCatalogModule ? "text-[13px] md:text-[14px]" : "text-[12.5px] md:text-[14px]"}`}
+                    className={`flex items-start gap-2.5 text-foreground/90 ${
+                      isCatalogModule ? "text-[13px] md:text-[14px]" : isContractsModule ? "text-[14px]" : "text-[12.5px] md:text-[14px]"
+                    }`}
                   >
                     <span
                       className={`mt-0.5 flex shrink-0 items-center justify-center rounded-full bg-eme-soft ${
-                        isCatalogModule ? "h-5 w-5 md:h-6 md:w-6" : "h-4 w-4 md:h-5 md:w-5"
+                        isCatalogModule ? "h-5 w-5 md:h-6 md:w-6" : isContractsModule ? "h-6 w-6" : "h-4 w-4 md:h-5 md:w-5"
                       }`}
                     >
                       <Check className="h-2.5 w-2.5 text-eme md:h-3 md:w-3" strokeWidth={2.5} aria-hidden />
@@ -245,15 +274,15 @@ export function ExpandedModulePanel({
                 </div>
               ) : null}
 
-              <div className={isCatalogModule ? "pt-5 md:pt-6" : "pt-4 md:pt-5"}>
+              <div className={isCatalogModule ? "pt-5 md:pt-6" : isContractsModule ? "pt-6" : "pt-4 md:pt-5"}>
                 <button
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-full bg-eme text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_14px_30px_-14px_rgba(28,120,60,0.7)] transition-transform hover:-translate-y-0.5 md:text-[14px] ${
-                    isCatalogModule ? "px-6 py-3" : "px-6 py-2.5"
+                    isCatalogModule || isContractsModule ? "px-6 py-3" : "px-6 py-2.5"
                   }`}
                 >
                   <span>{module.cta}</span>
-                  {isCatalogModule ? <ArrowUpRight className="h-4 w-4" strokeWidth={1.9} aria-hidden /> : null}
+                  {isCatalogModule || isContractsModule ? <ArrowUpRight className="h-4 w-4" strokeWidth={1.9} aria-hidden /> : null}
                 </button>
               </div>
             </div>
