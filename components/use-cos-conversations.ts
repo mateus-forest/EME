@@ -21,6 +21,12 @@ export type CosConversationSummary = {
   lastInteractionAt: string
 }
 
+export type CosResponseOption = {
+  id: string
+  label: string
+  description?: string
+}
+
 export type CosConversationItem = {
   id: string
   role: "user" | "assistant"
@@ -29,6 +35,7 @@ export type CosConversationItem = {
   action?: string | null
   actionStatus?: string | null
   confirmRequired?: boolean
+  options?: CosResponseOption[]
   sourceMessage?: string
   sourceInteractionId?: string
   createdAt?: string
@@ -39,6 +46,7 @@ export type PendingConfirmation = {
   sourceMessage: string
   sourceInteractionId: string
   attachments?: CosComposerAttachment[]
+  options?: CosResponseOption[]
 }
 
 type AssistantMessageResponse = {
@@ -50,6 +58,31 @@ type AssistantMessageResponse = {
   error?: string
   confirmRequired?: boolean
   conversation?: CosConversationSummary | null
+  metadata?: {
+    workflow?: {
+      pendingInput?: {
+        parsedData?: {
+          options?: unknown
+        } | null
+      } | null
+    } | null
+  } | null
+}
+
+function parseCosResponseOptions(value: unknown): CosResponseOption[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const options = value
+    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .filter((item) => typeof item.id === "string" && typeof item.label === "string")
+    .map((item) => ({
+      id: item.id as string,
+      label: item.label as string,
+      description: typeof item.description === "string" ? item.description : undefined,
+    }))
+
+  return options.length > 0 ? options : undefined
 }
 
 type ConversationDetailResponse = {
@@ -75,6 +108,48 @@ type UseCosConversationsOptions = {
   workspaceContext?: Partial<CosWorkspaceContext> | null
 }
 
+type CosConversationCache = {
+  conversation: CosConversationItem[]
+  conversations: CosConversationSummary[]
+  activeConversationId: string
+  pendingConfirmation: PendingConfirmation | null
+}
+
+const COS_CONVERSATION_CACHE_KEY = "eme-cos-conversation-cache"
+
+function readConversationCache() {
+  if (typeof window === "undefined") return null
+
+  try {
+    const raw = window.sessionStorage.getItem(COS_CONVERSATION_CACHE_KEY)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as Partial<CosConversationCache> | null
+    if (!parsed || typeof parsed !== "object") return null
+
+    return {
+      conversation: Array.isArray(parsed.conversation) ? parsed.conversation : [],
+      conversations: Array.isArray(parsed.conversations) ? parsed.conversations : [],
+      activeConversationId: typeof parsed.activeConversationId === "string" ? parsed.activeConversationId : "",
+      pendingConfirmation: parsed.pendingConfirmation && typeof parsed.pendingConfirmation === "object"
+        ? (parsed.pendingConfirmation as PendingConfirmation)
+        : null,
+    } satisfies CosConversationCache
+  } catch {
+    return null
+  }
+}
+
+function writeConversationCache(cache: CosConversationCache) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.sessionStorage.setItem(COS_CONVERSATION_CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    // Ignore cache persistence errors and keep the live conversation state.
+  }
+}
+
 export function useCosConversations({
   assistantEnabled,
   assistantCredits,
@@ -98,6 +173,7 @@ export function useCosConversations({
   const isMountedRef = useRef(true)
   const conversationListRequestIdRef = useRef(0)
   const openConversationRequestIdRef = useRef(0)
+  const hydratedFromCacheRef = useRef(false)
 
   const resolvedWorkspaceContext = useMemo(
     () =>
@@ -138,13 +214,23 @@ export function useCosConversations({
     return nextConversations
   }, [])
 
-  const openConversation = useCallback(async (conversationId: string) => {
+  const openConversation = useCallback(async (
+    conversationId: string,
+    options?: {
+      preserveVisibleConversation?: boolean
+      skipLoadingState?: boolean
+    },
+  ) => {
     const requestId = ++openConversationRequestIdRef.current
-    setIsConversationLoading(true)
+    if (!options?.skipLoadingState) {
+      setIsConversationLoading(true)
+    }
     setChatFeedback("")
     setActiveConversationId(conversationId)
-    setConversation([])
-    setPendingConfirmation(null)
+    if (!options?.preserveVisibleConversation) {
+      setConversation([])
+      setPendingConfirmation(null)
+    }
 
     try {
       const response = await fetch(`/api/assistant/eme/conversations/${conversationId}`, {
@@ -314,6 +400,7 @@ export function useCosConversations({
         setActiveConversationId(data.conversation.id)
       }
 
+      const responseOptions = parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.parsedData?.options)
       const assistantMessage: CosConversationItem = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -322,6 +409,7 @@ export function useCosConversations({
         action: data?.action ?? options?.action ?? null,
         actionStatus: data?.actionStatus ?? "success",
         confirmRequired: Boolean(data?.confirmRequired),
+        options: responseOptions,
         sourceMessage: normalizedMessage,
         sourceInteractionId: "",
         createdAt: new Date().toISOString(),
@@ -336,6 +424,7 @@ export function useCosConversations({
           sourceMessage: normalizedMessage,
           sourceInteractionId: assistantMessage.id,
           attachments: options?.attachments ?? [],
+          options: responseOptions,
         })
         setChatFeedback("Aguardando sua confirmacao.")
       } else {
@@ -392,6 +481,34 @@ export function useCosConversations({
     })
   }, [pendingConfirmation, sendCosMessage])
 
+  const selectPendingOption = useCallback(async (option: CosResponseOption) => {
+    if (!pendingConfirmation) return
+    await sendCosMessage(option.label, { visibleMessage: option.label })
+  }, [pendingConfirmation, sendCosMessage])
+
+  useEffect(() => {
+    if (hydratedFromCacheRef.current) return
+    hydratedFromCacheRef.current = true
+
+    const cached = readConversationCache()
+    if (!cached) return
+
+    setConversation(cached.conversation)
+    setConversations(cached.conversations)
+    setActiveConversationId(cached.activeConversationId)
+    setPendingConfirmation(cached.pendingConfirmation)
+    setIsBootstrappingConversation(false)
+  }, [])
+
+  useEffect(() => {
+    writeConversationCache({
+      conversation,
+      conversations,
+      activeConversationId,
+      pendingConfirmation,
+    })
+  }, [activeConversationId, conversation, conversations, pendingConfirmation])
+
   useEffect(() => {
     if (!bootstrapEnabled) {
       // Bootstrap hasn't run yet: keep the skeleton up. If it already ran,
@@ -409,14 +526,28 @@ export function useCosConversations({
     }
     hasBootstrappedRef.current = true
 
-    setIsBootstrappingConversation(true)
-    setConversation([])
-    setPendingConfirmation(null)
-    setActiveConversationId("")
+    const cached = readConversationCache()
+
+    setIsBootstrappingConversation(!cached)
+    if (!cached) {
+      setConversation([])
+      setPendingConfirmation(null)
+      setActiveConversationId("")
+    }
     loadConversations()
       .then((items) => {
-        if (autoOpenLatest && items[0]) {
-          return openConversation(items[0].id)
+        const preferredConversationId =
+          cached?.activeConversationId && items.some((item) => item.id === cached.activeConversationId)
+            ? cached.activeConversationId
+            : autoOpenLatest
+              ? (items[0]?.id ?? "")
+              : ""
+
+        if (preferredConversationId) {
+          return openConversation(preferredConversationId, {
+            preserveVisibleConversation: Boolean(cached?.activeConversationId === preferredConversationId),
+            skipLoadingState: Boolean(cached?.activeConversationId === preferredConversationId),
+          })
         }
         return null
       })
@@ -453,6 +584,7 @@ export function useCosConversations({
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,
+    selectPendingOption,
   }
 }
 

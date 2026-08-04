@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
+import { CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -58,8 +59,8 @@ type FinancialConfigResponse = {
 }
 
 export function BrokerPortal() {
-  const { properties } = useBrokerProperties()
-  const { profile, isLoading: isProfileLoading } = useBrokerProfile()
+  const { properties, isLoading: isPropertiesLoading } = useBrokerProperties()
+  const { profile } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
@@ -72,6 +73,10 @@ export function BrokerPortal() {
   const [isMobileOperationHealthOpen, setIsMobileOperationHealthOpen] = useState(false)
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
+  const [isAgendaLoaded, setIsAgendaLoaded] = useState(false)
+  const [isLeadsLoaded, setIsLeadsLoaded] = useState(false)
+  const [isDocumentsLoaded, setIsDocumentsLoaded] = useState(false)
+  const [isContractsLoaded, setIsContractsLoaded] = useState(false)
   const chatViewportRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -89,6 +94,7 @@ export function BrokerPortal() {
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,
+    selectPendingOption,
   } = useCosConversations({
     assistantEnabled,
     assistantCredits,
@@ -114,6 +120,9 @@ export function BrokerPortal() {
         if (!ignore && response.ok) setAgendaEvents(data?.events ?? [])
       })
       .catch(() => null)
+      .finally(() => {
+        if (!ignore) setIsAgendaLoaded(true)
+      })
 
     fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -121,6 +130,9 @@ export function BrokerPortal() {
         if (!ignore && response.ok) setLeads(data?.leads ?? [])
       })
       .catch(() => null)
+      .finally(() => {
+        if (!ignore) setIsLeadsLoaded(true)
+      })
 
     fetch("/api/brokers/documents?status=all", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -128,6 +140,9 @@ export function BrokerPortal() {
         if (!ignore && response.ok) setDocuments(data?.documents ?? [])
       })
       .catch(() => null)
+      .finally(() => {
+        if (!ignore) setIsDocumentsLoaded(true)
+      })
 
     fetch("/api/brokers/contracts", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -135,6 +150,9 @@ export function BrokerPortal() {
         if (!ignore && response.ok) setContracts(data?.contracts ?? [])
       })
       .catch(() => null)
+      .finally(() => {
+        if (!ignore) setIsContractsLoaded(true)
+      })
 
     fetch("/api/brokers/financial", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -171,10 +189,11 @@ export function BrokerPortal() {
   const hasResolvedBrokerName = profile.fullName.trim().length > 0
   const greetingLabel = brokerFirstName ? `Olá, ${brokerFirstName}.` : "Olá."
 
-  const isBootstrapPending = isProfileLoading || isBootstrappingConversation
+  const isBootstrapPending = isBootstrappingConversation
   const isConversationEmpty = !isBootstrapPending && !isConversationLoading && conversation.length === 0
   const composerMenuGroups = useMemo<CosPromptComposerMenuGroup[]>(
-    () => [
+    () =>
+      [
       {
         id: "skills",
         label: "Habilidades",
@@ -294,46 +313,63 @@ export function BrokerPortal() {
   }
 
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), [])
-  const leadScore = useMemo(() => averageScore(leads.map((lead) => lead.completion.score)), [leads])
-  const propertyScore = useMemo(() => averageScore(properties.map((property) => property.completion.score)), [properties])
+  const operationHealthReady =
+    !isPropertiesLoading && isAgendaLoaded && isLeadsLoaded && isDocumentsLoaded && isContractsLoaded
+  const leadScore = useMemo(
+    () => (isLeadsLoaded ? averageScore(leads.map((lead) => lead.completion.score)) : null),
+    [isLeadsLoaded, leads],
+  )
+  const propertyScore = useMemo(
+    () => (!isPropertiesLoading ? averageScore(properties.map((property) => property.completion.score)) : null),
+    [isPropertiesLoading, properties],
+  )
   const documentScore = useMemo(() => {
+    if (!isDocumentsLoaded) return null
     if (documents.length === 0) return 100
     const healthy = documents.filter((document) => document.status !== "draft").length
     return Math.round((healthy / documents.length) * 100)
-  }, [documents])
+  }, [documents, isDocumentsLoaded])
   const contractScore = useMemo(() => {
+    if (!isContractsLoaded) return null
     if (contracts.length === 0) return 100
     const healthy = contracts.filter((contract) => contract.status !== "cancelled").length
     return Math.round((healthy / contracts.length) * 100)
-  }, [contracts])
+  }, [contracts, isContractsLoaded])
   const agendaScore = useMemo(() => {
+    if (!isAgendaLoaded) return null
     if (agendaEvents.length === 0) return 100
     const overdue = agendaEvents.filter((event) => event.status === "pending" && event.date < todayKey).length
     return clampScore(100 - overdue * 12)
-  }, [agendaEvents, todayKey])
+  }, [agendaEvents, isAgendaLoaded, todayKey])
   const leadsScore = useMemo(() => {
+    if (!isLeadsLoaded) return null
     if (leads.length === 0) return 100
     const unattended = leads.filter((lead) => lead.status === "NEW").length
     return clampScore(Math.round(((leads.length - unattended) / leads.length) * 100))
-  }, [leads])
+  }, [isLeadsLoaded, leads])
 
   const operationHealth = useMemo(
-    () =>
-      clampScore(
-        Math.round((leadScore + propertyScore + documentScore + contractScore + agendaScore + leadsScore) / 6),
-      ),
+    () => {
+      const scores = [leadScore, propertyScore, documentScore, contractScore, agendaScore, leadsScore].filter(
+        (value): value is number => typeof value === "number",
+      )
+      if (!scores.length) return null
+      return clampScore(Math.round(scores.reduce((total, score) => total + score, 0) / scores.length))
+    },
     [agendaScore, contractScore, documentScore, leadScore, leadsScore, propertyScore],
   )
+  const displayedOperationHealth = operationHealth ?? 0
 
   const operationIndicators = useMemo(
-    () => [
-      { label: "Clientes", score: leadScore, icon: UsersRound },
-      { label: "Imóveis", score: propertyScore, icon: Home },
-      { label: "Documentos", score: documentScore, icon: FileText },
-      { label: "Contratos", score: contractScore, icon: FileText },
-      { label: "Agenda", score: agendaScore, icon: CalendarDays },
-      { label: "Leads", score: leadsScore, icon: UsersRound },
-    ],
+    () =>
+      [
+        typeof leadScore === "number" ? { label: "Clientes", score: leadScore, icon: UsersRound } : null,
+        typeof propertyScore === "number" ? { label: "Imóveis", score: propertyScore, icon: Home } : null,
+        typeof documentScore === "number" ? { label: "Documentos", score: documentScore, icon: FileText } : null,
+        typeof contractScore === "number" ? { label: "Contratos", score: contractScore, icon: FileText } : null,
+        typeof agendaScore === "number" ? { label: "Agenda", score: agendaScore, icon: CalendarDays } : null,
+        typeof leadsScore === "number" ? { label: "Leads", score: leadsScore, icon: UsersRound } : null,
+      ].filter((item): item is { label: string; score: number; icon: typeof UsersRound } => Boolean(item)),
     [agendaScore, contractScore, documentScore, leadScore, leadsScore, propertyScore],
   )
 
@@ -450,27 +486,14 @@ export function BrokerPortal() {
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{item.content}</p>
-                    {item.confirmRequired && pendingConfirmation?.sourceInteractionId === item.sourceInteractionId ? (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  onClick={() => void confirmPendingAction()}
-                                  disabled={isSending}
-                                  className="h-9 rounded-full bg-[#111111] px-4 text-xs font-semibold text-white hover:bg-[#050505] disabled:opacity-60"
-                                >
-                                  Confirmar
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  onClick={() => void cancelPendingAction()}
-                                  disabled={isSending}
-                                  className="h-9 rounded-full border border-black/[0.08] px-4 text-xs text-[#4B5563] hover:bg-white"
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            ) : null}
+                            <CosPendingAction
+                              item={item}
+                              pendingConfirmation={pendingConfirmation}
+                              isSending={isSending}
+                              onConfirm={() => void confirmPendingAction()}
+                              onCancel={() => void cancelPendingAction()}
+                              onSelectOption={(option) => void selectPendingOption(option)}
+                            />
                           </div>
                         </div>
                       ))}
@@ -490,7 +513,8 @@ export function BrokerPortal() {
               <div className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+40px)] z-20">
                 <div className="mx-auto flex w-full max-w-[48rem] flex-col items-end gap-2 px-1 pointer-events-auto">
                   <MobileOperationHealthTrigger
-                    operationHealth={operationHealth}
+                    operationHealth={displayedOperationHealth}
+                    isReady={operationHealthReady}
                     pendingCount={visiblePendingCount}
                     onClick={() => setIsMobileOperationHealthOpen(true)}
                   />
@@ -528,7 +552,7 @@ export function BrokerPortal() {
                       Saúde da operação
                     </p>
                     <p className="mt-2 text-[1.8rem] font-semibold tracking-[-0.05em] text-[#111111]">
-                      {operationHealth}%
+                      {operationHealthReady ? `${displayedOperationHealth}%` : "—"}
                     </p>
                   </div>
                   <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#667085]">
@@ -537,7 +561,10 @@ export function BrokerPortal() {
                 </button>
 
                 <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
-                  <div className="h-full rounded-full bg-[#009b3a] transition-all duration-300" style={{ width: `${operationHealth}%` }} />
+                  <div
+                    className={`h-full rounded-full bg-[#009b3a] ${operationHealthReady ? "" : "opacity-30"}`}
+                    style={{ width: `${operationHealthReady ? displayedOperationHealth : 0}%` }}
+                  />
                 </div>
 
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[#667085]">
@@ -603,7 +630,7 @@ export function BrokerPortal() {
                     Panorama geral
                   </p>
                   <p className="mt-2 text-[2rem] font-semibold tracking-[-0.05em] text-[#111111]">
-                    {operationHealth}%
+                    {operationHealthReady ? `${displayedOperationHealth}%` : "—"}
                   </p>
                 </div>
                 <span className="rounded-full bg-[#edf8f1] px-2.5 py-1 text-xs font-medium text-[#0d7a39]">
@@ -611,7 +638,10 @@ export function BrokerPortal() {
                 </span>
               </div>
               <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
-                <div className="h-full rounded-full bg-[#009b3a] transition-all duration-300" style={{ width: `${operationHealth}%` }} />
+                <div
+                  className={`h-full rounded-full bg-[#009b3a] ${operationHealthReady ? "" : "opacity-30"}`}
+                  style={{ width: `${operationHealthReady ? displayedOperationHealth : 0}%` }}
+                />
               </div>
             </div>
 
@@ -648,10 +678,12 @@ function pluralize(singular: string, plural: string, count: number) {
 
 function MobileOperationHealthTrigger({
   operationHealth,
+  isReady,
   pendingCount,
   onClick,
 }: {
   operationHealth: number
+  isReady: boolean
   pendingCount: number
   onClick: () => void
 }) {
@@ -660,11 +692,11 @@ function MobileOperationHealthTrigger({
       type="button"
       onClick={onClick}
       className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/94 px-3 py-2 text-left shadow-[0_10px_20px_rgba(15,23,42,0.045)] backdrop-blur-sm transition-colors hover:bg-white lg:hidden"
-      aria-label={`Abrir saúde da operação. Status atual ${operationHealth}% com ${pendingCount} pendências.`}
+      aria-label={`Abrir saúde da operação. Status atual ${isReady ? `${operationHealth}%` : "indisponível"} com ${pendingCount} pendências.`}
     >
       <span className="flex items-center gap-2">
         <Circle className="size-2.5 fill-[#009b3a] text-[#009b3a]" />
-        <span className="text-sm font-medium text-[#111111]">Saúde {operationHealth}%</span>
+        <span className="text-sm font-medium text-[#111111]">Saúde {isReady ? `${operationHealth}%` : "—"}</span>
       </span>
       <span className="rounded-full bg-[#edf8f1] px-2 py-0.5 text-[11px] font-medium text-[#0d7a39]">
         {pendingCount}

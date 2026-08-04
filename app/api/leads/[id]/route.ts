@@ -1,4 +1,3 @@
-import { LeadStatus } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -116,16 +115,13 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return NextResponse.json({ error: "Acesso não permitido para este lead." }, { status: 403 })
     }
 
-    await prisma.lead.update({
+    await prisma.lead.delete({
       where: { id },
-      data: {
-        status: LeadStatus.ARCHIVED,
-      },
     })
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ deleted: true, id })
   } catch (caughtError) {
-    console.error("[api][leads][id] archive failed", {
+    console.error("[api][leads][id] delete failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
 
@@ -137,10 +133,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     }
 
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Clientes / arquivamento de lead")
+      return prismaSchemaMismatchResponse("Clientes / exclusao de lead")
     }
 
-    return NextResponse.json({ error: "Erro interno ao arquivar lead." }, { status: 500 })
+    return NextResponse.json({ error: "Erro interno ao excluir lead." }, { status: 500 })
   }
 }
 

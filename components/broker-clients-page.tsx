@@ -255,10 +255,12 @@ export function BrokerClientsPage() {
       setFeedbackTone("error")
       setFeedback(data?.error || "Não foi possível carregar seus clientes.")
       setHasLoadedClients(true)
-      return
+      return []
     }
-    setClients(data?.leads ?? [])
+    const nextClients = data?.leads ?? []
+    setClients(nextClients)
     setHasLoadedClients(true)
+    return nextClients
   }
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
@@ -328,18 +330,23 @@ export function BrokerClientsPage() {
         credentials: "include",
         cache: "no-store",
       })
-      const data = (await response.json().catch(() => null)) as { error?: string } | null
+      const data = (await response.json().catch(() => null)) as { deleted?: boolean; id?: string; error?: string } | null
 
-      if (!response.ok) {
+      if (!response.ok || !data?.deleted) {
         throw new Error(data?.error || "Não foi possível excluir o cliente.")
       }
 
-      setClients((current) => current.filter((item) => item.id !== client.id))
-      setSelectedClient((current) => (current?.id === client.id ? null : current))
-      dispatchEntitySync({ type: "lead", entityId: client.id })
+      const deletedClientId = data.id || client.id
+      const nextClients = await loadClients()
+
+      setSelectedClient((current) => (current?.id === deletedClientId ? null : current))
+      setSelectedClientDraft((current) => (current.id === deletedClientId ? emptyClientForm : current))
+      dispatchEntitySync({ type: "lead", entityId: deletedClientId })
       setFeedbackTone("success")
       setFeedback("Cliente removido da carteira.")
-      router.push("/corretor/clientes")
+      if (!nextClients.some((item) => item.id === deletedClientId)) {
+        router.push("/corretor/clientes")
+      }
     } catch (caughtError) {
       setFeedbackTone("error")
       setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível excluir o cliente.")
