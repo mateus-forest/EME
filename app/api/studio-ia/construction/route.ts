@@ -1,16 +1,13 @@
-import { UserRole } from "@/lib/prisma-enums"
-
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
+import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
-import {
-  generateConstructionToListingImage,
-  studioConstructionRequestSchema,
-} from "@/lib/studio-ia-construction"
+import { generateConstructionToListingImage, studioConstructionRequestSchema } from "@/lib/studio-ia-construction"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +28,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
 
   if (!property) {
     return {
-      error: NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 }),
+      error: NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 }),
       property: null,
     }
   }
@@ -39,7 +36,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   if (user.role === UserRole.BROKER) {
     if (!user.broker || property.brokerId !== user.broker.id) {
       return {
-        error: NextResponse.json({ error: "Acesso não permitido a este imóvel." }, { status: 403 }),
+        error: NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 }),
         property: null,
       }
     }
@@ -48,7 +45,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   if (user.role === UserRole.AGENCY) {
     if (!user.ownedAgency || property.agencyId !== user.ownedAgency.id) {
       return {
-        error: NextResponse.json({ error: "Acesso não permitido a este imóvel." }, { status: 403 }),
+        error: NextResponse.json({ error: "Acesso nao permitido a este imovel." }, { status: 403 }),
         property: null,
       }
     }
@@ -67,11 +64,11 @@ export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
   }
 
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) {
-    return NextResponse.json({ error: "Acesso não permitido para este perfil." }, { status: 403 })
+    return NextResponse.json({ error: "Acesso nao permitido para este perfil." }, { status: 403 })
   }
 
   try {
@@ -81,7 +78,17 @@ export async function POST(request: NextRequest) {
 
     if (accessible.error) return accessible.error
     if (!accessible.property) {
-      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
+      return NextResponse.json({ error: "Imovel nao encontrado." }, { status: 404 })
+    }
+
+    const actionType = "studio_construction_image"
+    const creditsUsed = 40
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
     }
 
     const existingImages = getExistingImages(accessible.property)
@@ -97,9 +104,24 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker?.id ?? null,
         agencyId: user.ownedAgency?.id ?? null,
         planKey: user.plan ?? null,
+        creditsConsumed: creditsUsed,
       },
       () => generateConstructionToListingImage(payload),
     )
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      await consumeBrokerAiCredits({
+        brokerId: user.broker.id,
+        amount: creditsUsed,
+        actionType,
+        description: "Studio IA: transformar obra em imovel pronto",
+        metadata: {
+          source: "api/studio-ia/construction",
+          propertyId: accessible.property.id,
+        },
+      })
+    }
+
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {
       kind: "CONSTRUCTION",
@@ -142,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O servico de imoveis esta indisponivel no momento. Verifique a conexao com o banco de dados." },
         { status: 503 },
       )
     }

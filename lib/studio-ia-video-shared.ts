@@ -119,10 +119,10 @@ export const studioVideoTechnicalSpendLimits = {
 } as const
 
 export const studioVideoCreditPolicy = {
-  transformationPreview: 10,
-  transformationPreviewRegeneration: 10,
-  transformationVideoEconomic: 20,
-  transformationVideoFinal: 30,
+  transformationPreview: 12,
+  transformationPreviewRegeneration: 12,
+  transformationVideoEconomic: 38,
+  transformationVideoFinal: 38,
 } as const
 
 export type StudioVideoDuration = (typeof studioVideoSelectableDurations)[number]

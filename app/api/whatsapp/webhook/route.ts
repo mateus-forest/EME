@@ -13,8 +13,7 @@ import {
 } from "@/lib/eme-backend"
 import { executeCosCapability, formatCosCapabilityResponse, planCosCapability, type CosActionResult } from "@/lib/cos"
 import { isPrismaUnavailable } from "@/lib/auth-route"
-import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
-import { getEmeCreditCost } from "@/lib/eme-plans"
+import { consumeBrokerAiCredits, getCosInteractionCreditCost, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { LeadStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { markAsRead, sendTextMessage, sanitizeWhatsAppNumber } from "@/lib/whatsapp"
@@ -138,24 +137,6 @@ async function sendWebhookReply(to: string, text: string, phoneNumberId: string)
   }
 }
 
-async function reserveAssistantCredits(brokerId: string, creditsUsed: number) {
-  const reserved = await prisma.broker.updateMany({
-    where: {
-      id: brokerId,
-      aiAssistantEnabled: true,
-      aiCreditsBalance: { gte: creditsUsed },
-    },
-    data: {
-      aiCreditsBalance: { decrement: creditsUsed },
-      aiCreditsUsedThisMonth: { increment: creditsUsed },
-      aiMonthlyUsage: { increment: creditsUsed },
-      aiLastInteractionAt: new Date(),
-    },
-  })
-
-  return reserved.count > 0
-}
-
 async function findAssessorBroker(fromPhone: string) {
   const phone = normalizeComparablePhone(fromPhone)
   if (!phone) return null
@@ -264,7 +245,7 @@ async function processAssessorMessage({
   const pendingContext = await getPendingAssessorContext(brokerId)
   const plan = planCosCapability({ message, pendingContext, surface: "whatsapp" })
   const action = plan.action as AssessorAction
-  const creditsUsed: number = getEmeCreditCost(action)
+  const creditsUsed = getCosInteractionCreditCost([action])
   const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)
 
   if (!creditState.allowed) {
@@ -461,8 +442,9 @@ async function processCorretorMessage({
   const intent = inferCustomerIntent(message)
   const actionType = "qualifyLead"
   const creditsUsed = 1
+  const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)
 
-  if (!(await reserveAssistantCredits(brokerId, creditsUsed))) {
+  if (!creditState.allowed) {
     const response = "Obrigado pelo contato. Recebi sua mensagem e o corretor dará continuidade ao atendimento em breve."
     await prisma.emeMessage.create({
       data: {
@@ -513,6 +495,17 @@ async function processCorretorMessage({
   })
 
   await Promise.all([
+    consumeBrokerAiCredits({
+      brokerId,
+      amount: creditsUsed,
+      actionType,
+      description: "Corretor EME WhatsApp: qualificar lead",
+      metadata: {
+        source: "api/whatsapp/webhook",
+        whatsappMessageId: messageId,
+        phoneNumber: fromPhone,
+      },
+    }),
     prisma.emeMessage.create({
       data: {
         userId,

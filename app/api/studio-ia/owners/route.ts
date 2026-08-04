@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
@@ -24,6 +25,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const payload = studioOwnerRequestSchema.parse(body)
+    const actionType = "studio_owners_campaign"
+    const creditsUsed = 3
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+    }
+
     const result = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/owners",
@@ -32,9 +43,25 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker?.id ?? null,
         agencyId: user.ownedAgency?.id ?? null,
         planKey: user.plan ?? null,
+        creditsConsumed: creditsUsed,
       },
       () => generateOwnerStrategy(payload),
     )
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      await consumeBrokerAiCredits({
+        brokerId: user.broker.id,
+        amount: creditsUsed,
+        actionType,
+        description: "Studio IA: captar proprietarios",
+        metadata: {
+          source: "api/studio-ia/owners",
+          city: payload.city,
+          neighborhood: payload.neighborhood,
+        },
+      })
+    }
+
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {
       kind: "OWNERS",

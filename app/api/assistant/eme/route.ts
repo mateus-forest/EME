@@ -33,7 +33,12 @@ import {
   type CosWorkflow,
 } from "@/lib/cos"
 import { analyzeCosAttachments, mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
-import { consumeBrokerAiCredits, createInsufficientCreditsPayload, getBrokerAiCreditBalance } from "@/lib/eme-plan-service"
+import {
+  consumeBrokerAiCredits,
+  createInsufficientCreditsPayload,
+  getBrokerAiCreditBalance,
+  getCosInteractionCreditCost,
+} from "@/lib/eme-plan-service"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
@@ -669,7 +674,7 @@ export async function POST(request: NextRequest) {
           plan: executionPlan!,
         })
 
-    creditsUsed = workflow.steps.reduce((total, step) => total + getEmeCreditCost(step.action), 0)
+    creditsUsed = getCosInteractionCreditCost(workflow.steps.map((step) => step.action))
 
     if (brokerState.aiCreditsBalance < creditsUsed) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
@@ -726,12 +731,11 @@ export async function POST(request: NextRequest) {
             ? "error"
             : "success"
 
-      finalCreditsUsed = executionResult.executedSteps.reduce((total, step) => {
-        if ((step.result?.metadata as { noCharge?: boolean } | undefined)?.noCharge === true) {
-          return total
-        }
-        return total + getEmeCreditCost(step.action)
-      }, 0)
+      finalCreditsUsed = getCosInteractionCreditCost(
+        executionResult.executedSteps
+          .filter((step) => (step.result?.metadata as { noCharge?: boolean } | undefined)?.noCharge !== true)
+          .map((step) => step.action),
+      )
 
       if (finalCreditsUsed > 0) {
         await consumeBrokerAiCredits({

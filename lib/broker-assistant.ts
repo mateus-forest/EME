@@ -24,11 +24,11 @@ export type BrokerAssistantActionType = z.infer<typeof brokerAssistantSchema>["a
 
 const defaultActionCosts: Record<BrokerAssistantActionType, number> = {
   general: 1,
-  create_ad: 2,
-  improve_description: 1,
+  create_ad: 3,
+  improve_description: 2,
   reply_client: 1,
-  match_properties: 2,
-  analyze_catalog: 3,
+  match_properties: 1,
+  analyze_catalog: 2,
   lead_ideas: 1,
 }
 

@@ -8,6 +8,7 @@ import {
   isPrismaUnavailable,
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
@@ -86,6 +87,16 @@ export async function POST(request: NextRequest) {
     }
 
     const property = accessible.property
+    const actionType = "studio_instagram_campaign"
+    const creditsUsed = 10
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
+      if (!credits.allowed) {
+        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+      }
+    }
+
     const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
     const prompt = buildInstagramPrompt(payload, {
       id: property.id,
@@ -110,6 +121,7 @@ export async function POST(request: NextRequest) {
         brokerId: user.broker?.id ?? null,
         agencyId: user.ownedAgency?.id ?? null,
         planKey: user.plan ?? null,
+        creditsConsumed: creditsUsed,
       },
       () =>
         generateInstagramCampaign(payload, {
@@ -128,6 +140,19 @@ export async function POST(request: NextRequest) {
           status: propertyStatusLabel(property.status),
         }),
     )
+
+    if (user.role === UserRole.BROKER && user.broker) {
+      await consumeBrokerAiCredits({
+        brokerId: user.broker.id,
+        amount: creditsUsed,
+        actionType,
+        description: "Studio IA: campanha Instagram completa",
+        metadata: {
+          source: "api/studio-ia/instagram",
+          propertyId: property.id,
+        },
+      })
+    }
 
     const { model } = getOpenAIEnv()
     const campaign = await createStudioCampaign(user, {

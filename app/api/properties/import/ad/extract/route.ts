@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
     const image = formData.get("image")
     const hasImage = image instanceof File && image.size > 0
-    actionType = hasImage ? "smart_import_image" : "smart_import_text"
+    actionType = hasImage ? "smart_import_image" : sourceUrl ? "smart_import_url" : "smart_import_text"
     creditsUsed = getEmeCreditCost(actionType)
 
     if (hasImage) {

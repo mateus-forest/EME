@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { cleanText, generateCorretorEmeReply, inferCustomerIntent, normalizePhone, searchBrokerProperties } from "@/lib/eme-backend"
+import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { LeadStatus, UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -9,15 +10,17 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
-  if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
 
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
   if (forbidden) return forbidden
-  if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
+  if (!user.broker) return NextResponse.json({ error: "Corretor nao encontrado." }, { status: 404 })
 
   const body = await request.json().catch(() => null)
   const brokerId = cleanText(body?.brokerId, 120) || user.broker.id
-  if (brokerId !== user.broker.id) return NextResponse.json({ error: "Acesso não permitido para este corretor." }, { status: 403 })
+  if (brokerId !== user.broker.id) {
+    return NextResponse.json({ error: "Acesso nao permitido para este corretor." }, { status: 403 })
+  }
 
   const message = cleanText(body?.message, 3000)
   const phone = normalizePhone(body?.customerPhone ?? body?.phone)
@@ -32,19 +35,10 @@ export async function POST(request: NextRequest) {
   try {
     const intent = inferCustomerIntent(message)
     const creditsUsed = 1
-    const reserved = await prisma.broker.updateMany({
-      where: {
-        id: brokerId,
-        aiCreditsBalance: { gte: creditsUsed },
-      },
-      data: {
-        aiCreditsBalance: { decrement: creditsUsed },
-        aiCreditsUsedThisMonth: { increment: creditsUsed },
-      },
-    })
+    const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)
 
-    if (reserved.count === 0) {
-      return NextResponse.json({ error: "Créditos insuficientes para processar o Corretor EME." }, { status: 402 })
+    if (!creditState.allowed) {
+      return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
     }
 
     const propertySearch = await searchBrokerProperties(brokerId, message, 3)
@@ -57,10 +51,26 @@ export async function POST(request: NextRequest) {
     const lead = existingLead
       ? await prisma.lead.update({
           where: { id: existingLead.id },
-          data: { name: customerName || undefined, message, intent, source, status: LeadStatus.CONTACTED, propertyId: propertyId || undefined },
+          data: {
+            name: customerName || undefined,
+            message,
+            intent,
+            source,
+            status: LeadStatus.CONTACTED,
+            propertyId: propertyId || undefined,
+          },
         })
       : await prisma.lead.create({
-          data: { name: customerName || null, phone, message, intent, source, status: LeadStatus.NEW, brokerId, propertyId: propertyId || null },
+          data: {
+            name: customerName || null,
+            phone,
+            message,
+            intent,
+            source,
+            status: LeadStatus.NEW,
+            brokerId,
+            propertyId: propertyId || null,
+          },
         })
 
     const responseText = await generateCorretorEmeReply({
@@ -76,6 +86,17 @@ export async function POST(request: NextRequest) {
     })
 
     await Promise.all([
+      consumeBrokerAiCredits({
+        brokerId,
+        amount: creditsUsed,
+        actionType: "qualifyLead",
+        description: "Corretor EME: qualificar lead",
+        metadata: {
+          source: "api/corretor-eme/message",
+          phone,
+          propertyId: propertyId || null,
+        },
+      }),
       prisma.emeMessage.create({
         data: {
           brokerId,
@@ -114,7 +135,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: user.id,
           title: "Lead qualificado pelo Corretor EME",
-          message: `${customerName || phone} enviou uma mensagem com intenção de ${intent}.`,
+          message: `${customerName || phone} enviou uma mensagem com intencao de ${intent}.`,
           read: false,
         },
       }),
@@ -136,7 +157,9 @@ export async function POST(request: NextRequest) {
     console.error("[api][corretor-eme][message] failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
-    if (isPrismaUnavailable(caughtError)) return NextResponse.json({ error: "Serviço indisponível." }, { status: 503 })
-    return NextResponse.json({ error: "Não foi possível processar a mensagem do Corretor EME." }, { status: 500 })
+    if (isPrismaUnavailable(caughtError)) {
+      return NextResponse.json({ error: "Servico indisponivel." }, { status: 503 })
+    }
+    return NextResponse.json({ error: "Nao foi possivel processar a mensagem do Corretor EME." }, { status: 500 })
   }
 }

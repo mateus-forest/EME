@@ -111,7 +111,7 @@ export function BrokerNewPropertyPage() {
     subscription.isProfileResolved &&
     !isPlanBlocked &&
     !subscription.isUpgraded &&
-    totalPropertiesCount >= (subscription.propertyLimit ?? 3)
+    totalPropertiesCount >= (subscription.propertyLimit ?? 5)
 
   const previewImages = useMemo(() => images, [images])
   const previewNeighborhood = neighborhood.trim() || "Bairro não identificado"
