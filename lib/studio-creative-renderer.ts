@@ -29,16 +29,14 @@ type StudioCreativePayload = {
   width: number
   height: number
   badgeLabel: string
+  eyebrow: string
   title: string
-  subtitle: string
-  description: string
   location: string
+  areaLabel: string | null
   features: string[]
   price: string
   metricLabel: string
   metricSupport: string
-  ctaLabel: string
-  ctaSupport: string
   footer: string
   propertyImageSrc: string | null
   officialLogoDataUri: string
@@ -173,14 +171,13 @@ function buildStudioCreativePayload(input: {
   propertyImageSrc: string | null
 }): StudioCreativePayload {
   const content = asRecord(input.asset.content)
-  const title = resolveDisplayTitle(input.asset, content, input.campaign)
-  const subtitle = resolveDisplaySubtitle(input.asset, content, input.campaign)
-  const description = readPreferredString(content, ["description", "support"])
+  const eyebrow = mapPropertyTypeLabel(input.campaign.property?.type).toUpperCase()
+  const title = resolveDisplayTitle(input.campaign)
   const location = resolveDisplayLocation(input.campaign, content)
+  const areaLabel = readAreaLabel(input.campaign)
   const features = resolveDisplayFeatures(input.campaign, content)
   const price = resolveDisplayPrice(input.campaign, content)
-  const metric = resolveMetric(input.campaign, content)
-  const ctaSupport = resolveDisplayCta(input.campaign, content)
+  const metric = resolveMetric(content)
   const badgeLabel = resolveCampaignBadge(input.campaign)
   const gradientToken = sanitizeFileName(`${input.campaign.id}-${input.asset.id}-${input.template.id}`)
 
@@ -188,16 +185,14 @@ function buildStudioCreativePayload(input: {
     width: input.template.width,
     height: input.template.height,
     badgeLabel,
+    eyebrow,
     title,
-    subtitle,
-    description,
     location,
+    areaLabel,
     features,
     price,
     metricLabel: metric.label,
     metricSupport: metric.support,
-    ctaLabel: "AGENDE UMA VISITA",
-    ctaSupport,
     footer: "EME • SOLUÇÕES PARA CORRETORES",
     propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
     officialLogoDataUri: input.officialLogoDataUri,
@@ -208,16 +203,19 @@ function buildStudioCreativePayload(input: {
 
 function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCreativeRenderResult {
   const textRuns: StudioTextRun[] = []
-  const titleLayout = fitMultilineText(payload.title, 430, 62, 40, 3)
-  const subtitleLayout = fitMultilineText(payload.subtitle, 430, 56, 34, 2)
+  const eyebrowFontSize = 20
+  const eyebrowY = 270
+  const titleLayout = fitMultilineText(payload.title, 500, 64, 44, 2)
   const locationItem = buildLocationFeature(payload.location)
-  const featureItems = [locationItem, ...payload.features.map((feature) => buildFeatureItem(feature))].slice(0, 3)
-  const badgeWidth = Math.max(268, Math.min(390, 92 + payload.badgeLabel.length * 16))
-  const ctaSecondary = fitMultilineText(payload.ctaSupport, 242, 23, 18, 2)
+  const areaItem = buildAreaFeature(payload.areaLabel)
+  const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
+    .filter((item): item is StudioFeatureItem => Boolean(item))
+    .slice(0, 4)
+  const badgeWidth = measureBadgeWidth(payload.badgeLabel, 220)
 
-  const feedSubtitleY = stackTextBlockY(320, titleLayout.blockHeight, titleLayout.fontSize, 6, subtitleLayout.fontSize)
-  const feedSubtitleBottom = feedSubtitleY + subtitleLayout.blockHeight + subtitleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
-  const feedDividerY = Math.max(520, Math.round(feedSubtitleBottom + 32))
+  const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 10, titleLayout.fontSize)
+  const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
+  const dividerY = Math.max(500, Math.round(titleBottom + 28))
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -240,10 +238,10 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
     renderBottomWave(payload.width, payload.height, payload.waveId, false),
     renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeWidth, 60),
     renderLogo(payload.officialLogoDataUri, 915, 46, 146, 68),
-    renderMultilineText(textRuns, titleLayout.lines, 70, 320, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
-    renderMultilineText(textRuns, subtitleLayout.lines, 70, feedSubtitleY, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
-    renderDivider(70, feedDividerY, 96),
-    renderFeatureRow(textRuns, featureItems, 70, feedDividerY + 64, 468),
+    renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
+    renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
+    renderDivider(70, dividerY, 96),
+    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 940),
     renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
@@ -251,11 +249,9 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
       height: 128,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
+      metricValueFontSize: 38,
       metricSupport: payload.metricSupport,
-      ctaLabel: payload.ctaLabel,
-      ctaLines: ctaSecondary.lines,
-      ctaFontSize: ctaSecondary.fontSize,
-      ctaLineHeight: ctaSecondary.lineHeight,
+      cta: { lines: ["AGENDE", "SUA VISITA"], fontSize: 20, lineHeight: 24 },
     }),
     "</svg>",
   ].join("")
@@ -265,16 +261,20 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
 
 function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCreativeRenderResult {
   const textRuns: StudioTextRun[] = []
-  const titleLayout = fitMultilineText(payload.title, 420, 72, 46, 3)
-  const subtitleLayout = fitMultilineText(payload.subtitle, 420, 68, 40, 2)
+  const eyebrowFontSize = 22
+  const eyebrowY = 390
+  const titleLayout = fitMultilineText(payload.title, 420, 72, 50, 2)
   const locationItem = buildLocationFeature(payload.location)
-  const featureItems = [locationItem, ...payload.features.map((feature) => buildFeatureItem(feature))].slice(0, 3)
-  const badgeWidth = Math.max(338, Math.min(468, 124 + payload.badgeLabel.length * 16))
-  const ctaSecondary = fitMultilineText(payload.ctaSupport, 334, 28, 22, 2)
+  const areaItem = buildAreaFeature(payload.areaLabel)
+  const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
+    .filter((item): item is StudioFeatureItem => Boolean(item))
+    .slice(0, 4)
+  const badgeWidth = measureBadgeWidth(payload.badgeLabel, 300)
 
-  const storySubtitleY = stackTextBlockY(440, titleLayout.blockHeight, titleLayout.fontSize, 6, subtitleLayout.fontSize)
-  const storySubtitleBottom = storySubtitleY + subtitleLayout.blockHeight + subtitleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
-  const storyDividerY = Math.max(770, Math.round(storySubtitleBottom + 32))
+  const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
+  const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
+  const dividerY = Math.max(720, Math.round(titleBottom + 32))
+  const featureSpacing = featureItems.length > 3 ? 160 : 184
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -297,22 +297,19 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCre
     renderBottomWave(payload.width, payload.height, payload.waveId, true),
     renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeWidth, 66),
     renderLogo(payload.officialLogoDataUri, 810, 78, 184, 82),
-    renderMultilineText(textRuns, titleLayout.lines, 82, 440, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
-    renderMultilineText(textRuns, subtitleLayout.lines, 82, storySubtitleY, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
-    renderDivider(82, storyDividerY, 104),
-    renderFeatureStack(textRuns, featureItems, 82, storyDividerY + 72, 360),
+    renderSingleLineText(textRuns, payload.eyebrow, 82, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
+    renderMultilineText(textRuns, titleLayout.lines, 82, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
+    renderDivider(82, dividerY, 104),
+    renderFeatureStack(textRuns, featureItems, 82, dividerY + 72, 360, featureSpacing),
     renderMetricPanel(textRuns, {
       x: 80,
-      y: 1472,
-      width: 916,
-      height: 182,
+      y: 1560,
+      width: 460,
+      height: 150,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
+      metricValueFontSize: 40,
       metricSupport: payload.metricSupport,
-      ctaLabel: payload.ctaLabel,
-      ctaLines: ctaSecondary.lines,
-      ctaFontSize: ctaSecondary.fontSize,
-      ctaLineHeight: ctaSecondary.lineHeight,
     }),
     renderSingleLineText(textRuns, payload.footer, 540, 1808, 16, "500", "#f7f7f7", 0.26, "middle"),
     "</svg>",
@@ -351,14 +348,37 @@ function renderBottomWave(width: number, height: number, waveId: string, portrai
   ].join("")
 }
 
+const BADGE_ICON_LEFT_PAD = 22
+const BADGE_ICON_WIDTH = 38
+const BADGE_ICON_TEXT_GAP = 22
+const BADGE_FONT_SIZE = 22
+
+// Symmetric content-fit width (left icon pad == right text pad), replacing a fixed heuristic
+// that was tuned by eye against the old broken-font render and left the label visibly off-center
+// inside the pill once real glyph widths showed up.
+function measureBadgeWidth(label: string, minWidth: number) {
+  const textWidth = label.length * BADGE_FONT_SIZE * 0.56
+  const contentWidth = BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP + textWidth + BADGE_ICON_LEFT_PAD
+  return Math.max(minWidth, Math.round(contentWidth))
+}
+
 function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number) {
   const centerY = Math.round(height / 2)
   return [
     `<g transform="translate(${x} ${y})">`,
     `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="rgba(123,226,63,0.88)" stroke-width="2.1" />`,
-    renderFeatureIcon("badge", 22, centerY - 18, "#ffffff"),
+    renderFeatureIcon("badge", BADGE_ICON_LEFT_PAD, centerY - 18, "#ffffff"),
     "</g>",
-    renderSingleLineText(runs, label, x + 82, y + centerY + 9, 22, "500", "#ffffff", 0.01),
+    renderSingleLineText(
+      runs,
+      label,
+      x + BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP,
+      y + centerY + 9,
+      BADGE_FONT_SIZE,
+      "500",
+      "#ffffff",
+      0.01,
+    ),
   ].join("")
 }
 
@@ -392,17 +412,19 @@ function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: 
     .join("")
 }
 
-function renderFeatureStack(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, width: number) {
+function renderFeatureStack(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, width: number, spacing = 184) {
+  const dividerY = spacing - 30
+
   return items
     .map((item, index) => {
-      const offsetY = index * 184
+      const offsetY = index * spacing
       const groupY = y + offsetY
       const textLayout = fitMultilineText([item.line1, item.line2].filter(Boolean).join("\n"), width - 132, 20, 16, 3)
 
       return [
         `<g transform="translate(${x} ${groupY})">`,
         renderFeatureIcon(item.icon, 0, 6, "#73df30"),
-        index < items.length - 1 ? `<rect x="0" y="130" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
+        index < items.length - 1 ? `<rect x="0" y="${dividerY}" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
         "</g>",
         renderMultilineText(runs, textLayout.lines, x + 136, groupY + 46, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
       ].join("")
@@ -417,24 +439,40 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   height: number
   metricLabel: string
   metricValue: string
+  metricValueFontSize: number
   metricSupport: string
-  ctaLabel: string
-  ctaLines: string[]
-  ctaFontSize: number
-  ctaLineHeight: number
+  // Story's panel has no calendar/CTA section at all (see the two approved reference images side
+  // by side) — omit entirely rather than rendering an empty divider.
+  cta?: { lines: string[]; fontSize: number; lineHeight: number }
 }) {
-  const dividerX = Math.round(input.width * 0.41)
+  const dividerX = input.cta ? Math.round(input.width * 0.41) : 0
+
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
     `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(5,14,8,0.42)" stroke="rgba(123,226,63,0.72)" stroke-width="1.6" />`,
-    `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
-    renderFeatureIcon("calendar", dividerX + 28, Math.round((input.height - 62) / 2), "#73df30"),
+    input.cta
+      ? [
+          `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
+          renderFeatureIcon("calendar", dividerX + 28, Math.round((input.height - 62) / 2), "#73df30"),
+        ].join("")
+      : "",
     "</g>",
     renderSingleLineText(runs, input.metricLabel, input.x + 34, input.y + 40, 20, "500", "#ffffff", 0.01),
-    renderSingleLineText(runs, input.metricValue, input.x + 34, input.y + 94, input.width > 700 ? 44 : 38, "700", "#73df30", 0),
+    renderSingleLineText(runs, input.metricValue, input.x + 34, input.y + 94, input.metricValueFontSize, "700", "#73df30", 0),
     input.metricSupport ? renderSingleLineText(runs, input.metricSupport, input.x + 34, input.y + 128, 18, "400", "#ffffff", 0) : "",
-    renderSingleLineText(runs, input.ctaLabel, input.x + dividerX + 140, input.y + 72, 18, "500", "#ffffff", 0.01),
-    renderMultilineText(runs, input.ctaLines, input.x + dividerX + 140, input.y + 118, input.ctaFontSize, "500", "#73df30", input.ctaLineHeight, 0),
+    input.cta
+      ? renderMultilineText(
+          runs,
+          input.cta.lines,
+          input.x + dividerX + 140,
+          input.y + Math.round(input.height / 2) - 4,
+          input.cta.fontSize,
+          "700",
+          "#ffffff",
+          input.cta.lineHeight,
+          0,
+        )
+      : "",
   ].join("")
 }
 
@@ -474,77 +512,70 @@ function resolveCampaignBadge(campaign: StudioCampaignRecord) {
   return normalizeStudioText(goal.toUpperCase())
 }
 
-function resolveDisplayTitle(asset: CampaignAssetRecord, content: Record<string, unknown>, campaign: StudioCampaignRecord) {
-  if (asset.assetKey === "story") {
-    return readPreferredString(content, ["title", "line1"]) || buildDefaultHeadline(campaign)
-  }
+// Deliberately not sourced from the AI-generated title/highlight text (postFeed.title,
+// story.line1/line2): those are free-form marketing copy of unpredictable length, which is
+// exactly what caused the earlier overlap/truncation bugs. The approved design wants a short,
+// bold "ACTION + LOCATION" heading (e.g. "À VENDA • JARDINS"), which is reliably built from the
+// same structured property fields used elsewhere in this file, not natural-language content.
+function resolveDisplayTitle(campaign: StudioCampaignRecord) {
+  const action = mapPropertyAction(campaign.property?.purpose)
+  const location = campaign.property?.neighborhood?.trim() || campaign.property?.city?.trim()
+  if (!location) return action
 
-  return (
-    readPreferredString(content, ["title"]) ||
-    [readPreferredString(content, ["line1"]), readPreferredString(content, ["line2"])].filter(Boolean).join(" ") ||
-    buildDefaultHeadline(campaign)
-  )
+  return `${action} • ${normalizeStudioText(location).toUpperCase()}`
 }
 
-function resolveDisplaySubtitle(asset: CampaignAssetRecord, content: Record<string, unknown>, _campaign: StudioCampaignRecord) {
-  if (asset.assetKey === "story") {
-    return readPreferredString(content, ["subtitle", "line2", "kicker"]) || "Seu próximo endereço comercial"
-  }
-
-  return readPreferredString(content, ["subtitle", "highlight", "kicker"]) || "Pronto para destacar este imóvel"
+// Uppercase, bold action word for the new title. A grammatically correct Portuguese preposition
+// ("NOS Jardins" vs "NO Centro" vs "NA Vila Madalena") depends on the location name's gender and
+// number, which isn't data we have — using "•" as a separator avoids guessing wrong on properties
+// outside the one this was designed against.
+function mapPropertyAction(value: string | null | undefined) {
+  const normalized = (value || "").toUpperCase()
+  if (normalized.includes("RENT") || normalized.includes("LOC")) return "PARA LOCAÇÃO"
+  if (normalized.includes("SALE") || normalized.includes("VEND")) return "À VENDA"
+  return "EM DESTAQUE"
 }
 
 function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   return readPreferredString(content, ["location"]) || [campaign.property?.neighborhood, campaign.property?.city].filter(Boolean).join("\n")
 }
 
+// Area is intentionally not derived here anymore — it has its own dedicated spec slot
+// (buildAreaFeature, from readAreaLabel) between location and these, matching the approved
+// design's 4-item order (location, area, bathrooms, parking). Kept to 2 here so that slot plus
+// location plus these never exceed the template's 4-item budget.
 function resolveDisplayFeatures(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   const explicit = normalizeStringList(content.features)
-  if (explicit.length > 0) return explicit.slice(0, 3)
+  if (explicit.length > 0) return explicit.slice(0, 2)
 
   const derived: string[] = []
-  const area = readAreaLabel(campaign)
-  if (area) derived.push(`${area} | Área privativa`)
   if ((campaign.property?.bathrooms ?? 0) > 0) {
     derived.push(`${campaign.property?.bathrooms} banheiro${campaign.property?.bathrooms === 1 ? "" : "s"}`)
   }
   if ((campaign.property?.parkingSpots ?? 0) > 0) {
     derived.push(`${campaign.property?.parkingSpots} vaga${campaign.property?.parkingSpots === 1 ? "" : "s"}`)
   }
-  if (derived.length < 3 && (campaign.property?.bedrooms ?? 0) > 0) {
+  if (derived.length < 2 && (campaign.property?.bedrooms ?? 0) > 0) {
     derived.push(`${campaign.property?.bedrooms} dormitório${campaign.property?.bedrooms === 1 ? "" : "s"}`)
   }
 
-  return derived.slice(0, 3)
+  return derived.slice(0, 2)
 }
 
 function resolveDisplayPrice(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   return readPreferredString(content, ["price"]) || formatPriceLabel(campaign.property?.price)
 }
 
-function resolveMetric(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
-  const areaLabel = readAreaLabel(campaign)
+function resolveMetric(content: Record<string, unknown>) {
   // "support" deliberately excluded here: it's the Instagram post's general marketing caption
   // (up to 220 chars, e.g. "R$ 1.780.000 • 7 banheiros • 8 vagas"), not a short label for this
-  // single-line slot under the metric value — using it here overflowed the price panel.
-  const description = readPreferredString(content, ["description"])
-
+  // single-line slot under the metric value — using it here overflowed the price panel. The area
+  // label isn't used as a fallback either anymore: it now has its own dedicated spec item (see
+  // buildAreaFeature), and repeating it here duplicated it under the price in the approved design.
   return {
     label: readPreferredString(content, ["metricLabel"]) || "PREÇO",
-    support: readPreferredString(content, ["metricSupport"]) || areaLabel || description || "",
+    support: readPreferredString(content, ["metricSupport"]) || "",
   }
-}
-
-function resolveDisplayCta(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
-  const inlineCta = readPreferredString(content, ["cta"])
-  if (inlineCta) return inlineCta
-
-  const ctaAsset = campaign.assets.find((asset) => asset.assetKey === "cta")
-  if (typeof ctaAsset?.content === "string" && ctaAsset.content.trim()) {
-    return normalizeStudioText(ctaAsset.content)
-  }
-
-  return "Fale com um corretor"
 }
 
 function buildLocationFeature(location: string): StudioFeatureItem {
@@ -558,6 +589,13 @@ function buildLocationFeature(location: string): StudioFeatureItem {
     line1: line1 || "Localização",
     line2: line2 || undefined,
   }
+}
+
+// Only added when the property actually has an area on file (lib/property "legalData"
+// privateArea/totalArea) — no fabricated placeholder when that data isn't available.
+function buildAreaFeature(areaLabel: string | null): StudioFeatureItem | null {
+  if (!areaLabel) return null
+  return { icon: "area", line1: areaLabel, line2: "Área útil" }
 }
 
 function buildFeatureItem(feature: string): StudioFeatureItem {
@@ -700,15 +738,6 @@ function markLastLineTruncated(lines: string[], maxCharsPerLine: number) {
   return [...lines.slice(0, lastIndex), `${trimmed}…`]
 }
 
-function buildDefaultHeadline(campaign: StudioCampaignRecord) {
-  const propertyTitle = campaign.property?.title?.trim()
-  if (propertyTitle) return normalizeStudioText(propertyTitle)
-
-  const typeLabel = mapPropertyTypeLabel(campaign.property?.type)
-  const purposeLabel = mapPurposeHeadline(campaign.property?.purpose)
-  return `${typeLabel} ${purposeLabel}`.trim()
-}
-
 function mapPropertyTypeLabel(value: string | null | undefined) {
   switch ((value || "").toUpperCase()) {
     case "HOUSE":
@@ -726,12 +755,6 @@ function mapPropertyTypeLabel(value: string | null | undefined) {
     default:
       return "Apartamento"
   }
-}
-
-function mapPurposeHeadline(value: string | null | undefined) {
-  const normalized = (value || "").toUpperCase()
-  if (normalized.includes("RENT") || normalized.includes("LOC")) return "para locação"
-  return "em destaque"
 }
 
 function readAreaLabel(campaign: StudioCampaignRecord) {
