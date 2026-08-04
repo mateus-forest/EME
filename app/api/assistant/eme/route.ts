@@ -18,6 +18,7 @@ import {
   createWorkflowFromExecutionPlan,
   formatCosExecutionPlanResponse,
   getActiveWorkflow,
+  getConversationMemory,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
   isCosCapabilityAvailableOnSurface,
@@ -183,10 +184,14 @@ function sanitizeIncomingAttachments(value: unknown) {
     .filter((item) => item.name)
 }
 
-async function persistConversationWorkflow(conversationId: string, workflow: CosWorkflow | null) {
+async function persistConversationWorkflow(
+  conversationId: string,
+  workflow: CosWorkflow | null,
+  memory?: import("@/lib/cos").CosConversationMemory | null,
+) {
   return prisma.brokerDocument.update({
     where: { id: conversationId },
-    data: { content: stringifyConversationWorkflowContent(workflow) },
+    data: { content: stringifyConversationWorkflowContent(workflow, memory) },
     select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
   })
 }
@@ -204,6 +209,27 @@ function workflowMetadata(workflow: CosWorkflow | null) {
         completedAt: workflow.completedAt,
       }
     : null
+}
+
+function buildConversationMemory(input: {
+  current: import("@/lib/cos").CosConversationMemory | null
+  action: AssessorAction
+  message: string
+  leadId?: string | null
+  propertyId?: string | null
+  documentId?: string | null
+  attachments?: CosIncomingAttachment[]
+}) {
+  return {
+    ...input.current,
+    lastAction: input.action,
+    lastUserMessage: input.message,
+    leadId: input.leadId ?? input.current?.leadId ?? null,
+    propertyId: input.propertyId ?? input.current?.propertyId ?? null,
+    documentId: input.documentId ?? input.current?.documentId ?? null,
+    attachments: input.attachments && input.attachments.length > 0 ? input.attachments : (input.current?.attachments ?? []),
+    updatedAt: new Date().toISOString(),
+  }
 }
 
 export async function GET() {
@@ -396,8 +422,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
     const resumableWorkflow = shouldResumeWorkflow(activeWorkflow) ? activeWorkflow : null
+    const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
+    const executionPayload = {
+      ...(conversationMemory?.leadId ? { leadId: conversationMemory.leadId } : {}),
+      ...(conversationMemory?.propertyId ? { propertyId: conversationMemory.propertyId } : {}),
+      ...(conversationMemory?.documentId ? { documentId: conversationMemory.documentId } : {}),
+      ...(effectiveAttachments.length > 0 ? { attachments: effectiveAttachments } : {}),
+    }
     const attachmentAnalysis = resumableWorkflow
       ? {
           executionMessage: message,
@@ -456,13 +490,13 @@ export async function POST(request: NextRequest) {
         workflow: workflowMetadata(cancelledWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
-        attachments,
+        attachments: effectiveAttachments,
       } as Prisma.InputJsonObject
 
       const [updatedBroker, persistedConversation, touchedConversation] = await Promise.all([
         getBrokerCredits(user.broker.id),
         cancelledWorkflow && conversationDocument
-          ? persistConversationWorkflow(conversationDocument.id, cancelledWorkflow)
+          ? persistConversationWorkflow(conversationDocument.id, cancelledWorkflow, conversationMemory)
           : Promise.resolve(conversationDocument),
         touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
         prisma.aiAssistantInteraction.create({
@@ -538,7 +572,7 @@ export async function POST(request: NextRequest) {
         workflow: workflowMetadata(resumableWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
-        attachments,
+        attachments: effectiveAttachments,
       } as Prisma.InputJsonObject
 
       const [updatedBroker, updatedConversation] = await Promise.all([
@@ -618,12 +652,23 @@ export async function POST(request: NextRequest) {
         workflow: workflowMetadata(pendingWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
-        attachments,
+        attachments: effectiveAttachments,
       } as Prisma.InputJsonObject
 
       const [updatedBroker, _persistedConversation, updatedConversation] = await Promise.all([
         getBrokerCredits(user.broker.id),
-        conversationDocument ? persistConversationWorkflow(conversationDocument.id, pendingWorkflow) : Promise.resolve(conversationDocument),
+        conversationDocument
+          ? persistConversationWorkflow(
+              conversationDocument.id,
+              pendingWorkflow,
+              buildConversationMemory({
+                current: conversationMemory,
+                action,
+                message: displayMessage || message,
+                attachments: effectiveAttachments,
+              }),
+            )
+          : Promise.resolve(conversationDocument),
         touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
         prisma.aiAssistantInteraction.create({
           data: {
@@ -721,7 +766,7 @@ export async function POST(request: NextRequest) {
             message: executionMessage,
             confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
             workspace,
-            payload: attachments.length > 0 ? { attachments } : undefined,
+            payload: executionPayload,
           }),
       )
 
@@ -801,6 +846,15 @@ export async function POST(request: NextRequest) {
     }
 
     const actionMetadata = (executionResult?.metadata ?? {}) as Prisma.InputJsonObject
+    const nextConversationMemory = buildConversationMemory({
+      current: conversationMemory,
+      action,
+      message: displayMessage || message,
+      leadId: executionResult?.leadId ?? null,
+      propertyId: executionResult?.propertyId ?? null,
+      documentId: typeof actionMetadata.documentId === "string" ? actionMetadata.documentId : null,
+      attachments: effectiveAttachments,
+    })
     const plannedCapabilities = (executionPlan?.steps ?? workflow.steps).map((step) => step.capabilityId)
     const executedCapabilities = executionResult?.executedSteps.map((step) => step.capabilityId) ?? []
     const skippedCapabilities = plannedCapabilities.filter((capabilityId) => !executedCapabilities.includes(capabilityId))
@@ -830,12 +884,12 @@ export async function POST(request: NextRequest) {
       workflow: workflowMetadata(updatedWorkflow),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
-      attachments,
+      attachments: effectiveAttachments,
     } as Prisma.InputJsonObject
 
     const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([
       getBrokerCredits(user.broker.id),
-      conversationDocument ? persistConversationWorkflow(conversationDocument.id, updatedWorkflow) : Promise.resolve(conversationDocument),
+      conversationDocument ? persistConversationWorkflow(conversationDocument.id, updatedWorkflow, nextConversationMemory) : Promise.resolve(conversationDocument),
       touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
       prisma.aiAssistantInteraction.create({
         data: {

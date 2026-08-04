@@ -2,6 +2,7 @@ import { executeCosExecutionPlan } from "@/lib/cos/executor"
 import { createStepPlanForCapability } from "@/lib/cos/execution-planner"
 import type { Prisma } from "@prisma/client"
 import type {
+  CosConversationMemory,
   CosExecutionPlan,
   CosExecutionPlanResult,
   CosExecutionStep,
@@ -15,10 +16,11 @@ import type { PendingAssessorContext } from "@/lib/eme-backend"
 
 type ConversationEnvelope = {
   workflow: CosWorkflow | null
+  memory?: CosConversationMemory | null
 }
 
 function emptyEnvelope(): ConversationEnvelope {
-  return { workflow: null }
+  return { workflow: null, memory: null }
 }
 
 function recordValue(value: unknown) {
@@ -171,14 +173,15 @@ export function parseConversationWorkflowContent(content: string | null | undefi
   try {
     const parsed = JSON.parse(content) as Partial<ConversationEnvelope>
     const workflow = parsed?.workflow && typeof parsed.workflow === "object" ? (parsed.workflow as CosWorkflow) : null
-    return { workflow }
+    const memory = parsed?.memory && typeof parsed.memory === "object" ? (parsed.memory as CosConversationMemory) : null
+    return { workflow, memory }
   } catch {
     return emptyEnvelope()
   }
 }
 
-export function stringifyConversationWorkflowContent(workflow: CosWorkflow | null) {
-  return JSON.stringify({ workflow })
+export function stringifyConversationWorkflowContent(workflow: CosWorkflow | null, memory?: CosConversationMemory | null) {
+  return JSON.stringify({ workflow, memory: memory ?? null })
 }
 
 export function getActiveWorkflow(content: string | null | undefined) {
@@ -186,6 +189,10 @@ export function getActiveWorkflow(content: string | null | undefined) {
   if (!envelope.workflow) return null
   if (["completed", "failed", "cancelled"].includes(envelope.workflow.status)) return null
   return envelope.workflow
+}
+
+export function getConversationMemory(content: string | null | undefined) {
+  return parseConversationWorkflowContent(content).memory ?? null
 }
 
 export function createWorkflowFromExecutionPlan(input: {

@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
-import { CosPendingAction } from "@/components/cos-pending-action"
+import { CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -537,6 +537,7 @@ export function BrokerPortal() {
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{item.content}</p>
+                            <CosMessageAttachments attachments={item.attachments} inverted={item.role === "user"} />
                             <CosPendingAction
                               item={item}
                               pendingConfirmation={pendingConfirmation}

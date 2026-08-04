@@ -398,3 +398,23 @@ export type CosWorkflow = {
   pausedAt: string | null
   totalPausedMs: number
 }
+
+export type CosConversationMemoryAttachment = {
+  id: string
+  name: string
+  type: string
+  size: number
+  category: "image" | "document" | "video" | "files"
+  dataUrl?: string
+  textContent?: string
+}
+
+export type CosConversationMemory = {
+  lastAction?: AssessorAction | null
+  lastUserMessage?: string
+  leadId?: string | null
+  propertyId?: string | null
+  documentId?: string | null
+  attachments?: CosConversationMemoryAttachment[]
+  updatedAt: string
+}

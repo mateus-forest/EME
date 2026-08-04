@@ -5,6 +5,7 @@ const NAME_STOPWORDS = new Set([
   "um", "uma", "uns", "umas", "o", "a", "os", "as", "e",
   "de", "da", "do", "das", "dos", "ao", "aos",
   "este", "esta", "esse", "essa", "isso", "aquele", "aquela",
+  "cliente", "lead", "contato", "chamado", "chamada", "nome", "nomeado", "nomeada",
 ])
 
 const CLIENT_COMMAND_WORDS =
@@ -16,7 +17,7 @@ const RESIDUAL_INSTRUCTION_PATTERN =
   /\b(anexe|anexar|vincule|vincular|junte|juntar|atualize|atualizar|edite|editar|mude|mudar|corrija|corrigir|busque|buscar|encontre|encontrar|traga|trazer|quero|queria|preciso|favor|documento|imovel|imóvel)\b/i
 
 const NAME_MARKER_PATTERN =
-  /\b(?:chamad[oa]|nomead[oa]|apelidad[oa]|de nome|nome)\b[:]?\s+([\p{L}][\p{L}'’-]*(?:\s+[\p{L}][\p{L}'’-]*){0,1})/iu
+  /\b(?:chamad[oa]|nomead[oa]|apelidad[oa]|de nome|nome)\b[:]?\s+["']?([\p{L}][\p{L}'’-]*(?:\s+[\p{L}][\p{L}'’-]*){0,3})["']?/iu
 
 function collapseWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim()
@@ -34,6 +35,10 @@ function titleCase(value: string) {
     .join(" ")
 }
 
+function stripTrailingPhone(value: string) {
+  return value.replace(/(?:\+?\d[\d\s().-]{7,}\d)\s*$/u, "").trim()
+}
+
 function looksLikeRawCommandSentence(value: string) {
   if (!value) return true
   const wordCount = value.trim().split(/\s+/).filter(Boolean).length
@@ -49,7 +54,7 @@ export type ExtractedClientIdentity = {
   confident: boolean
 }
 
-// Never returns raw command text as `name` — if no reliable value is found, `name` is left
+// Never returns raw command text as `name` - if no reliable value is found, `name` is left
 // empty so the caller can treat it as a pending field instead of a bogus create.
 export function extractClientIdentity(message: string): ExtractedClientIdentity {
   const phoneMatch = message.replace(/\D/g, "").match(/(\d{10,13})/)
@@ -57,7 +62,7 @@ export function extractClientIdentity(message: string): ExtractedClientIdentity 
 
   const markerMatch = message.match(NAME_MARKER_PATTERN)
   if (markerMatch?.[1]) {
-    const candidate = collapseWhitespace(markerMatch[1])
+    const candidate = collapseWhitespace(stripTrailingPhone(markerMatch[1]))
     if (candidate && !RESIDUAL_INSTRUCTION_PATTERN.test(candidate)) {
       return { name: titleCase(candidate), phone, confident: true }
     }
@@ -72,7 +77,7 @@ export function extractClientIdentity(message: string): ExtractedClientIdentity 
 
   const phoneStart = phone ? withoutCommands.search(new RegExp(phone.split("").join("\\D*"))) : -1
   const rawName = phoneStart >= 0 ? withoutCommands.slice(0, phoneStart) : withoutCommands
-  const cleaned = collapseWhitespace(rawName.replace(/[,]+/g, " "))
+  const cleaned = collapseWhitespace(stripTrailingPhone(rawName.replace(/[,]+/g, " ")))
 
   if (looksLikeRawCommandSentence(cleaned)) {
     return { name: "", phone, confident: false }
@@ -106,7 +111,7 @@ export function detectNamedClientReference(message: string): string | null {
 
 const DELETE_CLIENT_VERBS = /\b(exclua|excluir|delete|deletar|apague|apagar|remova|remover)\b/i
 
-// Same shape as detectNamedClientReference, gated on delete-style verbs instead — kept separate
+// Same shape as detectNamedClientReference, gated on delete-style verbs instead - kept separate
 // rather than folding into ATTACH_UPDATE_VERBS since that regex is also relied on by the
 // attach/update misclassification guard in lib/eme-backend.ts, which shouldn't start intercepting
 // delete messages too.

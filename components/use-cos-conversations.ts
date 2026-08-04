@@ -38,6 +38,7 @@ export type CosConversationItem = {
   actionStatus?: string | null
   confirmRequired?: boolean
   options?: CosResponseOption[]
+  attachments?: CosComposerAttachment[]
   sourceMessage?: string
   sourceInteractionId?: string
   createdAt?: string
@@ -380,6 +381,7 @@ export function useCosConversations({
       role: "user",
       content: visibleMessage,
       state: "ready",
+      attachments: options?.attachments ?? [],
       createdAt: new Date().toISOString(),
     }
 
@@ -532,7 +534,10 @@ export function useCosConversations({
 
   const selectPendingOption = useCallback(async (option: CosResponseOption) => {
     if (!pendingConfirmation) return
-    await sendCosMessage(option.label, { visibleMessage: option.label })
+    await sendCosMessage(option.label, {
+      visibleMessage: option.label,
+      attachments: pendingConfirmation.attachments ?? [],
+    })
   }, [pendingConfirmation, sendCosMessage])
 
   useEffect(() => {

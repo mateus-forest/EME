@@ -162,22 +162,26 @@ export async function getBrokerWorkspaceSummary(brokerId: string) {
 }
 
 export function extractPriceFromMessage(message: string) {
-  const match = normalizeText(message).match(/(\d{2,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+[ ]?(?:mil|milhao|milhoes))/)
+  const match = normalizeText(message).match(/(\d[\d.,]*)(?:\s*(mil|milhao|milhoes|k|mi))?/)
   if (!match) return null
 
-  const raw = match[1]
-  if (raw.includes("milhao")) {
-    const base = Number(raw.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."))
-    return Number.isFinite(base) ? Math.round(base * 100_000_000) : null
-  }
+  const numberPart = match[1]
+  const unit = match[2] ?? ""
+  const normalizedNumber =
+    numberPart.includes(",")
+      ? numberPart.replace(/\./g, "").replace(",", ".")
+      : unit
+        ? numberPart.replace(",", ".")
+        : numberPart.replace(/\./g, "")
+  const value = Number(normalizedNumber)
+  if (!Number.isFinite(value) || value <= 0) return null
 
-  if (raw.includes("mil")) {
-    const base = Number(raw.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."))
-    return Number.isFinite(base) ? Math.round(base * 100_000) : null
-  }
+  const multiplier =
+    unit === "mil" || unit === "k"
+      ? 1_000
+      : unit === "mi" || unit === "milhao" || unit === "milhoes"
+        ? 1_000_000
+        : 1
 
-  const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/\./g, "")
-  const value = Number(normalized)
-  if (!Number.isFinite(value)) return null
-  return value > 10_000 ? Math.round(value * 100) : Math.round(value * 100_000)
+  return Math.round(value * multiplier * 100)
 }

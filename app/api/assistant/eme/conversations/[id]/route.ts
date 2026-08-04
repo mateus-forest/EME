@@ -17,6 +17,8 @@ type ConversationMessage = {
   action?: string | null
   actionStatus?: string | null
   confirmRequired?: boolean
+  options?: Array<{ id: string; label: string; description?: string }>
+  attachments?: PendingConfirmationAttachment[]
   sourceMessage?: string
   sourceInteractionId?: string
   createdAt: string
@@ -70,6 +72,22 @@ function metadataAttachments(metadata: Record<string, unknown>) {
     .filter((item) => item.id && item.name)
 }
 
+function metadataOptions(metadata: Record<string, unknown>) {
+  const parsedData = metadataRecord(metadata.parsedData)
+  const value = parsedData.options
+  if (!Array.isArray(value)) return [] as Array<{ id: string; label: string; description?: string }>
+
+  return value
+    .map((item) => (item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : null))
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id : "",
+      label: typeof item.label === "string" ? item.label : "",
+      description: typeof item.description === "string" ? item.description : undefined,
+    }))
+    .filter((item) => item.id && item.label)
+}
+
 function serializeConversation(document: { id: string; title: string; createdAt: Date; updatedAt: Date }) {
   return {
     id: document.id,
@@ -95,6 +113,7 @@ function mapConversationMessages(rows: Array<{
     sourceMessage: string
     sourceInteractionId: string
     attachments?: PendingConfirmationAttachment[]
+    options?: Array<{ id: string; label: string; description?: string }>
   } | null
 } {
   const messages: ConversationMessage[] = []
@@ -103,6 +122,7 @@ function mapConversationMessages(rows: Array<{
     sourceMessage: string
     sourceInteractionId: string
     attachments?: PendingConfirmationAttachment[]
+    options?: Array<{ id: string; label: string; description?: string }>
   } | null = null
 
   for (const row of rows) {
@@ -110,6 +130,7 @@ function mapConversationMessages(rows: Array<{
     const displayMessage = metadataText(metadata, "displayMessage") || row.message
     const confirmRequired = metadataBoolean(metadata, "confirmationRequired") && row.actionStatus === "needs_confirmation"
     const attachments = metadataAttachments(metadata)
+    const options = metadataOptions(metadata)
     const createdAt = row.createdAt.toISOString()
 
     if (displayMessage) {
@@ -118,6 +139,7 @@ function mapConversationMessages(rows: Array<{
         role: "user",
         content: displayMessage,
         state: "ready",
+        attachments,
         createdAt,
       })
     }
@@ -131,6 +153,7 @@ function mapConversationMessages(rows: Array<{
         action: row.actionType,
         actionStatus: row.actionStatus,
         confirmRequired,
+        options,
         sourceMessage: row.message,
         sourceInteractionId: row.id,
         createdAt,
@@ -143,6 +166,7 @@ function mapConversationMessages(rows: Array<{
         sourceMessage: row.message,
         sourceInteractionId: row.id,
         attachments,
+        options,
       }
     }
 

@@ -8,7 +8,7 @@ export async function formatCosCapabilityResponse(input: {
   capability: CosCapabilityDefinition
   actionResponse: string
 }) {
-  if (input.capability.responseMode === "raw") {
+  if (input.capability.responseMode === "raw" || input.action !== "general") {
     return input.actionResponse
   }
 

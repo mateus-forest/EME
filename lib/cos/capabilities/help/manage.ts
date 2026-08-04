@@ -22,6 +22,65 @@ const HELP_SYSTEM_PROMPT = [
 
 const HELP_FALLBACK_EXCERPT_LENGTH = 1400
 
+const GUIDED_HELP_RESPONSES: Partial<Record<HelpTopic, string>> = {
+  first_steps: [
+    "Posso te ajudar a começar por três frentes.",
+    "",
+    "1. Configurar seu acesso e segurança",
+    "2. Cadastrar clientes e imóveis",
+    "3. Usar o COS para executar tarefas",
+    "",
+    "Me diga qual destas você quer ver primeiro.",
+  ].join("\n"),
+  use_cos: [
+    "Você pode usar o COS de forma bem prática.",
+    "",
+    "• Cadastrar ou editar clientes",
+    "• Buscar, criar e revisar imóveis",
+    "• Gerar proposta ou contrato",
+    "• Consultar agenda, operação e desempenho",
+    "",
+    "Me diga a ação que você quer executar agora e eu te guio só nela.",
+  ].join("\n"),
+  register_properties: [
+    "Você pode cadastrar um imóvel de três formas.",
+    "",
+    "• Manualmente pela tela de imóveis",
+    "• Pela IA com imagem, print ou texto",
+    "• Importando dados de um anúncio",
+    "",
+    "Se quiser, me diga qual forma você quer usar e eu explico só esse fluxo.",
+  ].join("\n"),
+  manage_clients: [
+    "No módulo Clientes você pode seguir este fluxo.",
+    "",
+    "• Cadastrar um novo cliente",
+    "• Atualizar dados e documentos",
+    "• Buscar histórico e oportunidades",
+    "• Excluir quando necessário",
+    "",
+    "Me diga qual etapa você quer fazer e eu foco só nela.",
+  ].join("\n"),
+  contracts_proposals: [
+    "Contratos e propostas seguem dois caminhos principais.",
+    "",
+    "• Criar um novo documento",
+    "• Revisar, enviar ou acompanhar um existente",
+    "",
+    "Se você me disser o que quer fazer agora, eu explico só esse passo.",
+  ].join("\n"),
+  marketing_studio: [
+    "No Studio IA você pode começar por quatro frentes.",
+    "",
+    "• Criar campanhas e copies",
+    "• Gerar Instagram Feed e Story",
+    "• Criar vídeo",
+    "• Reaproveitar materiais da biblioteca",
+    "",
+    "Me diga qual delas você quer usar primeiro.",
+  ].join("\n"),
+}
+
 // Used when the OpenAI client is unavailable/disabled — still genuinely useful (the manual
 // content itself) instead of a dead-end error.
 function buildHelpFallbackResponse(manualContext: string) {
@@ -33,6 +92,14 @@ function buildHelpFallbackResponse(manualContext: string) {
 
 function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
   return async ({ message, action }) => {
+    const guidedResponse = GUIDED_HELP_RESPONSES[topic]
+    if (guidedResponse) {
+      return {
+        response: guidedResponse,
+        metadata: { noCharge: true, topic, source: "guided_help" },
+      }
+    }
+
     const manualContext = await loadHelpManualContext(topic)
     const client = getOpenAIClient()
 
