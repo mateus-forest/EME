@@ -87,6 +87,12 @@ export const STUDIO_FONT_DIR = "/fonts/geist"
 // (SVG <text> semantics) into a top-left compositing offset.
 export const STUDIO_FONT_ASCENT_RATIO = 1.005
 
+// Same source as above (hhea descender -295 / unitsPerEm 1000). Used to compute how far a text
+// block's ink actually extends below its baseline, so a following block can be placed with a real
+// gap instead of guessing — the block-height helpers below only account for line-to-line spacing
+// within a single multiline run, not the last line's own descent.
+export const STUDIO_FONT_DESCENT_RATIO = 0.295
+
 const TEMPLATES: Record<StudioTemplateId, StudioTemplateDefinition> = {
   "instagram-feed-official": {
     id: "instagram-feed-official",
@@ -209,6 +215,10 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
   const badgeWidth = Math.max(268, Math.min(390, 92 + payload.badgeLabel.length * 16))
   const ctaSecondary = fitMultilineText(payload.ctaSupport, 242, 23, 18, 2)
 
+  const feedSubtitleY = stackTextBlockY(320, titleLayout.blockHeight, titleLayout.fontSize, 6, subtitleLayout.fontSize)
+  const feedSubtitleBottom = feedSubtitleY + subtitleLayout.blockHeight + subtitleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
+  const feedDividerY = Math.max(520, Math.round(feedSubtitleBottom + 32))
+
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
@@ -231,9 +241,9 @@ function renderInstagramFeedTemplate(payload: StudioCreativePayload): StudioCrea
     renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeWidth, 60),
     renderLogo(payload.officialLogoDataUri, 915, 46, 146, 68),
     renderMultilineText(textRuns, titleLayout.lines, 70, 320, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
-    renderMultilineText(textRuns, subtitleLayout.lines, 70, 320 + titleLayout.blockHeight + 24, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
-    renderDivider(70, 520, 96),
-    renderFeatureRow(textRuns, featureItems, 70, 584, 468),
+    renderMultilineText(textRuns, subtitleLayout.lines, 70, feedSubtitleY, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
+    renderDivider(70, feedDividerY, 96),
+    renderFeatureRow(textRuns, featureItems, 70, feedDividerY + 64, 468),
     renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
@@ -262,6 +272,10 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCre
   const badgeWidth = Math.max(338, Math.min(468, 124 + payload.badgeLabel.length * 16))
   const ctaSecondary = fitMultilineText(payload.ctaSupport, 334, 28, 22, 2)
 
+  const storySubtitleY = stackTextBlockY(440, titleLayout.blockHeight, titleLayout.fontSize, 6, subtitleLayout.fontSize)
+  const storySubtitleBottom = storySubtitleY + subtitleLayout.blockHeight + subtitleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
+  const storyDividerY = Math.max(770, Math.round(storySubtitleBottom + 32))
+
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
@@ -284,9 +298,9 @@ function renderInstagramStoryTemplate(payload: StudioCreativePayload): StudioCre
     renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeWidth, 66),
     renderLogo(payload.officialLogoDataUri, 810, 78, 184, 82),
     renderMultilineText(textRuns, titleLayout.lines, 82, 440, titleLayout.fontSize, "400", "#ffffff", titleLayout.lineHeight, 0),
-    renderMultilineText(textRuns, subtitleLayout.lines, 82, 440 + titleLayout.blockHeight + 22, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
-    renderDivider(82, 770, 104),
-    renderFeatureStack(textRuns, featureItems, 82, 842, 360),
+    renderMultilineText(textRuns, subtitleLayout.lines, 82, storySubtitleY, subtitleLayout.fontSize, "500", "#73df30", subtitleLayout.lineHeight, 0),
+    renderDivider(82, storyDividerY, 104),
+    renderFeatureStack(textRuns, featureItems, 82, storyDividerY + 72, 360),
     renderMetricPanel(textRuns, {
       x: 80,
       y: 1472,
@@ -510,11 +524,14 @@ function resolveDisplayPrice(campaign: StudioCampaignRecord, content: Record<str
 
 function resolveMetric(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   const areaLabel = readAreaLabel(campaign)
-  const description = readPreferredString(content, ["description", "support"])
+  // "support" deliberately excluded here: it's the Instagram post's general marketing caption
+  // (up to 220 chars, e.g. "R$ 1.780.000 • 7 banheiros • 8 vagas"), not a short label for this
+  // single-line slot under the metric value — using it here overflowed the price panel.
+  const description = readPreferredString(content, ["description"])
 
   return {
     label: readPreferredString(content, ["metricLabel"]) || "PREÇO",
-    support: readPreferredString(content, ["metricSupport"]) || description || areaLabel || "",
+    support: readPreferredString(content, ["metricSupport"]) || areaLabel || description || "",
   }
 }
 
@@ -580,6 +597,28 @@ function inferFeatureIcon(value: string): StudioFeatureItem["icon"] {
   return "area"
 }
 
+// Places a text block's baseline so it never overlaps the block stacked above it, using real
+// font metrics instead of a fixed guess. `previousBlockHeight` only covers the gap *between*
+// the previous block's own lines (see fitMultilineText's blockHeight) — it says nothing about
+// how far that block's last line dips below its own baseline (descent) or how far the next
+// block's first line reaches above its baseline (ascent), which is what previously let the two
+// blocks' ink touch or overlap whenever a title wrapped to more than one line.
+function stackTextBlockY(
+  previousBaselineY: number,
+  previousBlockHeight: number,
+  previousFontSize: number,
+  gap: number,
+  nextFontSize: number,
+) {
+  return Math.round(
+    previousBaselineY +
+      previousBlockHeight +
+      previousFontSize * STUDIO_FONT_DESCENT_RATIO +
+      gap +
+      nextFontSize * STUDIO_FONT_ASCENT_RATIO,
+  )
+}
+
 function fitMultilineText(text: string, maxWidth: number, maxFontSize: number, minFontSize: number, maxLines: number) {
   const sourceLines = text
     .split("\n")
@@ -623,6 +662,7 @@ function wrapText(text: string, maxCharsPerLine: number, maxLines: number) {
   const words = text.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let current = ""
+  let hasOverflow = false
 
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word
@@ -633,11 +673,31 @@ function wrapText(text: string, maxCharsPerLine: number, maxLines: number) {
 
     lines.push(current)
     current = word
-    if (lines.length >= maxLines) return lines.slice(0, maxLines)
+
+    if (lines.length >= maxLines) {
+      hasOverflow = true
+      break
+    }
   }
 
-  if (current) lines.push(current)
-  return lines.slice(0, maxLines)
+  if (!hasOverflow && current) lines.push(current)
+
+  const result = lines.slice(0, maxLines)
+  return hasOverflow ? markLastLineTruncated(result, maxCharsPerLine) : result
+}
+
+// AI-generated copy (e.g. the "highlight"/"support" fields from the Instagram content prompt)
+// is only bounded by a generous character ceiling meant for validation, not by what actually
+// fits in these fixed 1-3 line slots. When wrapText above has to drop trailing words to respect
+// maxLines, that previously left a bare word fragment with no visual indicator anything was cut
+// (e.g. "Alto padrão exclusivo" -> "Alto"). Mark it instead.
+function markLastLineTruncated(lines: string[], maxCharsPerLine: number) {
+  if (!lines.length) return lines
+  const lastIndex = lines.length - 1
+  const lastLine = lines[lastIndex]
+  const budget = Math.max(1, maxCharsPerLine - 1)
+  const trimmed = lastLine.length > budget ? lastLine.slice(0, budget).trimEnd() : lastLine
+  return [...lines.slice(0, lastIndex), `${trimmed}…`]
 }
 
 function buildDefaultHeadline(campaign: StudioCampaignRecord) {
@@ -730,7 +790,7 @@ function renderSingleLineText(
   runs.push({
     x,
     y,
-    lines: [normalizeStudioText(text)],
+    lines: [truncateSingleLine(normalizeStudioText(text))],
     fontSize,
     fontWeight,
     color,
@@ -740,6 +800,19 @@ function renderSingleLineText(
   })
 
   return ""
+}
+
+// Single-line runs (badge label, metric label/value, CTA label, metric support) have no wrapping
+// at all, so any free-text value long enough to bypass its usual short-label source ends up
+// drawn past its box with nothing to stop it — this is what put an AI-generated caption string
+// across the bottom of the price panel. A generous but finite cap keeps that failure mode from
+// ever overflowing arbitrarily far, without touching the legitimately short labels this renders
+// day to day.
+const STUDIO_SINGLE_LINE_MAX_CHARS = 80
+
+function truncateSingleLine(text: string) {
+  if (text.length <= STUDIO_SINGLE_LINE_MAX_CHARS) return text
+  return `${text.slice(0, STUDIO_SINGLE_LINE_MAX_CHARS - 1).trimEnd()}…`
 }
 
 function renderMultilineText(
