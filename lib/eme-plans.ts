@@ -249,6 +249,17 @@ export const EME_COS_SIMPLE_QUERY_ACTIONS = new Set<EmeCreditActionKey>([
   "qualifyLead",
 ])
 
+export const EME_ACTIVE_PROPERTY_STATUSES = ["DRAFT", "PUBLISHED", "PAUSED"] as const
+export const EME_ACTIVE_PROPERTY_LABELS = ["Rascunho", "Publicado", "Pausado"] as const
+
+export function isEmeActivePropertyStatus(value: unknown): value is (typeof EME_ACTIVE_PROPERTY_STATUSES)[number] {
+  return EME_ACTIVE_PROPERTY_STATUSES.includes(value as (typeof EME_ACTIVE_PROPERTY_STATUSES)[number])
+}
+
+export function isEmeActivePropertyLabel(value: unknown): value is (typeof EME_ACTIVE_PROPERTY_LABELS)[number] {
+  return EME_ACTIVE_PROPERTY_LABELS.includes(value as (typeof EME_ACTIVE_PROPERTY_LABELS)[number])
+}
+
 export function normalizeEmePlanKey(value: unknown): EmePlanKey {
   if (value === "scale" || value === "growth") return "scale"
   return value === "pro" ? "pro" : "free"

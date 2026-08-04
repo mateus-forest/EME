@@ -8,6 +8,7 @@ import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
 import type { CosWorkspaceContext } from "@/lib/cos/types"
 import { dispatchEntitySync } from "@/lib/entity-sync"
+import { getEmeCreditCost } from "@/lib/eme-plans"
 
 export type AssistantCredits = {
   balance: number
@@ -56,6 +57,12 @@ type AssistantMessageResponse = {
   actionStatus?: string
   credits?: AssistantCredits
   creditsUsed?: number
+  creditsBlocked?: boolean
+  availableCredits?: number
+  requiredCredits?: number
+  missingCredits?: number
+  ctaHref?: string
+  ctaLabel?: string
   error?: string
   confirmRequired?: boolean
   conversation?: CosConversationSummary | null
@@ -342,6 +349,7 @@ export function useCosConversations({
       cancel?: boolean
       workspaceContext?: Partial<CosWorkspaceContext> | null
       attachments?: CosComposerAttachment[]
+      creditCostPreview?: number
     },
   ) => {
     const normalizedMessage = messageToSend.trim()
@@ -352,8 +360,17 @@ export function useCosConversations({
       return
     }
 
-    if (!options?.cancel && assistantCredits.balance <= 0) {
-      setChatFeedback("Creditos insuficientes para usar o COS agora.")
+    const requestedCreditCost =
+      typeof options?.creditCostPreview === "number"
+        ? Math.max(0, Math.trunc(options.creditCostPreview))
+        : options?.action
+          ? getEmeCreditCost(options.action)
+          : 0
+
+    if (!options?.cancel && requestedCreditCost > 0 && assistantCredits.balance < requestedCreditCost) {
+      setChatFeedback(
+        `Creditos IA insuficientes. Disponivel: ${assistantCredits.balance}. Necessario: ${requestedCreditCost}. Abra a pagina Plano para continuar.`,
+      )
       return
     }
 
@@ -368,7 +385,11 @@ export function useCosConversations({
 
     setConversation((current) => [...current, optimisticUserMessage])
     setIsSending(true)
-    setChatFeedback("")
+    setChatFeedback(
+      !options?.cancel && requestedCreditCost > 0
+        ? `Custo desta acao: ${requestedCreditCost} Creditos IA.`
+        : "",
+    )
 
     try {
       const messageWorkspaceContext = deriveWorkspaceContextFromPathname({
@@ -400,7 +421,18 @@ export function useCosConversations({
 
       const data = (await response.json().catch(() => null)) as AssistantMessageResponse | null
       if (data?.credits) setAssistantCredits(data.credits)
-      if (!response.ok) throw new Error(data?.error || "Nao foi possivel falar com o COS agora.")
+      if (!response.ok) {
+        if (data?.creditsBlocked) {
+          const availableCredits = data.availableCredits ?? assistantCredits.balance
+          const requiredCredits = data.requiredCredits ?? requestedCreditCost
+          throw new Error(
+            data.error ||
+              `Creditos IA insuficientes. Disponivel: ${availableCredits}. Necessario: ${requiredCredits}. Abra a pagina Plano para continuar.`,
+          )
+        }
+
+        throw new Error(data?.error || "Nao foi possivel falar com o COS agora.")
+      }
 
       if (data?.conversation) {
         setActiveConversationId(data.conversation.id)

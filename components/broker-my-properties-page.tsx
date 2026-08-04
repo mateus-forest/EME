@@ -12,6 +12,7 @@ import { useBrokerProperties, type BrokerProperty as Property } from "@/componen
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { formatCep, lookupCep } from "@/lib/cep"
 import { subscribeEntitySync } from "@/lib/entity-sync"
+import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { getPropertyImage } from "@/lib/property-media"
@@ -38,7 +39,7 @@ type EditableProperty = {
   bedrooms: number
   bathrooms: number
   parking: number
-  status: "Publicado" | "Rascunho"
+  status: "Publicado" | "Rascunho" | "Pausado"
   type: Property["type"]
   purpose: Property["purpose"]
   description: string
@@ -65,7 +66,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
   const [search, setSearch] = useState("")
-  const [statusFilters, setStatusFilters] = useState<Array<Property["status"]>>(["Publicado", "Rascunho"])
+  const [statusFilters, setStatusFilters] = useState<Array<Property["status"]>>(["Publicado", "Rascunho", "Pausado"])
   const allPropertyTypes: Array<Property["type"]> = ["Casa", "Apartamento", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]
   const [typeFilters, setTypeFilters] = useState<Array<Property["type"]>>(allPropertyTypes)
   const [priceFilters, setPriceFilters] = useState<string[]>(["low", "mid", "high"])
@@ -77,11 +78,14 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
-  const publishedPropertiesCount = useMemo(() => properties.filter((property) => property.status === "Publicado").length, [properties])
+  const activePropertiesCount = useMemo(
+    () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
+    [properties],
+  )
   const hasReachedLimit =
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
-    publishedPropertiesCount >= (subscription.propertyLimit ?? 5)
+    activePropertiesCount >= (subscription.propertyLimit ?? 5)
   const normalizedSearch = search.trim().toLowerCase()
   const filteredProperties = useMemo(
     () =>
@@ -104,7 +108,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const hasProperties = filteredProperties.length > 0
   const whatsAppUrl = createWhatsAppUrl(profile.whatsApp, "Olá, tenho interesse neste imóvel")
   const hasActiveFilters =
-    normalizedSearch.length > 0 || statusFilters.length < 2 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
+    normalizedSearch.length > 0 || statusFilters.length < 3 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
 
   const openEditModal = useCallback((property: Property) => {
     router.push(`/corretor/imoveis/${property.id}`)
@@ -152,7 +156,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
 
   function clearFilters() {
     setSearch("")
-    setStatusFilters(["Publicado", "Rascunho"])
+    setStatusFilters(["Publicado", "Rascunho", "Pausado"])
     setTypeFilters(allPropertyTypes)
     setPriceFilters(["low", "mid", "high"])
   }
@@ -435,6 +439,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
               <DropdownMenuLabel className="text-[#6B7280]">Status</DropdownMenuLabel>
               <DropdownMenuCheckboxItem checked={statusFilters.includes("Publicado")} onCheckedChange={() => toggleFilter("Publicado", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Publicado</DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem checked={statusFilters.includes("Rascunho")} onCheckedChange={() => toggleFilter("Rascunho", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Rascunho</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={statusFilters.includes("Pausado")} onCheckedChange={() => toggleFilter("Pausado", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Pausado</DropdownMenuCheckboxItem>
               <DropdownMenuSeparator className="bg-white" />
               <DropdownMenuLabel className="text-[#6B7280]">Tipo</DropdownMenuLabel>
               {allPropertyTypes.map((type) => (

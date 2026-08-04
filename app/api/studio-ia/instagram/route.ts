@@ -93,7 +93,13 @@ export async function POST(request: NextRequest) {
     if (user.role === UserRole.BROKER && user.broker) {
       const credits = await hasBrokerAiCredits(user.broker.id, creditsUsed)
       if (!credits.allowed) {
-        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+        return NextResponse.json(
+          createInsufficientCreditsPayload({
+            availableCredits: credits.balance,
+            requiredCredits: credits.amount,
+          }),
+          { status: 402 },
+        )
       }
     }
 

@@ -36,6 +36,12 @@ type BuyerStrategyPreview = {
 }
 
 type GenerationError = string | null
+type CreditBlockState = {
+  availableCredits: number
+  requiredCredits: number
+  ctaHref: string
+  ctaLabel: string
+} | null
 
 const audienceOptions: AudienceProfile[] = ["Primeiro imovel", "Familia", "Investidor", "Alto padrao", "Imovel de praia", "Comercial"]
 const channelOptions: MainChannel[] = ["Instagram", "Facebook", "Google", "WhatsApp", "Portais imobiliarios"]
@@ -59,6 +65,7 @@ export function BrokerStudioIaBuyersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preview, setPreview] = useState<BuyerStrategyPreview | null>(null)
   const [generationError, setGenerationError] = useState<GenerationError>(null)
+  const [creditBlock, setCreditBlock] = useState<CreditBlockState>(null)
   const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [approvedBlocks, setApprovedBlocks] = useState<Record<StrategyBlockKey, boolean>>({
     audience: false,
@@ -158,6 +165,7 @@ export function BrokerStudioIaBuyersPage() {
     if (!selectedProperty) return
 
     setGenerationError(null)
+    setCreditBlock(null)
     setIsSubmitting(true)
     setCurrentStep("processing")
 
@@ -177,9 +185,25 @@ export function BrokerStudioIaBuyersPage() {
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as (BuyerStrategyPreview & { error?: string; campaign?: StudioCampaignRecord }) | null
+      const data = (await response.json().catch(() => null)) as (BuyerStrategyPreview & {
+        error?: string
+        campaign?: StudioCampaignRecord
+        creditsBlocked?: boolean
+        availableCredits?: number
+        requiredCredits?: number
+        ctaHref?: string
+        ctaLabel?: string
+      }) | null
 
       if (!response.ok || !data) {
+        if (data?.creditsBlocked) {
+          setCreditBlock({
+            availableCredits: data.availableCredits ?? 0,
+            requiredCredits: data.requiredCredits ?? 0,
+            ctaHref: data.ctaHref || "/corretor/plano",
+            ctaLabel: data.ctaLabel || "Ver plano",
+          })
+        }
         throw new Error(data?.error || "Não foi possível gerar a estratégia para atrair compradores.")
       }
 
@@ -463,8 +487,14 @@ export function BrokerStudioIaBuyersPage() {
                         {isSubmitting ? "Gerando estratégia" : "Gerar estratégia"}
                         <ArrowRight className="size-4" />
                       </Button>
+                      <p className="text-sm text-[#6B7280]">Consome 3 Créditos IA por execução.</p>
                       {generationError ? (
                         <p className="text-sm text-[#D14343]">{generationError}</p>
+                      ) : null}
+                      {creditBlock ? (
+                        <Button asChild variant="ghost" className="h-9 w-fit rounded-xl border border-black/[0.06] bg-white px-3 text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                          <Link href={creditBlock.ctaHref}>{creditBlock.ctaLabel}</Link>
+                        </Button>
                       ) : null}
                     </div>
                   ) : (

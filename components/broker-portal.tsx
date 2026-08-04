@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { AssistantCredits, useCosConversations } from "@/components/use-cos-conversations"
 import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
+import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { ContractRecord } from "@/lib/contracts-client"
 import type { LeadRecord } from "@/lib/lead-contract"
 
@@ -102,14 +103,14 @@ export function BrokerPortal() {
     source: "cos_home",
   })
 
-  const publishedPropertiesCount = useMemo(
-    () => properties.filter((property) => property.status === "Publicado").length,
+  const activePropertiesCount = useMemo(
+    () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
     [properties],
   )
   const hasReachedLimit =
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
-    publishedPropertiesCount >= (subscription.propertyLimit ?? 5)
+    activePropertiesCount >= (subscription.propertyLimit ?? 5)
 
   useEffect(() => {
     let ignore = false
@@ -252,22 +253,31 @@ export function BrokerPortal() {
     setPrompt("")
   }
 
-  async function handleConversationSuggestion(selection: { label: string; message: string; action?: string }) {
-    await sendCosMessage(selection.message, { visibleMessage: selection.label, action: selection.action })
+  async function handleConversationSuggestion(selection: {
+    label: string
+    message: string
+    action?: string
+    creditCostPreview?: number
+  }) {
+    await sendCosMessage(selection.message, {
+      visibleMessage: selection.label,
+      action: selection.action,
+      creditCostPreview: selection.creditCostPreview,
+    })
   }
 
   async function handleMenuAction(action: CosPromptComposerMenuAction) {
-    const actionMap: Record<string, { label: string; message: string; action?: string }> = {
-      register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente." },
-      create_property: { label: "Criar imóvel", message: "Quero criar um imóvel." },
-      attach_contract: { label: "Anexar contrato", message: "Quero anexar um contrato." },
-      create_campaign: { label: "Criar campanha", message: "Quero criar uma campanha para Instagram." },
-      generate_proposal: { label: "Gerar proposta", message: "Quero gerar uma proposta." },
-      search_property: { label: "Buscar imóvel", message: "Quero buscar um imóvel." },
-      my_clients: { label: "Meus clientes", message: "Mostre meus clientes." },
-      today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje." },
-      latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads." },
-      latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados." },
+    const actionMap: Record<string, { label: string; message: string; action?: string; creditCostPreview?: number }> = {
+      register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente.", creditCostPreview: 1 },
+      create_property: { label: "Criar imóvel", message: "Quero criar um imóvel.", creditCostPreview: 3 },
+      attach_contract: { label: "Anexar contrato", message: "Quero anexar um contrato.", creditCostPreview: 2 },
+      create_campaign: { label: "Criar campanha", message: "Quero criar uma campanha para Instagram.", creditCostPreview: 10 },
+      generate_proposal: { label: "Gerar proposta", message: "Quero gerar uma proposta.", creditCostPreview: 2 },
+      search_property: { label: "Buscar imóvel", message: "Quero buscar um imóvel.", creditCostPreview: 1 },
+      my_clients: { label: "Meus clientes", message: "Mostre meus clientes.", creditCostPreview: 1 },
+      today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje.", creditCostPreview: 1 },
+      latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads.", creditCostPreview: 1 },
+      latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados.", creditCostPreview: 1 },
       // As 7 entradas de ajuda passam `action` com o próprio id do botão — isso deixa a
       // classificação no backend determinística (casa direto contra o Capability Registry,
       // sem depender da cadeia de regex de inferAssessorAction) e conecta cada botão à sua
@@ -276,36 +286,43 @@ export function BrokerPortal() {
         label: "Primeiros passos",
         message: "Quais são os primeiros passos para começar a usar o EME?",
         action: "help_first_steps",
+        creditCostPreview: 0,
       },
       help_use_cos: {
         label: "Como usar o COS",
         message: "Como posso usar melhor o COS no dia a dia?",
         action: "help_use_cos",
+        creditCostPreview: 0,
       },
       help_register_properties: {
         label: "Como cadastrar imóveis",
         message: "Como cadastrar imóveis no EME?",
         action: "help_register_properties",
+        creditCostPreview: 0,
       },
       help_manage_clients: {
         label: "Como gerenciar clientes",
         message: "Como gerenciar meus clientes no EME?",
         action: "help_manage_clients",
+        creditCostPreview: 0,
       },
       help_contracts_proposals: {
         label: "Contratos e propostas",
         message: "Como funcionam contratos e propostas no EME?",
         action: "help_contracts_proposals",
+        creditCostPreview: 0,
       },
       help_marketing_studio: {
         label: "Marketing e Studio IA",
         message: "Como usar o Studio IA e o marketing do EME?",
         action: "help_marketing_studio",
+        creditCostPreview: 0,
       },
       help_general_question: {
         label: "Tirar uma dúvida",
         message: "Preciso de ajuda para entender uma funcionalidade do EME.",
         action: "help_general_question",
+        creditCostPreview: 0,
       },
     }
 
@@ -339,7 +356,7 @@ export function BrokerPortal() {
 
     await sendCosMessage(
       `Analise minha operação com base nas pendências reais abaixo. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual próxima ação devo executar em cada frente. Considere especialmente imóveis incompletos, clientes sem dados obrigatórios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos próximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
-      { visibleMessage: "Ver detalhes da operação" },
+      { visibleMessage: "Ver detalhes da operação", creditCostPreview: 3 },
     )
     setPrompt("")
   }

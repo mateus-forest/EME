@@ -386,7 +386,10 @@ export async function POST(request: NextRequest) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
         {
-          error: "Voce atingiu o limite de creditos do Assessor EME do seu plano. Adquira creditos adicionais no painel para continuar utilizando.",
+          ...createInsufficientCreditsPayload({
+            availableCredits: brokerState.aiCreditsBalance,
+            requiredCredits: creditsUsed,
+          }),
           ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
         },
         { status: 402 },
@@ -680,7 +683,10 @@ export async function POST(request: NextRequest) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       return NextResponse.json(
         {
-          ...createInsufficientCreditsPayload(),
+          ...createInsufficientCreditsPayload({
+            availableCredits: brokerState.aiCreditsBalance,
+            requiredCredits: creditsUsed,
+          }),
           ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
         },
         { status: 402 },

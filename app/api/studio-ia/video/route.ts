@@ -553,7 +553,13 @@ export async function POST(request: NextRequest) {
 
       const credits = await hasBrokerAiCredits(user.broker.id, firstStageCredits)
       if (!credits.allowed) {
-        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+        return NextResponse.json(
+          createInsufficientCreditsPayload({
+            availableCredits: credits.balance,
+            requiredCredits: credits.amount,
+          }),
+          { status: 402 },
+        )
       }
 
       const created = await runWithAiOperationContext(
@@ -693,7 +699,13 @@ export async function POST(request: NextRequest) {
       })
       const credits = await hasBrokerAiCredits(user.broker.id, stageCredits)
       if (!credits.allowed) {
-        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+        return NextResponse.json(
+          createInsufficientCreditsPayload({
+            availableCredits: credits.balance,
+            requiredCredits: credits.amount,
+          }),
+          { status: 402 },
+        )
       }
 
       const regeneratedJob = await runWithAiOperationContext(
@@ -765,7 +777,13 @@ export async function POST(request: NextRequest) {
       })
       const credits = await hasBrokerAiCredits(user.broker.id, stageCredits)
       if (!credits.allowed) {
-        return NextResponse.json(createInsufficientCreditsPayload(), { status: 402 })
+        return NextResponse.json(
+          createInsufficientCreditsPayload({
+            availableCredits: credits.balance,
+            requiredCredits: credits.amount,
+          }),
+          { status: 402 },
+        )
       }
 
       const nextJob = await runWithAiOperationContext(

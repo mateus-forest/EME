@@ -3,6 +3,7 @@ import "server-only"
 import type { Prisma } from "@prisma/client"
 
 import {
+  EME_ACTIVE_PROPERTY_STATUSES,
   EME_COS_CONTEXT_ACTIONS,
   EME_COS_SIMPLE_QUERY_ACTIONS,
   EME_EXTRA_PACKAGES,
@@ -27,8 +28,9 @@ type BrokerBillingUser = {
 type BrokerPlanAccountRecord = Awaited<ReturnType<typeof prisma.brokerPlanAccount.findUniqueOrThrow>>
 
 const ACTIVE_PROPERTY_WHERE = {
-  published: true,
-  status: "PUBLISHED" as const,
+  status: {
+    in: [...EME_ACTIVE_PROPERTY_STATUSES],
+  },
 }
 
 function planFromLegacyBilling(user?: BrokerBillingUser | null): EmePlanKey {
@@ -63,7 +65,11 @@ function resolveCurrentMonthlyCredits({
   return Math.max(0, Math.min(balance, monthlyCredits - Math.max(0, usedThisMonth)))
 }
 
-function resolveExtraCredits({
+function normalizeCredits(value: number) {
+  return Math.max(0, Math.trunc(value))
+}
+
+function resolveCreditBuckets({
   balance,
   usedThisMonth,
   monthlyCredits,
@@ -73,11 +79,12 @@ function resolveExtraCredits({
   monthlyCredits: number
 }) {
   const monthlyRemaining = resolveCurrentMonthlyCredits({ balance, usedThisMonth, monthlyCredits })
-  return Math.max(0, balance - monthlyRemaining)
-}
+  const extraCredits = Math.max(0, balance - monthlyRemaining)
 
-function normalizeCredits(value: number) {
-  return Math.max(0, Math.trunc(value))
+  return {
+    monthlyRemaining,
+    extraCredits,
+  }
 }
 
 async function grantInitialPlanCredits({
@@ -88,8 +95,26 @@ async function grantInitialPlanCredits({
   planKey: EmePlanKey
 }) {
   const plan = EME_PLANS[planKey]
+  const initialGrantedAt = new Date()
+  const currentPeriodStart = getCurrentPeriodStart(initialGrantedAt)
 
   return prisma.$transaction(async (tx) => {
+    const claimedInitialGrant = await tx.brokerPlanAccount.updateMany({
+      where: {
+        brokerId,
+        initialCreditsGrantedAt: null,
+      },
+      data: {
+        planKey,
+        initialCreditsGrantedAt: initialGrantedAt,
+        currentPeriodCreditsGrantedAt: currentPeriodStart,
+      },
+    })
+
+    if (claimedInitialGrant.count === 0) {
+      return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
+    }
+
     const broker = await tx.broker.findUniqueOrThrow({
       where: { id: brokerId },
       select: {
@@ -98,7 +123,7 @@ async function grantInitialPlanCredits({
       },
     })
 
-    const extraCredits = resolveExtraCredits({
+    const { extraCredits } = resolveCreditBuckets({
       balance: broker.aiCreditsBalance,
       usedThisMonth: broker.aiCreditsUsedThisMonth,
       monthlyCredits: plan.monthlyAiCredits,
@@ -113,15 +138,6 @@ async function grantInitialPlanCredits({
         aiCreditsUsedThisMonth: 0,
       },
       select: { aiCreditsBalance: true },
-    })
-
-    await tx.brokerPlanAccount.update({
-      where: { brokerId },
-      data: {
-        planKey,
-        initialCreditsGrantedAt: new Date(),
-        currentPeriodCreditsGrantedAt: getCurrentPeriodStart(),
-      },
     })
 
     await tx.aiCreditTransaction.create({
@@ -160,6 +176,24 @@ async function renewMonthlyPlanCreditsIfNeeded({
   }
 
   return prisma.$transaction(async (tx) => {
+    const claimedRenewal = await tx.brokerPlanAccount.updateMany({
+      where: {
+        brokerId,
+        OR: [
+          { currentPeriodCreditsGrantedAt: null },
+          { currentPeriodCreditsGrantedAt: { lt: currentPeriodStart } },
+        ],
+      },
+      data: {
+        planKey,
+        currentPeriodCreditsGrantedAt: currentPeriodStart,
+      },
+    })
+
+    if (claimedRenewal.count === 0) {
+      return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
+    }
+
     const broker = await tx.broker.findUniqueOrThrow({
       where: { id: brokerId },
       select: {
@@ -168,7 +202,7 @@ async function renewMonthlyPlanCreditsIfNeeded({
       },
     })
 
-    const extraCredits = resolveExtraCredits({
+    const { extraCredits, monthlyRemaining } = resolveCreditBuckets({
       balance: broker.aiCreditsBalance,
       usedThisMonth: broker.aiCreditsUsedThisMonth,
       monthlyCredits: plan.monthlyAiCredits,
@@ -185,14 +219,6 @@ async function renewMonthlyPlanCreditsIfNeeded({
       select: { aiCreditsBalance: true },
     })
 
-    await tx.brokerPlanAccount.update({
-      where: { brokerId },
-      data: {
-        planKey,
-        currentPeriodCreditsGrantedAt: currentPeriodStart,
-      },
-    })
-
     await tx.aiCreditTransaction.create({
       data: {
         brokerId,
@@ -204,6 +230,8 @@ async function renewMonthlyPlanCreditsIfNeeded({
           planKey: plan.key,
           monthlyCredits: plan.monthlyAiCredits,
           extraCreditsCarried: extraCredits,
+          expiredMonthlyCredits: monthlyRemaining,
+          renewedOnceForPeriod: currentPeriodStart.toISOString(),
         } satisfies Prisma.InputJsonObject,
       },
     })
@@ -230,12 +258,27 @@ export function createPropertyLimitErrorPayload() {
   }
 }
 
-export function createInsufficientCreditsPayload() {
+export function createInsufficientCreditsPayload({
+  availableCredits = 0,
+  requiredCredits = 0,
+}: {
+  availableCredits?: number
+  requiredCredits?: number
+} = {}) {
+  const missingCredits = Math.max(0, requiredCredits - availableCredits)
+  const errorMessage =
+    requiredCredits > 0
+      ? `Creditos IA insuficientes. Disponivel: ${availableCredits}. Necessario: ${requiredCredits}. Faltam ${missingCredits}.`
+      : EME_INSUFFICIENT_CREDITS_MESSAGE
+
   return {
-    error: EME_INSUFFICIENT_CREDITS_MESSAGE,
+    error: errorMessage,
     creditsBlocked: true,
+    availableCredits,
+    requiredCredits,
+    missingCredits,
     ctaHref: "/corretor/plano",
-    ctaLabel: "Comprar creditos",
+    ctaLabel: "Ver plano",
   }
 }
 
@@ -322,6 +365,11 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
     }),
   ])
   const propertyLimit = plan.propertyLimit + account.propertyExtraLimit
+  const creditBuckets = resolveCreditBuckets({
+    balance: broker?.aiCreditsBalance ?? 0,
+    usedThisMonth: broker?.aiCreditsUsedThisMonth ?? 0,
+    monthlyCredits: plan.monthlyAiCredits,
+  })
 
   return {
     plan,
@@ -335,11 +383,7 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
     aiCreditsBalance: broker?.aiCreditsBalance ?? 0,
     aiCreditsUsedThisMonth: broker?.aiCreditsUsedThisMonth ?? 0,
     monthlyAiCredits: plan.monthlyAiCredits,
-    extraAiCredits: resolveExtraCredits({
-      balance: broker?.aiCreditsBalance ?? 0,
-      usedThisMonth: broker?.aiCreditsUsedThisMonth ?? 0,
-      monthlyCredits: plan.monthlyAiCredits,
-    }),
+    extraAiCredits: creditBuckets.extraCredits,
   }
 }
 
@@ -388,6 +432,7 @@ export async function hasBrokerAiCredits(brokerId: string, amountOrAction: numbe
   return {
     allowed: credits.balance >= amount,
     amount,
+    missing: Math.max(0, amount - credits.balance),
     ...credits,
     message: credits.balance >= amount ? "" : EME_INSUFFICIENT_CREDITS_MESSAGE,
   }
@@ -439,6 +484,16 @@ export async function consumeBrokerAiCredits({
       },
     })
 
+    const planAccount = await tx.brokerPlanAccount.findUniqueOrThrow({
+      where: { brokerId },
+      select: { planKey: true },
+    })
+    const creditBuckets = resolveCreditBuckets({
+      balance: broker.aiCreditsBalance,
+      usedThisMonth: broker.aiCreditsUsedThisMonth,
+      monthlyCredits: EME_PLANS[normalizeEmePlanKey(planAccount.planKey)].monthlyAiCredits,
+    })
+
     await tx.aiCreditTransaction.create({
       data: {
         brokerId,
@@ -454,15 +509,8 @@ export async function consumeBrokerAiCredits({
     return {
       balance: broker.aiCreditsBalance,
       usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: resolveCurrentMonthlyCredits({
-        balance: broker.aiCreditsBalance,
-        usedThisMonth: broker.aiCreditsUsedThisMonth,
-        monthlyCredits: EME_PLANS[normalizeEmePlanKey((await tx.brokerPlanAccount.findUniqueOrThrow({
-          where: { brokerId },
-          select: { planKey: true },
-        })).planKey)].monthlyAiCredits,
-      }),
-      extraCredits: 0,
+      monthlyCredits: creditBuckets.monthlyRemaining,
+      extraCredits: creditBuckets.extraCredits,
     }
   })
 }
@@ -502,6 +550,16 @@ export async function refundBrokerAiCredits({
       },
     })
 
+    const planAccount = await tx.brokerPlanAccount.findUniqueOrThrow({
+      where: { brokerId },
+      select: { planKey: true },
+    })
+    const creditBuckets = resolveCreditBuckets({
+      balance: broker.aiCreditsBalance,
+      usedThisMonth: broker.aiCreditsUsedThisMonth,
+      monthlyCredits: EME_PLANS[normalizeEmePlanKey(planAccount.planKey)].monthlyAiCredits,
+    })
+
     await tx.aiCreditTransaction.create({
       data: {
         brokerId,
@@ -517,8 +575,8 @@ export async function refundBrokerAiCredits({
     return {
       balance: broker.aiCreditsBalance,
       usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: 0,
-      extraCredits: 0,
+      monthlyCredits: creditBuckets.monthlyRemaining,
+      extraCredits: creditBuckets.extraCredits,
     }
   })
 }

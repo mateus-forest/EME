@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
+import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { CompletionSummary, EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { getPropertyImages } from "@/lib/property-media"
 
@@ -28,7 +29,7 @@ export type BrokerProperty = {
   bedrooms: number
   bathrooms: number
   parking: number
-  status: "Publicado" | "Rascunho"
+  status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
   views: string
   leads: string
@@ -78,6 +79,8 @@ type PropertyApiItem = {
 const PROPERTIES_UPDATED_EVENT = "eme-broker-properties-updated"
 
 function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
+  const normalizedStatus = isEmeActivePropertyLabel(property.status) ? property.status : "Rascunho"
+
   return {
     id: property.id,
     publicCode: property.publicCode ?? null,
@@ -97,7 +100,7 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     bedrooms: property.bedrooms,
     bathrooms: property.bathrooms,
     parking: property.parkingSpots,
-    status: property.status === "Publicado" ? "Publicado" : "Rascunho",
+    status: normalizedStatus,
     published: property.published,
     views: String(property.views),
     leads: String(property.leads),
