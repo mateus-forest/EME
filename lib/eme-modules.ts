@@ -54,7 +54,7 @@ export const emeModules: EmeModule[] = [
       "Ensina e orienta no uso do sistema",
     ],
     cta: "Conhecer módulo",
-    mockup: "/mockups/cos-premium.svg",
+    mockup: "/mockups/cos-premium.png",
   },
   {
     id: "clientes",

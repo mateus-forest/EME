@@ -66,6 +66,7 @@ export function ExpandedModulePanel({
 
   const geo = open ? target : start
   const Icon = module.icon
+  const isCosModule = module.id === "cos"
   const isCatalogModule = module.id === "catalogo"
   const isContractsModule = module.id === "contratos"
   const isProposalsModule = module.id === "propostas"
@@ -142,7 +143,9 @@ export function ExpandedModulePanel({
         >
           <div
             className={`relative flex min-h-0 items-center justify-center overflow-hidden ${
-              isCatalogModule
+              isCosModule
+                ? "basis-[50%] px-2 pb-2 pt-4 md:basis-[49%] md:px-3 md:py-5"
+                : isCatalogModule
                 ? "basis-[44%] px-3 pb-2 pt-5 md:basis-[52%] md:px-5 md:py-8"
                 : isContractsModule
                   ? "basis-[50%] px-2 pb-0 pt-4 md:basis-[48%] md:px-3 md:py-4"
@@ -153,7 +156,9 @@ export function ExpandedModulePanel({
           >
             <motion.div
               className={`relative w-full ${
-                isCatalogModule
+                isCosModule
+                  ? "h-full min-h-[300px] overflow-hidden rounded-[28px] md:min-h-0 md:rounded-[34px]"
+                  : isCatalogModule
                   ? "h-full max-h-[300px] md:max-h-none"
                   : isContractsModule
                     ? "h-full min-h-[280px] overflow-hidden rounded-[30px] md:min-h-0 md:rounded-[36px]"
@@ -170,14 +175,18 @@ export function ExpandedModulePanel({
                 fill
                 sizes="(max-width: 768px) 90vw, 45vw"
                 className={`${
-                  isContractsModule
+                  isCosModule
+                    ? "object-cover object-[50%_56%] md:object-[48%_54%]"
+                    : isContractsModule
                     ? "object-cover object-[76%_52%] md:object-[78%_50%]"
                     : isProposalsModule
                       ? "object-cover object-[36%_50%] md:object-[41%_50%]"
                     : "object-contain"
                 } ${isCatalogModule ? "drop-shadow-[0_36px_70px_rgba(20,38,28,0.16)]" : ""} ${
                   isContractsModule ? "drop-shadow-[0_28px_70px_rgba(17,24,39,0.14)]" : ""
-                } ${isProposalsModule ? "drop-shadow-[0_32px_72px_rgba(17,24,39,0.16)]" : ""}`}
+                } ${isProposalsModule ? "drop-shadow-[0_32px_72px_rgba(17,24,39,0.16)]" : ""} ${
+                  isCosModule ? "drop-shadow-[0_30px_74px_rgba(17,24,39,0.16)]" : ""
+                }`}
                 priority
               />
             </motion.div>
@@ -185,7 +194,9 @@ export function ExpandedModulePanel({
 
           <div
             className={`flex flex-1 flex-col justify-center overflow-y-auto px-6 pb-6 pt-1 md:overflow-visible md:px-8 md:py-10 ${
-              isCatalogModule
+              isCosModule
+                ? "gap-4 md:pl-10 md:pr-12"
+                : isCatalogModule
                 ? "gap-4 md:pr-12"
                 : isContractsModule
                   ? "gap-4 md:pl-12 md:pr-10"
