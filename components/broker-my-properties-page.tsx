@@ -601,12 +601,12 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                           Adicionar fotos
                         </label>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {editingProperty.images.map((image, index) => (
-                          <div key={`${image}-${index}`} className="group relative overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
-                            <div className="relative aspect-[4/3] max-h-36">
+                          <div key={`${image}-${index}`} className="group relative w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
+                            <div className="relative w-full overflow-hidden aspect-[4/3] sm:max-h-36">
                               {getPropertyImage(image, `${editingProperty.id}-${index}`) ? (
-                                <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill className="object-cover" />
+                                <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw" className="h-full w-full object-cover" />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                   <ImagePlus className="size-7 text-[#8B95A1]" />
