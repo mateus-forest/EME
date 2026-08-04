@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import { usePathname } from "next/navigation"
 import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
@@ -486,7 +486,7 @@ export function useCosConversations({
     await sendCosMessage(option.label, { visibleMessage: option.label })
   }, [pendingConfirmation, sendCosMessage])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (hydratedFromCacheRef.current) return
     hydratedFromCacheRef.current = true
 

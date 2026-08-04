@@ -190,7 +190,8 @@ export function BrokerPortal() {
   const greetingLabel = brokerFirstName ? `Olá, ${brokerFirstName}.` : "Olá."
 
   const isBootstrapPending = isBootstrappingConversation
-  const isConversationEmpty = !isBootstrapPending && !isConversationLoading && conversation.length === 0
+  const showConversationSkeleton = isBootstrapPending || (isConversationLoading && conversation.length === 0)
+  const isConversationEmpty = !showConversationSkeleton && conversation.length === 0
   const composerMenuGroups = useMemo<CosPromptComposerMenuGroup[]>(
     () =>
       [
@@ -447,7 +448,7 @@ export function BrokerPortal() {
                       </div>
                       {showConversationTitle ? (
                         <p className="mt-3 truncate text-sm font-medium text-[#111111]">{activeConversation?.title}</p>
-                      ) : isBootstrapPending ? (
+                      ) : showConversationSkeleton ? (
                         <div className="mt-3 h-5 w-56 rounded-full bg-[#eef1ec] animate-pulse" />
                       ) : null}
                     </div>
@@ -462,15 +463,11 @@ export function BrokerPortal() {
                   </div>
 
                   <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
-                    {isBootstrapPending ? (
+                    {showConversationSkeleton ? (
                       <CosConversationSkeleton />
-                    ) : isConversationLoading ? (
-                      <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/78 px-5 py-4 text-sm leading-7 text-[#6f7f97] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                        Carregando conversa...
-                      </div>
                     ) : null}
 
-                    {!isConversationLoading &&
+                    {!showConversationSkeleton &&
                       conversation.map((item) => (
                         <div
                           key={item.id}
