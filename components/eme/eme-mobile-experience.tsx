@@ -5,73 +5,19 @@ import { AnimatePresence, useMotionValue, useMotionValueEvent, useSpring } from 
 
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
-import { EmeLogoSculpture } from "@/components/eme/eme-logo-sculpture"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
-import { ModuleCard } from "@/components/eme/module-card"
+import { OrbitStage } from "@/components/eme/orbit-stage"
 import { emeModules } from "@/lib/eme-modules"
 
-type MobileOrbitConfig = {
-  radiusX: number
-  radiusY: number
-  radiusZ: number
-  logoScale: number
-  stageHeight: string
-  perspective: number
-  cardScale: number
-}
-
-function getMobileOrbitConfig(width: number, height: number): MobileOrbitConfig {
-  const shortViewport = height < 760
-
-  if (width <= 320) {
-    return {
-      radiusX: 120,
-      radiusY: shortViewport ? 74 : 82,
-      radiusZ: 72,
-      logoScale: 0.58,
-      stageHeight: "340svh",
-      perspective: 980,
-      cardScale: 0.88,
-    }
-  }
-
-  if (width <= 375) {
-    return {
-      radiusX: 132,
-      radiusY: shortViewport ? 80 : 88,
-      radiusZ: 78,
-      logoScale: 0.64,
-      stageHeight: "350svh",
-      perspective: 1040,
-      cardScale: 0.92,
-    }
-  }
-
-  if (width <= 390) {
-    return {
-      radiusX: 138,
-      radiusY: shortViewport ? 84 : 92,
-      radiusZ: 82,
-      logoScale: 0.68,
-      stageHeight: "360svh",
-      perspective: 1080,
-      cardScale: 0.95,
-    }
-  }
-
-  return {
-    radiusX: 148,
-    radiusY: shortViewport ? 88 : 96,
-    radiusZ: 88,
-    logoScale: 0.72,
-    stageHeight: "370svh",
-    perspective: 1140,
-    cardScale: 0.98,
-  }
-}
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
-
+/**
+ * Mobile / PWA experience — a faithful port of the desktop scene, not a
+ * separate concept: it renders the very same OrbitStage (and, through it,
+ * the same EmeLogoSculpture and ModuleCard), just driven by a horizontal
+ * touch-drag (with inertia) instead of the mouse wheel, using the same
+ * spring so the motion feels identical. This used to be a second,
+ * hand-rolled orbit-placement implementation that inevitably drifted from
+ * desktop's; sharing OrbitStage removes that drift at the source.
+ */
 export function EmeMobileExperience({
   authMode,
   onAuthModeChange,
@@ -88,13 +34,11 @@ export function EmeMobileExperience({
   const orbitTarget = useMotionValue(0)
   const orbitAngle = useSpring(orbitTarget, { stiffness: 55, damping: 18, mass: 1.1 })
   const [angle, setAngle] = useState(0)
-  const [viewport, setViewport] = useState({ width: 390, height: 844 })
   const [mounted, setMounted] = useState(false)
   useMotionValueEvent(orbitAngle, "change", (value) => setAngle(value))
 
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
   const selectedModule = selected ? emeModules.find((module) => module.id === selected.id) : undefined
-  const stage = useMemo(() => getMobileOrbitConfig(viewport.width, viewport.height), [viewport.height, viewport.width])
   const authOpen = authMode != null
   selectedRef.current = selected?.id ?? null
   authOpenRef.current = authOpen
@@ -103,23 +47,10 @@ export function EmeMobileExperience({
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    const updateViewport = () => {
-      const vv = window.visualViewport
-      setViewport({
-        width: Math.round(vv?.width ?? window.innerWidth),
-        height: Math.round(vv?.height ?? window.innerHeight),
-      })
-    }
-
-    updateViewport()
-    window.addEventListener("resize", updateViewport)
-    window.visualViewport?.addEventListener("resize", updateViewport)
-    return () => {
-      window.removeEventListener("resize", updateViewport)
-      window.visualViewport?.removeEventListener("resize", updateViewport)
-    }
-  }, [])
+  const handleSelect = (id: string, el: HTMLElement) => {
+    if (movedRef.current > 8) return // that was a swipe, not a tap
+    setSelected({ id, el })
+  }
 
   useEffect(() => {
     const stageEl = stageRef.current
@@ -183,44 +114,22 @@ export function EmeMobileExperience({
     }
   }, [orbitTarget])
 
-  const placedModules = useMemo(() => {
-    return emeModules.map((module) => {
+  // Which module currently reads as "front-facing", for the progress dots below —
+  // OrbitStage computes this internally for its own placement, but doesn't expose
+  // it, so it's re-derived here from the same angle this component already tracks.
+  const activeIndex = useMemo(() => {
+    let bestIndex = 0
+    let bestFront = -Infinity
+    emeModules.forEach((module, index) => {
       const rad = ((module.angle + angle) * Math.PI) / 180
-      const sin = Math.sin(rad)
-      const cos = Math.cos(rad)
-      const front = -cos
-      const x = sin * stage.radiusX
-      const y = -cos * stage.radiusY * (cos > 0 ? 0.54 : 0.92) + Math.abs(sin) * 14
-      const z = front >= 0 ? front * stage.radiusZ : front * stage.radiusZ * 1.34
-      const scale = stage.cardScale * (0.76 + ((front + 1) / 2) * 0.26)
-      const rotateY = -sin * 16
-      const opacity = clamp(0.28 + ((front + 1) / 2) * 0.8, 0, 1)
-      const blur = front < -0.16 ? Math.min(Math.abs(front + 0.16) * 3.5, 3.2) : 0
-      const visible = x > -viewport.width * 0.46 && x < viewport.width * 0.46 && y > -170 && y < 180
-
-      return {
-        module,
-        x,
-        y,
-        z,
-        scale,
-        rotateY,
-        opacity,
-        blur,
-        front,
-        visible,
-        zIndex: Math.round((front + 1) * 100),
+      const front = -Math.cos(rad)
+      if (front > bestFront) {
+        bestFront = front
+        bestIndex = index
       }
     })
-  }, [angle, stage.cardScale, stage.radiusX, stage.radiusY, stage.radiusZ, viewport.width])
-
-  const activeIndex = useMemo(() => {
-    const best = placedModules.reduce(
-      (current, item, index) => (item.front > current.front ? { index, front: item.front } : current),
-      { index: 0, front: -Infinity },
-    )
-    return best.index
-  }, [placedModules])
+    return bestIndex
+  }, [angle])
 
   return (
     <main className="fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background">
@@ -234,83 +143,63 @@ export function EmeMobileExperience({
 
       <div
         ref={stageRef}
-        className="absolute inset-0 touch-none overflow-hidden transition-opacity duration-500 ease-out"
+        className="absolute inset-0 flex touch-none items-center justify-center -translate-y-[28px] transition-opacity duration-700 ease-out"
         style={{ opacity: mounted ? 1 : 0 }}
       >
-        <div className="relative h-full overflow-hidden">
-          <div
-            className="absolute left-1/2 top-[37%]"
-            style={{
-              transform: `translate3d(-50%, -50%, 0) scale(${stage.logoScale})`,
-              transformOrigin: "center center",
-            }}
-          >
-            <EmeLogoSculpture />
-          </div>
-
-          <div
-            className="absolute left-1/2 top-[51%] h-[260px] w-0"
-            style={{ perspective: stage.perspective }}
-          >
-            {placedModules.map(({ module, x, y, z, scale, rotateY, opacity, blur, visible, zIndex, front }) => (
-              <div
-                key={module.id}
-                className="absolute left-0 top-1/2"
-                style={{
-                  zIndex,
-                  opacity: authOpen ? opacity * 0.28 : opacity,
-                  filter: blur ? `blur(${blur}px)` : undefined,
-                  transform: `translate(-50%, -50%) translate3d(${x}px, ${y}px, ${z}px) rotateY(${rotateY}deg) scale(${scale})`,
-                  transformStyle: "preserve-3d",
-                  transition: "opacity 0.28s ease, filter 0.28s ease",
-                  pointerEvents: authOpen || !visible || front < -0.48 ? "none" : "auto",
-                  visibility: visible ? "visible" : "hidden",
-                }}
-              >
-                <button
-                  type="button"
-                  aria-label={`Abrir módulo ${module.name}`}
-                  onClick={(event) => setSelected({ id: module.id, el: event.currentTarget })}
-                  className="block rounded-[28px] text-left"
-                >
-                  <ModuleCard module={module} compact />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div
-            className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-2"
-            style={{ marginBottom: "calc(env(safe-area-inset-bottom) + 22px)" }}
-          >
-            {emeModules.map((module, index) => {
-              const active = index === activeIndex
-              return (
-                <span
-                  key={module.id}
-                  className="block rounded-full transition-all duration-300"
-                  style={{
-                    width: active ? 22 : 6,
-                    height: 6,
-                    backgroundColor: active ? "var(--eme)" : "color-mix(in oklab, var(--graphite) 40%, transparent)",
-                  }}
-                />
-              )
-            })}
-          </div>
-
-          {!selected && !authOpen ? (
-            <div
-              className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
-              aria-hidden
-            >
-              <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/20 backdrop-blur-sm">
-                <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
-              </div>
-            </div>
-          ) : null}
-        </div>
+        {mounted && (
+          <OrbitStage
+            orbitAngle={angle}
+            activeId={null}
+            selectedId={selected?.id ?? null}
+            onSelect={handleSelect}
+            authOpen={authOpen}
+          />
+        )}
       </div>
+
+      {/* Ambient light — same soft-light drift as desktop. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
+        <div
+          className="eme-ambient-light absolute left-1/2 top-[40%] h-[80vh] w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 62%)",
+            mixBlendMode: "soft-light",
+          }}
+        />
+      </div>
+
+      {!selected && !authOpen ? (
+        <div
+          className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-2"
+          style={{ marginBottom: "calc(env(safe-area-inset-bottom) + 22px)" }}
+        >
+          {emeModules.map((module, index) => {
+            const active = index === activeIndex
+            return (
+              <span
+                key={module.id}
+                className="block rounded-full transition-all duration-300"
+                style={{
+                  width: active ? 22 : 6,
+                  height: 6,
+                  backgroundColor: active ? "var(--eme)" : "color-mix(in oklab, var(--graphite) 40%, transparent)",
+                }}
+              />
+            )
+          })}
+        </div>
+      ) : null}
+
+      {!selected && !authOpen ? (
+        <div
+          className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
+          aria-hidden
+        >
+          <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/20 backdrop-blur-sm">
+            <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
+          </div>
+        </div>
+      ) : null}
 
       <AnimatePresence>
         {selected && selectedModule && (

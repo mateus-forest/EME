@@ -1,4 +1,7 @@
-const LOGO_SIZE = "h-auto w-[232px] max-w-none sm:w-[456px] lg:w-[552px]"
+// Breakpoint matches the device switcher in eme-experience.tsx (max-width: 767px):
+// at sm (640px) the mobile experience is still active, so jumping to the tablet
+// size there made the logo oversized for ~640-767px phones/small tablets.
+const LOGO_SIZE = "h-auto w-[210px] max-w-none md:w-[456px] lg:w-[552px]"
 
 export function EmeLogoSculpture() {
   return (
