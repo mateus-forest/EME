@@ -156,8 +156,8 @@ export function ExpandedModulePanel({
           >
             <motion.div
               className={`relative w-full ${
-                isCosModule
-                  ? "h-full min-h-[300px] overflow-hidden rounded-[28px] md:min-h-0 md:rounded-[34px]"
+                  isCosModule
+                    ? "h-full min-h-[300px] rounded-[28px] md:min-h-0 md:rounded-[34px]"
                   : isCatalogModule
                   ? "h-full max-h-[300px] md:max-h-none"
                   : isContractsModule
@@ -176,7 +176,7 @@ export function ExpandedModulePanel({
                 sizes="(max-width: 768px) 90vw, 45vw"
                 className={`${
                   isCosModule
-                    ? "object-cover object-[50%_56%] md:object-[48%_54%]"
+                    ? "object-contain object-center"
                     : isContractsModule
                     ? "object-cover object-[76%_52%] md:object-[78%_50%]"
                     : isProposalsModule
