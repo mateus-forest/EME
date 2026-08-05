@@ -21,20 +21,37 @@ export function getCheckoutPriceIdForRole(role: UserRole) {
   const stripeEnv = getStripeEnv()
 
   if (role === UserRole.BROKER) {
-    return stripeEnv.brokerPriceId
+    return stripeEnv.proPriceId
   }
 
   if (role === UserRole.AGENCY) {
-    return stripeEnv.agencyBasePriceId
+    return stripeEnv.scalePriceId
   }
 
   return ""
 }
 
 export function getPlanLabel(plan: BillingPlan) {
-  if (plan === BILLING_PLAN.BROKER) return "BROKER"
-  if (plan === BILLING_PLAN.AGENCY) return "AGENCY"
+  if (plan === BILLING_PLAN.BROKER) return "PRO"
+  if (plan === BILLING_PLAN.AGENCY) return "SCALE"
   return "NONE"
+}
+
+export function mapStripePriceIdToPlan(priceId: string | null | undefined) {
+  const normalizedPriceId = typeof priceId === "string" ? priceId.trim() : ""
+  if (!normalizedPriceId) return BILLING_PLAN.NONE
+
+  const stripeEnv = getStripeEnv()
+
+  if (normalizedPriceId === stripeEnv.proPriceId) {
+    return BILLING_PLAN.BROKER
+  }
+
+  if (normalizedPriceId === stripeEnv.scalePriceId) {
+    return BILLING_PLAN.AGENCY
+  }
+
+  return BILLING_PLAN.NONE
 }
 
 export async function activateBillingForUser(input: {
@@ -138,7 +155,9 @@ export function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
 
 export async function syncBillingFromStripeSubscription(subscription: Stripe.Subscription) {
   const userId = typeof subscription.metadata.userId === "string" ? subscription.metadata.userId : ""
-  const plan = mapStripePlan(subscription.metadata.plan)
+  const mappedPlan = mapStripePlan(subscription.metadata.plan)
+  const priceId = subscription.items.data[0]?.price?.id ?? null
+  const plan = mappedPlan === BILLING_PLAN.NONE ? mapStripePriceIdToPlan(priceId) : mappedPlan
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null
   const status = mapStripeStatusToSubscriptionStatus(subscription.status)
 
@@ -170,7 +189,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
 }
 
 export function mapStripePlan(value: string | null | undefined) {
-  if (value === "BROKER") return BILLING_PLAN.BROKER
-  if (value === "AGENCY") return BILLING_PLAN.AGENCY
+  if (value === "BROKER" || value === "PRO") return BILLING_PLAN.BROKER
+  if (value === "AGENCY" || value === "SCALE") return BILLING_PLAN.AGENCY
   return BILLING_PLAN.NONE
 }

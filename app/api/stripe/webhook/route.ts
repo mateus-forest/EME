@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 
+import { BILLING_PLAN } from "@/lib/billing-types"
 import {
   activateBillingForUser,
+  mapStripePriceIdToPlan,
   mapStripePlan,
   syncBillingFromStripeSubscription,
 } from "@/lib/billing"
@@ -50,7 +52,8 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session
         const metadata = session.metadata ?? {}
         const userId = metadata.userId
-        const plan = mapStripePlan(metadata.plan)
+        const mappedPlan = mapStripePlan(metadata.plan)
+        const plan = mappedPlan === BILLING_PLAN.NONE ? mapStripePriceIdToPlan(metadata.priceId) : mappedPlan
 
         if (typeof session.subscription === "string") {
           const subscription = await stripe.subscriptions.retrieve(session.subscription)

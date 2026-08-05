@@ -34,15 +34,6 @@ function requireFirstEnv(names: string[]) {
   throw new Error(`${names.join(" ou ")} precisa estar configurada no ambiente.`)
 }
 
-function readFirstEnv(names: string[]) {
-  for (const name of names) {
-    const value = readEnv(name)
-    if (value) return value
-  }
-
-  return ""
-}
-
 export function getRequiredRuntimeEnv() {
   return {
     databaseUrl: requireEnv("DATABASE_URL"),
@@ -69,8 +60,12 @@ export function getStripeEnv() {
     enabled,
     secretKey: readEnv("STRIPE_SECRET_KEY"),
     webhookSecret: readEnv("STRIPE_WEBHOOK_SECRET"),
-    brokerPriceId: readEnv("STRIPE_PRICE_BROKER"),
-    agencyBasePriceId: readFirstEnv(["STRIPE_PRICE_AGENCY_BASE", "STRIPE_PRICE_AGENCY"]),
+    proPriceId: readEnv("STRIPE_PRICE_PRO"),
+    scalePriceId: readEnv("STRIPE_PRICE_SCALE"),
+    credit250PriceId: readEnv("STRIPE_PRICE_CREDITS_250"),
+    credit750PriceId: readEnv("STRIPE_PRICE_CREDITS_750"),
+    credit1500PriceId: readEnv("STRIPE_PRICE_CREDITS_1500"),
+    property250PriceId: readEnv("STRIPE_PRICE_PROPERTIES_250"),
     publishableKey: readEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"),
   }
 }
