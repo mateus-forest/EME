@@ -80,12 +80,12 @@ type CosPendingActionProps = {
 // Confirmar/Cancelar quando nao ha opcoes. Compartilhado entre broker-portal.tsx
 // e broker-cos-history-page.tsx para as duas telas nao divergirem entre si.
 export function CosPendingAction({ item, pendingConfirmation, isSending, onConfirm, onCancel, onSelectOption }: CosPendingActionProps) {
-  if (!item.confirmRequired || pendingConfirmation?.sourceInteractionId !== item.sourceInteractionId) {
-    return null
-  }
-
   if (item.options && item.options.length > 0) {
     return <CosOptionButtons options={item.options} disabled={isSending} onSelect={onSelectOption} />
+  }
+
+  if (!item.confirmRequired || pendingConfirmation?.sourceInteractionId !== item.sourceInteractionId) {
+    return null
   }
 
   return (

@@ -69,6 +69,7 @@ type AssistantMessageResponse = {
   conversation?: CosConversationSummary | null
   metadata?: {
     leadId?: unknown
+    options?: unknown
     workflow?: {
       pendingInput?: {
         parsedData?: {
@@ -361,8 +362,15 @@ export function useCosConversations({
       return
     }
 
+    const previewLabel = options?.visibleMessage ?? normalizedMessage
+    const isWorkflowDetailsRequest =
+      options?.action === "workflow_details" ||
+      previewLabel.toLowerCase().includes("ver detalhes da opera")
+
     const requestedCreditCost =
-      typeof options?.creditCostPreview === "number"
+      isWorkflowDetailsRequest
+        ? 0
+        : typeof options?.creditCostPreview === "number"
         ? Math.max(0, Math.trunc(options.creditCostPreview))
         : options?.action
           ? getEmeCreditCost(options.action)
@@ -375,7 +383,7 @@ export function useCosConversations({
       return
     }
 
-    const visibleMessage = options?.visibleMessage ?? normalizedMessage
+    const visibleMessage = previewLabel
     const optimisticUserMessage: CosConversationItem = {
       id: crypto.randomUUID(),
       role: "user",
@@ -451,7 +459,9 @@ export function useCosConversations({
         dispatchEntitySync({ type: "lead", entityId: deletedLeadId })
       }
 
-      const responseOptions = parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.parsedData?.options)
+      const responseOptions =
+        parseCosResponseOptions(data?.metadata?.options) ??
+        parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.parsedData?.options)
       const assistantMessage: CosConversationItem = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -533,10 +543,9 @@ export function useCosConversations({
   }, [pendingConfirmation, sendCosMessage])
 
   const selectPendingOption = useCallback(async (option: CosResponseOption) => {
-    if (!pendingConfirmation) return
     await sendCosMessage(option.label, {
       visibleMessage: option.label,
-      attachments: pendingConfirmation.attachments ?? [],
+      attachments: pendingConfirmation?.attachments ?? [],
     })
   }, [pendingConfirmation, sendCosMessage])
 

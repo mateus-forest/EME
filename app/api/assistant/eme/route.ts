@@ -17,6 +17,7 @@ import {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
   formatCosExecutionPlanResponse,
+  formatWorkflowOperationDetails,
   getActiveWorkflow,
   getConversationMemory,
   getCosCapabilityConfirmationMessage,
@@ -196,6 +197,12 @@ async function persistConversationWorkflow(
   })
 }
 
+type CosResponseOption = {
+  id: string
+  label: string
+  description?: string
+}
+
 function workflowMetadata(workflow: CosWorkflow | null) {
   return workflow
     ? {
@@ -209,6 +216,66 @@ function workflowMetadata(workflow: CosWorkflow | null) {
         completedAt: workflow.completedAt,
       }
     : null
+}
+
+function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOption[] | null {
+  if (!workflow) return null
+
+  if (workflow.pendingInput?.type === "selection") {
+    const rawOptions = workflow.pendingInput.parsedData?.options
+    if (Array.isArray(rawOptions)) {
+      const options = rawOptions
+        .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
+        .filter((item): item is Record<string, unknown> => Boolean(item))
+        .filter((item) => typeof item.id === "string" && typeof item.label === "string")
+        .map((item) => ({
+          id: item.id as string,
+          label: item.label as string,
+          description: typeof item.description === "string" ? item.description : undefined,
+        }))
+      return options.length > 0 ? options : null
+    }
+  }
+
+  return null
+}
+
+function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
+  const propertyId = typeof metadata.propertyId === "string" ? metadata.propertyId : null
+  const leadId = typeof metadata.leadId === "string" ? metadata.leadId : null
+
+  if (action === "createPropertyDraft" || action === "PUBLISH_PROPERTY" || action === "searchProperties") {
+    return [
+      { id: "next_campaign", label: "Gerar campanha" },
+      { id: "next_catalog", label: "Compartilhar catÃ¡logo" },
+      { id: "next_proposal", label: "Criar proposta" },
+    ]
+  }
+
+  if (action === "createLead" || action === "FIND_LEAD" || action === "UPDATE_LEAD" || Boolean(leadId)) {
+    return [
+      { id: "next_find_property", label: "Buscar imÃ³veis" },
+      { id: "next_create_proposal", label: "Criar proposta" },
+      { id: "next_client_timeline", label: "Ver histÃ³rico" },
+    ]
+  }
+
+  if (action === "CREATE_PROPOSAL") {
+    return [
+      { id: "next_create_contract", label: "Criar contrato" },
+      { id: "next_share_catalog", label: "Compartilhar catÃ¡logo" },
+    ]
+  }
+
+  if (propertyId) {
+    return [
+      { id: "next_campaign_property", label: "Gerar campanha" },
+      { id: "next_contract_property", label: "Criar contrato" },
+      { id: "next_catalog_property", label: "Compartilhar catÃ¡logo" },
+    ]
+  }
+
+  return null
 }
 
 function buildConversationMemory(input: {
@@ -389,13 +456,16 @@ export async function POST(request: NextRequest) {
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
   const isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
+  const isWorkflowDetailsRequest =
+    requestedAction === "workflow_details" ||
+    displayMessage.toLowerCase().includes("ver detalhes da opera")
   const attachments = sanitizeIncomingAttachments(body?.attachments)
   // Pre-flight estimate used only to gate on balance before the real plan is known. Defaults to 1
   // like before for the vast majority of messages (no requestedAction at all). When a known free
   // action is requested (the 7 COS help capabilities), this must be 0 too — otherwise a broker at
   // 0 credit balance would be blocked from even asking for help, contradicting "conversar com o
   // COS é ilimitado".
-  let creditsUsed: number = requestedAction ? getEmeCreditCost(requestedAction) : 1
+  let creditsUsed: number = isWorkflowDetailsRequest ? 0 : requestedAction ? getEmeCreditCost(requestedAction) : 1
 
   if (!message) {
     return NextResponse.json({ error: "Digite uma mensagem para o Assessor EME." }, { status: 400 })
@@ -465,6 +535,80 @@ export async function POST(request: NextRequest) {
     const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
     const resumableWorkflow = shouldResumeWorkflow(activeWorkflow) ? activeWorkflow : null
+
+    if (isWorkflowDetailsRequest) {
+      const brokerCredits = await getBrokerCredits(user.broker.id)
+      const workflowAction = resumableWorkflow?.steps[resumableWorkflow.currentStep]?.action ?? "general"
+      const workflowDetailsResponse = resumableWorkflow
+        ? formatWorkflowOperationDetails({
+            workflow: resumableWorkflow,
+            memory: conversationMemory,
+            creditsRequired: getCosInteractionCreditCost(
+              resumableWorkflow.steps
+                .slice(resumableWorkflow.currentStep)
+                .map((step) => step.action),
+            ),
+          })
+        : "NÃ£o existe nenhuma operaÃ§Ã£o em andamento no momento.\n\nVocÃª pode iniciar uma nova operaÃ§Ã£o digitando um comando ou utilizando os atalhos rÃ¡pidos."
+      const interactionMetadata = {
+        source: metadataSource,
+        parsedIntent: workflowAction,
+        actionName: workflowAction,
+        brokerId: user.broker.id,
+        visualAction: "Detalhes da operaÃ§Ã£o",
+        workflow: workflowMetadata(resumableWorkflow),
+        conversationId: conversationDocument?.id ?? conversationIdFromBody,
+        displayMessage,
+        options: buildWorkflowDetailOptions(resumableWorkflow),
+      } as Prisma.InputJsonObject
+
+      const [updatedConversation] = await Promise.all([
+        touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
+        prisma.aiAssistantInteraction.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            prompt: message,
+            response: workflowDetailsResponse,
+            actionType: "general",
+            creditsUsed: 0,
+            channel: "assessor_eme",
+            intent: "general",
+            actionStatus: resumableWorkflow ? "success" : "idle",
+            metadata: interactionMetadata,
+            errorMessage: null,
+          },
+        }),
+        prisma.emeMessage.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            channel: "assessor_eme",
+            direction: "broker_to_ai",
+            message,
+            response: workflowDetailsResponse,
+            detectedIntent: "general",
+            actionType: "general",
+            actionStatus: resumableWorkflow ? "success" : "idle",
+            metadata: interactionMetadata,
+            errorMessage: null,
+            creditsUsed: 0,
+          },
+        }),
+      ])
+
+      return NextResponse.json({
+        response: workflowDetailsResponse,
+        action: workflowAction,
+        actionStatus: resumableWorkflow ? "success" : "idle",
+        metadata: interactionMetadata,
+        creditsUsed: 0,
+        confirmRequired: resumableWorkflow?.pendingInput?.field === "confirmation",
+        conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
+        ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+      })
+    }
+
     const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
     const executionPayload = {
       ...(conversationMemory?.leadId ? { leadId: conversationMemory.leadId } : {}),
@@ -903,6 +1047,11 @@ export async function POST(request: NextRequest) {
           : null,
       attachments: effectiveAttachments,
     })
+    const responseOptions =
+      buildWorkflowDetailOptions(updatedWorkflow) ??
+      (actionStatus === "success" && updatedWorkflow.status !== "awaiting_input"
+        ? buildNextStepOptions(action, actionMetadata)
+        : null)
     const plannedCapabilities = (executionPlan?.steps ?? workflow.steps).map((step) => step.capabilityId)
     const executedCapabilities = executionResult?.executedSteps.map((step) => step.capabilityId) ?? []
     const skippedCapabilities = plannedCapabilities.filter((capabilityId) => !executedCapabilities.includes(capabilityId))
@@ -933,6 +1082,7 @@ export async function POST(request: NextRequest) {
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
       attachments: effectiveAttachments,
+      options: responseOptions,
     } as Prisma.InputJsonObject
 
     const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([

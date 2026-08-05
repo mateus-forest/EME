@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto"
 
-import type { PendingAssessorContext } from "@/lib/eme-backend"
+import type { AssessorAction, PendingAssessorContext } from "@/lib/eme-backend"
 
 import { buildRejectedAiPlanGoal, evaluateAiOrchestratorTrigger, generateCosAiExecutionPlan, type CosAiOrchestratorAudit } from "@/lib/cos/ai-orchestrator"
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
@@ -118,6 +118,19 @@ const executionRecipes: ExecutionRecipe[] = [
   },
 ]
 
+const confirmationOnlyActions = new Set<AssessorAction>([
+  "DELETE_LEAD",
+  "PUBLISH_PROPERTY",
+  "PUBLISH_CATALOG",
+  "SEND_CONTRACT",
+  "CANCEL_CONTRACT",
+  "CANCEL_AGENDA_EVENT",
+])
+
+function shouldRequireConfirmation(action: AssessorAction) {
+  return confirmationOnlyActions.has(action)
+}
+
 export function createStepPlanForCapability(input: {
   capabilityId: CosCapabilityId
   message: string
@@ -211,7 +224,7 @@ function buildConfirmationMessage(steps: CosExecutionStep[]) {
   if (steps.length === 1) return getCosCapabilityConfirmationMessage(steps[0].action)
 
   const labels = steps.map((step) => `• ${step.plan.capability.title}`)
-  return ["Vou cuidar disso agora:", ...labels, "", "Posso continuar?"].join("\n")
+  return ["Antes de continuar, preciso da sua confirmaÃ§Ã£o para:", ...labels, "", "Confirma esta aÃ§Ã£o?"].join("\n")
 }
 
 function buildTelemetry(input: {
@@ -243,7 +256,7 @@ function buildTelemetry(input: {
       entity: step.entity,
       source: step.plan.source,
       mutatesData: step.plan.capability.mutatesData,
-      requiresConfirmation: step.plan.capability.requiresConfirmation,
+        requiresConfirmation: shouldRequireConfirmation(step.action),
     })),
     unresolvedGoals: input.unresolvedGoals,
     requestedAction: input.requestedAction?.trim() || null,
@@ -284,11 +297,12 @@ function buildSingleExecutionPlan(input: {
   }
 
   const resolutionMs = Date.now() - input.startedAt
+  const requiresConfirmation = shouldRequireConfirmation(step.action)
   return {
     id: planId,
     source: "single",
     reason: input.capabilityPlan.reason,
-    status: input.capabilityPlan.capability.requiresConfirmation ? "needs_confirmation" : "pending",
+    status: requiresConfirmation ? "needs_confirmation" : "pending",
     message: input.message,
     requestedAction: input.requestedAction,
     surface: input.surface,
@@ -297,8 +311,8 @@ function buildSingleExecutionPlan(input: {
     primaryStep: step,
     steps: [step],
     unresolvedGoals: [],
-    requiresConfirmation: input.capabilityPlan.capability.requiresConfirmation,
-    confirmationMessage: input.capabilityPlan.capability.requiresConfirmation ? getCosCapabilityConfirmationMessage(input.capabilityPlan.action) : null,
+    requiresConfirmation,
+    confirmationMessage: requiresConfirmation ? getCosCapabilityConfirmationMessage(input.capabilityPlan.action) : null,
     telemetry: buildTelemetry({
       planId,
       source: "single",
@@ -343,7 +357,7 @@ function buildRecipeExecutionPlan(input: {
     }),
   )
 
-  const requiresConfirmation = steps.some((step) => step.plan.capability.requiresConfirmation)
+  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action))
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)
@@ -431,7 +445,7 @@ function buildAiExecutionPlan(input: {
     }),
   )
 
-  const requiresConfirmation = steps.some((step) => step.plan.capability.requiresConfirmation)
+  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action))
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)

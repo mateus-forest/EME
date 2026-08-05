@@ -20,6 +20,7 @@ export { formatCosCapabilityResponse, formatCosExecutionPlanResponse } from "@/l
 export {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
+  formatWorkflowOperationDetails,
   formatWorkflowProgress,
   getActiveWorkflow,
   getConversationMemory,

@@ -1,4 +1,5 @@
 import { executeCosExecutionPlan } from "@/lib/cos/executor"
+import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { createStepPlanForCapability } from "@/lib/cos/execution-planner"
 import type { Prisma } from "@prisma/client"
 import type {
@@ -41,6 +42,21 @@ function normalizeText(value: string) {
 
 function isAffirmativeMessage(message: string) {
   return /^(sim|s|ok|pode|confirmar|confirma|pode seguir|seguir)$/i.test(normalizeText(message))
+}
+
+function getWorkflowStatusLabel(workflow: CosWorkflow) {
+  if (workflow.status === "completed") return "ConcluÃ­da"
+  if (workflow.status === "cancelled") return "Cancelada"
+  if (workflow.status === "failed") return "Erro"
+  if (workflow.pendingInput?.field === "confirmation") return "Aguardando confirmaÃ§Ã£o"
+  if (workflow.pendingInput?.type === "selection") return "Aguardando seleÃ§Ã£o"
+  if (workflow.status === "awaiting_input") return "Em andamento"
+  if (workflow.status === "running") return "Processando"
+  return "Em andamento"
+}
+
+function getWorkflowStepLabel(step: CosWorkflow["steps"][number]) {
+  return getCosCapabilityLabel(step.action)
 }
 
 function mapPendingInputType(field: string): CosPendingInputType {
@@ -248,7 +264,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
     steps,
     unresolvedGoals: workflow.executionPlan.unresolvedGoals,
     requiresConfirmation: workflow.pendingInput?.field === "confirmation",
-    confirmationMessage: workflow.pendingInput?.field === "confirmation" ? "Deseja confirmar?" : null,
+    confirmationMessage: workflow.pendingInput?.field === "confirmation" ? "Confirma esta aÃ§Ã£o?" : null,
     telemetry: {
       planId: workflow.executionPlan.id,
       source: workflow.executionPlan.source,
@@ -395,6 +411,62 @@ export function formatWorkflowProgress(workflow: CosWorkflow) {
     return `Workflow concluido.\n${total} etapas executadas.`
   }
   return `Etapa ${current} de ${total}`
+}
+
+export function formatWorkflowOperationDetails(input: {
+  workflow: CosWorkflow
+  memory?: CosConversationMemory | null
+  creditsRequired?: number
+}) {
+  const { workflow, memory, creditsRequired = 0 } = input
+  const currentStepIndex = Math.min(workflow.currentStep, Math.max(0, workflow.steps.length - 1))
+  const currentStep = workflow.steps[currentStepIndex] ?? null
+  const operationStep = currentStep ?? workflow.steps[0]
+
+  if (!operationStep) {
+    return "NÃ£o existe nenhuma operaÃ§Ã£o em andamento no momento."
+  }
+
+  const lines = [
+    "OperaÃ§Ã£o em andamento",
+    "",
+    `Nome da operaÃ§Ã£o: ${getWorkflowStepLabel(operationStep)}`,
+    `Status: ${getWorkflowStatusLabel(workflow)}`,
+    "",
+    "Etapas:",
+    ...workflow.steps.map((step, index) => {
+      const prefix =
+        step.status === "completed"
+          ? "âœ”"
+          : step.status === "failed"
+            ? "âš "
+            : index === currentStepIndex || step.status === "running" || step.status === "awaiting_input"
+              ? "â³"
+              : "â¬œ"
+      return `${prefix} ${getWorkflowStepLabel(step)}`
+    }),
+  ]
+
+  if (memory?.selectedClient?.label || memory?.leadId) {
+    lines.push(`Cliente selecionado: ${memory?.selectedClient?.label ?? memory?.leadId}`)
+  }
+  if (memory?.selectedProperty?.label || memory?.propertyId) {
+    lines.push(`ImÃ³vel selecionado: ${memory?.selectedProperty?.label ?? memory?.propertyId}`)
+  }
+  if ((memory?.uploadedDocuments?.length ?? 0) > 0) {
+    lines.push(`Documento anexado: ${memory?.uploadedDocuments?.[0]?.name}`)
+  }
+  if ((memory?.attachments?.length ?? 0) > 0) {
+    lines.push(`Arquivos enviados: ${memory?.attachments?.map((attachment) => attachment.name).join(", ")}`)
+  }
+  if (creditsRequired > 0) {
+    lines.push(`CrÃ©ditos que serÃ£o consumidos: ${creditsRequired}`)
+  }
+  if (workflow.pendingInput?.label) {
+    lines.push(`PrÃ³xima aÃ§Ã£o esperada: ${workflow.pendingInput.label}`)
+  }
+
+  return lines.join("\n")
 }
 
 export function shouldResumeWorkflow(workflow: CosWorkflow | null) {
