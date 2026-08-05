@@ -57,6 +57,9 @@ type BrokerPlanSnapshot = {
   propertyLimits: {
     baseLimit: number
     extraLimit: number
+    purchasedExtraLimit: number
+    suspendedExtraLimit: number
+    isExpansionActive: boolean
     totalLimit: number
     used: number
     remaining: number
@@ -141,9 +144,9 @@ const creditPackageItems: PlanPackage[] = [
 ]
 
 const propertyPackageItems: PlanPackage[] = [
-  { key: "property_250", type: "property", label: "+250 imóveis", quantity: 250, price: "R$ 49" },
-  { key: "property_500", type: "property", label: "+500 imóveis", quantity: 500, price: "R$ 89" },
-  { key: "property_1000", type: "property", label: "+1000 imóveis", quantity: 1000, price: "R$ 159" },
+  { key: "property_250", type: "property", label: "+50 imóveis", quantity: 50, price: "R$ 49" },
+  { key: "property_500", type: "property", label: "+100 imóveis", quantity: 100, price: "R$ 89" },
+  { key: "property_1000", type: "property", label: "+200 imóveis", quantity: 200, price: "R$ 159" },
 ]
 
 function getCommercialPlanCopy(planKey: string) {
@@ -217,6 +220,13 @@ export function BrokerPlanPage() {
   const propertyLimitLabel = propertyLimits
     ? `${propertyUsed} usados / ${propertyTotal} disponíveis`
     : "Carregando limite de imóveis"
+  const expansionStatusMessage = propertyLimits
+    ? propertyLimits.isExpansionActive
+      ? `${propertyLimits.extraLimit} imóveis extras ativos neste plano.`
+      : propertyLimits.suspendedExtraLimit > 0
+        ? `${propertyLimits.suspendedExtraLimit} imóveis extras comprados aguardando um plano ativo.`
+        : "Nenhuma expansão adicional ativa."
+    : "Carregando status da expansão"
 
   const creditBalance = planSnapshot?.credits.balance ?? 0
   const creditUsed = planSnapshot?.credits.usedThisMonth ?? 0
@@ -234,7 +244,7 @@ export function BrokerPlanPage() {
   const planStatus = currentPlan ? "Ativo na conta" : "Sincronizando"
   const planPrice = currentPlan ? (getCommercialPlanCopy(currentPlan.key)?.price ?? currentPlan.price) : "-"
   const planDescription = propertyLimits && currentPlan
-    ? `Limite de imóveis: ${propertyLimits.baseLimit} do plano + ${propertyLimits.extraLimit} extras = ${propertyLimits.totalLimit} ativos disponíveis.`
+    ? `Limite de imóveis: ${propertyLimits.baseLimit} do plano + ${propertyLimits.extraLimit} extras ativos = ${propertyLimits.totalLimit} ativos disponíveis.`
     : "Carregando dados reais do plano."
 
   const propertyLimitMessage = getLimitMessage(propertyRemaining, "imóveis")
@@ -395,7 +405,7 @@ export function BrokerPlanPage() {
                 value={propertyLimitLabel}
                 progressWidth={propertyUsageWidth}
                 progressTone="bg-[#009b3a]"
-                helper={propertyLimitMessage || "Capacidade atual do plano e dos extras permanentes."}
+                helper={propertyLimitMessage || expansionStatusMessage}
                 alert={Boolean(propertyLimitMessage)}
               />
               <UsageCard
@@ -537,7 +547,7 @@ export function BrokerPlanPage() {
               />
               <PackageCategory
                 title="Expansão da Carteira"
-                description="Aumente permanentemente o limite de imóveis ativos da sua operação."
+                description="Aumente o limite de imóveis do plano atual. A expansão fica vinculada ao plano ativo da conta."
                 items={propertyPackages}
                 onRequest={registerCommercialRequest}
               />

@@ -91,6 +91,9 @@ export async function GET() {
       propertyLimits: {
         baseLimit: snapshot.plan.propertyLimit,
         extraLimit: snapshot.propertyExtraLimit,
+        purchasedExtraLimit: snapshot.propertyPurchasedExtraLimit,
+        suspendedExtraLimit: snapshot.propertySuspendedExtraLimit,
+        isExpansionActive: snapshot.isPropertyExpansionActive,
         totalLimit: snapshot.propertyLimit,
         used: snapshot.propertyCount,
         remaining: snapshot.remainingProperties,

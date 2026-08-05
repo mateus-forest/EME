@@ -69,6 +69,32 @@ function normalizeCredits(value: number) {
   return Math.max(0, Math.trunc(value))
 }
 
+function hasActivePlanSubscription(user?: BrokerBillingUser | null) {
+  return user?.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
+}
+
+function resolveActivePropertyExpansion({
+  planKey,
+  purchasedExtraLimit,
+  user,
+}: {
+  planKey: EmePlanKey
+  purchasedExtraLimit: number
+  user?: BrokerBillingUser | null
+}) {
+  const normalizedPurchasedLimit = Math.max(0, purchasedExtraLimit)
+  const isExpansionActive = planKey !== "free" && hasActivePlanSubscription(user)
+  const activeExtraLimit = isExpansionActive ? normalizedPurchasedLimit : 0
+  const suspendedExtraLimit = isExpansionActive ? 0 : normalizedPurchasedLimit
+
+  return {
+    isExpansionActive,
+    activeExtraLimit,
+    suspendedExtraLimit,
+    purchasedExtraLimit: normalizedPurchasedLimit,
+  }
+}
+
 function resolveCreditBuckets({
   balance,
   usedThisMonth,
@@ -354,7 +380,7 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
   const account = await ensureBrokerPlanAccount(brokerId)
   const planKey = normalizeEmePlanKey(account.planKey)
   const plan = EME_PLANS[planKey]
-  const [activePropertyCount, broker] = await Promise.all([
+  const [activePropertyCount, broker, brokerAccount] = await Promise.all([
     countBrokerActiveProperties(brokerId),
     prisma.broker.findUnique({
       where: { id: brokerId },
@@ -363,8 +389,26 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
         aiCreditsUsedThisMonth: true,
       },
     }),
+    prisma.broker.findUnique({
+      where: { id: brokerId },
+      select: {
+        user: {
+          select: {
+            subscriptionStatus: true,
+          },
+        },
+      },
+    }),
   ])
-  const propertyLimit = plan.propertyLimit + account.propertyExtraLimit
+  // Expansão da Carteira é um complemento do plano ativo.
+  // O volume comprado continua registrado em `propertyExtraLimit`,
+  // mas só entra no limite efetivo enquanto a assinatura elegível estiver ativa.
+  const expansion = resolveActivePropertyExpansion({
+    planKey,
+    purchasedExtraLimit: account.propertyExtraLimit,
+    user: brokerAccount?.user,
+  })
+  const propertyLimit = plan.propertyLimit + expansion.activeExtraLimit
   const creditBuckets = resolveCreditBuckets({
     balance: broker?.aiCreditsBalance ?? 0,
     usedThisMonth: broker?.aiCreditsUsedThisMonth ?? 0,
@@ -378,7 +422,10 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
     propertyCount: activePropertyCount,
     activePropertyCount,
     propertyLimit,
-    propertyExtraLimit: account.propertyExtraLimit,
+    propertyExtraLimit: expansion.activeExtraLimit,
+    propertyPurchasedExtraLimit: expansion.purchasedExtraLimit,
+    propertySuspendedExtraLimit: expansion.suspendedExtraLimit,
+    isPropertyExpansionActive: expansion.isExpansionActive,
     remainingProperties: Math.max(0, propertyLimit - activePropertyCount),
     aiCreditsBalance: broker?.aiCreditsBalance ?? 0,
     aiCreditsUsedThisMonth: broker?.aiCreditsUsedThisMonth ?? 0,
