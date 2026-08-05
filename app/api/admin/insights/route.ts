@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { getAdminInsights } from "@/lib/admin-insights"
+import { getAdminMasterInsights } from "@/lib/admin-master-insights"
 import { UserRole } from "@/lib/prisma-enums"
 
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
   if (forbidden) return forbidden
 
   try {
-    const insights = await getAdminInsights()
+    const insights = await getAdminMasterInsights()
     return NextResponse.json({ insights })
   } catch (caughtError) {
     console.error("[api][admin][insights] failed", {

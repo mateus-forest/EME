@@ -1,10 +1,8 @@
 import type { Agency, Broker, Property, Subscription } from "@/lib/prisma-model-types"
-import {
-  BrokerAccountStatus,
-  SubscriptionStatus,
-  UserRole } from "@/lib/prisma-enums"
+import { BrokerAccountStatus, SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
 
 import type { BillingPlan, BillingUserSubscriptionStatus } from "@/lib/billing-types"
+import { EME_PLANS, normalizeEmePlanKey } from "@/lib/eme-plans"
 
 type AdminContractUser = {
   id: string
@@ -20,7 +18,7 @@ type AdminContractUser = {
 export type AdminUserRecord = {
   id: string
   name: string
-  type: "Corretor" | "Admin"
+  type: "Corretor" | "Operação" | "Admin"
   email: string
   whatsApp: string
   status: "Ativo" | "Inativo"
@@ -68,7 +66,7 @@ export type AdminSubscriptionRecord = {
   id: string
   clientName: string
   ownerType: "broker" | "agency"
-  type: "Corretor" | "Imobiliária"
+  type: "Usuário" | "Operação"
   plan: string
   status: "Ativo" | "Cancelado"
   monthlyValue: number
@@ -99,15 +97,18 @@ export function formatCurrencyBRL(value: number) {
 
 function formatDate(value: Date | null | undefined) {
   if (!value) return "-"
-
   return new Intl.DateTimeFormat("pt-BR").format(value)
 }
 
-function formatPlan(plan: BillingPlan, role: UserRole) {
-  if (plan === "BROKER") return "Corretor"
-  if (plan === "AGENCY") return "Indisponível no MVP"
+function formatPlan(plan: BillingPlan | string | null | undefined, role: UserRole) {
   if (role === "ADMIN") return "Admin"
-  return "Sem plano"
+  if (role === "AGENCY") return "Scale"
+  if (!plan) return "Free"
+
+  const normalized = normalizeEmePlanKey(plan)
+  if (normalized === "scale") return "Scale"
+  if (normalized === "pro") return "Pro"
+  return "Free"
 }
 
 function formatCorretorEmeStatus(status?: string | null) {
@@ -134,7 +135,7 @@ export function serializeAdminUser(user: AdminContractUser & { broker: Broker | 
   return {
     id: user.id,
     name: user.name,
-    type: user.role === "BROKER" ? "Corretor" : "Admin",
+    type: user.role === "ADMIN" ? "Admin" : user.role === "AGENCY" ? "Operação" : "Corretor",
     email: user.email,
     whatsApp: user.phone ?? user.broker?.phone ?? user.ownedAgency?.phone ?? "-",
     status: mapUserStatus(user.role, user.broker?.status, user.subscriptionStatus),
@@ -196,14 +197,13 @@ export function serializeAdminAgency(
     activeBrokers: agency.brokers.filter((broker) => broker.status === "ACTIVE").length,
     publishedProperties: agency.properties.filter((property) => property.status === "PUBLISHED").length,
     createdAt: formatDate(agency.createdAt),
-    plan: formatPlan(agency.ownerUser.plan, agency.ownerUser.role),
+    plan: "Scale",
   }
 }
 
-function monthlyValueForPlan(plan: BillingPlan) {
-  if (plan === "BROKER") return 49.9
-  if (plan === "AGENCY") return 109.9
-  return 0
+function monthlyValueForPlan(plan: BillingPlan | string | null | undefined) {
+  const normalized = normalizeEmePlanKey(plan)
+  return EME_PLANS[normalized].priceCents / 100
 }
 
 function mapSubscriptionStatus(status: SubscriptionStatus): "Ativo" | "Cancelado" {
@@ -218,27 +218,27 @@ function mapFinancialStatus(status: SubscriptionStatus): "Em dia" | "Atraso leve
 export function serializeAdminSubscription(
   subscription: Subscription,
   owner: AdminContractUser | Agency | null,
-  ownerPlan: BillingPlan,
+  ownerPlan: BillingPlan | string,
 ): AdminSubscriptionRecord {
   const ownerType = subscription.ownerType === "AGENCY" ? "agency" : "broker"
-  const type = subscription.ownerType === "AGENCY" ? "Imobiliária" : "Corretor"
-  const clientName =
-    // @ts-ignore Prisma union narrowing for this display-only projection.
-    owner && "name" in owner ? owner.name : owner && "ownerUserId" in owner ? owner.name : "Registro não encontrado"
+  const type = subscription.ownerType === "AGENCY" ? "Operação" : "Usuário"
+  const clientName = owner ? ("name" in owner ? owner.name : "Registro não encontrado") : "Registro não encontrado"
+  const planLabel = ownerType === "agency" ? "Scale" : formatPlan(ownerPlan, "BROKER")
+  const monthlyValue = monthlyValueForPlan(ownerPlan)
 
   return {
     id: subscription.id,
     clientName,
     ownerType,
     type,
-    plan: subscription.ownerType === "AGENCY" ? "Plano Imobiliária" : "Corretor",
+    plan: planLabel,
     status: mapSubscriptionStatus(subscription.status),
-    monthlyValue: monthlyValueForPlan(ownerPlan),
+    monthlyValue,
     startedAt: formatDate(subscription.createdAt),
     lastPaymentAt: formatDate(subscription.createdAt),
     nextBillingAt: formatDate(subscription.nextBillingAt),
     daysOverdue: subscription.status === "PAST_DUE" ? 7 : 0,
     financialStatus: mapFinancialStatus(subscription.status),
-    valueOpen: subscription.status === "PAST_DUE" ? monthlyValueForPlan(ownerPlan) : 0,
+    valueOpen: subscription.status === "PAST_DUE" ? monthlyValue : 0,
   }
 }

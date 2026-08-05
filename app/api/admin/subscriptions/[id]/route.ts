@@ -43,10 +43,21 @@ async function serializeSubscriptionById(id: string, flags?: { notificationSent?
 
   const broker = await prisma.broker.findUnique({
     where: { id: subscription.ownerId },
-    include: { user: true },
+    include: {
+      user: true,
+      planAccount: {
+        select: {
+          planKey: true,
+        },
+      },
+    },
   })
 
-  const serialized = serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BILLING_PLAN.NONE)
+  const serialized = serializeAdminSubscription(
+    subscription,
+    broker?.user ?? null,
+    broker?.planAccount?.planKey ?? broker?.user.plan ?? BILLING_PLAN.NONE,
+  )
 
   return {
     subscription: {
@@ -54,7 +65,7 @@ async function serializeSubscriptionById(id: string, flags?: { notificationSent?
       ...flags,
     },
     ownerUserId: broker?.userId ?? null,
-    ownerPlan: broker?.user.plan ?? BILLING_PLAN.NONE,
+    ownerPlan: broker?.planAccount?.planKey ?? broker?.user.plan ?? BILLING_PLAN.NONE,
   }
 }
 

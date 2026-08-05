@@ -1,18 +1,17 @@
 "use client"
 
 import { useMemo, useState, type ReactNode } from "react"
-import {
-  AlertTriangle,
-  BellRing,
-  CreditCard,
-  DollarSign,
-  Search,
-  SlidersHorizontal,
-  UserRound,
-} from "lucide-react"
+import { AlertTriangle, CreditCard, Search, Users, Wallet } from "lucide-react"
 
+import {
+  AdminBadge,
+  AdminDataTable,
+  AdminDefinitionGrid,
+  AdminMetricCard,
+  AdminMetricGrid,
+  AdminSurface,
+} from "@/components/admin-insights-ui"
 import { AdminPageShell } from "@/components/admin-page-shell"
-import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
 import {
   formatCurrencyBRL,
   notifyAdminSubscription,
@@ -21,25 +20,17 @@ import {
   useAdminSubscriptions,
 } from "@/components/use-admin-data"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 const statusFilters = ["Todos", "Ativo", "Cancelado"] as const
-const planFilters = ["Todos", "Corretor"] as const
+const planFilters = ["Todos", "Free", "Pro", "Scale"] as const
 
 export function AdminSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useAdminSubscriptions()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
   const [planFilter, setPlanFilter] = useState<(typeof planFilters)[number]>("Todos")
-  const [filtersOpen, setFiltersOpen] = useState(true)
   const [selectedSubscription, setSelectedSubscription] = useState<AdminSubscriptionRecord | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
 
@@ -48,10 +39,11 @@ export function AdminSubscriptionsPage() {
 
     return subscriptions.filter((subscription) => {
       const matchesSearch =
-        !normalizedSearch || subscription.clientName.toLowerCase().includes(normalizedSearch)
+        !normalizedSearch ||
+        subscription.clientName.toLowerCase().includes(normalizedSearch) ||
+        subscription.plan.toLowerCase().includes(normalizedSearch)
       const matchesStatus = statusFilter === "Todos" || subscription.status === statusFilter
       const matchesPlan = planFilter === "Todos" || subscription.plan === planFilter
-
       return matchesSearch && matchesStatus && matchesPlan
     })
   }, [planFilter, search, statusFilter, subscriptions])
@@ -63,33 +55,14 @@ export function AdminSubscriptionsPage() {
       revenue: subscriptions
         .filter((subscription) => subscription.status === "Ativo")
         .reduce((sum, subscription) => sum + subscription.monthlyValue, 0),
-      risk: subscriptions.reduce((sum, subscription) => sum + (subscription.valueOpen ?? 0), 0),
+      payingUsers: subscriptions.filter((subscription) => subscription.monthlyValue > 0 && subscription.status === "Ativo").length,
     }),
     [subscriptions],
   )
 
   function showFeedback(message: string) {
     setFeedback(message)
-    window.setTimeout(() => setFeedback(null), 1800)
-  }
-
-  function updateSubscription(
-    subscriptionId: string,
-    updates: Partial<AdminSubscriptionRecord>,
-    feedbackMessage?: string,
-  ) {
-    const nextSubscriptions = subscriptions.map((subscription) =>
-      subscription.id === subscriptionId ? { ...subscription, ...updates } : subscription,
-    )
-
-    setSubscriptions(nextSubscriptions)
-    setSelectedSubscription((current) =>
-      current?.id === subscriptionId ? { ...current, ...updates } : current,
-    )
-
-    if (feedbackMessage) {
-      showFeedback(feedbackMessage)
-    }
+    window.setTimeout(() => setFeedback(null), 2400)
   }
 
   async function handleToggleStatus(subscription: AdminSubscriptionRecord) {
@@ -97,283 +70,197 @@ export function AdminSubscriptionsPage() {
 
     try {
       const updated = await updateAdminSubscription(subscription.id, { status: nextStatus })
-      updateSubscription(
-        subscription.id,
-        updated,
+      setSubscriptions(subscriptions.map((current) => (current.id === subscription.id ? updated : current)))
+      setSelectedSubscription((current) => (current?.id === subscription.id ? updated : current))
+      showFeedback(
         nextStatus === "Cancelado"
           ? `Assinatura de ${subscription.clientName} cancelada com sucesso.`
           : `Assinatura de ${subscription.clientName} reativada com sucesso.`,
       )
-    } catch (error) {
-      showFeedback(error instanceof Error ? error.message : "Não foi possível atualizar a assinatura.")
+    } catch (caughtError) {
+      showFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar a assinatura.")
     }
   }
 
   async function handleSendNotification(subscription: AdminSubscriptionRecord) {
     try {
       const updated = await notifyAdminSubscription(subscription.id)
-      updateSubscription(
-        subscription.id,
-        updated,
-        `Notificação enviada com sucesso para ${subscription.clientName}.`,
-      )
-    } catch (error) {
-      showFeedback(error instanceof Error ? error.message : "Não foi possível enviar a notificação.")
+      setSubscriptions(subscriptions.map((current) => (current.id === subscription.id ? updated : current)))
+      setSelectedSubscription((current) => (current?.id === subscription.id ? updated : current))
+      showFeedback(`Notificação enviada com sucesso para ${subscription.clientName}.`)
+    } catch (caughtError) {
+      showFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível enviar a notificação.")
     }
   }
 
   return (
     <AdminPageShell
       title="Assinaturas"
-      subtitle="Gerencie os planos dos corretores"
+      subtitle="Acompanhamento real dos planos Free, Pro e Scale na base do EME"
       headerControls={
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="relative w-full max-w-[18rem] lg:max-w-[19rem] xl:max-w-[20rem]">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-white/35" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar cliente"
-              className="h-8.5 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 text-sm text-white placeholder:text-white/35 outline-none focus:ring-2 focus:ring-[#00C853]/35"
-            />
+        <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative w-full max-w-[22rem]">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar usuário ou plano" className="h-10 rounded-xl pl-10" />
           </div>
-
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setFiltersOpen((current) => !current)}
-            className={`h-8.5 rounded-xl border px-4 ${filtersOpen ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white"}`}
-          >
-            <SlidersHorizontal className="size-4" />
-            Filtros
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {statusFilters.map((filter) => (
+              <FilterChip key={filter} active={statusFilter === filter} onClick={() => setStatusFilter(filter)}>
+                {filter}
+              </FilterChip>
+            ))}
+            {planFilters.map((filter) => (
+              <FilterChip key={filter} active={planFilter === filter} onClick={() => setPlanFilter(filter)}>
+                {filter}
+              </FilterChip>
+            ))}
+          </div>
         </div>
       }
     >
-      {feedback && (
-        <div className="mb-6 rounded-[1.25rem] border border-[#00C853]/20 bg-[#00C853]/10 px-4 py-3 text-sm text-[#69F0AE]">
-          {feedback}
-        </div>
-      )}
+      {feedback ? <div className="mb-5 rounded-[1.1rem] border border-[#d7ebdd] bg-[#eef9f1] px-4 py-3 text-sm text-[#0f7a35]">{feedback}</div> : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Assinaturas ativas" value={String(summary.active)} icon={CreditCard} />
-        <SummaryCard label="Inadimplentes" value={String(summary.delinquent)} icon={AlertTriangle} />
-        <SummaryCard label="Receita mensal" value={formatCurrencyBRL(summary.revenue)} icon={DollarSign} />
-        <SummaryCard label="Receita em risco" value={formatCurrencyBRL(summary.risk)} icon={BellRing} />
-      </section>
+      <div className="grid gap-5">
+        <AdminMetricGrid>
+          <AdminMetricCard label="Assinaturas ativas" value={String(summary.active)} icon={<CreditCard className="size-5" />} />
+          <AdminMetricCard label="Usuários pagantes" value={String(summary.payingUsers)} icon={<Users className="size-5" />} />
+          <AdminMetricCard label="Receita mensal" value={formatCurrencyBRL(summary.revenue)} icon={<Wallet className="size-5" />} />
+          <AdminMetricCard label="Inadimplência" value={String(summary.delinquent)} icon={<AlertTriangle className="size-5" />} tone="warning" />
+        </AdminMetricGrid>
 
-      {filtersOpen && (
-        <section className="mt-6 rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.94),rgba(14,14,14,0.9))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FilterGroup title="Status">
-              {statusFilters.map((filter) => (
-                <FilterButton key={filter} active={statusFilter === filter} onClick={() => setStatusFilter(filter)} label={filter} />
-              ))}
-            </FilterGroup>
-            <FilterGroup title="Plano">
-              {planFilters.map((filter) => (
-                <FilterButton key={filter} active={planFilter === filter} onClick={() => setPlanFilter(filter)} label={filter} />
-              ))}
-            </FilterGroup>
-          </div>
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+          <AdminSurface title="Leitura comercial" subtitle="O Portal Master agora reflete apenas a arquitetura ativa do EME.">
+            <AdminDefinitionGrid
+              columns={2}
+              items={[
+                { label: "Planos ativos", value: `${summary.active} contas` },
+                { label: "Pagantes", value: `${summary.payingUsers} usuários` },
+                { label: "Receita mensal", value: formatCurrencyBRL(summary.revenue) },
+                { label: "Inadimplência", value: `${summary.delinquent} contas` },
+              ]}
+            />
+          </AdminSurface>
+
+          <AdminSurface title="Ações disponíveis" subtitle="Gestão leve, clara e alinhada ao restante do Portal Master.">
+            <AdminDefinitionGrid
+              items={[
+                { label: "Ver detalhes", value: "Consulte plano, cobrança e próximo ciclo." },
+                { label: "Notificar", value: "Envie aviso quando houver atraso ou regularização pendente." },
+                { label: "Ativar ou cancelar", value: "Atualize o status da assinatura sem cards legados." },
+                { label: "Planos", value: "Somente Free, Pro e Scale." },
+              ]}
+            />
+          </AdminSurface>
         </section>
-      )}
 
-      <section className="mt-6 grid gap-4">
-        {filteredSubscriptions.length > 0 ? filteredSubscriptions.map((subscription) => (
-          <Card
-            key={subscription.id}
-            className="rounded-[1.75rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
-          >
-            <CardContent className="grid gap-5 p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-lg font-semibold text-white">{subscription.clientName}</p>
-                    <StatusBadge status={subscription.status} />
-                    <FinancialBadge status={subscription.financialStatus} />
-                    {subscription.notificationSent && <InfoBadge label="Notificação automática enviada" />}
-                    {subscription.awaitingRegularization && <InfoBadge label="Aguardando regularização" />}
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm text-white/60 sm:grid-cols-2 xl:grid-cols-4">
-                    <span>Plano: {subscription.plan}</span>
-                    <span>Valor mensal: {formatCurrencyBRL(subscription.monthlyValue)}</span>
-                    <span>Data de início: {subscription.startedAt}</span>
-                    <span>Status: {subscription.status}</span>
-                    <span>Último pagamento: {subscription.lastPaymentAt}</span>
-                    <span>Próxima cobrança: {subscription.nextBillingAt}</span>
-                    <span>Dias de atraso: {subscription.daysOverdue}</span>
-                    <span>Valor em aberto: {formatCurrencyBRL(subscription.valueOpen ?? 0)}</span>
-                  </div>
-                </div>
+        <AdminSurface title="Base de assinaturas" subtitle="Dados reais do ciclo de cobrança do Portal do Corretor.">
+          <AdminDataTable
+            columns={["Usuário", "Plano", "Status", "Financeiro", "Valor", "Próxima cobrança", "Ações"]}
+            rows={filteredSubscriptions.map((subscription) => [
+              <div key={`${subscription.id}-name`}>
+                <p className="font-semibold text-[#111827]">{subscription.clientName}</p>
+                <p className="mt-1 text-xs text-[#8B95A1]">{subscription.type}</p>
+              </div>,
+              <span key={`${subscription.id}-plan`} className="text-[#111827]">{subscription.plan}</span>,
+              <AdminBadge key={`${subscription.id}-status`} tone={subscription.status === "Ativo" ? "success" : "warning"}>
+                {subscription.status}
+              </AdminBadge>,
+              <AdminBadge
+                key={`${subscription.id}-financial`}
+                tone={
+                  subscription.financialStatus === "Em dia"
+                    ? "success"
+                    : subscription.financialStatus === "Atraso leve"
+                      ? "warning"
+                      : "danger"
+                }
+              >
+                {subscription.financialStatus}
+              </AdminBadge>,
+              <span key={`${subscription.id}-value`} className="text-[#111827]">{formatCurrencyBRL(subscription.monthlyValue)}</span>,
+              <span key={`${subscription.id}-next`}>{subscription.nextBillingAt}</span>,
+              <div key={`${subscription.id}-actions`} className="flex flex-wrap justify-end gap-2">
+                <ActionButton label="Detalhes" onClick={() => setSelectedSubscription(subscription)} />
+                {(subscription.financialStatus === "Atraso leve" || subscription.financialStatus === "Inadimplente") && (
+                  <ActionButton label="Notificar" onClick={() => void handleSendNotification(subscription)} />
+                )}
+                <ActionButton
+                  label={subscription.status === "Ativo" ? "Cancelar" : "Ativar"}
+                  onClick={() => void handleToggleStatus(subscription)}
+                />
+              </div>,
+            ])}
+          />
+        </AdminSurface>
+      </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <ActionButton label="Ver detalhes" onClick={() => setSelectedSubscription(subscription)} />
-                  {(subscription.financialStatus === "Atraso leve" || subscription.financialStatus === "Inadimplente") && (
-                    <ActionButton label="Enviar notificação" onClick={() => void handleSendNotification(subscription)} />
-                  )}
-                  <ActionButton
-                    label={subscription.status === "Ativo" ? "Cancelar assinatura" : "Ativar assinatura"}
-                    onClick={() => void handleToggleStatus(subscription)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )) : (
-          <AdminEmptyState
-            icon={CreditCard}
-            title="Assinaturas prontas para gestão"
-            description="Ainda não há assinaturas para os filtros atuais. A área já está preparada para planos ativos, inadimplência, notificações e detalhes em modal."
-          >
-            <AdminStructureCards items={["Cards de status financeiro", "Tabela/lista de assinaturas", "Modal de detalhes e ações"]} />
-          </AdminEmptyState>
-        )}
-      </section>
+      <Dialog open={Boolean(selectedSubscription)} onOpenChange={(open) => !open && setSelectedSubscription(null)}>
+        <DialogContent className="max-w-xl border-black/[0.06] bg-white text-[#050505]">
+          {selectedSubscription ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedSubscription.clientName}</DialogTitle>
+                <DialogDescription className="text-[#6B7280]">
+                  Detalhes do plano, da cobrança e do ciclo atual da assinatura.
+                </DialogDescription>
+              </DialogHeader>
 
-      <SubscriptionDetailsDialog
-        subscription={selectedSubscription}
-        onOpenChange={(open) => !open && setSelectedSubscription(null)}
-        onToggleStatus={() => {
-          if (!selectedSubscription) return
-          void handleToggleStatus(selectedSubscription)
-        }}
-        onSendNotification={() => {
-          if (!selectedSubscription) return
-          void handleSendNotification(selectedSubscription)
-        }}
-      />
+              <AdminDefinitionGrid
+                columns={2}
+                items={[
+                  { label: "Plano", value: selectedSubscription.plan },
+                  { label: "Status", value: selectedSubscription.status },
+                  { label: "Financeiro", value: selectedSubscription.financialStatus },
+                  { label: "Valor mensal", value: formatCurrencyBRL(selectedSubscription.monthlyValue) },
+                  { label: "Início", value: selectedSubscription.startedAt },
+                  { label: "Último pagamento", value: selectedSubscription.lastPaymentAt },
+                  { label: "Próxima cobrança", value: selectedSubscription.nextBillingAt },
+                  { label: "Em aberto", value: formatCurrencyBRL(selectedSubscription.valueOpen ?? 0) },
+                ]}
+              />
+
+              <DialogFooter>
+                {(selectedSubscription.financialStatus === "Atraso leve" || selectedSubscription.financialStatus === "Inadimplente") && (
+                  <Button type="button" variant="ghost" onClick={() => void handleSendNotification(selectedSubscription)} className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#111827]">
+                    Enviar notificação
+                  </Button>
+                )}
+                <Button type="button" onClick={() => void handleToggleStatus(selectedSubscription)} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
+                  {selectedSubscription.status === "Ativo" ? "Cancelar assinatura" : "Ativar assinatura"}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </AdminPageShell>
   )
 }
 
-function SubscriptionDetailsDialog({
-  subscription,
-  onOpenChange,
-  onToggleStatus,
-  onSendNotification,
-}: {
-  subscription: AdminSubscriptionRecord | null
-  onOpenChange: (open: boolean) => void
-  onToggleStatus: () => void
-  onSendNotification: () => void
-}) {
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <Dialog open={Boolean(subscription)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl border-white/[0.08] bg-[#111111] text-white">
-        {subscription && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-white">{subscription.clientName}</DialogTitle>
-              <DialogDescription className="text-white/55">Detalhes do plano, cobrança e status atual da assinatura.</DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-3 rounded-[1.25rem] border border-white/[0.08] bg-white/[0.03] p-4 sm:grid-cols-2">
-              <DetailItem label="Plano" value={subscription.plan} />
-              <DetailItem label="Valor mensal" value={formatCurrencyBRL(subscription.monthlyValue)} />
-              <DetailItem label="Status" value={subscription.status} />
-              <DetailItem label="Status financeiro" value={subscription.financialStatus} />
-              <DetailItem label="Data de início" value={subscription.startedAt} />
-              <DetailItem label="Último pagamento" value={subscription.lastPaymentAt} />
-              <DetailItem label="Próxima cobrança" value={subscription.nextBillingAt} />
-              <DetailItem label="Dias de atraso" value={String(subscription.daysOverdue)} />
-              <DetailItem label="Valor em aberto" value={formatCurrencyBRL(subscription.valueOpen ?? 0)} />
-            </div>
-
-            <DialogFooter className="flex-wrap gap-2">
-              {(subscription.financialStatus === "Atraso leve" || subscription.financialStatus === "Inadimplente") && (
-                <Button type="button" variant="ghost" onClick={onSendNotification} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
-                  Enviar notificação
-                </Button>
-              )}
-              <Button type="button" variant="ghost" onClick={onToggleStatus} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
-                {subscription.status === "Ativo" ? "Cancelar assinatura" : "Ativar assinatura"}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function SummaryCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof CreditCard }) {
-  return (
-    <Card className="rounded-[1.5rem] border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(14,14,14,0.92))] py-0 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-      <CardContent className="flex items-start justify-between gap-4 p-4">
-        <div>
-          <p className="text-sm text-white/55">{label}</p>
-          <p className="mt-2.5 text-3xl font-semibold tracking-tight text-white">{value}</p>
-        </div>
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]">
-          <Icon className="size-5" />
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function FilterGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-2">
-      <p className="text-sm font-medium text-white/65">{title}</p>
-      <div className="flex flex-wrap gap-2">{children}</div>
-    </div>
-  )
-}
-
-function FilterButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <Button
+    <button
       type="button"
-      variant="ghost"
       onClick={onClick}
-      className={`h-9 rounded-full border px-4 text-sm ${active ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE] hover:bg-[#00C853]/14" : "border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"}`}
+      className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+        active
+          ? "border-[#d7ebdd] bg-[#eef9f1] text-[#0f7a35]"
+          : "border-black/[0.06] bg-white text-[#5F6B7A] hover:border-black/[0.12] hover:text-[#111827]"
+      }`}
     >
-      {label}
-    </Button>
+      {children}
+    </button>
   )
-}
-
-function StatusBadge({ status }: { status: AdminSubscriptionRecord["status"] }) {
-  const tone = status === "Ativo" ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]" : "border-[#ffb74d]/15 bg-[#ffb74d]/8 text-[#ffcc80]"
-  return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{status}</span>
-}
-
-function FinancialBadge({ status }: { status: AdminSubscriptionRecord["financialStatus"] }) {
-  const tone =
-    status === "Em dia"
-      ? "border-[#00C853]/20 bg-[#00C853]/10 text-[#69F0AE]"
-      : status === "Atraso leve"
-        ? "border-[#ffd54f]/20 bg-[#ffd54f]/10 text-[#ffe082]"
-        : "border-[#ff6b6b]/15 bg-[#ff6b6b]/8 text-[#ff9b9b]"
-
-  return <span className={`rounded-full border px-3 py-1 text-xs ${tone}`}>{status}</span>
-}
-
-function InfoBadge({ label }: { label: string }) {
-  return <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/65">{label}</span>
 }
 
 function ActionButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <Button
+    <button
       type="button"
-      variant="ghost"
       onClick={onClick}
-      className="h-8 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs text-white/75 hover:bg-white/[0.08] hover:text-white"
+      className="rounded-xl border border-black/[0.06] bg-white px-3 py-2 text-xs font-medium text-[#4B5563] transition-colors hover:border-black/[0.12] hover:text-[#111827]"
     >
       {label}
-    </Button>
-  )
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-[0.16em] text-white/35">{label}</p>
-      <p className="mt-2 text-sm text-white/78">{value}</p>
-    </div>
+    </button>
   )
 }

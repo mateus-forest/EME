@@ -3,13 +3,15 @@ import type { Broker, Subscription, User } from "@/lib/prisma-model-types"
 
 import { NextResponse } from "next/server"
 
-import { BILLING_PLAN } from "@/lib/billing-types"
 import { serializeAdminSubscription } from "@/lib/admin-contract"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
 type AdminSubscriptionBroker = Broker & {
   user: User
+  planAccount: {
+    planKey: string
+  } | null
 }
 
 export async function GET() {
@@ -43,6 +45,11 @@ export async function GET() {
       },
       include: {
         user: true,
+        planAccount: {
+          select: {
+            planKey: true,
+          },
+        },
       },
     })
 
@@ -53,7 +60,7 @@ export async function GET() {
     return NextResponse.json({
       subscriptions: subscriptions.map((subscription: Subscription) => {
         const broker = brokerMap.get(subscription.ownerId) ?? null
-        return serializeAdminSubscription(subscription, broker?.user ?? null, broker?.user.plan ?? BILLING_PLAN.NONE)
+        return serializeAdminSubscription(subscription, broker?.user ?? null, broker?.planAccount?.planKey ?? broker?.user.plan ?? "free")
       }),
     })
   } catch (caughtError) {

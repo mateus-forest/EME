@@ -20,7 +20,7 @@ export async function GET() {
     const users = await prisma.user.findMany({
       where: {
         role: {
-          in: [UserRole.BROKER, UserRole.ADMIN],
+          in: [UserRole.BROKER, UserRole.ADMIN, UserRole.AGENCY],
         },
       },
       include: {

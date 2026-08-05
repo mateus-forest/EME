@@ -143,12 +143,17 @@ export type AdminInsights = {
     ranking: AdminTrendRow[]
   }
   studioIa: {
+    campaigns: number
+    libraryItems: number
+    libraryAssets: number
     imagesCreated: number
     videosCreated: number
-    homeStaging: number
+    postsCreated: number
+    storiesCreated: number
     anuncios: number
-    postsInstagram: number
     descriptions: number
+    postsInstagram: number
+    homeStaging: number
     captacoes: number
     aiConsumption: number
     creditsUsed: number
@@ -162,6 +167,12 @@ export type AdminInsights = {
     totalCreditsConsumed: number
     currentBalance: number
     estimatedCost: number
+    totalOperations: number
+    activeUsers: number
+    averagePerOperation: number
+    averageCostPerUser: number
+    averageCostPerOperation: number
+    openAiCost: number
     averagePerUser: number
     averagePerBroker: number
     byResource: AdminTrendRow[]
@@ -178,6 +189,7 @@ export type AdminInsights = {
     cancellations: number
     ltv: number | null
     averageTicket: number
+    paidUsers: number
     monthlySeries: AdminMetricPoint[]
   }
   analytics: {

@@ -18,7 +18,7 @@ export function AdminAnalyticsPage() {
   const { insights, isLoading, error } = useAdminInsights()
 
   return (
-    <AdminPageShell title="Analytics" subtitle="Indicadores reais da plataforma para produto, operação e crescimento">
+    <AdminPageShell title="Analytics" subtitle="Indicadores úteis da plataforma, sem métricas comerciais antigas">
       {isLoading && !insights ? <EmeLoading message="Consolidando analytics..." /> : null}
       {error ? <div className="mb-5 rounded-[1.25rem] border border-[#f3d4d4] bg-[#fff3f3] px-4 py-3 text-sm text-[#b42318]">{error}</div> : null}
 
@@ -27,51 +27,51 @@ export function AdminAnalyticsPage() {
           <AdminMetricGrid>
             <AdminMetricCard label="Usuários ativos" value={String(insights.analytics.activeUsers)} icon={<Users className="size-5" />} />
             <AdminMetricCard label="Imóveis ativos" value={String(insights.analytics.properties)} icon={<Building2 className="size-5" />} />
-            <AdminMetricCard label="Leads e clientes" value={String(insights.analytics.clients)} icon={<MessageCircle className="size-5" />} />
+            <AdminMetricCard label="Clientes" value={String(insights.analytics.clients)} icon={<MessageCircle className="size-5" />} />
             <AdminMetricCard label="Engajamento" value={insights.analytics.engagement == null ? "Sem base" : `${insights.analytics.engagement}`} icon={<Activity className="size-5" />} />
           </AdminMetricGrid>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-            <AdminSurface title="Indicadores principais" subtitle="Base consolidada da operação do portal.">
+            <AdminSurface title="Indicadores principais" subtitle="Leitura objetiva do que move a operação hoje.">
               <AdminDefinitionGrid
                 columns={4}
                 items={[
-                  { label: "Clientes", value: String(insights.analytics.clients) },
                   { label: "Propostas", value: String(insights.analytics.proposals) },
+                  { label: "Conversões", value: String(insights.analytics.conversions) },
                   { label: "Studio IA", value: String(insights.analytics.studioIa) },
                   { label: "COS", value: String(insights.analytics.cos) },
                   { label: "Vídeos", value: String(insights.analytics.videos) },
                   { label: "Imagens", value: String(insights.analytics.images) },
-                  { label: "Conversões", value: String(insights.analytics.conversions) },
                   { label: "Vendas", value: String(insights.analytics.sales) },
+                  { label: "Retenção", value: insights.analytics.retention == null ? "Sem base" : `${insights.analytics.retention}%` },
                 ]}
               />
             </AdminSurface>
 
-            <AdminSurface title="Retenção e saúde" subtitle="Sinais de recorrência e profundidade de uso.">
+            <AdminSurface title="Leitura de uso" subtitle="Profundidade operacional da base e da IA.">
               <AdminDefinitionGrid
                 items={[
-                  { label: "Retenção", value: insights.analytics.retention == null ? "Sem base" : `${insights.analytics.retention}%` },
-                  { label: "Engajamento médio", value: insights.analytics.engagement == null ? "Sem base" : `${insights.analytics.engagement}` },
                   { label: "Créditos usados", value: String(insights.aiConsumption.totalCreditsConsumed) },
-                  { label: "Saldo atual", value: String(insights.aiConsumption.currentBalance) },
+                  { label: "OpenAI", value: insights.aiConsumption.openAiCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
+                  { label: "Conversas COS", value: String(insights.cos.conversationsTotal) },
+                  { label: "Campanhas Studio IA", value: String(insights.studioIa.campaigns) },
                 ]}
               />
             </AdminSurface>
           </section>
 
           <section className="grid gap-5 xl:grid-cols-3">
-            <AdminMiniChart title="Uso do COS por dia" subtitle="Comandos e interações nos últimos 7 dias." points={insights.cos.usageByDay} />
-            <AdminMiniChart title="Uso do Studio IA por dia" subtitle="Ações de geração nos últimos 7 dias." points={insights.studioIa.generationByDay} />
-            <AdminMiniChart title="Receita ativa por mês" subtitle="Base de assinaturas ativas." points={insights.revenue.monthlySeries} />
+            <AdminMiniChart title="COS por dia" subtitle="Últimos 7 dias" points={insights.cos.usageByDay} />
+            <AdminMiniChart title="Studio IA por dia" subtitle="Últimos 7 dias" points={insights.studioIa.generationByDay} />
+            <AdminMiniChart title="Receita ativa por mês" subtitle="Base paga observada" points={insights.revenue.monthlySeries} />
           </section>
 
           <section className="grid gap-5 xl:grid-cols-2">
-            <AdminSurface title="Corretores com maior uso" subtitle="Quem mais movimenta o COS na rotina comercial.">
+            <AdminSurface title="Adoção do COS" subtitle="Usuários que mais movimentam a operação conversacional.">
               <AdminKpiList rows={insights.cos.usageByBroker} />
             </AdminSurface>
 
-            <AdminSurface title="Recursos mais utilizados" subtitle="O que mais concentra consumo dentro do Studio IA.">
+            <AdminSurface title="Uso do Studio IA" subtitle="Recursos criativos com maior tração atual.">
               <AdminKpiList rows={insights.studioIa.consumptionByFeature} />
             </AdminSurface>
           </section>
@@ -80,7 +80,7 @@ export function AdminAnalyticsPage() {
             <AdminMetricCard label="Crescimento" value={insights.revenue.growth == null ? "Sem base" : `${insights.revenue.growth}%`} icon={<TrendingUp className="size-5" />} tone="success" />
             <AdminMetricCard label="COS" value={`${insights.cos.commandsExecuted} comandos`} icon={<MessageCircle className="size-5" />} />
             <AdminMetricCard label="Studio IA" value={`${insights.studioIa.creditsUsed} créditos`} icon={<Sparkles className="size-5" />} />
-            <AdminMetricCard label="Plataforma" value="Operacional" icon={<BarChart3 className="size-5" />} tone="warning" />
+            <AdminMetricCard label="Operações IA" value={`${insights.aiConsumption.totalOperations}`} icon={<BarChart3 className="size-5" />} />
           </AdminMetricGrid>
         </div>
       ) : null}

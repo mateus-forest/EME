@@ -20,9 +20,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 
-const typeFilters = ["Todos", "Corretor", "Admin"] as const
+const typeFilters = ["Todos", "Corretor", "Operação", "Admin"] as const
 const statusFilters = ["Todos", "Ativo", "Inativo"] as const
-const planFilters = ["Todos", "Corretor", "Sem plano", "Admin"] as const
+const planFilters = ["Todos", "Free", "Pro", "Scale", "Admin"] as const
 
 export function AdminUsersPage() {
   const [users, setUsers] = useAdminUsers()
@@ -103,7 +103,7 @@ export function AdminUsersPage() {
   return (
     <AdminPageShell
       title="Usuários"
-      subtitle="Central administrativa com contexto de plano, uso de IA e saúde de cada conta"
+      subtitle="Central única de contas do sistema, com plano, atividade e contexto de uso"
       headerControls={
         <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative w-full max-w-[22rem]">
@@ -127,10 +127,10 @@ export function AdminUsersPage() {
           <AdminMetricCard label="Total de usuários" value={String(insights?.users.total ?? users.length)} icon={<Users className="size-5" />} />
           <AdminMetricCard label="Novos em 7 dias" value={String(insights?.users.newLast7Days ?? 0)} icon={<Sparkles className="size-5" />} />
           <AdminMetricCard label="Ativos hoje" value={String(insights?.users.activeToday ?? users.filter((item) => item.status === "Ativo").length)} icon={<ShieldCheck className="size-5" />} />
-          <AdminMetricCard label="Em avaliação" value={String(insights?.users.trial ?? users.filter((item) => item.plan === "Sem plano").length)} icon={<Users className="size-5" />} />
+          <AdminMetricCard label="Planos pagos" value={String(insights?.users.activePlans ?? 0)} icon={<Users className="size-5" />} />
         </AdminMetricGrid>
 
-        <AdminSurface title="Filtros operacionais" subtitle="Refine por tipo, status, plano e texto para chegar rapidamente na conta certa.">
+        <AdminSurface title="Filtros operacionais" subtitle="Encontre rapidamente a conta certa sem duplicar seções entre usuários e corretores.">
           <div className="grid gap-4 lg:grid-cols-3">
             <FilterGroup title="Status">
               {statusFilters.map((filter) => (
@@ -154,7 +154,7 @@ export function AdminUsersPage() {
           </div>
         </AdminSurface>
 
-        <AdminSurface title="Base de usuários" subtitle="Dados de conta, plano e ações rápidas sem sair da listagem.">
+        <AdminSurface title="Base de usuários" subtitle="Contas do sistema com dados de plano, status e ações rápidas.">
           <AdminDataTable
             columns={["Nome", "Tipo", "Status", "Plano", "Email", "Criação", "Ações"]}
             rows={filteredUsers.map((user) => [
@@ -187,7 +187,7 @@ export function AdminUsersPage() {
               <DialogHeader>
                 <DialogTitle>{selectedUser.name}</DialogTitle>
                 <DialogDescription className="text-[#6B7280]">
-                  Visão completa de plano, uso de IA, última atividade e contexto comercial da conta.
+                  Visão completa de plano, atividade e contexto operacional da conta.
                 </DialogDescription>
               </DialogHeader>
 
@@ -201,10 +201,10 @@ export function AdminUsersPage() {
                   { label: "WhatsApp", value: selectedUser.whatsApp },
                   { label: "Criação", value: selectedUser.createdAt },
                   { label: "Créditos atuais", value: String(selectedInsight?.creditsBalance ?? 0) },
-                  { label: "Consumo IA", value: String(selectedInsight?.creditsUsed ?? 0) },
+                  { label: "Créditos usados", value: String(selectedInsight?.creditsUsed ?? 0) },
                   { label: "Studio IA", value: `${selectedInsight?.studioActions ?? 0} ações` },
                   { label: "Imagens", value: String(selectedInsight?.imageGenerations ?? 0) },
-                  { label: "Videos", value: String(selectedInsight?.videoGenerations ?? 0) },
+                  { label: "Vídeos", value: String(selectedInsight?.videoGenerations ?? 0) },
                   { label: "COS", value: `${selectedInsight?.cosActions ?? 0} ações` },
                   { label: "Último acesso", value: selectedInsight?.lastAccess ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedInsight.lastAccess)) : "Sem atividade recente" },
                   { label: "Dispositivos", value: selectedInsight?.devicesLabel || "Sem telemetria" },
@@ -262,14 +262,14 @@ function UserEditDialog({
           <>
             <DialogHeader>
               <DialogTitle>Editar usuário</DialogTitle>
-              <DialogDescription className="text-[#6B7280]">Ajuste os dados principais sem sair da central de usuários.</DialogDescription>
+              <DialogDescription className="text-[#6B7280]">Ajuste os dados principais da conta sem alterar a regra comercial do plano.</DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nome" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
               <Field label="Email" value={draft.email} onChange={(value) => setDraft({ ...draft, email: value })} />
               <Field label="WhatsApp" value={draft.whatsApp} onChange={(value) => setDraft({ ...draft, whatsApp: value })} />
-              <Field label="Plano" value={draft.plan} onChange={(value) => setDraft({ ...draft, plan: value })} />
+              <ReadOnlyField label="Plano" value={draft.plan} />
             </div>
 
             <DialogFooter>
@@ -341,6 +341,17 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
     <div className="grid gap-2">
       <Label className="text-sm font-medium text-[#4B5563]">{label}</Label>
       <Input value={value} onChange={(event) => onChange(event.target.value)} className="h-11 rounded-xl" />
+    </div>
+  )
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-2">
+      <Label className="text-sm font-medium text-[#4B5563]">{label}</Label>
+      <div className="flex h-11 items-center rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-3 text-sm text-[#111827]">
+        {value}
+      </div>
     </div>
   )
 }

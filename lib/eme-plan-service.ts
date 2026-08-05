@@ -647,3 +647,94 @@ export async function registerExtraPackagePurchase({
     return purchase
   })
 }
+
+export async function applyAdminBonus({
+  brokerId,
+  bonusType,
+  quantity,
+  reason,
+  adminUserId,
+  adminName,
+}: {
+  brokerId: string
+  bonusType: "credit" | "property"
+  quantity: number
+  reason: string
+  adminUserId: string
+  adminName: string
+}) {
+  const normalizedQuantity = normalizeCredits(quantity)
+  if (normalizedQuantity <= 0) {
+    throw new Error("INVALID_ADMIN_BONUS_QUANTITY")
+  }
+
+  await ensureBrokerPlanAccount(brokerId)
+
+  if (bonusType === "credit") {
+    return prisma.$transaction(async (tx) => {
+      const broker = await tx.broker.update({
+        where: { id: brokerId },
+        data: {
+          aiCreditsBalance: { increment: normalizedQuantity },
+        },
+        select: {
+          aiCreditsBalance: true,
+        },
+      })
+
+      const transaction = await tx.aiCreditTransaction.create({
+        data: {
+          brokerId,
+          type: "admin_bonus",
+          amount: normalizedQuantity,
+          balanceAfter: broker.aiCreditsBalance,
+          description: reason,
+          metadata: {
+            bonusType,
+            quantity: normalizedQuantity,
+            adminUserId,
+            adminName,
+          } satisfies Prisma.InputJsonObject,
+        },
+      })
+
+      return {
+        kind: "credit" as const,
+        quantity: normalizedQuantity,
+        transactionId: transaction.id,
+      }
+    })
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.brokerPlanAccount.update({
+      where: { brokerId },
+      data: {
+        propertyExtraLimit: { increment: normalizedQuantity },
+      },
+    })
+
+    const purchase = await tx.extraPackagePurchase.create({
+      data: {
+        brokerId,
+        packageKey: `admin_property_bonus_${normalizedQuantity}`,
+        packageType: "property",
+        quantity: normalizedQuantity,
+        amountCents: 0,
+        status: "completed",
+        metadata: {
+          source: "admin_bonus",
+          reason,
+          adminUserId,
+          adminName,
+        } satisfies Prisma.InputJsonObject,
+      },
+    })
+
+    return {
+      kind: "property" as const,
+      quantity: normalizedQuantity,
+      transactionId: purchase.id,
+    }
+  })
+}

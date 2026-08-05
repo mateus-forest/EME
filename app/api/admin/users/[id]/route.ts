@@ -25,9 +25,9 @@ function parseStatus(value: unknown) {
 
 function parsePlan(value: unknown, role: UserRole) {
   if (value === undefined) return undefined
-  if (value === "Corretor") return role === UserRole.BROKER ? BILLING_PLAN.BROKER : null
-  if (value === "Plano Imobiliária") return role === UserRole.AGENCY ? BILLING_PLAN.AGENCY : null
-  if (value === "Sem plano") return BILLING_PLAN.NONE
+  if (value === "Free") return BILLING_PLAN.NONE
+  if (value === "Pro") return role === UserRole.BROKER ? BILLING_PLAN.BROKER : null
+  if (value === "Scale") return role === UserRole.AGENCY ? BILLING_PLAN.AGENCY : role === UserRole.BROKER ? BILLING_PLAN.BROKER : null
   if (value === "Admin") return role === UserRole.ADMIN ? BILLING_PLAN.NONE : null
   return null
 }
