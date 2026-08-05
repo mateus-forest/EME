@@ -1302,7 +1302,21 @@ export async function runLegacyAssessorAction({
     if (!selectedLeadId && matchingLeads.length > 1) {
       return {
         response: `Encontrei mais de um ${personName}. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"} ${leadItem.phone ? `- ${leadItem.phone}` : ""}`).join("\n")}`,
-        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, leadIds: matchingLeads.map((leadItem) => leadItem.id), propertyReference, propertyTerm: message } },
+        metadata: {
+          required: ["lead"],
+          noCharge: true,
+          parsedData: {
+            personName,
+            leadIds: matchingLeads.map((leadItem) => leadItem.id),
+            propertyReference,
+            propertyTerm: message,
+            options: matchingLeads.map((leadItem) => ({
+              id: leadItem.id,
+              label: leadItem.name || "Sem nome",
+              description: leadItem.phone || undefined,
+            })),
+          },
+        },
       }
     }
     const lead = matchingLeads[0] ?? null
@@ -1328,6 +1342,11 @@ export async function runLegacyAssessorAction({
             propertyPrice: propertyReference.price,
             parsedPriceRaw: propertyReference.parsedPriceRaw,
             propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
+            options: propertyCandidates.map((item) => ({
+              id: item.id,
+              label: item.title,
+              description: `${item.neighborhood ?? item.city} - ${formatAssessorPropertyPrice(item.price)}`,
+            })),
           },
         },
       }
@@ -1406,7 +1425,21 @@ Revise e preencha os dados restantes antes de enviar.`,
     if (matchingLeads.length > 1) {
       return {
         response: `Encontrei mais de um cliente com esse nome. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"}${leadItem.phone ? ` - ${leadItem.phone}` : ""}`).join("\n")}`,
-        metadata: { required: ["lead"], noCharge: true, parsedData: { personName, contractKind, leadIds: matchingLeads.map((leadItem) => leadItem.id), propertyReference } },
+        metadata: {
+          required: ["lead"],
+          noCharge: true,
+          parsedData: {
+            personName,
+            contractKind,
+            leadIds: matchingLeads.map((leadItem) => leadItem.id),
+            propertyReference,
+            options: matchingLeads.map((leadItem) => ({
+              id: leadItem.id,
+              label: leadItem.name || "Sem nome",
+              description: leadItem.phone || undefined,
+            })),
+          },
+        },
       }
     }
 
@@ -1430,6 +1463,11 @@ Revise e preencha os dados restantes antes de enviar.`,
             contractKind,
             propertyReference,
             propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
+            options: propertyCandidates.map((item) => ({
+              id: item.id,
+              label: item.title,
+              description: item.city,
+            })),
           },
         },
       }

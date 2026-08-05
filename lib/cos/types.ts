@@ -410,11 +410,31 @@ export type CosConversationMemoryAttachment = {
 }
 
 export type CosConversationMemory = {
+  workflowId?: string | null
+  workflowType?: string | null
+  currentStep?: number | null
+  pendingAction?: AssessorAction | null
+  pendingEntity?: CosEntityModuleId | null
+  awaitingConfirmation?: boolean
+  awaitingSelection?: boolean
+  awaitingUpload?: boolean
   lastAction?: AssessorAction | null
   lastUserMessage?: string
+  lastResult?: string | null
   leadId?: string | null
   propertyId?: string | null
   documentId?: string | null
+  contractId?: string | null
+  proposalId?: string | null
+  campaignId?: string | null
+  selectedClient?: { id: string; label?: string | null } | null
+  selectedProperty?: { id: string; label?: string | null } | null
+  selectedContract?: { id: string; label?: string | null } | null
+  selectedProposal?: { id: string; label?: string | null } | null
   attachments?: CosConversationMemoryAttachment[]
+  uploadedImages?: CosConversationMemoryAttachment[]
+  uploadedDocuments?: CosConversationMemoryAttachment[]
+  uploadedVideos?: CosConversationMemoryAttachment[]
+  extractedEntities?: Record<string, unknown>
   updatedAt: string
 }

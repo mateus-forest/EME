@@ -213,21 +213,61 @@ function workflowMetadata(workflow: CosWorkflow | null) {
 
 function buildConversationMemory(input: {
   current: import("@/lib/cos").CosConversationMemory | null
+  workflow?: CosWorkflow | null
   action: AssessorAction
   message: string
+  result?: string | null
   leadId?: string | null
   propertyId?: string | null
   documentId?: string | null
+  campaignId?: string | null
+  extractedEntities?: Record<string, unknown> | null
   attachments?: CosIncomingAttachment[]
 }) {
+  const images = (input.attachments ?? []).filter((item) => item.category === "image")
+  const documents = (input.attachments ?? []).filter((item) => item.category === "document")
+  const videos = (input.attachments ?? []).filter((item) => item.category === "video")
+  const pendingInput = input.workflow?.pendingInput ?? null
   return {
     ...input.current,
+    workflowId: input.workflow?.id ?? input.current?.workflowId ?? null,
+    workflowType: input.workflow?.executionPlan.requestedAction ?? input.action,
+    currentStep: input.workflow?.currentStep ?? input.current?.currentStep ?? null,
+    pendingAction: pendingInput?.action ?? null,
+    pendingEntity: pendingInput?.entity ?? null,
+    awaitingConfirmation: pendingInput?.field === "confirmation",
+    awaitingSelection: pendingInput?.type === "selection",
+    awaitingUpload: pendingInput?.field === "attachments" || pendingInput?.field === "document" || pendingInput?.field === "imageUrls",
     lastAction: input.action,
     lastUserMessage: input.message,
+    lastResult: input.result ?? input.current?.lastResult ?? null,
     leadId: input.leadId ?? input.current?.leadId ?? null,
     propertyId: input.propertyId ?? input.current?.propertyId ?? null,
     documentId: input.documentId ?? input.current?.documentId ?? null,
+    contractId: input.documentId ?? input.current?.contractId ?? null,
+    proposalId: input.documentId ?? input.current?.proposalId ?? null,
+    campaignId: input.campaignId ?? input.current?.campaignId ?? null,
+    selectedClient:
+      input.leadId
+        ? { id: input.leadId, label: input.current?.selectedClient?.label ?? null }
+        : (input.current?.selectedClient ?? null),
+    selectedProperty:
+      input.propertyId
+        ? { id: input.propertyId, label: input.current?.selectedProperty?.label ?? null }
+        : (input.current?.selectedProperty ?? null),
+    selectedContract:
+      input.documentId
+        ? { id: input.documentId, label: input.current?.selectedContract?.label ?? null }
+        : (input.current?.selectedContract ?? null),
+    selectedProposal:
+      input.documentId
+        ? { id: input.documentId, label: input.current?.selectedProposal?.label ?? null }
+        : (input.current?.selectedProposal ?? null),
     attachments: input.attachments && input.attachments.length > 0 ? input.attachments : (input.current?.attachments ?? []),
+    uploadedImages: images.length > 0 ? images : (input.current?.uploadedImages ?? []),
+    uploadedDocuments: documents.length > 0 ? documents : (input.current?.uploadedDocuments ?? []),
+    uploadedVideos: videos.length > 0 ? videos : (input.current?.uploadedVideos ?? []),
+    extractedEntities: input.extractedEntities ?? input.current?.extractedEntities ?? {},
     updatedAt: new Date().toISOString(),
   }
 }
@@ -663,6 +703,7 @@ export async function POST(request: NextRequest) {
               pendingWorkflow,
               buildConversationMemory({
                 current: conversationMemory,
+                workflow: pendingWorkflow,
                 action,
                 message: displayMessage || message,
                 attachments: effectiveAttachments,
@@ -848,11 +889,18 @@ export async function POST(request: NextRequest) {
     const actionMetadata = (executionResult?.metadata ?? {}) as Prisma.InputJsonObject
     const nextConversationMemory = buildConversationMemory({
       current: conversationMemory,
+      workflow: updatedWorkflow,
       action,
       message: displayMessage || message,
+      result: responseText,
       leadId: executionResult?.leadId ?? null,
       propertyId: executionResult?.propertyId ?? null,
       documentId: typeof actionMetadata.documentId === "string" ? actionMetadata.documentId : null,
+      campaignId: typeof actionMetadata.campaignId === "string" ? actionMetadata.campaignId : null,
+      extractedEntities:
+        actionMetadata.parsedData && typeof actionMetadata.parsedData === "object"
+          ? (actionMetadata.parsedData as Record<string, unknown>)
+          : null,
       attachments: effectiveAttachments,
     })
     const plannedCapabilities = (executionPlan?.steps ?? workflow.steps).map((step) => step.capabilityId)
