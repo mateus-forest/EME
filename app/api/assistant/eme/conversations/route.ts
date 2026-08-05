@@ -17,7 +17,7 @@ function serializeConversation(document: { id: string; title: string; createdAt:
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -26,22 +26,37 @@ export async function GET() {
   if (!user.broker) return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
 
   try {
-    const conversations = await prisma.brokerDocument.findMany({
-      where: {
-        brokerId: user.broker.id,
-        type: "cos_conversation",
-        status: { not: "archived" },
-      },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
+    const requestUrl = new URL(request.url)
+    const limit = Math.min(Math.max(Number(requestUrl.searchParams.get("limit")) || 15, 1), 50)
+    const offset = Math.max(Number(requestUrl.searchParams.get("offset")) || 0, 0)
+    const where = {
+      brokerId: user.broker.id,
+      type: "cos_conversation",
+      status: { not: "archived" },
+    } as const
 
-    return NextResponse.json({ conversations: conversations.map(serializeConversation) })
+    const [conversations, total] = await Promise.all([
+      prisma.brokerDocument.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.brokerDocument.count({ where }),
+    ])
+
+    return NextResponse.json({
+      conversations: conversations.map(serializeConversation),
+      total,
+      hasMore: offset + conversations.length < total,
+      nextOffset: offset + conversations.length,
+    })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json({ error: "Serviço de conversas indisponível no momento." }, { status: 503 })

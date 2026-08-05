@@ -243,6 +243,24 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
 function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
   const propertyId = typeof metadata.propertyId === "string" ? metadata.propertyId : null
   const leadId = typeof metadata.leadId === "string" ? metadata.leadId : null
+  const propertyStatus = typeof metadata.propertyStatus === "string" ? metadata.propertyStatus : null
+  const deleted = metadata.deleted === true
+
+  if (deleted || action === "ARCHIVE_PROPERTY") {
+    return [
+      { id: "next_find_property_after_delete", label: "Buscar imóveis" },
+      { id: "next_create_property_after_delete", label: "Criar imóvel" },
+      { id: "next_campaign_after_delete", label: "Criar campanha para outro imóvel" },
+    ]
+  }
+
+  if (action === "UNPUBLISH_PROPERTY" || propertyStatus === "PAUSED") {
+    return [
+      { id: "next_republish_property", label: "Publicar novamente" },
+      { id: "next_edit_property", label: "Editar imóvel" },
+      { id: "next_delete_property", label: "Excluir imóvel" },
+    ]
+  }
 
   if (action === "createPropertyDraft" || action === "PUBLISH_PROPERTY" || action === "searchProperties") {
     return [
@@ -456,9 +474,7 @@ export async function POST(request: NextRequest) {
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
   const isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
-  const isWorkflowDetailsRequest =
-    requestedAction === "workflow_details" ||
-    displayMessage.toLowerCase().includes("ver detalhes da opera")
+  const isWorkflowDetailsRequest = requestedAction === "workflow_details"
   const attachments = sanitizeIncomingAttachments(body?.attachments)
   // Pre-flight estimate used only to gate on balance before the real plan is known. Defaults to 1
   // like before for the vast majority of messages (no requestedAction at all). When a known free

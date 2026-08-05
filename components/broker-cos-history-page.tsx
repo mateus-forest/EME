@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { MessageCircle, Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 
 import { CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
-import { Button } from "@/components/ui/button"
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { Button } from "@/components/ui/button"
 import {
   AssistantCredits,
   CosConversationSummary,
@@ -20,12 +20,14 @@ type AssistantBootstrapResponse = {
 }
 
 const CONVERSATION_GROUP_ORDER = ["Hoje", "Ontem", "Últimos 7 dias", "Este mês", "Anteriores"] as const
+const MAX_VISIBLE_CONVERSATIONS_PER_GROUP = 12
 
 export function BrokerCosHistoryPage() {
   const [prompt, setPrompt] = useState("")
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
   const [search, setSearch] = useState("")
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const chatViewportRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -46,6 +48,9 @@ export function BrokerCosHistoryPage() {
     confirmPendingAction,
     cancelPendingAction,
     selectPendingOption,
+    hasMoreConversations,
+    isLoadingMoreConversations,
+    loadMoreConversations,
   } = useCosConversations({
     assistantEnabled,
     assistantCredits,
@@ -147,64 +152,94 @@ export function BrokerCosHistoryPage() {
         <div className="min-w-0 rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
           {groupedConversations.length === 0 ? (
             <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-white px-4 py-4 text-sm text-[#7B8491]">
-              {search.trim() ? "Nenhuma conversa encontrada." : "As conversas do COS aparecerão aqui por corretor, com título e última interação."}
+              {search.trim()
+                ? "Nenhuma conversa encontrada."
+                : "As conversas do COS aparecerão aqui por corretor, com título e última interação."}
             </div>
           ) : (
-            groupedConversations.map((group) => (
-              <div key={group.label} className="mb-5 last:mb-0">
-                <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#97A3B6]">
-                  {group.label}
-                </p>
-                <div className="space-y-2">
-                  {group.items.map((item) => {
-                    const isActive = item.id === activeConversationId
+            groupedConversations.map((group) => {
+              const visibleItems = expandedGroups[group.label]
+                ? group.items
+                : group.items.slice(0, MAX_VISIBLE_CONVERSATIONS_PER_GROUP)
 
-                    return (
-                      <div
-                        key={item.id}
-                        className={`rounded-[1.25rem] border p-3 transition ${
-                          isActive
-                            ? "border-[#009b3a]/18 bg-[#effaf3]"
-                            : "border-black/[0.06] bg-white hover:bg-[#f8f9fb]"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => void openConversation(item.id)}
-                          className="w-full text-left"
+              return (
+                <div key={group.label} className="mb-5 last:mb-0">
+                  <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#97A3B6]">
+                    {group.label}
+                  </p>
+                  <div className="space-y-2">
+                    {visibleItems.map((item) => {
+                      const isActive = item.id === activeConversationId
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`rounded-[1.25rem] border p-3 transition ${
+                            isActive
+                              ? "border-[#009b3a]/18 bg-[#effaf3]"
+                              : "border-black/[0.06] bg-white hover:bg-[#f8f9fb]"
+                          }`}
                         >
-                          <p className={`line-clamp-2 text-sm ${isActive ? "font-semibold text-[#111111]" : "text-[#334155]"}`}>
-                            {item.title}
-                          </p>
-                          <p className="mt-1 text-xs text-[#8A97A8]">{formatConversationTimestamp(item.lastInteractionAt)}</p>
-                        </button>
-                        <div className="mt-3 flex items-center gap-2">
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
-                            onClick={() => void handleRename(item.id, item.title)}
-                            className="h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
+                            onClick={() => void openConversation(item.id)}
+                            className="w-full text-left"
                           >
-                            <Pencil className="mr-1.5 size-3.5" />
-                            Renomear
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => void handleDelete(item.id)}
-                            className="h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
-                          >
-                            <Trash2 className="mr-1.5 size-3.5" />
-                            Excluir
-                          </Button>
+                            <p className={`line-clamp-2 text-sm ${isActive ? "font-semibold text-[#111111]" : "text-[#334155]"}`}>
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-xs text-[#8A97A8]">{formatConversationTimestamp(item.lastInteractionAt)}</p>
+                          </button>
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void handleRename(item.id, item.title)}
+                              className="h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
+                            >
+                              <Pencil className="mr-1.5 size-3.5" />
+                              Renomear
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void handleDelete(item.id)}
+                              className="h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
+                            >
+                              <Trash2 className="mr-1.5 size-3.5" />
+                              Excluir
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
+                  {group.items.length > MAX_VISIBLE_CONVERSATIONS_PER_GROUP && !expandedGroups[group.label] ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setExpandedGroups((current) => ({ ...current, [group.label]: true }))}
+                      className="mt-3 h-9 rounded-full border border-black/[0.06] bg-white px-4 text-xs text-[#4B5563] hover:bg-white"
+                    >
+                      Mostrar mais
+                    </Button>
+                  ) : null}
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
+
+          {hasMoreConversations ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => void loadMoreConversations()}
+              disabled={isLoadingMoreConversations}
+              className="mt-2 h-10 w-full rounded-[1rem] border border-black/[0.06] bg-white px-4 text-sm text-[#4B5563] hover:bg-white"
+            >
+              {isLoadingMoreConversations ? "Carregando..." : "Ver histórico completo"}
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex min-h-[calc(100svh-9.5rem)] min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.06)] md:min-h-[42rem]">
@@ -212,7 +247,7 @@ export function BrokerCosHistoryPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[1.05rem] font-semibold text-[#111111]">
-                  {activeConversation?.title || "Historico do COS"}
+                  {activeConversation?.title || "Histórico do COS"}
                 </p>
                 <p className="mt-1 text-sm text-[#7a8798]">
                   Reabra conversas anteriores, continue do ponto onde parou e mantenha o contexto separado por corretor.
@@ -328,4 +363,3 @@ function formatConversationTimestamp(isoDate: string) {
 
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
 }
-

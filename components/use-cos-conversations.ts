@@ -89,8 +89,8 @@ function parseCosResponseOptions(value: unknown): CosResponseOption[] | undefine
     .filter((item) => typeof item.id === "string" && typeof item.label === "string")
     .map((item) => ({
       id: item.id as string,
-      label: item.label as string,
-      description: typeof item.description === "string" ? item.description : undefined,
+      label: repairCosText(item.label as string),
+      description: typeof item.description === "string" ? repairCosText(item.description) : undefined,
     }))
 
   return options.length > 0 ? options : undefined
@@ -106,6 +106,9 @@ type ConversationDetailResponse = {
 type ConversationListResponse = {
   conversations?: CosConversationSummary[]
   conversation?: CosConversationSummary
+  total?: number
+  hasMore?: boolean
+  nextOffset?: number
   error?: string
 }
 
@@ -127,6 +130,67 @@ type CosConversationCache = {
 }
 
 const COS_CONVERSATION_CACHE_KEY = "eme-cos-conversation-cache"
+const INITIAL_CONVERSATION_PAGE_SIZE = 15
+
+function repairCosText(value: string) {
+  return value
+    .replaceAll("NÃ£o", "Não")
+    .replaceAll("nÃ£o", "não")
+    .replaceAll("possÃ­vel", "possível")
+    .replaceAll("histÃ³rico", "histórico")
+    .replaceAll("operaÃ§Ã£o", "operação")
+    .replaceAll("operaÃ§Ãµes", "operações")
+    .replaceAll("VocÃª", "Você")
+    .replaceAll("vocÃª", "você")
+    .replaceAll("Ãšltimos", "Últimos")
+    .replaceAll("Ãºltimos", "últimos")
+    .replaceAll("tÃ­tulo", "título")
+    .replaceAll("interaÃ§Ã£o", "interação")
+    .replaceAll("crÃ©ditos", "créditos")
+    .replaceAll("crÃ©dito", "crédito")
+    .replaceAll("Alteracao", "Alteração")
+    .replaceAll("confirmacao", "confirmação")
+    .replaceAll("Disponivel", "Disponível")
+    .replaceAll("Necessario", "Necessário")
+    .replaceAll("pagina", "página")
+    .replaceAll("acao", "ação")
+    .replaceAll("credito", "crédito")
+    .replaceAll("Creditos", "Créditos")
+    .replaceAll("Nao", "Não")
+    .replaceAll("Ã§", "ç")
+    .replaceAll("Ã£", "ã")
+    .replaceAll("Ã¡", "á")
+    .replaceAll("Ã©", "é")
+    .replaceAll("Ãª", "ê")
+    .replaceAll("Ã­", "í")
+    .replaceAll("Ã³", "ó")
+    .replaceAll("Ã´", "ô")
+    .replaceAll("Ãº", "ú")
+    .replaceAll("â€¢", "•")
+    .replaceAll("âœ”", "✔")
+    .replaceAll("âš ", "⚠")
+    .replaceAll("â³", "⏳")
+    .replaceAll("â¬œ", "⬜")
+}
+
+function normalizeConversationSummary(item: CosConversationSummary): CosConversationSummary {
+  return {
+    ...item,
+    title: repairCosText(item.title),
+  }
+}
+
+function normalizeConversationItem(item: CosConversationItem): CosConversationItem {
+  return {
+    ...item,
+    content: repairCosText(item.content),
+    options: item.options?.map((option) => ({
+      ...option,
+      label: repairCosText(option.label),
+      description: option.description ? repairCosText(option.description) : undefined,
+    })),
+  }
+}
 
 function readConversationCache() {
   if (typeof window === "undefined") return null
@@ -183,12 +247,15 @@ export function useCosConversations({
   const [chatFeedback, setChatFeedback] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isConversationLoading, setIsConversationLoading] = useState(false)
+  const [hasMoreConversations, setHasMoreConversations] = useState(false)
+  const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState(false)
   const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(() => !initialCacheRef.current)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
   const isMountedRef = useRef(true)
   const conversationListRequestIdRef = useRef(0)
   const openConversationRequestIdRef = useRef(0)
+  const loadedConversationCountRef = useRef(initialCacheRef.current?.conversations.length || INITIAL_CONVERSATION_PAGE_SIZE)
 
   const resolvedWorkspaceContext = useMemo(
     () =>
@@ -210,24 +277,40 @@ export function useCosConversations({
     }
   }, [])
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: { append?: boolean; offset?: number; limit?: number }) => {
     const requestId = ++conversationListRequestIdRef.current
-    const response = await fetch("/api/assistant/eme/conversations", {
+    const limit = options?.limit ?? loadedConversationCountRef.current
+    const offset = options?.append ? options?.offset ?? conversations.length : options?.offset ?? 0
+    const response = await fetch(`/api/assistant/eme/conversations?limit=${limit}&offset=${offset}`, {
       credentials: "include",
       cache: "no-store",
     })
 
     const data = (await response.json().catch(() => null)) as ConversationListResponse | null
-    if (!response.ok) throw new Error(data?.error || "Nao foi possivel carregar o historico do COS.")
+    if (!response.ok) throw new Error(repairCosText(data?.error || "Nao foi possivel carregar o historico do COS."))
 
-    const nextConversations = data?.conversations ?? []
+    const nextConversations = (data?.conversations ?? []).map(normalizeConversationSummary)
     if (!isMountedRef.current || requestId !== conversationListRequestIdRef.current) {
       return nextConversations
     }
 
-    setConversations(nextConversations)
+    setConversations((current) => {
+      if (!options?.append) return nextConversations
+
+      const merged = [...current]
+      for (const item of nextConversations) {
+        if (!merged.some((existing) => existing.id === item.id)) {
+          merged.push(item)
+        }
+      }
+      return merged
+    })
+    setHasMoreConversations(Boolean(data?.hasMore))
+    loadedConversationCountRef.current = options?.append
+      ? Math.max(loadedConversationCountRef.current, offset + nextConversations.length)
+      : nextConversations.length
     return nextConversations
-  }, [])
+  }, [conversations.length])
 
   const openConversation = useCallback(async (
     conversationId: string,
@@ -253,20 +336,20 @@ export function useCosConversations({
         cache: "no-store",
       })
       const data = (await response.json().catch(() => null)) as ConversationDetailResponse | null
-      if (!response.ok) throw new Error(data?.error || "Nao foi possivel abrir a conversa.")
+      if (!response.ok) throw new Error(repairCosText(data?.error || "Nao foi possivel abrir a conversa."))
 
       if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
         return
       }
 
-      setConversation(data?.messages ?? [])
+      setConversation((data?.messages ?? []).map(normalizeConversationItem))
       setPendingConfirmation(data?.pendingConfirmation ?? null)
       setActiveConversationId(conversationId)
     } catch (caughtError) {
       if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
         return
       }
-      setChatFeedback(caughtError instanceof Error ? caughtError.message : "Nao foi possivel abrir a conversa.")
+      setChatFeedback(repairCosText(caughtError instanceof Error ? caughtError.message : "Nao foi possivel abrir a conversa."))
     } finally {
       if (isMountedRef.current && requestId === openConversationRequestIdRef.current) {
         setIsConversationLoading(false)
@@ -286,22 +369,23 @@ export function useCosConversations({
     })
     const data = (await response.json().catch(() => null)) as ConversationListResponse | null
     if (!response.ok || !data?.conversation) {
-      throw new Error(data?.error || "Nao foi possivel criar a conversa.")
+      throw new Error(repairCosText(data?.error || "Nao foi possivel criar a conversa."))
     }
 
     if (!isMountedRef.current) {
-      return data.conversation
+      return normalizeConversationSummary(data.conversation)
     }
 
     setIsBootstrappingConversation(false)
     setIsConversationLoading(false)
-    setConversations((current) => [data.conversation!, ...current.filter((item) => item.id !== data.conversation!.id)])
-    setActiveConversationId(data.conversation.id)
+    const normalizedConversation = normalizeConversationSummary(data.conversation)
+    setConversations((current) => [normalizedConversation, ...current.filter((item) => item.id !== normalizedConversation.id)])
+    setActiveConversationId(normalizedConversation.id)
     setConversation([])
     setPendingConfirmation(null)
     setChatFeedback("")
     window.setTimeout(() => inputRef.current?.focus(), 0)
-    return data.conversation
+    return normalizedConversation
   }, [])
 
   const renameConversation = useCallback(async (conversationId: string, title: string) => {
@@ -313,10 +397,11 @@ export function useCosConversations({
       body: JSON.stringify({ title }),
     })
     const data = (await response.json().catch(() => null)) as ConversationListResponse | null
-    if (!response.ok || !data?.conversation) throw new Error(data?.error || "Nao foi possivel renomear a conversa.")
+    if (!response.ok || !data?.conversation) throw new Error(repairCosText(data?.error || "Nao foi possivel renomear a conversa."))
 
-    setConversations((current) => current.map((item) => (item.id === conversationId ? data.conversation! : item)))
-    return data.conversation
+    const normalizedConversation = normalizeConversationSummary(data.conversation)
+    setConversations((current) => current.map((item) => (item.id === conversationId ? normalizedConversation : item)))
+    return normalizedConversation
   }, [])
 
   const deleteConversation = useCallback(async (conversationId: string) => {
@@ -326,7 +411,7 @@ export function useCosConversations({
       cache: "no-store",
     })
     const data = (await response.json().catch(() => null)) as { error?: string } | null
-    if (!response.ok) throw new Error(data?.error || "Nao foi possivel excluir a conversa.")
+    if (!response.ok) throw new Error(repairCosText(data?.error || "Nao foi possivel excluir a conversa."))
 
     const nextConversations = conversations.filter((item) => item.id !== conversationId)
     setConversations(nextConversations)
@@ -378,7 +463,7 @@ export function useCosConversations({
 
     if (!options?.cancel && requestedCreditCost > 0 && assistantCredits.balance < requestedCreditCost) {
       setChatFeedback(
-        `Creditos IA insuficientes. Disponivel: ${assistantCredits.balance}. Necessario: ${requestedCreditCost}. Abra a pagina Plano para continuar.`,
+        `Créditos IA insuficientes. Disponível: ${assistantCredits.balance}. Necessário: ${requestedCreditCost}. Abra a página Plano para continuar.`,
       )
       return
     }
@@ -397,7 +482,7 @@ export function useCosConversations({
     setIsSending(true)
     setChatFeedback(
       !options?.cancel && requestedCreditCost > 0
-        ? `Custo desta acao: ${requestedCreditCost} Creditos IA.`
+        ? `Custo desta ação: ${requestedCreditCost} Créditos IA.`
         : "",
     )
 
@@ -436,12 +521,14 @@ export function useCosConversations({
           const availableCredits = data.availableCredits ?? assistantCredits.balance
           const requiredCredits = data.requiredCredits ?? requestedCreditCost
           throw new Error(
-            data.error ||
-              `Creditos IA insuficientes. Disponivel: ${availableCredits}. Necessario: ${requiredCredits}. Abra a pagina Plano para continuar.`,
+            repairCosText(
+              data.error ||
+                `Créditos IA insuficientes. Disponível: ${availableCredits}. Necessário: ${requiredCredits}. Abra a página Plano para continuar.`,
+            ),
           )
         }
 
-        throw new Error(data?.error || "Nao foi possivel falar com o COS agora.")
+        throw new Error(repairCosText(data?.error || "Nao foi possivel falar com o COS agora."))
       }
 
       if (data?.conversation) {
@@ -465,7 +552,7 @@ export function useCosConversations({
       const assistantMessage: CosConversationItem = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: data?.response || "Nao consegui responder agora.",
+        content: repairCosText(data?.response || "Nao consegui responder agora."),
         state: "ready",
         action: data?.action ?? options?.action ?? null,
         actionStatus: data?.actionStatus ?? "success",
@@ -487,21 +574,21 @@ export function useCosConversations({
           attachments: options?.attachments ?? [],
           options: responseOptions,
         })
-        setChatFeedback("Aguardando sua confirmacao.")
+        setChatFeedback("Aguardando sua confirmação.")
       } else {
         setPendingConfirmation(null)
         setChatFeedback(
           data?.creditsUsed
-            ? `${formatCosAction(data?.action || options?.action || "general")} -${data.creditsUsed} credito IA`
+            ? `${formatCosAction(data?.action || options?.action || "general")} -${data.creditsUsed} crédito IA`
             : options?.cancel
-              ? "Alteracao cancelada."
+              ? "Alteração cancelada."
               : "",
         )
       }
 
-      await loadConversations()
+      await loadConversations({ limit: loadedConversationCountRef.current })
     } catch (caughtError) {
-      const messageText = caughtError instanceof Error ? caughtError.message : "Nao foi possivel falar com o COS agora."
+      const messageText = repairCosText(caughtError instanceof Error ? caughtError.message : "Nao foi possivel falar com o COS agora.")
 
       setConversation((current) => [
         ...current,
@@ -634,6 +721,23 @@ export function useCosConversations({
     confirmPendingAction,
     cancelPendingAction,
     selectPendingOption,
+    hasMoreConversations,
+    isLoadingMoreConversations,
+    loadMoreConversations: async () => {
+      if (isLoadingMoreConversations || !hasMoreConversations) return
+      setIsLoadingMoreConversations(true)
+      try {
+        await loadConversations({
+          append: true,
+          offset: conversations.length,
+          limit: INITIAL_CONVERSATION_PAGE_SIZE,
+        })
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoadingMoreConversations(false)
+        }
+      }
+    },
   }
 }
 

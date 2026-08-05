@@ -5,7 +5,13 @@ import { PropertyStatus } from "@/lib/prisma-enums"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { prisma } from "@/lib/prisma"
 
-import { cleanText, extractPriceFromMessage, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
+import {
+  cleanText,
+  extractPriceFromMessage,
+  getEntityIdFromPayload,
+  getPayloadRecord,
+  requiredSelectionResponse,
+} from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 async function resolveProperty(brokerId: string, payload: Record<string, unknown>) {
@@ -41,6 +47,7 @@ async function updatePropertyPublication(input: {
       propertyId: updated.id,
       published: updated.published,
       propertyStatus: updated.status,
+      propertyTitle: updated.title,
     },
     propertyId: updated.id,
   }
@@ -61,7 +68,7 @@ export const unpublishPropertyCapability: CosCapabilityHandler = async ({ broker
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     published: false,
     status: PropertyStatus.PAUSED,
-    responseLabel: "Imóvel removido do catálogo.",
+    responseLabel: "Imóvel pausado com sucesso.",
   })
 
 export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
@@ -148,23 +155,20 @@ export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId
   const property = await resolveProperty(brokerId, payloadRecord)
   if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
-  const updated = await prisma.property.update({
+  const propertyTitle = cleanText(property.title, 160)
+
+  await prisma.property.delete({
     where: { id: property.id },
-    data: {
-      status: PropertyStatus.PAUSED,
-      published: false,
-      title: cleanText(property.title, 160),
-    },
   })
 
   return {
-    response: `Imóvel arquivado com sucesso.\n\n${updated.title}`,
+    response: `Imóvel excluído com sucesso.\n\n${propertyTitle}`,
     metadata: {
-      propertyId: updated.id,
-      propertyStatus: updated.status,
-      published: updated.published,
+      propertyId: property.id,
+      propertyTitle,
+      deleted: true,
+      published: false,
     },
-    propertyId: updated.id,
+    propertyId: property.id,
   }
 }
-
