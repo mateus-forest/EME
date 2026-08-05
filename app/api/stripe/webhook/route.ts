@@ -9,9 +9,16 @@ import {
   syncBillingFromStripeSubscription,
 } from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
+import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
+import { registerExtraPackagePurchase } from "@/lib/eme-plan-service"
+import { prisma } from "@/lib/prisma"
 import { getStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
+
+function isExtraPackageKey(value: string): value is EmeExtraPackageKey {
+  return value in EME_EXTRA_PACKAGES
+}
 
 async function syncInvoiceSubscription(stripe: Stripe, invoice: Stripe.Invoice) {
   const invoiceWithSubscription = invoice as Stripe.Invoice & {
@@ -51,9 +58,54 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session
         const metadata = session.metadata ?? {}
+        const checkoutType = metadata.checkoutType
         const userId = metadata.userId
         const mappedPlan = mapStripePlan(metadata.plan)
         const plan = mappedPlan === BILLING_PLAN.NONE ? mapStripePriceIdToPlan(metadata.priceId) : mappedPlan
+
+        if (checkoutType === "package" && typeof metadata.packageKey === "string" && isExtraPackageKey(metadata.packageKey) && userId) {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+              broker: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          })
+
+          if (user?.broker) {
+            const existingPurchase = await prisma.extraPackagePurchase.findFirst({
+              where: {
+                brokerId: user.broker.id,
+                packageKey: metadata.packageKey,
+                metadata: {
+                  path: ["checkoutSessionId"],
+                  equals: session.id,
+                },
+              },
+              select: {
+                id: true,
+              },
+            })
+
+            if (!existingPurchase) {
+              await registerExtraPackagePurchase({
+                brokerId: user.broker.id,
+                packageKey: metadata.packageKey,
+                status: "completed",
+                metadata: {
+                  checkoutSessionId: session.id,
+                  stripeCustomerId: typeof session.customer === "string" ? session.customer : null,
+                  stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+                },
+              })
+            }
+          }
+
+          break
+        }
 
         if (typeof session.subscription === "string") {
           const subscription = await stripe.subscriptions.retrieve(session.subscription)

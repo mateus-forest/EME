@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   ArrowUpRight,
   CalendarDays,
@@ -20,6 +21,7 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
+import { startStripeCheckout } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -201,15 +203,11 @@ function getLimitMessage(remaining: number, label: string) {
 }
 
 export function BrokerPlanPage() {
+  const searchParams = useSearchParams()
   const [upgradeFeedback, setUpgradeFeedback] = useState("")
   const [planSnapshot, setPlanSnapshot] = useState<BrokerPlanSnapshot | null>(null)
   const [isPlanLoading, setIsPlanLoading] = useState(true)
-  const {
-    historyNotifications,
-    unreadCount,
-    markAsRead,
-    archive,
-  } = useBrokerPaymentNotifications()
+  const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
 
   const propertyLimits = planSnapshot?.propertyLimits
   const currentPlan = planSnapshot?.currentPlan
@@ -262,15 +260,23 @@ export function BrokerPlanPage() {
     [planSnapshot?.plans],
   )
 
+  async function loadPlanSnapshot() {
+    setIsPlanLoading(true)
+
+    const response = await fetch("/api/brokers/plan", { credentials: "include", cache: "no-store" })
+    const data = (await response.json().catch(() => null)) as BrokerPlanSnapshot | { error?: string } | null
+
+    if (!response.ok || !isPlanSnapshot(data)) {
+      throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o plano.")
+    }
+
+    setPlanSnapshot(data)
+  }
+
   useEffect(() => {
     let ignore = false
 
-    fetch("/api/brokers/plan", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as BrokerPlanSnapshot | { error?: string } | null
-        if (!response.ok || !isPlanSnapshot(data)) throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o plano.")
-        if (!ignore) setPlanSnapshot(data)
-      })
+    void loadPlanSnapshot()
       .catch((caughtError) => {
         if (!ignore) setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o plano.")
       })
@@ -282,6 +288,27 @@ export function BrokerPlanPage() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout")
+    if (!checkoutStatus) return
+
+    if (checkoutStatus === "success") {
+      setUpgradeFeedback("Pagamento concluído. Atualizando seu plano e seus pacotes.")
+      void loadPlanSnapshot()
+        .catch((caughtError) => {
+          setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o plano.")
+        })
+        .finally(() => {
+          setIsPlanLoading(false)
+        })
+      return
+    }
+
+    if (checkoutStatus === "cancel") {
+      setUpgradeFeedback("Checkout cancelado. Nenhuma alteração foi aplicada.")
+    }
+  }, [searchParams])
 
   async function registerCommercialRequest(title: string, message: string) {
     try {
@@ -297,6 +324,24 @@ export function BrokerPlanPage() {
       setUpgradeFeedback("Solicitação registrada. O suporte EME dará continuidade.")
     } catch (caughtError) {
       setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar a solicitação.")
+    }
+  }
+
+  async function handlePlanCheckout() {
+    try {
+      setUpgradeFeedback("")
+      await startStripeCheckout()
+    } catch (caughtError) {
+      setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout.")
+    }
+  }
+
+  async function handlePackageCheckout(packageKey: string) {
+    try {
+      setUpgradeFeedback("")
+      await startStripeCheckout({ packageKey })
+    } catch (caughtError) {
+      setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout.")
     }
   }
 
@@ -345,7 +390,7 @@ export function BrokerPlanPage() {
                   </div>
                   <Button
                     type="button"
-                    onClick={() => void registerCommercialRequest("Solicitação de plano", `${planDisplayName} - ${planPrice}`)}
+                    onClick={() => void handlePlanCheckout()}
                     className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                   >
                     Fazer upgrade
@@ -385,7 +430,7 @@ export function BrokerPlanPage() {
               </div>
               <Button
                 type="button"
-                onClick={() => void registerCommercialRequest("Solicitação de plano", "Corretor quer entender benefícios de upgrade para Studio IA, COS e analytics.")}
+                onClick={() => void handlePlanCheckout()}
                 className="mt-5 h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
               >
                 Quero evoluir meu plano
@@ -499,7 +544,7 @@ export function BrokerPlanPage() {
                     <Button
                       type="button"
                       variant={isCurrent ? "ghost" : "default"}
-                      onClick={() => void registerCommercialRequest("Solicitação de plano", `${commercialCopy?.name ?? plan.name} - ${commercialCopy?.price ?? plan.price}`)}
+                      onClick={isCurrent ? undefined : () => void handlePlanCheckout()}
                       className={
                         isCurrent
                           ? "mt-6 h-10 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
@@ -543,13 +588,13 @@ export function BrokerPlanPage() {
                 title="Pacotes de Créditos IA"
                 description="Adicione mais Créditos IA sempre que precisar. Os créditos extras ficam acumulados na conta e são utilizados somente após o consumo dos créditos mensais do plano."
                 items={creditPackages}
-                onRequest={registerCommercialRequest}
+                onRequest={handlePackageCheckout}
               />
               <PackageCategory
                 title="Expansão da Carteira"
                 description="Aumente o limite de imóveis do plano atual. A expansão fica vinculada ao plano ativo da conta."
                 items={propertyPackages}
-                onRequest={registerCommercialRequest}
+                onRequest={handlePackageCheckout}
               />
             </CardContent>
           </Card>
@@ -569,7 +614,7 @@ export function BrokerPlanPage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 type="button"
-                onClick={() => void registerCommercialRequest("Solicitação de plano", "Corretor quer fazer upgrade e entender qual plano libera mais Studio IA, COS e analytics.")}
+                onClick={() => void handlePlanCheckout()}
                 className="h-10 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
               >
                 Fazer upgrade do plano
@@ -704,7 +749,7 @@ function PackageCategory({
   title: string
   description: string
   items: PlanPackage[]
-  onRequest: (title: string, message: string) => Promise<void>
+  onRequest: (packageKey: string) => Promise<void>
 }) {
   return (
     <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
@@ -713,6 +758,7 @@ function PackageCategory({
       <div className="mt-4 grid gap-3">
         {items.map((item) => {
           const Icon = item.type === "credit" ? Sparkles : PackagePlus
+
           return (
             <div key={item.key} className="rounded-[1.1rem] border border-black/[0.06] bg-white/90 p-4">
               <div className="flex items-start gap-3">
@@ -727,7 +773,7 @@ function PackageCategory({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => void onRequest("Solicitar pacote", `${item.label} - ${item.price}`)}
+                onClick={() => void onRequest(item.key)}
                 className="mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
               >
                 Comprar

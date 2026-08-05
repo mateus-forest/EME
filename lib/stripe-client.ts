@@ -1,8 +1,16 @@
-export async function startStripeCheckout() {
+type StripeCheckoutInput = {
+  packageKey?: string
+}
+
+export async function startStripeCheckout(input?: StripeCheckoutInput) {
   const response = await fetch("/api/stripe/create-checkout", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     credentials: "include",
     cache: "no-store",
+    body: JSON.stringify(input ?? {}),
   })
 
   const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null

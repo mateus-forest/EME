@@ -9,6 +9,7 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { getStripeEnv } from "@/lib/env.server"
+import type { EmeExtraPackageKey } from "@/lib/eme-plans"
 import { prisma } from "@/lib/prisma"
 
 export function getBillingPlanFromRole(role: UserRole) {
@@ -29,6 +30,29 @@ export function getCheckoutPriceIdForRole(role: UserRole) {
   }
 
   return ""
+}
+
+export function getCheckoutPriceIdForPackage(packageKey: EmeExtraPackageKey) {
+  const stripeEnv = getStripeEnv()
+
+  switch (packageKey) {
+    case "credit_250":
+      return stripeEnv.credit250PriceId
+    case "credit_750":
+      return stripeEnv.credit750PriceId
+    case "credit_1500":
+      return stripeEnv.credit1500PriceId
+    case "credit_3000":
+      return stripeEnv.credit3000PriceId
+    case "property_250":
+      return stripeEnv.property250PriceId
+    case "property_500":
+      return stripeEnv.property500PriceId
+    case "property_1000":
+      return stripeEnv.property1000PriceId
+    default:
+      return ""
+  }
 }
 
 export function getPlanLabel(plan: BillingPlan) {
