@@ -66,9 +66,9 @@ export function getStripeEnv() {
     credit750PriceId: readEnv("STRIPE_PRICE_CREDITS_750"),
     credit1500PriceId: readEnv("STRIPE_PRICE_CREDITS_1500"),
     credit3000PriceId: readEnv("STRIPE_PRICE_CREDITS_3000"),
-    property250PriceId: readEnv("STRIPE_PRICE_PROPERTIES_250"),
-    property500PriceId: readEnv("STRIPE_PRICE_PROPERTIES_500"),
-    property1000PriceId: readEnv("STRIPE_PRICE_PROPERTIES_1000"),
+    property50PriceId: readEnv("STRIPE_PRICE_PROPERTIES_50"),
+    property100PriceId: readEnv("STRIPE_PRICE_PROPERTIES_100"),
+    property200PriceId: readEnv("STRIPE_PRICE_PROPERTIES_200"),
     publishableKey: readEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"),
   }
 }

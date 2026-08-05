@@ -45,11 +45,11 @@ export function getCheckoutPriceIdForPackage(packageKey: EmeExtraPackageKey) {
     case "credit_3000":
       return stripeEnv.credit3000PriceId
     case "property_250":
-      return stripeEnv.property250PriceId
+      return stripeEnv.property50PriceId
     case "property_500":
-      return stripeEnv.property500PriceId
+      return stripeEnv.property100PriceId
     case "property_1000":
-      return stripeEnv.property1000PriceId
+      return stripeEnv.property200PriceId
     default:
       return ""
   }

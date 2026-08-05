@@ -74,10 +74,10 @@ export async function POST(request: NextRequest) {
                 : payload.packageKey === "credit_3000"
                   ? "STRIPE_PRICE_CREDITS_3000"
                   : payload.packageKey === "property_250"
-                    ? "STRIPE_PRICE_PROPERTIES_250"
+                    ? "STRIPE_PRICE_PROPERTIES_50"
                     : payload.packageKey === "property_500"
-                      ? "STRIPE_PRICE_PROPERTIES_500"
-                      : "STRIPE_PRICE_PROPERTIES_1000"
+                      ? "STRIPE_PRICE_PROPERTIES_100"
+                      : "STRIPE_PRICE_PROPERTIES_200"
 
         return NextResponse.json(
           { error: `Price ID do pacote não configurado (${variableName}).` },

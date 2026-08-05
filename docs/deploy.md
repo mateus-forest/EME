@@ -62,7 +62,7 @@ Para ativar:
 - `STRIPE_PRICE_CREDITS_250`
 - `STRIPE_PRICE_CREDITS_750`
 - `STRIPE_PRICE_CREDITS_1500`
-- `STRIPE_PRICE_PROPERTIES_250`
+- `STRIPE_PRICE_PROPERTIES_50`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, se o frontend passar a usar Stripe.js
 
 O checkout atual continua preparado apenas para assinatura, mas a camada de ambiente ja expoe os prices de plano e de pacotes da arquitetura comercial nova.
