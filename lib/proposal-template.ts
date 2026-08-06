@@ -45,7 +45,7 @@ function escapeHtml(value?: string | number | null) {
 }
 
 function propertyPurposeLabel(purpose?: string | null) {
-  return purpose === "RENT" ? "Locacao" : "Venda"
+  return purpose === "RENT" ? "Locação" : "Venda"
 }
 
 function propertyTypeLabel(type?: string | null) {
@@ -91,12 +91,12 @@ function extractPropertyHighlights(description?: string | null) {
   const candidates = [
     { label: "Vista para o mar", pattern: /\bvista para o mar\b/ },
     { label: "Piscina", pattern: /\bpiscina\b/ },
-    { label: "Area gourmet", pattern: /\b(?:area|\u00e1rea) gourmet\b|\bgourmet\b/ },
-    { label: "Suite", pattern: /\bsu(?:ite|\u00edte)\b/ },
+    { label: "Área gourmet", pattern: /\b(?:area|\u00e1rea) gourmet\b|\bgourmet\b/ },
+    { label: "Suíte", pattern: /\bsu(?:ite|\u00edte)\b/ },
     { label: "Sacada", pattern: /\bsacada\b/ },
     { label: "Churrasqueira", pattern: /\bchurrasqueira\b/ },
     { label: "Academia", pattern: /\bacademia\b/ },
-    { label: "Condominio clube", pattern: /\bcondom(?:inio|\u00ednio) clube\b/ },
+    { label: "Condomínio clube", pattern: /\bcondom(?:inio|\u00ednio) clube\b/ },
   ]
 
   return candidates.filter((item) => item.pattern.test(text)).map((item) => item.label)
@@ -164,8 +164,8 @@ export function buildProposalHtml(input: {
       --green: #009b3a;
       --green-deep: #0b6b33;
       --green-soft: rgba(0, 155, 58, 0.08);
-      --shadow: 0 18px 54px rgba(23, 35, 27, 0.06);
-      --card-shadow: 0 10px 26px rgba(23, 35, 27, 0.035);
+      --shadow: 0 16px 46px rgba(23, 35, 27, 0.055);
+      --card-shadow: 0 8px 20px rgba(23, 35, 27, 0.03);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
@@ -182,12 +182,12 @@ export function buildProposalHtml(input: {
       width: 100%;
       max-width: 1100px;
       margin: 0 auto;
-      padding: 28px;
+      padding: 30px;
     }
     .sheet {
       background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(250,248,243,.98));
       border: 1px solid var(--line-soft);
-      border-radius: 30px;
+      border-radius: 28px;
       box-shadow: var(--shadow);
       overflow: hidden;
     }
@@ -196,7 +196,7 @@ export function buildProposalHtml(input: {
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 14px 22px;
+      padding: 15px 24px;
       border-bottom: 1px solid var(--line-soft);
       background: rgba(255,255,255,.78);
     }
@@ -228,8 +228,8 @@ export function buildProposalHtml(input: {
     }
     .meta-card {
       min-width: 156px;
-      padding: 8px 12px;
-      border: 1px solid var(--line-soft);
+      padding: 9px 13px;
+      border: 1px solid rgba(30, 42, 33, 0.05);
       border-radius: 16px;
       background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(244,241,234,.9));
       text-align: right;
@@ -245,55 +245,55 @@ export function buildProposalHtml(input: {
       margin-top: 4px;
       color: var(--text);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 650;
     }
     .content {
-      padding: 26px 30px 34px;
+      padding: 30px 32px 36px;
     }
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1.12fr) minmax(390px, 1fr);
-      gap: 28px;
+      gap: 30px;
       align-items: stretch;
     }
     .hero-copy {
       display: grid;
-      gap: 20px;
+      gap: 22px;
       align-content: start;
-      padding-top: 4px;
+      padding-top: 6px;
     }
     .hero-title {
       margin: 0;
-      font-size: 18px;
-      line-height: 1.15;
+      font-size: 17px;
+      line-height: 1.18;
       font-weight: 500;
       letter-spacing: -0.02em;
       color: var(--text-soft);
     }
     .property-name {
       margin: 6px 0 0;
-      font-size: 48px;
-      line-height: 0.94;
-      font-weight: 700;
-      letter-spacing: -0.05em;
+      font-size: 50px;
+      line-height: 0.96;
+      font-weight: 720;
+      letter-spacing: -0.055em;
       color: var(--text);
       max-width: 560px;
     }
     .property-location {
-      margin-top: 12px;
+      margin-top: 14px;
       color: var(--text-soft);
       font-size: 14px;
-      font-weight: 450;
-      line-height: 1.6;
+      font-weight: 460;
+      line-height: 1.7;
     }
     .price-highlight {
       display: grid;
-      gap: 8px;
+      gap: 9px;
       width: fit-content;
       min-width: 340px;
-      padding: 22px 24px;
-      border: 1px solid rgba(0, 155, 58, 0.08);
-      border-radius: 26px;
+      padding: 24px 26px;
+      border: 1px solid rgba(0, 155, 58, 0.07);
+      border-radius: 24px;
       background:
         linear-gradient(180deg, rgba(0, 155, 58, 0.035), rgba(255,255,255,0.99)),
         #ffffff;
@@ -303,34 +303,34 @@ export function buildProposalHtml(input: {
       color: rgba(11, 107, 51, 0.6);
       font-size: 8px;
       font-weight: 700;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
     }
     .price-value {
       margin: 0;
       color: var(--green-deep);
-      font-size: 46px;
-      line-height: 0.92;
-      font-weight: 700;
-      letter-spacing: -0.06em;
+      font-size: 50px;
+      line-height: 0.9;
+      font-weight: 760;
+      letter-spacing: -0.065em;
     }
     .price-caption {
       color: var(--text-soft);
       font-size: 11px;
-      line-height: 1.65;
+      line-height: 1.7;
     }
     .hero-badges {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 9px;
     }
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 7px 12px;
+      padding: 7px 13px;
       border-radius: 999px;
       background: #ffffff;
-      border: 1px solid var(--line-soft);
+      border: 1px solid rgba(30, 42, 33, 0.05);
       color: var(--text-soft);
       font-size: 10px;
       font-weight: 600;
@@ -343,18 +343,19 @@ export function buildProposalHtml(input: {
     }
     .property-photo {
       min-height: 490px;
-      border-radius: 28px;
+      border-radius: 26px;
       overflow: hidden;
       background:
         linear-gradient(135deg, rgba(0, 155, 58, 0.08), rgba(244,241,234,0.9)),
         var(--surface);
-      border: 1px solid var(--line-soft);
-      box-shadow: var(--card-shadow);
+      border: 1px solid rgba(30, 42, 33, 0.045);
+      box-shadow: 0 6px 18px rgba(23, 35, 27, 0.025);
     }
     .property-photo img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center;
       display: block;
     }
     .property-photo-empty {
@@ -370,88 +371,88 @@ export function buildProposalHtml(input: {
     .section-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 320px;
-      gap: 28px;
-      margin-top: 30px;
+      gap: 30px;
+      margin-top: 34px;
     }
     .main-stack,
     .side-stack {
       display: grid;
-      gap: 22px;
+      gap: 24px;
       align-content: start;
     }
     .section,
     .broker-card,
     .footer-panel {
-      border-radius: 26px;
+      border-radius: 24px;
       background: rgba(255,255,255,.82);
-      border: 1px solid var(--line);
+      border: 1px solid rgba(30, 42, 33, 0.055);
     }
     .section {
-      padding: 24px 24px 22px;
+      padding: 25px 25px 23px;
     }
     .section-heading {
       display: grid;
-      gap: 6px;
-      margin-bottom: 18px;
+      gap: 7px;
+      margin-bottom: 20px;
     }
     .section-title {
       margin: 0;
-      font-size: 16px;
-      line-height: 1.2;
-      font-weight: 650;
+      font-size: 17px;
+      line-height: 1.22;
+      font-weight: 670;
       letter-spacing: -0.02em;
       color: var(--text);
     }
     .section-subtitle {
       margin: 0;
       color: var(--text-soft);
-      font-size: 11px;
-      line-height: 1.65;
+      font-size: 10px;
+      line-height: 1.7;
     }
     .property-data-grid,
     .condition-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px 20px;
+      gap: 18px 22px;
     }
     .data-item {
       display: grid;
-      gap: 5px;
+      gap: 6px;
       min-width: 0;
     }
     .data-label {
       color: var(--text-muted);
       font-size: 8px;
-      font-weight: 700;
-      letter-spacing: 0.16em;
+      font-weight: 650;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
     }
     .data-value {
       color: var(--text);
       font-size: 15px;
-      font-weight: 600;
-      line-height: 1.45;
+      font-weight: 620;
+      line-height: 1.5;
       overflow-wrap: anywhere;
     }
     .data-item-emphasis .data-value {
       color: var(--green-deep);
-      font-weight: 700;
+      font-weight: 730;
     }
     .highlights {
-      margin-top: 18px;
-      padding-top: 16px;
+      margin-top: 20px;
+      padding-top: 18px;
       border-top: 1px solid var(--line-soft);
     }
     .highlight-list {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 9px;
       margin-top: 10px;
     }
     .highlight-pill {
       display: inline-flex;
       align-items: center;
-      padding: 8px 12px;
+      padding: 8px 13px;
       border-radius: 999px;
       background: rgba(0, 155, 58, 0.07);
       color: var(--green-deep);
@@ -461,26 +462,27 @@ export function buildProposalHtml(input: {
     }
     .client-card {
       display: grid;
-      gap: 10px;
-      padding: 15px 16px;
+      gap: 11px;
+      padding: 17px 18px;
       border-radius: 20px;
       background: linear-gradient(180deg, rgba(246,243,238,.9), rgba(255,255,255,.7));
+      border: 1px solid rgba(30, 42, 33, 0.04);
     }
     .broker-card {
       display: grid;
-      gap: 16px;
-      padding: 22px;
+      gap: 18px;
+      padding: 24px;
       background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(244,241,234,.88));
     }
     .broker-top {
       display: grid;
-      grid-template-columns: 88px minmax(0, 1fr);
-      gap: 16px;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 18px;
       align-items: center;
     }
     .broker-avatar {
-      width: 88px;
-      height: 88px;
+      width: 82px;
+      height: 82px;
       border-radius: 50%;
       overflow: hidden;
       display: grid;
@@ -506,8 +508,8 @@ export function buildProposalHtml(input: {
     }
     .broker-name {
       margin: 6px 0 0;
-      font-size: 26px;
-      line-height: 1.08;
+      font-size: 24px;
+      line-height: 1.12;
       font-weight: 700;
       letter-spacing: -0.03em;
     }
@@ -519,12 +521,12 @@ export function buildProposalHtml(input: {
     }
     .broker-list {
       display: grid;
-      gap: 10px;
+      gap: 11px;
     }
     .broker-row {
       display: grid;
-      grid-template-columns: 78px minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 12px;
       align-items: start;
     }
     .broker-row-label {
@@ -537,36 +539,36 @@ export function buildProposalHtml(input: {
     .broker-row-value {
       color: var(--text-soft);
       font-size: 12px;
-      font-weight: 500;
-      line-height: 1.6;
+      font-weight: 520;
+      line-height: 1.65;
       overflow-wrap: anywhere;
     }
     .notes-block {
-      margin-top: 18px;
-      padding-top: 16px;
+      margin-top: 20px;
+      padding-top: 18px;
       border-top: 1px solid var(--line-soft);
     }
     .notes-text {
       margin: 0;
       color: var(--text-soft);
       font-size: 14px;
-      line-height: 1.85;
+      line-height: 1.8;
       white-space: pre-wrap;
     }
     .footer-panel {
-      margin-top: 24px;
-      padding: 22px 24px 24px;
+      margin-top: 26px;
+      padding: 24px 26px 26px;
       background: linear-gradient(180deg, rgba(244,241,234,.94), rgba(255,255,255,.92));
     }
     .footer-grid {
       display: grid;
       grid-template-columns: 1.1fr 1fr 1fr;
-      gap: 22px;
+      gap: 24px;
       align-items: start;
     }
     .footer-column {
       display: grid;
-      gap: 10px;
+      gap: 11px;
       min-width: 0;
     }
     .footer-title {
@@ -578,9 +580,9 @@ export function buildProposalHtml(input: {
     }
     .footer-value {
       color: var(--text);
-      font-size: 17px;
-      font-weight: 650;
-      line-height: 1.4;
+      font-size: 18px;
+      font-weight: 680;
+      line-height: 1.35;
     }
     .footer-note {
       color: var(--text-soft);
@@ -592,17 +594,23 @@ export function buildProposalHtml(input: {
       display: grid;
       gap: 10px;
       justify-items: start;
-      padding: 12px;
+      padding: 14px;
       border-radius: 18px;
       background: rgba(255,255,255,.72);
-      border: 1px solid var(--line-soft);
+      border: 1px solid rgba(30, 42, 33, 0.045);
+    }
+    .qr-title {
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 640;
+      line-height: 1.5;
     }
     .qr-box {
-      width: 116px;
-      height: 116px;
+      width: 118px;
+      height: 118px;
       padding: 8px;
       border-radius: 16px;
-      border: 1px solid var(--line-soft);
+      border: 1px solid rgba(30, 42, 33, 0.05);
       background: #ffffff;
       display: grid;
       place-items: center;
@@ -625,14 +633,14 @@ export function buildProposalHtml(input: {
       word-break: break-word;
     }
     .signature-line {
-      margin-top: 18px;
+      margin-top: 20px;
       padding-top: 18px;
       border-top: 1px solid rgba(20, 32, 24, 0.08);
       color: var(--text-muted);
-      font-size: 11px;
-      line-height: 1.7;
+      font-size: 10px;
+      line-height: 1.75;
       text-align: center;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
     }
     @media (max-width: 900px) {
       .page { padding: 12px; }
@@ -697,7 +705,7 @@ export function buildProposalHtml(input: {
             </div>
 
             <div class="price-highlight">
-              <div class="price-label">Valor do imovel</div>
+              <div class="price-label">Valor do imóvel</div>
               <p class="price-value">${escapeHtml(price)}</p>
               <div class="price-caption">Valor apresentado de forma objetiva para leitura comercial imediata.</div>
             </div>
@@ -705,12 +713,12 @@ export function buildProposalHtml(input: {
             <div class="hero-badges">
               <span class="badge badge-strong">${escapeHtml(purpose)}</span>
               <span class="badge">${escapeHtml(propertyType)}</span>
-              <span class="badge">Codigo ${escapeHtml(property?.publicCode ?? property?.id)}</span>
+              <span class="badge">Código ${escapeHtml(property?.publicCode ?? property?.id)}</span>
             </div>
           </div>
 
           <div class="property-photo">
-            ${propertyImage ? `<img src="${escapeHtml(propertyImage)}" alt="${escapeHtml(property?.title)}" />` : `<div class="property-photo-empty">Imagem principal nao informada</div>`}
+            ${propertyImage ? `<img src="${escapeHtml(propertyImage)}" alt="${escapeHtml(property?.title)}" />` : `<div class="property-photo-empty">Imagem principal não informada</div>`}
           </div>
         </section>
 
@@ -718,25 +726,25 @@ export function buildProposalHtml(input: {
           <div class="main-stack">
             <section class="section">
               <div class="section-heading">
-                <h2 class="section-title">Informacoes do imovel</h2>
+                <h2 class="section-title">Informações do imóvel</h2>
                 <p class="section-subtitle">Dados organizados com leitura clara, leve e comercial.</p>
               </div>
               <div class="property-data-grid">
-                ${renderDataItem("Imovel", property?.title, true)}
-                ${renderDataItem("Codigo", property?.publicCode ?? property?.id)}
+                ${renderDataItem("Imóvel", property?.title, true)}
+                ${renderDataItem("Código", property?.publicCode ?? property?.id)}
                 ${renderDataItem("Finalidade", purpose)}
                 ${renderDataItem("Tipo", propertyType)}
                 ${renderDataItem("Bairro", property?.neighborhood)}
                 ${renderDataItem("Cidade", property?.city)}
                 ${renderDataItem("Metragem", property?.area)}
-                ${renderDataItem("Dormitorios", property?.bedrooms)}
+                ${renderDataItem("Dormitórios", property?.bedrooms)}
                 ${renderDataItem("Vagas", property?.parkingSpots)}
               </div>
               ${
                 propertyHighlights.length > 0
                   ? `
                 <div class="highlights">
-                  <div class="data-label">Diferenciais do imovel</div>
+                  <div class="data-label">Diferenciais do imóvel</div>
                   <div class="highlight-list">
                     ${propertyHighlights.map((item) => `<span class="highlight-pill">${escapeHtml(item)}</span>`).join("")}
                   </div>
@@ -748,16 +756,17 @@ export function buildProposalHtml(input: {
 
             <section class="section">
               <div class="section-heading">
-                <h2 class="section-title">Condicoes da proposta</h2>
-                <p class="section-subtitle">Estrutura comercial com foco em clareza e negociacao.</p>
+                <h2 class="section-title">Condições da proposta</h2>
+                <p class="section-subtitle">Estrutura comercial com foco em clareza e negociação.</p>
               </div>
               <div class="condition-grid">
-                ${renderDataItem("Entrada", conditions?.entry)}
-                ${renderDataItem("Parcelamento", conditions?.installments)}
-                ${renderDataItem("Forma de pagamento", conditions?.paymentMethod)}
+                ${renderDataItem("Valor", price, true)}
+                ${renderDataItem("Entrada", conditions?.entry, true)}
+                ${renderDataItem("Parcelamento", conditions?.installments, true)}
+                ${renderDataItem("Forma de pagamento", conditions?.paymentMethod, true)}
               </div>
               <div class="notes-block">
-                <div class="data-label">Observacoes finais</div>
+                <div class="data-label">Observações finais</div>
                 <p class="notes-text">${escapeHtml(finalNotes)}</p>
               </div>
             </section>
@@ -778,8 +787,8 @@ export function buildProposalHtml(input: {
 
             <section class="broker-card">
               <div class="section-heading" style="margin-bottom:0">
-                <h2 class="section-title">Corretor responsavel</h2>
-                <p class="section-subtitle">Presenca profissional com informacoes de contato em segundo plano visual.</p>
+                <h2 class="section-title">Corretor responsável</h2>
+                <p class="section-subtitle">Presença profissional com informações de contato em segundo plano visual.</p>
               </div>
 
               <div class="broker-top">
@@ -827,31 +836,33 @@ export function buildProposalHtml(input: {
                 proposalOnlineUrl
                   ? `
                 <div class="qr-card">
+                  <div class="qr-title">Acesse a proposta online</div>
                   <div class="qr-box"><img src="${proposalQrCodeUrl}" alt="QR Code da proposta" /></div>
                   <div class="footer-note">Acesse a proposta digitalmente.</div>
                   <div class="footer-link">${escapeHtml(proposalOnlineUrl)}</div>
                 </div>
               `
-                  : `<div class="qr-empty">Visualizacao online nao disponivel nesta geracao.</div>`
+                  : `<div class="qr-empty">Visualização online não disponível nesta geração.</div>`
               }
             </div>
 
             <div class="footer-column">
-              <div class="footer-title">Falar com o corretor</div>
+              <div class="footer-title">Fale diretamente com o corretor</div>
               ${
                 brokerWhatsappUrl
                   ? `
                 <div class="qr-card">
+                  <div class="qr-title">Fale diretamente com o corretor</div>
                   <div class="qr-box"><img src="${brokerQrCodeUrl}" alt="QR Code para falar com o corretor" /></div>
-                  <div class="footer-note">Converse direto com o corretor responsavel.</div>
+                  <div class="footer-note">Converse diretamente com o corretor responsável.</div>
                   <div class="footer-link">${escapeHtml(brokerWhatsappUrl)}</div>
                 </div>
               `
-                  : `<div class="qr-empty">Contato instantaneo indisponivel sem telefone do corretor.</div>`
+                  : `<div class="qr-empty">Contato instantâneo indisponível sem telefone do corretor.</div>`
               }
             </div>
           </div>
-          <div class="signature-line">Documento gerado automaticamente pelo EME &bull; Solucoes Imobiliarias</div>
+          <div class="signature-line">Documento gerado automaticamente pelo EME &bull; Soluções Imobiliárias</div>
         </footer>
       </section>
     </section>
