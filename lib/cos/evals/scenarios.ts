@@ -259,6 +259,46 @@ const financeMessages = [
   "Quanto vou receber de comissão?",
 ]
 
+const propertyStatisticsMessages = [
+  "Quantos imóveis tenho?",
+  "Quantos imóveis existem na minha carteira?",
+  "Quais imóveis estão pendentes?",
+  "Me dê a análise dos meus imóveis.",
+]
+
+const leadStatisticsMessages = [
+  "Quantos clientes tenho?",
+  "Quantos clientes possuo hoje?",
+  "Quais clientes estão pendentes?",
+  "Me dê um resumo dos clientes.",
+]
+
+const contractStatisticsMessages = [
+  "Quantos contratos possuo?",
+  "Quantos contratos existem?",
+  "Quais contratos estão pendentes?",
+  "Me dê um resumo dos contratos.",
+]
+
+const proposalStatisticsMessages = [
+  "Quantas propostas existem?",
+  "Quantas propostas eu tenho?",
+  "Quais propostas estão pendentes?",
+  "Me dê um resumo das propostas.",
+]
+
+const sharePropertyMessages = [
+  "Compartilhar imóvel.",
+  "Compartilhe este imóvel.",
+  "Gerar compartilhamento deste imóvel.",
+]
+
+const shareCatalogMessages = [
+  "Compartilhar catálogo.",
+  "Gerar link do catálogo.",
+  "Copiar link do catálogo.",
+]
+
 const helpMessages = [
   { message: "Como usar o COS?", action: "help_use_cos" as AssessorAction, capabilityId: "help.use_cos" as const },
   { message: "Como cadastrar imóveis?", action: "help_register_properties" as AssessorAction, capabilityId: "help.register_properties" as const },
@@ -387,6 +427,25 @@ function buildScenarioLibrary() {
 
   scenarios.push(
     ...expandMatrix({
+      category: "property-statistics",
+      baseDescription: "consultar estatísticas de imóveis",
+      messages: propertyStatisticsMessages,
+      variants: variantPropertyContexts,
+      expected: {
+        intentAction: "GET_ANALYTICS_PROPERTIES",
+        workflowDecision: "start_new",
+        capabilityId: "analytics.properties",
+        workflowActions: ["GET_ANALYTICS_PROPERTIES"],
+        minConfidence: 0.72,
+        requiresConfirmation: false,
+        maxProjectedQuestions: 0,
+      },
+      tags: ["property", "statistics"],
+    }),
+  )
+
+  scenarios.push(
+    ...expandMatrix({
       category: "property-unpublish",
       baseDescription: "pausar imóvel",
       messages: propertyUnpublishMessages,
@@ -426,6 +485,25 @@ function buildScenarioLibrary() {
 
   scenarios.push(
     ...expandMatrix({
+      category: "lead-statistics",
+      baseDescription: "consultar estatísticas de clientes",
+      messages: leadStatisticsMessages,
+      variants: variantLeadContexts,
+      expected: {
+        intentAction: "getLeadsSummary",
+        workflowDecision: "start_new",
+        capabilityId: "lead.summary",
+        workflowActions: ["getLeadsSummary"],
+        minConfidence: 0.72,
+        requiresConfirmation: false,
+        maxProjectedQuestions: 0,
+      },
+      tags: ["lead", "statistics"],
+    }),
+  )
+
+  scenarios.push(
+    ...expandMatrix({
       category: "lead-delete",
       baseDescription: "excluir cliente selecionado",
       messages: leadDeleteMessages,
@@ -441,6 +519,49 @@ function buildScenarioLibrary() {
         contextOrigin: "workspace",
       },
       tags: ["lead", "destructive"],
+    }),
+  )
+
+  scenarios.push(
+    ...expandMatrix({
+      category: "share-property",
+      baseDescription: "compartilhar imóvel específico",
+      messages: sharePropertyMessages,
+      variants: variantPropertyContexts.slice(2),
+      expected: {
+        fastActionKind: "workflow_action",
+        intentAction: "SHARE_CATALOG",
+        workflowDecision: "start_new",
+        capabilityId: "catalog.share",
+        workflowActions: ["SHARE_CATALOG"],
+        minConfidence: 0.95,
+        requiresConfirmation: false,
+        maxProjectedQuestions: 0,
+      },
+      tags: ["catalog", "share"],
+    }),
+  )
+
+  scenarios.push(
+    ...expandMatrix({
+      category: "share-catalog",
+      baseDescription: "compartilhar catálogo",
+      messages: shareCatalogMessages,
+      variants: [
+        { suffix: "catalogo", workspace: { page: "catalog", entity: "catalog" as const } },
+        { suffix: "cos-home", workspace: { page: "cos_home", entity: "operation" as const } },
+      ],
+      expected: {
+        fastActionKind: "workflow_action",
+        intentAction: "SHARE_CATALOG",
+        workflowDecision: "start_new",
+        capabilityId: "catalog.share",
+        workflowActions: ["SHARE_CATALOG"],
+        minConfidence: 0.95,
+        requiresConfirmation: false,
+        maxProjectedQuestions: 0,
+      },
+      tags: ["catalog", "share"],
     }),
   )
 
@@ -730,6 +851,25 @@ function buildScenarioLibrary() {
     }),
   )
 
+  scenarios.push(
+    ...expandMatrix({
+      category: "contract-statistics",
+      baseDescription: "consultar estatísticas de contratos",
+      messages: contractStatisticsMessages,
+      variants: variantContractContexts,
+      expected: {
+        intentAction: "CONTRACT_HISTORY",
+        workflowDecision: "start_new",
+        capabilityId: "contract.history",
+        workflowActions: ["CONTRACT_HISTORY"],
+        minConfidence: 0.72,
+        requiresConfirmation: false,
+        maxProjectedQuestions: 0,
+      },
+      tags: ["contract", "statistics"],
+    }),
+  )
+
   for (const item of contractFollowupMessages) {
     scenarios.push(
       ...expandMatrix({
@@ -787,6 +927,40 @@ function buildScenarioLibrary() {
         maxProjectedQuestions: 1,
       },
       tags: ["proposal", "create"],
+    }),
+  )
+
+  scenarios.push(
+    ...expandMatrix({
+      category: "proposal-statistics",
+      baseDescription: "consultar estatísticas de propostas",
+      messages: proposalStatisticsMessages,
+      variants: [
+        {
+          suffix: "documentos",
+          workspace: { page: "documents", entity: "document" as const },
+        },
+        {
+          suffix: "imovel-e-cliente",
+          workspace: { page: "property_detail", entity: "property" as const, entityId: "prop-1" },
+          memory: {
+            propertyId: "prop-1",
+            selectedProperty: { id: "prop-1", label: "Sala Comercial Jardins" },
+            leadId: "lead-1",
+            selectedClient: { id: "lead-1", label: "Lucas Pereira" },
+          },
+        },
+      ],
+      expected: {
+        intentAction: "LIST_DOCUMENTS",
+        workflowDecision: "start_new",
+        capabilityId: "proposal.summary",
+        workflowActions: ["LIST_DOCUMENTS"],
+        minConfidence: 0.72,
+        requiresConfirmation: false,
+        maxProjectedQuestions: 0,
+      },
+      tags: ["proposal", "statistics"],
     }),
   )
 

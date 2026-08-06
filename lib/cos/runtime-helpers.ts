@@ -234,7 +234,7 @@ export async function createPropertyDraftRecord(input: {
   })
 
   return {
-    response: `Imóvel criado em rascunho.\nCódigo: ${property.publicCode ?? publicCode}\n${missingFields.length ? `Faltou preencher: ${missingFields.join(" e ")}.\n` : ""}Revise antes de publicar.`,
+    response: `Imóvel criado em rascunho.\n${missingFields.length ? `\nPendências:\n- ${missingFields.join("\n- ")}\n` : "\n"}Revise antes de publicar.`,
     metadata: {
       propertyId: property.id,
       publicCode: property.publicCode,

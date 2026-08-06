@@ -575,7 +575,7 @@ export function useCosConversations({
           : options
 
     if (!resolvedOptions?.cancel && !assistantEnabled) {
-      setChatFeedback("Ative o Assessor EME para conversar com o COS.")
+      setChatFeedback("Ative o COS para continuar.")
       return
     }
 

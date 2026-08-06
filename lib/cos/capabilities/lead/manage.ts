@@ -137,7 +137,7 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
       }
 
       return {
-        response: `Encontrei o cliente ${chosen.name}. Essa exclusão é permanente e não pode ser desfeita. Confirma?`,
+        response: `Encontrei o cliente ${chosen.name}.\n\n⚠️ Esta ação é permanente e não pode ser desfeita.`,
         metadata: createPendingInputMetadata({
           field: "confirmation",
           action: "DELETE_LEAD",
@@ -204,7 +204,7 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
   const target = matches[0]
 
   return {
-    response: `Encontrei o cliente ${target.name}. Essa exclusão é permanente e não pode ser desfeita. Confirma?`,
+    response: `Encontrei o cliente ${target.name}.\n\n⚠️ Esta ação é permanente e não pode ser desfeita.`,
     metadata: createPendingInputMetadata({
       field: "confirmation",
       action: "DELETE_LEAD",

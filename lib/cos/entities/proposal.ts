@@ -9,6 +9,23 @@ export const proposalEntityModule: CosEntityModule = {
   capabilities: [
     {
       descriptor: {
+        id: "proposal.summary",
+        action: "LIST_DOCUMENTS",
+        title: "Resumo de propostas",
+        description: "Resume propostas existentes, rascunhos e pendências atuais.",
+        domain: "proposal",
+        entity: "document",
+        aliases: ["quantas propostas", "quantas propostas existem", "minhas propostas", "propostas pendentes", "listar propostas", "mostrar propostas"],
+        responseMode: "raw",
+        source: "modular",
+        mutatesData: false,
+        requiresConfirmation: false,
+        requiresSelection: false,
+        surfaces: ["portal", "cos_home", "whatsapp"],
+      },
+    },
+    {
+      descriptor: {
         id: "proposal.create",
         action: "CREATE_PROPOSAL",
         title: "Proposta gerada",

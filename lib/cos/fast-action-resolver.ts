@@ -229,13 +229,53 @@ export function resolveFastCosAction(input: {
     }
   }
 
-  if (isExactCommand(normalizedMessage, ["compartilhar catalogo", "compartilhar catálogo", "gerar link do catalogo", "gerar link do catálogo", "compartilhar imovel", "compartilhar imóvel"])) {
+  if (isExactCommand(normalizedMessage, ["compartilhar catalogo", "compartilhar catálogo", "gerar link do catalogo", "gerar link do catálogo", "copiar link do catalogo", "copiar link do catálogo"])) {
     return {
       kind: "workflow_action",
       action: "SHARE_CATALOG",
       confidence: 0.97,
       reply: "Perfeito.\n\nVou preparar o compartilhamento do catálogo.",
       reason: "comando canonico para compartilhamento de catalogo",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["compartilhar imovel", "compartilhar imóvel", "compartilhe este imovel", "compartilhe este imóvel", "gerar compartilhamento deste imovel", "gerar compartilhamento deste imóvel"])) {
+    return {
+      kind: "workflow_action",
+      action: hasPropertySelected ? "SHARE_CATALOG" : "PUBLISH_CATALOG",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou preparar o compartilhamento deste imóvel.",
+      reason: "comando canonico para compartilhamento de imovel",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["publicar imovel", "publicar imóvel", "publique este imovel", "publique este imóvel"])) {
+    return {
+      kind: "workflow_action",
+      action: "PUBLISH_PROPERTY",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou publicar este imóvel.",
+      reason: "comando canonico para publicar imovel",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["excluir cliente", "excluir este cliente", "remover cliente"])) {
+    return {
+      kind: "workflow_action",
+      action: "DELETE_LEAD",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou iniciar a exclusão do cliente.",
+      reason: "comando canonico para excluir cliente",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["excluir imovel", "excluir imóvel", "remover este imovel", "remover este imóvel"])) {
+    return {
+      kind: "workflow_action",
+      action: "ARCHIVE_PROPERTY",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou iniciar a exclusão do imóvel.",
+      reason: "comando canonico para excluir imovel",
     }
   }
 

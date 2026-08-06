@@ -65,7 +65,7 @@ import {
   unpublishPropertyCapability,
   updatePropertyMediaCapability,
 } from "@/lib/cos/capabilities/property/manage"
-import { createProposalCapability } from "@/lib/cos/capabilities/proposal/manage"
+import { createProposalCapability, proposalSummaryCapability } from "@/lib/cos/capabilities/proposal/manage"
 import {
   studioGenerateCampaignCapability,
   studioGenerateDescriptionCapability,
@@ -101,6 +101,7 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "agenda.week": weekAgendaCapability,
   "agenda.month": monthAgendaCapability,
   "proposal.create": createProposalCapability,
+  "proposal.summary": proposalSummaryCapability,
   "contract.create": createContractCapability,
   "contract.list": listContractsCapability,
   "contract.get": getContractCapability,

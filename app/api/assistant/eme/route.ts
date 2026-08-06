@@ -725,7 +725,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!brokerState.aiAssistantEnabled && !isCancellation) {
-      return NextResponse.json({ error: "Seu Assessor EME esta desativado no momento." }, { status: 403 })
+      return NextResponse.json({ error: "O COS está desativado no momento." }, { status: 403 })
     }
 
     if (brokerState.aiCreditsBalance < creditsUsed && !isCancellation) {
@@ -1517,7 +1517,7 @@ export async function POST(request: NextRequest) {
       await prisma.notification.create({
         data: {
           userId: user.id,
-          title: "Erro no Assessor EME",
+          title: "Erro no COS",
           message: errorMessage,
           read: false,
         },
@@ -1658,9 +1658,9 @@ export async function POST(request: NextRequest) {
     })
 
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O COS está indisponível no momento." }, { status: 503 })
     }
 
-    return NextResponse.json({ error: "Não foi possível acionar o Assessor EME agora." }, { status: 500 })
+    return NextResponse.json({ error: "Não consegui concluir sua ação agora. Tente novamente em instantes." }, { status: 500 })
   }
 }

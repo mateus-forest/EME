@@ -151,3 +151,31 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
     propertyId: resolvedProperty.id,
   }
 }
+
+export const proposalSummaryCapability: CosCapabilityHandler = async ({ brokerId }) => {
+  const proposals = await prisma.brokerDocument.findMany({
+    where: { brokerId, type: "proposal" },
+    orderBy: { updatedAt: "desc" },
+    take: 8,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+    },
+  })
+
+  const draftCount = proposals.filter((proposal) => proposal.status === "draft").length
+  const pendingCount = proposals.filter((proposal) => proposal.status !== "draft").length
+
+  return {
+    response: proposals.length
+      ? `Propostas atuais:\n\n- Total: ${proposals.length}\n- Em rascunho: ${draftCount}\n- Em andamento: ${pendingCount}\n\nÚltimas propostas:\n${proposals.slice(0, 3).map((proposal) => `- ${proposal.title}`).join("\n")}`
+      : "Ainda não existem propostas registradas.",
+    metadata: {
+      totalProposals: proposals.length,
+      draftProposals: draftCount,
+      inProgressProposals: pendingCount,
+      documentIds: proposals.map((proposal) => proposal.id),
+    },
+  }
+}
