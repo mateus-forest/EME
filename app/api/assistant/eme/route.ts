@@ -170,8 +170,35 @@ async function persistConversationWorkflow(
 
 type CosResponseOption = {
   id: string
+  actionId?: string
   label: string
   description?: string
+  message?: string
+  action?: string
+  selectedOptionId?: string
+  href?: string
+}
+
+function buildStructuredOption(input: {
+  id: string
+  label: string
+  description?: string
+  actionId?: string
+  message?: string
+  action?: string | null
+  selectedOptionId?: string
+  href?: string
+}): CosResponseOption {
+  return {
+    id: input.id,
+    actionId: input.actionId ?? input.id,
+    label: input.label,
+    description: input.description,
+    message: input.message,
+    action: input.action ?? undefined,
+    selectedOptionId: input.selectedOptionId,
+    href: input.href,
+  }
 }
 
 function workflowMetadata(workflow: CosWorkflow | null) {
@@ -199,11 +226,16 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
         .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
         .filter((item): item is Record<string, unknown> => Boolean(item))
         .filter((item) => typeof item.id === "string" && typeof item.label === "string")
-        .map((item) => ({
-          id: item.id as string,
-          label: item.label as string,
-          description: typeof item.description === "string" ? item.description : undefined,
-        }))
+        .map((item) =>
+          buildStructuredOption({
+            id: item.id as string,
+            actionId: `workflow_selection:${workflow.id}:${item.id as string}`,
+            selectedOptionId: item.id as string,
+            label: item.label as string,
+            message: item.label as string,
+            description: typeof item.description === "string" ? item.description : undefined,
+          }),
+        )
       return options.length > 0 ? options : null
     }
   }
@@ -225,10 +257,16 @@ function buildIntentClarificationOptions(
   const unique = new Map<string, CosResponseOption>()
   for (const candidate of candidates.slice(0, 3)) {
     if (!unique.has(candidate.action)) {
-      unique.set(candidate.action, {
-        id: candidate.action,
-        label: getCosCapabilityLabel(candidate.action),
-      })
+      unique.set(
+        candidate.action,
+        buildStructuredOption({
+          id: candidate.action,
+          actionId: `intent:${candidate.action}`,
+          action: candidate.action,
+          message: getCosCapabilityLabel(candidate.action),
+          label: getCosCapabilityLabel(candidate.action),
+        }),
+      )
     }
   }
 
@@ -351,6 +389,75 @@ function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJson
   }
 
   return null
+}
+
+function buildStructuredFastActionOptions(options: Array<{ id: string; label: string }> | undefined): CosResponseOption[] | null {
+  if (!options?.length) return null
+
+  const normalized = options
+    .filter((option) => option.id && option.label)
+    .map((option) =>
+      buildStructuredOption({
+        id: option.id,
+        actionId: `clarify:${option.id}`,
+        selectedOptionId: option.id,
+        message: option.label,
+        label: option.label,
+      }),
+    )
+
+  return normalized.length > 0 ? normalized : null
+}
+
+function buildStructuredNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
+  const options = buildNextStepOptions(action, metadata)
+  if (!options?.length) return null
+
+  return options.map((option) => {
+    switch (option.id) {
+      case "next_find_property_after_delete":
+      case "next_find_property":
+        return buildStructuredOption({ ...option, actionId: "next:searchProperties", action: "searchProperties", message: option.message ?? option.label })
+      case "next_create_property_after_delete":
+      case "next_edit_property":
+        return buildStructuredOption({ ...option, actionId: "next:createPropertyDraft", action: "createPropertyDraft", message: option.message ?? option.label })
+      case "next_campaign_after_delete":
+      case "next_campaign":
+      case "next_campaign_property":
+        return buildStructuredOption({ ...option, actionId: "next:STUDIO_GENERATE_CAMPAIGN", action: "STUDIO_GENERATE_CAMPAIGN", message: option.message ?? option.label })
+      case "next_republish_property":
+        return buildStructuredOption({ ...option, actionId: "next:PUBLISH_PROPERTY", action: "PUBLISH_PROPERTY", message: option.message ?? option.label })
+      case "next_delete_property":
+        return buildStructuredOption({ ...option, actionId: "next:ARCHIVE_PROPERTY", action: "ARCHIVE_PROPERTY", message: option.message ?? option.label })
+      case "next_catalog":
+      case "next_share_catalog":
+      case "next_catalog_property":
+        return buildStructuredOption({ ...option, actionId: "next:SHARE_CATALOG", action: "SHARE_CATALOG", message: option.message ?? option.label })
+      case "next_proposal":
+      case "next_create_proposal":
+        return buildStructuredOption({ ...option, actionId: "next:CREATE_PROPOSAL", action: "CREATE_PROPOSAL", message: option.message ?? option.label })
+      case "next_create_contract":
+      case "next_contract_property":
+        return buildStructuredOption({ ...option, actionId: "next:CREATE_CONTRACT", action: "CREATE_CONTRACT", message: option.message ?? option.label })
+      case "next_client_timeline":
+        return buildStructuredOption({ ...option, actionId: "next:open_history", message: option.message ?? option.label, href: "/corretor/historico" })
+      default:
+        return buildStructuredOption({ ...option, actionId: `next:${option.id}`, message: option.message ?? option.label })
+    }
+  })
+}
+
+function resolveStructuredSelectionMessage(workflow: CosWorkflow | null, selectedOptionId: string | null) {
+  if (!workflow || workflow.pendingInput?.type !== "selection" || !selectedOptionId) return null
+
+  const rawOptions = workflow.pendingInput.parsedData?.options
+  if (!Array.isArray(rawOptions)) return null
+
+  const matched = rawOptions
+    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
+    .find((item) => item && typeof item.id === "string" && item.id === selectedOptionId && typeof item.label === "string")
+
+  return matched && typeof matched.label === "string" ? matched.label : null
 }
 
 function buildConversationMemory(input: {
@@ -529,6 +636,7 @@ export async function POST(request: NextRequest) {
   const source = cleanText(body?.source, 80)
   const conversationIdFromBody = cleanText(body?.conversationId, 80)
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
+  const selectedOptionId = cleanText(body?.selectedOptionId, 160)
   const isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
   const isWorkflowDetailsRequest = requestedAction === "workflow_details"
@@ -607,12 +715,13 @@ export async function POST(request: NextRequest) {
 
     const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
+    const structuredSelectionMessage = resolveStructuredSelectionMessage(activeWorkflow, selectedOptionId)
     const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
     const normalizedContext = createCosNormalizedContext({
       brokerId: user.broker.id,
       userId: user.id,
       surface,
-      message,
+      message: structuredSelectionMessage ?? message,
       workspace,
       workflow: activeWorkflow,
       memory: conversationMemory,
@@ -644,7 +753,7 @@ export async function POST(request: NextRequest) {
         },
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
-        options: fastAction.options,
+        options: buildStructuredFastActionOptions(fastAction.options),
         decisionAudit: buildDecisionAudit({
           fastAction,
           requestedAction,
@@ -899,14 +1008,14 @@ export async function POST(request: NextRequest) {
     }
     const attachmentAnalysis = resumableWorkflow
       ? {
-          executionMessage: message,
+          executionMessage: structuredSelectionMessage ?? message,
           propertyDrafts: [],
           primaryPropertyDraft: null,
           propertyConfirmationText: null,
           imageUrl: null,
         }
       : await runCosAttachmentPipeline({
-          message,
+          message: structuredSelectionMessage ?? message,
           attachments: effectiveAttachments,
           requestedAction: resolvedRequestedAction,
         })
@@ -1392,7 +1501,7 @@ export async function POST(request: NextRequest) {
     const responseOptions =
       buildWorkflowDetailOptions(updatedWorkflow) ??
       (actionStatus === "success" && updatedWorkflow.status !== "awaiting_input"
-        ? buildNextStepOptions(action, actionMetadata)
+        ? buildStructuredNextStepOptions(action, actionMetadata)
         : null)
     const plannedCapabilities = (executionPlan?.steps ?? workflow.steps).map((step) => step.capabilityId)
     const executedCapabilities = executionResult?.executedSteps.map((step) => step.capabilityId) ?? []

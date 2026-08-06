@@ -17,7 +17,7 @@ type ConversationMessage = {
   action?: string | null
   actionStatus?: string | null
   confirmRequired?: boolean
-  options?: Array<{ id: string; label: string; description?: string }>
+  options?: Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
   attachments?: PendingConfirmationAttachment[]
   sourceMessage?: string
   sourceInteractionId?: string
@@ -73,17 +73,25 @@ function metadataAttachments(metadata: Record<string, unknown>) {
 }
 
 function metadataOptions(metadata: Record<string, unknown>) {
+  const directValue = metadata.options
   const parsedData = metadataRecord(metadata.parsedData)
-  const value = parsedData.options
-  if (!Array.isArray(value)) return [] as Array<{ id: string; label: string; description?: string }>
+  const value = Array.isArray(directValue) ? directValue : parsedData.options
+  if (!Array.isArray(value)) {
+    return [] as Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
+  }
 
   return value
     .map((item) => (item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : null))
     .filter((item): item is Record<string, unknown> => Boolean(item))
     .map((item) => ({
       id: typeof item.id === "string" ? item.id : "",
+      actionId: typeof item.actionId === "string" ? item.actionId : undefined,
       label: typeof item.label === "string" ? item.label : "",
       description: typeof item.description === "string" ? item.description : undefined,
+      action: typeof item.action === "string" ? item.action : undefined,
+      message: typeof item.message === "string" ? item.message : undefined,
+      selectedOptionId: typeof item.selectedOptionId === "string" ? item.selectedOptionId : undefined,
+      href: typeof item.href === "string" ? item.href : undefined,
     }))
     .filter((item) => item.id && item.label)
 }
@@ -113,7 +121,7 @@ function mapConversationMessages(rows: Array<{
     sourceMessage: string
     sourceInteractionId: string
     attachments?: PendingConfirmationAttachment[]
-    options?: Array<{ id: string; label: string; description?: string }>
+    options?: Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
   } | null
 } {
   const messages: ConversationMessage[] = []
@@ -122,7 +130,7 @@ function mapConversationMessages(rows: Array<{
     sourceMessage: string
     sourceInteractionId: string
     attachments?: PendingConfirmationAttachment[]
-    options?: Array<{ id: string; label: string; description?: string }>
+    options?: Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
   } | null = null
 
   for (const row of rows) {

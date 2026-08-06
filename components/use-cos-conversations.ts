@@ -26,8 +26,13 @@ export type CosConversationSummary = {
 
 export type CosResponseOption = {
   id: string
+  actionId: string
   label: string
   description?: string
+  action?: string | null
+  message?: string
+  selectedOptionId?: string
+  href?: string
 }
 
 export type CosConversationItem = {
@@ -90,8 +95,13 @@ function parseCosResponseOptions(value: unknown): CosResponseOption[] | undefine
     .filter((item) => typeof item.id === "string" && typeof item.label === "string")
     .map((item) => ({
       id: item.id as string,
+      actionId: typeof item.actionId === "string" ? item.actionId : (item.id as string),
       label: repairCosText(item.label as string),
       description: typeof item.description === "string" ? repairCosText(item.description) : undefined,
+      action: typeof item.action === "string" ? item.action : null,
+      message: typeof item.message === "string" ? repairCosText(item.message) : undefined,
+      selectedOptionId: typeof item.selectedOptionId === "string" ? item.selectedOptionId : undefined,
+      href: typeof item.href === "string" ? item.href : undefined,
     }))
 
   return options.length > 0 ? options : undefined
@@ -191,8 +201,10 @@ function normalizeConversationItem(item: CosConversationItem): CosConversationIt
     content: repairCosText(item.content),
     options: item.options?.map((option) => ({
       ...option,
+      actionId: option.actionId,
       label: repairCosText(option.label),
       description: option.description ? repairCosText(option.description) : undefined,
+      message: option.message ? repairCosText(option.message) : undefined,
     })),
   }
 }
@@ -479,6 +491,8 @@ export function useCosConversations({
       workspaceContext?: Partial<CosWorkspaceContext> | null
       attachments?: CosComposerAttachment[]
       creditCostPreview?: number
+      optionActionId?: string
+      selectedOptionId?: string
     },
   ) => {
     const normalizedMessage = messageToSend.trim()
@@ -621,6 +635,8 @@ export function useCosConversations({
           message: normalizedMessage,
           displayMessage: visibleMessage,
           action: resolvedOptions?.action,
+          optionActionId: resolvedOptions?.optionActionId,
+          selectedOptionId: resolvedOptions?.selectedOptionId,
           confirm: Boolean(resolvedOptions?.confirm),
           cancel: Boolean(resolvedOptions?.cancel),
           attachments: resolvedOptions?.attachments ?? [],
@@ -747,8 +763,11 @@ export function useCosConversations({
   }, [pendingConfirmation, sendCosMessage])
 
   const selectPendingOption = useCallback(async (option: CosResponseOption) => {
-    await sendCosMessage(option.label, {
+    await sendCosMessage(option.message ?? option.label, {
+      action: option.action ?? undefined,
       visibleMessage: option.label,
+      optionActionId: option.actionId,
+      selectedOptionId: option.selectedOptionId ?? option.id,
       attachments: pendingConfirmation?.attachments ?? [],
     })
   }, [pendingConfirmation, sendCosMessage])
