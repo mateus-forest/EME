@@ -10,6 +10,7 @@ import type {
   CosCapabilityDescriptor,
   CosCapabilityPlan,
   CosCapabilityPlanSource,
+  CosNormalizedContext,
   CosCapabilitySurface,
   CosEntityModuleId,
   CosWorkspaceContext,
@@ -434,11 +435,14 @@ export function planCosCapability(input: {
   message: string
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   surface?: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
 }): CosCapabilityPlan {
   const startedAt = Date.now()
-  const surface = input.surface ?? "portal"
+  const surface = input.context?.surface ?? input.surface ?? "portal"
+  const workspace = input.context?.workspace ?? input.workspace ?? null
+  const pendingContext = input.pendingContext ?? null
   const registryRequestedAction = getCosCapabilityDescriptorByAliasOrAction(input.requestedAction)?.action
   const directRequestedCandidate = getDirectRequestedCatalogCandidate({
     requestedAction: registryRequestedAction ?? input.requestedAction,
@@ -446,15 +450,15 @@ export function planCosCapability(input: {
   })
   const pendingCatalogCandidate = getPendingCatalogCandidate({
     message: input.message,
-    pendingContext: input.pendingContext ?? null,
+    pendingContext,
     surface,
   })
   const scoredCatalogCandidate = pickCatalogCandidate({
     message: input.message,
     requestedAction: input.requestedAction,
     surface,
-    pendingContext: input.pendingContext ?? null,
-    workspace: input.workspace ?? null,
+    pendingContext,
+    workspace,
   })
   const catalogCandidate = directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
   const usePendingContext = Boolean(pendingCatalogCandidate)
@@ -462,8 +466,9 @@ export function planCosCapability(input: {
   const resolvedAction = catalogCandidate?.descriptor.action ?? "general"
 
   const resolvedPayload = {
-    ...(usePendingContext && input.pendingContext ? { pendingContext: input.pendingContext } : {}),
-    ...(input.workspace ? { workspace: input.workspace } : {}),
+    ...(usePendingContext && pendingContext ? { pendingContext } : {}),
+    ...(workspace ? { workspace } : {}),
+    ...(input.context ? { context: input.context } : {}),
   }
   const capability = getCosCapabilityByAction(resolvedAction)
   const capabilityId = capability.id
@@ -490,8 +495,9 @@ export function planCosCapability(input: {
   const plan: CosCapabilityPlan = {
     action: resolvedAction,
     payload: resolvedPayload,
-    pendingContext: input.pendingContext ?? null,
-    workspace: input.workspace ?? null,
+    pendingContext,
+    context: input.context ?? null,
+    workspace,
     capability,
     capabilityId,
     entity,
@@ -506,15 +512,15 @@ export function planCosCapability(input: {
       source: resolvedSource,
       reason,
       fallbackUsed: false,
-      pendingContextUsed: Boolean(usePendingContext && input.pendingContext),
+      pendingContextUsed: Boolean(usePendingContext && pendingContext),
       surface,
       resolutionMs,
       requestedAction: input.requestedAction?.trim() || null,
       contextOrigin,
-      workspaceReceived: Boolean(input.workspace),
-      workspacePage: input.workspace?.page ?? null,
-      workspaceEntity: getWorkspaceEntity(input.workspace ?? null),
-      workspaceEntityId: getWorkspaceEntityId(input.workspace ?? null),
+      workspaceReceived: Boolean(workspace),
+      workspacePage: workspace?.page ?? null,
+      workspaceEntity: getWorkspaceEntity(workspace),
+      workspaceEntityId: getWorkspaceEntityId(workspace),
       workspaceEntityUsed,
       workspaceEntityIdUsed,
     },

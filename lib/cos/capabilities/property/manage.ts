@@ -3,24 +3,31 @@ import "server-only"
 import { PropertyStatus } from "@/lib/prisma-enums"
 
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
+import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { prisma } from "@/lib/prisma"
 
 import {
   cleanText,
   extractPriceFromMessage,
-  getEntityIdFromPayload,
   getPayloadRecord,
   requiredSelectionResponse,
 } from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
-async function resolveProperty(brokerId: string, payload: Record<string, unknown>) {
-  const propertyId = getEntityIdFromPayload(payload, "property")
-  if (propertyId) {
-    return prisma.property.findFirst({ where: { id: propertyId, brokerId } })
-  }
+async function resolveProperty(input: {
+  brokerId: string
+  payload: Record<string, unknown>
+  message?: string
+}) {
+  const resolution = await resolvePropertyEntity({
+    brokerId: input.brokerId,
+    payload: input.payload,
+    message: input.message ?? "",
+    take: 1,
+  })
 
-  return prisma.property.findFirst({ where: { brokerId }, orderBy: { updatedAt: "desc" } })
+  return resolution.record
 }
 
 async function updatePropertyPublication(input: {
@@ -30,7 +37,7 @@ async function updatePropertyPublication(input: {
   status: PropertyStatus
   responseLabel: string
 }) {
-  const property = await resolveProperty(input.brokerId, input.payload)
+  const property = await resolveProperty(input)
   if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const updated = await prisma.property.update({
@@ -73,7 +80,7 @@ export const unpublishPropertyCapability: CosCapabilityHandler = async ({ broker
 
 export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
-  const property = await resolveProperty(brokerId, payloadRecord)
+  const property = await resolveProperty({ brokerId, payload: payloadRecord })
   if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const providedImages = Array.isArray(payloadRecord.imageUrls)
@@ -83,11 +90,13 @@ export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brok
   if (providedImages.length === 0) {
     return {
       response: `O imóvel ${property.title} tem ${Array.isArray(property.imageUrls) ? property.imageUrls.length : 0} mídia(s) cadastrada(s). Envie as novas URLs para eu atualizar esse conjunto.`,
-      metadata: {
-        required: ["imageUrls"],
-        noCharge: true,
-        propertyId: property.id,
-      },
+      metadata: createPendingInputMetadata({
+        field: "imageUrls",
+        action: "UPDATE_PROPERTY_MEDIA",
+        entity: "property",
+        parsedData: { propertyId: property.id },
+        extra: { propertyId: property.id },
+      }),
       propertyId: property.id,
     }
   }
@@ -111,7 +120,7 @@ export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brok
 
 export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
-  const property = await resolveProperty(brokerId, payloadRecord)
+  const property = await resolveProperty({ brokerId, payload: payloadRecord, message })
   if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const comparableProperties = await prisma.property.findMany({
@@ -152,7 +161,7 @@ export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ bro
 
 export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
-  const property = await resolveProperty(brokerId, payloadRecord)
+  const property = await resolveProperty({ brokerId, payload: payloadRecord })
   if (!property) return requiredSelectionResponse("imóvel", "propertyId")
 
   const propertyTitle = cleanText(property.title, 160)

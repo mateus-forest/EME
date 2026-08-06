@@ -184,3 +184,41 @@ export async function resolveContractEntity(input: {
   })
   return { record: contract, parsedData: {} } satisfies CosEntityResolution<typeof contract>
 }
+
+export async function resolveAgendaEntity(input: {
+  brokerId: string
+  payload: PayloadRecord
+}) {
+  const agendaEventId = getDirectEntityId(input.payload, "agenda")
+  if (agendaEventId) {
+    const event = await prisma.agendaEvent.findFirst({
+      where: { id: agendaEventId, brokerId: input.brokerId },
+    })
+    return { record: event, parsedData: {} } satisfies CosEntityResolution<typeof event>
+  }
+
+  const event = await prisma.agendaEvent.findFirst({
+    where: { brokerId: input.brokerId },
+    orderBy: { date: "desc" },
+  })
+  return { record: event, parsedData: {} } satisfies CosEntityResolution<typeof event>
+}
+
+export async function resolveCampaignEntity(input: {
+  brokerId: string
+  payload: PayloadRecord
+}) {
+  const campaignId = typeof input.payload.campaignId === "string" ? input.payload.campaignId.trim() : ""
+  if (!campaignId) {
+    return { record: null, parsedData: {} } satisfies CosEntityResolution<null>
+  }
+
+  const campaign = await prisma.studioCampaign.findFirst({
+    where: {
+      id: campaignId,
+      brokerId: input.brokerId,
+    },
+  })
+
+  return { record: campaign, parsedData: {} } satisfies CosEntityResolution<typeof campaign>
+}

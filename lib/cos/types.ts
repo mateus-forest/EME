@@ -132,6 +132,8 @@ export type CosCapabilityExecutionInput = {
   confirm?: boolean
   payload?: Record<string, unknown>
   pendingContext?: Partial<PendingAssessorContext>
+  context?: CosNormalizedContext | null
+  pendingInput?: CosPendingInput | null
 }
 
 export type CosCapabilityHandler = (input: CosCapabilityExecutionInput) => Promise<CosActionResult>
@@ -233,6 +235,7 @@ export type CosCapabilityPlan = {
   action: AssessorAction
   payload: Record<string, unknown>
   pendingContext: PendingAssessorContext | null
+  context: CosNormalizedContext | null
   workspace: CosWorkspaceContext | null
   capability: CosCapabilityDefinition
   capabilityId: CosCapabilityId
@@ -320,6 +323,7 @@ export type CosExecutionPlan = {
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   pendingContext: PendingAssessorContext | null
+  context: CosNormalizedContext | null
   primaryStep: CosExecutionStep
   steps: CosExecutionStep[]
   unresolvedGoals: CosExecutionPlanGap[]

@@ -10,6 +10,7 @@ import type {
   CosCapabilityId,
   CosCapabilityPlan,
   CosCapabilityPlanSource,
+  CosNormalizedContext,
   CosCapabilitySurface,
   CosEntityModuleId,
   CosExecutionPlan,
@@ -136,6 +137,7 @@ export function createStepPlanForCapability(input: {
   message: string
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   surface: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
   planId: string
@@ -166,6 +168,7 @@ export function createStepPlanForCapability(input: {
   const payload = {
     ...(input.pendingContext ? { pendingContext: input.pendingContext } : {}),
     ...(input.workspace ? { workspace: input.workspace } : {}),
+    ...(input.context ? { context: input.context } : {}),
   }
   const stepSource = input.source ?? "catalog"
   const stepConfidence = input.confidence ?? (stepSource === "ai" ? 0.82 : 0.92)
@@ -193,6 +196,7 @@ export function createStepPlanForCapability(input: {
     action: descriptor.action,
     payload,
     pendingContext: input.pendingContext ?? null,
+    context: input.context ?? null,
     workspace: input.workspace ?? null,
     capability,
     capabilityId: capability.id,
@@ -275,6 +279,7 @@ function buildSingleExecutionPlan(input: {
   message: string
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   surface: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
   startedAt: number
@@ -308,6 +313,7 @@ function buildSingleExecutionPlan(input: {
     surface: input.surface,
     workspace: input.workspace ?? null,
     pendingContext: input.pendingContext ?? null,
+    context: input.context ?? null,
     primaryStep: step,
     steps: [step],
     unresolvedGoals: [],
@@ -335,6 +341,7 @@ function buildRecipeExecutionPlan(input: {
   message: string
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   startedAt: number
@@ -349,6 +356,7 @@ function buildRecipeExecutionPlan(input: {
       message: input.message,
       requestedAction: input.requestedAction,
       pendingContext: input.pendingContext,
+      context: input.context,
       surface: input.surface,
       workspace: input.workspace,
       planId,
@@ -376,6 +384,7 @@ function buildRecipeExecutionPlan(input: {
     surface: input.surface,
     workspace: input.workspace,
     pendingContext: input.pendingContext ?? null,
+    context: input.context ?? null,
     primaryStep: steps[0],
     steps,
     unresolvedGoals: [],
@@ -420,6 +429,7 @@ function buildAiExecutionPlan(input: {
   message: string
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   startedAt: number
@@ -433,6 +443,7 @@ function buildAiExecutionPlan(input: {
       message: input.message,
       requestedAction: input.requestedAction,
       pendingContext: input.pendingContext,
+      context: input.context,
       surface: input.surface,
       workspace: input.workspace,
       planId,
@@ -464,6 +475,7 @@ function buildAiExecutionPlan(input: {
     surface: input.surface,
     workspace: input.workspace,
     pendingContext: input.pendingContext ?? null,
+    context: input.context ?? null,
     primaryStep: steps[0],
     steps,
     unresolvedGoals: [],
@@ -497,6 +509,7 @@ export async function planCosExecution(input: {
   surface?: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
   activeWorkflow?: CosWorkflow | null
+  context?: CosNormalizedContext | null
   aiOrchestratorOverride?: unknown
   allowAiOrchestrator?: boolean
 }): Promise<CosExecutionPlan> {
@@ -509,6 +522,7 @@ export async function planCosExecution(input: {
     message: input.message,
     requestedAction: input.requestedAction,
     pendingContext,
+    context: input.context ?? null,
     surface,
     workspace,
   })
@@ -519,6 +533,7 @@ export async function planCosExecution(input: {
       message: input.message,
       requestedAction: input.requestedAction,
       pendingContext,
+      context: input.context ?? null,
       surface,
       workspace,
       startedAt,
@@ -532,6 +547,7 @@ export async function planCosExecution(input: {
     requestedAction: input.requestedAction,
     workspace,
     pendingContext,
+    context: input.context ?? null,
     primaryCapabilityId: primaryCapabilityPlan.capabilityId,
     primarySource: primaryCapabilityPlan.source,
     primaryConfidence: primaryCapabilityPlan.confidence,
@@ -544,6 +560,7 @@ export async function planCosExecution(input: {
       message: input.message,
       requestedAction: input.requestedAction,
       pendingContext,
+      context: input.context ?? null,
       surface,
       workspace,
       startedAt,
@@ -556,6 +573,7 @@ export async function planCosExecution(input: {
     surface,
     workspace,
     pendingContext,
+    context: input.context ?? null,
     activeWorkflowSummary: summarizeActiveWorkflow(input.activeWorkflow ?? null),
     triggerReason: aiTrigger.triggerReason ?? "deterministic_fallback",
     responseOverride: input.aiOrchestratorOverride,
@@ -566,6 +584,7 @@ export async function planCosExecution(input: {
       message: input.message,
       requestedAction: input.requestedAction,
       pendingContext,
+      context: input.context ?? null,
       surface,
       workspace,
       startedAt,

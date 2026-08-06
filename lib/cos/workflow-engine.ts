@@ -257,6 +257,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
     surface: workflow.executionPlan.surface,
     workspace: workflow.executionPlan.workspace,
     pendingContext: buildPendingContextFromWorkflow(workflow),
+    context: null,
     primaryStep,
     steps,
     unresolvedGoals: workflow.executionPlan.unresolvedGoals,

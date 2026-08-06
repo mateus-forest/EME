@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client"
 
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 import { createPropertyDraftRecord, formatAssessorPropertyPrice, searchBrokerProperties } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
@@ -18,27 +20,21 @@ export const createPropertyDraftCapability: CosCapabilityHandler = async ({ brok
 
 export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerId, message, pendingContext }) => {
   if (pendingContext?.action === "searchProperties" && pendingContext.missingField === "propertyChoice") {
-    const propertyOptions = Array.isArray(pendingContext.parsedData?.propertyOptions)
-      ? pendingContext.parsedData.propertyOptions as Array<{ id?: string; title?: string }>
-      : []
-    const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
-    const index =
-      /^\d+$/.test(normalized) ? Number(normalized) - 1 :
-      normalized.includes("primeiro") ? 0 :
-      normalized.includes("segundo") ? 1 :
-      normalized.includes("terceiro") ? 2 :
-      -1
-    const selected = index >= 0 ? propertyOptions[index] : propertyOptions.find((item) => item.title?.toLowerCase().includes(normalized))
+    const resolution = await resolvePropertyEntity({
+      brokerId,
+      message,
+      payload: {},
+      pendingField: "propertyChoice",
+      pendingData: pendingContext.parsedData ?? {},
+      take: 1,
+    })
 
-    if (selected?.id) {
-      const { results } = await searchBrokerProperties(brokerId, selected.title ?? message, 1)
-      const property = results.find((item) => item.id === selected.id) ?? results[0]
-      if (property) {
-        return {
-          response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} — ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
-          metadata: json({ propertyId: property.id, publicCode: property.publicCode }),
-          propertyId: property.id,
-        }
+    if (resolution.record) {
+      const property = resolution.record
+      return {
+        response: `ImÃ³vel ${property.publicCode ?? "-"} â€” ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} â€” ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
+        metadata: json({ propertyId: property.id, publicCode: property.publicCode }),
+        propertyId: property.id,
       }
     }
   }
@@ -48,10 +44,11 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
   const filters = searchResult.filters as Record<string, unknown>
   if (filters.priceOutOfRange === true) {
     return {
-      response: "O valor informado parece alto demais. Pode confirmar a faixa de preço?",
-      metadata: json({
-        required: ["price"],
-        noCharge: true,
+      response: "O valor informado parece alto demais. Pode confirmar a faixa de preÃ§o?",
+      metadata: createPendingInputMetadata({
+        field: "price",
+        action: "searchProperties",
+        entity: "property",
         parsedData: { query: message },
       }),
     }
@@ -59,7 +56,7 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
 
   if (properties.length === 0) {
     return {
-      response: "Não encontrei imóveis com esse filtro.",
+      response: "NÃ£o encontrei imÃ³veis com esse filtro.",
       metadata: json({ resultCount: 0, parsedData: searchResult.filters as Record<string, unknown> }),
     }
   }
@@ -67,7 +64,7 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
   if (properties.length === 1) {
     const property = properties[0]
     return {
-      response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} — ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
+      response: `ImÃ³vel ${property.publicCode ?? "-"} â€” ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} â€” ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
       metadata: json({
         propertyId: property.id,
         publicCode: property.publicCode,
@@ -78,11 +75,11 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
   }
 
   return {
-    response: `Encontrei mais de um imóvel. Qual deseja abrir?\n\n${properties.map((item, index) => `${index + 1}. ${item.title} — ${item.neighborhood ?? item.city} — ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
-    metadata: json({
-      required: ["propertyChoice"],
-      noCharge: true,
-      propertyIds: properties.map((item) => item.id),
+    response: `Encontrei mais de um imÃ³vel. Qual deseja abrir?\n\n${properties.map((item, index) => `${index + 1}. ${item.title} â€” ${item.neighborhood ?? item.city} â€” ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
+    metadata: createPendingInputMetadata({
+      field: "propertyChoice",
+      action: "searchProperties",
+      entity: "property",
       parsedData: {
         propertyOptions: properties.map((item) => ({ id: item.id, title: item.title })),
         options: properties.map((item) => ({
@@ -90,6 +87,9 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
           label: item.title,
           description: `${item.neighborhood ?? item.city} - ${formatAssessorPropertyPrice(item.price)}`,
         })),
+      },
+      extra: {
+        propertyIds: properties.map((item) => item.id),
       },
     }),
   }
@@ -103,8 +103,8 @@ export const improvePropertyDescriptionCapability: CosCapabilityHandler = async 
 
   return {
     response: property
-      ? `Base para melhoria: ${property.title}. Descrição atual: ${property.description || "sem descrição cadastrada"}.`
-      : "Posso melhorar a descrição, mas preciso que você informe o imóvel ou envie a descrição atual.",
+      ? `Base para melhoria: ${property.title}. DescriÃ§Ã£o atual: ${property.description || "sem descriÃ§Ã£o cadastrada"}.`
+      : "Posso melhorar a descriÃ§Ã£o, mas preciso que vocÃª informe o imÃ³vel ou envie a descriÃ§Ã£o atual.",
     metadata: json({ propertyId: property?.id ?? null }),
     propertyId: property?.id,
   }

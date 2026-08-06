@@ -9,9 +9,10 @@ import {
   parseContractContent,
   stringifyContractContent,
 } from "@/lib/contract-template"
+import { resolveContractEntity } from "@/lib/cos/entity-resolver"
 import { prisma } from "@/lib/prisma"
 
-import { cleanText, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
+import { cleanText, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function contractWhere(brokerId: string, documentId: string) {
@@ -23,15 +24,12 @@ function contractWhere(brokerId: string, documentId: string) {
 }
 
 async function resolveContract(brokerId: string, payload: Record<string, unknown>) {
-  const documentId = getEntityIdFromPayload(payload, "contract")
-  if (documentId) {
-    return prisma.brokerDocument.findFirst({ where: contractWhere(brokerId, documentId) })
-  }
-
-  return prisma.brokerDocument.findFirst({
-    where: { brokerId, type: "contract" },
-    orderBy: { updatedAt: "desc" },
+  const resolution = await resolveContractEntity({
+    brokerId,
+    payload,
+    message: typeof payload.message === "string" ? payload.message : "",
   })
+  return resolution.record
 }
 
 function serializeContractSummary(document: {

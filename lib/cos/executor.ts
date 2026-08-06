@@ -23,6 +23,8 @@ export async function executeCosCapability(input: {
       confirm: input.confirm,
       payload: mergedPayload,
       pendingContext: input.plan.pendingContext ?? undefined,
+      context: input.plan.context,
+      pendingInput: input.plan.context?.workflow?.pendingInput ?? null,
     })
   }
 

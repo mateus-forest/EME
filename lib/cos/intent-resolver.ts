@@ -1,6 +1,6 @@
 import type { AssessorAction } from "@/lib/eme-backend"
 
-import type { CosConversationMemory, CosWorkflow, CosWorkspaceContext } from "@/lib/cos/types"
+import type { CosConversationMemory, CosNormalizedContext, CosWorkflow, CosWorkspaceContext } from "@/lib/cos/types"
 
 type CosIntentAttachment = {
   id: string
@@ -265,10 +265,17 @@ export function resolveCosIntent(input: {
   workspace: CosWorkspaceContext | null
   activeWorkflow: CosWorkflow | null
   memory: CosConversationMemory | null
+  context?: CosNormalizedContext | null
 }): CosIntentResolution {
-  const normalizedMessage = normalizeText(input.message)
-  const activeWorkflowAction = getActiveWorkflowAction(input.activeWorkflow)
-  const attachmentSignals = getAttachmentSignals(input.attachments)
+  const context = input.context ?? null
+  const message = context?.message ?? input.message
+  const attachments = context?.attachments ?? input.attachments
+  const workspace = context?.workspace ?? input.workspace
+  const activeWorkflow = context?.workflow ?? input.activeWorkflow
+  const memory = context?.memory ?? input.memory
+  const normalizedMessage = normalizeText(message)
+  const activeWorkflowAction = getActiveWorkflowAction(activeWorkflow)
+  const attachmentSignals = getAttachmentSignals(attachments)
 
   if (input.requestedAction && input.requestedAction !== "workflow_details") {
     const explicitAction = input.requestedAction as AssessorAction
@@ -278,8 +285,8 @@ export function resolveCosIntent(input: {
       confidence: 1,
       reason: "requestedAction recebida explicitamente pela interface",
       signals: {
-        workspacePage: input.workspace?.page ?? null,
-        workspaceEntity: input.workspace?.entity ?? null,
+        workspacePage: workspace?.page ?? null,
+        workspaceEntity: workspace?.entity ?? null,
         activeWorkflowAction,
         attachments: attachmentSignals.labels,
       },
@@ -288,16 +295,16 @@ export function resolveCosIntent(input: {
 
   const resolvedAction = resolveRequestedAction({
     normalizedMessage,
-    workspace: input.workspace,
-    memory: input.memory,
-    attachments: input.attachments,
+    workspace,
+    memory,
+    attachments,
   })
 
-  if (input.activeWorkflow) {
+  if (activeWorkflow) {
     const shouldContinue = shouldContinueActiveWorkflow({
       normalizedMessage,
-      workflow: input.activeWorkflow,
-      attachments: input.attachments,
+      workflow: activeWorkflow,
+      attachments,
     })
 
     if (resolvedAction && activeWorkflowAction && resolvedAction.requestedAction !== activeWorkflowAction) {
@@ -307,8 +314,8 @@ export function resolveCosIntent(input: {
         confidence: resolvedAction.confidence,
         reason: `${resolvedAction.reason}; nova intencao incompatível com workflow ativo`,
         signals: {
-          workspacePage: input.workspace?.page ?? null,
-          workspaceEntity: input.workspace?.entity ?? null,
+          workspacePage: workspace?.page ?? null,
+          workspaceEntity: workspace?.entity ?? null,
           activeWorkflowAction,
           attachments: attachmentSignals.labels,
         },
@@ -322,8 +329,8 @@ export function resolveCosIntent(input: {
         confidence: 0.74,
         reason: "mensagem parece responder ao workflow ativo",
         signals: {
-          workspacePage: input.workspace?.page ?? null,
-          workspaceEntity: input.workspace?.entity ?? null,
+          workspacePage: workspace?.page ?? null,
+          workspaceEntity: workspace?.entity ?? null,
           activeWorkflowAction,
           attachments: attachmentSignals.labels,
         },
@@ -338,8 +345,8 @@ export function resolveCosIntent(input: {
       confidence: resolvedAction.confidence,
       reason: resolvedAction.reason,
       signals: {
-        workspacePage: input.workspace?.page ?? null,
-        workspaceEntity: input.workspace?.entity ?? null,
+        workspacePage: workspace?.page ?? null,
+        workspaceEntity: workspace?.entity ?? null,
         activeWorkflowAction,
         attachments: attachmentSignals.labels,
       },
@@ -348,12 +355,12 @@ export function resolveCosIntent(input: {
 
   return {
     requestedAction: null,
-    workflowDecision: input.activeWorkflow ? "continue_workflow" : "none",
+    workflowDecision: activeWorkflow ? "continue_workflow" : "none",
     confidence: 0,
-    reason: input.activeWorkflow ? "sem sinal forte para trocar o workflow ativo" : "sem override de intencao",
+    reason: activeWorkflow ? "sem sinal forte para trocar o workflow ativo" : "sem override de intencao",
     signals: {
-      workspacePage: input.workspace?.page ?? null,
-      workspaceEntity: input.workspace?.entity ?? null,
+      workspacePage: workspace?.page ?? null,
+      workspaceEntity: workspace?.entity ?? null,
       activeWorkflowAction,
       attachments: attachmentSignals.labels,
     },

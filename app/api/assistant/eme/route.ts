@@ -14,6 +14,7 @@ import {
 } from "@/lib/eme-backend"
 import {
   cancelWorkflow,
+  createCosNormalizedContext,
   createWorkflowFromExecutionPlan,
   formatCosExecutionPlanResponse,
   formatWorkflowOperationDetails,
@@ -22,18 +23,21 @@ import {
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
   isCosCapabilityAvailableOnSurface,
+  normalizeCosAttachments,
   planCosExecution,
   rebuildExecutionPlanFromWorkflow,
   resumeWorkflowExecution,
   resumeWorkflowState,
+  runCosAttachmentPipeline,
   sanitizeWorkspaceContext,
   shouldConfirmWorkflowMessage,
   shouldResumeWorkflow,
   stringifyConversationWorkflowContent,
   updateWorkflowFromExecutionResult,
+  type CosAttachmentInput as CosIncomingAttachment,
   type CosWorkflow,
 } from "@/lib/cos"
-import { analyzeCosAttachments, mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
+import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
 import { getCosLegacyDependencyInventory } from "@/lib/cos/legacy-adapter"
 import {
@@ -147,43 +151,8 @@ async function resolveCosConversation(brokerId: string, conversationId: string) 
   })
 }
 
-type CosIncomingAttachment = {
-  id: string
-  name: string
-  type: string
-  size: number
-  category: "image" | "document" | "video" | "files"
-  dataUrl?: string
-  textContent?: string
-}
-
-// Base64 inflates raw bytes by ~4/3; this comfortably covers the largest file the
-// composer will inline (8MB image / 5MB PDF) without truncating (and corrupting) it.
-const MAX_INCOMING_ATTACHMENT_DATA_URL_LENGTH = 12_000_000
-
-function sanitizeIncomingAttachmentDataUrl(value: unknown) {
-  if (typeof value !== "string") return undefined
-  const trimmed = value.trim()
-  if (!trimmed || trimmed.length > MAX_INCOMING_ATTACHMENT_DATA_URL_LENGTH) return undefined
-  return trimmed
-}
-
 function sanitizeIncomingAttachments(value: unknown) {
-  if (!Array.isArray(value)) return [] as CosIncomingAttachment[]
-
-  return value
-    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
-    .filter((item): item is Record<string, unknown> => Boolean(item))
-    .map((item) => ({
-      id: cleanText(item.id, 80) || crypto.randomUUID(),
-      name: cleanText(item.name, 240),
-      type: cleanText(item.type, 120) || "application/octet-stream",
-      size: typeof item.size === "number" ? item.size : 0,
-      category: (cleanText(item.category, 20) as CosIncomingAttachment["category"]) || "files",
-      dataUrl: sanitizeIncomingAttachmentDataUrl(item.dataUrl),
-      textContent: cleanText(item.textContent, 120_000) || undefined,
-    }))
-    .filter((item) => item.name)
+  return normalizeCosAttachments(value)
 }
 
 async function persistConversationWorkflow(
@@ -552,6 +521,16 @@ export async function POST(request: NextRequest) {
     const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
     const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
+    const normalizedContext = createCosNormalizedContext({
+      brokerId: user.broker.id,
+      userId: user.id,
+      surface,
+      message,
+      workspace,
+      workflow: activeWorkflow,
+      memory: conversationMemory,
+      attachments: effectiveAttachments,
+    })
     const intentResolution = resolveCosIntent({
       message,
       requestedAction,
@@ -559,6 +538,7 @@ export async function POST(request: NextRequest) {
       workspace,
       activeWorkflow,
       memory: conversationMemory,
+      context: normalizedContext,
     })
     const resolvedRequestedAction = intentResolution.requestedAction ?? requestedAction
     const resumableWorkflow =
@@ -644,6 +624,7 @@ export async function POST(request: NextRequest) {
       ...(conversationMemory?.propertyId ? { propertyId: conversationMemory.propertyId } : {}),
       ...(conversationMemory?.documentId ? { documentId: conversationMemory.documentId } : {}),
       ...(effectiveAttachments.length > 0 ? { attachments: effectiveAttachments } : {}),
+      context: normalizedContext,
     }
     const attachmentAnalysis = resumableWorkflow
       ? {
@@ -653,7 +634,7 @@ export async function POST(request: NextRequest) {
           propertyConfirmationText: null,
           imageUrl: null,
         }
-      : await analyzeCosAttachments({
+      : await runCosAttachmentPipeline({
           message,
           attachments: effectiveAttachments,
           requestedAction: resolvedRequestedAction,
@@ -677,6 +658,10 @@ export async function POST(request: NextRequest) {
               message: executionMessage,
               requestedAction: resolvedRequestedAction ?? undefined,
               pendingContext,
+              context: {
+                ...normalizedContext,
+                message: executionMessage,
+              },
               surface,
               workspace,
               activeWorkflow: activeWorkflow ?? null,
@@ -982,7 +967,14 @@ export async function POST(request: NextRequest) {
             message: executionMessage,
             confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
             workspace,
-            payload: executionPayload,
+            payload: {
+              ...executionPayload,
+              context: {
+                ...normalizedContext,
+                message: executionMessage,
+                workflow,
+              },
+            },
           }),
       )
 

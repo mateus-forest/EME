@@ -1,3 +1,4 @@
+import { analyzeCosAttachments, type CosAttachmentAnalysis } from "@/lib/cos/attachment-analysis"
 import type { CosAttachmentCategory, CosAttachmentInput } from "@/lib/cos/types"
 
 function cleanText(value: unknown, maxLength: number) {
@@ -38,4 +39,16 @@ export function splitCosAttachmentsByCategory(attachments: CosAttachmentInput[])
     videos: attachments.filter((attachment) => attachment.category === "video"),
     files: attachments.filter((attachment) => attachment.category === "files"),
   }
+}
+
+export async function runCosAttachmentPipeline(input: {
+  message: string
+  requestedAction?: string | null
+  attachments: CosAttachmentInput[]
+}): Promise<CosAttachmentAnalysis> {
+  return analyzeCosAttachments({
+    message: input.message,
+    requestedAction: input.requestedAction,
+    attachments: input.attachments,
+  })
 }

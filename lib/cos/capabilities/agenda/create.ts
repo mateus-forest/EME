@@ -1,14 +1,13 @@
 import "server-only"
 
-import type { Prisma } from "@prisma/client"
-
+import { resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { prisma } from "@/lib/prisma"
 
 import { cleanText } from "@/lib/cos/capabilities/shared"
 import {
   extractAgendaPersonName,
   extractPropertyReference,
-  findLeadCandidates,
   formatAgendaDateLabel,
   parseAgendaDate,
   parseAgendaTime,
@@ -17,18 +16,19 @@ import {
 } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
-function json(value: Record<string, unknown>): Prisma.InputJsonObject {
-  return value as Prisma.InputJsonObject
-}
-
-export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, userId, message, pendingContext }) => {
+export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   if (pendingContext?.action === "CREATE_AGENDA_EVENT" && pendingContext.missingField === "time") {
     const parsedData = pendingContext.parsedData ?? {}
     const time = parseAgendaTime(message)
     if (!time) {
       return {
-        response: "Qual horário devo colocar?",
-        metadata: json({ required: ["time"], noCharge: true, parsedData }),
+        response: "Qual horario devo colocar?",
+        metadata: createPendingInputMetadata({
+          field: "time",
+          action: "CREATE_AGENDA_EVENT",
+          entity: "agenda",
+          parsedData,
+        }),
       }
     }
 
@@ -43,14 +43,14 @@ export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, u
       data: {
         userId,
         title: "Compromisso agendado",
-        message: `${title} ${formatAgendaDateLabel(message, date)} às ${time}.`,
+        message: `${title} ${formatAgendaDateLabel(message, date)} as ${time}.`,
         read: false,
       },
     })
 
     return {
-      response: `Compromisso criado.\n${formatAgendaDateLabel(message, date)} às ${time} — ${title}.`,
-      metadata: json({ agendaEventId: event.id, parsedData: { ...parsedData, time }, status: "pending" }),
+      response: `Compromisso criado.\n${formatAgendaDateLabel(message, date)} as ${time} - ${title}.`,
+      metadata: { agendaEventId: event.id, parsedData: { ...parsedData, time }, status: "pending" },
     }
   }
 
@@ -59,33 +59,45 @@ export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, u
   const type = parseAgendaType(message)
   const personName = extractAgendaPersonName(message)
   const propertyReference = extractPropertyReference(message)
+  const payloadRecord = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>
 
-  const [lead, property] = await Promise.all([
-    personName ? findLeadCandidates(brokerId, personName, 1).then((items) => items[0] ?? null) : null,
-    propertyReference.publicCode || propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
-      ? prisma.property.findFirst({
-          where: {
-            brokerId,
-            OR: [
-              ...(propertyReference.idOrCode ? [{ id: propertyReference.idOrCode }, { title: { contains: propertyReference.idOrCode, mode: "insensitive" as const } }] : []),
-              ...(propertyReference.neighborhood ? [{ neighborhood: { contains: propertyReference.neighborhood, mode: "insensitive" as const } }] : []),
-              ...(propertyReference.type ? [{ type: propertyReference.type as never }] : []),
-            ],
-          },
-          orderBy: { updatedAt: "desc" },
-          select: { id: true, title: true },
+  const [leadResolution, propertyResolution] = await Promise.all([
+    personName
+      ? resolveLeadEntity({
+          brokerId,
+          message,
+          payload: payloadRecord,
+          pendingData: { personName },
+          take: 1,
         })
-      : null,
+      : Promise.resolve(null),
+    propertyReference.publicCode || propertyReference.idOrCode || propertyReference.neighborhood || propertyReference.type
+      ? resolvePropertyEntity({
+          brokerId,
+          payload: payloadRecord,
+          message,
+          pendingData: { propertyReference },
+          take: 1,
+        })
+      : Promise.resolve(null),
   ])
 
+  const lead = leadResolution?.record ?? null
+  const property = propertyResolution?.record ?? null
   const title = cleanText(`${parseAgendaTitle(message)}${lead?.name || personName ? ` com ${lead?.name ?? personName}` : ""}${property ? ` no ${property.title}` : ""}`, 160)
+
   if (!time) {
     return {
-      response: "Qual horário devo colocar?",
-      metadata: json({
-        required: ["time"],
-        noCharge: true,
+      response: "Qual horario devo colocar?",
+      metadata: createPendingInputMetadata({
+        field: "time",
+        action: "CREATE_AGENDA_EVENT",
+        entity: "agenda",
         parsedData: { title, type, date: date.toISOString(), personName, propertyReference },
+        extra: {
+          leadId: lead?.id ?? null,
+          propertyId: property?.id ?? null,
+        },
       }),
       leadId: lead?.id,
       propertyId: property?.id,
@@ -110,19 +122,19 @@ export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, u
     data: {
       userId,
       title: "Compromisso agendado",
-      message: `${title} ${formatAgendaDateLabel(message, date)} às ${time}.`,
+      message: `${title} ${formatAgendaDateLabel(message, date)} as ${time}.`,
       read: false,
     },
   })
 
   return {
-    response: `Compromisso criado.\n${title} — ${formatAgendaDateLabel(message, date)}.\nHorário: ${time}.`,
-    metadata: json({
+    response: `Compromisso criado.\n${title} - ${formatAgendaDateLabel(message, date)}.\nHorario: ${time}.`,
+    metadata: {
       agendaEventId: event.id,
       leadId: lead?.id ?? null,
       propertyId: property?.id ?? null,
       status: "pending",
-    }),
+    },
     leadId: lead?.id,
     propertyId: property?.id,
   }

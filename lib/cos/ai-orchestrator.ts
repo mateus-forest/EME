@@ -11,7 +11,7 @@ import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 import type { PendingAssessorContext } from "@/lib/eme-backend"
-import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosExecutionPlanGap, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
+import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosExecutionPlanGap, CosNormalizedContext, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
 
 const aiPlanStepSchema = z.object({
   id: z.string().trim().min(1).max(40),
@@ -234,6 +234,7 @@ function shouldTryAiOrchestrator(input: {
   requestedAction?: string
   workspace: CosWorkspaceContext | null
   pendingContext: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   primaryCapabilityId: CosCapabilityId
   primarySource: "catalog" | "legacy" | "ai"
   primaryConfidence: number
@@ -278,6 +279,7 @@ export async function generateCosAiExecutionPlan(input: {
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   pendingContext: PendingAssessorContext | null
+  context?: CosNormalizedContext | null
   activeWorkflowSummary?: Record<string, unknown> | null
   triggerReason: string
   responseOverride?: unknown

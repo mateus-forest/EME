@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 import { cleanText } from "@/lib/cos/capabilities/shared"
 import { extractClientIdentity } from "@/lib/cos/entity-extraction"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function json(value: Record<string, unknown>): Prisma.InputJsonObject {
@@ -35,18 +36,28 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
   if (!name) {
     return {
       response: "Qual o nome do lead?",
-      metadata: json({ required: ["name"], readyForConfirmation: false, parsedData: pendingLeadData }),
+      metadata: createPendingInputMetadata({
+        field: "name",
+        action: "createLead",
+        entity: "lead",
+        parsedData: pendingLeadData,
+        extra: { readyForConfirmation: false },
+      }),
     }
   }
 
   if (!phone) {
     return {
       response: "Qual o telefone dele?",
-      metadata: json({
-        required: ["phone"],
-        readyForConfirmation: false,
-        extractedName: name,
+      metadata: createPendingInputMetadata({
+        field: "phone",
+        action: "createLead",
+        entity: "lead",
         parsedData: { ...pendingLeadData, extractedName: name },
+        extra: {
+          readyForConfirmation: false,
+          extractedName: name,
+        },
       }),
     }
   }

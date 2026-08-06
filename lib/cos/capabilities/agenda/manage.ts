@@ -1,8 +1,9 @@
 import "server-only"
 
+import { resolveAgendaEntity } from "@/lib/cos/entity-resolver"
 import { prisma } from "@/lib/prisma"
 
-import { cleanText, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
+import { cleanText, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function startOfDay(date: Date) {
@@ -18,15 +19,8 @@ function endOfDay(date: Date) {
 }
 
 async function resolveAgendaEvent(brokerId: string, payload: Record<string, unknown>) {
-  const eventId = getEntityIdFromPayload(payload, "agenda")
-  if (eventId) {
-    return prisma.agendaEvent.findFirst({ where: { id: eventId, brokerId } })
-  }
-
-  return prisma.agendaEvent.findFirst({
-    where: { brokerId, status: "pending" },
-    orderBy: { date: "asc" },
-  })
+  const resolution = await resolveAgendaEntity({ brokerId, payload })
+  return resolution.record
 }
 
 async function listAgendaWindow(brokerId: string, from: Date, to: Date, label: string) {
@@ -116,4 +110,3 @@ export const monthAgendaCapability: CosCapabilityHandler = async ({ brokerId }) 
   const end = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0))
   return listAgendaWindow(brokerId, start, end, "Agenda do mês")
 }
-

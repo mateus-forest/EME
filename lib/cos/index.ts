@@ -15,9 +15,9 @@ export {
 export { executeCosCapability, executeCosExecutionPlan } from "@/lib/cos/executor"
 export { createStepPlanForCapability, planCosExecution } from "@/lib/cos/execution-planner"
 export { buildCosCapabilityInventoryMarkdown, getCosCapabilityInventory } from "@/lib/cos/inventory"
-export { normalizeCosAttachments, splitCosAttachmentsByCategory } from "@/lib/cos/attachment-pipeline"
+export { normalizeCosAttachments, runCosAttachmentPipeline, splitCosAttachmentsByCategory } from "@/lib/cos/attachment-pipeline"
 export { createCosNormalizedContext } from "@/lib/cos/context"
-export { resolveContractEntity, resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+export { resolveAgendaEntity, resolveCampaignEntity, resolveContractEntity, resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 export { planCosCapability } from "@/lib/cos/planner"
 export {
   createPendingInput,

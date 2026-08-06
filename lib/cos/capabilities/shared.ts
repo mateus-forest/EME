@@ -68,6 +68,12 @@ function getWorkspaceSelectionEntityId(workspace: CosWorkspaceContext | null, en
 }
 
 export function getEntityIdFromPayload(payload: Record<string, unknown>, entity: CosWorkspaceEntity) {
+  const context = asRecord(payload.context)
+  const contextSelectedEntityIds = asRecord(context.selectedEntityIds)
+  const contextEntityId =
+    typeof contextSelectedEntityIds[entity] === "string"
+      ? cleanText(contextSelectedEntityIds[entity], 191)
+      : ""
   const workspace = getWorkspaceFromPayload(payload)
   const directKeys: Partial<Record<CosWorkspaceEntity, string[]>> = {
     property: ["propertyId"],
@@ -78,6 +84,7 @@ export function getEntityIdFromPayload(payload: Record<string, unknown>, entity:
 
   const directId =
     directKeys[entity]?.map((key: string) => cleanText(payload[key], 191)).find(Boolean) ||
+    contextEntityId ||
     (workspace?.entity === entity ? workspace.entityId ?? "" : "") ||
     getWorkspaceSelectionEntityId(workspace, entity) ||
     ""

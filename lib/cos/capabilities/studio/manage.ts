@@ -2,18 +2,13 @@ import "server-only"
 
 import type { Prisma } from "@prisma/client"
 
+import { resolveCampaignEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { createStudioCampaign, getLatestStudioCampaign } from "@/lib/studio-campaigns"
 import { prisma } from "@/lib/prisma"
 
-import { cleanText, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
+import { cleanText, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityExecutionInput, CosCapabilityHandler } from "@/lib/cos/types"
-
-type StudioPropertyCandidate = {
-  id: string
-  title: string
-  city: string
-  neighborhood: string | null
-}
 
 async function getBrokerUserContext(brokerId: string, userId: string) {
   const user = await prisma.user.findUnique({
@@ -33,146 +28,62 @@ async function getBrokerUserContext(brokerId: string, userId: string) {
   return { user, broker }
 }
 
-async function resolvePropertyForStudio(brokerId: string, payload: Record<string, unknown>) {
-  const propertyId = getEntityIdFromPayload(payload, "property")
-  if (!propertyId) return null
-  return prisma.property.findFirst({ where: { id: propertyId, brokerId } })
-}
-
-function normalizeText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-}
-
-function resolveStudioPropertyChoice(message: string, candidates: StudioPropertyCandidate[]) {
-  const normalized = normalizeText(message)
-  const numericIndex = /^\d+$/.test(normalized) ? Number(normalized) - 1 : -1
-  if (numericIndex >= 0 && candidates[numericIndex]) return candidates[numericIndex]
-  if (normalized.includes("primeiro") && candidates[0]) return candidates[0]
-  if (normalized.includes("segundo") && candidates[1]) return candidates[1]
-  if (normalized.includes("terceiro") && candidates[2]) return candidates[2]
-
-  return (
-    candidates.find((candidate) => {
-      const title = normalizeText(candidate.title)
-      const location = normalizeText(`${candidate.neighborhood ?? ""} ${candidate.city}`)
-      return title.includes(normalized) || normalized.includes(title) || location.includes(normalized)
-    }) ?? null
-  )
-}
-
-async function findStudioPropertyCandidates(brokerId: string, message: string) {
-  const normalized = normalizeText(message)
-  const terms = normalized
-    .split(/\s+/)
-    .filter((term) => term.length > 2 && !["criar", "gere", "gerar", "campanha", "instagram", "video", "story", "studio", "ia", "imovel", "imovel,"].includes(term))
-
-  return prisma.property.findMany({
-    where: {
-      brokerId,
-      ...(terms.length > 0
-        ? {
-            OR: terms.flatMap((term) => ([
-              { title: { contains: term, mode: "insensitive" as const } },
-              { city: { contains: term, mode: "insensitive" as const } },
-              { neighborhood: { contains: term, mode: "insensitive" as const } },
-            ])),
-          }
-        : {}),
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-    select: {
-      id: true,
-      title: true,
-      city: true,
-      neighborhood: true,
-    },
-  })
-}
-
 async function resolveStudioPropertyInput(input: {
   brokerId: string
   payload: Record<string, unknown>
   message: string
   pendingContext?: CosCapabilityExecutionInput["pendingContext"]
 }) {
-  const directProperty = await resolvePropertyForStudio(input.brokerId, input.payload)
-  if (directProperty) {
-    return { property: directProperty, needsInput: null as null | { response: string; metadata: Prisma.InputJsonObject } }
+  const resolution = await resolvePropertyEntity({
+    brokerId: input.brokerId,
+    payload: input.payload,
+    message: input.message,
+    pendingField: input.pendingContext?.missingField,
+    pendingData: input.pendingContext?.parsedData ?? {},
+    take: 5,
+  })
+
+  if (resolution.record) {
+    return { property: resolution.record, needsInput: null as null | { response: string; metadata: Prisma.InputJsonObject } }
   }
 
-  if (input.pendingContext?.missingField === "propertyChoice" && input.pendingContext.parsedData) {
-    const candidates = Array.isArray(input.pendingContext.parsedData.propertyOptions)
-      ? input.pendingContext.parsedData.propertyOptions.filter((item): item is StudioPropertyCandidate => {
-          return Boolean(
-            item &&
-              typeof item === "object" &&
-              typeof (item as StudioPropertyCandidate).id === "string" &&
-              typeof (item as StudioPropertyCandidate).title === "string" &&
-              typeof (item as StudioPropertyCandidate).city === "string",
-          )
-        })
-      : []
-
-    const chosen = resolveStudioPropertyChoice(input.message, candidates)
-    if (chosen) {
-      const property = await prisma.property.findFirst({ where: { id: chosen.id, brokerId: input.brokerId } })
-      if (property) {
-        return { property, needsInput: null }
-      }
-    }
-  }
-
-  const candidates = await findStudioPropertyCandidates(input.brokerId, input.message)
-  if (candidates.length > 1) {
+  if (resolution.options && resolution.options.length > 1) {
     return {
       property: null,
       needsInput: {
-        response: `Encontrei mais de um imóvel. Qual deseja usar?\n\n${candidates.map((candidate, index) => `${index + 1}. ${candidate.title} - ${candidate.neighborhood ?? candidate.city}`).join("\n")}`,
-        metadata: {
-          required: ["propertyChoice"],
-          noCharge: true,
+        response: `Encontrei mais de um imÃ³vel. Qual deseja usar?\n\n${resolution.options.map((candidate, index) => `${index + 1}. ${candidate.label}${candidate.description ? ` - ${candidate.description}` : ""}`).join("\n")}`,
+        metadata: createPendingInputMetadata({
+          field: "propertyChoice",
+          action: "STUDIO_GENERATE_CAMPAIGN",
+          entity: "property",
           parsedData: {
-            propertyOptions: candidates,
-            options: candidates.map((candidate) => ({
-              id: candidate.id,
-              label: candidate.title,
-              description: candidate.neighborhood ?? candidate.city,
-            })),
+            ...(resolution.parsedData ?? {}),
+            options: resolution.options,
           },
-        } satisfies Prisma.InputJsonObject,
+        }) as Prisma.InputJsonObject,
       },
-    }
-  }
-
-  if (candidates.length === 1) {
-    const property = await prisma.property.findFirst({ where: { id: candidates[0].id, brokerId: input.brokerId } })
-    if (property) {
-      return { property, needsInput: null }
     }
   }
 
   return {
     property: null,
     needsInput: {
-      response: "Qual imóvel devo usar nesta ação do Studio IA?",
-      metadata: {
-        required: ["property"],
-        noCharge: true,
-      } satisfies Prisma.InputJsonObject,
+      response: "Qual imÃ³vel devo usar nesta aÃ§Ã£o do Studio IA?",
+      metadata: createPendingInputMetadata({
+        field: "property",
+        action: "STUDIO_GENERATE_CAMPAIGN",
+        entity: "property",
+      }) as Prisma.InputJsonObject,
     },
   }
 }
 
-function buildPropertyNarrative(property: NonNullable<Awaited<ReturnType<typeof resolvePropertyForStudio>>>) {
+function buildPropertyNarrative(property: NonNullable<Awaited<ReturnType<typeof resolvePropertyEntity>>["record"]>) {
   const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
+  const bathrooms = "bathrooms" in property && typeof property.bathrooms === "number" ? property.bathrooms : 0
   return {
     title: property.title,
-    highlight: `${property.bedrooms} dorm., ${property.bathrooms} banh., ${property.parkingSpots} vaga(s)`,
+    highlight: `${property.bedrooms} dorm., ${bathrooms} banh., ${property.parkingSpots} vaga(s)`,
     location: location || property.city,
     price: property.price,
     description:
@@ -227,14 +138,14 @@ async function createDeterministicStudioCampaign(input: {
 export const studioGenerateDescriptionCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
-  const description = `${narrative.title} em ${narrative.location}, com ${narrative.highlight.toLowerCase()} e valor de referência em R$ ${(narrative.price / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. ${narrative.description}`
+  const description = `${narrative.title} em ${narrative.location}, com ${narrative.highlight.toLowerCase()} e valor de referÃªncia em R$ ${(narrative.price / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. ${narrative.description}`
 
   return {
-    response: `Descrição sugerida:\n\n${description}`,
+    response: `DescriÃ§Ã£o sugerida:\n\n${description}`,
     metadata: {
       propertyId: property.id,
       generatedDescription: description,
@@ -249,14 +160,15 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
   if (!baseText) {
     return {
       response: "Envie o texto que deseja refinar para eu melhorar a copy.",
-      metadata: {
-        required: ["text"],
-        noCharge: true,
-      },
+      metadata: createPendingInputMetadata({
+        field: "text",
+        action: "STUDIO_IMPROVE_TEXT",
+        entity: "studio_ia",
+      }),
     }
   }
 
-  const refined = `${baseText}\n\nCTA sugerido: fale comigo para receber a apresentação completa e agendar sua visita.`
+  const refined = `${baseText}\n\nCTA sugerido: fale comigo para receber a apresentaÃ§Ã£o completa e agendar sua visita.`
 
   return {
     response: `Texto refinado:\n\n${refined}`,
@@ -269,7 +181,7 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
 export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -315,7 +227,7 @@ export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ b
 export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -364,7 +276,7 @@ export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ 
 export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
   return {
@@ -380,7 +292,7 @@ export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ b
 export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -418,7 +330,7 @@ export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brok
 export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -439,8 +351,14 @@ export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brok
 
 export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerId, userId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message: "", action: "general", payload })
-  const propertyId = getEntityIdFromPayload(payloadRecord, "property")
-  if (!propertyId) return requiredSelectionResponse("imóvel", "propertyId")
+  const propertyResolution = await resolvePropertyEntity({
+    brokerId,
+    payload: payloadRecord,
+    message: "",
+    take: 1,
+  })
+  const propertyId = propertyResolution.record?.id ?? null
+  if (!propertyId) return requiredSelectionResponse("imÃ³vel", "propertyId")
 
   const { user } = await getBrokerUserContext(brokerId, userId)
   if (!user) throw new Error("COS_STUDIO_USER_NOT_FOUND")
@@ -451,13 +369,16 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
   })
 
   if (!latest) {
+    const campaignResolution = await resolveCampaignEntity({ brokerId, payload: payloadRecord })
     return {
-      response: "Não encontrei campanha anterior para regenerar. Posso criar uma nova campanha de Instagram primeiro.",
-      metadata: {
-        required: ["campaignId"],
-        noCharge: true,
-        propertyId,
-      },
+      response: "NÃ£o encontrei campanha anterior para regenerar. Posso criar uma nova campanha de Instagram primeiro.",
+      metadata: createPendingInputMetadata({
+        field: "campaignId",
+        action: "STUDIO_REGENERATE",
+        entity: "studio_ia",
+        parsedData: campaignResolution.record ? { campaignId: campaignResolution.record.id } : undefined,
+        extra: { propertyId },
+      }),
       propertyId,
     }
   }
@@ -487,7 +408,7 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
   })
 
   return {
-    response: `Campanha regenerada com sucesso.\n\nNova versão: ${regenerated.version}`,
+    response: `Campanha regenerada com sucesso.\n\nNova versÃ£o: ${regenerated.version}`,
     metadata: {
       campaignId: regenerated.id,
       propertyId,
