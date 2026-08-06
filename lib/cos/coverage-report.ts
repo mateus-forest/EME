@@ -14,7 +14,7 @@ type CoverageBucket = {
 }
 
 function isExecutable(capability: CosCapabilityDescriptor) {
-  return capability.source === "legacy" || Boolean(capabilityHandlers[capability.id])
+  return Boolean(capabilityHandlers[capability.id])
 }
 
 function percent(part: number, total: number) {
@@ -111,4 +111,3 @@ export function buildCosCapabilityCoverageMarkdown() {
 
   return lines.join("\n")
 }
-

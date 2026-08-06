@@ -6,7 +6,6 @@ import {
   getCosEntityModuleIdByCapabilityId,
   listCosCapabilityCatalog,
 } from "@/lib/cos/capability-catalog"
-import { inferLegacyCosAction } from "@/lib/cos/legacy-adapter"
 import type {
   CosCapabilityDescriptor,
   CosCapabilityPlan,
@@ -459,15 +458,8 @@ export function planCosCapability(input: {
   })
   const catalogCandidate = directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
   const usePendingContext = Boolean(pendingCatalogCandidate)
-  const legacyAction = catalogCandidate ? null : inferLegacyCosAction(input.message, registryRequestedAction ?? input.requestedAction)
-
-  const resolvedSource: CosCapabilityPlanSource = catalogCandidate ? "catalog" : "legacy"
-  const resolvedAction =
-    resolvedSource === "catalog"
-      ? catalogCandidate?.descriptor.action ?? "general"
-      : usePendingContext
-        ? input.pendingContext?.action ?? legacyAction ?? "general"
-        : legacyAction ?? "general"
+  const resolvedSource: CosCapabilityPlanSource = "catalog"
+  const resolvedAction = catalogCandidate?.descriptor.action ?? "general"
 
   const resolvedPayload = {
     ...(usePendingContext && input.pendingContext ? { pendingContext: input.pendingContext } : {}),
@@ -488,19 +480,11 @@ export function planCosCapability(input: {
           : "legacy"
 
   const confidence =
-    resolvedSource === "catalog"
-      ? catalogCandidate?.confidence ?? 0.5
-      : usePendingContext
-        ? 0.66
-        : capability.action === legacyAction
-          ? 0.42
-          : 0.35
+    catalogCandidate?.confidence ?? (usePendingContext ? 0.66 : capability.id === "general.chat" ? 0.3 : 0.5)
   const reason =
     resolvedSource === "catalog"
       ? catalogCandidate?.reason ?? `catalogo selecionou ${capability.id}`
-      : usePendingContext
-        ? `fallback legado preservou contexto pendente para ${input.pendingContext?.missingField ?? "continuidade"}`
-        : `fallback legado via inferAssessorAction(${legacyAction ?? "general"})`
+      : "fallback seguro para atendimento geral"
   const resolutionMs = Date.now() - startedAt
 
   const plan: CosCapabilityPlan = {
@@ -521,7 +505,7 @@ export function planCosCapability(input: {
       confidence,
       source: resolvedSource,
       reason,
-      fallbackUsed: resolvedSource === "legacy",
+      fallbackUsed: false,
       pendingContextUsed: Boolean(usePendingContext && input.pendingContext),
       surface,
       resolutionMs,
@@ -541,7 +525,7 @@ export function planCosCapability(input: {
     entity,
     source: resolvedSource,
     confidence,
-    fallbackUsed: resolvedSource === "legacy",
+    fallbackUsed: false,
     pendingContextUsed: plan.telemetry.pendingContextUsed,
     surface,
     resolutionMs,

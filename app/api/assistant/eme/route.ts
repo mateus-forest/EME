@@ -35,7 +35,7 @@ import {
 } from "@/lib/cos"
 import { analyzeCosAttachments, mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
-import { getCosLegacyDependencyInventory, loadLegacyPendingCosContext } from "@/lib/cos/legacy-adapter"
+import { getCosLegacyDependencyInventory } from "@/lib/cos/legacy-adapter"
 import {
   consumeBrokerAiCredits,
   createInsufficientCreditsPayload,
@@ -659,7 +659,7 @@ export async function POST(request: NextRequest) {
           requestedAction: resolvedRequestedAction,
         })
     const executionMessage = attachmentAnalysis.executionMessage
-    const pendingContext = resumableWorkflow ? null : await loadLegacyPendingCosContext(user.broker.id, conversationDocument?.id)
+    const pendingContext = null
     const executionPlanBase = resumableWorkflow
       ? null
       : await runWithAiOperationContext(

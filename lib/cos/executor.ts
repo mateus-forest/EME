@@ -1,5 +1,3 @@
-import { executeLegacyCosAction } from "@/lib/cos/legacy-adapter"
-
 import type { CosActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
 
 export async function executeCosCapability(input: {
@@ -27,14 +25,7 @@ export async function executeCosCapability(input: {
     })
   }
 
-  return (await executeLegacyCosAction({
-    brokerId: input.brokerId,
-    userId: input.userId,
-    message: input.message,
-    action: input.plan.action,
-    confirm: input.confirm,
-    payload: mergedPayload,
-  })) as CosActionResult
+  throw new Error(`COS_HANDLER_NOT_IMPLEMENTED:${input.plan.capabilityId}`)
 }
 
 function isAwaitingInputResult(result: CosActionResult) {

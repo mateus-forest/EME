@@ -17,7 +17,7 @@ export const proposalEntityModule: CosEntityModule = {
         entity: "document",
         aliases: ["criar proposta", "gerar proposta", "nova proposta", "montar proposta"],
         responseMode: "raw",
-        source: "legacy",
+        source: "modular",
         mutatesData: true,
         requiresConfirmation: true,
         requiresSelection: true,

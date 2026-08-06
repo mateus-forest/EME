@@ -1,88 +1,55 @@
-import {
-  generateAssessorText,
-  getPendingAssessorContext,
-  inferAssessorAction,
-  runLegacyAssessorAction,
-  type AssessorAction,
-  type PendingAssessorContext,
-} from "@/lib/eme-backend"
-
 export type CosLegacyDependencyInventoryItem = {
   area: "decision" | "execution" | "response" | "pending_context"
   dependency: "inferAssessorAction" | "runLegacyAssessorAction" | "generateAssessorText" | "getPendingAssessorContext"
+  status: "migrated" | "residual"
   callers: string[]
-  reason: string
-  triggeredWhen: string
-  equivalentCapabilities: string[]
-  migrationEffort: "low" | "medium" | "high"
+  migrationTarget: string
+  note: string
+  remainingWork: string | null
 }
 
 const COS_LEGACY_DEPENDENCY_INVENTORY: CosLegacyDependencyInventoryItem[] = [
   {
     area: "decision",
     dependency: "inferAssessorAction",
-    callers: ["lib/cos/planner.ts"],
-    reason: "Fallback residual para mensagens que ainda nao fecham com confianca no catalogo novo.",
-    triggeredWhen: "Somente quando o planner nao encontra candidate forte via requestedAction, pending context ou catalog scoring.",
-    equivalentCapabilities: ["general.chat", "property.create", "property.search", "lead.create", "proposal.create", "contract.create"],
-    migrationEffort: "medium",
+    status: "migrated",
+    callers: [],
+    migrationTarget: "Intent Resolver -> Planner -> Execution Planner",
+    note: "A decisão oficial do COS agora depende apenas do pipeline novo.",
+    remainingWork: null,
   },
   {
     area: "execution",
     dependency: "runLegacyAssessorAction",
-    callers: ["lib/cos/executor.ts"],
-    reason: "Mantem capacidades legadas funcionando enquanto nao existe handler modular equivalente.",
-    triggeredWhen: "Somente quando a capability selecionada nao possui handler no novo engine.",
-    equivalentCapabilities: ["property.create", "property.search", "property.description.improve", "proposal.create", "contract.create", "contract.list", "contract.get"],
-    migrationEffort: "high",
+    status: "migrated",
+    callers: [],
+    migrationTarget: "Workflow Engine -> Capability Handlers -> Executor",
+    note: "O executor não possui mais fallback operacional para o motor legado.",
+    remainingWork: null,
   },
   {
     area: "pending_context",
     dependency: "getPendingAssessorContext",
-    callers: ["app/api/assistant/eme/route.ts"],
-    reason: "Recupera continuidade dos fluxos antigos que ainda nao foram convertidos para workflow persistido pleno.",
-    triggeredWhen: "Somente quando nao existe workflow persistido retomavel na conversa atual.",
-    equivalentCapabilities: ["lead.delete", "lead.attach_document", "studio.generateCampaign", "studio.generateInstagram", "studio.generateVideo"],
-    migrationEffort: "medium",
+    status: "migrated",
+    callers: [],
+    migrationTarget: "workflow persistido + pendingInput + conversation memory",
+    note: "A continuidade passou a ser controlada apenas pelo estado persistido do workflow.",
+    remainingWork: null,
   },
   {
     area: "response",
     dependency: "generateAssessorText",
-    callers: ["lib/cos/response-formatter.ts"],
-    reason: "Mantem a camada historica de NLG apenas para respostas genericas ainda sem formatter dedicado.",
-    triggeredWhen: "Somente para respostaMode nlg ligada a action general.",
-    equivalentCapabilities: ["general.chat"],
-    migrationEffort: "low",
+    status: "migrated",
+    callers: [],
+    migrationTarget: "Response Formatter + handlers do novo engine",
+    note: "As respostas finais não utilizam mais a camada textual legada.",
+    remainingWork: null,
   },
 ]
-
-export function inferLegacyCosAction(message: string, requestedAction?: string): AssessorAction {
-  return inferAssessorAction(message, requestedAction)
-}
-
-export async function executeLegacyCosAction(input: {
-  brokerId: string
-  userId: string
-  message: string
-  action: AssessorAction
-  confirm?: boolean
-  payload?: Record<string, unknown>
-}) {
-  return runLegacyAssessorAction(input)
-}
-
-export async function loadLegacyPendingCosContext(brokerId: string, conversationId?: string | null): Promise<PendingAssessorContext | null> {
-  return getPendingAssessorContext(brokerId, conversationId)
-}
-
-export async function formatLegacyCosText(message: string, action: AssessorAction, actionResponse: string) {
-  return generateAssessorText(message, action, actionResponse)
-}
 
 export function getCosLegacyDependencyInventory() {
   return COS_LEGACY_DEPENDENCY_INVENTORY.map((item) => ({
     ...item,
     callers: [...item.callers],
-    equivalentCapabilities: [...item.equivalentCapabilities],
   }))
 }

@@ -17,7 +17,7 @@ export const agendaEntityModule: CosEntityModule = {
         entity: "agenda",
         aliases: ["agendar compromisso", "criar compromisso", "nova visita", "marque para", "marcar para amanha", "agendar para amanha"],
         responseMode: "raw",
-        source: "legacy",
+        source: "modular",
         mutatesData: true,
         requiresConfirmation: true,
         requiresSelection: false,

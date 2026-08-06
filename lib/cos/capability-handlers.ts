@@ -1,6 +1,7 @@
 import "server-only"
 
 import { analyticsSummaryCapability } from "@/lib/cos/capabilities/analytics/summary"
+import { createAgendaCapability } from "@/lib/cos/capabilities/agenda/create"
 import { completeAgendaCapability } from "@/lib/cos/capabilities/agenda/complete"
 import { listAgendaCapability } from "@/lib/cos/capabilities/agenda/list"
 import {
@@ -10,6 +11,7 @@ import {
   updateAgendaCapability,
   weekAgendaCapability,
 } from "@/lib/cos/capabilities/agenda/manage"
+import { createContractCapability, getContractCapability, listContractsCapability } from "@/lib/cos/capabilities/contract/create"
 import {
   contractHistoryCapability,
   downloadContractCapability,
@@ -20,6 +22,7 @@ import {
   cancelContractCapability,
 } from "@/lib/cos/capabilities/contract/manage"
 import { financialSummaryCapability } from "@/lib/cos/capabilities/finance/summary"
+import { generalChatCapability } from "@/lib/cos/capabilities/general/chat"
 import {
   helpContractsProposalsCapability,
   helpFirstStepsCapability,
@@ -29,7 +32,7 @@ import {
   helpRegisterPropertiesCapability,
   helpUseCosCapability,
 } from "@/lib/cos/capabilities/help/manage"
-import { leadSummaryCapability } from "@/lib/cos/capabilities/lead/summary"
+import { createLeadCapability, leadSummarizeCapability, leadSummaryCapability } from "@/lib/cos/capabilities/lead/summary"
 import {
   analyticsLeadsCapability,
   analyticsPerformanceCapability,
@@ -54,6 +57,7 @@ import {
   updateLeadCapability,
 } from "@/lib/cos/capabilities/lead/manage"
 import { operationSummaryCapability } from "@/lib/cos/capabilities/operation/summary"
+import { createPropertyDraftCapability, improvePropertyDescriptionCapability, searchPropertiesCapability } from "@/lib/cos/capabilities/property/core"
 import {
   archivePropertyCapability,
   publishPropertyCapability,
@@ -61,6 +65,7 @@ import {
   unpublishPropertyCapability,
   updatePropertyMediaCapability,
 } from "@/lib/cos/capabilities/property/manage"
+import { createProposalCapability } from "@/lib/cos/capabilities/proposal/manage"
 import {
   studioGenerateCampaignCapability,
   studioGenerateDescriptionCapability,
@@ -74,7 +79,10 @@ import {
 import type { CosCapabilityHandler, CosCapabilityId } from "@/lib/cos/types"
 
 export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHandler>> = {
+  "general.chat": generalChatCapability,
+  "lead.create": createLeadCapability,
   "lead.summary": leadSummaryCapability,
+  "lead.summarize": leadSummarizeCapability,
   "operation.summary": operationSummaryCapability,
   "finance.summary": financialSummaryCapability,
   "analytics.summary": analyticsSummaryCapability,
@@ -84,6 +92,7 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "catalog.unpublish": unpublishCatalogCapability,
   "catalog.share": shareCatalogCapability,
   "catalog.stats": catalogStatsCapability,
+  "agenda.create": createAgendaCapability,
   "agenda.list": listAgendaCapability,
   "agenda.complete": completeAgendaCapability,
   "agenda.update": updateAgendaCapability,
@@ -91,6 +100,13 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "agenda.today": todayAgendaCapability,
   "agenda.week": weekAgendaCapability,
   "agenda.month": monthAgendaCapability,
+  "proposal.create": createProposalCapability,
+  "contract.create": createContractCapability,
+  "contract.list": listContractsCapability,
+  "contract.get": getContractCapability,
+  "property.create": createPropertyDraftCapability,
+  "property.search": searchPropertiesCapability,
+  "property.description.improve": improvePropertyDescriptionCapability,
   "contract.preview": previewContractCapability,
   "contract.update": updateContractCapability,
   "contract.send": sendContractCapability,
