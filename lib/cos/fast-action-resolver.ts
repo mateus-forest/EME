@@ -127,7 +127,7 @@ const NAVIGATION_COMMANDS = [
   { href: "/corretor/imoveis", label: "Imóveis", commands: ["imoveis", "abrir imoveis"] },
   { href: "/corretor/catalogo", label: "Catálogo", commands: ["catalogo", "abrir catalogo"] },
   { href: "/corretor/studio-ia", label: "Studio IA", commands: ["studio", "studio ia", "abrir studio", "abrir studio ia"] },
-  { href: "/corretor/documentos/contratos", label: "Contratos", commands: ["contratos", "abrir contratos", "abrir contrato"] },
+  { href: "/corretor/documentos/contratos", label: "Contratos", commands: ["contratos", "abrir contratos"] },
   { href: "/corretor/documentos", label: "Propostas", commands: ["propostas", "abrir propostas", "abrir proposta"] },
   { href: "/corretor/agenda", label: "Compromissos", commands: ["agenda", "compromissos", "abrir agenda", "abrir compromissos"] },
   { href: "/corretor/financeiro", label: "Financeiro", commands: ["financeiro", "abrir financeiro"] },
@@ -294,6 +294,23 @@ export function resolveFastCosAction(input: {
     }
   }
 
+  if (
+    hasPropertySelected &&
+    includesAny(normalizedMessage, ["editar imovel", "editar imóvel", "ajustar este imovel", "ajustar este imóvel", "atualizar dados do imovel", "atualizar dados do imóvel"])
+  ) {
+    return {
+      kind: "clarify",
+      confidence: 0.72,
+      reply: "Posso seguir de algumas formas.\n\nO que você deseja fazer neste imóvel?",
+      options: [
+        { id: "editar_midias", label: "Atualizar mídias do imóvel" },
+        { id: "melhorar_descricao", label: "Melhorar descrição" },
+        { id: "publicar_imovel", label: "Publicar imóvel" },
+      ],
+      reason: "pedido de edicao de imovel exige desambiguacao",
+    }
+  }
+
   if (hasContractSelected && isExactCommand(normalizedMessage, ["enviar contrato", "assinar contrato", "cancelar contrato", "abrir contrato"])) {
     const action =
       normalizedMessage === "enviar contrato"
@@ -315,7 +332,9 @@ export function resolveFastCosAction(input: {
 
   if (page?.startsWith("studio_ia") && isExactCommand(normalizedMessage, ["gerar campanha", "criar campanha instagram", "gerar post para instagram", "criar story para este imovel", "gerar video do imovel", "criar video vertical para este imovel"])) {
     const action =
-      includesAny(normalizedMessage, ["post", "story", "instagram"])
+      normalizedMessage.includes("campanha")
+        ? ("STUDIO_GENERATE_CAMPAIGN" as AssessorAction)
+        : includesAny(normalizedMessage, ["post", "story", "instagram"])
         ? ("STUDIO_GENERATE_INSTAGRAM" as AssessorAction)
         : includesAny(normalizedMessage, ["video"])
           ? ("STUDIO_GENERATE_VIDEO" as AssessorAction)

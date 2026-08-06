@@ -145,7 +145,7 @@ function buildIntentCandidates(input: {
   const mentionsVideo = hasAny(input.normalizedMessage, ["video", "vídeo", "reel", "reels"])
   const mentionsAgenda = hasAny(input.normalizedMessage, ["compromisso", "compromissos", "agenda", "reuniao", "reunião", "visita", "lembrete"])
   const mentionsFinance = hasAny(input.normalizedMessage, ["comissao", "comissão", "financeiro", "recebimento", "pagamento"])
-  const mentionsCreate = hasAny(input.normalizedMessage, ["criar", "crie", "cadastre", "cadastrar", "gerar", "gere", "novo", "nova", "registre"])
+  const mentionsCreate = hasAny(input.normalizedMessage, ["criar", "crie", "cadastre", "cadastrar", "gerar", "gere", "novo", "nova", "registre", "registrar"])
   const mentionsAttach = hasAny(input.normalizedMessage, ["anexar", "anexe", "vincular", "vincule", "juntar", "junte"])
   const mentionsUpdate = hasAny(input.normalizedMessage, ["atualizar", "atualize", "editar", "edite", "ajustar", "ajuste", "corrigir", "corrija", "melhorar", "melhore"])
   const mentionsCancel = hasAny(input.normalizedMessage, ["cancelar", "cancele", "cancelamento"])
@@ -163,6 +163,11 @@ function buildIntentCandidates(input: {
   const mentionsHelp = hasAny(input.normalizedMessage, ["como", "ajuda", "me explique", "quero aprender"])
   const shortReply = input.normalizedMessage.split(/\s+/).filter(Boolean).length <= 4
   const shouldPreferPropertyCreation = attachmentSignals.hasImage || attachmentSignals.hasAudio || mentionsCreate || workspacePage === "property_create"
+  const mentionsPropertySearchVerb = hasAny(input.normalizedMessage, ["buscar", "busque", "encontre", "localize", "mostrar", "mostre", "ver", "quero ver"])
+  const mentionsPropertyPublish = hasAny(input.normalizedMessage, ["anunciar", "anuncie", "catalogo", "catÃ¡logo", "publique", "publicar", "coloque"])
+  const mentionsAgendaUpdate = hasAny(input.normalizedMessage, ["editar", "edite", "atualizar", "atualize", "alterar", "altere", "reagendar", "horario", "horÃ¡rio"])
+  const mentionsSwitch = hasAny(input.normalizedMessage, ["mudar para", "trocar para", "agora", "quero criar"])
+  const mentionsContractFollowup = mentionsSend || mentionsSign || mentionsCancel || input.normalizedMessage.includes("abrir contrato")
 
   const candidates: Array<{ action: AssessorAction; score: number; reasons: string[] }> = []
   const pushCandidate = (action: AssessorAction, score: number, reasons: string[]) => {
@@ -179,7 +184,7 @@ function buildIntentCandidates(input: {
 
   pushCandidate(
     "createPropertyDraft",
-    shouldPreferPropertyCreation
+    shouldPreferPropertyCreation && !mentionsPropertySearchVerb && !mentionsPropertyPublish
       ? (attachmentSignals.hasImage ? 36 : 0) +
         (attachmentSignals.hasAudio ? 30 : 0) +
         (mentionsCreate ? 18 : 0) +
@@ -205,11 +210,14 @@ function buildIntentCandidates(input: {
 
   pushCandidate(
     "searchProperties",
-    (mentionsProperty ? 16 : 0) + countAny(input.normalizedMessage, ["buscar", "busque", "encontre", "localize", "mostrar", "mostre", "ver"]) * 8 + propertyContextScore,
+    (mentionsProperty ? 16 : 0) +
+      countAny(input.normalizedMessage, ["buscar", "busque", "encontre", "localize", "mostrar", "mostre", "ver", "quero ver"]) * 8 +
+      (input.normalizedMessage.includes("disponiveis") || input.normalizedMessage.includes("publicadas") ? 8 : 0) +
+      propertyContextScore,
     ["busca de imovel"],
   )
 
-  pushCandidate("PUBLISH_PROPERTY", (mentionsPublish ? 28 : 0) + propertyContextScore, ["publicacao de imovel"])
+  pushCandidate("PUBLISH_PROPERTY", ((mentionsPublish ? 28 : 0) + (mentionsPropertyPublish ? 24 : 0)) + propertyContextScore, ["publicacao de imovel"])
   pushCandidate("UNPUBLISH_PROPERTY", (mentionsPause ? 28 : 0) + propertyContextScore, ["pausa de imovel"])
   pushCandidate("ARCHIVE_PROPERTY", (mentionsDelete ? 28 : 0) + propertyContextScore, ["exclusao de imovel"])
 
@@ -239,31 +247,37 @@ function buildIntentCandidates(input: {
 
   pushCandidate(
     "CREATE_CONTRACT",
-    (mentionsContract ? 24 : 0) + (mentionsCreate ? 16 : 0) + (input.memory?.selectedProperty?.id ? 10 : 0) + (input.memory?.selectedClient?.id ? 10 : 0) + contractContextScore,
+    (mentionsContract ? 24 : 0) +
+      (mentionsCreate ? 16 : 0) +
+      (input.memory?.selectedProperty?.id ? 10 : 0) +
+      (input.memory?.selectedClient?.id ? 10 : 0) +
+      (mentionsSwitch && mentionsContract ? 18 : 0) +
+      contractContextScore -
+      (mentionsContractFollowup ? 18 : 0),
     ["criacao de contrato"],
   )
-  pushCandidate("SEND_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsSend ? 18 : 0) + contractContextScore, ["envio de contrato"])
-  pushCandidate("SIGN_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsSign ? 18 : 0) + contractContextScore, ["assinatura de contrato"])
-  pushCandidate("CANCEL_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsDelete ? 12 : 0) + (mentionsCancel ? 18 : 0) + contractContextScore, ["cancelamento de contrato"])
-  pushCandidate("GET_CONTRACT", (mentionsContract ? 18 : 0) + countAny(input.normalizedMessage, ["abrir", "ver", "mostrar", "mostre"]) * 10 + contractContextScore, ["consulta de contrato"])
+  pushCandidate("SEND_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsSend ? 24 : 0) + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 8 : 0), ["envio de contrato"])
+  pushCandidate("SIGN_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsSign ? 24 : 0) + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 8 : 0), ["assinatura de contrato"])
+  pushCandidate("CANCEL_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsDelete ? 12 : 0) + (mentionsCancel ? 24 : 0) + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 8 : 0), ["cancelamento de contrato"])
+  pushCandidate("GET_CONTRACT", (mentionsContract ? 18 : 0) + countAny(input.normalizedMessage, ["abrir", "ver", "mostrar", "mostre"]) * 18 + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 14 : 0), ["consulta de contrato"])
 
   pushCandidate(
-    mentionsInstagram ? "STUDIO_GENERATE_INSTAGRAM" : "STUDIO_GENERATE_CAMPAIGN",
+    mentionsInstagram && !input.normalizedMessage.includes("campanha") ? "STUDIO_GENERATE_INSTAGRAM" : "STUDIO_GENERATE_CAMPAIGN",
     (mentionsCampaign ? 22 : 0) + (mentionsCreate ? 14 : 0) + (input.memory?.selectedProperty?.id ? 10 : 0) + studioContextScore + propertyContextScore,
-    [mentionsInstagram ? "campanha de instagram" : "campanha de studio"],
+    [mentionsInstagram && !input.normalizedMessage.includes("campanha") ? "campanha de instagram" : "campanha de studio"],
   )
-  pushCandidate("STUDIO_GENERATE_VIDEO", (mentionsVideo ? 26 : 0) + (mentionsCreate ? 12 : 0) + studioContextScore + propertyContextScore + (attachmentSignals.hasVideo ? 8 : 0), ["geracao de video"])
+  pushCandidate("STUDIO_GENERATE_VIDEO", (mentionsVideo ? 32 : 0) + (mentionsCreate ? 12 : 0) + studioContextScore + propertyContextScore + (attachmentSignals.hasVideo ? 8 : 0) + (mentionsInstagram && mentionsVideo ? 8 : 0), ["geracao de video"])
   pushCandidate("STUDIO_IMPROVE_TEXT", (mentionsDescription ? 12 : 0) + (mentionsUpdate ? 10 : 0) + studioContextScore + (mentionsCampaign ? 8 : 0), ["melhoria de texto/copy"])
 
   pushCandidate("CREATE_AGENDA_EVENT", (mentionsAgenda ? 20 : 0) + (mentionsCreate ? 16 : 0) + agendaContextScore + countAny(input.normalizedMessage, ["amanha", "hoje", "segunda", "terca", "terça", "quarta", "quinta", "sexta", "sabado", "sábado", "domingo", "as", "às"]) * 4, ["criacao de compromisso"])
   pushCandidate("MARK_AGENDA_DONE", (mentionsAgenda ? 18 : 0) + (mentionsComplete ? 18 : 0) + agendaContextScore, ["conclusao de compromisso"])
-  pushCandidate("UPDATE_AGENDA_EVENT", (mentionsAgenda ? 18 : 0) + (mentionsUpdate ? 16 : 0) + (input.normalizedMessage.includes("reagendar") ? 18 : 0) + agendaContextScore, ["atualizacao de compromisso"])
+  pushCandidate("UPDATE_AGENDA_EVENT", (mentionsAgenda ? 18 : 0) + ((mentionsUpdate || mentionsAgendaUpdate) ? 16 : 0) + (input.normalizedMessage.includes("reagendar") ? 18 : 0) + agendaContextScore, ["atualizacao de compromisso"])
 
-  pushCandidate("GET_FINANCE_COMMISSION", (mentionsFinance ? 18 : 0) + (mentionsCommission ? 18 : 0) + financeContextScore, ["consulta de comissao"])
+  pushCandidate("GET_FINANCE_COMMISSION", (mentionsFinance ? 18 : 0) + (mentionsCommission ? 24 : 0) + financeContextScore + (mentionsProperty && mentionsCommission ? 10 : 0), ["consulta de comissao"])
   pushCandidate("help_use_cos" as AssessorAction, mentionsHelp && input.normalizedMessage.includes("cos") ? 42 : 0, ["ajuda sobre uso do cos"])
   pushCandidate("help_register_properties" as AssessorAction, mentionsHelp && mentionsProperty ? 42 : 0, ["ajuda sobre cadastro de imoveis"])
   pushCandidate("help_manage_clients" as AssessorAction, mentionsHelp && mentionsClient ? 42 : 0, ["ajuda sobre gestao de clientes"])
-  pushCandidate("help_contracts_proposals" as AssessorAction, mentionsHelp && (mentionsContract || mentionsProposal) ? 42 : 0, ["ajuda sobre contratos e propostas"])
+  pushCandidate("help_contracts_proposals" as AssessorAction, ((mentionsHelp && (mentionsContract || mentionsProposal)) || ((mentionsContract && mentionsProposal) && !mentionsCreate && !mentionsSend && !mentionsSign)) ? 42 : 0, ["ajuda sobre contratos e propostas"])
 
   const unique = new Map<AssessorAction, { action: AssessorAction; score: number; reasons: string[] }>()
   for (const candidate of candidates) {
@@ -299,6 +313,8 @@ function buildIntentCandidates(input: {
 
   const continueScore = !input.activeWorkflow
     ? 0
+    : mentionsSwitch
+      ? 0.18
     : isAffirmativeMessage(input.normalizedMessage) || isCancellationMessage(input.normalizedMessage)
       ? 0.99
       : input.activeWorkflow.pendingInput?.type === "selection" && (/^\d+$/.test(input.normalizedMessage) || getPendingSelectionLabels(input.activeWorkflow).some((label) => label.includes(input.normalizedMessage) || input.normalizedMessage.includes(label)))
@@ -333,6 +349,7 @@ export function resolveCosIntent(input: {
   const activeWorkflow = context?.workflow ?? input.activeWorkflow
   const memory = context?.memory ?? input.memory
   const normalizedMessage = normalizeText(message)
+  const indicatesWorkflowSwitch = hasAny(normalizedMessage, ["mudar para", "trocar para", "agora", "quero criar"])
   const securityAudit = evaluateCosDecisionSecurity({
     message,
     attachments: attachments.map((attachment) => ({
@@ -389,7 +406,7 @@ export function resolveCosIntent(input: {
 
   if (activeWorkflow && topCandidate && activeWorkflowAction && topCandidate.action !== activeWorkflowAction) {
     const sameDomain = getActionDomain(topCandidate.action) === getActionDomain(activeWorkflowAction)
-    if (sameDomain && decision.continueScore >= 0.62 && topCandidate.confidence < 0.86) {
+    if (!indicatesWorkflowSwitch && sameDomain && decision.continueScore >= 0.62 && topCandidate.confidence < 0.86) {
       return {
         requestedAction: activeWorkflowAction,
         workflowDecision: "continue_workflow",
@@ -410,7 +427,7 @@ export function resolveCosIntent(input: {
       }
     }
 
-    if (topCandidate.confidence >= Math.max(0.78, decision.continueScore + 0.12)) {
+    if (topCandidate.confidence >= Math.max(indicatesWorkflowSwitch ? 0.72 : 0.78, decision.continueScore + 0.12)) {
       return {
         requestedAction: topCandidate.action,
         workflowDecision: "start_new",

@@ -11,6 +11,7 @@ export type CosDecisionSecurityAudit = {
 
 const PROMPT_INJECTION_PATTERNS = [
   /ignore (all )?(previous|prior) instructions/i,
+  /ignore .*instru/i,
   /ignorar (todas as )?(instrucoes|instruções) anteriores/i,
   /system prompt/i,
   /prompt interno/i,

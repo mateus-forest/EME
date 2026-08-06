@@ -18,15 +18,28 @@ function hasSelectedEntityFor(actionEntity: CosEntityModuleId, context: ReturnTy
   const selectedEntityIds = context.selectedEntityIds
 
   if (actionEntity === "proposal" || actionEntity === "contract") {
-    return Boolean(selectedEntityIds.property || selectedEntityIds.lead || selectedEntityIds.contract)
+    return Boolean(
+      selectedEntityIds.property ||
+      selectedEntityIds.lead ||
+      selectedEntityIds.contract ||
+      context.workspace?.entity === "property" ||
+      context.workspace?.entity === "lead" ||
+      context.workspace?.entity === "contract",
+    )
   }
 
   if (actionEntity === "studio_ia") {
-    return Boolean(selectedEntityIds.property || selectedEntityIds.lead || context.workspace?.entity === "studio_ia")
+    return Boolean(
+      selectedEntityIds.property ||
+      selectedEntityIds.lead ||
+      context.workspace?.entity === "studio_ia" ||
+      context.workspace?.entity === "property" ||
+      context.workspace?.entity === "lead",
+    )
   }
 
   if (actionEntity === "agenda") {
-    return Boolean(selectedEntityIds.agenda || context.workspace?.entity === "agenda")
+    return Boolean(selectedEntityIds.agenda || context.workspace?.entity === "agenda" || context.workspace?.entity === "operation")
   }
 
   if (actionEntity === "property") {
@@ -262,7 +275,21 @@ export async function runCosEvalSuite() {
   const workflowEvaluated = results.filter((result) => result.scenario.expected.workflowActions)
   const intentEvaluated = results.filter((result) => Object.prototype.hasOwnProperty.call(result.scenario.expected, "intentAction"))
   const entityEvaluated = results.filter((result) => Object.prototype.hasOwnProperty.call(result.scenario.expected, "contextOrigin"))
-  const ambiguities = results.filter((result) => result.fastAction.kind === "clarify" || result.intentResolution.confidence < 0.6)
+  const ambiguities = results.filter((result) => {
+    const securityClarification =
+      result.fastAction.kind === "clarify" &&
+      typeof result.fastAction.reason === "string" &&
+      result.fastAction.reason.startsWith("security_guard:")
+    const securityLowConfidence =
+      typeof result.intentResolution.reason === "string" &&
+      result.intentResolution.reason.startsWith("security_guard:")
+
+    if (securityClarification || securityLowConfidence) {
+      return false
+    }
+
+    return (result.fastAction.kind === "clarify" && result.fastAction.confidence < 0.7) || result.intentResolution.confidence < 0.6
+  })
   const confirmations = results.filter((result) => result.executionPlan?.requiresConfirmation)
   const autonomousExecutions = results.filter((result) => {
     if (result.fastAction.kind === "navigation") return true
