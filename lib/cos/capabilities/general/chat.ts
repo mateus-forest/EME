@@ -12,15 +12,31 @@ export const generalChatCapability: CosCapabilityHandler = async ({ message }) =
 
   if (isGreeting) {
     return {
-      response:
-        "Posso te ajudar com clientes, imóveis, propostas, contratos, agenda, Studio IA, financeiro e desempenho.\n\nDiga a ação que você quer executar e eu continuo por esse fluxo.",
-      metadata: { noCharge: true, source: "general_chat" },
+      response: "Escolha por onde deseja começar.",
+      metadata: {
+        noCharge: true,
+        source: "general_chat",
+        options: [
+          { id: "onboarding_clients", actionId: "onboarding:clients", action: "FIND_LEAD", message: "Clientes", label: "Clientes" },
+          { id: "onboarding_properties", actionId: "onboarding:properties", action: "searchProperties", message: "Imóveis", label: "Imóveis" },
+          { id: "onboarding_cos", actionId: "onboarding:cos", action: "help_use_cos", message: "Como usar o COS", label: "Como usar o COS" },
+        ],
+      },
     }
   }
 
   return {
-    response:
-      "Entendi seu pedido, mas ainda preciso de mais contexto para escolher a ação certa.\n\nVocê pode me pedir, por exemplo:\n- cadastrar cliente\n- buscar imóveis\n- criar proposta\n- criar contrato\n- agendar compromisso",
-    metadata: { noCharge: true, source: "general_chat_fallback" },
+    response: "Escolha a operação que deseja executar.",
+    metadata: {
+      noCharge: true,
+      source: "general_chat_fallback",
+      options: [
+        { id: "fallback_clients", actionId: "fallback:clients", action: "FIND_LEAD", message: "Clientes", label: "Clientes" },
+        { id: "fallback_properties", actionId: "fallback:properties", action: "searchProperties", message: "Buscar imóveis", label: "Buscar imóveis" },
+        { id: "fallback_proposal", actionId: "fallback:proposal", action: "CREATE_PROPOSAL", message: "Criar proposta", label: "Criar proposta" },
+        { id: "fallback_contract", actionId: "fallback:contract", action: "CREATE_CONTRACT", message: "Novo contrato", label: "Novo contrato" },
+        { id: "fallback_agenda", actionId: "fallback:agenda", action: "CREATE_AGENDA_EVENT", message: "Agenda", label: "Agenda" },
+      ],
+    },
   }
 }

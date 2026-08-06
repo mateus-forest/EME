@@ -16,6 +16,13 @@ import {
 } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
+const AGENDA_TIME_OPTIONS = [
+  { id: "agenda_time_09", label: "09:00" },
+  { id: "agenda_time_10", label: "10:00" },
+  { id: "agenda_time_11", label: "11:00" },
+  { id: "agenda_time_other", label: "Outro horário..." },
+]
+
 export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   if (pendingInput?.action === "CREATE_AGENDA_EVENT" && pendingInput.field === "time") {
     const parsedData = pendingInput.parsedData ?? {}
@@ -28,6 +35,7 @@ export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, u
           action: "CREATE_AGENDA_EVENT",
           entity: "agenda",
           parsedData,
+          options: AGENDA_TIME_OPTIONS,
         }),
       }
     }
@@ -94,6 +102,7 @@ export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, u
         action: "CREATE_AGENDA_EVENT",
         entity: "agenda",
         parsedData: { title, type, date: date.toISOString(), personName, propertyReference },
+        options: AGENDA_TIME_OPTIONS,
         extra: {
           leadId: lead?.id ?? null,
           propertyId: property?.id ?? null,

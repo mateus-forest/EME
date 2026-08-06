@@ -78,6 +78,7 @@ type AssistantMessageResponse = {
     options?: unknown
     workflow?: {
       pendingInput?: {
+        options?: unknown
         parsedData?: {
           options?: unknown
         } | null
@@ -526,7 +527,7 @@ export function useCosConversations({
         : { kind: "none" as const, confidence: 0 }
 
     const shouldSuppressCurrentPendingConfirmation =
-      (fastAction.kind === "navigation" || fastAction.kind === "workflow_details") &&
+      (fastAction.kind === "navigation" || fastAction.kind === "workflow_details" || fastAction.kind === "workflow_action") &&
       Boolean(pendingConfirmation?.sourceInteractionId) &&
       Boolean(activeConversationId)
 
@@ -680,6 +681,7 @@ export function useCosConversations({
 
       const responseOptions =
         parseCosResponseOptions(data?.metadata?.options) ??
+        parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.options) ??
         parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.parsedData?.options)
       const assistantMessage: CosConversationItem = {
         id: crypto.randomUUID(),

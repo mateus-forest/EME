@@ -75,7 +75,13 @@ function metadataAttachments(metadata: Record<string, unknown>) {
 function metadataOptions(metadata: Record<string, unknown>) {
   const directValue = metadata.options
   const parsedData = metadataRecord(metadata.parsedData)
-  const value = Array.isArray(directValue) ? directValue : parsedData.options
+  const pendingInput = metadataRecord(metadata.pendingInput)
+  const value =
+    Array.isArray(directValue)
+      ? directValue
+      : Array.isArray(pendingInput.options)
+        ? pendingInput.options
+        : parsedData.options
   if (!Array.isArray(value)) {
     return [] as Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
   }

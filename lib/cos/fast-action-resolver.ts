@@ -106,11 +106,11 @@ function buildCurrentEntityEditAction(
 
   if (entity === "property" && hasPropertySelected) {
     return {
-      kind: "clarify" as const,
+      kind: "clarify",
       confidence: 0.58,
-      reply: "Posso seguir de algumas formas.\n\nO que você deseja fazer neste imóvel?",
+      reply: "Escolha a ação para este imóvel.",
       options: [
-        { id: "editar_midias", label: "Atualizar mídias do imóvel" },
+        { id: "editar_midias", label: "Atualizar mídias" },
         { id: "melhorar_descricao", label: "Melhorar descrição" },
         { id: "publicar_imovel", label: "Publicar imóvel" },
       ],
@@ -123,15 +123,15 @@ function buildCurrentEntityEditAction(
 
 const NAVIGATION_COMMANDS = [
   { href: "/corretor", label: "COS", commands: ["cos", "abrir cos", "voltar para o cos"] },
-  { href: "/corretor/clientes", label: "Clientes", commands: ["clientes", "abrir clientes"] },
-  { href: "/corretor/imoveis", label: "Imóveis", commands: ["imoveis", "abrir imoveis"] },
-  { href: "/corretor/catalogo", label: "Catálogo", commands: ["catalogo", "abrir catalogo"] },
+  { href: "/corretor/clientes", label: "Clientes", commands: ["clientes", "abrir clientes", "mostrar clientes", "minha carteira de clientes", "meus clientes"] },
+  { href: "/corretor/imoveis", label: "Imóveis", commands: ["imoveis", "abrir imoveis", "mostrar imoveis", "meus imoveis", "minha carteira de imoveis"] },
+  { href: "/corretor/catalogo", label: "Catálogo", commands: ["catalogo", "abrir catalogo", "meu catalogo", "catalogo publico"] },
   { href: "/corretor/studio-ia", label: "Studio IA", commands: ["studio", "studio ia", "abrir studio", "abrir studio ia"] },
-  { href: "/corretor/documentos/contratos", label: "Contratos", commands: ["contratos", "abrir contratos"] },
+  { href: "/corretor/documentos/contratos", label: "Contratos", commands: ["contratos", "abrir contratos", "meus contratos", "mostrar contratos"] },
   { href: "/corretor/documentos", label: "Propostas", commands: ["propostas", "abrir propostas", "abrir proposta"] },
-  { href: "/corretor/agenda", label: "Compromissos", commands: ["agenda", "compromissos", "abrir agenda", "abrir compromissos"] },
+  { href: "/corretor/agenda", label: "Compromissos", commands: ["agenda", "compromissos", "abrir agenda", "abrir compromissos", "minha agenda"] },
   { href: "/corretor/financeiro", label: "Financeiro", commands: ["financeiro", "abrir financeiro"] },
-  { href: "/corretor/analytics", label: "Desempenho", commands: ["desempenho", "analytics", "abrir desempenho"] },
+  { href: "/corretor/analytics", label: "Desempenho", commands: ["desempenho", "analytics", "abrir desempenho", "performance"] },
   { href: "/corretor/historico", label: "Histórico", commands: ["historico", "histórico", "abrir historico", "abrir histórico"] },
   { href: "/corretor/conta", label: "Configurações", commands: ["configuracoes", "configurações", "abrir configuracoes", "abrir configurações"] },
 ]
@@ -140,7 +140,7 @@ export function resolveFastCosAction(input: {
   message: string
   workspace: CosWorkspaceContext | null
   context?: CosNormalizedContext | null
-}) : FastActionResolution {
+}): FastActionResolution {
   const securityAudit = evaluateCosDecisionSecurity({
     message: input.message,
     attachments: (input.context?.attachments ?? []).map((attachment) => ({
@@ -166,7 +166,7 @@ export function resolveFastCosAction(input: {
     return {
       kind: "clarify",
       confidence: 0.18,
-      reply: "Encontrei um pedido sensível e prefiro confirmar antes de seguir.\n\nQual ação operacional você deseja executar no EME?",
+      reply: "Escolha a frente que deseja abrir.",
       options: [
         { id: "security_clarify_property", label: "Imóveis" },
         { id: "security_clarify_lead", label: "Clientes" },
@@ -176,7 +176,7 @@ export function resolveFastCosAction(input: {
     }
   }
 
-  if (isExactCommand(normalizedMessage, ["ver detalhes da operacao", "ver detalhes da operação"])) {
+  if (isExactCommand(normalizedMessage, ["ver detalhes da operacao", "ver detalhes da operação", "operacao", "operação", "minha operacao", "minha operação", "resumo da operacao", "resumo da operação"])) {
     return {
       kind: "workflow_details",
       action: "workflow_details",
@@ -199,23 +199,43 @@ export function resolveFastCosAction(input: {
     }
   }
 
-  if (isExactCommand(normalizedMessage, ["novo contrato", "criar contrato", "gerar contrato", "anexar contrato"])) {
+  if (isExactCommand(normalizedMessage, ["novo contrato", "criar contrato", "gerar contrato", "anexar contrato", "contrato novo", "fazer contrato"])) {
     return {
       kind: "workflow_action",
       action: "CREATE_CONTRACT",
       confidence: 0.97,
       reply: "Perfeito.\n\nVou iniciar a criação do contrato.",
-      reason: "comando direto para criar contrato",
+      reason: "comando canonico para criar contrato",
     }
   }
 
-  if (isExactCommand(normalizedMessage, ["nova proposta", "criar proposta", "gerar proposta"])) {
+  if (isExactCommand(normalizedMessage, ["nova proposta", "criar proposta", "gerar proposta", "proposta nova", "fazer proposta"])) {
     return {
       kind: "workflow_action",
       action: "CREATE_PROPOSAL",
       confidence: 0.97,
       reply: "Perfeito.\n\nVou iniciar a criação da proposta.",
-      reason: "comando direto para criar proposta",
+      reason: "comando canonico para criar proposta",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["buscar imoveis", "buscar imóveis", "procurar imoveis", "procurar imóveis"])) {
+    return {
+      kind: "workflow_action",
+      action: "searchProperties",
+      confidence: 0.98,
+      reply: "Perfeito.\n\nVou iniciar a busca de imóveis.",
+      reason: "comando canonico para busca de imoveis",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["compartilhar catalogo", "compartilhar catálogo", "gerar link do catalogo", "gerar link do catálogo", "compartilhar imovel", "compartilhar imóvel"])) {
+    return {
+      kind: "workflow_action",
+      action: "SHARE_CATALOG",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou preparar o compartilhamento do catálogo.",
+      reason: "comando canonico para compartilhamento de catalogo",
     }
   }
 
@@ -301,9 +321,9 @@ export function resolveFastCosAction(input: {
     return {
       kind: "clarify",
       confidence: 0.72,
-      reply: "Posso seguir de algumas formas.\n\nO que você deseja fazer neste imóvel?",
+      reply: "Escolha a ação para este imóvel.",
       options: [
-        { id: "editar_midias", label: "Atualizar mídias do imóvel" },
+        { id: "editar_midias", label: "Atualizar mídias" },
         { id: "melhorar_descricao", label: "Melhorar descrição" },
         { id: "publicar_imovel", label: "Publicar imóvel" },
       ],
@@ -330,15 +350,25 @@ export function resolveFastCosAction(input: {
     }
   }
 
-  if (page?.startsWith("studio_ia") && isExactCommand(normalizedMessage, ["gerar campanha", "criar campanha instagram", "gerar post para instagram", "criar story para este imovel", "gerar video do imovel", "criar video vertical para este imovel"])) {
+  if (
+    page?.startsWith("studio_ia") &&
+    isExactCommand(normalizedMessage, [
+      "gerar campanha",
+      "criar campanha instagram",
+      "gerar post para instagram",
+      "criar story para este imovel",
+      "gerar video do imovel",
+      "criar video vertical para este imovel",
+    ])
+  ) {
     const action =
       normalizedMessage.includes("campanha")
         ? ("STUDIO_GENERATE_CAMPAIGN" as AssessorAction)
         : includesAny(normalizedMessage, ["post", "story", "instagram"])
-        ? ("STUDIO_GENERATE_INSTAGRAM" as AssessorAction)
-        : includesAny(normalizedMessage, ["video"])
-          ? ("STUDIO_GENERATE_VIDEO" as AssessorAction)
-          : ("STUDIO_GENERATE_CAMPAIGN" as AssessorAction)
+          ? ("STUDIO_GENERATE_INSTAGRAM" as AssessorAction)
+          : includesAny(normalizedMessage, ["video"])
+            ? ("STUDIO_GENERATE_VIDEO" as AssessorAction)
+            : ("STUDIO_GENERATE_CAMPAIGN" as AssessorAction)
 
     return {
       kind: "workflow_action",
@@ -353,7 +383,7 @@ export function resolveFastCosAction(input: {
     return {
       kind: "clarify",
       confidence: 0.42,
-      reply: "Posso seguir por alguns caminhos.\n\nO que você deseja abrir agora?",
+      reply: "Escolha o módulo que deseja abrir.",
       options: [
         { id: "abrir_clientes", label: "Clientes" },
         { id: "abrir_imoveis", label: "Imóveis" },

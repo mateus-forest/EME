@@ -220,7 +220,10 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
   if (!workflow) return null
 
   if (workflow.pendingInput?.type === "selection") {
-    const rawOptions = workflow.pendingInput.parsedData?.options
+    const rawOptions =
+      Array.isArray(workflow.pendingInput.options)
+        ? workflow.pendingInput.options
+        : workflow.pendingInput.parsedData?.options
     if (Array.isArray(rawOptions)) {
       const options = rawOptions
         .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
@@ -229,11 +232,16 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
         .map((item) =>
           buildStructuredOption({
             id: item.id as string,
-            actionId: `workflow_selection:${workflow.id}:${item.id as string}`,
+            actionId:
+              typeof item.actionId === "string"
+                ? item.actionId
+                : `workflow_selection:${workflow.id}:${item.id as string}`,
             selectedOptionId: item.id as string,
             label: item.label as string,
-            message: item.label as string,
+            message: typeof item.message === "string" ? item.message : (item.label as string),
             description: typeof item.description === "string" ? item.description : undefined,
+            action: typeof item.action === "string" ? item.action : null,
+            href: typeof item.href === "string" ? item.href : undefined,
           }),
         )
       return options.length > 0 ? options : null
@@ -333,6 +341,24 @@ function buildDecisionAudit(input: {
           }
         : null,
   } satisfies Prisma.InputJsonObject
+}
+
+function getCosActionDomain(action: string | null | undefined) {
+  if (!action) return "general"
+
+  if (action === "workflow_details") return "operation"
+  if (action.startsWith("help_")) return "help"
+  if (action.startsWith("STUDIO_")) return "studio"
+  if (action.includes("LEAD") || action === "createLead") return "lead"
+  if (action.includes("PROPERTY") || action === "createPropertyDraft" || action === "searchProperties") return "property"
+  if (action.includes("CONTRACT")) return "contract"
+  if (action.includes("PROPOSAL")) return "proposal"
+  if (action.includes("AGENDA")) return "agenda"
+  if (action.includes("CATALOG")) return "catalog"
+  if (action.includes("FINANCIAL") || action.includes("FINANCE")) return "finance"
+  if (action.includes("PERFORMANCE") || action.includes("ANALYTICS")) return "performance"
+
+  return "general"
 }
 
 function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
@@ -450,7 +476,10 @@ function buildStructuredNextStepOptions(action: AssessorAction, metadata: Prisma
 function resolveStructuredSelectionMessage(workflow: CosWorkflow | null, selectedOptionId: string | null) {
   if (!workflow || workflow.pendingInput?.type !== "selection" || !selectedOptionId) return null
 
-  const rawOptions = workflow.pendingInput.parsedData?.options
+  const rawOptions =
+    Array.isArray(workflow.pendingInput.options)
+      ? workflow.pendingInput.options
+      : workflow.pendingInput.parsedData?.options
   if (!Array.isArray(rawOptions)) return null
 
   const matched = rawOptions
@@ -811,7 +840,7 @@ export async function POST(request: NextRequest) {
     }
 
     const intentResolution = resolveCosIntent({
-      message,
+      message: structuredSelectionMessage ?? message,
       requestedAction: effectiveRequestedAction,
       attachments: effectiveAttachments,
       workspace,
@@ -820,8 +849,22 @@ export async function POST(request: NextRequest) {
       context: normalizedContext,
     })
     const resolvedRequestedAction = intentResolution.requestedAction ?? effectiveRequestedAction
+    const activeWorkflowAction =
+      activeWorkflow?.steps[activeWorkflow.currentStep]?.action ??
+      activeWorkflow?.executionPlan.requestedAction ??
+      null
+    const hasExplicitNewAction =
+      Boolean(effectiveRequestedAction) &&
+      effectiveRequestedAction !== "workflow_details" &&
+      !isCancellation
+    const workflowDomainsCompatible =
+      !hasExplicitNewAction ||
+      !activeWorkflowAction ||
+      getCosActionDomain(activeWorkflowAction) === getCosActionDomain(effectiveRequestedAction)
     const resumableWorkflow =
-      shouldResumeWorkflow(activeWorkflow) && intentResolution.workflowDecision !== "start_new"
+      shouldResumeWorkflow(activeWorkflow) &&
+      intentResolution.workflowDecision !== "start_new" &&
+      workflowDomainsCompatible
         ? activeWorkflow
         : null
 

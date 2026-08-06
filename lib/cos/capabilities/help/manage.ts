@@ -1,5 +1,7 @@
 import "server-only"
 
+import type { Prisma } from "@prisma/client"
+
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
@@ -7,86 +9,69 @@ import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import { loadHelpManualContext, type HelpTopic } from "@/lib/cos/capabilities/help/manual"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
-// Dedicated to the 7 COS "Ajuda" capabilities — deliberately NOT lib/eme-backend.ts's
-// generateAssessorText, whose instructions are the WhatsApp SDR persona ("Responda em 1 a 4
-// linhas... Sem onboarding, manual, listas grandes"). This is the opposite goal: an orientation
-// conversation, grounded in the official manual (docs/help/*.md), that can be as thorough as the
-// question needs.
 const HELP_SYSTEM_PROMPT = [
   "Você é o assistente de suporte e orientação do EME, o Sistema Operacional do Corretor.",
-  "Use o manual oficial do EME fornecido abaixo como fonte de verdade sobre o sistema — não invente funcionalidades, telas ou comportamentos que não estejam nele.",
-  "Isso é uma conversa de orientação/onboarding, não uma resposta comercial curta: explique com o detalhe necessário, use passo a passo e listas quando isso ajudar a esclarecer.",
-  "Responda em português, de forma clara e organizada.",
-  "Se o manual não cobrir o que foi perguntado, diga isso com honestidade em vez de inventar, e sugira o caminho mais próximo disponível no sistema.",
+  "Use o manual oficial do EME fornecido abaixo como fonte de verdade sobre o sistema e não invente funcionalidades.",
+  "Responda em português, de forma clara, direta e orientada à ação.",
+  "Quando o manual não cobrir algo, admita isso com honestidade e aponte o caminho mais próximo disponível.",
 ].join(" ")
 
 const HELP_FALLBACK_EXCERPT_LENGTH = 1400
 
-const GUIDED_HELP_RESPONSES: Partial<Record<HelpTopic, string>> = {
-  first_steps: [
-    "Posso te ajudar a começar por três frentes.",
-    "",
-    "1. Configurar seu acesso e segurança",
-    "2. Cadastrar clientes e imóveis",
-    "3. Usar o COS para executar tarefas",
-    "",
-    "Me diga qual destas você quer ver primeiro.",
-  ].join("\n"),
-  use_cos: [
-    "Você pode usar o COS de forma bem prática.",
-    "",
-    "• Cadastrar ou editar clientes",
-    "• Buscar, criar e revisar imóveis",
-    "• Gerar proposta ou contrato",
-    "• Consultar agenda, operação e desempenho",
-    "",
-    "Me diga a ação que você quer executar agora e eu te guio só nela.",
-  ].join("\n"),
-  register_properties: [
-    "Você pode cadastrar um imóvel de três formas.",
-    "",
-    "• Manualmente pela tela de imóveis",
-    "• Pela IA com imagem, print ou texto",
-    "• Importando dados de um anúncio",
-    "",
-    "Se quiser, me diga qual forma você quer usar e eu explico só esse fluxo.",
-  ].join("\n"),
-  manage_clients: [
-    "No módulo Clientes você pode seguir este fluxo.",
-    "",
-    "• Cadastrar um novo cliente",
-    "• Atualizar dados e documentos",
-    "• Buscar histórico e oportunidades",
-    "• Excluir quando necessário",
-    "",
-    "Me diga qual etapa você quer fazer e eu foco só nela.",
-  ].join("\n"),
-  contracts_proposals: [
-    "Contratos e propostas seguem dois caminhos principais.",
-    "",
-    "• Criar um novo documento",
-    "• Revisar, enviar ou acompanhar um existente",
-    "",
-    "Se você me disser o que quer fazer agora, eu explico só esse passo.",
-  ].join("\n"),
-  marketing_studio: [
-    "No Studio IA você pode começar por quatro frentes.",
-    "",
-    "• Criar campanhas e copies",
-    "• Gerar Instagram Feed e Story",
-    "• Criar vídeo",
-    "• Reaproveitar materiais da biblioteca",
-    "",
-    "Me diga qual delas você quer usar primeiro.",
-  ].join("\n"),
+type GuidedHelpOption = Prisma.InputJsonObject & {
+  id: string
+  actionId: string
+  action: string
+  message: string
+  label: string
 }
 
-// Used when the OpenAI client is unavailable/disabled — still genuinely useful (the manual
-// content itself) instead of a dead-end error.
+const GUIDED_HELP_RESPONSES: Partial<Record<HelpTopic, string>> = {
+  first_steps: "Escolha por onde deseja começar.",
+  use_cos: "Escolha a operação que deseja executar.",
+  register_properties: "Escolha como deseja cadastrar o imóvel.",
+  manage_clients: "Escolha a frente de clientes que deseja seguir.",
+  contracts_proposals: "Escolha o fluxo que deseja abrir.",
+  marketing_studio: "Escolha a frente do Studio IA.",
+}
+
+const GUIDED_HELP_OPTIONS: Partial<Record<HelpTopic, GuidedHelpOption[]>> = {
+  first_steps: [
+    { id: "first_steps_use_cos", actionId: "help:first_steps:use_cos", action: "help_use_cos", message: "Como usar o COS", label: "Como usar o COS" },
+    { id: "first_steps_properties", actionId: "help:first_steps:properties", action: "help_register_properties", message: "Cadastrar imóveis", label: "Cadastrar imóveis" },
+    { id: "first_steps_clients", actionId: "help:first_steps:clients", action: "help_manage_clients", message: "Gerenciar clientes", label: "Gerenciar clientes" },
+  ],
+  use_cos: [
+    { id: "use_cos_clients", actionId: "help:use_cos:clients", action: "FIND_LEAD", message: "Clientes", label: "Clientes" },
+    { id: "use_cos_properties", actionId: "help:use_cos:properties", action: "searchProperties", message: "Buscar imóveis", label: "Buscar imóveis" },
+    { id: "use_cos_proposal", actionId: "help:use_cos:proposal", action: "CREATE_PROPOSAL", message: "Criar proposta", label: "Criar proposta" },
+  ],
+  register_properties: [
+    { id: "register_properties_manual", actionId: "help:register_properties:manual", action: "createPropertyDraft", message: "Criar imóvel", label: "Cadastro manual" },
+    { id: "register_properties_image", actionId: "help:register_properties:image", action: "createPropertyDraft", message: "Crie um imóvel com essa imagem.", label: "IA por imagem" },
+    { id: "register_properties_import", actionId: "help:register_properties:import", action: "createPropertyDraft", message: "Importar dados de um anúncio", label: "Importação" },
+  ],
+  manage_clients: [
+    { id: "manage_clients_create", actionId: "help:manage_clients:create", action: "createLead", message: "Cadastrar cliente", label: "Cadastrar cliente" },
+    { id: "manage_clients_update", actionId: "help:manage_clients:update", action: "UPDATE_LEAD", message: "Atualizar cliente", label: "Atualizar cliente" },
+    { id: "manage_clients_find", actionId: "help:manage_clients:find", action: "FIND_LEAD", message: "Buscar cliente", label: "Buscar cliente" },
+  ],
+  contracts_proposals: [
+    { id: "contracts_proposals_contract", actionId: "help:contracts:create_contract", action: "CREATE_CONTRACT", message: "Novo contrato", label: "Novo contrato" },
+    { id: "contracts_proposals_proposal", actionId: "help:contracts:create_proposal", action: "CREATE_PROPOSAL", message: "Criar proposta", label: "Criar proposta" },
+    { id: "contracts_proposals_review", actionId: "help:contracts:review", action: "help_contracts_proposals", message: "Revisar documentos existentes", label: "Revisar existentes" },
+  ],
+  marketing_studio: [
+    { id: "marketing_studio_campaign", actionId: "help:studio:campaign", action: "STUDIO_GENERATE_CAMPAIGN", message: "Gerar campanha", label: "Campanhas" },
+    { id: "marketing_studio_instagram", actionId: "help:studio:instagram", action: "STUDIO_GENERATE_INSTAGRAM", message: "Criar campanha Instagram", label: "Instagram" },
+    { id: "marketing_studio_video", actionId: "help:studio:video", action: "STUDIO_GENERATE_VIDEO", message: "Gerar vídeo do imóvel", label: "Vídeo" },
+  ],
+}
+
 function buildHelpFallbackResponse(manualContext: string) {
   const trimmed = manualContext.trim()
   return trimmed.length > HELP_FALLBACK_EXCERPT_LENGTH
-    ? `${trimmed.slice(0, HELP_FALLBACK_EXCERPT_LENGTH).trimEnd()}…`
+    ? `${trimmed.slice(0, HELP_FALLBACK_EXCERPT_LENGTH).trimEnd()}...`
     : trimmed
 }
 
@@ -96,7 +81,12 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
     if (guidedResponse) {
       return {
         response: guidedResponse,
-        metadata: { noCharge: true, topic, source: "guided_help" },
+        metadata: {
+          noCharge: true,
+          topic,
+          source: "guided_help",
+          options: (GUIDED_HELP_OPTIONS[topic] ?? []) as Prisma.InputJsonValue,
+        },
       }
     }
 
