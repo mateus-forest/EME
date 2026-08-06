@@ -83,6 +83,18 @@ export type CosActionResult = {
   propertyId?: string
 }
 
+export type CosAttachmentCategory = "image" | "document" | "video" | "files"
+
+export type CosAttachmentInput = {
+  id: string
+  name: string
+  type: string
+  size: number
+  category: CosAttachmentCategory
+  dataUrl?: string
+  textContent?: string
+}
+
 export type CosCapabilitySurface = "portal" | "cos_home" | "whatsapp" | "demo"
 
 export type CosCapabilityDomain =
@@ -341,6 +353,12 @@ export type CosPendingInputType =
   | "selection"
   | "confirmation"
 
+export type CosPendingInputOption = {
+  id: string
+  label: string
+  description?: string
+}
+
 export type CosPendingInput = {
   field: string
   label: string
@@ -349,9 +367,12 @@ export type CosPendingInput = {
   entity: CosEntityModuleId
   action: AssessorAction
   parsedData: Record<string, unknown>
+  options?: CosPendingInputOption[]
 }
 
 export type CosWorkflowStatus =
+  | "created"
+  | "processing"
   | "running"
   | "awaiting_input"
   | "paused"
@@ -399,14 +420,18 @@ export type CosWorkflow = {
   totalPausedMs: number
 }
 
-export type CosConversationMemoryAttachment = {
-  id: string
-  name: string
-  type: string
-  size: number
-  category: "image" | "document" | "video" | "files"
-  dataUrl?: string
-  textContent?: string
+export type CosConversationMemoryAttachment = CosAttachmentInput
+
+export type CosNormalizedContext = {
+  brokerId: string
+  userId: string
+  surface: CosCapabilitySurface
+  message: string
+  workspace: CosWorkspaceContext | null
+  workflow: CosWorkflow | null
+  memory: CosConversationMemory | null
+  attachments: CosAttachmentInput[]
+  selectedEntityIds: Partial<Record<CosWorkspaceEntity, string>>
 }
 
 export type CosConversationMemory = {

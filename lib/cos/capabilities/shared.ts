@@ -2,10 +2,11 @@ import "server-only"
 
 import type { Prisma } from "@prisma/client"
 
+import { normalizeCosAttachments } from "@/lib/cos/attachment-pipeline"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { prisma } from "@/lib/prisma"
 
-import type { CosCapabilityExecutionInput, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
+import type { CosAttachmentInput, CosCapabilityExecutionInput, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -30,28 +31,10 @@ export function getPayloadRecord(input: CosCapabilityExecutionInput) {
   return asRecord(input.payload)
 }
 
-export type CosPayloadAttachment = {
-  id: string
-  name: string
-  type: string
-  category: string
-  dataUrl?: string
-}
+export type CosPayloadAttachment = CosAttachmentInput
 
 export function getAttachmentsFromPayload(payload: Record<string, unknown>): CosPayloadAttachment[] {
-  const attachments = payload.attachments
-  if (!Array.isArray(attachments)) return []
-
-  return attachments
-    .map((item) => asRecord(item))
-    .filter((item) => typeof item.name === "string" && item.name)
-    .map((item) => ({
-      id: cleanText(item.id, 80),
-      name: cleanText(item.name, 240),
-      type: cleanText(item.type, 120),
-      category: cleanText(item.category, 20),
-      dataUrl: typeof item.dataUrl === "string" && item.dataUrl ? item.dataUrl : undefined,
-    }))
+  return normalizeCosAttachments(payload.attachments)
 }
 
 export function getWorkspaceFromPayload(payload: Record<string, unknown>): CosWorkspaceContext | null {

@@ -15,7 +15,17 @@ export {
 export { executeCosCapability, executeCosExecutionPlan } from "@/lib/cos/executor"
 export { createStepPlanForCapability, planCosExecution } from "@/lib/cos/execution-planner"
 export { buildCosCapabilityInventoryMarkdown, getCosCapabilityInventory } from "@/lib/cos/inventory"
+export { normalizeCosAttachments, splitCosAttachmentsByCategory } from "@/lib/cos/attachment-pipeline"
+export { createCosNormalizedContext } from "@/lib/cos/context"
+export { resolveContractEntity, resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 export { planCosCapability } from "@/lib/cos/planner"
+export {
+  createPendingInput,
+  createPendingInputMetadata,
+  extractPendingInputFromMetadata,
+  isAwaitingInputResult,
+  normalizeWorkflowStatus,
+} from "@/lib/cos/pending-input"
 export { formatCosCapabilityResponse, formatCosExecutionPlanResponse } from "@/lib/cos/response-formatter"
 export {
   cancelWorkflow,
@@ -37,6 +47,8 @@ export { deriveWorkspaceContextFromPathname, sanitizeWorkspaceContext } from "@/
 export { cosEntityModules } from "@/lib/cos/entities"
 export type {
   CosActionResult,
+  CosAttachmentCategory,
+  CosAttachmentInput,
   CosCapabilityDefinition,
   CosCapabilityDescriptor,
   CosCapabilityDomain,
@@ -58,7 +70,9 @@ export type {
   CosExecutionStep,
   CosExecutionStepStatus,
   CosPendingInput,
+  CosPendingInputOption,
   CosPendingInputType,
+  CosNormalizedContext,
   CosEntityCapabilityRegistration,
   CosEntityMetadata,
   CosEntityModule,

@@ -1,4 +1,5 @@
 import type { CosActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
+import { isAwaitingInputResult } from "@/lib/cos/pending-input"
 
 export async function executeCosCapability(input: {
   plan: CosCapabilityPlan
@@ -26,18 +27,6 @@ export async function executeCosCapability(input: {
   }
 
   throw new Error(`COS_HANDLER_NOT_IMPLEMENTED:${input.plan.capabilityId}`)
-}
-
-function isAwaitingInputResult(result: CosActionResult) {
-  const required = Array.isArray(result.metadata?.required) ? result.metadata.required : []
-  if (required.length > 0) return true
-
-  return (
-    result.response.includes("preciso de confirmacao") ||
-    result.response.includes("confirmacao") ||
-    result.response.includes("Qual ") ||
-    result.response.includes("Pode confirmar")
-  )
 }
 
 function buildExecutionMetadata(input: {

@@ -4,7 +4,8 @@ import { contractHtmlToText, createContractContent, parseContractContent, string
 import { prisma } from "@/lib/prisma"
 
 import { cleanText, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
-import { extractPersonName, extractPropertyReference, findLeadCandidates, findProposalPropertyCandidates, resolvePropertyChoice } from "@/lib/cos/runtime-helpers"
+import { resolveContractEntity, resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function inferContractKind(message: string) {
@@ -22,89 +23,88 @@ function inferContractKind(message: string) {
 
 export const createContractCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const personName = extractPersonName(message)
-  const propertyReference = extractPropertyReference(message)
+  const pendingData = pendingContext?.action === "CREATE_CONTRACT" ? pendingContext.parsedData ?? {} : {}
   const contractKind = inferContractKind(message)
 
-  const selectedLeadId =
-    pendingContext?.missingField === "lead" && Array.isArray(pendingContext.parsedData?.leadIds)
-      ? cleanText((pendingContext.parsedData.leadIds as string[])[Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)], 80)
-      : getEntityIdFromPayload(payloadRecord, "lead")
+  const leadResolution = await resolveLeadEntity({
+    brokerId,
+    message,
+    payload: payloadRecord,
+    pendingField: pendingContext?.missingField ?? null,
+    pendingData: { ...pendingData, contractKind },
+    take: 4,
+  })
 
-  const matchingLeads = selectedLeadId
-    ? await prisma.lead.findMany({ where: { brokerId, id: selectedLeadId }, take: 1, select: { id: true, name: true, phone: true, email: true } })
-    : personName
-      ? await findLeadCandidates(brokerId, personName, 4)
-      : []
-
-  if (!selectedLeadId && matchingLeads.length > 1) {
+  if ((leadResolution.recordIds?.length ?? 0) > 1 && leadResolution.options) {
     return {
-      response: `Encontrei mais de um cliente com esse nome. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"}${leadItem.phone ? ` - ${leadItem.phone}` : ""}`).join("\n")}`,
-      metadata: {
-        required: ["lead"],
-        noCharge: true,
+      response: `Encontrei mais de um cliente com esse nome. Qual deles devo usar?\n\n${leadResolution.options.map((option, index) => `${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`).join("\n")}`,
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "CREATE_CONTRACT",
+        entity: "contract",
         parsedData: {
-          personName,
+          ...leadResolution.parsedData,
           contractKind,
-          leadIds: matchingLeads.map((leadItem) => leadItem.id),
-          options: matchingLeads.map((leadItem) => ({
-            id: leadItem.id,
-            label: leadItem.name || "Sem nome",
-            description: leadItem.phone || undefined,
-          })),
+          leadIds: leadResolution.recordIds ?? [],
         },
-      },
+        options: leadResolution.options,
+      }),
     }
   }
 
-  const lead = matchingLeads[0] ?? null
+  const lead = leadResolution.record
   if (!lead) {
     return {
       response: "Para qual cliente devo criar o contrato?",
-      metadata: { required: ["lead"], noCharge: true, parsedData: { personName, contractKind } },
-    }
-  }
-
-  const pendingOptions = Array.isArray(pendingContext?.parsedData?.propertyOptions) ? pendingContext?.parsedData?.propertyOptions as Array<{ id?: string; title?: string }> : []
-  const selectedOption = pendingContext?.missingField === "propertyChoice" ? resolvePropertyChoice(message, pendingOptions) : null
-  const selectedProperty =
-    selectedOption?.id
-      ? await prisma.property.findFirst({
-          where: { brokerId, id: selectedOption.id },
-          select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, type: true, purpose: true, price: true, bedrooms: true, parkingSpots: true },
-        })
-      : null
-  const propertyCandidates = selectedProperty ? [] : await findProposalPropertyCandidates(brokerId, message, propertyReference, 4)
-
-  if (!selectedProperty && propertyCandidates.length > 1) {
-    return {
-      response: `Encontrei mais de um imóvel. Qual devo usar no contrato?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.publicCode ? `Imóvel ${item.publicCode} - ` : ""}${item.title} - ${item.city}`).join("\n")}`,
-      metadata: {
-        required: ["propertyChoice"],
-        noCharge: true,
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "CREATE_CONTRACT",
+        entity: "contract",
         parsedData: {
-          personName,
+          ...leadResolution.parsedData,
           contractKind,
-          propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
-          options: propertyCandidates.map((item) => ({
-            id: item.id,
-            label: item.title,
-            description: item.city,
-          })),
         },
-      },
+      }),
     }
   }
 
-  const resolvedProperty = selectedProperty ?? propertyCandidates[0] ?? null
+  const propertyResolution = await resolvePropertyEntity({
+    brokerId,
+    message,
+    payload: payloadRecord,
+    pendingField: pendingContext?.missingField ?? null,
+    pendingData: {
+      ...pendingData,
+      contractKind,
+      leadId: lead.id,
+      personName: cleanText(leadResolution.parsedData?.personName, 120),
+    },
+    take: 4,
+  })
+
+  if ((propertyResolution.recordIds?.length ?? 0) > 1 && propertyResolution.options) {
+    return {
+      response: `Encontrei mais de um imóvel. Qual devo usar no contrato?\n\n${propertyResolution.options.map((option, index) => `${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`).join("\n")}`,
+      metadata: createPendingInputMetadata({
+        field: "propertyChoice",
+        action: "CREATE_CONTRACT",
+        entity: "contract",
+        parsedData: propertyResolution.parsedData,
+        options: propertyResolution.options,
+      }),
+    }
+  }
+
+  const resolvedProperty = propertyResolution.record
   if (!resolvedProperty) {
     return {
       response: "Qual imóvel devo vincular a este contrato?",
-      metadata: {
-        required: ["property"],
-        noCharge: true,
-        parsedData: { personName, contractKind, leadId: lead.id },
-      },
+      metadata: createPendingInputMetadata({
+        field: "property",
+        action: "CREATE_CONTRACT",
+        entity: "contract",
+        parsedData: propertyResolution.parsedData,
+      }),
       leadId: lead.id,
     }
   }
@@ -199,10 +199,8 @@ export const listContractsCapability: CosCapabilityHandler = async ({ brokerId, 
 
 export const getContractCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
-  const contractId = getEntityIdFromPayload(payloadRecord, "contract")
-  const contract = contractId
-    ? await prisma.brokerDocument.findFirst({ where: { brokerId, id: contractId, type: "contract" } })
-    : await prisma.brokerDocument.findFirst({ where: { brokerId, type: "contract" }, orderBy: { createdAt: "desc" } })
+  const resolution = await resolveContractEntity({ brokerId, payload: payloadRecord, message })
+  const contract = resolution.record
 
   if (!contract) return requiredSelectionResponse("contrato", "contractId")
 

@@ -1,6 +1,7 @@
 import { executeCosExecutionPlan } from "@/lib/cos/executor"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { createStepPlanForCapability } from "@/lib/cos/execution-planner"
+import { createPendingInput, extractPendingInputFromMetadata, normalizeWorkflowStatus } from "@/lib/cos/pending-input"
 import type { Prisma } from "@prisma/client"
 import type {
   CosConversationMemory,
@@ -8,7 +9,6 @@ import type {
   CosExecutionPlanResult,
   CosExecutionStep,
   CosPendingInput,
-  CosPendingInputType,
   CosWorkflow,
   CosWorkflowStatus,
   CosWorkspaceContext,
@@ -45,38 +45,19 @@ function isAffirmativeMessage(message: string) {
 }
 
 function getWorkflowStatusLabel(workflow: CosWorkflow) {
-  if (workflow.status === "completed") return "ConcluÃ­da"
-  if (workflow.status === "cancelled") return "Cancelada"
-  if (workflow.status === "failed") return "Erro"
-  if (workflow.pendingInput?.field === "confirmation") return "Aguardando confirmaÃ§Ã£o"
-  if (workflow.pendingInput?.type === "selection") return "Aguardando seleÃ§Ã£o"
-  if (workflow.status === "awaiting_input") return "Em andamento"
-  if (workflow.status === "running") return "Processando"
+  const status = normalizeWorkflowStatus(workflow.status)
+  if (status === "completed") return "ConcluÃƒÂ­da"
+  if (status === "cancelled") return "Cancelada"
+  if (status === "failed") return "Erro"
+  if (workflow.pendingInput?.field === "confirmation") return "Aguardando confirmaÃƒÂ§ÃƒÂ£o"
+  if (workflow.pendingInput?.type === "selection") return "Aguardando seleÃƒÂ§ÃƒÂ£o"
+  if (status === "awaiting_input") return "Em andamento"
+  if (status === "processing") return "Processando"
   return "Em andamento"
 }
 
 function getWorkflowStepLabel(step: CosWorkflow["steps"][number]) {
   return getCosCapabilityLabel(step.action)
-}
-
-function mapPendingInputType(field: string): CosPendingInputType {
-  if (field === "phone") return "phone"
-  if (field === "price") return "currency"
-  if (field === "time") return "time"
-  if (field === "lead" || field === "propertyChoice" || field === "property") return "selection"
-  if (field === "confirmation") return "confirmation"
-  return "text"
-}
-
-function mapPendingInputLabel(field: string, action: string) {
-  if (field === "name") return "Nome do lead"
-  if (field === "phone") return "Telefone do lead"
-  if (field === "price") return action === "createPropertyDraft" ? "Preço do imóvel" : "Preço"
-  if (field === "time") return "Horário"
-  if (field === "lead") return "Cliente"
-  if (field === "propertyChoice" || field === "property") return "Imóvel"
-  if (field === "confirmation") return "Confirmação"
-  return field
 }
 
 function buildPendingInput(input: {
@@ -85,15 +66,12 @@ function buildPendingInput(input: {
   entity: string
   parsedData?: Record<string, unknown>
 }): CosPendingInput {
-  return {
+  return createPendingInput({
     field: input.field,
-    label: mapPendingInputLabel(input.field, input.action),
-    type: mapPendingInputType(input.field),
-    required: true,
-    entity: input.entity as CosPendingInput["entity"],
     action: input.action as CosPendingInput["action"],
+    entity: input.entity as CosPendingInput["entity"],
     parsedData: input.parsedData ?? {},
-  }
+  })
 }
 
 function buildPendingContextFromWorkflow(workflow: CosWorkflow): PendingAssessorContext | null {
@@ -119,6 +97,15 @@ function buildResumePayload(input: {
   const pendingInput = input.workflow.pendingInput
   if (!pendingInput) return payload
 
+  if (pendingInput.type === "confirmation") {
+    payload.confirmation = input.message.trim()
+    return payload
+  }
+
+  if (pendingInput.type === "selection") {
+    payload.selection = input.message.trim()
+  }
+
   if (pendingInput.action === "createLead") {
     if (pendingInput.field === "name") {
       payload.name = input.message.trim()
@@ -131,6 +118,10 @@ function buildResumePayload(input: {
 
   if (pendingInput.action === "createPropertyDraft" && pendingInput.field === "price") {
     payload.price = input.message.trim()
+  }
+
+  if (pendingInput.type === "text" || pendingInput.type === "currency" || pendingInput.type === "time") {
+    payload[pendingInput.field] = input.message.trim()
   }
 
   return payload
@@ -172,14 +163,15 @@ function hydrateStep(step: CosWorkflow["steps"][number], workflow: CosWorkflow):
     status: step.status,
     durationMs: step.durationMs,
     errorMessage: step.errorMessage,
-    result: step.resultResponse || step.resultMetadata
-      ? {
-          response: step.resultResponse ?? "",
-          metadata: jsonObject(step.resultMetadata),
-          leadId: step.leadId,
-          propertyId: step.propertyId,
-        }
-      : null,
+    result:
+      step.resultResponse || step.resultMetadata
+        ? {
+            response: step.resultResponse ?? "",
+            metadata: jsonObject(step.resultMetadata),
+            leadId: step.leadId,
+            propertyId: step.propertyId,
+          }
+        : null,
   }
 }
 
@@ -203,8 +195,12 @@ export function stringifyConversationWorkflowContent(workflow: CosWorkflow | nul
 export function getActiveWorkflow(content: string | null | undefined) {
   const envelope = parseConversationWorkflowContent(content)
   if (!envelope.workflow) return null
-  if (["completed", "failed", "cancelled"].includes(envelope.workflow.status)) return null
-  return envelope.workflow
+  const normalizedStatus = normalizeWorkflowStatus(envelope.workflow.status)
+  if (["completed", "failed", "cancelled"].includes(normalizedStatus)) return null
+  return {
+    ...envelope.workflow,
+    status: normalizedStatus,
+  }
 }
 
 export function getConversationMemory(content: string | null | undefined) {
@@ -219,7 +215,7 @@ export function createWorkflowFromExecutionPlan(input: {
   return {
     id: input.plan.id,
     conversationId: input.conversationId,
-    status: input.plan.requiresConfirmation ? "awaiting_input" : "running",
+    status: input.plan.requiresConfirmation ? "awaiting_input" : "processing",
     executionPlan: {
       id: input.plan.id,
       source: input.plan.source,
@@ -232,13 +228,14 @@ export function createWorkflowFromExecutionPlan(input: {
     },
     currentStep: 0,
     steps: input.plan.steps.map(serializeStep),
-    pendingInput: input.plan.requiresConfirmation
-      ? buildPendingInput({
-          field: "confirmation",
-          action: input.plan.primaryStep.action,
-          entity: input.plan.primaryStep.entity,
-        })
-      : null,
+    pendingInput:
+      input.plan.requiresConfirmation
+        ? buildPendingInput({
+            field: "confirmation",
+            action: input.plan.primaryStep.action,
+            entity: input.plan.primaryStep.entity,
+          })
+        : null,
     startedAt: now,
     updatedAt: now,
     completedAt: null,
@@ -264,7 +261,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
     steps,
     unresolvedGoals: workflow.executionPlan.unresolvedGoals,
     requiresConfirmation: workflow.pendingInput?.field === "confirmation",
-    confirmationMessage: workflow.pendingInput?.field === "confirmation" ? "Confirma esta aÃ§Ã£o?" : null,
+    confirmationMessage: workflow.pendingInput?.field === "confirmation" ? "Confirma esta aÃƒÂ§ÃƒÂ£o?" : null,
     telemetry: {
       planId: workflow.executionPlan.id,
       source: workflow.executionPlan.source,
@@ -349,7 +346,12 @@ export function updateWorkflowFromExecutionResult(input: {
 
   const pendingInput =
     input.result.status === "awaiting_input" && interruptedStep
-      ? buildPendingInput({
+      ? extractPendingInputFromMetadata({
+          metadata: interruptedStep.result?.metadata,
+          action: interruptedStep.action,
+          entity: interruptedStep.entity,
+        }) ??
+        buildPendingInput({
           field: pendingField || "input",
           action: interruptedStep.action,
           entity: interruptedStep.entity,
@@ -382,7 +384,7 @@ export function resumeWorkflowState(workflow: CosWorkflow) {
   const pausedMs = Date.now() - new Date(workflow.pausedAt).getTime()
   return {
     ...workflow,
-    status: "running" as CosWorkflowStatus,
+    status: "processing" as CosWorkflowStatus,
     pausedAt: null,
     totalPausedMs: workflow.totalPausedMs + Math.max(0, pausedMs),
     updatedAt: new Date().toISOString(),
@@ -424,25 +426,25 @@ export function formatWorkflowOperationDetails(input: {
   const operationStep = currentStep ?? workflow.steps[0]
 
   if (!operationStep) {
-    return "NÃ£o existe nenhuma operaÃ§Ã£o em andamento no momento."
+    return "NÃƒÂ£o existe nenhuma operaÃƒÂ§ÃƒÂ£o em andamento no momento."
   }
 
   const lines = [
-    "OperaÃ§Ã£o em andamento",
+    "OperaÃƒÂ§ÃƒÂ£o em andamento",
     "",
-    `Nome da operaÃ§Ã£o: ${getWorkflowStepLabel(operationStep)}`,
+    `Nome da operaÃƒÂ§ÃƒÂ£o: ${getWorkflowStepLabel(operationStep)}`,
     `Status: ${getWorkflowStatusLabel(workflow)}`,
     "",
     "Etapas:",
     ...workflow.steps.map((step, index) => {
       const prefix =
         step.status === "completed"
-          ? "âœ”"
+          ? "Ã¢Å“â€"
           : step.status === "failed"
-            ? "âš "
+            ? "Ã¢Å¡Â "
             : index === currentStepIndex || step.status === "running" || step.status === "awaiting_input"
-              ? "â³"
-              : "â¬œ"
+              ? "Ã¢ÂÂ³"
+              : "Ã¢Â¬Å“"
       return `${prefix} ${getWorkflowStepLabel(step)}`
     }),
   ]
@@ -451,7 +453,7 @@ export function formatWorkflowOperationDetails(input: {
     lines.push(`Cliente selecionado: ${memory?.selectedClient?.label ?? memory?.leadId}`)
   }
   if (memory?.selectedProperty?.label || memory?.propertyId) {
-    lines.push(`ImÃ³vel selecionado: ${memory?.selectedProperty?.label ?? memory?.propertyId}`)
+    lines.push(`ImÃƒÂ³vel selecionado: ${memory?.selectedProperty?.label ?? memory?.propertyId}`)
   }
   if ((memory?.uploadedDocuments?.length ?? 0) > 0) {
     lines.push(`Documento anexado: ${memory?.uploadedDocuments?.[0]?.name}`)
@@ -460,10 +462,10 @@ export function formatWorkflowOperationDetails(input: {
     lines.push(`Arquivos enviados: ${memory?.attachments?.map((attachment) => attachment.name).join(", ")}`)
   }
   if (creditsRequired > 0) {
-    lines.push(`CrÃ©ditos que serÃ£o consumidos: ${creditsRequired}`)
+    lines.push(`CrÃƒÂ©ditos que serÃƒÂ£o consumidos: ${creditsRequired}`)
   }
   if (workflow.pendingInput?.label) {
-    lines.push(`PrÃ³xima aÃ§Ã£o esperada: ${workflow.pendingInput.label}`)
+    lines.push(`PrÃƒÂ³xima aÃƒÂ§ÃƒÂ£o esperada: ${workflow.pendingInput.label}`)
   }
 
   return lines.join("\n")
@@ -471,7 +473,8 @@ export function formatWorkflowOperationDetails(input: {
 
 export function shouldResumeWorkflow(workflow: CosWorkflow | null) {
   if (!workflow) return false
-  return workflow.status === "awaiting_input" || workflow.status === "paused" || workflow.status === "running"
+  const status = normalizeWorkflowStatus(workflow.status)
+  return status === "awaiting_input" || status === "paused" || status === "processing"
 }
 
 export function shouldConfirmWorkflowMessage(message: string, confirm?: boolean) {

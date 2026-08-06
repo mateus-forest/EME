@@ -3,94 +3,98 @@ import "server-only"
 import { buildProposalHtml } from "@/lib/proposal-template"
 import { prisma } from "@/lib/prisma"
 
-import { cleanText, getEntityIdFromPayload, getPayloadRecord } from "@/lib/cos/capabilities/shared"
-import { extractPersonName, extractPropertyReference, findLeadCandidates, findProposalPropertyCandidates, firstImageUrl, formatAssessorPropertyPrice, resolvePropertyChoice } from "@/lib/cos/runtime-helpers"
+import { cleanText, getPayloadRecord } from "@/lib/cos/capabilities/shared"
+import { resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { firstImageUrl } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 export const createProposalCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const pendingData = pendingContext?.action === "CREATE_PROPOSAL" ? pendingContext.parsedData ?? {} : {}
-  const personName = cleanText((pendingData.personName as string | undefined) ?? extractPersonName(message), 120)
-  const selectedLeadId =
-    pendingContext?.missingField === "lead" && Array.isArray(pendingData.leadIds)
-      ? cleanText((pendingData.leadIds as string[])[Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)], 80)
-      : getEntityIdFromPayload(payloadRecord, "lead")
-  const propertyReference = extractPropertyReference(message)
 
-  const [broker, matchingLeads] = await Promise.all([
-    prisma.broker.findUnique({ where: { id: brokerId }, include: { user: { select: { name: true, email: true, photoUrl: true } } } }),
-    selectedLeadId
-      ? prisma.lead.findMany({ where: { brokerId, id: selectedLeadId }, take: 1, select: { id: true, name: true, phone: true, email: true } })
-      : personName
-        ? findLeadCandidates(brokerId, personName, 4)
-        : [],
+  const [broker, leadResolution] = await Promise.all([
+    prisma.broker.findUnique({
+      where: { id: brokerId },
+      include: { user: { select: { name: true, email: true, photoUrl: true } } },
+    }),
+    resolveLeadEntity({
+      brokerId,
+      message,
+      payload: payloadRecord,
+      pendingField: pendingContext?.missingField ?? null,
+      pendingData,
+      take: 4,
+    }),
   ])
 
-  if (!selectedLeadId && matchingLeads.length > 1) {
+  if ((leadResolution.recordIds?.length ?? 0) > 1 && leadResolution.options) {
     return {
-      response: `Encontrei mais de um ${personName}. Qual deles devo usar?\n\n${matchingLeads.map((leadItem, index) => `${index + 1}. ${leadItem.name || "Sem nome"}${leadItem.phone ? ` - ${leadItem.phone}` : ""}`).join("\n")}`,
-      metadata: {
-        required: ["lead"],
-        noCharge: true,
+      response: `Encontrei mais de um cliente. Qual deles devo usar?\n\n${leadResolution.options.map((option, index) => `${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`).join("\n")}`,
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "CREATE_PROPOSAL",
+        entity: "proposal",
         parsedData: {
-          personName,
-          leadIds: matchingLeads.map((leadItem) => leadItem.id),
-          options: matchingLeads.map((leadItem) => ({
-            id: leadItem.id,
-            label: leadItem.name || "Sem nome",
-            description: leadItem.phone || undefined,
-          })),
+          ...leadResolution.parsedData,
+          leadIds: leadResolution.recordIds ?? [],
         },
-      },
+        options: leadResolution.options,
+      }),
     }
   }
 
-  const lead = matchingLeads[0] ?? null
+  const lead = leadResolution.record
+  const personName = cleanText(leadResolution.parsedData?.personName, 120)
+
   if (!lead && !personName) {
     return {
       response: "Para qual cliente devo gerar a proposta?",
-      metadata: { required: ["lead"], noCharge: true, parsedData: { personName } },
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "CREATE_PROPOSAL",
+        entity: "proposal",
+        parsedData: leadResolution.parsedData,
+      }),
     }
   }
 
-  const pendingOptions = Array.isArray(pendingData.propertyOptions) ? pendingData.propertyOptions as Array<{ id?: string; title?: string }> : []
-  const selectedOption = pendingContext?.missingField === "propertyChoice" ? resolvePropertyChoice(message, pendingOptions) : null
-  const selectedProperty = selectedOption?.id
-    ? await prisma.property.findFirst({
-        where: { brokerId, id: selectedOption.id },
-        select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, description: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true },
-      })
-    : null
-  const propertyCandidates = selectedProperty ? [] : await findProposalPropertyCandidates(brokerId, message, propertyReference, 4)
+  const propertyResolution = await resolvePropertyEntity({
+    brokerId,
+    message,
+    payload: payloadRecord,
+    pendingField: pendingContext?.missingField ?? null,
+    pendingData: {
+      ...pendingData,
+      leadId: lead?.id ?? null,
+      personName,
+    },
+    take: 4,
+  })
 
-  if (!selectedProperty && propertyCandidates.length > 1) {
+  if ((propertyResolution.recordIds?.length ?? 0) > 1 && propertyResolution.options) {
     return {
-      response: `Encontrei mais de um imóvel. Qual devo usar?\n\n${propertyCandidates.map((item, index) => `${index + 1}. ${item.publicCode ? `Imóvel ${item.publicCode} — ` : ""}${item.title} — ${item.neighborhood ?? "Sem bairro"} — ${item.city} — ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
-      metadata: {
-        required: ["propertyChoice"],
-        noCharge: true,
-        parsedData: {
-          personName,
-          propertyOptions: propertyCandidates.map((item) => ({ id: item.id, title: item.title })),
-          options: propertyCandidates.map((item) => ({
-            id: item.id,
-            label: item.title,
-            description: `${item.neighborhood ?? item.city} - ${formatAssessorPropertyPrice(item.price)}`,
-          })),
-        },
-      },
+      response: `Encontrei mais de um imóvel. Qual devo usar?\n\n${propertyResolution.options.map((option, index) => `${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`).join("\n")}`,
+      metadata: createPendingInputMetadata({
+        field: "propertyChoice",
+        action: "CREATE_PROPOSAL",
+        entity: "proposal",
+        parsedData: propertyResolution.parsedData,
+        options: propertyResolution.options,
+      }),
     }
   }
 
-  const resolvedProperty = selectedProperty ?? propertyCandidates[0] ?? null
+  const resolvedProperty = propertyResolution.record
   if (!resolvedProperty) {
     return {
       response: "Qual imóvel devo usar na proposta?",
-      metadata: {
-        required: ["property"],
-        noCharge: true,
-        parsedData: { personName, leadId: lead?.id ?? null },
-      },
+      metadata: createPendingInputMetadata({
+        field: "property",
+        action: "CREATE_PROPOSAL",
+        entity: "proposal",
+        parsedData: propertyResolution.parsedData,
+      }),
       leadId: lead?.id,
     }
   }
