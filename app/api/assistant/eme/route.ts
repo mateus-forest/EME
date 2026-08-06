@@ -40,6 +40,7 @@ import {
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
+import type { FastActionResolution } from "@/lib/cos/fast-action-resolver"
 import {
   consumeBrokerAiCredits,
   createInsufficientCreditsPayload,
@@ -233,6 +234,67 @@ function buildIntentClarificationOptions(
 
   const options = Array.from(unique.values())
   return options.length > 1 ? options : null
+}
+
+function buildDecisionAudit(input: {
+  fastAction: FastActionResolution
+  requestedAction: string | null
+  effectiveRequestedAction: string | null
+  resolvedRequestedAction: string | null
+  intentResolution?: {
+    confidence: number
+    reason: string
+    workflowDecision: string
+    requestedAction: string | null
+    candidates?: Array<{ action: string; confidence: number; reason: string }>
+  } | null
+  executionPlan?: {
+    source: string
+    reason: string
+    requiresConfirmation: boolean
+    primaryAction: string
+    capabilityId: string
+    plannerTelemetry: Prisma.InputJsonObject | null
+  } | null
+}) {
+  return {
+    fastAction:
+      input.fastAction.kind === "none"
+        ? null
+        : {
+            kind: input.fastAction.kind,
+            confidence: input.fastAction.confidence,
+            reason: input.fastAction.reason,
+            action:
+              input.fastAction.kind === "workflow_action" || input.fastAction.kind === "workflow_details"
+                ? input.fastAction.action
+                : null,
+          },
+    requestedAction: input.requestedAction,
+    effectiveRequestedAction: input.effectiveRequestedAction,
+    resolvedRequestedAction: input.resolvedRequestedAction,
+    intent:
+      input.intentResolution
+        ? {
+            requestedAction: input.intentResolution.requestedAction,
+            confidence: input.intentResolution.confidence,
+            reason: input.intentResolution.reason,
+            workflowDecision: input.intentResolution.workflowDecision,
+            candidates: input.intentResolution.candidates ?? [],
+          }
+        : null,
+    workflow:
+      input.executionPlan
+        ? {
+            source: input.executionPlan.source,
+            reason: input.executionPlan.reason,
+            requiresConfirmation: input.executionPlan.requiresConfirmation,
+            primaryAction: input.executionPlan.primaryAction,
+            capabilityId: input.executionPlan.capabilityId,
+            plannerTelemetry: input.executionPlan.plannerTelemetry,
+          }
+        : null,
+  } satisfies Prisma.InputJsonObject
 }
 
 function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
@@ -583,6 +645,14 @@ export async function POST(request: NextRequest) {
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
         options: fastAction.options,
+        decisionAudit: buildDecisionAudit({
+          fastAction,
+          requestedAction,
+          effectiveRequestedAction,
+          resolvedRequestedAction: null,
+          intentResolution: null,
+          executionPlan: null,
+        }),
       } as Prisma.InputJsonObject
 
       const [updatedConversation] = await Promise.all([
@@ -661,6 +731,20 @@ export async function POST(request: NextRequest) {
           conversationId: conversationDocument?.id ?? conversationIdFromBody,
           displayMessage,
           options: clarificationOptions,
+          decisionAudit: buildDecisionAudit({
+            fastAction,
+            requestedAction,
+            effectiveRequestedAction,
+            resolvedRequestedAction,
+            intentResolution: {
+              requestedAction: intentResolution.requestedAction,
+              confidence: intentResolution.confidence,
+              reason: intentResolution.reason,
+              workflowDecision: intentResolution.workflowDecision,
+              candidates: intentResolution.candidates,
+            },
+            executionPlan: null,
+          }),
         } as Prisma.InputJsonObject
 
         const [updatedConversation] = await Promise.all([
@@ -734,6 +818,29 @@ export async function POST(request: NextRequest) {
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
         options: buildWorkflowDetailOptions(resumableWorkflow),
+        decisionAudit: buildDecisionAudit({
+          fastAction,
+          requestedAction,
+          effectiveRequestedAction,
+          resolvedRequestedAction,
+          intentResolution: {
+            requestedAction: intentResolution.requestedAction,
+            confidence: intentResolution.confidence,
+            reason: intentResolution.reason,
+            workflowDecision: intentResolution.workflowDecision,
+            candidates: intentResolution.candidates,
+          },
+          executionPlan: resumableWorkflow
+            ? {
+                source: resumableWorkflow.executionPlan.source,
+                reason: resumableWorkflow.executionPlan.reason,
+                requiresConfirmation: resumableWorkflow.pendingInput?.field === "confirmation",
+                primaryAction: workflowAction,
+                capabilityId: resumableWorkflow.steps[resumableWorkflow.currentStep]?.capabilityId ?? "general.chat",
+                plannerTelemetry: null,
+              }
+            : null,
+        }),
       } as Prisma.InputJsonObject
 
       const [updatedConversation] = await Promise.all([
@@ -856,6 +963,29 @@ export async function POST(request: NextRequest) {
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
         attachments: effectiveAttachments,
+        decisionAudit: buildDecisionAudit({
+          fastAction,
+          requestedAction,
+          effectiveRequestedAction,
+          resolvedRequestedAction,
+          intentResolution: {
+            requestedAction: intentResolution.requestedAction,
+            confidence: intentResolution.confidence,
+            reason: intentResolution.reason,
+            workflowDecision: intentResolution.workflowDecision,
+            candidates: intentResolution.candidates,
+          },
+          executionPlan: executionPlan
+            ? {
+                source: executionPlan.source,
+                reason: executionPlan.reason,
+                requiresConfirmation: executionPlan.requiresConfirmation,
+                primaryAction: executionPlan.primaryStep.action,
+                capabilityId: executionPlan.primaryStep.capabilityId,
+                plannerTelemetry: executionPlan.telemetry,
+              }
+            : null,
+        }),
       } as Prisma.InputJsonObject
 
       const [updatedBroker, persistedConversation, touchedConversation] = await Promise.all([
@@ -938,6 +1068,29 @@ export async function POST(request: NextRequest) {
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
         attachments: effectiveAttachments,
+        decisionAudit: buildDecisionAudit({
+          fastAction,
+          requestedAction,
+          effectiveRequestedAction,
+          resolvedRequestedAction,
+          intentResolution: {
+            requestedAction: intentResolution.requestedAction,
+            confidence: intentResolution.confidence,
+            reason: intentResolution.reason,
+            workflowDecision: intentResolution.workflowDecision,
+            candidates: intentResolution.candidates,
+          },
+          executionPlan: resumableWorkflow
+            ? {
+                source: resumableWorkflow.executionPlan.source,
+                reason: resumableWorkflow.executionPlan.reason,
+                requiresConfirmation: true,
+                primaryAction: action,
+                capabilityId: resumableWorkflow.steps[resumableWorkflow.currentStep]?.capabilityId ?? "general.chat",
+                plannerTelemetry: null,
+              }
+            : null,
+        }),
       } as Prisma.InputJsonObject
 
       const [updatedBroker, updatedConversation] = await Promise.all([
@@ -1273,6 +1426,27 @@ export async function POST(request: NextRequest) {
       displayMessage,
       attachments: effectiveAttachments,
       options: responseOptions,
+      decisionAudit: buildDecisionAudit({
+        fastAction,
+        requestedAction,
+        effectiveRequestedAction,
+        resolvedRequestedAction,
+        intentResolution: {
+          requestedAction: intentResolution.requestedAction,
+          confidence: intentResolution.confidence,
+          reason: intentResolution.reason,
+          workflowDecision: intentResolution.workflowDecision,
+          candidates: intentResolution.candidates,
+        },
+        executionPlan: {
+          source: executionPlan?.source ?? workflow.executionPlan.source,
+          reason: executionPlan?.reason ?? workflow.executionPlan.reason,
+          requiresConfirmation: executionPlan?.requiresConfirmation ?? false,
+          primaryAction: action,
+          capabilityId: executionPlan?.primaryStep.capabilityId ?? workflow.steps[workflow.currentStep]?.capabilityId ?? "general.chat",
+          plannerTelemetry: executionPlan?.telemetry ?? null,
+        },
+      }),
     } as Prisma.InputJsonObject
 
     const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([

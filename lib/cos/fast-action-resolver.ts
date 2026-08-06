@@ -1,13 +1,14 @@
 import type { AssessorAction } from "@/lib/eme-backend"
 
+import { evaluateCosDecisionSecurity } from "@/lib/cos/decision-security"
 import type { CosNormalizedContext, CosWorkspaceContext } from "@/lib/cos/types"
 
-type FastActionOption = {
+export type FastActionOption = {
   id: string
   label: string
 }
 
-type FastActionResolution =
+export type FastActionResolution =
   | {
       kind: "none"
       confidence: number
@@ -140,6 +141,13 @@ export function resolveFastCosAction(input: {
   workspace: CosWorkspaceContext | null
   context?: CosNormalizedContext | null
 }) : FastActionResolution {
+  const securityAudit = evaluateCosDecisionSecurity({
+    message: input.message,
+    attachments: (input.context?.attachments ?? []).map((attachment) => ({
+      name: attachment.name,
+      textContent: attachment.textContent,
+    })),
+  })
   const normalizedMessage = normalizeText(input.message)
   const shortMessage = countWords(input.message) <= 4
   const entity = input.workspace?.entity ?? null
@@ -152,6 +160,20 @@ export function resolveFastCosAction(input: {
 
   if (!normalizedMessage) {
     return { kind: "none", confidence: 0 }
+  }
+
+  if (securityAudit.flagged) {
+    return {
+      kind: "clarify",
+      confidence: 0.18,
+      reply: "Encontrei um pedido sensível e prefiro confirmar antes de seguir.\n\nQual ação operacional você deseja executar no EME?",
+      options: [
+        { id: "security_clarify_property", label: "Imóveis" },
+        { id: "security_clarify_lead", label: "Clientes" },
+        { id: "security_clarify_contract", label: "Contratos" },
+      ],
+      reason: `security_guard:${securityAudit.reasons.join(",")}`,
+    }
   }
 
   if (isExactCommand(normalizedMessage, ["ver detalhes da operacao", "ver detalhes da operação"])) {
@@ -210,8 +232,17 @@ export function resolveFastCosAction(input: {
   }
 
   if (
-    (includesAny(normalizedMessage, ["crie um imovel com essa imagem", "criar imovel com essa imagem", "criar imovel com esta imagem", "crie um imovel com esta imagem"]) ||
-      (hasImage && includesAny(normalizedMessage, ["crie um imovel", "criar imovel", "cadastre um imovel", "cadastro de imovel"])))
+    (includesAny(normalizedMessage, [
+      "crie um imovel com essa imagem",
+      "criar imovel com essa imagem",
+      "criar imovel com esta imagem",
+      "crie um imovel com esta imagem",
+      "cadastrar imovel usando esta foto",
+      "novo imovel a partir dessa imagem",
+      "use essa imagem para criar o imovel",
+      "cadastre um imovel com essa foto",
+    ]) ||
+      (hasImage && includesAny(normalizedMessage, ["crie um imovel", "criar imovel", "cadastre um imovel", "cadastro de imovel", "novo imovel"])))
   ) {
     return {
       kind: "workflow_action",
@@ -225,7 +256,7 @@ export function resolveFastCosAction(input: {
   if (
     hasDocument &&
     hasLeadSelected &&
-    includesAny(normalizedMessage, ["anexar", "anexe", "anexe este pdf", "anexar documento", "anexar contrato"])
+    includesAny(normalizedMessage, ["anexar", "anexe", "anexe este pdf", "anexar documento", "anexar contrato", "vincular contrato", "junte este arquivo"])
   ) {
     return {
       kind: "workflow_action",
@@ -250,6 +281,52 @@ export function resolveFastCosAction(input: {
         reply: "Claro.\n\nVou abrir o contrato selecionado.",
         reason: "abrir em contexto de contrato selecionado",
       }
+    }
+  }
+
+  if (hasLeadSelected && isExactCommand(normalizedMessage, ["editar cliente", "atualizar cliente selecionado", "corrigir dados do cliente", "ajustar cadastro do cliente"])) {
+    return {
+      kind: "workflow_action",
+      action: "UPDATE_LEAD",
+      confidence: 0.98,
+      reply: "Claro.\n\nVou editar o cliente selecionado.",
+      reason: "comando direto para editar cliente selecionado",
+    }
+  }
+
+  if (hasContractSelected && isExactCommand(normalizedMessage, ["enviar contrato", "assinar contrato", "cancelar contrato", "abrir contrato"])) {
+    const action =
+      normalizedMessage === "enviar contrato"
+        ? ("SEND_CONTRACT" as AssessorAction)
+        : normalizedMessage === "assinar contrato"
+          ? ("SIGN_CONTRACT" as AssessorAction)
+          : normalizedMessage === "cancelar contrato"
+            ? ("CANCEL_CONTRACT" as AssessorAction)
+            : ("GET_CONTRACT" as AssessorAction)
+
+    return {
+      kind: "workflow_action",
+      action,
+      confidence: 0.98,
+      reply: "Claro.\n\nVou seguir com o contrato selecionado.",
+      reason: "comando direto para contrato selecionado",
+    }
+  }
+
+  if (page?.startsWith("studio_ia") && isExactCommand(normalizedMessage, ["gerar campanha", "criar campanha instagram", "gerar post para instagram", "criar story para este imovel", "gerar video do imovel", "criar video vertical para este imovel"])) {
+    const action =
+      includesAny(normalizedMessage, ["post", "story", "instagram"])
+        ? ("STUDIO_GENERATE_INSTAGRAM" as AssessorAction)
+        : includesAny(normalizedMessage, ["video"])
+          ? ("STUDIO_GENERATE_VIDEO" as AssessorAction)
+          : ("STUDIO_GENERATE_CAMPAIGN" as AssessorAction)
+
+    return {
+      kind: "workflow_action",
+      action,
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou iniciar essa geração no Studio IA.",
+      reason: "comando direto em contexto do studio ia",
     }
   }
 
