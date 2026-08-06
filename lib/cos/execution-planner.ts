@@ -236,10 +236,7 @@ function buildIntentConfirmationMessage(input: {
   intentReason?: string | null
 }) {
   const title = input.capabilityPlan.capability.title
-  const reason = input.intentReason?.trim()
-  return reason
-    ? `Entendi seu pedido como "${title}".\n\nSinal principal: ${reason}.\n\nDeseja que eu siga com essa acao?`
-    : `Entendi seu pedido como "${title}".\n\nDeseja que eu siga com essa acao?`
+  return `Quero confirmar antes de continuar.\n\nVoce deseja seguir com ${title.toLowerCase()}?`
 }
 
 function buildTelemetry(input: {
@@ -315,7 +312,13 @@ function buildSingleExecutionPlan(input: {
   }
 
   const resolutionMs = Date.now() - input.startedAt
-  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingInput)
+  const requiresIntentConfirmation = Boolean(
+    input.requestedAction &&
+    typeof input.intentConfidence === "number" &&
+    input.intentConfidence >= 0.6 &&
+    input.intentConfidence < 0.8 &&
+    !input.pendingInput,
+  )
   const requiresConfirmation = shouldRequireConfirmation(step.action) || requiresIntentConfirmation
   return {
     id: planId,
@@ -388,7 +391,13 @@ function buildRecipeExecutionPlan(input: {
     }),
   )
 
-  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingInput)
+  const requiresIntentConfirmation = Boolean(
+    input.requestedAction &&
+    typeof input.intentConfidence === "number" &&
+    input.intentConfidence >= 0.6 &&
+    input.intentConfidence < 0.8 &&
+    !input.pendingInput,
+  )
   const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
@@ -489,7 +498,13 @@ function buildAiExecutionPlan(input: {
     }),
   )
 
-  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingInput)
+  const requiresIntentConfirmation = Boolean(
+    input.requestedAction &&
+    typeof input.intentConfidence === "number" &&
+    input.intentConfidence >= 0.6 &&
+    input.intentConfidence < 0.8 &&
+    !input.pendingInput,
+  )
   const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =

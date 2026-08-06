@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
+import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
 import type { CosWorkspaceContext } from "@/lib/cos/types"
 import { dispatchEntitySync } from "@/lib/entity-sync"
@@ -235,6 +236,7 @@ export function useCosConversations({
   workspaceContext,
 }: UseCosConversationsOptions) {
   const pathname = usePathname()
+  const router = useRouter()
   const initialCacheRef = useRef<CosConversationCache | null>(null)
   if (initialCacheRef.current === null) {
     initialCacheRef.current = readConversationCache()
@@ -442,26 +444,73 @@ export function useCosConversations({
     const normalizedMessage = messageToSend.trim()
     if (!normalizedMessage || isSending) return
 
-    if (!options?.cancel && !assistantEnabled) {
+    const messageWorkspaceContext = deriveWorkspaceContextFromPathname({
+      pathname: pathname || "/corretor",
+      surface: source,
+      workspace: {
+        ...resolvedWorkspaceContext,
+        ...(options?.workspaceContext ?? {}),
+      },
+    })
+    const fastAction =
+      !options?.action && !options?.confirm && !options?.cancel
+        ? resolveFastCosAction({
+            message: normalizedMessage,
+            workspace: messageWorkspaceContext,
+            context: {
+              brokerId: "",
+              userId: "",
+              surface: source,
+              message: normalizedMessage,
+              workspace: messageWorkspaceContext,
+              workflow: null,
+              memory: null,
+              attachments: options?.attachments ?? [],
+              selectedEntityIds: {},
+            },
+          })
+        : { kind: "none" as const, confidence: 0 }
+
+    if (fastAction.kind === "navigation") {
+      setChatFeedback("")
+      router.push(fastAction.href)
+      return
+    }
+
+    const resolvedOptions =
+      fastAction.kind === "workflow_details"
+        ? {
+            ...options,
+            action: fastAction.action,
+            visibleMessage: options?.visibleMessage ?? "Ver detalhes da operação",
+          }
+        : fastAction.kind === "workflow_action"
+          ? {
+              ...options,
+              action: fastAction.action,
+            }
+          : options
+
+    if (!resolvedOptions?.cancel && !assistantEnabled) {
       setChatFeedback("Ative o Assessor EME para conversar com o COS.")
       return
     }
 
-    const previewLabel = options?.visibleMessage ?? normalizedMessage
+    const previewLabel = resolvedOptions?.visibleMessage ?? normalizedMessage
     const isWorkflowDetailsRequest =
-      options?.action === "workflow_details" ||
+      resolvedOptions?.action === "workflow_details" ||
       previewLabel.toLowerCase().includes("ver detalhes da opera")
 
     const requestedCreditCost =
       isWorkflowDetailsRequest
         ? 0
-        : typeof options?.creditCostPreview === "number"
-        ? Math.max(0, Math.trunc(options.creditCostPreview))
-        : options?.action
-          ? getEmeCreditCost(options.action)
-          : 0
+        : typeof resolvedOptions?.creditCostPreview === "number"
+          ? Math.max(0, Math.trunc(resolvedOptions.creditCostPreview))
+          : resolvedOptions?.action
+            ? getEmeCreditCost(resolvedOptions.action)
+            : 0
 
-    if (!options?.cancel && requestedCreditCost > 0 && assistantCredits.balance < requestedCreditCost) {
+    if (!resolvedOptions?.cancel && requestedCreditCost > 0 && assistantCredits.balance < requestedCreditCost) {
       setChatFeedback(
         `Créditos IA insuficientes. Disponível: ${assistantCredits.balance}. Necessário: ${requestedCreditCost}. Abra a página Plano para continuar.`,
       )
@@ -474,28 +523,19 @@ export function useCosConversations({
       role: "user",
       content: visibleMessage,
       state: "ready",
-      attachments: options?.attachments ?? [],
+      attachments: resolvedOptions?.attachments ?? [],
       createdAt: new Date().toISOString(),
     }
 
     setConversation((current) => [...current, optimisticUserMessage])
     setIsSending(true)
     setChatFeedback(
-      !options?.cancel && requestedCreditCost > 0
+      !resolvedOptions?.cancel && requestedCreditCost > 0
         ? `Custo desta ação: ${requestedCreditCost} Créditos IA.`
         : "",
     )
 
     try {
-      const messageWorkspaceContext = deriveWorkspaceContextFromPathname({
-        pathname: pathname || "/corretor",
-        surface: source,
-        workspace: {
-          ...resolvedWorkspaceContext,
-          ...(options?.workspaceContext ?? {}),
-        },
-      })
-
       const response = await fetch("/api/assistant/eme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -504,10 +544,10 @@ export function useCosConversations({
         body: JSON.stringify({
           message: normalizedMessage,
           displayMessage: visibleMessage,
-          action: options?.action,
-          confirm: Boolean(options?.confirm),
-          cancel: Boolean(options?.cancel),
-          attachments: options?.attachments ?? [],
+          action: resolvedOptions?.action,
+          confirm: Boolean(resolvedOptions?.confirm),
+          cancel: Boolean(resolvedOptions?.cancel),
+          attachments: resolvedOptions?.attachments ?? [],
           source,
           conversationId: activeConversationId || undefined,
           workspace: messageWorkspaceContext,
@@ -554,7 +594,7 @@ export function useCosConversations({
         role: "assistant",
         content: repairCosText(data?.response || "Nao consegui responder agora."),
         state: "ready",
-        action: data?.action ?? options?.action ?? null,
+        action: data?.action ?? resolvedOptions?.action ?? null,
         actionStatus: data?.actionStatus ?? "success",
         confirmRequired: Boolean(data?.confirmRequired),
         options: responseOptions,
@@ -571,7 +611,7 @@ export function useCosConversations({
           action: assistantMessage.action,
           sourceMessage: normalizedMessage,
           sourceInteractionId: assistantMessage.id,
-          attachments: options?.attachments ?? [],
+          attachments: resolvedOptions?.attachments ?? [],
           options: responseOptions,
         })
         setChatFeedback("Aguardando sua confirmação.")
@@ -579,8 +619,8 @@ export function useCosConversations({
         setPendingConfirmation(null)
         setChatFeedback(
           data?.creditsUsed
-            ? `${formatCosAction(data?.action || options?.action || "general")} -${data.creditsUsed} crédito IA`
-            : options?.cancel
+            ? `${formatCosAction(data?.action || resolvedOptions?.action || "general")} -${data.creditsUsed} crédito IA`
+            : resolvedOptions?.cancel
               ? "Alteração cancelada."
               : "",
         )
@@ -607,7 +647,7 @@ export function useCosConversations({
       setIsSending(false)
       window.setTimeout(() => inputRef.current?.focus(), 0)
     }
-  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, pathname, resolvedWorkspaceContext, setAssistantCredits, source])
+  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, pathname, resolvedWorkspaceContext, router, setAssistantCredits, source])
 
   const confirmPendingAction = useCallback(async () => {
     if (!pendingConfirmation) return

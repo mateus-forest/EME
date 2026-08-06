@@ -1,0 +1,271 @@
+import type { AssessorAction } from "@/lib/eme-backend"
+
+import type { CosNormalizedContext, CosWorkspaceContext } from "@/lib/cos/types"
+
+type FastActionOption = {
+  id: string
+  label: string
+}
+
+type FastActionResolution =
+  | {
+      kind: "none"
+      confidence: number
+    }
+  | {
+      kind: "workflow_action"
+      action: AssessorAction
+      confidence: number
+      reply: string
+      reason: string
+    }
+  | {
+      kind: "workflow_details"
+      action: "workflow_details"
+      confidence: number
+      reply: string
+      reason: string
+    }
+  | {
+      kind: "navigation"
+      href: string
+      label: string
+      confidence: number
+      reply: string
+      reason: string
+    }
+  | {
+      kind: "clarify"
+      confidence: number
+      reply: string
+      options: FastActionOption[]
+      reason: string
+    }
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function countWords(value: string) {
+  return normalizeText(value).split(/\s+/).filter(Boolean).length
+}
+
+function includesAny(normalizedMessage: string, tokens: string[]) {
+  return tokens.some((token) => normalizedMessage.includes(token))
+}
+
+function isExactCommand(normalizedMessage: string, commands: string[]) {
+  return commands.some((command) => normalizedMessage === command)
+}
+
+function buildCurrentEntityEditAction(
+  workspace: CosWorkspaceContext | null | undefined,
+  context: CosNormalizedContext | null | undefined,
+): FastActionResolution | null {
+  const entity = workspace?.entity ?? null
+  const hasPropertySelected = Boolean(context?.selectedEntityIds.property || workspace?.entityId)
+  const hasLeadSelected = Boolean(context?.selectedEntityIds.lead || workspace?.entityId)
+  const hasContractSelected = Boolean(context?.selectedEntityIds.contract || workspace?.entityId)
+
+  if (entity === "contract" && hasContractSelected) {
+    return {
+      kind: "workflow_action",
+      action: "UPDATE_CONTRACT" as AssessorAction,
+      confidence: 0.96,
+      reply: "Claro.\n\nVou editar o contrato selecionado.",
+      reason: "editar em contexto de contrato selecionado",
+    }
+  }
+
+  if (entity === "lead" && hasLeadSelected) {
+    return {
+      kind: "workflow_action",
+      action: "UPDATE_LEAD" as AssessorAction,
+      confidence: 0.96,
+      reply: "Claro.\n\nVou editar o cliente selecionado.",
+      reason: "editar em contexto de cliente selecionado",
+    }
+  }
+
+  if (entity === "agenda") {
+    return {
+      kind: "workflow_action",
+      action: "UPDATE_AGENDA_EVENT" as AssessorAction,
+      confidence: 0.9,
+      reply: "Claro.\n\nVou editar o compromisso selecionado.",
+      reason: "editar em contexto de agenda",
+    }
+  }
+
+  if (entity === "property" && hasPropertySelected) {
+    return {
+      kind: "clarify" as const,
+      confidence: 0.58,
+      reply: "Posso seguir de algumas formas.\n\nO que você deseja fazer neste imóvel?",
+      options: [
+        { id: "editar_midias", label: "Atualizar mídias do imóvel" },
+        { id: "melhorar_descricao", label: "Melhorar descrição" },
+        { id: "publicar_imovel", label: "Publicar imóvel" },
+      ],
+      reason: "editar em contexto de imovel sem acao unica equivalente",
+    }
+  }
+
+  return null
+}
+
+const NAVIGATION_COMMANDS = [
+  { href: "/corretor", label: "COS", commands: ["cos", "abrir cos", "voltar para o cos"] },
+  { href: "/corretor/clientes", label: "Clientes", commands: ["clientes", "abrir clientes"] },
+  { href: "/corretor/imoveis", label: "Imóveis", commands: ["imoveis", "abrir imoveis"] },
+  { href: "/corretor/catalogo", label: "Catálogo", commands: ["catalogo", "abrir catalogo"] },
+  { href: "/corretor/studio-ia", label: "Studio IA", commands: ["studio", "studio ia", "abrir studio", "abrir studio ia"] },
+  { href: "/corretor/documentos/contratos", label: "Contratos", commands: ["contratos", "abrir contratos", "abrir contrato"] },
+  { href: "/corretor/documentos", label: "Propostas", commands: ["propostas", "abrir propostas", "abrir proposta"] },
+  { href: "/corretor/agenda", label: "Compromissos", commands: ["agenda", "compromissos", "abrir agenda", "abrir compromissos"] },
+  { href: "/corretor/financeiro", label: "Financeiro", commands: ["financeiro", "abrir financeiro"] },
+  { href: "/corretor/analytics", label: "Desempenho", commands: ["desempenho", "analytics", "abrir desempenho"] },
+  { href: "/corretor/historico", label: "Histórico", commands: ["historico", "histórico", "abrir historico", "abrir histórico"] },
+  { href: "/corretor/conta", label: "Configurações", commands: ["configuracoes", "configurações", "abrir configuracoes", "abrir configurações"] },
+]
+
+export function resolveFastCosAction(input: {
+  message: string
+  workspace: CosWorkspaceContext | null
+  context?: CosNormalizedContext | null
+}) : FastActionResolution {
+  const normalizedMessage = normalizeText(input.message)
+  const shortMessage = countWords(input.message) <= 4
+  const entity = input.workspace?.entity ?? null
+  const page = input.workspace?.page ?? null
+  const hasPropertySelected = Boolean(input.context?.selectedEntityIds.property || (entity === "property" && input.workspace?.entityId))
+  const hasLeadSelected = Boolean(input.context?.selectedEntityIds.lead || (entity === "lead" && input.workspace?.entityId))
+  const hasContractSelected = Boolean(input.context?.selectedEntityIds.contract || (entity === "contract" && input.workspace?.entityId))
+  const hasImage = Boolean(input.context?.attachments.some((attachment) => attachment.category === "image"))
+  const hasDocument = Boolean(input.context?.attachments.some((attachment) => attachment.category === "document"))
+
+  if (!normalizedMessage) {
+    return { kind: "none", confidence: 0 }
+  }
+
+  if (isExactCommand(normalizedMessage, ["ver detalhes da operacao", "ver detalhes da operação"])) {
+    return {
+      kind: "workflow_details",
+      action: "workflow_details",
+      confidence: 0.99,
+      reply: "Claro.\n\nAbrindo os detalhes da operação...",
+      reason: "comando direto para detalhes da operacao",
+    }
+  }
+
+  for (const item of NAVIGATION_COMMANDS) {
+    if (isExactCommand(normalizedMessage, item.commands)) {
+      return {
+        kind: "navigation",
+        href: item.href,
+        label: item.label,
+        confidence: 0.99,
+        reply: `Claro.\n\nAbrindo ${item.label.toLowerCase()}...`,
+        reason: `comando direto para abrir ${item.label.toLowerCase()}`,
+      }
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["novo contrato", "criar contrato", "gerar contrato", "anexar contrato"])) {
+    return {
+      kind: "workflow_action",
+      action: "CREATE_CONTRACT",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou iniciar a criação do contrato.",
+      reason: "comando direto para criar contrato",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["nova proposta", "criar proposta", "gerar proposta"])) {
+    return {
+      kind: "workflow_action",
+      action: "CREATE_PROPOSAL",
+      confidence: 0.97,
+      reply: "Perfeito.\n\nVou iniciar a criação da proposta.",
+      reason: "comando direto para criar proposta",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["criar imovel", "criar imóvel", "novo imovel", "novo imóvel"])) {
+    return {
+      kind: "workflow_action",
+      action: "createPropertyDraft",
+      confidence: hasImage ? 0.99 : 0.95,
+      reply: hasImage
+        ? "Perfeito.\n\nVou criar o imóvel utilizando essa imagem."
+        : "Perfeito.\n\nVou iniciar o cadastro do imóvel.",
+      reason: "comando direto para criar imovel",
+    }
+  }
+
+  if (
+    (includesAny(normalizedMessage, ["crie um imovel com essa imagem", "criar imovel com essa imagem", "criar imovel com esta imagem", "crie um imovel com esta imagem"]) ||
+      (hasImage && includesAny(normalizedMessage, ["crie um imovel", "criar imovel", "cadastre um imovel", "cadastro de imovel"])))
+  ) {
+    return {
+      kind: "workflow_action",
+      action: "createPropertyDraft",
+      confidence: 0.99,
+      reply: "Perfeito.\n\nVou criar o imóvel utilizando essa imagem.",
+      reason: "imagem anexada com pedido direto de cadastro de imovel",
+    }
+  }
+
+  if (
+    hasDocument &&
+    hasLeadSelected &&
+    includesAny(normalizedMessage, ["anexar", "anexe", "anexe este pdf", "anexar documento", "anexar contrato"])
+  ) {
+    return {
+      kind: "workflow_action",
+      action: "ATTACH_LEAD_DOCUMENT",
+      confidence: 0.96,
+      reply: "Claro.\n\nVou anexar esse documento ao cliente selecionado.",
+      reason: "documento anexado com cliente selecionado",
+    }
+  }
+
+  if (isExactCommand(normalizedMessage, ["editar", "editar imovel", "editar imóvel", "abrir"])) {
+    const contextualEdit = buildCurrentEntityEditAction(input.workspace, input.context)
+    if (contextualEdit) {
+      return contextualEdit
+    }
+
+    if (normalizedMessage === "abrir" && entity === "contract" && hasContractSelected) {
+      return {
+        kind: "workflow_action",
+        action: "GET_CONTRACT",
+        confidence: 0.94,
+        reply: "Claro.\n\nVou abrir o contrato selecionado.",
+        reason: "abrir em contexto de contrato selecionado",
+      }
+    }
+  }
+
+  if (shortMessage && isExactCommand(normalizedMessage, ["abrir", "editar"])) {
+    return {
+      kind: "clarify",
+      confidence: 0.42,
+      reply: "Posso seguir por alguns caminhos.\n\nO que você deseja abrir agora?",
+      options: [
+        { id: "abrir_clientes", label: "Clientes" },
+        { id: "abrir_imoveis", label: "Imóveis" },
+        { id: "abrir_contratos", label: "Contratos" },
+      ],
+      reason: `comando curto sem contexto suficiente na pagina ${page ?? "desconhecida"}`,
+    }
+  }
+
+  return { kind: "none", confidence: 0 }
+}

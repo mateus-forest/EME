@@ -38,6 +38,7 @@ import {
   type CosWorkflow,
 } from "@/lib/cos"
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
+import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
 import {
   consumeBrokerAiCredits,
@@ -207,6 +208,31 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
   }
 
   return null
+}
+
+function buildIntentClarificationOptions(
+  candidates:
+    | Array<{
+        action: AssessorAction
+        confidence: number
+        reason: string
+      }>
+    | undefined,
+): CosResponseOption[] | null {
+  if (!candidates?.length) return null
+
+  const unique = new Map<string, CosResponseOption>()
+  for (const candidate of candidates.slice(0, 3)) {
+    if (!unique.has(candidate.action)) {
+      unique.set(candidate.action, {
+        id: candidate.action,
+        label: getCosCapabilityLabel(candidate.action),
+      })
+    }
+  }
+
+  const options = Array.from(unique.values())
+  return options.length > 1 ? options : null
 }
 
 function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
@@ -530,22 +556,161 @@ export async function POST(request: NextRequest) {
       memory: conversationMemory,
       attachments: effectiveAttachments,
     })
+    const fastAction =
+      !requestedAction && !isCancellation
+        ? resolveFastCosAction({
+            message,
+            workspace,
+            context: normalizedContext,
+          })
+        : { kind: "none" as const, confidence: 0 }
+    const effectiveRequestedAction =
+      requestedAction ||
+      (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null)
+
+    if (fastAction.kind === "clarify") {
+      const brokerCredits = await getBrokerCredits(user.broker.id)
+      const interactionMetadata = {
+        source: metadataSource,
+        parsedIntent: "general",
+        actionName: "general",
+        brokerId: user.broker.id,
+        visualAction: "Aclaracao de comando",
+        fastAction: {
+          confidence: fastAction.confidence,
+          reason: fastAction.reason,
+        },
+        conversationId: conversationDocument?.id ?? conversationIdFromBody,
+        displayMessage,
+        options: fastAction.options,
+      } as Prisma.InputJsonObject
+
+      const [updatedConversation] = await Promise.all([
+        touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
+        prisma.aiAssistantInteraction.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            prompt: message,
+            response: fastAction.reply,
+            actionType: "general",
+            creditsUsed: 0,
+            channel: "assessor_eme",
+            intent: "general",
+            actionStatus: "needs_clarification",
+            metadata: interactionMetadata,
+            errorMessage: null,
+          },
+        }),
+        prisma.emeMessage.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            channel: "assessor_eme",
+            direction: "broker_to_ai",
+            message,
+            response: fastAction.reply,
+            detectedIntent: "general",
+            actionType: "general",
+            actionStatus: "needs_clarification",
+            metadata: interactionMetadata,
+            errorMessage: null,
+            creditsUsed: 0,
+          },
+        }),
+      ])
+
+      return NextResponse.json({
+        response: fastAction.reply,
+        action: "general",
+        actionStatus: "needs_clarification",
+        metadata: interactionMetadata,
+        creditsUsed: 0,
+        conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
+        ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+      })
+    }
+
     const intentResolution = resolveCosIntent({
       message,
-      requestedAction,
+      requestedAction: effectiveRequestedAction,
       attachments: effectiveAttachments,
       workspace,
       activeWorkflow,
       memory: conversationMemory,
       context: normalizedContext,
     })
-    const resolvedRequestedAction = intentResolution.requestedAction ?? requestedAction
+    const resolvedRequestedAction = intentResolution.requestedAction ?? effectiveRequestedAction
     const resumableWorkflow =
       shouldResumeWorkflow(activeWorkflow) && intentResolution.workflowDecision !== "start_new"
         ? activeWorkflow
         : null
 
-    if (isWorkflowDetailsRequest) {
+    if (intentResolution.confidence < 0.6) {
+      const clarificationOptions = buildIntentClarificationOptions(intentResolution.candidates)
+      if (clarificationOptions) {
+        const brokerCredits = await getBrokerCredits(user.broker.id)
+        const clarificationResponse = "Quero ter certeza antes de seguir.\n\nVoce quis dizer uma destas acoes?"
+        const interactionMetadata = {
+          source: metadataSource,
+          parsedIntent: "general",
+          actionName: "general",
+          brokerId: user.broker.id,
+          visualAction: "Aclaracao de intencao",
+          intentResolution,
+          conversationId: conversationDocument?.id ?? conversationIdFromBody,
+          displayMessage,
+          options: clarificationOptions,
+        } as Prisma.InputJsonObject
+
+        const [updatedConversation] = await Promise.all([
+          touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
+          prisma.aiAssistantInteraction.create({
+            data: {
+              userId: user.id,
+              brokerId: user.broker.id,
+              prompt: message,
+              response: clarificationResponse,
+              actionType: "general",
+              creditsUsed: 0,
+              channel: "assessor_eme",
+              intent: "general",
+              actionStatus: "needs_clarification",
+              metadata: interactionMetadata,
+              errorMessage: null,
+            },
+          }),
+          prisma.emeMessage.create({
+            data: {
+              userId: user.id,
+              brokerId: user.broker.id,
+              channel: "assessor_eme",
+              direction: "broker_to_ai",
+              message,
+              response: clarificationResponse,
+              detectedIntent: "general",
+              actionType: "general",
+              actionStatus: "needs_clarification",
+              metadata: interactionMetadata,
+              errorMessage: null,
+              creditsUsed: 0,
+            },
+          }),
+        ])
+
+        return NextResponse.json({
+          response: clarificationResponse,
+          action: "general",
+          actionStatus: "needs_clarification",
+          metadata: interactionMetadata,
+          creditsUsed: 0,
+          conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
+          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+        })
+      }
+    }
+
+    if (isWorkflowDetailsRequest || effectiveRequestedAction === "workflow_details") {
       const brokerCredits = await getBrokerCredits(user.broker.id)
       const workflowAction = resumableWorkflow?.steps[resumableWorkflow.currentStep]?.action ?? "general"
       const workflowDetailsResponse = resumableWorkflow
