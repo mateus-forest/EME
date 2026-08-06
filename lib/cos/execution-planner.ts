@@ -231,6 +231,17 @@ function buildConfirmationMessage(steps: CosExecutionStep[]) {
   return ["Antes de continuar, preciso da sua confirmaÃ§Ã£o para:", ...labels, "", "Confirma esta aÃ§Ã£o?"].join("\n")
 }
 
+function buildIntentConfirmationMessage(input: {
+  capabilityPlan: CosCapabilityPlan
+  intentReason?: string | null
+}) {
+  const title = input.capabilityPlan.capability.title
+  const reason = input.intentReason?.trim()
+  return reason
+    ? `Entendi seu pedido como "${title}".\n\nSinal principal: ${reason}.\n\nDeseja que eu siga com essa acao?`
+    : `Entendi seu pedido como "${title}".\n\nDeseja que eu siga com essa acao?`
+}
+
 function buildTelemetry(input: {
   planId: string
   source: CosExecutionPlan["source"]
@@ -280,6 +291,8 @@ function buildSingleExecutionPlan(input: {
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
   context?: CosNormalizedContext | null
+  intentConfidence?: number | null
+  intentReason?: string | null
   surface: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
   startedAt: number
@@ -302,7 +315,8 @@ function buildSingleExecutionPlan(input: {
   }
 
   const resolutionMs = Date.now() - input.startedAt
-  const requiresConfirmation = shouldRequireConfirmation(step.action)
+  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingContext)
+  const requiresConfirmation = shouldRequireConfirmation(step.action) || requiresIntentConfirmation
   return {
     id: planId,
     source: "single",
@@ -318,7 +332,14 @@ function buildSingleExecutionPlan(input: {
     steps: [step],
     unresolvedGoals: [],
     requiresConfirmation,
-    confirmationMessage: requiresConfirmation ? getCosCapabilityConfirmationMessage(input.capabilityPlan.action) : null,
+    confirmationMessage: requiresConfirmation
+      ? requiresIntentConfirmation
+        ? buildIntentConfirmationMessage({
+            capabilityPlan: input.capabilityPlan,
+            intentReason: input.intentReason,
+          })
+        : getCosCapabilityConfirmationMessage(input.capabilityPlan.action)
+      : null,
     telemetry: buildTelemetry({
       planId,
       source: "single",
@@ -342,6 +363,8 @@ function buildRecipeExecutionPlan(input: {
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
   context?: CosNormalizedContext | null
+  intentConfidence?: number | null
+  intentReason?: string | null
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   startedAt: number
@@ -365,7 +388,8 @@ function buildRecipeExecutionPlan(input: {
     }),
   )
 
-  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action))
+  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingContext)
+  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)
@@ -389,7 +413,14 @@ function buildRecipeExecutionPlan(input: {
     steps,
     unresolvedGoals: [],
     requiresConfirmation,
-    confirmationMessage: requiresConfirmation ? buildConfirmationMessage(steps) : null,
+    confirmationMessage: requiresConfirmation
+      ? requiresIntentConfirmation
+        ? buildIntentConfirmationMessage({
+            capabilityPlan: steps[0].plan,
+            intentReason: input.intentReason,
+          })
+        : buildConfirmationMessage(steps)
+      : null,
     telemetry: buildTelemetry({
       planId,
       source: "recipe",
@@ -430,6 +461,8 @@ function buildAiExecutionPlan(input: {
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
   context?: CosNormalizedContext | null
+  intentConfidence?: number | null
+  intentReason?: string | null
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   startedAt: number
@@ -456,7 +489,8 @@ function buildAiExecutionPlan(input: {
     }),
   )
 
-  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action))
+  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingContext)
+  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)
@@ -480,7 +514,14 @@ function buildAiExecutionPlan(input: {
     steps,
     unresolvedGoals: [],
     requiresConfirmation,
-    confirmationMessage: requiresConfirmation ? buildConfirmationMessage(steps) : null,
+    confirmationMessage: requiresConfirmation
+      ? requiresIntentConfirmation
+        ? buildIntentConfirmationMessage({
+            capabilityPlan: steps[0].plan,
+            intentReason: input.intentReason,
+          })
+        : buildConfirmationMessage(steps)
+      : null,
     telemetry: buildTelemetry({
       planId,
       source: "ai",
@@ -510,6 +551,8 @@ export async function planCosExecution(input: {
   workspace?: CosWorkspaceContext | null
   activeWorkflow?: CosWorkflow | null
   context?: CosNormalizedContext | null
+  intentConfidence?: number | null
+  intentReason?: string | null
   aiOrchestratorOverride?: unknown
   allowAiOrchestrator?: boolean
 }): Promise<CosExecutionPlan> {
@@ -523,6 +566,8 @@ export async function planCosExecution(input: {
     requestedAction: input.requestedAction,
     pendingContext,
     context: input.context ?? null,
+    intentConfidence: input.intentConfidence ?? null,
+    intentReason: input.intentReason ?? null,
     surface,
     workspace,
   })
@@ -534,6 +579,8 @@ export async function planCosExecution(input: {
       requestedAction: input.requestedAction,
       pendingContext,
       context: input.context ?? null,
+      intentConfidence: input.intentConfidence ?? null,
+      intentReason: input.intentReason ?? null,
       surface,
       workspace,
       startedAt,
@@ -561,6 +608,8 @@ export async function planCosExecution(input: {
       requestedAction: input.requestedAction,
       pendingContext,
       context: input.context ?? null,
+      intentConfidence: input.intentConfidence ?? null,
+      intentReason: input.intentReason ?? null,
       surface,
       workspace,
       startedAt,
@@ -585,6 +634,8 @@ export async function planCosExecution(input: {
       requestedAction: input.requestedAction,
       pendingContext,
       context: input.context ?? null,
+      intentConfidence: input.intentConfidence ?? null,
+      intentReason: input.intentReason ?? null,
       surface,
       workspace,
       startedAt,
@@ -621,6 +672,9 @@ export async function planCosExecution(input: {
     message: input.message,
     requestedAction: input.requestedAction,
     pendingContext,
+    context: input.context ?? null,
+    intentConfidence: input.intentConfidence ?? null,
+    intentReason: input.intentReason ?? null,
     surface,
     workspace,
     startedAt,

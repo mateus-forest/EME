@@ -662,6 +662,8 @@ export async function POST(request: NextRequest) {
                 ...normalizedContext,
                 message: executionMessage,
               },
+              intentConfidence: intentResolution.confidence,
+              intentReason: intentResolution.reason,
               surface,
               workspace,
               activeWorkflow: activeWorkflow ?? null,

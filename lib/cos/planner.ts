@@ -137,6 +137,18 @@ function inferVerbHint(normalizedMessage: string) {
   return null
 }
 
+function getDescriptorActionDomain(descriptor: CosCapabilityDescriptor) {
+  const action = descriptor.action
+  if (action.startsWith("STUDIO_")) return "studio"
+  if (action.includes("PROPERTY") || action === "createPropertyDraft" || action === "improvePropertyDescription" || descriptor.domain === "property") return "property"
+  if (action.includes("LEAD") || action === "createLead" || descriptor.domain === "lead") return "lead"
+  if (action.includes("PROPOSAL") || descriptor.domain === "proposal") return "proposal"
+  if (action.includes("CONTRACT") || descriptor.domain === "contract") return "contract"
+  if (action.includes("AGENDA") || descriptor.domain === "agenda") return "agenda"
+  if (action.includes("FINANCE") || descriptor.domain === "finance") return "finance"
+  return descriptor.domain
+}
+
 function tokensMatch(left: string, right: string) {
   if (left === right) return true
   if (left.length >= 4 && right.length >= 4 && (left.startsWith(right.slice(0, 4)) || right.startsWith(left.slice(0, 4)))) return true
@@ -218,12 +230,85 @@ function scoreWorkspaceAffinity(descriptor: CosCapabilityDescriptor, normalizedM
   }
 }
 
+function scoreContextAffinity(descriptor: CosCapabilityDescriptor, normalizedMessage: string, context: CosNormalizedContext | null | undefined) {
+  if (!context) {
+    return {
+      score: 0,
+      reasons: [] as string[],
+    }
+  }
+
+  const reasons: string[] = []
+  let score = 0
+  const actionDomain = getDescriptorActionDomain(descriptor)
+  const hasImage = context.attachments.some((attachment) => attachment.category === "image")
+  const hasDocument = context.attachments.some((attachment) => attachment.category === "document")
+  const hasVideo = context.attachments.some((attachment) => attachment.category === "video")
+  const hasAudio = context.attachments.some((attachment) => attachment.type.toLowerCase().startsWith("audio/"))
+
+  if ((hasImage || hasAudio) && descriptor.action === "createPropertyDraft") {
+    score += 4.4
+    reasons.push("anexo orienta cadastro de imovel")
+  }
+
+  if (hasImage && descriptor.action === "UPDATE_PROPERTY_MEDIA" && Boolean(context.selectedEntityIds.property)) {
+    score += 3.2
+    reasons.push("imagem + imovel selecionado")
+  }
+
+  if (hasDocument && descriptor.action === "ATTACH_LEAD_DOCUMENT") {
+    score += 4.2
+    reasons.push("documento orienta anexo em cliente")
+  }
+
+  if (hasVideo && descriptor.action === "STUDIO_GENERATE_VIDEO") {
+    score += 2.8
+    reasons.push("video orienta studio video")
+  }
+
+  if (context.selectedEntityIds.property && ["property", "proposal", "contract", "studio"].includes(actionDomain)) {
+    score += 1.8
+    reasons.push("property selecionado")
+  }
+
+  if (context.selectedEntityIds.lead && ["lead", "proposal", "contract"].includes(actionDomain)) {
+    score += 1.8
+    reasons.push("lead selecionado")
+  }
+
+  if (context.selectedEntityIds.contract && actionDomain === "contract") {
+    score += 1.6
+    reasons.push("contrato selecionado")
+  }
+
+  const workflowAction = context.workflow?.pendingInput?.action ?? context.workflow?.steps[context.workflow.currentStep]?.action ?? null
+  if (workflowAction) {
+    const workflowDomain = getDescriptorActionDomain({
+      ...descriptor,
+      action: workflowAction,
+    })
+    if (descriptor.action === workflowAction) {
+      score += 2.4
+      reasons.push("mesma acao do workflow")
+    } else if (workflowDomain === actionDomain) {
+      score += 1.2
+      reasons.push("mesmo dominio do workflow")
+    } else if (context.workflow?.pendingInput && normalizedMessage.split(/\s+/).length <= 4) {
+      score -= 1.2
+      reasons.push("resposta curta fora do dominio ativo")
+    }
+  }
+
+  return { score, reasons }
+}
+
 function scoreCapability(
   descriptor: CosCapabilityDescriptor,
   message: string,
   requestedAction: string | undefined,
   surface: CosCapabilitySurface,
   workspace: CosWorkspaceContext | null | undefined,
+  context: CosNormalizedContext | null | undefined,
 ) {
   if (!descriptor.surfaces.includes(surface)) return null
 
@@ -266,6 +351,12 @@ function scoreCapability(
   if (workspaceAffinity.score > 0) {
     score += workspaceAffinity.score
     reasons.push(...workspaceAffinity.reasons)
+  }
+
+  const contextAffinity = scoreContextAffinity(descriptor, normalizedMessage, context)
+  if (contextAffinity.score > 0) {
+    score += contextAffinity.score
+    reasons.push(...contextAffinity.reasons)
   }
 
   const entityModule = getEntityModuleId(descriptor)
@@ -334,6 +425,8 @@ function shouldContinuePendingContext(message: string, pendingContext: PendingAs
 function getDirectRequestedCatalogCandidate(input: {
   requestedAction?: string
   surface: CosCapabilitySurface
+  requestedConfidence?: number | null
+  requestedReason?: string | null
 }) {
   const descriptor = getCosCapabilityDescriptorByAliasOrAction(input.requestedAction)
   if (!descriptor) return null
@@ -341,10 +434,10 @@ function getDirectRequestedCatalogCandidate(input: {
 
   return {
     descriptor,
-    confidence: 0.99,
+    confidence: input.requestedConfidence ?? 0.99,
     workspaceEntityUsed: null as CosWorkspaceEntity | null,
     workspaceEntityIdUsed: null as string | null,
-    reason: `requestedAction mapeada para ${descriptor.id}`,
+    reason: input.requestedReason ? `${input.requestedReason} | requestedAction mapeada para ${descriptor.id}` : `requestedAction mapeada para ${descriptor.id}`,
   }
 }
 
@@ -374,10 +467,11 @@ function pickCatalogCandidate(input: {
   surface: CosCapabilitySurface
   pendingContext?: PendingAssessorContext | null
   workspace?: CosWorkspaceContext | null
+  context?: CosNormalizedContext | null
 }) {
   const descriptors = listCosCapabilityCatalog()
   const scoredCandidates = descriptors
-    .map((descriptor) => scoreCapability(descriptor, input.message, input.requestedAction, input.surface, input.workspace))
+    .map((descriptor) => scoreCapability(descriptor, input.message, input.requestedAction, input.surface, input.workspace, input.context))
     .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
     .sort((left, right) => right.score - left.score)
 
@@ -436,6 +530,8 @@ export function planCosCapability(input: {
   requestedAction?: string
   pendingContext?: PendingAssessorContext | null
   context?: CosNormalizedContext | null
+  intentConfidence?: number | null
+  intentReason?: string | null
   surface?: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
 }): CosCapabilityPlan {
@@ -447,6 +543,8 @@ export function planCosCapability(input: {
   const directRequestedCandidate = getDirectRequestedCatalogCandidate({
     requestedAction: registryRequestedAction ?? input.requestedAction,
     surface,
+    requestedConfidence: input.intentConfidence ?? null,
+    requestedReason: input.intentReason ?? null,
   })
   const pendingCatalogCandidate = getPendingCatalogCandidate({
     message: input.message,
@@ -459,6 +557,7 @@ export function planCosCapability(input: {
     surface,
     pendingContext,
     workspace,
+    context: input.context ?? null,
   })
   const catalogCandidate = directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
   const usePendingContext = Boolean(pendingCatalogCandidate)
