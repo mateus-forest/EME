@@ -5,6 +5,7 @@ import { savePropertyImageFromDataUrl } from "@/lib/property-storage"
 
 export type CosAttachmentAnalysisInput = {
   message: string
+  requestedAction?: string | null
   attachments: Array<{
     id: string
     name: string
@@ -177,7 +178,9 @@ export async function analyzeCosAttachments(input: CosAttachmentAnalysisInput): 
   }
 
   const attachmentLines = buildAttachmentLines(input.attachments)
-  const { propertyDrafts, imageUrl } = hasPropertyIntent(input.message)
+  const shouldAnalyzeProperty =
+    input.requestedAction === "createPropertyDraft" || hasPropertyIntent(input.message)
+  const { propertyDrafts, imageUrl } = shouldAnalyzeProperty
     ? await analyzePropertyAttachments(input)
     : { propertyDrafts: [] as AdImportDraft[], imageUrl: null as string | null }
   const primaryPropertyDraft = propertyDrafts[0] ?? null

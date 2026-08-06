@@ -35,6 +35,7 @@ import {
   type CosWorkflow,
 } from "@/lib/cos"
 import { analyzeCosAttachments, mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
+import { resolveCosIntent } from "@/lib/cos/intent-resolver"
 import {
   consumeBrokerAiCredits,
   createInsufficientCreditsPayload,
@@ -550,7 +551,20 @@ export async function POST(request: NextRequest) {
 
     const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
-    const resumableWorkflow = shouldResumeWorkflow(activeWorkflow) ? activeWorkflow : null
+    const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
+    const intentResolution = resolveCosIntent({
+      message,
+      requestedAction,
+      attachments: effectiveAttachments,
+      workspace,
+      activeWorkflow,
+      memory: conversationMemory,
+    })
+    const resolvedRequestedAction = intentResolution.requestedAction ?? requestedAction
+    const resumableWorkflow =
+      shouldResumeWorkflow(activeWorkflow) && intentResolution.workflowDecision !== "start_new"
+        ? activeWorkflow
+        : null
 
     if (isWorkflowDetailsRequest) {
       const brokerCredits = await getBrokerCredits(user.broker.id)
@@ -625,7 +639,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
     const executionPayload = {
       ...(conversationMemory?.leadId ? { leadId: conversationMemory.leadId } : {}),
       ...(conversationMemory?.propertyId ? { propertyId: conversationMemory.propertyId } : {}),
@@ -642,7 +655,8 @@ export async function POST(request: NextRequest) {
         }
       : await analyzeCosAttachments({
           message,
-          attachments,
+          attachments: effectiveAttachments,
+          requestedAction: resolvedRequestedAction,
         })
     const executionMessage = attachmentAnalysis.executionMessage
     const pendingContext = resumableWorkflow ? null : await getPendingAssessorContext(user.broker.id, conversationDocument?.id)
@@ -661,7 +675,7 @@ export async function POST(request: NextRequest) {
           () =>
             planCosExecution({
               message: executionMessage,
-              requestedAction,
+              requestedAction: resolvedRequestedAction ?? undefined,
               pendingContext,
               surface,
               workspace,
@@ -843,6 +857,7 @@ export async function POST(request: NextRequest) {
         visualAction: getCosCapabilityLabel(action),
         confirmationRequired: true,
         planner: executionPlan.telemetry,
+        intentResolution,
         attachmentAnalysis: attachmentAnalysis.primaryPropertyDraft
           ? {
               propertyDrafts: attachmentAnalysis.propertyDrafts.length,
@@ -1080,6 +1095,7 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - actionStartedAt,
       visualAction: getCosCapabilityLabel(action),
       planner: executionPlan?.telemetry ?? null,
+      intentResolution,
       planningAudit: {
         planner: executionPlan?.telemetry.planner ?? "deterministic",
         source: executionPlan?.source ?? workflow.executionPlan.source,
