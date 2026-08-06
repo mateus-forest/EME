@@ -1,4 +1,4 @@
-import { runLegacyAssessorAction } from "@/lib/eme-backend"
+import { executeLegacyCosAction } from "@/lib/cos/legacy-adapter"
 
 import type { CosActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
 
@@ -27,7 +27,7 @@ export async function executeCosCapability(input: {
     })
   }
 
-  return (await runLegacyAssessorAction({
+  return (await executeLegacyCosAction({
     brokerId: input.brokerId,
     userId: input.userId,
     message: input.message,

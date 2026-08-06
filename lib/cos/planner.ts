@@ -1,4 +1,4 @@
-import { inferAssessorAction, type PendingAssessorContext } from "@/lib/eme-backend"
+import type { PendingAssessorContext } from "@/lib/eme-backend"
 
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
 import {
@@ -6,6 +6,7 @@ import {
   getCosEntityModuleIdByCapabilityId,
   listCosCapabilityCatalog,
 } from "@/lib/cos/capability-catalog"
+import { inferLegacyCosAction } from "@/lib/cos/legacy-adapter"
 import type {
   CosCapabilityDescriptor,
   CosCapabilityPlan,
@@ -319,16 +320,52 @@ function scoreCapability(
   }
 }
 
-function shouldContinuePendingContext(message: string, pendingContext: PendingAssessorContext | null, inferredAction: string) {
+function shouldContinuePendingContext(message: string, pendingContext: PendingAssessorContext | null) {
   if (!pendingContext) return false
 
   const normalized = normalizeText(message)
   return (
-    inferredAction === "general" ||
     /^\d+$/.test(normalized) ||
     /^(sim|s|primeiro|primeira|segunda|segundo|terceiro|terceira|ok|pode|gerar)$/.test(normalized) ||
     message.trim().split(/\s+/).length <= 4
   )
+}
+
+function getDirectRequestedCatalogCandidate(input: {
+  requestedAction?: string
+  surface: CosCapabilitySurface
+}) {
+  const descriptor = getCosCapabilityDescriptorByAliasOrAction(input.requestedAction)
+  if (!descriptor) return null
+  if (!descriptor.surfaces.includes(input.surface)) return null
+
+  return {
+    descriptor,
+    confidence: 0.99,
+    workspaceEntityUsed: null as CosWorkspaceEntity | null,
+    workspaceEntityIdUsed: null as string | null,
+    reason: `requestedAction mapeada para ${descriptor.id}`,
+  }
+}
+
+function getPendingCatalogCandidate(input: {
+  message: string
+  pendingContext?: PendingAssessorContext | null
+  surface: CosCapabilitySurface
+}) {
+  if (!shouldContinuePendingContext(input.message, input.pendingContext ?? null)) return null
+
+  const descriptor = getCosCapabilityDescriptorByAliasOrAction(input.pendingContext?.action)
+  if (!descriptor) return null
+  if (!descriptor.surfaces.includes(input.surface)) return null
+
+  return {
+    descriptor,
+    confidence: 0.82,
+    workspaceEntityUsed: null as CosWorkspaceEntity | null,
+    workspaceEntityIdUsed: null as string | null,
+    reason: `continuidade do contexto pendente (${input.pendingContext?.missingField ?? "sem campo"})`,
+  }
 }
 
 function pickCatalogCandidate(input: {
@@ -336,7 +373,6 @@ function pickCatalogCandidate(input: {
   requestedAction?: string
   surface: CosCapabilitySurface
   pendingContext?: PendingAssessorContext | null
-  legacyAction: string
   workspace?: CosWorkspaceContext | null
 }) {
   const descriptors = listCosCapabilityCatalog()
@@ -374,12 +410,11 @@ function pickCatalogCandidate(input: {
   const clearByPending =
     Boolean(input.pendingContext) &&
     input.pendingContext?.action === topCandidate.descriptor.action &&
-    shouldContinuePendingContext(input.message, input.pendingContext ?? null, input.legacyAction)
+    shouldContinuePendingContext(input.message, input.pendingContext ?? null)
   const clearByWorkspace = Boolean(topCandidate.workspaceEntityUsed && confidence >= 0.52)
-  const clearByAgreement = topCandidate.descriptor.action === input.legacyAction && confidence >= 0.45
   const clearByScore = confidence >= 0.78 && margin >= 0.25
 
-  if (!clearByRequest && !clearByPending && !clearByWorkspace && !clearByAgreement && !clearByScore) {
+  if (!clearByRequest && !clearByPending && !clearByWorkspace && !clearByScore) {
     return null
   }
 
@@ -406,24 +441,33 @@ export function planCosCapability(input: {
   const startedAt = Date.now()
   const surface = input.surface ?? "portal"
   const registryRequestedAction = getCosCapabilityDescriptorByAliasOrAction(input.requestedAction)?.action
-  const legacyAction = inferAssessorAction(input.message, registryRequestedAction ?? input.requestedAction)
-  const usePendingContext = shouldContinuePendingContext(input.message, input.pendingContext ?? null, legacyAction)
-  const catalogCandidate = pickCatalogCandidate({
+  const directRequestedCandidate = getDirectRequestedCatalogCandidate({
+    requestedAction: registryRequestedAction ?? input.requestedAction,
+    surface,
+  })
+  const pendingCatalogCandidate = getPendingCatalogCandidate({
+    message: input.message,
+    pendingContext: input.pendingContext ?? null,
+    surface,
+  })
+  const scoredCatalogCandidate = pickCatalogCandidate({
     message: input.message,
     requestedAction: input.requestedAction,
     surface,
     pendingContext: input.pendingContext ?? null,
-    legacyAction,
     workspace: input.workspace ?? null,
   })
+  const catalogCandidate = directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
+  const usePendingContext = Boolean(pendingCatalogCandidate)
+  const legacyAction = catalogCandidate ? null : inferLegacyCosAction(input.message, registryRequestedAction ?? input.requestedAction)
 
   const resolvedSource: CosCapabilityPlanSource = catalogCandidate ? "catalog" : "legacy"
   const resolvedAction =
     resolvedSource === "catalog"
-      ? catalogCandidate?.descriptor.action ?? legacyAction
+      ? catalogCandidate?.descriptor.action ?? "general"
       : usePendingContext
-        ? input.pendingContext?.action ?? legacyAction
-        : legacyAction
+        ? input.pendingContext?.action ?? legacyAction ?? "general"
+        : legacyAction ?? "general"
 
   const resolvedPayload = {
     ...(usePendingContext && input.pendingContext ? { pendingContext: input.pendingContext } : {}),
@@ -456,7 +500,7 @@ export function planCosCapability(input: {
       ? catalogCandidate?.reason ?? `catalogo selecionou ${capability.id}`
       : usePendingContext
         ? `fallback legado preservou contexto pendente para ${input.pendingContext?.missingField ?? "continuidade"}`
-        : `fallback legado via inferAssessorAction(${legacyAction})`
+        : `fallback legado via inferAssessorAction(${legacyAction ?? "general"})`
   const resolutionMs = Date.now() - startedAt
 
   const plan: CosCapabilityPlan = {

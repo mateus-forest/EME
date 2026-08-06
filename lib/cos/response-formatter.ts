@@ -1,5 +1,6 @@
-import { generateAssessorText, type AssessorAction } from "@/lib/eme-backend"
+import type { AssessorAction } from "@/lib/eme-backend"
 
+import { formatLegacyCosText } from "@/lib/cos/legacy-adapter"
 import type { CosCapabilityDefinition, CosExecutionPlan, CosExecutionPlanResult } from "@/lib/cos/types"
 
 export async function formatCosCapabilityResponse(input: {
@@ -12,7 +13,7 @@ export async function formatCosCapabilityResponse(input: {
     return input.actionResponse
   }
 
-  return generateAssessorText(input.message, input.action, input.actionResponse)
+  return formatLegacyCosText(input.message, input.action, input.actionResponse)
 }
 
 export async function formatCosExecutionPlanResponse(input: {
