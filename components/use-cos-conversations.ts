@@ -128,6 +128,10 @@ type CosConversationCache = {
   conversations: CosConversationSummary[]
   activeConversationId: string
   pendingConfirmation: PendingConfirmation | null
+  suppressedPendingConfirmation: {
+    conversationId: string
+    sourceInteractionId: string
+  } | null
 }
 
 const COS_CONVERSATION_CACHE_KEY = "eme-cos-conversation-cache"
@@ -210,6 +214,16 @@ function readConversationCache() {
       pendingConfirmation: parsed.pendingConfirmation && typeof parsed.pendingConfirmation === "object"
         ? (parsed.pendingConfirmation as PendingConfirmation)
         : null,
+      suppressedPendingConfirmation:
+        parsed.suppressedPendingConfirmation &&
+        typeof parsed.suppressedPendingConfirmation === "object" &&
+        typeof (parsed.suppressedPendingConfirmation as { conversationId?: unknown }).conversationId === "string" &&
+        typeof (parsed.suppressedPendingConfirmation as { sourceInteractionId?: unknown }).sourceInteractionId === "string"
+          ? {
+              conversationId: (parsed.suppressedPendingConfirmation as { conversationId: string }).conversationId,
+              sourceInteractionId: (parsed.suppressedPendingConfirmation as { sourceInteractionId: string }).sourceInteractionId,
+            }
+          : null,
     } satisfies CosConversationCache
   } catch {
     return null
@@ -246,6 +260,10 @@ export function useCosConversations({
   const [conversations, setConversations] = useState<CosConversationSummary[]>(() => initialCacheRef.current?.conversations ?? [])
   const [activeConversationId, setActiveConversationId] = useState(() => initialCacheRef.current?.activeConversationId ?? "")
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(() => initialCacheRef.current?.pendingConfirmation ?? null)
+  const [suppressedPendingConfirmation, setSuppressedPendingConfirmation] = useState<{
+    conversationId: string
+    sourceInteractionId: string
+  } | null>(() => initialCacheRef.current?.suppressedPendingConfirmation ?? null)
   const [chatFeedback, setChatFeedback] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isConversationLoading, setIsConversationLoading] = useState(false)
@@ -314,6 +332,23 @@ export function useCosConversations({
     return nextConversations
   }, [conversations.length])
 
+  const getVisiblePendingConfirmation = useCallback((input: {
+    conversationId: string
+    pendingConfirmation: PendingConfirmation | null | undefined
+  }) => {
+    const nextPendingConfirmation = input.pendingConfirmation ?? null
+    if (!nextPendingConfirmation) return null
+
+    if (
+      suppressedPendingConfirmation?.conversationId === input.conversationId &&
+      suppressedPendingConfirmation.sourceInteractionId === nextPendingConfirmation.sourceInteractionId
+    ) {
+      return null
+    }
+
+    return nextPendingConfirmation
+  }, [suppressedPendingConfirmation])
+
   const openConversation = useCallback(async (
     conversationId: string,
     options?: {
@@ -345,7 +380,10 @@ export function useCosConversations({
       }
 
       setConversation((data?.messages ?? []).map(normalizeConversationItem))
-      setPendingConfirmation(data?.pendingConfirmation ?? null)
+      setPendingConfirmation(getVisiblePendingConfirmation({
+        conversationId,
+        pendingConfirmation: data?.pendingConfirmation ?? null,
+      }))
       setActiveConversationId(conversationId)
     } catch (caughtError) {
       if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
@@ -358,7 +396,7 @@ export function useCosConversations({
         window.setTimeout(() => inputRef.current?.focus(), 0)
       }
     }
-  }, [])
+  }, [getVisiblePendingConfirmation])
 
   const createConversation = useCallback(async () => {
     conversationListRequestIdRef.current += 1
@@ -385,6 +423,7 @@ export function useCosConversations({
     setActiveConversationId(normalizedConversation.id)
     setConversation([])
     setPendingConfirmation(null)
+    setSuppressedPendingConfirmation(null)
     setChatFeedback("")
     window.setTimeout(() => inputRef.current?.focus(), 0)
     return normalizedConversation
@@ -422,6 +461,7 @@ export function useCosConversations({
       setActiveConversationId("")
       setConversation([])
       setPendingConfirmation(null)
+      setSuppressedPendingConfirmation(null)
 
       if (nextConversations[0]) {
         await openConversation(nextConversations[0].id)
@@ -471,7 +511,35 @@ export function useCosConversations({
           })
         : { kind: "none" as const, confidence: 0 }
 
+    const shouldSuppressCurrentPendingConfirmation =
+      (fastAction.kind === "navigation" || fastAction.kind === "workflow_details") &&
+      Boolean(pendingConfirmation?.sourceInteractionId) &&
+      Boolean(activeConversationId)
+
     if (fastAction.kind === "navigation") {
+      const nextSuppressedPendingConfirmation =
+        shouldSuppressCurrentPendingConfirmation && pendingConfirmation?.sourceInteractionId && activeConversationId
+          ? {
+              conversationId: activeConversationId,
+              sourceInteractionId: pendingConfirmation.sourceInteractionId,
+            }
+          : null
+
+      writeConversationCache({
+        conversation,
+        conversations,
+        activeConversationId,
+        pendingConfirmation: null,
+        suppressedPendingConfirmation: nextSuppressedPendingConfirmation,
+      })
+
+      if (shouldSuppressCurrentPendingConfirmation && pendingConfirmation?.sourceInteractionId && activeConversationId) {
+        setSuppressedPendingConfirmation({
+          conversationId: activeConversationId,
+          sourceInteractionId: pendingConfirmation.sourceInteractionId,
+        })
+      }
+      setPendingConfirmation(null)
       setChatFeedback("")
       router.push(fastAction.href)
       return
@@ -529,6 +597,14 @@ export function useCosConversations({
 
     setConversation((current) => [...current, optimisticUserMessage])
     setIsSending(true)
+    if (shouldSuppressCurrentPendingConfirmation && pendingConfirmation?.sourceInteractionId && activeConversationId) {
+      setSuppressedPendingConfirmation({
+        conversationId: activeConversationId,
+        sourceInteractionId: pendingConfirmation.sourceInteractionId,
+      })
+    } else {
+      setSuppressedPendingConfirmation(null)
+    }
     setChatFeedback(
       !resolvedOptions?.cancel && requestedCreditCost > 0
         ? `Custo desta ação: ${requestedCreditCost} Créditos IA.`
@@ -607,6 +683,7 @@ export function useCosConversations({
 
       if (data?.confirmRequired && assistantMessage.action) {
         assistantMessage.sourceInteractionId = assistantMessage.id
+        setSuppressedPendingConfirmation(null)
         setPendingConfirmation({
           action: assistantMessage.action,
           sourceMessage: normalizedMessage,
@@ -647,7 +724,7 @@ export function useCosConversations({
       setIsSending(false)
       window.setTimeout(() => inputRef.current?.focus(), 0)
     }
-  }, [activeConversationId, assistantCredits.balance, assistantEnabled, isSending, loadConversations, pathname, resolvedWorkspaceContext, router, setAssistantCredits, source])
+  }, [activeConversationId, assistantCredits.balance, assistantEnabled, conversation, conversations, isSending, loadConversations, pathname, pendingConfirmation, resolvedWorkspaceContext, router, setAssistantCredits, source])
 
   const confirmPendingAction = useCallback(async () => {
     if (!pendingConfirmation) return
@@ -682,8 +759,9 @@ export function useCosConversations({
       conversations,
       activeConversationId,
       pendingConfirmation,
+      suppressedPendingConfirmation,
     })
-  }, [activeConversationId, conversation, conversations, pendingConfirmation])
+  }, [activeConversationId, conversation, conversations, pendingConfirmation, suppressedPendingConfirmation])
 
   useEffect(() => {
     if (!bootstrapEnabled) {
@@ -708,6 +786,7 @@ export function useCosConversations({
     if (!cached) {
       setConversation([])
       setPendingConfirmation(null)
+      setSuppressedPendingConfirmation(null)
       setActiveConversationId("")
     }
     loadConversations()

@@ -884,7 +884,7 @@ export async function POST(request: NextRequest) {
         actionStatus: resumableWorkflow ? "success" : "idle",
         metadata: interactionMetadata,
         creditsUsed: 0,
-        confirmRequired: resumableWorkflow?.pendingInput?.field === "confirmation",
+        confirmRequired: false,
         conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
         ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
       })
