@@ -3,6 +3,7 @@ import "server-only"
 import type { Prisma } from "@prisma/client"
 
 import { canCreateBrokerProperties } from "@/lib/eme-plan-service"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { PropertyStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { extractPropertyPublicCode, findPropertyByBrokerPublicCode, getNextPropertyPublicCode } from "@/lib/property-public-code"
@@ -162,22 +163,24 @@ export async function createPropertyDraftRecord(input: {
   if (draft.priceOutOfRange) {
     return {
       response: "O valor informado parece alto demais. Pode confirmar o valor do imóvel?",
-      metadata: {
-        required: ["price"],
-        noCharge: true,
+      metadata: createPendingInputMetadata({
+        field: "price",
+        action: "createPropertyDraft",
+        entity: "property",
         parsedData: draft,
-      },
+      }),
     }
   }
 
   if (!draft.price) {
     return {
       response: "Qual o valor do imóvel?",
-      metadata: {
-        required: ["price"],
-        noCharge: true,
+      metadata: createPendingInputMetadata({
+        field: "price",
+        action: "createPropertyDraft",
+        entity: "property",
         parsedData: draft,
-      },
+      }),
     }
   }
 

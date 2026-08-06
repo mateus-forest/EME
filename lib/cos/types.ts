@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client"
 
-import type { AssessorAction, PendingAssessorContext } from "@/lib/eme-backend"
+import type { AssessorAction } from "@/lib/eme-backend"
 
 export type CosCapabilityId =
   | "general.chat"
@@ -131,7 +131,6 @@ export type CosCapabilityExecutionInput = {
   action: AssessorAction
   confirm?: boolean
   payload?: Record<string, unknown>
-  pendingContext?: Partial<PendingAssessorContext>
   context?: CosNormalizedContext | null
   pendingInput?: CosPendingInput | null
 }
@@ -218,11 +217,11 @@ export type CosCapabilityPlanTelemetry = {
   source: CosCapabilityPlanSource
   reason: string
   fallbackUsed: boolean
-  pendingContextUsed: boolean
+  pendingInputUsed: boolean
   surface: CosCapabilitySurface
   resolutionMs: number
   requestedAction: string | null
-  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy"
   workspaceReceived: boolean
   workspacePage: string | null
   workspaceEntity: CosWorkspaceEntity | null
@@ -234,7 +233,7 @@ export type CosCapabilityPlanTelemetry = {
 export type CosCapabilityPlan = {
   action: AssessorAction
   payload: Record<string, unknown>
-  pendingContext: PendingAssessorContext | null
+  pendingInput: CosPendingInput | null
   context: CosNormalizedContext | null
   workspace: CosWorkspaceContext | null
   capability: CosCapabilityDefinition
@@ -243,7 +242,7 @@ export type CosCapabilityPlan = {
   confidence: number
   source: CosCapabilityPlanSource
   reason: string
-  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy"
   telemetry: CosCapabilityPlanTelemetry
 }
 
@@ -308,7 +307,7 @@ export type CosExecutionPlanTelemetry = {
   workspaceReceived: boolean
   workspaceEntity: CosWorkspaceEntity | null
   workspaceEntityId: string | null
-  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy"
   resolutionMs: number
   orchestrator: Prisma.InputJsonObject | null
 }
@@ -322,7 +321,7 @@ export type CosExecutionPlan = {
   requestedAction?: string
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
-  pendingContext: PendingAssessorContext | null
+  pendingInput: CosPendingInput | null
   context: CosNormalizedContext | null
   primaryStep: CosExecutionStep
   steps: CosExecutionStep[]

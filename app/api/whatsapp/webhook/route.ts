@@ -6,7 +6,6 @@ import {
   generateCorretorEmeReply,
   getAssessorActionErrorResponse,
   getAssessorVisualAction,
-  getPendingAssessorContext,
   inferCustomerIntent,
   searchBrokerProperties,
   type AssessorAction,
@@ -242,8 +241,8 @@ async function processAssessorMessage({
     }
   }
 
-  const pendingContext = await getPendingAssessorContext(brokerId)
-  const plan = planCosCapability({ message, pendingContext, surface: "whatsapp" })
+  const pendingInput = null
+  const plan = planCosCapability({ message, pendingInput, surface: "whatsapp" })
   const action = plan.action as AssessorAction
   const creditsUsed = getCosInteractionCreditCost([action])
   const creditState = await hasBrokerAiCredits(brokerId, creditsUsed)

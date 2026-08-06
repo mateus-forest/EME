@@ -3,6 +3,7 @@ import "server-only"
 import type { Prisma } from "@prisma/client"
 
 import { normalizeCosAttachments } from "@/lib/cos/attachment-pipeline"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { prisma } from "@/lib/prisma"
 
@@ -99,11 +100,12 @@ export function formatCurrency(value: number | null | undefined) {
 export function requiredSelectionResponse(entityLabel: string, field: string, metadata?: Prisma.InputJsonObject) {
   return {
     response: `Preciso saber qual ${entityLabel} devo usar para continuar.`,
-    metadata: {
-      required: [field],
-      noCharge: true,
-      ...(metadata ?? {}),
-    } satisfies Prisma.InputJsonObject,
+    metadata: createPendingInputMetadata({
+      field,
+      action: "general",
+      entity: "general",
+      extra: metadata ? (metadata as Record<string, unknown>) : undefined,
+    }),
   }
 }
 

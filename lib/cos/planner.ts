@@ -1,5 +1,3 @@
-import type { PendingAssessorContext } from "@/lib/eme-backend"
-
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
 import {
   getCosCapabilityDescriptorByAliasOrAction,
@@ -11,6 +9,7 @@ import type {
   CosCapabilityPlan,
   CosCapabilityPlanSource,
   CosNormalizedContext,
+  CosPendingInput,
   CosCapabilitySurface,
   CosEntityModuleId,
   CosWorkspaceContext,
@@ -411,8 +410,8 @@ function scoreCapability(
   }
 }
 
-function shouldContinuePendingContext(message: string, pendingContext: PendingAssessorContext | null) {
-  if (!pendingContext) return false
+function shouldContinuePendingInput(message: string, pendingInput: CosPendingInput | null) {
+  if (!pendingInput) return false
 
   const normalized = normalizeText(message)
   return (
@@ -443,12 +442,12 @@ function getDirectRequestedCatalogCandidate(input: {
 
 function getPendingCatalogCandidate(input: {
   message: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   surface: CosCapabilitySurface
 }) {
-  if (!shouldContinuePendingContext(input.message, input.pendingContext ?? null)) return null
+  if (!shouldContinuePendingInput(input.message, input.pendingInput ?? null)) return null
 
-  const descriptor = getCosCapabilityDescriptorByAliasOrAction(input.pendingContext?.action)
+  const descriptor = getCosCapabilityDescriptorByAliasOrAction(input.pendingInput?.action)
   if (!descriptor) return null
   if (!descriptor.surfaces.includes(input.surface)) return null
 
@@ -457,7 +456,7 @@ function getPendingCatalogCandidate(input: {
     confidence: 0.82,
     workspaceEntityUsed: null as CosWorkspaceEntity | null,
     workspaceEntityIdUsed: null as string | null,
-    reason: `continuidade do contexto pendente (${input.pendingContext?.missingField ?? "sem campo"})`,
+    reason: `continuidade do pending input (${input.pendingInput?.field ?? "sem campo"})`,
   }
 }
 
@@ -465,7 +464,7 @@ function pickCatalogCandidate(input: {
   message: string
   requestedAction?: string
   surface: CosCapabilitySurface
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   workspace?: CosWorkspaceContext | null
   context?: CosNormalizedContext | null
 }) {
@@ -502,9 +501,9 @@ function pickCatalogCandidate(input: {
 
   const clearByRequest = requestedMatch?.id === topCandidate.descriptor.id
   const clearByPending =
-    Boolean(input.pendingContext) &&
-    input.pendingContext?.action === topCandidate.descriptor.action &&
-    shouldContinuePendingContext(input.message, input.pendingContext ?? null)
+    Boolean(input.pendingInput) &&
+    input.pendingInput?.action === topCandidate.descriptor.action &&
+    shouldContinuePendingInput(input.message, input.pendingInput ?? null)
   const clearByWorkspace = Boolean(topCandidate.workspaceEntityUsed && confidence >= 0.52)
   const clearByScore = confidence >= 0.78 && margin >= 0.25
 
@@ -518,7 +517,7 @@ function pickCatalogCandidate(input: {
     workspaceEntityUsed: topCandidate.workspaceEntityUsed,
     workspaceEntityIdUsed: topCandidate.workspaceEntityIdUsed,
     reason: clearByPending
-      ? `continuidade do contexto pendente (${input.pendingContext?.missingField ?? "sem campo"})`
+      ? `continuidade do pending input (${input.pendingInput?.field ?? "sem campo"})`
       : clearByRequest
         ? `requestedAction mapeada para ${topCandidate.descriptor.id}`
         : `catalogo combinou ${topCandidate.reasons.join("; ")} com margem ${margin.toFixed(2)}`,
@@ -528,7 +527,7 @@ function pickCatalogCandidate(input: {
 export function planCosCapability(input: {
   message: string
   requestedAction?: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   context?: CosNormalizedContext | null
   intentConfidence?: number | null
   intentReason?: string | null
@@ -538,7 +537,7 @@ export function planCosCapability(input: {
   const startedAt = Date.now()
   const surface = input.context?.surface ?? input.surface ?? "portal"
   const workspace = input.context?.workspace ?? input.workspace ?? null
-  const pendingContext = input.pendingContext ?? null
+  const pendingInput = input.pendingInput ?? null
   const registryRequestedAction = getCosCapabilityDescriptorByAliasOrAction(input.requestedAction)?.action
   const directRequestedCandidate = getDirectRequestedCatalogCandidate({
     requestedAction: registryRequestedAction ?? input.requestedAction,
@@ -548,14 +547,14 @@ export function planCosCapability(input: {
   })
   const pendingCatalogCandidate = getPendingCatalogCandidate({
     message: input.message,
-    pendingContext,
+    pendingInput,
     surface,
   })
   const scoredCatalogCandidate = pickCatalogCandidate({
     message: input.message,
     requestedAction: input.requestedAction,
     surface,
-    pendingContext,
+    pendingInput,
     workspace,
     context: input.context ?? null,
   })
@@ -565,7 +564,6 @@ export function planCosCapability(input: {
   const resolvedAction = catalogCandidate?.descriptor.action ?? "general"
 
   const resolvedPayload = {
-    ...(usePendingContext && pendingContext ? { pendingContext } : {}),
     ...(workspace ? { workspace } : {}),
     ...(input.context ? { context: input.context } : {}),
   }
@@ -578,7 +576,7 @@ export function planCosCapability(input: {
     workspaceEntityUsed
       ? "workspace"
       : usePendingContext
-        ? "pending_context"
+        ? "pending_input"
         : resolvedSource === "catalog"
           ? "catalog"
           : "legacy"
@@ -594,7 +592,7 @@ export function planCosCapability(input: {
   const plan: CosCapabilityPlan = {
     action: resolvedAction,
     payload: resolvedPayload,
-    pendingContext,
+    pendingInput,
     context: input.context ?? null,
     workspace,
     capability,
@@ -611,7 +609,7 @@ export function planCosCapability(input: {
       source: resolvedSource,
       reason,
       fallbackUsed: false,
-      pendingContextUsed: Boolean(usePendingContext && pendingContext),
+      pendingInputUsed: Boolean(usePendingContext && pendingInput),
       surface,
       resolutionMs,
       requestedAction: input.requestedAction?.trim() || null,
@@ -631,7 +629,7 @@ export function planCosCapability(input: {
     source: resolvedSource,
     confidence,
     fallbackUsed: false,
-    pendingContextUsed: plan.telemetry.pendingContextUsed,
+    pendingInputUsed: plan.telemetry.pendingInputUsed,
     surface,
     resolutionMs,
     requestedAction: plan.telemetry.requestedAction,

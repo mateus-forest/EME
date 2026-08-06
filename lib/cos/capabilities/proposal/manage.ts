@@ -9,9 +9,9 @@ import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { firstImageUrl } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
-export const createProposalCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const createProposalCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const pendingData = pendingContext?.action === "CREATE_PROPOSAL" ? pendingContext.parsedData ?? {} : {}
+  const pendingData = pendingInput?.action === "CREATE_PROPOSAL" ? pendingInput.parsedData ?? {} : {}
 
   const [broker, leadResolution] = await Promise.all([
     prisma.broker.findUnique({
@@ -22,7 +22,7 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
       brokerId,
       message,
       payload: payloadRecord,
-      pendingField: pendingContext?.missingField ?? null,
+      pendingField: pendingInput?.field ?? null,
       pendingData,
       take: 4,
     }),
@@ -63,7 +63,7 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
     brokerId,
     message,
     payload: payloadRecord,
-    pendingField: pendingContext?.missingField ?? null,
+    pendingField: pendingInput?.field ?? null,
     pendingData: {
       ...pendingData,
       leadId: lead?.id ?? null,

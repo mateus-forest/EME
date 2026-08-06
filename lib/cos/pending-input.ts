@@ -91,7 +91,6 @@ export function createPendingInputMetadata(input: {
   })
 
   return {
-    required: [input.field],
     noCharge: input.noCharge ?? true,
     parsedData: pendingInput.parsedData,
     pendingInput,
@@ -117,20 +116,7 @@ export function extractPendingInputFromMetadata(input: {
       options: parseOptions(explicit.options),
     })
   }
-
-  const required = Array.isArray(metadata.required) ? metadata.required : []
-  const field = typeof required[0] === "string" ? required[0] : ""
-  if (!field) return null
-
-  const parsedData = asRecord(metadata.parsedData)
-  const fallbackOptions = parseOptions(parsedData.options ?? metadata.options)
-  return createPendingInput({
-    field,
-    action: input.action,
-    entity: input.entity,
-    parsedData,
-    options: fallbackOptions,
-  })
+  return null
 }
 
 export function isAwaitingInputResult(result: CosActionResult) {

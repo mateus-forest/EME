@@ -10,8 +10,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
-import type { PendingAssessorContext } from "@/lib/eme-backend"
-import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosExecutionPlanGap, CosNormalizedContext, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
+import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosExecutionPlanGap, CosNormalizedContext, CosPendingInput, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
 
 const aiPlanStepSchema = z.object({
   id: z.string().trim().min(1).max(40),
@@ -114,13 +113,14 @@ function buildWorkspaceSummary(workspace: CosWorkspaceContext | null) {
   }
 }
 
-function buildPendingSummary(pendingContext: PendingAssessorContext | null | undefined) {
-  if (!pendingContext) return null
+function buildPendingSummary(pendingInput: CosPendingInput | null | undefined) {
+  if (!pendingInput) return null
   return {
-    action: pendingContext.action,
-    missingField: pendingContext.missingField,
-    parsedData: pendingContext.parsedData,
-    createdAt: pendingContext.createdAt.toISOString(),
+    action: pendingInput.action,
+    field: pendingInput.field,
+    type: pendingInput.type,
+    entity: pendingInput.entity,
+    parsedData: pendingInput.parsedData,
   }
 }
 
@@ -128,7 +128,7 @@ function buildPlannerPrompt(input: {
   message: string
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
-  pendingContext: PendingAssessorContext | null
+  pendingInput: CosPendingInput | null
   activeWorkflowSummary?: Record<string, unknown> | null
   capabilities: ReturnType<typeof summarizeCapabilities>
 }) {
@@ -143,7 +143,7 @@ function buildPlannerPrompt(input: {
     `Mensagem do usuario: ${input.message}`,
     `Surface atual: ${input.surface}`,
     `Workspace Context: ${JSON.stringify(buildWorkspaceSummary(input.workspace))}`,
-    `Pending Context: ${JSON.stringify(buildPendingSummary(input.pendingContext))}`,
+    `Pending Input: ${JSON.stringify(buildPendingSummary(input.pendingInput))}`,
     `Workflow ativo: ${JSON.stringify(input.activeWorkflowSummary ?? null)}`,
     "",
     "Capabilities disponiveis:",
@@ -233,14 +233,14 @@ function shouldTryAiOrchestrator(input: {
   surface: CosCapabilitySurface
   requestedAction?: string
   workspace: CosWorkspaceContext | null
-  pendingContext: PendingAssessorContext | null
+  pendingInput: CosPendingInput | null
   context?: CosNormalizedContext | null
   primaryCapabilityId: CosCapabilityId
   primarySource: "catalog" | "legacy" | "ai"
   primaryConfidence: number
   recipeMatched: boolean
 }) {
-  if (input.pendingContext) return { shouldTry: false, triggerReason: null }
+  if (input.pendingInput) return { shouldTry: false, triggerReason: null }
   if (input.recipeMatched) return { shouldTry: false, triggerReason: null }
   if (input.requestedAction) return { shouldTry: false, triggerReason: null }
 
@@ -278,7 +278,7 @@ export async function generateCosAiExecutionPlan(input: {
   message: string
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
-  pendingContext: PendingAssessorContext | null
+  pendingInput: CosPendingInput | null
   context?: CosNormalizedContext | null
   activeWorkflowSummary?: Record<string, unknown> | null
   triggerReason: string
@@ -291,7 +291,7 @@ export async function generateCosAiExecutionPlan(input: {
     message: input.message,
     surface: input.surface,
     workspace: input.workspace,
-    pendingContext: input.pendingContext,
+    pendingInput: input.pendingInput,
     activeWorkflowSummary: input.activeWorkflowSummary,
     capabilities,
   })

@@ -16,9 +16,9 @@ import {
 } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
-export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
-  if (pendingContext?.action === "CREATE_AGENDA_EVENT" && pendingContext.missingField === "time") {
-    const parsedData = pendingContext.parsedData ?? {}
+export const createAgendaCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
+  if (pendingInput?.action === "CREATE_AGENDA_EVENT" && pendingInput.field === "time") {
+    const parsedData = pendingInput.parsedData ?? {}
     const time = parseAgendaTime(message)
     if (!time) {
       return {

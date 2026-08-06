@@ -18,14 +18,14 @@ export const createPropertyDraftCapability: CosCapabilityHandler = async ({ brok
   })
 }
 
-export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerId, message, pendingContext }) => {
-  if (pendingContext?.action === "searchProperties" && pendingContext.missingField === "propertyChoice") {
+export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerId, message, pendingInput }) => {
+  if (pendingInput?.action === "searchProperties" && pendingInput.field === "propertyChoice") {
     const resolution = await resolvePropertyEntity({
       brokerId,
       message,
       payload: {},
       pendingField: "propertyChoice",
-      pendingData: pendingContext.parsedData ?? {},
+      pendingData: pendingInput.parsedData ?? {},
       take: 1,
     })
 

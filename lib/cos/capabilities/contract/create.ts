@@ -21,16 +21,16 @@ function inferContractKind(message: string) {
   return "Compra e venda"
 }
 
-export const createContractCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const createContractCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const pendingData = pendingContext?.action === "CREATE_CONTRACT" ? pendingContext.parsedData ?? {} : {}
+  const pendingData = pendingInput?.action === "CREATE_CONTRACT" ? pendingInput.parsedData ?? {} : {}
   const contractKind = inferContractKind(message)
 
   const leadResolution = await resolveLeadEntity({
     brokerId,
     message,
     payload: payloadRecord,
-    pendingField: pendingContext?.missingField ?? null,
+    pendingField: pendingInput?.field ?? null,
     pendingData: { ...pendingData, contractKind },
     take: 4,
   })
@@ -72,7 +72,7 @@ export const createContractCapability: CosCapabilityHandler = async ({ brokerId,
     brokerId,
     message,
     payload: payloadRecord,
-    pendingField: pendingContext?.missingField ?? null,
+    pendingField: pendingInput?.field ?? null,
     pendingData: {
       ...pendingData,
       contractKind,

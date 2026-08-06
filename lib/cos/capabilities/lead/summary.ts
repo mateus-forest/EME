@@ -20,8 +20,8 @@ function parseLeadStatusFromText(message: string): LeadStatus {
   return LeadStatus.NEW
 }
 
-export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
-  const pendingLeadData = pendingContext?.action === "createLead" ? pendingContext.parsedData ?? {} : {}
+export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
+  const pendingLeadData = pendingInput?.action === "createLead" ? pendingInput.parsedData ?? {} : {}
   const extracted = extractClientIdentity(message)
   const name =
     cleanText(payload?.name, 120) ||

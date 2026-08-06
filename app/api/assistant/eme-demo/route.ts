@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     const plan = planCosCapability({
       message,
       requestedAction: modeActionMap[mode],
-      pendingContext: null,
+      pendingInput: null,
       surface: "demo",
     })
 

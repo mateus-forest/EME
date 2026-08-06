@@ -13,7 +13,6 @@ import type {
   CosWorkflowStatus,
   CosWorkspaceContext,
 } from "@/lib/cos/types"
-import type { PendingAssessorContext } from "@/lib/eme-backend"
 
 type ConversationEnvelope = {
   workflow: CosWorkflow | null
@@ -74,24 +73,12 @@ function buildPendingInput(input: {
   })
 }
 
-function buildPendingContextFromWorkflow(workflow: CosWorkflow): PendingAssessorContext | null {
-  if (!workflow.pendingInput) return null
-  return {
-    action: workflow.pendingInput.action,
-    missingField: workflow.pendingInput.field,
-    parsedData: workflow.pendingInput.parsedData,
-    createdAt: new Date(workflow.updatedAt),
-  }
-}
-
 function buildResumePayload(input: {
   workflow: CosWorkflow
   message: string
   workspace: CosWorkspaceContext | null
 }) {
   const payload: Record<string, unknown> = {}
-  const pendingContext = buildPendingContextFromWorkflow(input.workflow)
-  if (pendingContext) payload.pendingContext = pendingContext
   if (input.workspace) payload.workspace = input.workspace
 
   const pendingInput = input.workflow.pendingInput
@@ -150,7 +137,7 @@ function hydrateStep(step: CosWorkflow["steps"][number], workflow: CosWorkflow):
     capabilityId: step.capabilityId,
     message: workflow.executionPlan.message,
     requestedAction: workflow.executionPlan.requestedAction,
-    pendingContext: buildPendingContextFromWorkflow(workflow),
+    pendingInput: workflow.pendingInput,
     surface: workflow.executionPlan.surface,
     workspace: workflow.executionPlan.workspace,
     planId: workflow.executionPlan.id,
@@ -256,7 +243,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
     requestedAction: workflow.executionPlan.requestedAction,
     surface: workflow.executionPlan.surface,
     workspace: workflow.executionPlan.workspace,
-    pendingContext: buildPendingContextFromWorkflow(workflow),
+    pendingInput: workflow.pendingInput,
     context: null,
     primaryStep,
     steps,
@@ -328,35 +315,12 @@ export function updateWorkflowFromExecutionResult(input: {
   const now = new Date().toISOString()
   const interruptedStep = input.result.interruptedStep
   const completedAt = input.result.status === "completed" ? now : null
-  const pendingField =
-    interruptedStep && interruptedStep.result
-      ? Array.isArray(interruptedStep.result.metadata?.required)
-        ? typeof interruptedStep.result.metadata.required[0] === "string"
-          ? interruptedStep.result.metadata.required[0]
-          : ""
-        : ""
-      : ""
-  const pendingParsedData = recordValue(interruptedStep?.result?.metadata?.parsedData)
-  const fallbackParsedData = recordValue(interruptedStep?.result?.metadata)
-  const parsedData =
-    Object.keys(pendingParsedData).length > 0
-      ? pendingParsedData
-      : interruptedStep?.result?.metadata && "extractedName" in interruptedStep.result.metadata
-        ? fallbackParsedData
-        : {}
-
   const pendingInput =
     input.result.status === "awaiting_input" && interruptedStep
       ? extractPendingInputFromMetadata({
           metadata: interruptedStep.result?.metadata,
           action: interruptedStep.action,
           entity: interruptedStep.entity,
-        }) ??
-        buildPendingInput({
-          field: pendingField || "input",
-          action: interruptedStep.action,
-          entity: interruptedStep.entity,
-          parsedData,
         })
       : null
 

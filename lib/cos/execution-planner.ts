@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto"
 
-import type { AssessorAction, PendingAssessorContext } from "@/lib/eme-backend"
+import type { AssessorAction } from "@/lib/eme-backend"
 
 import { buildRejectedAiPlanGoal, evaluateAiOrchestratorTrigger, generateCosAiExecutionPlan, type CosAiOrchestratorAudit } from "@/lib/cos/ai-orchestrator"
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
@@ -11,6 +11,7 @@ import type {
   CosCapabilityPlan,
   CosCapabilityPlanSource,
   CosNormalizedContext,
+  CosPendingInput,
   CosCapabilitySurface,
   CosEntityModuleId,
   CosExecutionPlan,
@@ -136,7 +137,7 @@ export function createStepPlanForCapability(input: {
   capabilityId: CosCapabilityId
   message: string
   requestedAction?: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   context?: CosNormalizedContext | null
   surface: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
@@ -157,16 +158,15 @@ export function createStepPlanForCapability(input: {
   const entity = getCosEntityModuleIdByCapabilityId(capability.id) ?? ("general" as CosEntityModuleId)
   const workspaceEntityUsed = getWorkspaceEntity(input.workspace ?? null)
   const workspaceEntityIdUsed = getWorkspaceEntityId(input.workspace ?? null)
-  const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
+  const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
     workspaceEntityUsed
       ? "workspace"
-      : input.pendingContext
-        ? "pending_context"
+      : input.pendingInput
+        ? "pending_input"
         : input.source === "legacy"
           ? "legacy"
           : "catalog"
   const payload = {
-    ...(input.pendingContext ? { pendingContext: input.pendingContext } : {}),
     ...(input.workspace ? { workspace: input.workspace } : {}),
     ...(input.context ? { context: input.context } : {}),
   }
@@ -179,7 +179,7 @@ export function createStepPlanForCapability(input: {
     source: stepSource,
     reason: `${input.reason} [step ${input.order + 1}]`,
     fallbackUsed: stepSource === "legacy",
-    pendingContextUsed: Boolean(input.pendingContext),
+    pendingInputUsed: Boolean(input.pendingInput),
     surface: input.surface,
     resolutionMs: 0,
     requestedAction: input.requestedAction?.trim() || null,
@@ -195,7 +195,7 @@ export function createStepPlanForCapability(input: {
   const plan: CosCapabilityPlan = {
     action: descriptor.action,
     payload,
-    pendingContext: input.pendingContext ?? null,
+    pendingInput: input.pendingInput ?? null,
     context: input.context ?? null,
     workspace: input.workspace ?? null,
     capability,
@@ -253,7 +253,7 @@ function buildTelemetry(input: {
   requestedAction?: string
   message: string
   workspace: CosWorkspaceContext | null
-  contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy"
+  contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy"
   resolutionMs: number
   orchestrator: CosAiOrchestratorAudit | null
 }): CosExecutionPlanTelemetry {
@@ -289,7 +289,7 @@ function buildSingleExecutionPlan(input: {
   capabilityPlan: CosCapabilityPlan
   message: string
   requestedAction?: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   context?: CosNormalizedContext | null
   intentConfidence?: number | null
   intentReason?: string | null
@@ -315,7 +315,7 @@ function buildSingleExecutionPlan(input: {
   }
 
   const resolutionMs = Date.now() - input.startedAt
-  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingContext)
+  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingInput)
   const requiresConfirmation = shouldRequireConfirmation(step.action) || requiresIntentConfirmation
   return {
     id: planId,
@@ -326,7 +326,7 @@ function buildSingleExecutionPlan(input: {
     requestedAction: input.requestedAction,
     surface: input.surface,
     workspace: input.workspace ?? null,
-    pendingContext: input.pendingContext ?? null,
+    pendingInput: input.pendingInput ?? null,
     context: input.context ?? null,
     primaryStep: step,
     steps: [step],
@@ -361,7 +361,7 @@ function buildSingleExecutionPlan(input: {
 function buildRecipeExecutionPlan(input: {
   message: string
   requestedAction?: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   context?: CosNormalizedContext | null
   intentConfidence?: number | null
   intentReason?: string | null
@@ -378,7 +378,7 @@ function buildRecipeExecutionPlan(input: {
       capabilityId,
       message: input.message,
       requestedAction: input.requestedAction,
-      pendingContext: input.pendingContext,
+      pendingInput: input.pendingInput,
       context: input.context,
       surface: input.surface,
       workspace: input.workspace,
@@ -388,14 +388,14 @@ function buildRecipeExecutionPlan(input: {
     }),
   )
 
-  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingContext)
+  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingInput)
   const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
-  const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
+  const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)
       ? "workspace"
-      : input.pendingContext
-        ? "pending_context"
+      : input.pendingInput
+        ? "pending_input"
         : "catalog"
 
   const plan: CosExecutionPlan = {
@@ -407,7 +407,7 @@ function buildRecipeExecutionPlan(input: {
     requestedAction: input.requestedAction,
     surface: input.surface,
     workspace: input.workspace,
-    pendingContext: input.pendingContext ?? null,
+    pendingInput: input.pendingInput ?? null,
     context: input.context ?? null,
     primaryStep: steps[0],
     steps,
@@ -459,7 +459,7 @@ function buildRecipeExecutionPlan(input: {
 function buildAiExecutionPlan(input: {
   message: string
   requestedAction?: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   context?: CosNormalizedContext | null
   intentConfidence?: number | null
   intentReason?: string | null
@@ -475,7 +475,7 @@ function buildAiExecutionPlan(input: {
       capabilityId: step.capability as CosCapabilityId,
       message: input.message,
       requestedAction: input.requestedAction,
-      pendingContext: input.pendingContext,
+      pendingInput: input.pendingInput,
       context: input.context,
       surface: input.surface,
       workspace: input.workspace,
@@ -489,14 +489,14 @@ function buildAiExecutionPlan(input: {
     }),
   )
 
-  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingContext)
+  const requiresIntentConfirmation = Boolean(input.requestedAction && typeof input.intentConfidence === "number" && input.intentConfidence < 0.76 && !input.pendingInput)
   const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
-  const contextOrigin: "workspace" | "pending_context" | "catalog" | "legacy" =
+  const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)
       ? "workspace"
-      : input.pendingContext
-        ? "pending_context"
+      : input.pendingInput
+        ? "pending_input"
         : "catalog"
 
   return {
@@ -508,7 +508,7 @@ function buildAiExecutionPlan(input: {
     requestedAction: input.requestedAction,
     surface: input.surface,
     workspace: input.workspace,
-    pendingContext: input.pendingContext ?? null,
+    pendingInput: input.pendingInput ?? null,
     context: input.context ?? null,
     primaryStep: steps[0],
     steps,
@@ -546,7 +546,7 @@ function buildAiExecutionPlan(input: {
 export async function planCosExecution(input: {
   message: string
   requestedAction?: string
-  pendingContext?: PendingAssessorContext | null
+  pendingInput?: CosPendingInput | null
   surface?: CosCapabilitySurface
   workspace?: CosWorkspaceContext | null
   activeWorkflow?: CosWorkflow | null
@@ -559,12 +559,12 @@ export async function planCosExecution(input: {
   const startedAt = Date.now()
   const surface = input.surface ?? "portal"
   const workspace = input.workspace ?? null
-  const pendingContext = input.pendingContext ?? null
+  const pendingInput = input.pendingInput ?? null
   const normalizedMessage = normalizeText(input.message)
   const primaryCapabilityPlan = planCosCapability({
     message: input.message,
     requestedAction: input.requestedAction,
-    pendingContext,
+    pendingInput,
     context: input.context ?? null,
     intentConfidence: input.intentConfidence ?? null,
     intentReason: input.intentReason ?? null,
@@ -577,7 +577,7 @@ export async function planCosExecution(input: {
     return buildRecipeExecutionPlan({
       message: input.message,
       requestedAction: input.requestedAction,
-      pendingContext,
+      pendingInput,
       context: input.context ?? null,
       intentConfidence: input.intentConfidence ?? null,
       intentReason: input.intentReason ?? null,
@@ -593,7 +593,7 @@ export async function planCosExecution(input: {
     surface,
     requestedAction: input.requestedAction,
     workspace,
-    pendingContext,
+    pendingInput,
     context: input.context ?? null,
     primaryCapabilityId: primaryCapabilityPlan.capabilityId,
     primarySource: primaryCapabilityPlan.source,
@@ -606,7 +606,7 @@ export async function planCosExecution(input: {
       capabilityPlan: primaryCapabilityPlan,
       message: input.message,
       requestedAction: input.requestedAction,
-      pendingContext,
+      pendingInput,
       context: input.context ?? null,
       intentConfidence: input.intentConfidence ?? null,
       intentReason: input.intentReason ?? null,
@@ -621,7 +621,7 @@ export async function planCosExecution(input: {
     message: input.message,
     surface,
     workspace,
-    pendingContext,
+    pendingInput,
     context: input.context ?? null,
     activeWorkflowSummary: summarizeActiveWorkflow(input.activeWorkflow ?? null),
     triggerReason: aiTrigger.triggerReason ?? "deterministic_fallback",
@@ -632,7 +632,7 @@ export async function planCosExecution(input: {
     const plan = buildAiExecutionPlan({
       message: input.message,
       requestedAction: input.requestedAction,
-      pendingContext,
+      pendingInput,
       context: input.context ?? null,
       intentConfidence: input.intentConfidence ?? null,
       intentReason: input.intentReason ?? null,
@@ -671,7 +671,7 @@ export async function planCosExecution(input: {
     capabilityPlan: fallbackCapabilityPlan,
     message: input.message,
     requestedAction: input.requestedAction,
-    pendingContext,
+    pendingInput,
     context: input.context ?? null,
     intentConfidence: input.intentConfidence ?? null,
     intentReason: input.intentReason ?? null,

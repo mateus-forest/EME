@@ -4,6 +4,7 @@ import { LeadStatus } from "@/lib/prisma-enums"
 
 import { prisma } from "@/lib/prisma"
 import { detectNamedClientReference, detectNamedClientReferenceForDeletion } from "@/lib/cos/entity-extraction"
+import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
 import { parseEntityDocuments, type EntityDocumentRecord } from "@/lib/legal-entities"
 
@@ -110,12 +111,12 @@ async function finalizeLeadDeletion(brokerId: string, leadId: string, fallbackNa
 // AiAssistantInteraction.leadId isn't even a real FK — so a direct delete can't strand a
 // constraint or orphan a row. Same three-phase confirm pattern as attachLeadDocumentCapability:
 // resolve by name (0/1/>1), confirm with the exact resolved name, only mutate on the "sim".
-export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingContext }) => {
+export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingInput }) => {
   // Terceiro turno: usuario confirmou a exclusao. leadId/leadName ja foram resolvidos em
-  // turnos anteriores e voltam intactos via pendingContext.parsedData — exclui de verdade agora.
-  if (pendingContext?.action === "DELETE_LEAD" && pendingContext.missingField === "confirmation" && pendingContext.parsedData) {
-    const pendingLeadId = typeof pendingContext.parsedData.leadId === "string" ? pendingContext.parsedData.leadId : ""
-    const pendingLeadName = typeof pendingContext.parsedData.leadName === "string" ? pendingContext.parsedData.leadName : "Cliente sem nome"
+  // turnos anteriores e voltam intactos via pendingInput.parsedData — exclui de verdade agora.
+  if (pendingInput?.action === "DELETE_LEAD" && pendingInput.field === "confirmation" && pendingInput.parsedData) {
+    const pendingLeadId = typeof pendingInput.parsedData.leadId === "string" ? pendingInput.parsedData.leadId : ""
+    const pendingLeadName = typeof pendingInput.parsedData.leadName === "string" ? pendingInput.parsedData.leadName : "Cliente sem nome"
     if (pendingLeadId) {
       return finalizeLeadDeletion(brokerId, pendingLeadId, pendingLeadName)
     }
@@ -124,8 +125,8 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
   // Segundo turno (so quando havia ambiguidade): usuario respondeu qual cliente quis dizer.
   // Reaproveita a mesma resolucao de candidato por ordinal/substring ja usada no anexo de
   // documento — nao grava nada ainda, so avanca para a confirmacao final.
-  if (pendingContext?.action === "DELETE_LEAD" && pendingContext.missingField === "lead" && pendingContext.parsedData) {
-    const pendingCandidates = pendingContext.parsedData.candidates
+  if (pendingInput?.action === "DELETE_LEAD" && pendingInput.field === "lead" && pendingInput.parsedData) {
+    const pendingCandidates = pendingInput.parsedData.candidates
     if (isLeadDocumentCandidateArray(pendingCandidates)) {
       const chosen = resolveLeadDocumentCandidateChoice(message, pendingCandidates)
       if (!chosen) {
@@ -137,12 +138,13 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
 
       return {
         response: `Encontrei o cliente ${chosen.name}. Essa exclusão é permanente e não pode ser desfeita. Confirma?`,
-        metadata: {
-          required: ["confirmation"],
-          noCharge: true,
-          matchedByName: true,
+        metadata: createPendingInputMetadata({
+          field: "confirmation",
+          action: "DELETE_LEAD",
+          entity: "lead",
           parsedData: { leadId: chosen.id, leadName: chosen.name },
-        },
+          extra: { matchedByName: true },
+        }),
       }
     }
   }
@@ -183,16 +185,19 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
   if (matches.length > 1) {
     return {
       response: `Encontrei ${matches.length} clientes com esse nome: ${matches.map((candidate) => candidate.name).join(", ")}. Qual deles devo excluir?`,
-      metadata: {
-        required: ["lead"],
-        noCharge: true,
-        matchedByName: true,
-        ambiguous: true,
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "DELETE_LEAD",
+        entity: "lead",
         parsedData: {
           candidates: matches,
           options: matches.map((candidate) => ({ id: candidate.id, label: candidate.name })),
         },
-      },
+        extra: {
+          matchedByName: true,
+          ambiguous: true,
+        },
+      }),
     }
   }
 
@@ -200,12 +205,13 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
 
   return {
     response: `Encontrei o cliente ${target.name}. Essa exclusão é permanente e não pode ser desfeita. Confirma?`,
-    metadata: {
-      required: ["confirmation"],
-      noCharge: true,
-      matchedByName: true,
+    metadata: createPendingInputMetadata({
+      field: "confirmation",
+      action: "DELETE_LEAD",
+      entity: "lead",
       parsedData: { leadId: target.id, leadName: target.name },
-    },
+      extra: { matchedByName: true },
+    }),
   }
 }
 
@@ -395,12 +401,12 @@ async function finalizeLeadDocumentAttachment(brokerId: string, leadId: string, 
   }
 }
 
-export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingContext }) => {
+export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingInput }) => {
   // Terceiro turno: usuario confirmou. leadId e record ja foram resolvidos e validados
-  // em turnos anteriores e voltam intactos via pendingContext.parsedData — nao re-resolve nada.
-  if (pendingContext?.action === "ATTACH_LEAD_DOCUMENT" && pendingContext.missingField === "confirmation" && pendingContext.parsedData) {
-    const pendingLeadId = typeof pendingContext.parsedData.leadId === "string" ? pendingContext.parsedData.leadId : ""
-    const pendingRecord = pendingContext.parsedData.record
+  // em turnos anteriores e voltam intactos via pendingInput.parsedData — nao re-resolve nada.
+  if (pendingInput?.action === "ATTACH_LEAD_DOCUMENT" && pendingInput.field === "confirmation" && pendingInput.parsedData) {
+    const pendingLeadId = typeof pendingInput.parsedData.leadId === "string" ? pendingInput.parsedData.leadId : ""
+    const pendingRecord = pendingInput.parsedData.record
     if (pendingLeadId && isEntityDocumentRecordLike(pendingRecord)) {
       return finalizeLeadDocumentAttachment(brokerId, pendingLeadId, pendingRecord)
     }
@@ -408,9 +414,9 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
 
   // Segundo turno (so quando havia ambiguidade): usuario respondeu qual cliente quis dizer.
   // Resolve a escolha entre os candidatos salvos e pede confirmacao final — ainda nao grava.
-  if (pendingContext?.action === "ATTACH_LEAD_DOCUMENT" && pendingContext.missingField === "lead" && pendingContext.parsedData) {
-    const pendingCandidates = pendingContext.parsedData.candidates
-    const pendingRecord = pendingContext.parsedData.record
+  if (pendingInput?.action === "ATTACH_LEAD_DOCUMENT" && pendingInput.field === "lead" && pendingInput.parsedData) {
+    const pendingCandidates = pendingInput.parsedData.candidates
+    const pendingRecord = pendingInput.parsedData.record
     if (isLeadDocumentCandidateArray(pendingCandidates) && isEntityDocumentRecordLike(pendingRecord)) {
       const chosen = resolveLeadDocumentCandidateChoice(message, pendingCandidates)
       if (!chosen) {
@@ -422,12 +428,13 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
 
       return {
         response: `Encontrei o cliente ${chosen.name}. Posso anexar o documento "${pendingRecord.name}" a ele? Deseja confirmar?`,
-        metadata: {
-          required: ["confirmation"],
-          noCharge: true,
-          matchedByName: true,
+        metadata: createPendingInputMetadata({
+          field: "confirmation",
+          action: "ATTACH_LEAD_DOCUMENT",
+          entity: "lead",
           parsedData: { leadId: chosen.id, record: pendingRecord },
-        },
+          extra: { matchedByName: true },
+        }),
       }
     }
   }
@@ -477,17 +484,20 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
     const candidates: LeadDocumentCandidate[] = matches.map((item) => ({ id: item.id, name: item.name ?? "Sem nome" }))
     return {
       response: `Encontrei ${matches.length} clientes chamados "${namedClientReference}": ${candidates.map((candidate) => candidate.name).join(", ")}. Qual deles devo usar?`,
-      metadata: {
-        required: ["lead"],
-        noCharge: true,
-        matchedByName: true,
-        ambiguous: true,
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "ATTACH_LEAD_DOCUMENT",
+        entity: "lead",
         parsedData: {
           candidates,
           record,
           options: candidates.map((candidate) => ({ id: candidate.id, label: candidate.name })),
         },
-      },
+        extra: {
+          matchedByName: true,
+          ambiguous: true,
+        },
+      }),
     }
   }
 
@@ -495,12 +505,13 @@ export const attachLeadDocumentCapability: CosCapabilityHandler = async ({ broke
 
   return {
     response: `Encontrei o cliente ${lead.name ?? namedClientReference}. Posso anexar o documento "${record.name}" a ele? Deseja confirmar?`,
-    metadata: {
-      required: ["confirmation"],
-      noCharge: true,
-      matchedByName: true,
+    metadata: createPendingInputMetadata({
+      field: "confirmation",
+      action: "ATTACH_LEAD_DOCUMENT",
+      entity: "lead",
       parsedData: { leadId: lead.id, record },
-    },
+      extra: { matchedByName: true },
+    }),
   }
 }
 

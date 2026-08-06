@@ -32,14 +32,14 @@ async function resolveStudioPropertyInput(input: {
   brokerId: string
   payload: Record<string, unknown>
   message: string
-  pendingContext?: CosCapabilityExecutionInput["pendingContext"]
+  pendingInput?: CosCapabilityExecutionInput["pendingInput"]
 }) {
   const resolution = await resolvePropertyEntity({
     brokerId: input.brokerId,
     payload: input.payload,
     message: input.message,
-    pendingField: input.pendingContext?.missingField,
-    pendingData: input.pendingContext?.parsedData ?? {},
+    pendingField: input.pendingInput?.field,
+    pendingData: input.pendingInput?.parsedData ?? {},
     take: 5,
   })
 
@@ -135,9 +135,9 @@ async function createDeterministicStudioCampaign(input: {
   })
 }
 
-export const studioGenerateDescriptionCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const studioGenerateDescriptionCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
+  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
   if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
@@ -178,9 +178,9 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
   }
 }
 
-export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
+  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
   if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
@@ -224,9 +224,9 @@ export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ b
   }
 }
 
-export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
+  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
   if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
@@ -273,9 +273,9 @@ export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ 
   }
 }
 
-export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
+  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
   if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
@@ -289,9 +289,9 @@ export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ b
   }
 }
 
-export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
+  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
   if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
@@ -327,9 +327,9 @@ export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brok
   }
 }
 
-export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingContext }) => {
+export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
-  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingContext })
+  const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
   if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
   const property = resolved.property
 
