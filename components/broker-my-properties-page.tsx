@@ -25,7 +25,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
 type EditableProperty = {
@@ -51,6 +50,13 @@ type EditableProperty = {
 
 const propertyDocumentLabels = ["Matrícula", "Escritura", "IPTU", "Planta", "Convenção", "Outros"]
 
+const propertyStatuses = ["Publicado", "Rascunho", "Pausado"] as const
+
+function getPlanDisplayName(planName: string | null | undefined) {
+  if (!planName) return "seu plano atual"
+  return planName.replace(/^Plano EME\s+/i, "").replace(/^Plano\s+/i, "").trim()
+}
+
 export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyId?: string }) {
   const router = useRouter()
   const { profile } = useBrokerProfile()
@@ -66,7 +72,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
   const [search, setSearch] = useState("")
-  const [statusFilters, setStatusFilters] = useState<Array<Property["status"]>>(["Publicado", "Rascunho", "Pausado"])
+  const [statusFilters, setStatusFilters] = useState<Array<Property["status"]>>([...propertyStatuses])
   const allPropertyTypes: Array<Property["type"]> = ["Casa", "Apartamento", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]
   const [typeFilters, setTypeFilters] = useState<Array<Property["type"]>>(allPropertyTypes)
   const [priceFilters, setPriceFilters] = useState<string[]>(["low", "mid", "high"])
@@ -82,10 +88,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
     [properties],
   )
-  const hasReachedLimit =
-    subscription.isProfileResolved &&
-    !subscription.isUpgraded &&
-    activePropertiesCount >= (subscription.propertyLimit ?? 5)
+  const propertyLimit = subscription.propertyLimit ?? 5
+  const hasReachedLimit = subscription.isProfileResolved && activePropertiesCount >= propertyLimit
+  const currentPlanName = getPlanDisplayName(subscription.planName)
+  const propertyLimitMessage = `Você atingiu o limite de ${propertyLimit} imóveis ativos do plano ${currentPlanName}.`
+  const propertyLimitDescription = "Faça upgrade para publicar novos imóveis e desbloquear mais capacidade na sua operação."
   const normalizedSearch = search.trim().toLowerCase()
   const filteredProperties = useMemo(
     () =>
@@ -156,7 +163,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
 
   function clearFilters() {
     setSearch("")
-    setStatusFilters(["Publicado", "Rascunho", "Pausado"])
+    setStatusFilters([...propertyStatuses])
     setTypeFilters(allPropertyTypes)
     setPriceFilters(["low", "mid", "high"])
   }
@@ -169,11 +176,9 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     setIsEditModalOpen(open)
     if (!open) {
       router.push("/corretor/imoveis")
-      setTimeout(() => {
-        setEditingProperty(null)
-        setSaveFeedback("")
-        setAiHighlights([])
-      }, 150)
+      setEditingProperty(null)
+      setSaveFeedback("")
+      setAiHighlights([])
     }
   }
 
@@ -338,8 +343,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     }
   }
 
-  async function togglePropertyStatus(property: Property) {
-    const nextStatus = property.status === "Publicado" ? "Rascunho" : "Publicado"
+  async function changePropertyStatus(property: Property, nextStatus: Property["status"]) {
     try {
       await publishProperty(property.id, nextStatus)
       setListFeedback(nextStatus === "Publicado" ? "Imóvel publicado com sucesso." : "Imóvel movido para rascunho.")
@@ -357,6 +361,29 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
       await publishProperty(editingProperty.id, nextStatus)
       updateField("status", nextStatus)
       setSaveFeedback(nextStatus === "Publicado" ? "Imóvel publicado com sucesso." : "Imóvel movido para rascunho.")
+    } catch (caughtError) {
+      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
+    }
+  }
+
+  async function applyCardStatus(property: Property, nextStatus: Property["status"]) {
+    try {
+      await publishProperty(property.id, nextStatus)
+      setListFeedback(`Status atualizado para ${nextStatus.toLowerCase()}.`)
+      window.setTimeout(() => setListFeedback(""), 2500)
+    } catch (caughtError) {
+      setListFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
+      window.setTimeout(() => setListFeedback(""), 2500)
+    }
+  }
+
+  async function applyEditingStatus(nextStatus: EditableProperty["status"]) {
+    if (!editingProperty) return
+
+    try {
+      await publishProperty(editingProperty.id, nextStatus)
+      updateField("status", nextStatus)
+      setSaveFeedback(`Status atualizado para ${nextStatus.toLowerCase()}.`)
     } catch (caughtError) {
       setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
     }
@@ -437,9 +464,16 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-72 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
               <DropdownMenuLabel className="text-[#6B7280]">Status</DropdownMenuLabel>
-              <DropdownMenuCheckboxItem checked={statusFilters.includes("Publicado")} onCheckedChange={() => toggleFilter("Publicado", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Publicado</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={statusFilters.includes("Rascunho")} onCheckedChange={() => toggleFilter("Rascunho", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Rascunho</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={statusFilters.includes("Pausado")} onCheckedChange={() => toggleFilter("Pausado", statusFilters, setStatusFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Pausado</DropdownMenuCheckboxItem>
+              {propertyStatuses.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={statusFilters.includes(status)}
+                  onCheckedChange={() => toggleFilter(status, statusFilters, setStatusFilters)}
+                  className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]"
+                >
+                  {status}
+                </DropdownMenuCheckboxItem>
+              ))}
               <DropdownMenuSeparator className="bg-white" />
               <DropdownMenuLabel className="text-[#6B7280]">Tipo</DropdownMenuLabel>
               {allPropertyTypes.map((type) => (
@@ -464,8 +498,22 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
           </div>
         )}
         {hasReachedLimit && (
-          <div className="mb-4 rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">
+          <div className="hidden">
             Você atingiu o limite gratuito de 3 imóveis. Faça upgrade para continuar publicando.
+          </div>
+        )}
+        {hasReachedLimit && (
+          <div className="mb-4 rounded-[1.35rem] border border-[#009b3a]/14 bg-[linear-gradient(180deg,rgba(0,155,58,0.05)_0%,rgba(0,155,58,0.02)_100%)] px-4 py-4 text-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="font-semibold text-[#050505]">Você atingiu o limite do seu plano.</p>
+                <p className="text-[#5F6B7A]">{propertyLimitDescription}</p>
+                <p className="text-[#009b3a]">{propertyLimitMessage}</p>
+              </div>
+              <Button asChild variant="ghost" className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                <Link href="/corretor/plano">Ver planos</Link>
+              </Button>
+            </div>
           </div>
         )}
         {hasActiveFilters && (
@@ -484,22 +532,24 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
             {filteredProperties.map((property) => (
               <Card
                 key={property.id}
-                className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(15,23,42,0.10)]"
+                className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_16px_48px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_58px_rgba(15,23,42,0.08)]"
               >
-                <CardContent className="flex h-full flex-col gap-4 p-3 sm:p-4">
-                  <div className="relative aspect-[4/3] max-h-[220px] min-h-0 w-full overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
+                <CardContent className="flex h-full flex-col gap-3.5 p-3 sm:p-4">
+                  <div className={`relative min-h-0 w-full overflow-hidden rounded-[1.2rem] border border-black/[0.06] ${getPropertyImage(property.images?.[0] ?? null, property.id) ? "aspect-[16/10] max-h-[210px] bg-[#fbfbf8]" : "aspect-[16/9] max-h-[168px] bg-[linear-gradient(180deg,#f8faf8_0%,#f3f5f2_100%)]"}`}>
                     {getPropertyImage(property.images?.[0] ?? null, property.id) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={getPropertyImage(property.images?.[0] ?? null, property.id)} alt={property.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center px-4 text-center">
-                        <ImagePlus className="size-9 text-[#8B95A1]" />
+                        <div className="flex size-12 items-center justify-center rounded-2xl border border-black/[0.05] bg-white/70">
+                          <ImagePlus className="size-5 text-[#8B95A1]" />
+                        </div>
                         <p className="mt-3 text-sm font-medium text-[#5F6B7A]">Sem imagem cadastrada</p>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                    {getPropertyImage(property.images?.[0] ?? null, property.id) ? <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" /> : null}
                     <div className="absolute top-3 left-3">
-                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#009b3a]/20 bg-white/85 px-2.5 py-1 text-[11px] text-[#009b3a] backdrop-blur-md" : "rounded-full border border-black/[0.06] bg-white/85 px-2.5 py-1 text-[11px] text-[#050505]/80 backdrop-blur-md"}>
+                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#009b3a]/16 bg-white/88 px-2.5 py-1 text-[11px] font-medium text-[#009b3a] backdrop-blur-md" : "rounded-full border border-black/[0.05] bg-white/88 px-2.5 py-1 text-[11px] font-medium text-[#050505]/75 backdrop-blur-md"}>
                         {property.status}
                       </Badge>
                     </div>
@@ -508,7 +558,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="min-w-0">
                       {property.publicCode ? (
-                        <span className="mb-2 inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-2.5 py-1 text-xs font-semibold text-[#009b3a]">
+                        <span className="mb-2 inline-flex rounded-full border border-[#009b3a]/16 bg-[#009b3a]/8 px-2.5 py-1 text-[11px] font-semibold text-[#009b3a]">
                           Imóvel {property.publicCode}
                         </span>
                       ) : null}
@@ -517,24 +567,24 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <MapPin className="size-4 shrink-0 text-[#009b3a]" />
                         <span className="truncate">{property.location}</span>
                       </div>
-                      <p className="mt-3 text-xl font-semibold tracking-tight text-[#050505] sm:text-2xl">{property.price}</p>
+                      <p className="mt-2.5 text-xl font-semibold tracking-tight text-[#050505] sm:text-[1.7rem]">{property.price}</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 text-sm text-[#5F6B7A]">
+                    <div className="flex flex-wrap gap-2.5 text-sm text-[#5F6B7A]">
                       <Spec icon={BedDouble} value={`${property.bedrooms} quartos`} />
                       <Spec icon={Bath} value={`${property.bathrooms} banheiros`} />
                       <Spec icon={CarFront} value={`${property.parking} vagas`} />
                     </div>
                   </div>
 
-                  <div className="mt-auto flex flex-col gap-4">
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="mt-auto flex flex-col gap-3.5">
+                    <div className="grid grid-cols-2 gap-2.5">
                       <MetricCard label="Visualizações" value={property.views} />
                       <MetricCard label="Leads" value={property.leads} />
                     </div>
 
-                    <div className="grid gap-2">
-                      <Button type="button" variant="ghost" onClick={() => togglePropertyStatus(property)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                    <div className="hidden">
+                      <Button type="button" variant="ghost" onClick={() => void changePropertyStatus(property, property.status === "Publicado" ? "Rascunho" : "Publicado")} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">
                         {property.status === "Publicado" ? "Despublicar" : "Publicar"}
                       </Button>
                       <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
@@ -555,6 +605,44 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                           Editar
                         </Button>
                         <Button variant="ghost" onClick={() => handleDeleteProperty(property.id)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#6B7280] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
+                          <Trash2 className="size-4" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid gap-2.5">
+                      <div className="grid gap-2 sm:grid-cols-[128px_minmax(0,1fr)]">
+                        <Select value={property.status} onValueChange={(value) => void applyCardStatus(property, value as Property["status"])}>
+                          <SelectTrigger className="h-9 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
+                            {propertyStatuses.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button asChild className="h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
+                          <a href={whatsAppUrl} target="_blank" rel="noreferrer">
+                            <MessageCircle className="size-4" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                      </div>
+                      <Button asChild variant="ghost" className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                        <Link href="/corretor/documentos">
+                          <FileText className="size-4" />
+                          Propostas
+                        </Link>
+                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button variant="ghost" onClick={() => openEditModal(property)} className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#5F6B7A] hover:bg-white hover:text-[#050505]">
+                          <PencilLine className="size-4" />
+                          Editar
+                        </Button>
+                        <Button variant="ghost" onClick={() => handleDeleteProperty(property.id)} className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#6B7280] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
                           <Trash2 className="size-4" />
                           Excluir
                         </Button>
@@ -766,14 +854,25 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       </div>
                       <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                         <h3 className="text-lg font-semibold text-[#050505]">Status</h3>
-                        <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="mt-3 grid gap-3">
                           <div>
                             <p className="text-sm text-[#5F6B7A]">Status atual</p>
                             <p className="mt-1 font-medium text-[#050505]">{editingProperty.status}</p>
                           </div>
-                          <Switch checked={publishToggleChecked} onCheckedChange={(checked) => updateField("status", checked ? "Publicado" : "Rascunho")} />
+                          <Select value={editingProperty.status} onValueChange={(value) => void applyEditingStatus(value as EditableProperty["status"])}>
+                            <SelectTrigger className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
+                              <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
+                              {propertyStatuses.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="mt-3 h-9 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">
+                        <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="hidden">
                           {publishToggleChecked ? "Despublicar imóvel" : "Publicar imóvel"}
                         </Button>
                       </div>
@@ -819,7 +918,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                     Excluir imóvel
                   </Button>
                   <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                    <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">{publishToggleChecked ? "Despublicar" : "Publicar"}</Button>
                     <Button variant="ghost" onClick={() => closeEditModal(false)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">Cancelar</Button>
                     <Button onClick={saveChanges} className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">Salvar alterações</Button>
                   </div>
