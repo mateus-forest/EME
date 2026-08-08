@@ -61,6 +61,7 @@ Module._extensions[".ts"] = transpileTypeScript
 Module._extensions[".tsx"] = transpileTypeScript
 
 const { planCosCapability } = require(path.join(repoRoot, "lib/cos/planner.ts"))
+const { resolveCosIntent } = require(path.join(repoRoot, "lib/cos/intent-resolver.ts"))
 const { planCosExecution } = require(path.join(repoRoot, "lib/cos/execution-planner.ts"))
 const {
   extractClientIdentity,
@@ -862,8 +863,64 @@ async function main() {
   assert.strictEqual(cancelledWorkflow.status, "cancelled", "Workflow cancelado deveria receber status cancelled.")
   assert.strictEqual(cancelledWorkflow.pendingInput, null, "Workflow cancelado nao deveria manter pendingInput.")
 
+  // Regressao: auditoria QA encontrou o COS travando perguntas livres genericas num loop de
+  // confirmacao errada de CONTRACT_HISTORY, porque o candidato recebia pontuacao incondicional so
+  // por a mensagem "parecer" uma pergunta estatistica/de consulta, sem exigir nenhuma palavra
+  // relacionada a contrato. A mesma classe de bug (bonus de intent sem exigir palavra do dominio)
+  // tambem existia em GET_ANALYTICS_PROPERTIES, getLeadsSummary, LIST_DOCUMENTS, LIST_CONTRACTS e
+  // GET_FINANCE_COMMISSION — todos corrigidos com o mesmo tipo de guarda. Estes casos impedem que
+  // essa classe de bug volte.
+  const intentResolverScenarios = [
+    {
+      label: "saudacao simples nao deve cair em nenhuma capability de alto impacto",
+      message: "Oi, tudo bem?",
+      expectedRequestedAction: null,
+    },
+    {
+      label: "pergunta analitica generica sobre imoveis nao cai em CONTRACT_HISTORY",
+      message: "Quais são meus imóveis mais visualizados essa semana?",
+      expectedRequestedAction: "GET_ANALYTICS_PROPERTIES",
+    },
+    {
+      label: "pergunta analitica generica sobre clientes nao cai em CONTRACT_HISTORY",
+      message: "Quais são meus clientes mais recentes?",
+      expectedRequestedAction: "getLeadsSummary",
+    },
+    {
+      label: "pergunta real sobre historico de contratos continua resolvendo corretamente",
+      message: "Quais são meus contratos em andamento?",
+      expectedRequestedAction: "CONTRACT_HISTORY",
+    },
+  ]
+
+  const intentResolverResults = intentResolverScenarios.map((scenario) => {
+    const result = resolveCosIntent({
+      message: scenario.message,
+      attachments: [],
+      workspace: null,
+      activeWorkflow: null,
+      memory: null,
+    })
+
+    assert.strictEqual(
+      result.requestedAction,
+      scenario.expectedRequestedAction,
+      `[${scenario.label}] Mensagem "${scenario.message}" deveria resolver requestedAction=${scenario.expectedRequestedAction}, mas resolveu ${result.requestedAction}.`,
+    )
+
+    return {
+      label: scenario.label,
+      message: scenario.message,
+      requestedAction: result.requestedAction,
+      confidence: result.confidence,
+      reason: result.reason,
+    }
+  })
+
+  console.table(intentResolverResults)
+
   console.log(
-    `Validated ${capabilityResults.length} capability scenarios, ${executionResults.length} deterministic execution-plan scenarios, AI orchestrator scenarios and workflow lifecycle scenarios successfully.`,
+    `Validated ${capabilityResults.length} capability scenarios, ${executionResults.length} deterministic execution-plan scenarios, ${intentResolverResults.length} intent-resolver regression scenarios (CONTRACT_HISTORY loop fix), AI orchestrator scenarios and workflow lifecycle scenarios successfully.`,
   )
 }
 

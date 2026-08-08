@@ -278,16 +278,21 @@ function buildIntentCandidates(input: {
   pushCandidate("PUBLISH_PROPERTY", ((mentionsPublish || isPublishIntent) ? 28 : 0) + (mentionsProperty ? 10 : 0) + propertyContextScore, ["publicacao de imovel"])
   pushCandidate("UNPUBLISH_PROPERTY", ((mentionsPause || isUnpublishIntent) ? 28 : 0) + propertyContextScore, ["pausa de imovel"])
   pushCandidate("ARCHIVE_PROPERTY", ((mentionsDelete || isDeleteIntent) ? 28 : 0) + propertyContextScore, ["exclusao de imovel"])
+  // Mesma classe de bug do CONTRACT_HISTORY: o bônus de intent estatistica/analise só pode contar
+  // quando a mensagem realmente fala de imóvel (por palavra-chave ou contexto de tela).
+  const hasPropertyAnalyticsSignal = mentionsProperty || propertyContextScore > 0 || analyticsContextScore > 0
   pushCandidate(
     "GET_ANALYTICS_PROPERTIES",
-    ((isStatisticsIntent || isAnalysisIntent) ? 30 : 0) +
-      (mentionsProperty ? 22 : 0) +
-      (mentionsPending ? 8 : 0) +
-      propertyContextScore +
-      analyticsContextScore -
-      (mentionsContract ? 28 : 0) -
-      (mentionsProposal ? 28 : 0) -
-      (mentionsClient ? 18 : 0),
+    hasPropertyAnalyticsSignal
+      ? ((isStatisticsIntent || isAnalysisIntent) ? 30 : 0) +
+        (mentionsProperty ? 22 : 0) +
+        (mentionsPending ? 8 : 0) +
+        propertyContextScore +
+        analyticsContextScore -
+        (mentionsContract ? 28 : 0) -
+        (mentionsProposal ? 28 : 0) -
+        (mentionsClient ? 18 : 0)
+      : 0,
     ["consulta estatistica de imoveis"],
   )
   pushCandidate(
@@ -318,9 +323,13 @@ function buildIntentCandidates(input: {
     (attachmentSignals.hasDocument ? 30 : 0) + (mentionsAttach ? 18 : 0) + (mentionsClient ? 16 : 0) + leadContextScore - (mentionsContract ? 12 : 0),
     ["anexo de documento ao cliente"],
   )
+  // Mesma classe de bug do CONTRACT_HISTORY: exige sinal real de cliente antes do bônus de intent.
+  const hasClientAnalyticsSignal = mentionsClient || leadContextScore > 0
   pushCandidate(
     "getLeadsSummary",
-    ((isStatisticsIntent || isAnalysisIntent) ? 30 : 0) + (mentionsClient ? 22 : 0) + (mentionsPending ? 6 : 0) + leadContextScore - (mentionsContract ? 16 : 0) - (mentionsProposal ? 16 : 0),
+    hasClientAnalyticsSignal
+      ? ((isStatisticsIntent || isAnalysisIntent) ? 30 : 0) + (mentionsClient ? 22 : 0) + (mentionsPending ? 6 : 0) + leadContextScore - (mentionsContract ? 16 : 0) - (mentionsProposal ? 16 : 0)
+      : 0,
     ["consulta estatistica de clientes"],
   )
 
@@ -329,9 +338,13 @@ function buildIntentCandidates(input: {
     (mentionsProposal ? 24 : 0) + ((mentionsCreate || isCreateIntent) ? 16 : 0) + (input.memory?.selectedProperty?.id ? 10 : 0) + (input.memory?.selectedClient?.id ? 10 : 0) + (inPropertyContext || inLeadContext ? 10 : 0) - (isStatisticsIntent ? 28 : 0),
     ["criacao de proposta"],
   )
+  // Mesma classe de bug do CONTRACT_HISTORY: exige sinal real de proposta antes do bônus de intent.
+  const hasProposalSignal = mentionsProposal || proposalContextScore > 0
   pushCandidate(
     "LIST_DOCUMENTS",
-    ((isStatisticsIntent || isConsultIntent || isAnalysisIntent) ? 30 : 0) + (mentionsProposal ? 32 : 0) + (mentionsPending ? 8 : 0) + proposalContextScore - (mentionsCampaign ? 20 : 0),
+    hasProposalSignal
+      ? ((isStatisticsIntent || isConsultIntent || isAnalysisIntent) ? 30 : 0) + (mentionsProposal ? 32 : 0) + (mentionsPending ? 8 : 0) + proposalContextScore - (mentionsCampaign ? 20 : 0)
+      : 0,
     ["consulta estatistica de propostas"],
   )
 
@@ -351,14 +364,25 @@ function buildIntentCandidates(input: {
   pushCandidate("SIGN_CONTRACT", (mentionsContract ? 18 : 0) + (mentionsSign ? 24 : 0) + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 8 : 0), ["assinatura de contrato"])
   pushCandidate("CANCEL_CONTRACT", (mentionsContract ? 18 : 0) + ((mentionsDelete || isDeleteIntent) ? 12 : 0) + (mentionsCancel ? 24 : 0) + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 8 : 0), ["cancelamento de contrato"])
   pushCandidate("GET_CONTRACT", (mentionsContract ? 18 : 0) + countAny(input.normalizedMessage, ["abrir", "ver", "mostrar", "mostre"]) * 18 + contractContextScore + ((input.memory?.selectedProperty?.id || input.memory?.selectedClient?.id) ? 14 : 0) - (isStatisticsIntent ? 22 : 0), ["consulta de contrato"])
+  // CONTRACT_HISTORY só deve pontuar quando a mensagem tem sinal real de contrato (palavra-chave
+  // ou contexto de tela/workflow em contrato) — o bônus de "parece pergunta estatistica/consulta"
+  // não pode, sozinho, colocar este candidato em jogo, senão qualquer pergunta analítica genérica
+  // (sobre imóveis, clientes, ou até uma saudação) pode vencer por essa pontuação-base incondicional.
+  const hasContractSignal = mentionsContract || contractContextScore > 0
   pushCandidate(
     "CONTRACT_HISTORY",
-    ((isStatisticsIntent || isConsultIntent || isAnalysisIntent) ? 32 : 0) + (mentionsContract ? 30 : 0) + (mentionsPending ? 8 : 0) + contractContextScore,
+    hasContractSignal
+      ? ((isStatisticsIntent || isConsultIntent || isAnalysisIntent) ? 32 : 0) + (mentionsContract ? 30 : 0) + (mentionsPending ? 8 : 0) + contractContextScore
+      : 0,
     ["consulta estatistica de contratos"],
   )
+  // Mesma classe de bug do CONTRACT_HISTORY: "quais"/"mostre" sozinhos (sem falar de contrato) não
+  // podem pontuar aqui — "quais" é comum demais em português para servir de sinal isolado.
   pushCandidate(
     "LIST_CONTRACTS",
-    (isConsultIntent ? 20 : 0) + (mentionsContract ? 22 : 0) + countAny(input.normalizedMessage, ["listar", "lista", "mostrar", "mostre", "quais"]) * 8,
+    mentionsContract
+      ? (isConsultIntent ? 20 : 0) + 22 + countAny(input.normalizedMessage, ["listar", "lista", "mostrar", "mostre", "quais"]) * 8
+      : 0,
     ["listagem de contratos"],
   )
 
@@ -374,7 +398,15 @@ function buildIntentCandidates(input: {
   pushCandidate("MARK_AGENDA_DONE", (mentionsAgenda ? 18 : 0) + (mentionsComplete ? 18 : 0) + agendaContextScore, ["conclusao de compromisso"])
   pushCandidate("UPDATE_AGENDA_EVENT", (mentionsAgenda ? 18 : 0) + ((mentionsUpdate || isEditIntent || mentionsAgendaUpdate) ? 16 : 0) + (input.normalizedMessage.includes("reagendar") ? 18 : 0) + agendaContextScore, ["atualizacao de compromisso"])
 
-  pushCandidate("GET_FINANCE_COMMISSION", (mentionsFinance ? 18 : 0) + (mentionsCommission ? 24 : 0) + financeContextScore + (mentionsProperty && mentionsCommission ? 10 : 0) + (isStatisticsIntent ? 10 : 0), ["consulta de comissao"])
+  // Mesma classe de bug do CONTRACT_HISTORY: o bônus de "parece pergunta estatistica" só conta
+  // combinado com um sinal real de financeiro/comissão.
+  pushCandidate(
+    "GET_FINANCE_COMMISSION",
+    (mentionsFinance || mentionsCommission || financeContextScore > 0
+      ? (mentionsFinance ? 18 : 0) + (mentionsCommission ? 24 : 0) + financeContextScore + (mentionsProperty && mentionsCommission ? 10 : 0) + (isStatisticsIntent ? 10 : 0)
+      : 0),
+    ["consulta de comissao"],
+  )
   pushCandidate("help_use_cos" as AssessorAction, isHelpIntent && input.normalizedMessage.includes("cos") ? 42 : 0, ["ajuda sobre uso do cos"])
   pushCandidate("help_register_properties" as AssessorAction, isHelpIntent && mentionsProperty ? 42 : 0, ["ajuda sobre cadastro de imoveis"])
   pushCandidate("help_manage_clients" as AssessorAction, isHelpIntent && mentionsClient ? 42 : 0, ["ajuda sobre gestao de clientes"])

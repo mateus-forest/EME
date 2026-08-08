@@ -674,8 +674,10 @@ export async function POST(request: NextRequest) {
   // like before for the vast majority of messages (no requestedAction at all). When a known free
   // action is requested (the 7 COS help capabilities), this must be 0 too — otherwise a broker at
   // 0 credit balance would be blocked from even asking for help, contradicting "conversar com o
-  // COS é ilimitado".
-  let creditsUsed: number = isWorkflowDetailsRequest ? 0 : requestedAction ? getEmeCreditCost(requestedAction) : 1
+  // COS é ilimitado". Cancelamentos também devem ser 0 sem consultar a tabela: cancelar nunca cobra
+  // crédito, e getEmeCreditCost lança em dev para actions ainda não cadastradas (ex.: CANCEL_CONTRACT),
+  // o que quebrava o botão "Cancelar ação" com 500 antes mesmo de processar o cancelamento.
+  let creditsUsed: number = isWorkflowDetailsRequest || isCancellation ? 0 : requestedAction ? getEmeCreditCost(requestedAction) : 1
 
   if (!message) {
     return NextResponse.json({ error: "Digite uma mensagem para o Assessor EME." }, { status: 400 })

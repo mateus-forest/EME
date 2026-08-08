@@ -965,11 +965,16 @@ export function useCosConversations({
 
   const cancelPendingAction = useCallback(async () => {
     if (!pendingConfirmation) return
+    // creditCostPreview must be 0 (not omitted): cancelar nunca cobra crédito, e sem isso
+    // sendCosMessage cai em getEmeCreditCost(pendingConfirmation.action), que lança em dev para
+    // qualquer action ainda não cadastrada em EME_CREDIT_COSTS (ex.: CANCEL_CONTRACT) — o clique
+    // em "Cancelar ação" quebrava antes mesmo de enviar a requisição de cancelamento ao servidor.
     await sendCosMessage(pendingConfirmation.sourceMessage, {
       cancel: true,
       action: pendingConfirmation.action,
       visibleMessage: pendingConfirmation.cancelLabel ?? "Cancelar ação",
       attachments: pendingConfirmation.attachments ?? [],
+      creditCostPreview: 0,
     })
   }, [pendingConfirmation, sendCosMessage])
 
