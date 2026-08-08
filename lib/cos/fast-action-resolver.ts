@@ -199,6 +199,17 @@ export function resolveFastCosAction(input: {
     }
   }
 
+  if (isExactCommand(normalizedMessage, ["conta", "abrir conta", "minha conta"])) {
+    return {
+      kind: "navigation",
+      href: "/corretor/conta",
+      label: "ConfiguraÃ§Ãµes",
+      confidence: 0.99,
+      reply: "Claro.\n\nAbrindo configuraÃ§Ãµes...",
+      reason: "comando direto para abrir configuracoes",
+    }
+  }
+
   if (isExactCommand(normalizedMessage, ["novo contrato", "criar contrato", "gerar contrato", "anexar contrato", "contrato novo", "fazer contrato"])) {
     return {
       kind: "workflow_action",

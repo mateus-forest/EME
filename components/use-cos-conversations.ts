@@ -409,6 +409,7 @@ export function useCosConversations({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasBootstrappedRef = useRef(false)
   const isMountedRef = useRef(true)
+  const queuedNavigationHrefRef = useRef<string | null>(null)
   const conversationListRequestIdRef = useRef(0)
   const openConversationRequestIdRef = useRef(0)
   const loadedConversationCountRef = useRef(initialCacheRef.current?.conversations.length || INITIAL_CONVERSATION_PAGE_SIZE)
@@ -422,6 +423,15 @@ export function useCosConversations({
       }),
     [pathname, source, workspaceContext],
   )
+
+  const navigateToFastActionHref = useCallback((href: string) => {
+    if (typeof window !== "undefined") {
+      window.location.assign(href)
+      return
+    }
+
+    router.push(href)
+  }, [router])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -679,7 +689,12 @@ export function useCosConversations({
       }
       setPendingConfirmation(null)
       setChatFeedback("")
-      router.push(fastAction.href)
+      if (isBootstrappingConversation || isConversationLoading) {
+        queuedNavigationHrefRef.current = fastAction.href
+      } else {
+        queuedNavigationHrefRef.current = null
+        navigateToFastActionHref(fastAction.href)
+      }
       return
     }
 
@@ -926,7 +941,17 @@ export function useCosConversations({
       setIsSending(false)
       window.setTimeout(() => inputRef.current?.focus(), 0)
     }
-  }, [activeConversationId, assistantCredits.balance, assistantEnabled, conversation, conversations, isSending, loadConversations, pathname, pendingConfirmation, resolvedWorkspaceContext, router, setAssistantCredits, source])
+  }, [activeConversationId, assistantCredits.balance, assistantEnabled, conversation, conversations, isBootstrappingConversation, isConversationLoading, isSending, loadConversations, navigateToFastActionHref, pathname, pendingConfirmation, resolvedWorkspaceContext, setAssistantCredits, source])
+
+  useEffect(() => {
+    if (isBootstrappingConversation || isConversationLoading) return
+
+    const queuedHref = queuedNavigationHrefRef.current
+    if (!queuedHref) return
+
+    queuedNavigationHrefRef.current = null
+    navigateToFastActionHref(queuedHref)
+  }, [isBootstrappingConversation, isConversationLoading, navigateToFastActionHref])
 
   const confirmPendingAction = useCallback(async () => {
     if (!pendingConfirmation) return
