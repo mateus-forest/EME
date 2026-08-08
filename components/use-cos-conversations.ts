@@ -35,6 +35,8 @@ export type CosResponseOption = {
   href?: string
 }
 
+export type CosInteractionType = "confirmation" | "selection" | "navigation" | "wizard" | "preview" | "summary" | "result"
+
 export type CosConversationItem = {
   id: string
   role: "user" | "assistant"
@@ -47,6 +49,7 @@ export type CosConversationItem = {
   attachments?: CosComposerAttachment[]
   sourceMessage?: string
   sourceInteractionId?: string
+  interactionType?: CosInteractionType
   createdAt?: string
 }
 
@@ -54,6 +57,9 @@ export type PendingConfirmation = {
   action: string
   sourceMessage: string
   sourceInteractionId: string
+  prompt?: string
+  confirmLabel?: string
+  cancelLabel?: string
   attachments?: CosComposerAttachment[]
   options?: CosResponseOption[]
 }
@@ -72,8 +78,13 @@ type AssistantMessageResponse = {
   ctaLabel?: string
   error?: string
   confirmRequired?: boolean
+  interactionType?: CosInteractionType
   conversation?: CosConversationSummary | null
   metadata?: {
+    interactionType?: unknown
+    confirmationPrompt?: unknown
+    confirmationConfirmLabel?: unknown
+    confirmationCancelLabel?: unknown
     leadId?: unknown
     options?: unknown
     workflow?: {
@@ -150,6 +161,8 @@ const INITIAL_CONVERSATION_PAGE_SIZE = 15
 
 function repairCosText(value: string) {
   return value
+    .replaceAll("Ã¢â‚¬â€œ", "–")
+    .replaceAll("Ã¢â‚¬â€", "—")
     .replaceAll("NÃ£o", "Não")
     .replaceAll("nÃ£o", "não")
     .replaceAll("possÃ­vel", "possível")
@@ -189,6 +202,93 @@ function repairCosText(value: string) {
     .replaceAll("â¬œ", "⬜")
 }
 
+function normalizeInteractionType(value: unknown): CosInteractionType | undefined {
+  return value === "confirmation" ||
+    value === "selection" ||
+    value === "navigation" ||
+    value === "wizard" ||
+    value === "preview" ||
+    value === "summary" ||
+    value === "result"
+    ? value
+    : undefined
+}
+
+function inferInteractionType(input: {
+  action?: string | null
+  actionStatus?: string | null
+  confirmRequired?: boolean
+  options?: CosResponseOption[]
+  content?: string
+  state?: "ready" | "error"
+  metadataType?: unknown
+}): CosInteractionType | undefined {
+  const explicit = normalizeInteractionType(input.metadataType)
+  if (explicit) return explicit
+  if (input.confirmRequired) return "confirmation"
+  if ((input.options?.length ?? 0) > 0) return "selection"
+  if (input.action === "workflow_details") return "summary"
+  if (input.actionStatus === "needs_clarification") return "selection"
+  if (input.state === "error") return "result"
+  if (input.content?.toLowerCase().includes("preview")) return "preview"
+  if (input.actionStatus === "success") return "result"
+  return "wizard"
+}
+
+function buildFriendlyCreditsMessage(input: { availableCredits: number; requiredCredits: number }) {
+  const missingCredits = Math.max(0, input.requiredCredits - input.availableCredits)
+  return [
+    "Você ficou sem Créditos IA para executar esta ação.",
+    "",
+    `Disponível agora: ${input.availableCredits} crédito${input.availableCredits === 1 ? "" : "s"}.`,
+    `Necessário para continuar: ${input.requiredCredits} crédito${input.requiredCredits === 1 ? "" : "s"}.`,
+    missingCredits > 0 ? `Faltam ${missingCredits} crédito${missingCredits === 1 ? "" : "s"} na sua conta.` : "",
+    "",
+    "Faça upgrade do plano ou adquira créditos adicionais para continuar usando os recursos inteligentes do COS.",
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+function extractConfirmationSubject(content: string) {
+  const normalized = repairCosText(content)
+  const patterns = [/cliente ([^.?\n]+)/i, /im[óo]vel ([^.?\n]+)/i, /contrato ([^.?\n]+)/i, /proposta ([^.?\n]+)/i, /compromisso ([^.?\n]+)/i, /documento ([^.?\n]+)/i]
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern)
+    if (match?.[0]) return match[0].replace(/\s+/g, " ").trim()
+  }
+
+  return ""
+}
+
+function buildPendingConfirmationLabels(input: { action: string; content: string }) {
+  const subject = extractConfirmationSubject(input.content)
+
+  if (input.action === "DELETE_LEAD") {
+    return {
+      prompt: subject ? `Confirmar exclusão do ${subject}?` : "Confirmar exclusão deste cliente?",
+      confirmLabel: subject ? `Excluir ${subject}` : "Excluir cliente",
+      cancelLabel: "Manter cliente",
+    }
+  }
+
+  if (input.action === "ATTACH_LEAD_DOCUMENT") {
+    return {
+      prompt: subject ? `Confirmar anexo do documento ao ${subject}?` : "Confirmar anexo do documento?",
+      confirmLabel: "Anexar documento",
+      cancelLabel: "Cancelar anexo",
+    }
+  }
+
+  const actionLabel = repairCosText(getCosCapabilityLabel(input.action)).replace(/^Ação do COS$/i, "ação")
+  return {
+    prompt: subject ? `Confirmar ${actionLabel.toLowerCase()} para ${subject}?` : `Confirmar ${actionLabel.toLowerCase()}?`,
+    confirmLabel: `Confirmar ${actionLabel.toLowerCase()}`,
+    cancelLabel: "Cancelar ação",
+  }
+}
+
 function normalizeConversationSummary(item: CosConversationSummary): CosConversationSummary {
   return {
     ...item,
@@ -200,6 +300,14 @@ function normalizeConversationItem(item: CosConversationItem): CosConversationIt
   return {
     ...item,
     content: repairCosText(item.content),
+    interactionType: inferInteractionType({
+      action: item.action,
+      actionStatus: item.actionStatus,
+      confirmRequired: item.confirmRequired,
+      options: item.options,
+      content: item.content,
+      state: item.state,
+    }),
     options: item.options?.map((option) => ({
       ...option,
       actionId: option.actionId,
@@ -224,9 +332,24 @@ function readConversationCache() {
       conversation: Array.isArray(parsed.conversation) ? parsed.conversation : [],
       conversations: Array.isArray(parsed.conversations) ? parsed.conversations : [],
       activeConversationId: typeof parsed.activeConversationId === "string" ? parsed.activeConversationId : "",
-      pendingConfirmation: parsed.pendingConfirmation && typeof parsed.pendingConfirmation === "object"
-        ? (parsed.pendingConfirmation as PendingConfirmation)
-        : null,
+      pendingConfirmation:
+        parsed.pendingConfirmation && typeof parsed.pendingConfirmation === "object"
+          ? {
+              ...(parsed.pendingConfirmation as PendingConfirmation),
+              prompt:
+                typeof (parsed.pendingConfirmation as { prompt?: unknown }).prompt === "string"
+                  ? repairCosText((parsed.pendingConfirmation as { prompt: string }).prompt)
+                  : undefined,
+              confirmLabel:
+                typeof (parsed.pendingConfirmation as { confirmLabel?: unknown }).confirmLabel === "string"
+                  ? repairCosText((parsed.pendingConfirmation as { confirmLabel: string }).confirmLabel)
+                  : undefined,
+              cancelLabel:
+                typeof (parsed.pendingConfirmation as { cancelLabel?: unknown }).cancelLabel === "string"
+                  ? repairCosText((parsed.pendingConfirmation as { cancelLabel: string }).cancelLabel)
+                  : undefined,
+            }
+          : null,
       suppressedPendingConfirmation:
         parsed.suppressedPendingConfirmation &&
         typeof parsed.suppressedPendingConfirmation === "object" &&
@@ -594,6 +717,11 @@ export function useCosConversations({
             : 0
 
     if (!resolvedOptions?.cancel && requestedCreditCost > 0 && assistantCredits.balance < requestedCreditCost) {
+      setChatFeedback(buildFriendlyCreditsMessage({ availableCredits: assistantCredits.balance, requiredCredits: requestedCreditCost }))
+      return
+    }
+
+    if (!resolvedOptions?.cancel && requestedCreditCost > 0 && assistantCredits.balance < requestedCreditCost) {
       setChatFeedback(
         `Créditos IA insuficientes. Disponível: ${assistantCredits.balance}. Necessário: ${requestedCreditCost}. Abra a página Plano para continuar.`,
       )
@@ -626,6 +754,10 @@ export function useCosConversations({
         : "",
     )
 
+    if (!resolvedOptions?.cancel && requestedCreditCost > 0) {
+      setChatFeedback(`Esta ação utiliza ${requestedCreditCost} Crédito${requestedCreditCost === 1 ? "" : "s"} IA.`)
+    }
+
     try {
       const response = await fetch("/api/assistant/eme", {
         method: "POST",
@@ -653,9 +785,39 @@ export function useCosConversations({
         if (data?.creditsBlocked) {
           const availableCredits = data.availableCredits ?? assistantCredits.balance
           const requiredCredits = data.requiredCredits ?? requestedCreditCost
+          const blockedMessage = buildFriendlyCreditsMessage({ availableCredits, requiredCredits })
+          const blockedOptions =
+            data.ctaHref && data.ctaLabel
+              ? [
+                  {
+                    id: "billing_cta",
+                    actionId: "billing:open_plan",
+                    label: repairCosText(data.ctaLabel),
+                    href: data.ctaHref,
+                    message: repairCosText(data.ctaLabel),
+                  } satisfies CosResponseOption,
+                ]
+              : undefined
+
+          setConversation((current) => [
+            ...current,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: blockedMessage,
+              state: "error",
+              actionStatus: "error",
+              options: blockedOptions,
+              interactionType: "result",
+              sourceMessage: normalizedMessage,
+              createdAt: new Date().toISOString(),
+            },
+          ])
+          setChatFeedback(blockedMessage)
+          return
           throw new Error(
             repairCosText(
-              data.error ||
+              data?.error ||
                 `Créditos IA insuficientes. Disponível: ${availableCredits}. Necessário: ${requiredCredits}. Abra a página Plano para continuar.`,
             ),
           )
@@ -694,6 +856,15 @@ export function useCosConversations({
         options: responseOptions,
         sourceMessage: normalizedMessage,
         sourceInteractionId: "",
+        interactionType: inferInteractionType({
+          action: data?.action ?? resolvedOptions?.action ?? null,
+          actionStatus: data?.actionStatus ?? "success",
+          confirmRequired: Boolean(data?.confirmRequired),
+          options: responseOptions,
+          content: data?.response || "",
+          state: "ready",
+          metadataType: data?.interactionType ?? data?.metadata?.interactionType,
+        }),
         createdAt: new Date().toISOString(),
       }
 
@@ -706,10 +877,23 @@ export function useCosConversations({
           action: assistantMessage.action,
           sourceMessage: normalizedMessage,
           sourceInteractionId: assistantMessage.id,
+          prompt:
+            typeof data?.metadata?.confirmationPrompt === "string"
+              ? repairCosText(data.metadata.confirmationPrompt)
+              : buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).prompt,
+          confirmLabel:
+            typeof data?.metadata?.confirmationConfirmLabel === "string"
+              ? repairCosText(data.metadata.confirmationConfirmLabel)
+              : buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).confirmLabel,
+          cancelLabel:
+            typeof data?.metadata?.confirmationCancelLabel === "string"
+              ? repairCosText(data.metadata.confirmationCancelLabel)
+              : buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).cancelLabel,
           attachments: resolvedOptions?.attachments ?? [],
           options: responseOptions,
         })
         setChatFeedback("Aguardando sua confirmação.")
+        setChatFeedback("Revise a ação e confirme para continuar.")
       } else {
         setPendingConfirmation(null)
         setChatFeedback(
@@ -749,7 +933,7 @@ export function useCosConversations({
     await sendCosMessage(pendingConfirmation.sourceMessage, {
       confirm: true,
       action: pendingConfirmation.action,
-      visibleMessage: "Confirmar",
+      visibleMessage: pendingConfirmation.confirmLabel ?? pendingConfirmation.prompt ?? "Confirmar ação",
       attachments: pendingConfirmation.attachments ?? [],
     })
   }, [pendingConfirmation, sendCosMessage])
@@ -759,7 +943,7 @@ export function useCosConversations({
     await sendCosMessage(pendingConfirmation.sourceMessage, {
       cancel: true,
       action: pendingConfirmation.action,
-      visibleMessage: "Cancelar",
+      visibleMessage: pendingConfirmation.cancelLabel ?? "Cancelar ação",
       attachments: pendingConfirmation.attachments ?? [],
     })
   }, [pendingConfirmation, sendCosMessage])

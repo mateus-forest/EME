@@ -1,10 +1,73 @@
 "use client"
 
-import { FileText, Files, ImageIcon, Video } from "lucide-react"
+import { ChevronRight, FileText, Files, ImageIcon, Video } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
-import type { CosConversationItem, CosResponseOption, PendingConfirmation } from "@/components/use-cos-conversations"
+import type { CosConversationItem, CosInteractionType, CosResponseOption, PendingConfirmation } from "@/components/use-cos-conversations"
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Rascunho",
+  signed: "Assinado",
+  awaiting_signature: "Aguardando assinatura",
+  active: "Ativo",
+  paused: "Pausado",
+  published: "Publicado",
+  archived: "Arquivado",
+  cancelled: "Cancelado",
+  completed: "Concluido",
+  processing: "Processando",
+  new: "Novo",
+  contacted: "Em contato",
+  negotiating: "Em negociacao",
+  won: "Convertido",
+  lost: "Perdido",
+}
+
+function humanizeCosText(content: string) {
+  return Object.entries(STATUS_LABELS).reduce((text, [key, label]) => {
+    return text.replace(new RegExp(`\\b${key}\\b`, "gi"), label)
+  }, content)
+}
+
+function getInteractionLabel(type: CosInteractionType | undefined) {
+  switch (type) {
+    case "confirmation":
+      return "Confirmacao"
+    case "selection":
+      return "Selecao"
+    case "navigation":
+      return "Navegacao"
+    case "wizard":
+      return "Proximo passo"
+    case "preview":
+      return "Preview"
+    case "summary":
+      return "Resumo"
+    case "result":
+      return "Resultado"
+    default:
+      return null
+  }
+}
+
+function parseStructuredList(content: string) {
+  const normalized = humanizeCosText(content)
+  const lines = normalized.split("\n")
+  const bulletIndexes = lines
+    .map((line, index) => ({ line: line.trim(), index }))
+    .filter(({ line }) => /^[-*]\s+/.test(line))
+
+  if (bulletIndexes.length < 2) {
+    return null
+  }
+
+  const firstBulletIndex = bulletIndexes[0]?.index ?? 0
+  return {
+    intro: lines.slice(0, firstBulletIndex).join("\n").trim(),
+    items: bulletIndexes.map(({ line }) => line.replace(/^[-*]\s+/, "").trim()),
+  }
+}
 
 type CosOptionButtonsProps = {
   options: CosResponseOption[]
@@ -14,7 +77,7 @@ type CosOptionButtonsProps = {
 
 export function CosOptionButtons({ options, disabled, onSelect }: CosOptionButtonsProps) {
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className="mt-3 grid gap-2">
       {options.map((option) => (
         <Button
           key={option.id}
@@ -22,10 +85,15 @@ export function CosOptionButtons({ options, disabled, onSelect }: CosOptionButto
           variant="ghost"
           onClick={() => onSelect(option)}
           disabled={disabled}
-          className="h-9 rounded-full border border-black/[0.08] px-4 text-xs text-[#111111] hover:bg-white disabled:opacity-60"
+          className="h-auto justify-between rounded-[1rem] border border-black/[0.08] bg-white px-3.5 py-3 text-left text-xs text-[#111111] hover:bg-white disabled:opacity-60"
         >
-          {option.label}
-          {option.description ? <span className="ml-1.5 text-[#7B8491]">— {option.description}</span> : null}
+          <span className="min-w-0">
+            <span className="block truncate text-[12px] font-medium text-[#111111]">{humanizeCosText(option.label)}</span>
+            {option.description ? (
+              <span className="mt-1 block whitespace-normal text-[11px] leading-5 text-[#7B8491]">{humanizeCosText(option.description)}</span>
+            ) : null}
+          </span>
+          <ChevronRight className="ml-3 size-4 shrink-0 text-[#9aa4b2]" />
         </Button>
       ))}
     </div>
@@ -66,6 +134,36 @@ export function CosMessageAttachments({ attachments, inverted = false }: CosMess
   )
 }
 
+export function CosConversationMessageBody({ item }: { item: CosConversationItem }) {
+  const interactionLabel = item.role === "assistant" ? getInteractionLabel(item.interactionType) : null
+  const structuredList = parseStructuredList(item.content)
+
+  return (
+    <div className="space-y-3">
+      {interactionLabel ? (
+        <span className="inline-flex rounded-full border border-black/[0.06] bg-black/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#7b8491]">
+          {interactionLabel}
+        </span>
+      ) : null}
+
+      {structuredList ? (
+        <div className="space-y-3">
+          {structuredList.intro ? <p className="whitespace-pre-wrap break-words">{structuredList.intro}</p> : null}
+          <div className="grid gap-2">
+            {structuredList.items.map((entry) => (
+              <div key={entry} className="rounded-[1rem] border border-black/[0.06] bg-white/70 px-3.5 py-3">
+                <p className="text-[13px] leading-6 text-[#334155]">{entry}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="whitespace-pre-wrap break-words">{humanizeCosText(item.content)}</p>
+      )}
+    </div>
+  )
+}
+
 type CosPendingActionProps = {
   item: CosConversationItem
   pendingConfirmation: PendingConfirmation | null
@@ -75,10 +173,6 @@ type CosPendingActionProps = {
   onSelectOption: (option: CosResponseOption) => void
 }
 
-// Bloco de acao pendente de uma mensagem do COS: renderiza botoes de opcao quando
-// a ambiguidade traz candidatos (metadata.parsedData.options), ou o par binario
-// Confirmar/Cancelar quando nao ha opcoes. Compartilhado entre broker-portal.tsx
-// e broker-cos-history-page.tsx para as duas telas nao divergirem entre si.
 export function CosPendingAction({ item, pendingConfirmation, isSending, onConfirm, onCancel, onSelectOption }: CosPendingActionProps) {
   if (item.options && item.options.length > 0) {
     return <CosOptionButtons options={item.options} disabled={isSending} onSelect={onSelectOption} />
@@ -96,7 +190,7 @@ export function CosPendingAction({ item, pendingConfirmation, isSending, onConfi
         disabled={isSending}
         className="h-9 rounded-full bg-[#111111] px-4 text-xs font-semibold text-white hover:bg-[#050505] disabled:opacity-60"
       >
-        Confirmar
+        {pendingConfirmation?.confirmLabel ?? "Confirmar"}
       </Button>
       <Button
         type="button"
@@ -105,7 +199,7 @@ export function CosPendingAction({ item, pendingConfirmation, isSending, onConfi
         disabled={isSending}
         className="h-9 rounded-full border border-black/[0.08] px-4 text-xs text-[#4B5563] hover:bg-white"
       >
-        Cancelar
+        {pendingConfirmation?.cancelLabel ?? "Cancelar"}
       </Button>
     </div>
   )

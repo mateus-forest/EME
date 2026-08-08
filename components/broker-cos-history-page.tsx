@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Pencil, Trash2 } from "lucide-react"
 
-import { CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
+import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
@@ -289,7 +289,7 @@ export function BrokerCosHistoryPage() {
                           : "border border-black/[0.06] bg-[#fbfbf8] text-[#334155]"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{item.content}</p>
+                    <CosConversationMessageBody item={item} />
                     <CosMessageAttachments attachments={item.attachments} inverted={item.role === "user"} />
                     <CosPendingAction
                       item={item}
