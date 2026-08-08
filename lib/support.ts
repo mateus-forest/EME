@@ -1,6 +1,6 @@
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 
-export const EME_SUPPORT_WHATSAPP_NUMBER = "(11) 98888-0000"
+export const EME_SUPPORT_WHATSAPP_NUMBER = "+55 54 99157-8029"
 
 export const SUPPORT_CATEGORIES = [
   "Dúvida",
