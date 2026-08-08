@@ -525,6 +525,19 @@ async function main() {
       run: () => detectNamedClientReference("Exclua o cliente carlos."),
       expected: null,
     },
+    {
+      // Bug: quando ha anexo na conversa, lib/cos/attachment-analysis.ts concatena um bloco de
+      // instrucao interna ("IMPORTANTE: ...") na linha seguinte a mensagem do usuario antes dela
+      // chegar aos capability handlers. O regex de captura de nome usava \s+ (que cruza \n), entao
+      // "cliente lucas\nIMPORTANTE: ..." virava o nome "Lucas Importante" em vez de parar em
+      // "Lucas". Corrigido restringindo a captura a espaco horizontal ([ \t]+).
+      label: "bug: nome nao deve vazar para o bloco de instrucao de anexo na linha seguinte",
+      run: () =>
+        detectNamedClientReference(
+          "Anexe esse documento ao cliente lucas\nIMPORTANTE: os anexos sao a fonte principal de informacao. O texto do usuario descreve apenas a intencao operacional.\n\nArquivos anexados:\n- contrato.pdf (document)",
+        ),
+      expected: "Lucas",
+    },
   ]
 
   for (const scenario of entityExtractionScenarios) {
@@ -890,6 +903,17 @@ async function main() {
       label: "pergunta real sobre historico de contratos continua resolvendo corretamente",
       message: "Quais são meus contratos em andamento?",
       expectedRequestedAction: "CONTRACT_HISTORY",
+    },
+    {
+      // Bug: "Anexar contrato" (texto livre) caia em CONTRACT_HISTORY porque esse candidato
+      // recebia o maior bonus incondicional de "mentionsContract" entre as acoes de contrato,
+      // virando o "default" para qualquer mencao de contrato. Corrigido excluindo CONTRACT_HISTORY
+      // quando ha verbo de anexar (mentionsAttach), e dando a ATTACH_LEAD_DOCUMENT um bonus quando
+      // anexar+contrato aparecem juntos (nao existe capability dedicada de "anexar contrato" ainda,
+      // entao anexar documento e o destino correto).
+      label: "anexar contrato deve ir para anexo de documento, nao para historico de contratos",
+      message: "Quero anexar um contrato.",
+      expectedRequestedAction: "ATTACH_LEAD_DOCUMENT",
     },
   ]
 

@@ -17,7 +17,7 @@ const RESIDUAL_INSTRUCTION_PATTERN =
   /\b(anexe|anexar|vincule|vincular|junte|juntar|atualize|atualizar|edite|editar|mude|mudar|corrija|corrigir|busque|buscar|encontre|encontrar|traga|trazer|quero|queria|preciso|favor|documento|imovel|imóvel)\b/i
 
 const NAME_MARKER_PATTERN =
-  /\b(?:chamad[oa]|nomead[oa]|apelidad[oa]|de nome|nome)\b[:]?\s+["']?([\p{L}][\p{L}'’-]*(?:\s+[\p{L}][\p{L}'’-]*){0,3})["']?/iu
+  /\b(?:chamad[oa]|nomead[oa]|apelidad[oa]|de nome|nome)\b[:]?\s+["']?([\p{L}][\p{L}'’-]*(?:[ \t]+[\p{L}][\p{L}'’-]*){0,3})["']?/iu
 
 function collapseWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim()
@@ -39,7 +39,7 @@ function stripTrailingPhone(value: string) {
   return value.replace(/(?:\+?\d[\d\s().-]{7,}\d)\s*$/u, "").trim()
 }
 
-function looksLikeRawCommandSentence(value: string) {
+export function looksLikeRawCommandSentence(value: string) {
   if (!value) return true
   const wordCount = value.trim().split(/\s+/).filter(Boolean).length
   if (wordCount > 4) return true
@@ -89,8 +89,12 @@ export function extractClientIdentity(message: string): ExtractedClientIdentity 
 const ATTACH_UPDATE_VERBS =
   /\b(anexe|anexar|vincule|vincular|junte|juntar|atualize|atualizar|edite|editar|mude|mudar|corrija|corrigir)\b/i
 
+// O grupo repetido usa [ \t]+ (não \s+) deliberadamente: \s+ cruza quebras de linha, o que
+// permitia o nome capturado "vazar" para a linha seguinte quando a mensagem chega enriquecida
+// com um bloco de instrução de anexo (ver lib/cos/attachment-analysis.ts) — ex: "cliente lucas\nIMPORTANTE: ..."
+// virava "lucas IMPORTANTE" em vez de parar em "lucas".
 const NAMED_CLIENT_REFERENCE_PATTERN =
-  /\b(?:cliente|lead|contato)\s+([\p{L}][\p{L}'’-]*(?:\s+[\p{L}][\p{L}'’-]*){0,2})/iu
+  /\b(?:cliente|lead|contato)\s+([\p{L}][\p{L}'’-]*(?:[ \t]+[\p{L}][\p{L}'’-]*){0,2})/iu
 
 function extractNamedClientReference(message: string): string | null {
   const match = message.match(NAMED_CLIENT_REFERENCE_PATTERN)

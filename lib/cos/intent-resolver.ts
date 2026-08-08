@@ -318,9 +318,17 @@ function buildIntentCandidates(input: {
   )
   pushCandidate("UPDATE_LEAD", (mentionsClient ? 16 : 0) + ((mentionsUpdate || isEditIntent) ? 16 : 0) + leadContextScore - (isStatisticsIntent ? 20 : 0), ["atualizacao de cliente"])
   pushCandidate("DELETE_LEAD", (mentionsClient ? 16 : 0) + ((mentionsDelete || isDeleteIntent) ? 18 : 0) + leadContextScore, ["exclusao de cliente"])
+  // "anexar contrato" é um pedido válido de anexo de documento (um contrato é um documento) —
+  // não existe hoje uma capability dedicada de "anexar contrato", então esse é o destino correto
+  // até uma existir. Só quando NÃO há verbo de anexar que "contrato" deve penalizar este candidato
+  // (evita ATTACH_LEAD_DOCUMENT vencer em consultas/menções de contrato sem intenção de anexar).
   pushCandidate(
     "ATTACH_LEAD_DOCUMENT",
-    (attachmentSignals.hasDocument ? 30 : 0) + (mentionsAttach ? 18 : 0) + (mentionsClient ? 16 : 0) + leadContextScore - (mentionsContract ? 12 : 0),
+    (attachmentSignals.hasDocument ? 30 : 0) +
+      (mentionsAttach ? 18 : 0) +
+      (mentionsClient ? 16 : 0) +
+      leadContextScore +
+      (mentionsAttach && mentionsContract ? 20 : -(mentionsContract ? 12 : 0)),
     ["anexo de documento ao cliente"],
   )
   // Mesma classe de bug do CONTRACT_HISTORY: exige sinal real de cliente antes do bônus de intent.
@@ -368,7 +376,11 @@ function buildIntentCandidates(input: {
   // ou contexto de tela/workflow em contrato) — o bônus de "parece pergunta estatistica/consulta"
   // não pode, sozinho, colocar este candidato em jogo, senão qualquer pergunta analítica genérica
   // (sobre imóveis, clientes, ou até uma saudação) pode vencer por essa pontuação-base incondicional.
-  const hasContractSignal = mentionsContract || contractContextScore > 0
+  // "anexar contrato" tem sinal real de contrato (mentionsContract), mas mentionsAttach deixa claro
+  // que a intenção é anexar, não consultar histórico — sem essa exclusão, CONTRACT_HISTORY ganhava o
+  // maior bônus incondicional entre as ações de contrato (30) e virava o "default" para qualquer
+  // menção de contrato, inclusive pedidos de anexo que não têm capability própria ainda.
+  const hasContractSignal = (mentionsContract || contractContextScore > 0) && !mentionsAttach
   pushCandidate(
     "CONTRACT_HISTORY",
     hasContractSignal

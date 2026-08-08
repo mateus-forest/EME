@@ -105,6 +105,16 @@ function buildResumePayload(input: {
 
   if (pendingInput.action === "createPropertyDraft" && pendingInput.field === "price") {
     payload.price = input.message.trim()
+    // parsePropertyDraftData roda de novo sobre esta mensagem de resposta (ex: "850 mil"), que nao
+    // tem cidade/bairro/quartos/etc — sem repassar o que ja foi extraido no primeiro turno via
+    // parsedData, esses campos eram perdidos e voltavam a aparecer como pendencia mesmo tendo sido
+    // informados corretamente antes.
+    const preservedDraftFields = ["city", "neighborhood", "bedrooms", "bathrooms", "parkingSpots", "area"]
+    for (const field of preservedDraftFields) {
+      if (pendingInput.parsedData[field] !== undefined) {
+        payload[field] = pendingInput.parsedData[field]
+      }
+    }
   }
 
   if (pendingInput.type === "text" || pendingInput.type === "currency" || pendingInput.type === "time") {

@@ -3,6 +3,7 @@ import "server-only"
 import type { Prisma } from "@prisma/client"
 
 import { canCreateBrokerProperties } from "@/lib/eme-plan-service"
+import { looksLikeRawCommandSentence } from "@/lib/cos/entity-extraction"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { PropertyStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -20,6 +21,21 @@ type ParsedBrazilianMoney = {
 
 export function normalizeForIntent(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+}
+
+// Quando ha anexo na conversa, lib/cos/attachment-analysis.ts concatena um bloco de instrucao
+// interna ("IMPORTANTE: os anexos sao a fonte principal...") e a lista de arquivos ("Arquivos
+// anexados:") ao final da mensagem antes dela chegar aqui. Extratores deterministicos (regex) nao
+// devem ver esse bloco: o texto da instrucao contamina a extracao de localizacao (a captura
+// gulosa cruza a quebra de linha e o match inteiro falha), e nomes de arquivo com sequencias
+// numericas (ex: "WhatsApp Image 2026-08-04 at 20.26.13.jpeg") sao capturados como se fossem um
+// preco. Cortar a mensagem no primeiro marcador desse bloco garante que so o texto real do
+// usuario seja analisado.
+const ATTACHMENT_BOILERPLATE_MARKER = /\n\s*(?:IMPORTANTE:|Arquivos anexados:)/i
+
+export function stripAttachmentBoilerplate(message: string) {
+  const markerIndex = message.search(ATTACHMENT_BOILERPLATE_MARKER)
+  return markerIndex >= 0 ? message.slice(0, markerIndex).trim() : message
 }
 
 function parseNumericMoneyToken(raw: string, hasUnit: boolean) {
@@ -49,7 +65,11 @@ export function parseBrazilianMoney(input: unknown): ParsedBrazilianMoney | null
   const hasCurrency = /r\$/.test(raw)
   const numeric = parseNumericMoneyToken(numberPart, hasUnit)
   if (numeric === null || !Number.isFinite(numeric) || numeric < 0) return null
-  if (!hasCurrency && !hasUnit && !/[.,]/.test(numberPart) && numeric < 1000) return null
+  // Sem "R$", unidade (mil/mi) ou separador decimal/milhar, um numero solto e uma aposta fraca de
+  // que seja preco (pode ser um trecho de nome de arquivo, data, CEP etc.) — nenhum imovel real
+  // custa menos de R$ 10 mil, entao esse e o piso minimo para aceitar um numero sem nenhum sinal de
+  // que realmente representa dinheiro.
+  if (!hasCurrency && !hasUnit && !/[.,]/.test(numberPart) && numeric < 10_000) return null
 
   const multiplier =
     unit === "mil" || unit === "k"
@@ -87,7 +107,8 @@ function inferPropertyTypeFromText(message: string): string | null {
   return null
 }
 
-export function parsePropertyDraftData(message: string, payload?: Record<string, unknown>) {
+export function parsePropertyDraftData(rawMessage: string, payload?: Record<string, unknown>) {
+  const message = stripAttachmentBoilerplate(rawMessage)
   const normalized = normalizeForIntent(message)
   const type = inferPropertyTypeFromText(message) ?? "APARTMENT"
   const cityMatch = normalized.match(/\b(?:em|cidade)\s+([\p{L}\s-]{3,60})(?:\s+(?:bairro|no|na|com|r\$|ate|até|venda|aluguel|locacao|locação|$)|$)/u)
@@ -153,7 +174,7 @@ export async function createPropertyDraftRecord(input: {
   payload?: Record<string, unknown>
 }) {
   const parsedDraft = parsePropertyDraftData(input.message, input.payload)
-  const parsedPrice = parseBrazilianMoney(input.payload?.price) ?? parseBrazilianMoney(input.message)
+  const parsedPrice = parseBrazilianMoney(input.payload?.price) ?? parseBrazilianMoney(stripAttachmentBoilerplate(input.message))
   const draft = {
     ...parsedDraft,
     priceOutOfRange: parsedPrice?.outOfRange ?? false,
@@ -418,17 +439,26 @@ export async function findLeadCandidates(brokerId: string, personName: string, t
   return (filtered.length ? filtered : candidates).slice(0, take)
 }
 
-export function extractPersonName(message: string) {
+// Nunca deve retornar texto de comando/instrucao como nome — mesma garantia de
+// extractClientIdentity (lib/cos/entity-extraction.ts). Sem isso, uma mensagem sem "para X"
+// reconhecivel (ex: cliente nao informado, ou a mensagem enriquecida com o bloco de instrucao de
+// anexo) caia no fallback abaixo e devolvia a propria instrucao interna como "nome do cliente" da
+// proposta gerada.
+export function extractPersonName(rawMessage: string) {
+  const message = stripAttachmentBoilerplate(rawMessage)
   const directMatch = message.match(/\bpara\s+([\p{L}]+(?:\s+[\p{L}]+)?)/iu)
   if (directMatch?.[1]) {
-    return cleanText(directMatch[1].replace(/\b(?:no|na|do|da|imóvel|imovel|apartamento|casa|terreno)\b.*$/i, ""), 120)
+    const candidate = cleanText(directMatch[1].replace(/\b(?:no|na|do|da|imóvel|imovel|apartamento|casa|terreno)\b.*$/i, ""), 120)
+    return looksLikeRawCommandSentence(candidate) ? "" : candidate
   }
   const cleaned = message
     .replace(/\b(gerar|gere|criar|crie|proposta|documento|contrato|para|do|da|no|na|imovel|imóvel)\b/gi, " ")
     .replace(/\d+/g, " ")
+    .replace(/[^\p{L}\s-]/gu, " ")
     .replace(/\s+/g, " ")
     .trim()
-  return cleanText(cleaned.split(/\s+(?:apartamento|casa|terreno|centro)\b/i)[0], 120)
+  const fallback = cleanText(cleaned.split(/\s+(?:apartamento|casa|terreno|centro)\b/i)[0], 120)
+  return looksLikeRawCommandSentence(fallback) ? "" : fallback
 }
 
 export function extractAgendaPersonName(message: string) {
