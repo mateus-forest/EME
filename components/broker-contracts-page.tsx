@@ -1651,8 +1651,8 @@ function PreviewInfo({
   value: string
 }) {
   return (
-    <div className="min-w-0 rounded-[1rem] border border-black/[0.04] bg-[#fcfcfa] px-3.5 py-2.5">
-      <p className="text-[9px] uppercase tracking-[0.16em] text-[#8B95A1]">{label}</p>
+    <div className="min-w-0 rounded-[1.05rem] border border-black/[0.045] bg-[#fcfcfa] px-3.5 py-2">
+      <p className="text-[9px] uppercase tracking-[0.18em] text-[#8B95A1]">{label}</p>
       <p className="mt-1.5 truncate text-[0.92rem] font-medium text-[#050505]">{value || "—"}</p>
     </div>
   )
@@ -3119,7 +3119,7 @@ export function BrokerContractsPage() {
             </p>
           ) : null}
 
-          <div className="grid gap-6 xl:grid-cols-[248px_minmax(0,1fr)_272px]">
+          <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_248px] xl:gap-6">
             <div className="min-h-0">
               {isLoading ? (
                 <Card className="rounded-[1.5rem] border-black/[0.06] bg-white/90">
@@ -3128,13 +3128,13 @@ export function BrokerContractsPage() {
                   </CardContent>
                 </Card>
               ) : contractsList.length > 0 ? (
-                <div className="grid max-h-[calc(100vh-22rem)] gap-2 overflow-y-auto pr-1.5">
+                <div className="grid max-h-[calc(100vh-22rem)] gap-1.5 overflow-y-auto pr-1">
                   {contractsList.map((contract) => (
                     <button
                       key={contract.id}
                       type="button"
                       onClick={() => setSelectedId(contract.id)}
-                      className={`relative overflow-hidden rounded-[1.1rem] border px-3.5 py-2.5 text-left transition ${
+                      className={`relative overflow-hidden rounded-[1rem] border px-3 py-2 text-left transition ${
                         selectedContract?.id === contract.id
                           ? "border-[#009b3a]/10 bg-[#f6fbf7]"
                           : "border-black/[0.045] bg-[#fcfcfa] hover:border-black/[0.07] hover:bg-white"
@@ -3149,20 +3149,20 @@ export function BrokerContractsPage() {
                         >
                           {getContractStatusLabel(contract.status)}
                         </span>
-                        <span className="text-xs text-[#9AA4B2]">{new Intl.DateTimeFormat("pt-BR").format(new Date(contract.updatedAt))}</span>
+                        <span className="text-[11px] text-[#9AA4B2]">{new Intl.DateTimeFormat("pt-BR").format(new Date(contract.updatedAt))}</span>
                       </div>
 
-                      <p className="mt-2.5 line-clamp-1 text-[0.93rem] font-semibold leading-5 text-[#050505]">
+                      <p className="mt-2 line-clamp-1 text-[0.9rem] font-semibold leading-[1.35] text-[#050505]">
                         {contract.title}
                       </p>
 
-                      <div className="mt-2 flex items-center gap-2 text-[13px] text-[#667085]">
-                        <p className="min-w-0 flex-1 truncate">{contract.leadName || "Cliente nãovinculado"}</p>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-[#667085]">
+                        <p className="min-w-0 flex-1 truncate">{contract.leadName || "Cliente não vinculado"}</p>
                         <span className="size-1 rounded-full bg-black/[0.14]" aria-hidden="true" />
-                        <p className="min-w-0 flex-1 truncate">{contract.propertyTitle || "Imóvel nãovinculado"}</p>
+                        <p className="min-w-0 flex-1 truncate">{contract.propertyTitle || "Imóvel não vinculado"}</p>
                       </div>
 
-                      <div className="mt-2.5 flex items-center justify-between gap-3 text-[13px]">
+                      <div className="mt-2 flex items-center justify-between gap-3 text-[12px]">
                         <span className="font-medium text-[#111111]">{contract.amountLabel || "Valor pendente"}</span>
                         <span className="text-[#9AA4B2]">{formatDateTime(contract.updatedAt).slice(0, 10)}</span>
                       </div>
@@ -3177,14 +3177,14 @@ export function BrokerContractsPage() {
             </div>
 
             <div className="min-w-0">
-              <div className="grid gap-6">
-                <div className="flex flex-col gap-4 border-b border-black/[0.045] pb-5 xl:flex-row xl:items-start xl:justify-between">
-                  <div>
-                    <CardTitle className="text-[1.95rem] tracking-[-0.055em] text-[#050505]">
+              <div className="grid gap-5">
+                <div className="flex flex-col gap-4 rounded-[1.45rem] border border-black/[0.045] bg-[#fcfcfa] px-4 py-4 sm:px-5 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0">
+                    <CardTitle className="text-[1.7rem] tracking-[-0.05em] text-[#050505]">
                       {selectedContract?.title ?? "Selecione um contrato"}
                     </CardTitle>
                     {selectedContract ? (
-                      <p className="mt-2 text-[12px] leading-5 text-[#7B8491]">
+                      <p className="mt-1.5 text-[12px] leading-5 text-[#7B8491]">
                         Versao {selectedContract.version} por {selectedContract.authorName} · atualizado em{" "}
                         {formatDateTime(selectedContract.updatedAt)}
                       </p>
@@ -3192,9 +3192,9 @@ export function BrokerContractsPage() {
                   </div>
 
                   {selectedContract ? (
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
                       <span
-                        className={`w-fit rounded-full border px-2.5 py-1 text-[12px] font-medium ${getContractStatusTone(
+                        className={`w-fit rounded-full border px-2.5 py-1 text-[11px] font-medium ${getContractStatusTone(
                           selectedContract.status,
                         )}`}
                       >
@@ -3204,7 +3204,7 @@ export function BrokerContractsPage() {
                         type="button"
                         variant="ghost"
                         onClick={() => openEditDialog(selectedContract)}
-                        className="h-9 rounded-xl border border-black/[0.05] bg-white px-3 text-[#111111] hover:bg-white"
+                        className="h-[2.125rem] rounded-xl border border-black/[0.05] bg-white px-3 text-[#111111] hover:bg-white"
                       >
                         <PencilLine className="size-4" />
                         Editar
@@ -3212,7 +3212,7 @@ export function BrokerContractsPage() {
                       <Button
                         type="button"
                         onClick={exportPdf}
-                        className="h-9 rounded-xl bg-[#111111] px-3.5 text-white hover:bg-[#050505]"
+                        className="h-[2.125rem] rounded-xl bg-[#111111] px-3.5 text-white hover:bg-[#050505]"
                       >
                         {selectedContractIsExternal ? <ExternalLink className="size-4" /> : <Download className="size-4" />}
                         {selectedContractIsExternal ? "Abrir arquivo" : "Gerar PDF"}
@@ -3221,7 +3221,7 @@ export function BrokerContractsPage() {
                         <Button
                           type="button"
                           onClick={() => void updateContractStatus("signed")}
-                          className="h-9 rounded-xl bg-[#009b3a] px-3.5 text-white hover:bg-[#008633]"
+                          className="h-[2.125rem] rounded-xl bg-[#009b3a] px-3.5 text-white hover:bg-[#008633]"
                         >
                           <CheckCheck className="size-4" />
                           Assinar
@@ -3235,18 +3235,19 @@ export function BrokerContractsPage() {
               <div className="grid gap-5">
                 {selectedContract ? (
                   <>
-                    <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-2 border-b border-black/[0.045] pb-4 sm:grid-cols-2 xl:grid-cols-5">
+                      <PreviewInfo label="Status" value={getContractStatusLabel(selectedContract.status)} />
                       <PreviewInfo label="Cliente" value={selectedContract.leadName} />
                       <PreviewInfo label="Imóvel" value={selectedContract.propertyTitle} />
                       <PreviewInfo label="Valor" value={selectedContract.amountLabel} />
                       <PreviewInfo label="Modelo" value={selectedContract.kind} />
                     </div>
 
-                    <div className="grid gap-4">
+                    <div className="grid gap-3.5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Preview do documento</p>
-                          <p className="mt-1.5 text-sm text-[#5F6B7A]">
+                          <p className="mt-1 text-[13px] leading-5 text-[#5F6B7A]">
                             A folha A4 permanece no centro enquanto a negociação e as validacoes acompanham o contrato.
                           </p>
                         </div>
@@ -3256,7 +3257,7 @@ export function BrokerContractsPage() {
                               type="button"
                               variant="ghost"
                               onClick={() => openAttachedContract(true)}
-                              className="h-9 rounded-xl border border-black/[0.05] bg-white px-3 text-[#4B5563] hover:bg-white"
+                              className="h-[2.125rem] rounded-xl border border-black/[0.05] bg-white px-3 text-[#4B5563] hover:bg-white"
                             >
                               <Download className="size-4" />
                               Baixar
@@ -3266,7 +3267,7 @@ export function BrokerContractsPage() {
                             type="button"
                             variant="ghost"
                             onClick={() => void duplicateContract(selectedContract.id)}
-                            className="h-9 rounded-xl border border-black/[0.05] bg-white px-3 text-[#4B5563] hover:bg-white"
+                            className="h-[2.125rem] rounded-xl border border-black/[0.05] bg-white px-3 text-[#4B5563] hover:bg-white"
                           >
                             <CopyPlus className="size-4" />
                             Duplicar
@@ -3276,7 +3277,7 @@ export function BrokerContractsPage() {
                               type="button"
                               variant="ghost"
                               onClick={() => void updateContractStatus("awaiting_signature")}
-                              className="h-9 rounded-xl border border-black/[0.05] bg-white px-3 text-[#4B5563] hover:bg-white"
+                              className="h-[2.125rem] rounded-xl border border-black/[0.05] bg-white px-3 text-[#4B5563] hover:bg-white"
                             >
                               <Send className="size-4" />
                               Enviar
@@ -3285,8 +3286,8 @@ export function BrokerContractsPage() {
                         </div>
                       </div>
 
-                      <div className="rounded-[1.6rem] bg-[#f6f5f1] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] sm:px-7 sm:py-6">
-                        <div className="mx-auto aspect-[210/297] w-full max-w-[31rem] overflow-hidden rounded-[1.2rem] border border-black/[0.04] bg-white shadow-[0_16px_34px_rgba(15,23,42,0.05)]">
+                      <div className="rounded-[1.6rem] bg-[#f6f5f1] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] sm:px-6 sm:py-5">
+                        <div className="mx-auto aspect-[210/297] w-full max-w-[25rem] overflow-hidden rounded-[1.2rem] border border-black/[0.04] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
                           {selectedContractIsExternal &&
                           selectedContract.content.attachment?.mimeType === "application/pdf" ? (
                             <iframe
@@ -3318,16 +3319,16 @@ export function BrokerContractsPage() {
               </div>
             </div>
 
-            <div className="min-w-0 xl:max-w-[17rem]">
+            <div className="min-w-0 xl:max-w-[15.5rem]">
               {selectedContract ? (
-                <div className="grid gap-3.5">
-                  <section className="rounded-[1.45rem] border border-black/[0.045] bg-[#fbfbf8] p-4">
+                <div className="grid gap-3">
+                  <section className="rounded-[1.35rem] border border-black/[0.045] bg-[#fbfbf8] p-3.5">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Painel contextual</p>
-                    <h3 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-[#050505]">
+                    <h3 className="mt-2.5 text-[1.25rem] font-semibold tracking-[-0.04em] text-[#050505]">
                       Saude deste contrato
                     </h3>
-                    <div className="mt-4 rounded-[1.15rem] bg-white px-3.5 py-3.5">
-                      <p className="text-[2.25rem] font-semibold tracking-[-0.06em] text-[#050505]">
+                    <div className="mt-3.5 rounded-[1.05rem] bg-white px-3 py-3">
+                      <p className="text-[2rem] font-semibold tracking-[-0.06em] text-[#050505]">
                         {contractHealthScore}%
                       </p>
                       <div className="mt-3 h-2 rounded-full bg-black/[0.06]">
@@ -3335,27 +3336,27 @@ export function BrokerContractsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3.5 grid gap-1.5">
+                    <div className="mt-3 grid gap-1.5">
                       {contractHealthIndicators.map((item) => (
-                        <div key={item.label} className="flex items-center justify-between rounded-[0.95rem] bg-white px-3 py-2.5">
-                          <span className="text-[13px] text-[#4B5563]">{item.label}</span>
-                          <span className="text-[13px] font-semibold text-[#050505]">{item.score}%</span>
+                        <div key={item.label} className="flex items-center justify-between rounded-[0.9rem] bg-white px-3 py-2">
+                          <span className="text-[12px] text-[#4B5563]">{item.label}</span>
+                          <span className="text-[12px] font-semibold text-[#050505]">{item.score}%</span>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-4 border-t border-black/[0.06] pt-4">
+                    <div className="mt-3.5 border-t border-black/[0.06] pt-3.5">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Pendencias</p>
                       <div className="mt-2.5 grid gap-1.5">
                         {contractPendingHighlights.length > 0 ? (
                           contractPendingHighlights.map((item) => (
-                            <div key={item} className="flex items-start gap-2 text-[13px] leading-5 text-[#5F6B7A]">
+                            <div key={item} className="flex items-start gap-2 text-[12px] leading-5 text-[#5F6B7A]">
                               <span className="mt-1.5 size-1.5 rounded-full bg-[#c58917]" />
                               <span>{item}</span>
                             </div>
                           ))
                         ) : (
-                          <div className="flex items-start gap-2 text-[13px] leading-5 text-[#5F6B7A]">
+                          <div className="flex items-start gap-2 text-[12px] leading-5 text-[#5F6B7A]">
                             <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
                             <span>Sem pendencias estruturais neste momento.</span>
                           </div>
@@ -3366,21 +3367,21 @@ export function BrokerContractsPage() {
                     <Button
                       type="button"
                       variant="ghost"
-                      className="mt-4 h-9 w-full rounded-xl border border-black/[0.05] bg-white text-[#111111] hover:bg-white"
+                      className="mt-3.5 h-[2.125rem] w-full rounded-xl border border-black/[0.05] bg-white text-[#111111] hover:bg-white"
                     >
                       <Sparkles className="size-4" />
                       Conversar com o COS
                     </Button>
                   </section>
 
-                  <section className="rounded-[1.45rem] border border-black/[0.045] bg-white p-4">
+                  <section className="rounded-[1.35rem] border border-black/[0.045] bg-white p-3.5">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Validacao automatica</p>
-                      <h3 className="mt-3 text-base font-semibold text-[#050505]">Revisao contextual</h3>
+                      <h3 className="mt-2.5 text-[0.95rem] font-semibold text-[#050505]">Revisao contextual</h3>
                     </div>
-                    <div className="mt-3.5 grid gap-2">
+                    <div className="mt-3 grid gap-1.5">
                       {contractValidationItems.map((item) => (
-                        <div key={item.label} className="rounded-[0.95rem] bg-[#fbfbf8] px-3 py-2.5">
+                        <div key={item.label} className="rounded-[0.9rem] bg-[#fbfbf8] px-3 py-2">
                           <div className="flex items-start gap-3">
                             {item.done ? (
                               <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
@@ -3388,8 +3389,8 @@ export function BrokerContractsPage() {
                               <AlertCircle className="mt-0.5 size-4 text-[#c58917]" />
                             )}
                             <div>
-                              <p className="text-[13px] font-medium text-[#050505]">{item.label}</p>
-                              <p className="mt-1 text-[13px] leading-5 text-[#6B7280]">{item.detail}</p>
+                              <p className="text-[12px] font-medium text-[#050505]">{item.label}</p>
+                              <p className="mt-1 text-[12px] leading-5 text-[#6B7280]">{item.detail}</p>
                             </div>
                           </div>
                         </div>
@@ -3397,20 +3398,20 @@ export function BrokerContractsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-[1.45rem] border border-black/[0.045] bg-white p-4">
+                  <section className="rounded-[1.35rem] border border-black/[0.045] bg-white p-3.5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Notas de revisão</p>
-                        <h3 className="mt-3 text-base font-semibold text-[#050505]">Checklist juridico e comercial</h3>
+                        <h3 className="mt-2.5 text-[0.95rem] font-semibold text-[#050505]">Checklist juridico e comercial</h3>
                       </div>
                       <span className="rounded-full bg-[#f5fbf7] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#009b3a]">
                         {selectedContract.content.reviewNotes.length || 0} itens
                       </span>
                     </div>
-                    <div className="mt-3.5 grid gap-1.5">
+                    <div className="mt-3 grid gap-1.5">
                       {selectedContract.content.reviewNotes.length > 0 ? (
                         selectedContract.content.reviewNotes.slice(0, 5).map((item) => (
-                          <div key={item} className="rounded-[0.95rem] bg-[#fbfbf8] px-3 py-2.5 text-[13px] leading-5 text-[#4B5563]">
+                          <div key={item} className="rounded-[0.9rem] bg-[#fbfbf8] px-3 py-2 text-[12px] leading-5 text-[#4B5563]">
                             {item}
                           </div>
                         ))
