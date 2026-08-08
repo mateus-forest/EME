@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { CheckCircle2, Lightbulb, Mail, MessageCircle, Search } from "lucide-react"
 
+import { EME_SUPPORT_WHATSAPP_NUMBER } from "@/lib/support"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -41,7 +42,7 @@ const quickTips = [
 export function BrokerSupportPage() {
   const [search, setSearch] = useState("")
   const supportWhatsAppUrl = createWhatsAppUrl(
-    "(11) 98888-0000",
+    EME_SUPPORT_WHATSAPP_NUMBER,
     "Olá, preciso de ajuda com o portal da EME",
   )
   const normalizedSearch = search.trim().toLowerCase()

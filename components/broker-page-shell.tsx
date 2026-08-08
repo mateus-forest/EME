@@ -6,9 +6,11 @@ import Link from "next/link"
 import { Plus, Search } from "lucide-react"
 
 import { NotificationCenter } from "@/components/notification-center"
+import { BrokerSupportQuickAccess } from "@/components/broker-support-quick-access"
 import { BrokerSidebar } from "@/components/broker-sidebar"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { useBrokerProfile } from "@/components/use-broker-profile"
+import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -46,6 +48,7 @@ export function BrokerPageShell({
   const hasSearchArea = searchPlaceholder || headerControls
   const hasPrimaryAction = Boolean(primaryActionLabel)
   const { profile } = useBrokerProfile()
+  const { subscription } = useBrokerSubscription()
   const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
   const resolvedNotificationCenter = useMemo(
     () =>
@@ -121,6 +124,11 @@ export function BrokerPageShell({
 
                   {(resolvedNotificationCenter || hasPrimaryAction) && (
                     <div className="flex max-w-full flex-wrap items-center gap-2 self-start xl:self-center">
+                      <BrokerSupportQuickAccess
+                        tone="light"
+                        brokerName={profile.fullName}
+                        planName={subscription.planName}
+                      />
                       {resolvedNotificationCenter}
                       {hasPrimaryAction && (
                         <Button
