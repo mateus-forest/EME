@@ -8,9 +8,10 @@ export async function loginAsBroker(page: Page, credentials?: { email?: string; 
   const password = credentials?.password || defaultPassword
 
   await page.goto("/login")
+  await expect(page.getByRole("heading", { name: /Bem-vindo de volta\./i })).toBeVisible()
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Senha").fill(password)
-  await page.getByRole("button", { name: "Entrar" }).click()
+  await page.getByRole("button", { name: "Entrar", exact: true }).click()
 
-  await expect(page).not.toHaveURL(/\/login(?:\?.*)?$/)
+  await expect(page).toHaveURL(/\/corretor(?:\?.*)?$/)
 }
