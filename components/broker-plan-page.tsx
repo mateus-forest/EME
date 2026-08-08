@@ -23,9 +23,9 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { NotificationCenter } from "@/components/notification-center"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
-import { startStripeCheckout } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { startStripeCheckout } from "@/lib/stripe-client"
 
 type PlanItem = {
   key: string
@@ -468,7 +468,7 @@ export function BrokerPlanPage() {
           </Card>
 
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <CardHeader id="planos-disponiveis" className="px-5 py-5">
+            <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">O que está incluso</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-5 pt-0 sm:grid-cols-2">
@@ -500,7 +500,7 @@ export function BrokerPlanPage() {
 
         <ResponsiveCollapsibleSection title="Planos disponíveis" defaultMobileOpen>
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-5 py-5">
+            <CardHeader id="planos-disponiveis" className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Planos disponíveis</CardTitle>
               <p className="text-sm text-[#6B7280]">Escolha a capacidade operacional ideal para o ritmo da sua carteira.</p>
             </CardHeader>
@@ -578,7 +578,7 @@ export function BrokerPlanPage() {
           </CardContent>
         </Card>
 
-        <ResponsiveCollapsibleSection title="Pacotes extras">
+        <ResponsiveCollapsibleSection title="Pacotes extras" defaultMobileOpen>
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Pacotes extras</CardTitle>
@@ -593,7 +593,7 @@ export function BrokerPlanPage() {
                 items={creditPackages}
                 onRequest={handlePackageCheckout}
                 isLocked={isFreePlan}
-                lockedMessage="FaÃ§a upgrade para adquirir crÃ©ditos IA e utilizar todos os recursos inteligentes do EME."
+                lockedMessage="Faça upgrade para adquirir créditos IA e utilizar todos os recursos inteligentes do EME."
               />
               <PackageCategory
                 title="Expansão da Carteira"
@@ -601,7 +601,7 @@ export function BrokerPlanPage() {
                 items={propertyPackages}
                 onRequest={handlePackageCheckout}
                 isLocked={isFreePlan}
-                lockedMessage="FaÃ§a upgrade para expandir o limite da sua carteira de imÃ³veis."
+                lockedMessage="Faça upgrade para expandir o limite da sua carteira de imóveis."
               />
             </CardContent>
           </Card>
@@ -781,7 +781,7 @@ function PackageCategory({
       {isLocked ? (
         <div className="mt-4 rounded-[1rem] border border-[#009b3a]/14 bg-white/85 px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#009b3a]">
-            DisponÃ­vel a partir do plano Pro
+            Disponível a partir do plano Pro
           </p>
           <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">{lockedMessage}</p>
           <Button
@@ -821,7 +821,7 @@ function PackageCategory({
                 disabled={isLocked}
                 className="mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:cursor-not-allowed disabled:border-black/[0.05] disabled:bg-[#f3f4f1] disabled:text-[#9CA3AF]"
               >
-                {isLocked ? "DisponÃ­vel no Pro+" : "Comprar"}
+                {isLocked ? "Disponível no Pro+" : "Comprar"}
               </Button>
             </div>
           )
