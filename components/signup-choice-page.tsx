@@ -8,7 +8,7 @@ export function SignupChoicePage() {
   return (
     <AuthShell
       title="Comece como corretor"
-      subtitle="Nesta fase, o EME está focado em corretores individuais para acelerar criação de anúncios, catálogo inteligente, leads e Assessor EME."
+      subtitle="Nesta fase, o EME está focado em corretores individuais para acelerar criação de anúncios, catálogo inteligente, leads e COS."
       footer={
         <p className="text-sm text-[#6B7280]">
           Já tem conta?{" "}

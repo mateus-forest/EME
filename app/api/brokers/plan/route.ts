@@ -102,6 +102,7 @@ export async function GET() {
         balance: snapshot.aiCreditsBalance,
         usedThisMonth: snapshot.aiCreditsUsedThisMonth,
         monthlyCredits: snapshot.plan.monthlyAiCredits,
+        extraCredits: snapshot.extraAiCredits,
         history: creditHistory.map((item) => ({
           ...item,
           createdAt: item.createdAt.toISOString(),

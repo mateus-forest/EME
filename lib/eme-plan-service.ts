@@ -162,6 +162,7 @@ async function grantInitialPlanCredits({
       data: {
         aiCreditsBalance: nextBalance,
         aiCreditsUsedThisMonth: 0,
+        aiMonthlyUsage: 0,
       },
       select: { aiCreditsBalance: true },
     })
@@ -241,6 +242,7 @@ async function renewMonthlyPlanCreditsIfNeeded({
       data: {
         aiCreditsBalance: nextBalance,
         aiCreditsUsedThisMonth: 0,
+        aiMonthlyUsage: 0,
       },
       select: { aiCreditsBalance: true },
     })
@@ -662,11 +664,13 @@ export async function refundBrokerAiCredits({
 
 export async function registerExtraPackagePurchase({
   brokerId,
+  userId,
   packageKey,
   status = "registered",
   metadata,
 }: {
   brokerId: string
+  userId: string
   packageKey: EmeExtraPackageKey
   status?: string
   metadata?: Prisma.InputJsonObject
@@ -713,11 +717,29 @@ export async function registerExtraPackagePurchase({
             metadata: { packageKey, purchaseId: purchase.id } satisfies Prisma.InputJsonObject,
           },
         })
+
+        await tx.notification.create({
+          data: {
+            userId,
+            title: "Créditos IA adquiridos",
+            message: `Você adquiriu +${pack.quantity} Créditos IA.`,
+            read: false,
+          },
+        })
       } else {
         await tx.brokerPlanAccount.update({
           where: { brokerId },
           data: {
             propertyExtraLimit: { increment: pack.quantity },
+          },
+        })
+
+        await tx.notification.create({
+          data: {
+            userId,
+            title: "Capacidade de imóveis adquirida",
+            message: `Você adquiriu +${pack.quantity} imóveis ativos.`,
+            read: false,
           },
         })
       }

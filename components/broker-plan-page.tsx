@@ -55,6 +55,16 @@ type CreditHistoryItem = {
   createdAt: string
 }
 
+type PackagePurchaseHistoryItem = {
+  id: string
+  packageKey: string
+  packageType: "credit" | "property" | string
+  quantity: number
+  price: string
+  status: string
+  createdAt: string
+}
+
 type BrokerPlanSnapshot = {
   currentPlan: PlanItem
   plans: PlanItem[]
@@ -72,9 +82,11 @@ type BrokerPlanSnapshot = {
     balance: number
     usedThisMonth: number
     monthlyCredits: number
+    extraCredits: number
     history: CreditHistoryItem[]
   }
   packages: PlanPackage[]
+  packageHistory: PackagePurchaseHistoryItem[]
 }
 
 const featureIcons: Record<string, typeof Home> = {
@@ -182,6 +194,12 @@ function formatHistoryDate(value: string) {
   }).format(new Date(value))
 }
 
+function getPackagePurchaseLabel(item: PackagePurchaseHistoryItem) {
+  const known = [...creditPackageItems, ...propertyPackageItems].find((pack) => pack.key === item.packageKey)
+  if (known) return known.label
+  return item.packageType === "credit" ? `+${item.quantity} Créditos IA` : `+${item.quantity} imóveis ativos`
+}
+
 function isPlanSnapshot(value: BrokerPlanSnapshot | { error?: string } | null): value is BrokerPlanSnapshot {
   return Boolean(value && "currentPlan" in value && "propertyLimits" in value && "credits" in value)
 }
@@ -231,14 +249,18 @@ export function BrokerPlanPage() {
   const creditBalance = planSnapshot?.credits.balance ?? 0
   const creditUsed = planSnapshot?.credits.usedThisMonth ?? 0
   const creditMonthly = planSnapshot?.credits.monthlyCredits ?? 0
-  const creditRatio = creditMonthly ? Math.min(1, creditUsed / creditMonthly) : 0
+  // Extras comprados não resetam mensalmente — o total exibido precisa somar o limite
+  // mensal do plano ao saldo extra ainda não consumido, não só o limite estático do plano.
+  const creditExtra = planSnapshot?.credits.extraCredits ?? 0
+  const creditTotal = creditMonthly + creditExtra
+  const creditRatio = creditTotal ? Math.min(1, creditUsed / creditTotal) : 0
   const creditLimitLabel = planSnapshot
-    ? `${creditUsed} utilizados / ${creditMonthly} do plano`
+    ? `${creditUsed} utilizados / ${creditTotal} no total`
     : "Carregando Créditos IA"
 
   const hasReachedPropertyLimit = Boolean(propertyLimits && propertyRemaining <= 0)
   const propertyUsageWidth = getUsageWidth(propertyUsed, propertyTotal)
-  const creditUsageWidth = getUsageWidth(creditUsed, creditMonthly || Math.max(creditUsed, 1))
+  const creditUsageWidth = getUsageWidth(creditUsed, creditTotal || Math.max(creditUsed, 1))
 
   const planDisplayName = currentPlan ? (getCommercialPlanCopy(currentPlan.key)?.name ?? currentPlan.name) : "Carregando plano"
   const planStatus = currentPlan ? "Ativo na conta" : "Sincronizando"
@@ -248,7 +270,7 @@ export function BrokerPlanPage() {
     : "Carregando dados reais do plano."
 
   const propertyLimitMessage = getLimitMessage(propertyRemaining, "imóveis")
-  const creditLimitMessage = getLimitMessage(Math.max(0, creditMonthly - creditUsed), "Créditos IA do plano")
+  const creditLimitMessage = getLimitMessage(creditBalance, "Créditos IA")
 
   const includedFeatures = useMemo(() => {
     const features = currentPlan?.features ?? []
@@ -257,6 +279,10 @@ export function BrokerPlanPage() {
 
   const creditPackages = useMemo(() => creditPackageItems, [])
   const propertyPackages = useMemo(() => propertyPackageItems, [])
+  const propertyPackageHistory = useMemo(
+    () => (planSnapshot?.packageHistory ?? []).filter((item) => item.packageType === "property"),
+    [planSnapshot?.packageHistory],
+  )
   const isFreePlan = currentPlan?.key === "free"
   const visiblePlans = useMemo(
     () => (planSnapshot?.plans ?? []).filter((plan) => ["free", "pro", "scale"].includes(plan.key)),
@@ -411,7 +437,7 @@ export function BrokerPlanPage() {
                 />
                 <CompactMetricCard
                   label="Créditos IA"
-                  value={planSnapshot ? `${creditUsed}/${creditMonthly}` : "-"}
+                  value={planSnapshot ? `${creditUsed}/${creditTotal}` : "-"}
                   caption={planSnapshot ? `${creditBalance} disponíveis` : "Sincronizando"}
                   toneClass={getUsageTone(creditRatio)}
                 />
@@ -665,6 +691,34 @@ export function BrokerPlanPage() {
               ) : (
                 <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <p className="text-sm text-[#6B7280]">Nenhuma movimentação de Créditos IA registrada ainda.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </ResponsiveCollapsibleSection>
+
+        <ResponsiveCollapsibleSection title="Histórico de Capacidade de Carteira">
+          <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl text-[#050505]">Histórico de Capacidade de Carteira</CardTitle>
+              <p className="text-sm text-[#6B7280]">Compras de imóveis extras aplicadas ao limite da sua carteira.</p>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-5 pt-0">
+              {propertyPackageHistory.length ? (
+                propertyPackageHistory.map((item) => (
+                  <div key={item.id} className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-medium text-[#050505]">{getPackagePurchaseLabel(item)}</p>
+                      <span className="text-sm font-semibold text-[#009b3a]">{item.price}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                      {formatHistoryDate(item.createdAt)} · Status: {item.status === "completed" ? "Concluída" : item.status}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+                  <p className="text-sm text-[#6B7280]">Nenhuma compra de capacidade de imóveis registrada ainda.</p>
                 </div>
               )}
             </CardContent>

@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
     <main>
       <div>EME</div>
       <h1>Você está offline</h1>
-      <p>Conecte-se à internet para acessar seus imóveis, leads e o Assessor EME.</p>
+      <p>Conecte-se à internet para acessar seus imóveis, leads e o COS.</p>
       <button onclick="location.reload()">Tentar novamente</button>
     </main>
   </body>

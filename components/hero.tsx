@@ -23,7 +23,7 @@ export function Hero() {
         <div className="relative aspect-[1900/850] w-full overflow-hidden rounded-t-[40px]">
           <Image
             src="/images/eme-landing-hero-banner-light-2026-06-17.png"
-            alt="Assessor EME e Catálogo Inteligente"
+            alt="COS e Catálogo Inteligente"
             fill
             priority
             sizes="100vw"

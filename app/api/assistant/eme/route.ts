@@ -601,9 +601,9 @@ export async function GET() {
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do COS está indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel carregar o Assessor EME." }, { status: 500 })
+    return NextResponse.json({ error: "Nao foi possivel carregar o COS." }, { status: 500 })
   }
 }
 
@@ -623,7 +623,7 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json().catch(() => null)
   if (typeof body?.aiAssistantEnabled !== "boolean") {
-    return NextResponse.json({ error: "Informe o status do Assessor EME." }, { status: 400 })
+    return NextResponse.json({ error: "Informe o status do COS." }, { status: 400 })
   }
 
   try {
@@ -640,9 +640,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(creditsResponse(broker))
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json({ error: "O serviço do Assessor EME está indisponível no momento." }, { status: 503 })
+      return NextResponse.json({ error: "O serviço do COS está indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel atualizar o Assessor EME." }, { status: 500 })
+    return NextResponse.json({ error: "Nao foi possivel atualizar o COS." }, { status: 500 })
   }
 }
 
@@ -680,7 +680,7 @@ export async function POST(request: NextRequest) {
   let creditsUsed: number = isWorkflowDetailsRequest || isCancellation ? 0 : requestedAction ? getEmeCreditCost(requestedAction) : 1
 
   if (!message) {
-    return NextResponse.json({ error: "Digite uma mensagem para o Assessor EME." }, { status: 400 })
+    return NextResponse.json({ error: "Digite uma mensagem para o COS." }, { status: 400 })
   }
 
   try {
@@ -1476,8 +1476,8 @@ export async function POST(request: NextRequest) {
           actionType: action,
           description:
             workflow.steps.length > 1
-              ? `Assessor EME: workflow ${workflow.steps.map((step) => getCosCapabilityLabel(step.action)).join(" + ")}`
-              : `Assessor EME: ${getCosCapabilityLabel(action)}`,
+              ? `COS: workflow ${workflow.steps.map((step) => getCosCapabilityLabel(step.action)).join(" + ")}`
+              : `COS: ${getCosCapabilityLabel(action)}`,
           metadata: {
             source: "api/assistant/eme",
             action,

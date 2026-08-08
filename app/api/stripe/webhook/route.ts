@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
             if (!existingPurchase) {
               await registerExtraPackagePurchase({
                 brokerId: user.broker.id,
+                userId,
                 packageKey: metadata.packageKey,
                 status: "completed",
                 metadata: {
