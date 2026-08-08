@@ -406,7 +406,18 @@ function buildIntentCandidates(input: {
   pushCandidate("STUDIO_GENERATE_VIDEO", (mentionsVideo ? 32 : 0) + ((mentionsCreate || isCreateIntent) ? 12 : 0) + studioContextScore + propertyContextScore + (attachmentSignals.hasVideo ? 8 : 0) + (mentionsInstagram && mentionsVideo ? 8 : 0), ["geracao de video"])
   pushCandidate("STUDIO_IMPROVE_TEXT", (mentionsDescription ? 12 : 0) + ((mentionsUpdate || isEditIntent) ? 10 : 0) + studioContextScore + (mentionsCampaign ? 8 : 0), ["melhoria de texto/copy"])
 
-  pushCandidate("CREATE_AGENDA_EVENT", (mentionsAgenda ? 20 : 0) + ((mentionsCreate || isCreateIntent) ? 16 : 0) + agendaContextScore + countAny(input.normalizedMessage, ["amanha", "hoje", "segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo", "as"]) * 4, ["criacao de compromisso"])
+  // "as" (de "às 15h") precisa de \b: countAny faz .includes(), e "as" aparece dentro de "assim",
+  // "casa", "atrasado" etc — foi exatamente esse falso positivo que fazia "como assim?" (uma
+  // pergunta de esclarecimento dentro de um fluxo de ajuda) pontuar para CREATE_AGENDA_EVENT.
+  pushCandidate(
+    "CREATE_AGENDA_EVENT",
+    (mentionsAgenda ? 20 : 0) +
+      ((mentionsCreate || isCreateIntent) ? 16 : 0) +
+      agendaContextScore +
+      countAny(input.normalizedMessage, ["amanha", "hoje", "segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]) * 4 +
+      (hasWord(input.normalizedMessage, "as") ? 4 : 0),
+    ["criacao de compromisso"],
+  )
   pushCandidate("MARK_AGENDA_DONE", (mentionsAgenda ? 18 : 0) + (mentionsComplete ? 18 : 0) + agendaContextScore, ["conclusao de compromisso"])
   pushCandidate("UPDATE_AGENDA_EVENT", (mentionsAgenda ? 18 : 0) + ((mentionsUpdate || isEditIntent || mentionsAgendaUpdate) ? 16 : 0) + (input.normalizedMessage.includes("reagendar") ? 18 : 0) + agendaContextScore, ["atualizacao de compromisso"])
 
@@ -423,6 +434,12 @@ function buildIntentCandidates(input: {
   pushCandidate("help_register_properties" as AssessorAction, isHelpIntent && mentionsProperty ? 42 : 0, ["ajuda sobre cadastro de imoveis"])
   pushCandidate("help_manage_clients" as AssessorAction, isHelpIntent && mentionsClient ? 42 : 0, ["ajuda sobre gestao de clientes"])
   pushCandidate("help_contracts_proposals" as AssessorAction, ((isHelpIntent && (mentionsContract || mentionsProposal)) || ((mentionsContract && mentionsProposal) && !mentionsCreate && !mentionsSend && !mentionsSign)) ? 42 : 0, ["ajuda sobre contratos e propostas"])
+  // Fallback generico: sem isso, uma mensagem de ajuda/esclarecimento sem palavra-chave de
+  // dominio especifico (ex: "como assim?" dentro de um fluxo de ajuda) nao pontuava em NENHUM
+  // candidato help_*, deixando um vacuo que ruido de outros candidatos (como o falso positivo de
+  // "as" em CREATE_AGENDA_EVENT) podia vencer por ser o unico com score > 0. Pontuacao menor que
+  // os help_* especificos (42) para eles vencerem quando o dominio e claro.
+  pushCandidate("help_general_question" as AssessorAction, isHelpIntent ? 40 : 0, ["duvida generica de ajuda/esclarecimento"])
 
   const unique = new Map<AssessorAction, { action: AssessorAction; score: number; reasons: string[] }>()
   for (const candidate of candidates) {

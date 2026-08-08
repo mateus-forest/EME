@@ -314,7 +314,7 @@ export const convertLeadCapability: CosCapabilityHandler = async ({ brokerId, me
 function buildEntityDocumentRecord(attachment: { name: string; type: string; dataUrl: string }): EntityDocumentRecord {
   return {
     id: crypto.randomUUID(),
-    label: "Documento anexado via Assessor",
+    label: "Documento anexado via COS",
     name: attachment.name || "documento.pdf",
     url: attachment.dataUrl,
     mimeType: attachment.type || "application/pdf",

@@ -9,7 +9,7 @@ import { PropertyStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { extractPropertyPublicCode, findPropertyByBrokerPublicCode, getNextPropertyPublicCode } from "@/lib/property-public-code"
 
-import { cleanText } from "@/lib/cos/capabilities/shared"
+import { cleanText, getAttachmentsFromPayload } from "@/lib/cos/capabilities/shared"
 
 const MAX_PROPERTY_INTEGER_VALUE = 2_147_483_647
 
@@ -47,9 +47,16 @@ function parseNumericMoneyToken(raw: string, hasUnit: boolean) {
   return Number(token)
 }
 
+// Retorna o valor em CENTAVOS — mesma unidade da coluna Property.price (Int) em todo o resto do
+// app (ver lib/currency.ts formatCurrencyBRLFromCents/parseCurrencyInputToCents). Antes retornava
+// reais direto, que era gravado sem conversao na coluna de centavos (preco 100x menor que o real,
+// ex: "850 mil" virava R$ 8.500,00) e, no sentido inverso, formatAssessorPropertyPrice lia a coluna
+// em centavos como se fosse reais (preco 100x maior que o real, ex: R$ 1.780.000 exibido como
+// R$ 178.000.000). As duas pontas estao corrigidas juntas: aqui a conversao para centavos, e em
+// formatAssessorPropertyPrice a divisao por 100 na leitura.
 export function parseBrazilianMoney(input: unknown): ParsedBrazilianMoney | null {
   if (typeof input === "number" && Number.isFinite(input) && input >= 0) {
-    const value = Math.round(input)
+    const value = Math.round(input * 100)
     return { raw: String(input), value, outOfRange: value > MAX_PROPERTY_INTEGER_VALUE }
   }
   if (typeof input !== "string") return null
@@ -78,7 +85,7 @@ export function parseBrazilianMoney(input: unknown): ParsedBrazilianMoney | null
         ? 1_000_000
         : 1
 
-  const value = Math.round(numeric * multiplier)
+  const value = Math.round(numeric * multiplier * 100)
   return { raw, value, outOfRange: value > MAX_PROPERTY_INTEGER_VALUE }
 }
 
@@ -87,12 +94,15 @@ export function parseBrazilianMoneyToInt(input: unknown) {
   return parsed && !parsed.outOfRange ? parsed.value : null
 }
 
+// value chega em centavos (mesma unidade de Property.price em todo o app) — antes formatava sem
+// dividir por 100, exibindo o preco 100x maior que o real em qualquer resposta do COS que listasse
+// imoveis (busca, selecao, resumo financeiro etc.).
 export function formatAssessorPropertyPrice(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(Math.max(0, value || 0))
+  }).format(Math.max(0, value || 0) / 100)
 }
 
 function inferPropertyTypeFromText(message: string): string | null {
@@ -225,6 +235,14 @@ export async function createPropertyDraftRecord(input: {
     draft.parkingSpots ? "" : "vagas",
   ].filter(Boolean)
 
+  // O anexo de imagem chega em payload.attachments como dataUrl base64 — o pipeline do COS ainda
+  // nao faz upload para um storage durável, entao nao existe outra fonte de URL disponivel aqui.
+  // Sem isso o imovel sempre era criado com "Sem imagem cadastrada" mesmo com uma imagem de fato
+  // anexada na conversa — o dado ja chegava ate aqui via payload, so nunca era lido.
+  const imageUrls = getAttachmentsFromPayload(input.payload ?? {})
+    .filter((attachment) => attachment.category === "image" && attachment.dataUrl)
+    .map((attachment) => attachment.dataUrl as string)
+
   const publicCode = await getNextPropertyPublicCode(prisma, input.brokerId)
   const property = await prisma.property.create({
     data: {
@@ -237,6 +255,7 @@ export async function createPropertyDraftRecord(input: {
       bedrooms: draft.bedrooms,
       bathrooms: draft.bathrooms,
       parkingSpots: draft.parkingSpots,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       type: draft.type as never,
       purpose: draft.purpose,
       status: PropertyStatus.DRAFT,

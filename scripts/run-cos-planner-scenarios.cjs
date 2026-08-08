@@ -915,6 +915,21 @@ async function main() {
       message: "Quero anexar um contrato.",
       expectedRequestedAction: "ATTACH_LEAD_DOCUMENT",
     },
+    {
+      // Bug CRITICO: "como assim?" (esclarecimento ambiguo, tipico de dentro de um fluxo de ajuda)
+      // pontuava CREATE_AGENDA_EVENT porque countAny fazia .includes("as") e "as" aparece dentro de
+      // "assim" — com todos os candidatos help_* zerados (nenhum tinha palavra-chave de dominio
+      // especifico), esse falso positivo era o unico score > 0 e vencia sozinho, levando a criar um
+      // compromisso de agenda real com titulo "como assim?" ao confirmar o horario oferecido.
+      label: "duvida ambigua de esclarecimento nao deve criar compromisso de agenda",
+      message: "como assim?",
+      expectedRequestedAction: "help_general_question",
+    },
+    {
+      label: "regressao: agendamento real com 'as HHhMM' continua reconhecido",
+      message: "Marque uma reuniao amanha as 15h",
+      expectedRequestedAction: "CREATE_AGENDA_EVENT",
+    },
   ]
 
   const intentResolverResults = intentResolverScenarios.map((scenario) => {

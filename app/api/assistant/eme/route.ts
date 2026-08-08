@@ -251,6 +251,35 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
   return null
 }
 
+// Algumas capabilities (ex: os topicos guiados de ajuda em lib/cos/capabilities/help/manage.ts)
+// ja devolvem metadata.options prontas no formato CosResponseOption, sem passar pelo mecanismo de
+// pendingInput/workflow. Sem essa checagem, options: responseOptions (mais abaixo) sempre
+// sobrescrevia esse valor com o resultado de buildStructuredNextStepOptions — que nao tem nenhum
+// caso para acoes "help_*" e retorna null — apagando as opcoes reais e fazendo a lista de topicos
+// (ex: "Escolha como deseja cadastrar o imovel") cair para texto solto no chat.
+function parseCapabilityProvidedOptions(value: unknown): CosResponseOption[] | null {
+  if (!Array.isArray(value)) return null
+
+  const options = value
+    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : null))
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .filter((item) => typeof item.id === "string" && typeof item.label === "string")
+    .map((item) =>
+      buildStructuredOption({
+        id: item.id as string,
+        actionId: typeof item.actionId === "string" ? item.actionId : (item.id as string),
+        selectedOptionId: typeof item.selectedOptionId === "string" ? item.selectedOptionId : undefined,
+        label: item.label as string,
+        message: typeof item.message === "string" ? item.message : (item.label as string),
+        description: typeof item.description === "string" ? item.description : undefined,
+        action: typeof item.action === "string" ? item.action : null,
+        href: typeof item.href === "string" ? item.href : undefined,
+      }),
+    )
+
+  return options.length > 0 ? options : null
+}
+
 function buildIntentClarificationOptions(
   candidates:
     | Array<{
@@ -386,23 +415,23 @@ function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJson
   if (action === "createPropertyDraft" || action === "PUBLISH_PROPERTY" || action === "searchProperties") {
     return [
       { id: "next_campaign", label: "Gerar campanha" },
-      { id: "next_catalog", label: "Compartilhar catÃ¡logo" },
+      { id: "next_catalog", label: "Compartilhar catálogo" },
       { id: "next_proposal", label: "Criar proposta" },
     ]
   }
 
   if (action === "createLead" || action === "FIND_LEAD" || action === "UPDATE_LEAD" || Boolean(leadId)) {
     return [
-      { id: "next_find_property", label: "Buscar imÃ³veis" },
+      { id: "next_find_property", label: "Buscar imóveis" },
       { id: "next_create_proposal", label: "Criar proposta" },
-      { id: "next_client_timeline", label: "Ver histÃ³rico" },
+      { id: "next_client_timeline", label: "Ver histórico" },
     ]
   }
 
   if (action === "CREATE_PROPOSAL") {
     return [
       { id: "next_create_contract", label: "Criar contrato" },
-      { id: "next_share_catalog", label: "Compartilhar catÃ¡logo" },
+      { id: "next_share_catalog", label: "Compartilhar catálogo" },
     ]
   }
 
@@ -410,7 +439,7 @@ function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJson
     return [
       { id: "next_campaign_property", label: "Gerar campanha" },
       { id: "next_contract_property", label: "Criar contrato" },
-      { id: "next_catalog_property", label: "Compartilhar catÃ¡logo" },
+      { id: "next_catalog_property", label: "Compartilhar catálogo" },
     ]
   }
 
@@ -961,13 +990,13 @@ export async function POST(request: NextRequest) {
                 .map((step) => step.action),
             ),
           })
-        : "NÃ£o existe nenhuma operaÃ§Ã£o em andamento no momento.\n\nVocÃª pode iniciar uma nova operaÃ§Ã£o digitando um comando ou utilizando os atalhos rÃ¡pidos."
+        : "Não existe nenhuma operação em andamento no momento.\n\nVocê pode iniciar uma nova operação digitando um comando ou utilizando os atalhos rápidos."
       const interactionMetadata = {
         source: metadataSource,
         parsedIntent: workflowAction,
         actionName: workflowAction,
         brokerId: user.broker.id,
-        visualAction: "Detalhes da operaÃ§Ã£o",
+        visualAction: "Detalhes da operação",
         workflow: workflowMetadata(resumableWorkflow),
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
@@ -1543,7 +1572,13 @@ export async function POST(request: NextRequest) {
           : null,
       attachments: effectiveAttachments,
     })
+    // actionMetadata (executionResult.metadata) e um resumo agregado do plano inteiro — nao
+    // carrega o metadata.options que a proria capability devolveu (ex: os topicos guiados de
+    // lib/cos/capabilities/help/manage.ts). Esse fica aninhado no resultado de cada step
+    // individual, entao precisa ser lido de la (o ultimo step executado e o que gerou responseText).
+    const primaryStepMetadata = (executionResult?.executedSteps.at(-1)?.result?.metadata ?? {}) as Prisma.InputJsonObject
     const responseOptions =
+      parseCapabilityProvidedOptions(primaryStepMetadata.options) ??
       buildWorkflowDetailOptions(updatedWorkflow) ??
       (actionStatus === "success" && updatedWorkflow.status !== "awaiting_input"
         ? buildStructuredNextStepOptions(action, actionMetadata)

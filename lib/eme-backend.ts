@@ -265,9 +265,14 @@ function parseNumericMoneyToken(raw: string, hasUnit: boolean) {
   return Number(token)
 }
 
+// Retorna o valor em CENTAVOS — mesma unidade da coluna Property.price (Int) em todo o resto do
+// app (ver lib/currency.ts). Antes retornava reais direto, gravado sem conversao na coluna de
+// centavos (preco 100x menor que o real); formatAssessorPropertyPrice, no sentido inverso, lia a
+// coluna em centavos como se fosse reais (preco 100x maior que o real). As duas pontas sao
+// corrigidas juntas.
 function parseBrazilianMoney(input: unknown): ParsedBrazilianMoney | null {
   if (typeof input === "number" && Number.isFinite(input) && input >= 0) {
-    const value = Math.round(input)
+    const value = Math.round(input * 100)
     return { raw: String(input), value, outOfRange: value > MAX_PROPERTY_INTEGER_VALUE }
   }
   if (typeof input !== "string") return null
@@ -291,7 +296,7 @@ function parseBrazilianMoney(input: unknown): ParsedBrazilianMoney | null {
       : unit === "mi" || unit.startsWith("milh")
         ? 1_000_000
         : 1
-  const value = Math.round(numeric * multiplier)
+  const value = Math.round(numeric * multiplier * 100)
   return { raw, value, outOfRange: value > MAX_PROPERTY_INTEGER_VALUE }
 }
 
@@ -300,12 +305,13 @@ export function parseBrazilianMoneyToInt(input: unknown) {
   return parsed && !parsed.outOfRange ? parsed.value : null
 }
 
+// value chega em centavos (mesma unidade de Property.price em todo o app).
 export function formatAssessorPropertyPrice(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(Math.max(0, value || 0))
+  }).format(Math.max(0, value || 0) / 100)
 }
 
 function inferPropertyTypeFromText(message: string): PropertyType | null {
