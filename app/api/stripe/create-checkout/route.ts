@@ -5,8 +5,10 @@ import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
 import {
   getBillingPlanFromRole,
   getCheckoutPriceIdForPackage,
-  getCheckoutPriceIdForRole,
+  getCheckoutPriceIdForPlan,
   getPlanLabel,
+  resolveBrokerCheckoutPlanKey,
+  type BrokerCheckoutPlanKey,
 } from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
@@ -16,6 +18,7 @@ export const runtime = "nodejs"
 
 type CheckoutPayload = {
   packageKey?: string
+  plan?: string
 }
 
 function parseCheckoutPayload(body: unknown): CheckoutPayload {
@@ -23,6 +26,7 @@ function parseCheckoutPayload(body: unknown): CheckoutPayload {
 
   return {
     packageKey: typeof data.packageKey === "string" ? data.packageKey.trim() : undefined,
+    plan: typeof data.plan === "string" ? data.plan.trim() : undefined,
   }
 }
 
@@ -105,10 +109,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: session.url })
     }
 
-    const priceId = getCheckoutPriceIdForRole(user.role)
+    // Contas AGENCY continuam fixas em "scale" (não mudado aqui, fora do escopo).
+    // Contas BROKER escolhem entre Pro e Scale — precisa vir do plano clicado no
+    // frontend, não só do role, senão "Assinar Scale" sempre cobra o preço do Pro.
+    const planKey: BrokerCheckoutPlanKey =
+      user.role === UserRole.BROKER ? resolveBrokerCheckoutPlanKey(payload.plan) : "scale"
+
+    const priceId = getCheckoutPriceIdForPlan(planKey)
     if (!priceId) {
-      const variableName =
-        user.role === UserRole.BROKER ? "STRIPE_PRICE_PRO" : "STRIPE_PRICE_SCALE"
+      const variableName = planKey === "scale" ? "STRIPE_PRICE_SCALE" : "STRIPE_PRICE_PRO"
 
       return NextResponse.json(
         { error: `Price ID principal do plano não configurado (${variableName}).` },
@@ -116,6 +125,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // planLabel identifica o ROLE da conta para o sync legado (User.plan), não o
+    // tier — mantido exatamente como antes por compatibilidade (ver lib/billing.ts
+    // mapStripePlan). O tier real (pro/scale) é resolvido no webhook a partir do
+    // priceId enviado abaixo, via mapStripePriceIdToEmePlanKey.
     const plan = getBillingPlanFromRole(user.role)
     const planLabel = getPlanLabel(plan)
 

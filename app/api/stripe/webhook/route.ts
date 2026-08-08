@@ -4,6 +4,7 @@ import Stripe from "stripe"
 import { BILLING_PLAN } from "@/lib/billing-types"
 import {
   activateBillingForUser,
+  mapStripePriceIdToEmePlanKey,
   mapStripePriceIdToPlan,
   mapStripePlan,
   syncBillingFromStripeSubscription,
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
         const userId = metadata.userId
         const mappedPlan = mapStripePlan(metadata.plan)
         const plan = mappedPlan === BILLING_PLAN.NONE ? mapStripePriceIdToPlan(metadata.priceId) : mappedPlan
+        const emePlanKey = mapStripePriceIdToEmePlanKey(metadata.priceId)
 
         if (checkoutType === "package" && typeof metadata.packageKey === "string" && isExtraPackageKey(metadata.packageKey) && userId) {
           const user = await prisma.user.findUnique({
@@ -120,6 +122,7 @@ export async function POST(request: NextRequest) {
             stripeCustomerId: typeof session.customer === "string" ? session.customer : null,
             stripeSubscriptionId: null,
             nextBillingAt: null,
+            emePlanKey,
           })
         }
         break

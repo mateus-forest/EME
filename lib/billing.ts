@@ -9,7 +9,8 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { getStripeEnv } from "@/lib/env.server"
-import type { EmeExtraPackageKey } from "@/lib/eme-plans"
+import type { EmeExtraPackageKey, EmePlanKey } from "@/lib/eme-plans"
+import { syncBrokerPlanAccountFromStripe } from "@/lib/eme-plan-service"
 import { prisma } from "@/lib/prisma"
 
 export function getBillingPlanFromRole(role: UserRole) {
@@ -18,18 +19,38 @@ export function getBillingPlanFromRole(role: UserRole) {
   return BILLING_PLAN.NONE
 }
 
-export function getCheckoutPriceIdForRole(role: UserRole) {
+// Tiers de assinatura pagos que uma conta BROKER pode escolher no checkout.
+// Contas AGENCY continuam fixas em "scale" (não mudado aqui, fora do escopo deste bug).
+export type BrokerCheckoutPlanKey = Extract<EmePlanKey, "pro" | "scale">
+
+export function isBrokerCheckoutPlanKey(value: unknown): value is BrokerCheckoutPlanKey {
+  return value === "pro" || value === "scale"
+}
+
+// Substitui getCheckoutPriceIdForRole: o preço precisa depender do plano
+// (Pro vs Scale) que o usuário de fato clicou, não só do role da conta —
+// role sozinho não diferencia porque uma conta BROKER pode assinar Pro OU Scale.
+export function getCheckoutPriceIdForPlan(planKey: BrokerCheckoutPlanKey) {
+  const stripeEnv = getStripeEnv()
+  return planKey === "scale" ? stripeEnv.scalePriceId : stripeEnv.proPriceId
+}
+
+export function resolveBrokerCheckoutPlanKey(requestedPlanKey?: string | null): BrokerCheckoutPlanKey {
+  return isBrokerCheckoutPlanKey(requestedPlanKey) ? requestedPlanKey : "pro"
+}
+
+// Deriva o tier (pro/scale) real a partir do price ID confirmado pelo Stripe,
+// para sincronizar BrokerPlanAccount.planKey no webhook (ver syncBillingForUser).
+export function mapStripePriceIdToEmePlanKey(priceId: string | null | undefined): BrokerCheckoutPlanKey | null {
+  const normalizedPriceId = typeof priceId === "string" ? priceId.trim() : ""
+  if (!normalizedPriceId) return null
+
   const stripeEnv = getStripeEnv()
 
-  if (role === UserRole.BROKER) {
-    return stripeEnv.proPriceId
-  }
+  if (normalizedPriceId === stripeEnv.scalePriceId) return "scale"
+  if (normalizedPriceId === stripeEnv.proPriceId) return "pro"
 
-  if (role === UserRole.AGENCY) {
-    return stripeEnv.scalePriceId
-  }
-
-  return ""
+  return null
 }
 
 export function getCheckoutPriceIdForPackage(packageKey: EmeExtraPackageKey) {
@@ -84,6 +105,7 @@ export async function activateBillingForUser(input: {
   stripeSubscriptionId?: string | null
   plan: BillingPlan
   nextBillingAt?: Date | null
+  emePlanKey?: BrokerCheckoutPlanKey | null
 }) {
   return syncBillingForUser({
     ...input,
@@ -136,6 +158,7 @@ export async function syncBillingForUser(input: {
   plan: BillingPlan
   subscriptionStatus: SubscriptionStatus
   nextBillingAt?: Date | null
+  emePlanKey?: BrokerCheckoutPlanKey | null
 }) {
   const user = await prisma.user.update({
     where: { id: input.userId },
@@ -157,6 +180,15 @@ export async function syncBillingForUser(input: {
       ownerId: user.broker.id,
       status: input.subscriptionStatus,
       nextBillingAt: input.nextBillingAt,
+    })
+
+    // BrokerPlanAccount.planKey é a fonte real lida pela tela de Plano e pelos
+    // limites de uso (lib/eme-plans.ts) — precisa ser sincronizada aqui, e não só
+    // no User.plan legado, senão upgrade/downgrade/cancelamento nunca refletem.
+    await syncBrokerPlanAccountFromStripe({
+      brokerId: user.broker.id,
+      planKey: input.emePlanKey ?? null,
+      subscriptionStatus: input.subscriptionStatus,
     })
   }
 
@@ -182,6 +214,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
   const mappedPlan = mapStripePlan(subscription.metadata.plan)
   const priceId = subscription.items.data[0]?.price?.id ?? null
   const plan = mappedPlan === BILLING_PLAN.NONE ? mapStripePriceIdToPlan(priceId) : mappedPlan
+  const emePlanKey = mapStripePriceIdToEmePlanKey(priceId)
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null
   const status = mapStripeStatusToSubscriptionStatus(subscription.status)
 
@@ -199,6 +232,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
       plan: user.plan,
       subscriptionStatus: status,
       nextBillingAt: getSubscriptionPeriodEnd(subscription),
+      emePlanKey,
     })
   }
 
@@ -209,6 +243,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
     plan,
     subscriptionStatus: status,
     nextBillingAt: getSubscriptionPeriodEnd(subscription),
+    emePlanKey,
   })
 }
 

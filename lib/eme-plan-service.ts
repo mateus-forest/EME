@@ -329,6 +329,33 @@ export function getCosInteractionCreditCost(actions: readonly string[]) {
   return 5
 }
 
+// Chamado pelo webhook do Stripe (via lib/billing.ts) sempre que uma assinatura de
+// uma conta BROKER muda de estado. É a única escrita real em BrokerPlanAccount.planKey
+// fora da criação inicial da conta — sem isso, pagar o Pro/Scale nunca atualizava o
+// plano exibido nem os limites (imóveis, Créditos IA), que são lidos a partir daqui.
+export async function syncBrokerPlanAccountFromStripe(input: {
+  brokerId: string
+  planKey: "pro" | "scale" | null
+  subscriptionStatus: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED"
+}) {
+  if (input.subscriptionStatus === "PAST_DUE") {
+    // Pagamento em atraso não é cancelamento: mantém o plano atual até o Stripe
+    // efetivamente cancelar a assinatura (evita downgrade preventivo indevido).
+    return ensureBrokerPlanAccount(input.brokerId)
+  }
+
+  const targetPlanKey: EmePlanKey =
+    input.subscriptionStatus === "CANCELED" ? "free" : (input.planKey ?? "pro")
+
+  await prisma.brokerPlanAccount.upsert({
+    where: { brokerId: input.brokerId },
+    create: { brokerId: input.brokerId, planKey: targetPlanKey },
+    update: { planKey: targetPlanKey },
+  })
+
+  return ensureBrokerPlanAccount(input.brokerId)
+}
+
 export async function ensureBrokerPlanAccount(brokerId: string) {
   const broker = await prisma.broker.findUnique({
     where: { id: brokerId },
@@ -352,6 +379,11 @@ export async function ensureBrokerPlanAccount(brokerId: string) {
       brokerId,
       planKey: defaultPlanKey,
     },
+    // Deliberadamente um no-op: nunca sobrescreve planKey de uma conta já existente.
+    // A única escrita pós-criação é syncBrokerPlanAccountFromStripe (a partir do
+    // webhook do Stripe), que sempre roda seu próprio upsert com o planKey real
+    // ANTES de chamar ensureBrokerPlanAccount — então quando este upsert roda aqui,
+    // a linha já existe com o planKey correto e este update:{} não conflita com ele.
     update: {},
   })
 

@@ -330,10 +330,10 @@ export function BrokerPlanPage() {
     }
   }
 
-  async function handlePlanCheckout() {
+  async function handlePlanCheckout(planKey: "pro" | "scale" = "pro") {
     try {
       setUpgradeFeedback("")
-      await startStripeCheckout()
+      await startStripeCheckout({ plan: planKey })
     } catch (caughtError) {
       setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout.")
     }
@@ -547,7 +547,7 @@ export function BrokerPlanPage() {
                     <Button
                       type="button"
                       variant={isCurrent ? "ghost" : "default"}
-                      onClick={isCurrent ? undefined : () => void handlePlanCheckout()}
+                      onClick={isCurrent ? undefined : () => void handlePlanCheckout(plan.key === "scale" ? "scale" : "pro")}
                       className={
                         isCurrent
                           ? "mt-6 h-10 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"

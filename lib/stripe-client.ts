@@ -1,5 +1,6 @@
 type StripeCheckoutInput = {
   packageKey?: string
+  plan?: string
 }
 
 export async function startStripeCheckout(input?: StripeCheckoutInput) {
