@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
@@ -7,6 +8,7 @@ import {
   CalendarDays,
   ChartColumn,
   CheckCircle2,
+  Crown,
   FileText,
   Globe,
   Headphones,
@@ -255,6 +257,7 @@ export function BrokerPlanPage() {
 
   const creditPackages = useMemo(() => creditPackageItems, [])
   const propertyPackages = useMemo(() => propertyPackageItems, [])
+  const isFreePlan = currentPlan?.key === "free"
   const visiblePlans = useMemo(
     () => (planSnapshot?.plans ?? []).filter((plan) => ["free", "pro", "scale"].includes(plan.key)),
     [planSnapshot?.plans],
@@ -465,7 +468,7 @@ export function BrokerPlanPage() {
           </Card>
 
           <Card className="rounded-[1.65rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-5 py-5">
+            <CardHeader id="planos-disponiveis" className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">O que está incluso</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-5 pt-0 sm:grid-cols-2">
@@ -589,12 +592,16 @@ export function BrokerPlanPage() {
                 description="Adicione mais Créditos IA sempre que precisar. Os créditos extras ficam acumulados na conta e são utilizados somente após o consumo dos créditos mensais do plano."
                 items={creditPackages}
                 onRequest={handlePackageCheckout}
+                isLocked={isFreePlan}
+                lockedMessage="FaÃ§a upgrade para adquirir crÃ©ditos IA e utilizar todos os recursos inteligentes do EME."
               />
               <PackageCategory
                 title="Expansão da Carteira"
                 description="Aumente o limite de imóveis do plano atual. A expansão fica vinculada ao plano ativo da conta."
                 items={propertyPackages}
                 onRequest={handlePackageCheckout}
+                isLocked={isFreePlan}
+                lockedMessage="FaÃ§a upgrade para expandir o limite da sua carteira de imÃ³veis."
               />
             </CardContent>
           </Card>
@@ -745,22 +752,59 @@ function PackageCategory({
   description,
   items,
   onRequest,
+  isLocked = false,
+  lockedMessage,
 }: {
   title: string
   description: string
   items: PlanPackage[]
   onRequest: (packageKey: string) => Promise<void>
+  isLocked?: boolean
+  lockedMessage?: string
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-      <h3 className="text-base font-semibold text-[#050505]">{title}</h3>
+    <div
+      className={`rounded-[1.25rem] border p-4 transition-opacity ${
+        isLocked ? "border-black/[0.08] bg-[#f7f7f4] opacity-85" : "border-black/[0.06] bg-[#fbfbf8]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-[#050505]">{title}</h3>
+        {isLocked ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-[#eef9f1] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#009b3a]">
+            <Crown className="size-3.5" />
+            Pro+
+          </span>
+        ) : null}
+      </div>
       <p className="mt-2 text-sm leading-6 text-[#6B7280]">{description}</p>
+      {isLocked ? (
+        <div className="mt-4 rounded-[1rem] border border-[#009b3a]/14 bg-white/85 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#009b3a]">
+            DisponÃ­vel a partir do plano Pro
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">{lockedMessage}</p>
+          <Button
+            asChild
+            type="button"
+            variant="ghost"
+            className="mt-3 h-9 rounded-xl border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
+          >
+            <Link href="/corretor/plano#planos-disponiveis">Conhecer planos</Link>
+          </Button>
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-3">
         {items.map((item) => {
           const Icon = item.type === "credit" ? Sparkles : PackagePlus
 
           return (
-            <div key={item.key} className="rounded-[1.1rem] border border-black/[0.06] bg-white/90 p-4">
+            <div
+              key={item.key}
+              className={`rounded-[1.1rem] border p-4 ${
+                isLocked ? "border-black/[0.05] bg-white/75" : "border-black/[0.06] bg-white/90"
+              }`}
+            >
               <div className="flex items-start gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                   <Icon className="size-4.5" />
@@ -774,9 +818,10 @@ function PackageCategory({
                 type="button"
                 variant="ghost"
                 onClick={() => void onRequest(item.key)}
-                className="mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                disabled={isLocked}
+                className="mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:cursor-not-allowed disabled:border-black/[0.05] disabled:bg-[#f3f4f1] disabled:text-[#9CA3AF]"
               >
-                Comprar
+                {isLocked ? "DisponÃ­vel no Pro+" : "Comprar"}
               </Button>
             </div>
           )
