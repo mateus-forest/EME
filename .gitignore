@@ -38,3 +38,7 @@ Thumbs.db
 
 # editor
 .vscode/*
+.qa-audit-tmp/
+playwright-report/
+test-results/
+blob-report/
