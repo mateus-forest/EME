@@ -58,6 +58,58 @@ export type EmeCreditActionKey =
   | "reply_client"
   | "match_properties"
   | "lead_ideas"
+  // As chaves abaixo são AssessorAction (lib/eme-backend.ts) que podem surgir como resultado de
+  // uma confirmação (botão "Confirmar") ou de uma seleção de opção no COS. Antes de serem
+  // adicionadas aqui, qualquer uma delas fazia getEmeCreditCost lançar exceção e travar o clique
+  // (ver bug do "Confirmar"/seleção travando por custo não configurado).
+  | "summarizeLead"
+  | "LIST_DOCUMENTS"
+  | "GET_DOCUMENT"
+  | "LIST_CONTRACTS"
+  | "GET_CONTRACT"
+  | "CONTRACT_HISTORY"
+  | "CONTRACT_PREVIEW"
+  | "FIND_LEAD"
+  | "LEAD_TIMELINE"
+  | "LIST_AGENDA_TODAY"
+  | "LIST_AGENDA_WEEK"
+  | "LIST_AGENDA_MONTH"
+  | "GET_FINANCE_RECEIVABLE"
+  | "GET_FINANCE_PAYABLE"
+  | "GET_FINANCE_FORECAST"
+  | "GET_FINANCE_COMMISSION"
+  | "GET_FINANCE_CASHFLOW"
+  | "GET_ANALYTICS_PERFORMANCE"
+  | "GET_ANALYTICS_SALES"
+  | "GET_ANALYTICS_PROPERTIES"
+  | "GET_ANALYTICS_LEADS"
+  | "CATALOG_STATS"
+  | "MARK_AGENDA_DONE"
+  | "UPDATE_CONTRACT"
+  | "SEND_CONTRACT"
+  | "SIGN_CONTRACT"
+  | "CANCEL_CONTRACT"
+  | "PUBLISH_CATALOG"
+  | "UNPUBLISH_CATALOG"
+  | "PUBLISH_PROPERTY"
+  | "UNPUBLISH_PROPERTY"
+  | "UPDATE_PROPERTY_MEDIA"
+  | "ARCHIVE_PROPERTY"
+  | "UPDATE_LEAD"
+  | "DELETE_LEAD"
+  | "CONVERT_LEAD"
+  | "ATTACH_LEAD_DOCUMENT"
+  | "UPDATE_AGENDA_EVENT"
+  | "CANCEL_AGENDA_EVENT"
+  | "SHARE_CATALOG"
+  | "DOWNLOAD_CONTRACT"
+  | "improvePropertyDescription"
+  | "STUDIO_GENERATE_DESCRIPTION"
+  | "STUDIO_IMPROVE_TEXT"
+  | "STUDIO_GENERATE_INSTAGRAM"
+  | "STUDIO_GENERATE_VIDEO"
+  | "STUDIO_REGENERATE"
+  | "SUGGEST_PROPERTY_PRICE"
 
 export const EME_PLANS = {
   free: {
@@ -212,6 +264,79 @@ export const EME_CREDIT_COSTS = {
   reply_client: 1,
   match_properties: 1,
   lead_ideas: 1,
+
+  // Consultas simples (uma entidade ou lista curta) — mesmo tier de searchProperties/createLead.
+  summarizeLead: 1,
+  LIST_DOCUMENTS: 1,
+  GET_DOCUMENT: 1,
+  LIST_CONTRACTS: 1,
+  GET_CONTRACT: 1,
+  CONTRACT_HISTORY: 1,
+  CONTRACT_PREVIEW: 1,
+  FIND_LEAD: 1,
+  LEAD_TIMELINE: 1,
+  LIST_AGENDA_TODAY: 1,
+  LIST_AGENDA_WEEK: 1,
+  LIST_AGENDA_MONTH: 1,
+
+  // Consultas agregadas/resumo — mesmo tier de getLeadsSummary/getAnalyticsSummary/getCatalogSummary.
+  GET_FINANCE_RECEIVABLE: 2,
+  GET_FINANCE_PAYABLE: 2,
+  GET_FINANCE_FORECAST: 2,
+  GET_FINANCE_COMMISSION: 2,
+  GET_FINANCE_CASHFLOW: 2,
+  GET_ANALYTICS_PERFORMANCE: 2,
+  GET_ANALYTICS_SALES: 2,
+  GET_ANALYTICS_PROPERTIES: 2,
+  GET_ANALYTICS_LEADS: 2,
+  CATALOG_STATS: 2,
+
+  // Mutações simples de status/dados (sem IA) — mesmo tier de CREATE_AGENDA_EVENT/createLead.
+  MARK_AGENDA_DONE: 1,
+  UPDATE_CONTRACT: 1,
+  SEND_CONTRACT: 1,
+  SIGN_CONTRACT: 1,
+  CANCEL_CONTRACT: 1,
+  PUBLISH_CATALOG: 1,
+  UNPUBLISH_CATALOG: 1,
+  PUBLISH_PROPERTY: 1,
+  UNPUBLISH_PROPERTY: 1,
+  UPDATE_PROPERTY_MEDIA: 1,
+  ARCHIVE_PROPERTY: 1,
+  UPDATE_LEAD: 1,
+  DELETE_LEAD: 1,
+  CONVERT_LEAD: 1,
+  ATTACH_LEAD_DOCUMENT: 1,
+  UPDATE_AGENDA_EVENT: 1,
+  CANCEL_AGENDA_EVENT: 1,
+
+  // Só produzem um link/documento a partir de dados já existentes, sem IA — mesmo tier de
+  // generate_proposal_pdf/generate_contract_pdf.
+  SHARE_CATALOG: 0,
+  DOWNLOAD_CONTRACT: 0,
+
+  // Refinamento de texto — mesmo tier de improve_description/studio_caption (o par CamelCase de
+  // improve_description, ambos existiam em paralelo apontando para a mesma funcionalidade).
+  improvePropertyDescription: 2,
+  STUDIO_GENERATE_DESCRIPTION: 2,
+  STUDIO_IMPROVE_TEXT: 2,
+
+  // Mesmo tier do studio_instagram_campaign já cadastrado.
+  STUDIO_GENERATE_INSTAGRAM: 10,
+
+  // Fallback não-autoritativo: o custo real de vídeo é decidido por studioVideoCreditPolicy em
+  // lib/studio-ia-video-shared.ts (previa=10, regeneracao=10, economico=20, final=30), não por
+  // esta tabela. Usa o tier "final" (30) só para esta chave nunca ficar indefinida.
+  STUDIO_GENERATE_VIDEO: 30,
+
+  // Regenerar custa menos que gerar do zero; sugestão de preço é uma análise simples.
+  STUDIO_REGENERATE: 2,
+  SUGGEST_PROPERTY_PRICE: 2,
+
+  // STUDIO_GENERATE_CAMPAIGN, STUDIO_GENERATE_FACEBOOK e STUDIO_GENERATE_STORY ficam
+  // deliberadamente FORA desta tabela por enquanto — pricing pendente de decisão dedicada (existem
+  // dois tiers vizinhos conflitantes: studio_instagram_campaign=10 vs. studio_buyers/owners/
+  // sell_property_campaign=3). getEmeCreditCost cai no fallback seguro para essas três.
 } as const satisfies Record<EmeCreditActionKey, number>
 
 export const EME_PROPERTY_LIMIT_MESSAGE =
@@ -268,6 +393,12 @@ export function normalizeEmePlanKey(value: unknown): EmePlanKey {
   return value === "pro" ? "pro" : "free"
 }
 
+// Nunca deve lançar: uma action esquecida na tabela não pode derrubar o fluxo inteiro do COS
+// (era exatamente isso que travava "Confirmar"/seleção de opção para qualquer action fora daqui).
+// Custo desconhecido cai num fallback conservador + warning, não em 0 silencioso nem em exceção —
+// actions já cadastradas acima sempre retornam seu valor real, isso só afeta as ainda não mapeadas.
+const EME_CREDIT_COST_FALLBACK = 1
+
 export function getEmeCreditCost(actionKey: string) {
   const amount = EME_CREDIT_COSTS[actionKey as EmeCreditActionKey]
 
@@ -275,11 +406,8 @@ export function getEmeCreditCost(actionKey: string) {
     return amount
   }
 
-  const message = `EME credit cost not configured for action "${actionKey}".`
-  if (process.env.NODE_ENV !== "production") {
-    throw new Error(message)
-  }
-
-  console.warn(message)
-  return 0
+  console.warn(
+    `EME credit cost not configured for action "${actionKey}". Usando fallback conservador de ${EME_CREDIT_COST_FALLBACK} crédito(s) — adicione essa action em EME_CREDIT_COSTS para definir o custo real.`,
+  )
+  return EME_CREDIT_COST_FALLBACK
 }

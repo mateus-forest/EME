@@ -354,9 +354,16 @@ export function BrokerPortal() {
       `Compromissos pendentes: ${pendingAgenda}`,
     ].join("\n")
 
+    // action explícita e obrigatória aqui: sem ela, essa mensagem (que menciona "contratos
+    // pendentes" entre vários outros tópicos) passa pela classificação de texto livre do
+    // intent-resolver e pode vencer por CONTRACT_HISTORY só por mencionar a palavra "contrato" en
+    // passant — mesmo com a pontuação incondicional já removida (essa correção só bloqueia quando
+    // a mensagem NÃO menciona contrato algum, não quando contrato é só um dos vários assuntos
+    // tratados). "createInternalNotification" é a action já usada pela capability operation.summary
+    // (lib/cos/entities/operation.ts), que resume as pendências reais da operação a partir do banco.
     await sendCosMessage(
       `Analise minha operação com base nas pendências reais abaixo. Quero prioridades objetivas, agrupadas por categoria, explicando o que resolver primeiro, o que pode esperar e qual próxima ação devo executar em cada frente. Considere especialmente imóveis incompletos, clientes sem dados obrigatórios, propostas em rascunho, contratos pendentes, leads sem atendimento, compromissos próximos ou atrasados e documentos pendentes.\n\n${operationalSummary}`,
-      { visibleMessage: "Ver detalhes da operação", creditCostPreview: 3 },
+      { visibleMessage: "Ver detalhes da operação", creditCostPreview: 3, action: "createInternalNotification" },
     )
     setPrompt("")
   }

@@ -587,7 +587,16 @@ export async function planCosExecution(input: {
     workspace,
   })
 
-  const matchedRecipe = executionRecipes.find((recipe) => recipe.match({ normalizedMessage, workspace }))
+  // Uma requestedAction explícita (ex.: os botões de Ajuda, ou "Ver detalhes da operação") já é uma
+  // intenção determinística vinda da própria interface — o matching de recipe por texto livre não
+  // deve nunca sobrescrevê-la. Sem essa guarda, uma mensagem longa (como o resumo de pendências
+  // enviado por "Ver detalhes da operação", que menciona "contrato" e "assinatura" só como dois dos
+  // vários itens listados) podia colidir com um recipe genérico e descartar a capability já resolvida
+  // com confiança máxima, substituindo-a por um workflow de 3 passos sobre contrato não solicitado.
+  // Mesma exceção que shouldTryAiOrchestrator (lib/cos/ai-orchestrator.ts) já aplica para requestedAction.
+  const matchedRecipe = input.requestedAction
+    ? null
+    : executionRecipes.find((recipe) => recipe.match({ normalizedMessage, workspace }))
   if (matchedRecipe) {
     return buildRecipeExecutionPlan({
       message: input.message,
