@@ -459,7 +459,7 @@ export function BrokerPortal() {
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
         <section className="min-h-full w-full bg-[#f4f1eb]">
-          <div className="mx-auto grid min-h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[86rem] gap-6 px-4 pb-5 pt-2 sm:px-6 lg:min-h-[calc(100dvh_-_1.5rem)] lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
+          <div className="mx-auto grid min-h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[86rem] grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-5 pt-2 sm:px-6 lg:min-h-[calc(100dvh_-_1.5rem)] lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
             <div className="relative min-h-0 pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
@@ -527,12 +527,12 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
+                  <div ref={chatViewportRef} className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
                     {hasVisibleConversation &&
                       conversation.map((item) => (
                         <div
                           key={item.id}
-                          className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}
+                          className={`flex min-w-0 ${item.role === "user" ? "justify-end" : "justify-start"}`}
                         >
                           <div
                             className={`max-w-[92%] min-w-0 rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm sm:max-w-[85%] ${
@@ -558,7 +558,7 @@ export function BrokerPortal() {
                       ))}
 
                     {isSending ? (
-                      <div className="flex justify-start">
+                      <div className="flex min-w-0 justify-start">
                         <div className="max-w-[92%] rounded-[1.5rem] border border-black/[0.06] bg-white/82 px-4 py-3 text-sm text-[#6f7f97] shadow-[0_14px_30px_rgba(15,23,42,0.04)] sm:max-w-[85%]">
                           COS analisando...
                         </div>

@@ -148,7 +148,7 @@ export function BrokerCosHistoryPage() {
       primaryActionLabel="Nova conversa"
       primaryActionOnClick={() => void createConversation()}
     >
-      <section className="grid min-w-0 gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
         <div className="min-w-0 rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
           {groupedConversations.length === 0 ? (
             <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-white px-4 py-4 text-sm text-[#7B8491]">
@@ -264,7 +264,7 @@ export function BrokerCosHistoryPage() {
             </div>
           </div>
 
-          <div ref={chatViewportRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div ref={chatViewportRef} className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
             {isConversationLoading ? (
               <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
                 Carregando conversa...
@@ -279,7 +279,7 @@ export function BrokerCosHistoryPage() {
 
             {!isConversationLoading &&
               conversation.map((item) => (
-                <div key={item.id} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={item.id} className={`flex min-w-0 ${item.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[92%] min-w-0 rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm sm:max-w-[85%] ${
                       item.role === "user"
@@ -304,7 +304,7 @@ export function BrokerCosHistoryPage() {
               ))}
 
             {isSending ? (
-              <div className="flex justify-start">
+              <div className="flex min-w-0 justify-start">
                 <div className="max-w-[92%] rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#6f7f97] sm:max-w-[85%]">
                   COS analisando...
                 </div>

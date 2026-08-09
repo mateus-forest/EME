@@ -127,7 +127,7 @@ export function CosMessageAttachments({ attachments, inverted = false }: CosMess
           }`}
         >
           <AttachmentIcon category={attachment.category} />
-          <span className="truncate">{attachment.name}</span>
+          <span className="min-w-0 truncate">{attachment.name}</span>
         </div>
       ))}
     </div>

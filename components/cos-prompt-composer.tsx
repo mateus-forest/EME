@@ -314,7 +314,7 @@ export function CosPromptComposer({
                 className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-black/[0.06] bg-white/92 px-3 py-2 text-sm text-[#273444] shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
               >
                 <AttachmentIcon category={attachment.category} className="size-4 shrink-0 text-[#6f7f97]" />
-                <span className="truncate">{attachment.name}</span>
+                <span className="min-w-0 truncate">{attachment.name}</span>
                 <button
                   type="button"
                   onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
