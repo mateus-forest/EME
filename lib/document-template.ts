@@ -375,6 +375,18 @@ export function renderDocumentStyles() {
       padding: 14px 15px;
       background: var(--doc-surface);
     }
+    .document-pending {
+      display: inline-block;
+      padding: 1px 9px;
+      border-radius: 999px;
+      border: 1px dashed rgba(16,33,23,0.22);
+      background: rgba(16,33,23,0.03);
+      color: var(--doc-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
     .document-checkboxes {
       display: grid;
       gap: 12px;
@@ -587,7 +599,7 @@ export function DocumentCover(input: DocumentCoverInput) {
             </div>
             <div class="document-brand__eyebrow">Template oficial EME</div>
           </div>
-          <div class="document-brand__micro">Sistema operacional<br />imobiliario</div>
+          <div class="document-brand__micro">Sistema operacional<br />imobiliário</div>
         </div>
 
         <div class="document-cover__hero">

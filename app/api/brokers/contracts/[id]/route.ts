@@ -17,7 +17,7 @@ import {
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
-import { parseEntityDocuments } from "@/lib/legal-entities"
+import { parseEntityDocuments, parseLeadAddress, parseLeadIdentification, parsePropertyLegalData } from "@/lib/legal-entities"
 import {
   buildLinkedContractDocument,
   removeLinkedContractDocument,
@@ -26,6 +26,20 @@ import {
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
+}
+
+function buildAddressLine(parts: {
+  street?: string
+  number?: string
+  complement?: string
+  district?: string
+  city?: string
+  state?: string
+}) {
+  const streetLine = [parts.street, parts.number].filter(Boolean).join(", ")
+  return [streetLine, parts.complement, parts.district, [parts.city, parts.state].filter(Boolean).join(" - ")]
+    .filter(Boolean)
+    .join(", ")
 }
 
 function splitLines(value: unknown) {
@@ -470,7 +484,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const [lead, property] = await Promise.all([
       prisma.lead.findFirst({
         where: { id: nextLeadId, brokerId: auth.broker!.id },
-        select: { id: true, name: true, phone: true, email: true },
+        select: { id: true, name: true, phone: true, email: true, legalData: true, addressData: true },
       }),
       prisma.property.findFirst({
         where: { id: nextPropertyId, brokerId: auth.broker!.id },
@@ -485,6 +499,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           price: true,
           bedrooms: true,
           parkingSpots: true,
+          ownerName: true,
+          legalData: true,
         },
       }),
     ])
@@ -495,6 +511,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const contractType = normalizeContractType(nextKind)
     if (!contractType) return NextResponse.json({ error: "Selecione um tipo de contrato válido." }, { status: 400 })
 
+    const leadIdentification = parseLeadIdentification(lead.legalData)
+    const leadAddress = parseLeadAddress(lead.addressData)
+    const propertyLegal = parsePropertyLegalData(property.legalData)
+
     const nextContent = createContractContent({
       kind: contractType,
       title: cleanText(body?.title, 160) || parsed.title,
@@ -502,6 +522,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       version: parsed.version + 1,
       authorName: auth.name,
       authorEmail: auth.email,
+      authorPhone: auth.broker!.phone,
+      authorCreci: auth.broker!.creci,
+      authorAgencyName: auth.broker!.agency?.name,
       createdAt: parsed.createdAt,
       updatedAt: new Date().toISOString(),
       lead: {
@@ -509,6 +532,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         name: lead.name,
         phone: lead.phone,
         email: lead.email,
+        cpfCnpj: leadIdentification.cpfCnpj || null,
+        rg: leadIdentification.rg || null,
+        maritalStatus: leadIdentification.maritalStatus || null,
+        profession: leadIdentification.profession || null,
+        nationality: leadIdentification.nationality || null,
+        addressLine: buildAddressLine(leadAddress) || null,
       },
       property: {
         id: property.id,
@@ -521,6 +550,23 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         price: property.price,
         bedrooms: property.bedrooms,
         parkingSpots: property.parkingSpots,
+        ownerName: property.ownerName,
+        state: propertyLegal.state || null,
+        cep: propertyLegal.cep || null,
+        registryNumber: propertyLegal.registryNumber || null,
+        registryOffice: propertyLegal.registryOffice || null,
+        municipalRegistration: propertyLegal.municipalRegistration || null,
+        privateArea: propertyLegal.privateArea || null,
+        totalArea: propertyLegal.totalArea || null,
+        addressLine:
+          buildAddressLine({
+            street: propertyLegal.street,
+            number: propertyLegal.number,
+            complement: propertyLegal.complement,
+            district: propertyLegal.district || property.neighborhood || undefined,
+            city: propertyLegal.city || property.city || undefined,
+            state: propertyLegal.state,
+          }) || null,
       },
       financial: {
         amountCents: parseContractAmount(body?.amount) ?? parsed.financial.amountCents ?? property.price ?? null,

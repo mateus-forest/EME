@@ -20,8 +20,22 @@ import {
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
-import { parseEntityDocuments } from "@/lib/legal-entities"
+import { parseEntityDocuments, parseLeadAddress, parseLeadIdentification, parsePropertyLegalData } from "@/lib/legal-entities"
 import { buildLinkedContractDocument, upsertLinkedContractDocument } from "@/lib/linked-contract-document"
+
+function buildAddressLine(parts: {
+  street?: string
+  number?: string
+  complement?: string
+  district?: string
+  city?: string
+  state?: string
+}) {
+  const streetLine = [parts.street, parts.number].filter(Boolean).join(", ")
+  return [streetLine, parts.complement, parts.district, [parts.city, parts.state].filter(Boolean).join(" - ")]
+    .filter(Boolean)
+    .join(", ")
+}
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
@@ -109,6 +123,9 @@ async function buildPersistedContract(input: {
   brokerId: string
   userName: string
   userEmail?: string | null
+  userPhone?: string | null
+  userCreci?: string | null
+  userAgencyName?: string | null
   leadId: string
   propertyId: string
   kind: string
@@ -140,7 +157,7 @@ async function buildPersistedContract(input: {
   const [lead, property] = await Promise.all([
     prisma.lead.findFirst({
       where: { id: input.leadId, brokerId: input.brokerId },
-      select: { id: true, name: true, phone: true, email: true },
+      select: { id: true, name: true, phone: true, email: true, legalData: true, addressData: true },
     }),
     prisma.property.findFirst({
       where: { id: input.propertyId, brokerId: input.brokerId },
@@ -155,12 +172,18 @@ async function buildPersistedContract(input: {
         price: true,
         bedrooms: true,
         parkingSpots: true,
+        ownerName: true,
+        legalData: true,
       },
     }),
   ])
 
   if (!lead) throw new Error("Selecione um cliente válido.")
   if (!property) throw new Error("Selecione um imóvel válido.")
+
+  const leadIdentification = parseLeadIdentification(lead.legalData)
+  const leadAddress = parseLeadAddress(lead.addressData)
+  const propertyLegal = parsePropertyLegalData(property.legalData)
 
   const amountCents = parseContractAmount(input.amount)
   const nextStatus = normalizeContractStatus(input.status) ?? "draft"
@@ -174,6 +197,9 @@ async function buildPersistedContract(input: {
     version: input.previous ? input.previous.version + 1 : 1,
     authorName: input.userName,
     authorEmail: input.userEmail,
+    authorPhone: input.userPhone,
+    authorCreci: input.userCreci,
+    authorAgencyName: input.userAgencyName,
     createdAt: input.previous?.createdAt,
     updatedAt: new Date().toISOString(),
     lead: {
@@ -181,6 +207,12 @@ async function buildPersistedContract(input: {
       name: lead.name,
       phone: lead.phone,
       email: lead.email,
+      cpfCnpj: leadIdentification.cpfCnpj || null,
+      rg: leadIdentification.rg || null,
+      maritalStatus: leadIdentification.maritalStatus || null,
+      profession: leadIdentification.profession || null,
+      nationality: leadIdentification.nationality || null,
+      addressLine: buildAddressLine(leadAddress) || null,
     },
     property: {
       id: property.id,
@@ -193,6 +225,23 @@ async function buildPersistedContract(input: {
       price: property.price,
       bedrooms: property.bedrooms,
       parkingSpots: property.parkingSpots,
+      ownerName: property.ownerName,
+      state: propertyLegal.state || null,
+      cep: propertyLegal.cep || null,
+      registryNumber: propertyLegal.registryNumber || null,
+      registryOffice: propertyLegal.registryOffice || null,
+      municipalRegistration: propertyLegal.municipalRegistration || null,
+      privateArea: propertyLegal.privateArea || null,
+      totalArea: propertyLegal.totalArea || null,
+      addressLine:
+        buildAddressLine({
+          street: propertyLegal.street,
+          number: propertyLegal.number,
+          complement: propertyLegal.complement,
+          district: propertyLegal.district || property.neighborhood || undefined,
+          city: propertyLegal.city || property.city || undefined,
+          state: propertyLegal.state,
+        }) || null,
     },
     financial: {
       amountCents: amountCents ?? input.previous?.financial.amountCents ?? property.price ?? null,
@@ -504,6 +553,9 @@ export async function POST(request: NextRequest) {
       brokerId: auth.broker!.id,
       userName: auth.name,
       userEmail: auth.email,
+      userPhone: auth.broker!.phone,
+      userCreci: auth.broker!.creci,
+      userAgencyName: auth.broker!.agency?.name,
       leadId,
       propertyId,
       kind,

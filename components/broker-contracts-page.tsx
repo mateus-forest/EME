@@ -43,6 +43,7 @@ import {
   createContractContent,
   type ContractStatus,
   contractTypeOptions,
+  creatableContractTypeOptions,
   type ContractType,
 } from "@/lib/contract-template"
 import {
@@ -179,6 +180,12 @@ function escapeHtml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+}
+
+function getContractHealthTone(score: number) {
+  if (score >= 70) return "bg-[#edf7ef] text-[#009b3a]"
+  if (score >= 40) return "bg-[#fff4dc] text-[#c58917]"
+  return "bg-[#fdecec] text-[#d14343]"
 }
 
 function formatDateTime(value: string) {
@@ -546,9 +553,9 @@ function buildWorkspaceSections(input: {
       {
         key: "landlord",
         title: "Locador",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
-        summary: property?.ownerName || "Vincule um imovel com locador definido para iniciar a minuta.",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
+        summary: property?.ownerName || "Vincule um imóvel com locador definido para iniciar a minuta.",
         items: [
           { label: "Nome", value: property?.ownerName || "" },
           { label: "Imóvel vinculado", value: property?.title || "" },
@@ -576,13 +583,13 @@ function buildWorkspaceSections(input: {
       {
         key: "property",
         title: isCommercialLease(kind) ? "Imóvel comercial" : "Imóvel",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
         summary:
           property?.title ||
           (isCommercialLease(kind)
-            ? "Selecione um imovel comercial para alimentar a locacao."
-            : "Selecione um imovel para alimentar a locacao residencial."),
+            ? "Selecione um imóvel comercial para alimentar a locação."
+            : "Selecione um imóvel para alimentar a locação residencial."),
         items: [
           { label: "Título", value: property?.title || "" },
           { label: "Endereço", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -649,13 +656,13 @@ function buildWorkspaceSections(input: {
       {
         key: "property",
         title: "Imóvel",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
         summary:
           property?.title ||
           (isExclusivity(kind)
-            ? "Selecione um imovel para alimentar o contrato de exclusividade."
-            : "Selecione um imovel para alimentar a autorização de venda."),
+            ? "Selecione um imóvel para alimentar o contrato de exclusividade."
+            : "Selecione um imóvel para alimentar a autorização de venda."),
         items: [
           { label: "Título", value: property?.title || "" },
           { label: "Endereço", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -664,7 +671,7 @@ function buildWorkspaceSections(input: {
           { label: "Matrícula", value: property?.legal.registryNumber || "" },
           { label: "Cartório", value: property?.legal.registryOffice || "" },
           { label: "Valor anunciado", value: property?.formattedPrice || "" },
-          { label: "Proprietário no imovel", value: property?.ownerName || "" },
+          { label: "Proprietário no imóvel", value: property?.ownerName || "" },
         ],
       },
       {
@@ -702,7 +709,7 @@ function buildWorkspaceSections(input: {
         title: "Interessado",
         route: lead ? `/corretor/clientes/${lead.id}` : "/corretor/clientes",
         actionLabel: "Editar cliente",
-        summary: lead?.name || "Selecione o interessado para compor a reserva do imovel.",
+        summary: lead?.name || "Selecione o interessado para compor a reserva do imóvel.",
         items: [
           { label: "Nome", value: lead?.name || "" },
           { label: "Telefone", value: lead?.whatsApp || lead?.phone || "" },
@@ -717,9 +724,9 @@ function buildWorkspaceSections(input: {
       {
         key: "owner",
         title: "Proprietário",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
-        summary: property?.ownerName || "Vincule um imovel com proprietário identificado para formalizar a reserva.",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
+        summary: property?.ownerName || "Vincule um imóvel com proprietário identificado para formalizar a reserva.",
         items: [
           { label: "Nome", value: property?.ownerName || "" },
           { label: "Imóvel vinculado", value: property?.title || "" },
@@ -730,9 +737,9 @@ function buildWorkspaceSections(input: {
       {
         key: "property",
         title: "Imóvel",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
-        summary: property?.title || "Selecione um imovel para alimentar a reserva.",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
+        summary: property?.title || "Selecione um imóvel para alimentar a reserva.",
         items: [
           { label: "Título", value: property?.title || "" },
           { label: "Endereço", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -792,9 +799,9 @@ function buildWorkspaceSections(input: {
       {
         key: "property",
         title: "Imóvel do contrato original",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
-        summary: property?.title || "Selecione o imovel vinculado ao contrato que sera aditado.",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
+        summary: property?.title || "Selecione o imóvel vinculado ao contrato que será aditado.",
         items: [
           { label: "Título", value: property?.title || "" },
           { label: "Endereço", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -852,9 +859,9 @@ function buildWorkspaceSections(input: {
       {
         key: "property",
         title: "Imóvel do contrato original",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
-        summary: property?.title || "Selecione o imovel vinculado ao contrato que sera encerrado.",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
+        summary: property?.title || "Selecione o imóvel vinculado ao contrato que será encerrado.",
         items: [
           { label: "Título", value: property?.title || "" },
           { label: "Endereço", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -912,9 +919,9 @@ function buildWorkspaceSections(input: {
       {
         key: "property",
         title: "Imóvel visitado",
-        route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-        actionLabel: "Editar imovel",
-        summary: property?.title || "Selecione o imovel para registrar a visita.",
+        route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+        actionLabel: "Editar imóvel",
+        summary: property?.title || "Selecione o imóvel para registrar a visita.",
         items: [
           { label: "Título", value: property?.title || "" },
           { label: "Endereço", value: [property?.legal.street, property?.legal.number].filter(Boolean).join(", ") },
@@ -963,9 +970,9 @@ function buildWorkspaceSections(input: {
     {
       key: "property",
       title: "Imóvel",
-      route: property ? `/corretor/imoveis/${property.id}` : "/corretor/imoveis",
-      actionLabel: "Editar imovel",
-      summary: property?.title || "Selecione um imovel para alimentar o documento.",
+      route: property ? `/corretor/imóveis/${property.id}` : "/corretor/imóveis",
+      actionLabel: "Editar imóvel",
+      summary: property?.title || "Selecione um imóvel para alimentar o documento.",
       items: [
         { label: "Título", value: property?.title || "" },
         { label: "Cidade", value: property?.legal.city || property?.city || "" },
@@ -1113,7 +1120,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         label: "Aluguel mensal",
         type: "currency",
         placeholder: "R$ 0,00",
-        hint: "Valor preenchido automaticamente pelo imovel.",
+        hint: "Valor preenchido automaticamente pelo imóvel.",
       },
       {
         id: "commercial.commission",
@@ -1139,7 +1146,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
       {
         id: "commercial.term",
         key: "validity",
-        label: "Prazo da locacao",
+        label: "Prazo da locação",
         type: "text",
         placeholder: "30 meses",
       },
@@ -1174,7 +1181,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
       {
         id: "commercial.notes",
         key: "additionalConditions",
-        label: "Encargos e observacoes (opcional)",
+        label: "Encargos e observações (opcional)",
         type: "textarea",
         placeholder: "IPTU por conta do locatário. Entrega das chaves apos vistoria final.",
         examples: [
@@ -1194,7 +1201,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         label: "Aluguel mensal",
         type: "currency",
         placeholder: "R$ 0,00",
-        hint: "Valor preenchido automaticamente pelo imovel.",
+        hint: "Valor preenchido automaticamente pelo imóvel.",
       },
       {
         id: "commercial.startDate",
@@ -1213,7 +1220,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
       {
         id: "commercial.term",
         key: "validity",
-        label: "Prazo da locacao",
+        label: "Prazo da locação",
         type: "text",
         placeholder: "60 meses",
       },
@@ -1250,7 +1257,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "guaranteeType",
         label: "Garantia",
         type: "text",
-        placeholder: "Fianca, caucao, seguro fiança...",
+        placeholder: "Fianca, caução, seguro fiança...",
       },
       {
         id: "commercial.inspectionReport",
@@ -1264,7 +1271,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "worksScope",
         label: "Obras",
         type: "textarea",
-        placeholder: "Obras estruturais, prazo, responsabilidade financeira e autorizacoes.",
+        placeholder: "Obras estruturais, prazo, responsabilidade financeira e autorizações.",
         examples: [
           "Adequação elétrica sob responsabilidade do locatário.",
           "Obras estruturais somente com autorização prévia do locador.",
@@ -1284,13 +1291,13 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
       {
         id: "commercial.notes",
         key: "additionalConditions",
-        label: "Encargos e observacoes (opcional)",
+        label: "Encargos e observações (opcional)",
         type: "textarea",
-        placeholder: "IPTU, condomínio, taxas operacionais e condicoes especiais da locacao.",
+        placeholder: "IPTU, condomínio, taxas operacionais e condições especiais da locação.",
         examples: [
           "IPTU e condomínio por conta do locatário.",
           "Taxas de licenciamento operacional sob responsabilidade do locatário.",
-          "Repasses extraordinarios dependem de aprovacao expressa.",
+          "Repasses extraordinarios dependem de aprovação expressa.",
         ],
       },
     ]
@@ -1304,7 +1311,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         label: "Valor autorizado",
         type: "currency",
         placeholder: "R$ 0,00",
-        hint: "Valor preenchido automaticamente pelo imovel.",
+        hint: "Valor preenchido automaticamente pelo imóvel.",
       },
       {
         id: "commercial.commission",
@@ -1339,11 +1346,11 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "additionalConditions",
         label: "Condições da intermediação",
         type: "textarea",
-        placeholder: "Escopo da captacao, formato das visitas, divulgacao e regras comerciais.",
+        placeholder: "Escopo da captação, formato das visitas, divulgação e regras comerciais.",
         examples: [
           "Visitas somente com agendamento previo.",
           "Divulgação autorizada nos canais digitais do corretor e da imobiliária.",
-          "Negociações devem respeitar o valor autorizado e a comissao pactuada.",
+          "Negociações devem respeitar o valor autorizado e a comissão pactuada.",
         ],
       },
     ]
@@ -1357,7 +1364,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         label: "Valor de referência",
         type: "currency",
         placeholder: "R$ 0,00",
-        hint: "Valor preenchido automaticamente pelo imovel.",
+        hint: "Valor preenchido automaticamente pelo imóvel.",
       },
       {
         id: "commercial.commission",
@@ -1392,11 +1399,11 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "additionalConditions",
         label: "Direitos e obrigações",
         type: "textarea",
-        placeholder: "Escopo da exclusividade, divulgacao autorizada, visitas e regras comerciais.",
+        placeholder: "Escopo da exclusividade, divulgação autorizada, visitas e regras comerciais.",
         examples: [
-          "Captacao exclusiva durante todo o prazo contratado.",
-          "Visitas somente com acompanhamento do corretor responsavel.",
-          "Negociações devem observar a comissao e o valor de referência pactuados.",
+          "Captação exclusiva durante todo o prazo contratado.",
+          "Visitas somente com acompanhamento do corretor responsável.",
+          "Negociações devem observar a comissão e o valor de referência pactuados.",
         ],
       },
     ]
@@ -1432,7 +1439,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         type: "textarea",
         placeholder: "Declarações complementares sobre a visita realizada.",
         examples: [
-          "Visitante conheceu o imovel por intermédio do corretor.",
+          "Visitante conheceu o imóvel por intermédio do corretor.",
           "Visitante ciente da intermediação para eventual proposta futura.",
         ],
       },
@@ -1446,19 +1453,19 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "paymentMethod",
         label: "Referência ao contrato original",
         type: "text",
-        placeholder: "Contrato original vinculado ao cliente e ao imovel.",
-        hint: "Preenchido automaticamente a partir do cliente e do imovel selecionados.",
+        placeholder: "Contrato original vinculado ao cliente e ao imóvel.",
+        hint: "Preenchido automaticamente a partir do cliente e do imóvel selecionados.",
       },
       {
         id: "commercial.changes",
         key: "additionalConditions",
-        label: "Alteracoes",
+        label: "Alterações",
         type: "textarea",
         placeholder: "Descreva exatamente o que esta sendo ajustado neste aditivo.",
         examples: [
-          "Prorrogacao do prazo originalmente pactuado.",
-          "Atualizacao do valor e da forma de pagamento.",
-          "Inclusao de nova condicao comercial acordada entre as partes.",
+          "Prorrogação do prazo originalmente pactuado.",
+          "Atualização do valor e da forma de pagamento.",
+          "Inclusão de nova condição comercial acordada entre as partes.",
         ],
       },
       {
@@ -1471,14 +1478,14 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
       {
         id: "commercial.startDate",
         key: "startDate",
-        label: "Vigencia inicial",
+        label: "Vigência inicial",
         type: "date",
         placeholder: "dd/mm/aaaa",
       },
       {
         id: "commercial.endDate",
         key: "endDate",
-        label: "Vigencia final",
+        label: "Vigência final",
         type: "date",
         placeholder: "dd/mm/aaaa",
       },
@@ -1487,7 +1494,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "dueDate",
         label: "Foro",
         type: "text",
-        placeholder: "Comarca aplicavel ao aditivo.",
+        placeholder: "Comarca aplicável ao aditivo.",
       },
     ]
   }
@@ -1499,8 +1506,8 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "paymentMethod",
         label: "Referência ao contrato original",
         type: "text",
-        placeholder: "Contrato original vinculado ao cliente e ao imovel.",
-        hint: "Preenchido automaticamente a partir do cliente e do imovel selecionados.",
+        placeholder: "Contrato original vinculado ao cliente e ao imóvel.",
+        hint: "Preenchido automaticamente a partir do cliente e do imóvel selecionados.",
       },
       {
         id: "commercial.terminationReason",
@@ -1509,8 +1516,8 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         type: "textarea",
         placeholder: "Descreva o motivo do encerramento e o contexto do distrato.",
         examples: [
-          "Encerramento consensual por alteracao de estrategia comercial.",
-          "Rescisao amigavel por impossibilidade de continuidade da negociação.",
+          "Encerramento consensual por alteração de estrategia comercial.",
+          "Rescisão amigavel por impossibilidade de continuidade da negociação.",
           "Distrato firmado apos acordo integral entre as partes.",
         ],
       },
@@ -1526,14 +1533,14 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "guaranteeType",
         label: "Obrigações remanescentes",
         type: "text",
-        placeholder: "Ex.: Devolucao de documentos, pagamentos pendentes, entrega de chaves.",
+        placeholder: "Ex.: Devolução de documentos, pagamentos pendentes, entrega de chaves.",
       },
       {
         id: "commercial.forum",
         key: "dueDate",
         label: "Foro",
         type: "text",
-        placeholder: "Comarca aplicavel ao distrato.",
+        placeholder: "Comarca aplicável ao distrato.",
       },
     ]
   }
@@ -1564,7 +1571,7 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
       {
         id: "commercial.conversionDate",
         key: "dueDate",
-        label: "Conversao ate",
+        label: "Conversão ate",
         type: "date",
         placeholder: "dd/mm/aaaa",
       },
@@ -1573,9 +1580,9 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
         key: "additionalConditions",
         label: "Condições da reserva",
         type: "textarea",
-        placeholder: "Sinal, analise documental, aprovacao financeira e demais condicoes comerciais.",
+        placeholder: "Sinal, analise documental, aprovação financeira e demais condições comerciais.",
         examples: [
-          "Reserva condicionada a analise documental do imovel.",
+          "Reserva condicionada a analise documental do imóvel.",
           "Sinal convertido integralmente na assinatura do contrato definitivo.",
           "Prazo comercial contado em dias corridos a partir da assinatura.",
         ],
@@ -1587,10 +1594,10 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
     {
       id: "commercial.value",
       key: "amount",
-      label: "Valor do imovel",
+      label: "Valor do imóvel",
       type: "currency",
       placeholder: "R$ 0,00",
-      hint: "Valor preenchido automaticamente pelo imovel.",
+      hint: "Valor preenchido automaticamente pelo imóvel.",
     },
     {
       id: "commercial.commission",
@@ -1630,13 +1637,13 @@ function getCommercialFieldDefinitions(kind: ContractType): CommercialFieldDefin
     {
       id: "commercial.notes",
       key: "additionalConditions",
-      label: "Observacoes comerciais (opcional)",
+      label: "Observações comerciais (opcional)",
       type: "textarea",
       placeholder: "Entrada negociada diretamente.",
       examples: [
         "Entrada negociada diretamente.",
-        "Utilizacao de FGTS.",
-        "Entrega apos quitacao.",
+        "Utilização de FGTS.",
+        "Entrega apos quitação.",
         "Permanecem moveis planejados.",
       ],
     },
@@ -1661,13 +1668,11 @@ function PreviewInfo({
 function CommercialDateField({
   label,
   value,
-  identifier,
   placeholder,
   onChange,
 }: {
   label: string
   value: string
-  identifier: string
   placeholder: string
   onChange: (value: string) => void
 }) {
@@ -1675,12 +1680,7 @@ function CommercialDateField({
 
   return (
     <label className="grid gap-2 text-sm text-[#5F6B7A]">
-      <div className="flex items-center justify-between gap-2">
-        <span>{label}</span>
-        <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
-          {identifier}
-        </span>
-      </div>
+      <span>{label}</span>
       <Popover>
         <div className="flex gap-2">
           <Input
@@ -1803,7 +1803,7 @@ export function BrokerContractsPage() {
           return nextContracts[0]?.id ?? null
         })
       } catch (error) {
-        setFeedback(error instanceof Error ? error.message : "Nao foi possivel carregar contratos.")
+        setFeedback(error instanceof Error ? error.message : "Não foi possível carregar contratos.")
       } finally {
         setIsLoading(false)
       }
@@ -1891,8 +1891,8 @@ export function BrokerContractsPage() {
   const valueSourceLabel = amountCustomized
     ? "Valor personalizado."
     : selectedProperty
-      ? "Valor preenchido automaticamente pelo imovel."
-      : "Selecione um imovel para preencher o valor automaticamente."
+      ? "Valor preenchido automaticamente pelo imóvel."
+      : "Selecione um imóvel para preencher o valor automaticamente."
 
   const commissionSourceLabel = commissionCustomized
     ? "Comissão personalizada."
@@ -2072,7 +2072,7 @@ export function BrokerContractsPage() {
         done: Boolean(selectedContract?.content.financial.guaranteeType),
       },
       {
-        label: "Encargos e observacoes",
+        label: "Encargos e observações",
         value: selectedContract?.content.financial.additionalConditions || "",
         done: Boolean(selectedContract?.content.financial.additionalConditions),
       },
@@ -2089,7 +2089,7 @@ export function BrokerContractsPage() {
         done: Boolean(selectedContract?.content.financial.validity),
       },
       {
-        label: "Conversao da reserva",
+        label: "Conversão da reserva",
         value: selectedContract?.content.financial.dueDate || "",
         done: Boolean(selectedContract?.content.financial.dueDate),
       },
@@ -2123,19 +2123,19 @@ export function BrokerContractsPage() {
         done: Boolean(selectedContract?.content.financial.validity),
       },
       {
-        label: "Alteracoes",
+        label: "Alterações",
         value: selectedContract?.content.financial.additionalConditions || "",
         done: Boolean(selectedContract?.content.financial.additionalConditions),
       },
     ])
     const amendmentTermScore = scoreSection([
       {
-        label: "Vigencia inicial",
+        label: "Vigência inicial",
         value: selectedContract?.content.financial.startDate || "",
         done: Boolean(selectedContract?.content.financial.startDate),
       },
       {
-        label: "Vigencia final",
+        label: "Vigência final",
         value: selectedContract?.content.financial.endDate || "",
         done: Boolean(selectedContract?.content.financial.endDate),
       },
@@ -2187,7 +2187,7 @@ export function BrokerContractsPage() {
         { label: "Imóvel comercial", score: propertyScore },
         { label: "Financeiro", score: leaseFinancialScore },
         { label: "Garantias", score: guaranteeScore },
-        { label: "Documentacao", score: leaseDocumentationScore },
+        { label: "Documentação", score: leaseDocumentationScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2196,8 +2196,8 @@ export function BrokerContractsPage() {
       return [
         { label: "Proprietário", score: clientScore },
         { label: "Imóvel", score: propertyScore },
-        { label: "Documentacao", score: documentationScore },
-        { label: "Intermediacao", score: negotiationScore },
+        { label: "Documentação", score: documentationScore },
+        { label: "Intermediação", score: negotiationScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2206,7 +2206,7 @@ export function BrokerContractsPage() {
       return [
         { label: "Proprietário", score: clientScore },
         { label: "Imóvel", score: propertyScore },
-        { label: "Documentacao", score: documentationScore },
+        { label: "Documentação", score: documentationScore },
         { label: "Exclusividade", score: negotiationScore },
         { label: "Assinaturas", score: signatureScore },
       ]
@@ -2216,8 +2216,8 @@ export function BrokerContractsPage() {
       return [
         { label: "Visitante", score: clientScore },
         { label: "Imóvel visitado", score: propertyScore },
-        { label: "Documentacao", score: documentationScore },
-        { label: "Intermediacao", score: negotiationScore },
+        { label: "Documentação", score: documentationScore },
+        { label: "Intermediação", score: negotiationScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2228,8 +2228,8 @@ export function BrokerContractsPage() {
         { label: "Proprietário", score: ownerScore },
         { label: "Imóvel", score: propertyScore },
         { label: "Financeiro", score: reservationFinancialScore },
-        { label: "Conversao", score: reservationConversionScore },
-        { label: "Documentacao", score: documentationScore },
+        { label: "Conversão", score: reservationConversionScore },
+        { label: "Documentação", score: documentationScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2238,9 +2238,9 @@ export function BrokerContractsPage() {
       return [
         { label: "Cliente", score: clientScore },
         { label: "Imóvel", score: propertyScore },
-        { label: "Documentacao", score: documentationScore },
+        { label: "Documentação", score: documentationScore },
         { label: "Contrato original", score: amendmentGovernanceScore },
-        { label: "Vigencia", score: amendmentTermScore },
+        { label: "Vigência", score: amendmentTermScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2249,7 +2249,7 @@ export function BrokerContractsPage() {
       return [
         { label: "Cliente", score: clientScore },
         { label: "Imóvel", score: propertyScore },
-        { label: "Documentacao", score: documentationScore },
+        { label: "Documentação", score: documentationScore },
         { label: "Contrato original", score: terminationGovernanceScore },
         { label: "Quitação", score: terminationSettlementScore },
         { label: "Assinaturas", score: signatureScore },
@@ -2263,7 +2263,7 @@ export function BrokerContractsPage() {
         { label: "Imóvel", score: propertyScore },
         { label: "Financeiro", score: leaseFinancialScore },
         { label: "Garantias", score: guaranteeScore },
-        { label: "Documentacao", score: leaseDocumentationScore },
+        { label: "Documentação", score: leaseDocumentationScore },
         { label: "Assinaturas", score: signatureScore },
       ]
     }
@@ -2299,7 +2299,7 @@ export function BrokerContractsPage() {
 
     if (selectedContract.kind === "Locacao residencial") {
       return [
-        !selectedContractProperty?.ownerName ? "Locador vinculado ao imovel" : null,
+        !selectedContractProperty?.ownerName ? "Locador vinculado ao imóvel" : null,
         !selectedContractLead?.identification.rg ? "RG do locatário" : null,
         !selectedContractProperty?.legal.registryNumber ? "Matrícula" : null,
         !selectedContract.content.financial.guaranteeType ? "Garantia locaticia" : null,
@@ -2310,7 +2310,7 @@ export function BrokerContractsPage() {
 
     if (selectedContract.kind === "Locacao comercial") {
       return [
-        !selectedContractProperty?.ownerName ? "Locador vinculado ao imovel" : null,
+        !selectedContractProperty?.ownerName ? "Locador vinculado ao imóvel" : null,
         !selectedContract.content.financial.commercialPurpose ? "Finalidade comercial" : null,
         !selectedContract.content.financial.adjustmentTerm ? "Regra de reajuste" : null,
         !selectedContract.content.financial.guaranteeType ? "Garantia locaticia" : null,
@@ -2353,11 +2353,11 @@ export function BrokerContractsPage() {
     if (selectedContract.kind === "Reserva") {
       return [
         !selectedContractLead?.identification.cpfCnpj ? "CPF do interessado" : null,
-        !selectedContractProperty?.ownerName ? "Proprietário do imovel" : null,
+        !selectedContractProperty?.ownerName ? "Proprietário do imóvel" : null,
         !selectedContractProperty?.legal.registryNumber ? "Matrícula" : null,
         !selectedContract.amountLabel ? "Valor da reserva" : null,
         !selectedContract.content.financial.validity ? "Prazo da reserva" : null,
-        !selectedContract.content.financial.dueDate ? "Conversao da reserva" : null,
+        !selectedContract.content.financial.dueDate ? "Conversão da reserva" : null,
         !selectedContract.content.financial.additionalConditions ? "Condições da reserva" : null,
       ].filter((item): item is string => Boolean(item))
     }
@@ -2365,12 +2365,12 @@ export function BrokerContractsPage() {
     if (selectedContract.kind === "Aditivo") {
       return [
         !selectedContractLead?.identification.cpfCnpj ? "CPF do cliente vinculado" : null,
-        !selectedContractProperty?.legal.registryNumber ? "Matrícula do imovel" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matrícula do imóvel" : null,
         !selectedContract.content.financial.paymentMethod ? "Referência do contrato original" : null,
-        !selectedContract.content.financial.additionalConditions ? "Alteracoes do aditivo" : null,
+        !selectedContract.content.financial.additionalConditions ? "Alterações do aditivo" : null,
         !selectedContract.content.financial.validity ? "Cláusulas modificadas" : null,
-        !selectedContract.content.financial.startDate ? "Vigencia inicial" : null,
-        !selectedContract.content.financial.endDate ? "Vigencia final" : null,
+        !selectedContract.content.financial.startDate ? "Vigência inicial" : null,
+        !selectedContract.content.financial.endDate ? "Vigência final" : null,
         !selectedContract.content.financial.dueDate ? "Foro" : null,
       ].filter((item): item is string => Boolean(item))
     }
@@ -2378,7 +2378,7 @@ export function BrokerContractsPage() {
     if (selectedContract.kind === "Distrato") {
       return [
         !selectedContractLead?.identification.cpfCnpj ? "CPF do cliente vinculado" : null,
-        !selectedContractProperty?.legal.registryNumber ? "Matrícula do imovel" : null,
+        !selectedContractProperty?.legal.registryNumber ? "Matrícula do imóvel" : null,
         !selectedContract.content.financial.paymentMethod ? "Referência do contrato original" : null,
         !selectedContract.content.financial.additionalConditions ? "Motivo do encerramento" : null,
         !selectedContract.content.financial.validity ? "Quitação" : null,
@@ -2411,29 +2411,29 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Arquivo anexado",
-          detail: selectedContract.content.attachment?.fileName || "Arquivo principal ainda nãoenviado.",
+          detail: selectedContract.content.attachment?.fileName || "Arquivo principal ainda não enviado.",
           done: Boolean(selectedContract.content.attachment?.fileUrl),
         },
         {
           label: "Cliente vinculado",
-          detail: selectedContract.leadName || "Cliente ainda nãovinculado.",
+          detail: selectedContract.leadName || "Cliente ainda não vinculado.",
           done: Boolean(selectedContract.leadName),
         },
         {
           label: "Imóvel relacionado",
-          detail: selectedContract.propertyTitle || "Contrato anexado sem imovel vinculado.",
+          detail: selectedContract.propertyTitle || "Contrato anexado sem imóvel vinculado.",
           done: Boolean(selectedContract.propertyTitle),
         },
         {
           label: "Tipo do documento",
-          detail: selectedContract.kind || "Tipo ainda nãoinformado.",
+          detail: selectedContract.kind || "Tipo ainda não informado.",
           done: Boolean(selectedContract.kind),
         },
         {
-          label: "Observacoes",
+          label: "Observações",
           detail:
             selectedContract.content.attachment?.notes ||
-            "Sem observacoes complementares. Adicione contexto se quiser facilitar busca e uso pelo COS.",
+            "Sem observações complementares. Adicione contexto se quiser facilitar busca e uso pelo COS.",
           done: Boolean(selectedContract.content.attachment?.notes),
         },
       ]
@@ -2443,12 +2443,12 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Locador validado",
-          detail: selectedContractProperty?.ownerName || "Locador ainda nãoidentificado no imovel.",
+          detail: selectedContractProperty?.ownerName || "Locador ainda não identificado no imóvel.",
           done: Boolean(selectedContractProperty?.ownerName),
         },
         {
           label: "Locatário validado",
-          detail: selectedContract.leadName || "Locatário ainda nãovinculado.",
+          detail: selectedContract.leadName || "Locatário ainda não vinculado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
@@ -2458,7 +2458,7 @@ export function BrokerContractsPage() {
         },
         {
           label: "Laudo de vistoria",
-          detail: selectedContract.content.financial.inspectionReport || "Laudo inicial nãoinformado.",
+          detail: selectedContract.content.financial.inspectionReport || "Laudo inicial não informado.",
           done: Boolean(selectedContract.content.financial.inspectionReport),
         },
         {
@@ -2466,7 +2466,7 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.amountLabel && selectedContract.content.financial.dueDate
               ? `${selectedContract.amountLabel} • ${selectedContract.content.financial.dueDate}`
-              : "Aluguel e vencimento ainda exigem confirmacao.",
+              : "Aluguel e vencimento ainda exigem confirmação.",
           done: Boolean(selectedContract.amountLabel && selectedContract.content.financial.dueDate),
         },
       ]
@@ -2476,12 +2476,12 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Locador validado",
-          detail: selectedContractProperty?.ownerName || "Locador ainda nãoidentificado no imovel.",
+          detail: selectedContractProperty?.ownerName || "Locador ainda não identificado no imóvel.",
           done: Boolean(selectedContractProperty?.ownerName),
         },
         {
           label: "Finalidade comercial",
-          detail: selectedContract.content.financial.commercialPurpose || "Uso comercial ainda nãodefinido.",
+          detail: selectedContract.content.financial.commercialPurpose || "Uso comercial ainda não definido.",
           done: Boolean(selectedContract.content.financial.commercialPurpose),
         },
         {
@@ -2499,7 +2499,7 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.content.financial.worksScope || selectedContract.content.financial.fitOutScope
               ? "Escopo operacional registrado."
-              : "Obras e adequações ainda nãodetalhadas.",
+              : "Obras e adequações ainda não detalhadas.",
           done: Boolean(
             selectedContract.content.financial.worksScope || selectedContract.content.financial.fitOutScope,
           ),
@@ -2511,17 +2511,17 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Proprietário validado",
-          detail: selectedContract.leadName || selectedContractProperty?.ownerName || "Proprietário ainda nãovinculado.",
+          detail: selectedContract.leadName || selectedContractProperty?.ownerName || "Proprietário ainda não vinculado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
           label: "Imóvel validado",
-          detail: selectedContract.propertyTitle || "Imóvel ainda nãovinculado.",
+          detail: selectedContract.propertyTitle || "Imóvel ainda não vinculado.",
           done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
         },
         {
           label: "Valor autorizado",
-          detail: selectedContract.amountLabel || "Valor autorizado ainda nãoinformado.",
+          detail: selectedContract.amountLabel || "Valor autorizado ainda não informado.",
           done: Boolean(selectedContract.amountLabel),
         },
         {
@@ -2529,14 +2529,14 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.content.financial.commissionPercent
               ? `${selectedContract.content.financial.commissionPercent}%`
-              : "Comissão ainda nãoinformada.",
+              : "Comissão ainda não informada.",
           done: Boolean(selectedContract.content.financial.commissionPercent),
         },
         {
-          label: "Intermediacao registrada",
+          label: "Intermediação registrada",
           detail:
             selectedContract.content.financial.additionalConditions ||
-            "Condições da intermediação ainda nãoregistradas.",
+            "Condições da intermediação ainda não registradas.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]
@@ -2546,17 +2546,17 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Proprietário validado",
-          detail: selectedContract.leadName || selectedContractProperty?.ownerName || "Proprietário ainda nãovinculado.",
+          detail: selectedContract.leadName || selectedContractProperty?.ownerName || "Proprietário ainda não vinculado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
           label: "Imóvel validado",
-          detail: selectedContract.propertyTitle || "Imóvel ainda nãovinculado.",
+          detail: selectedContract.propertyTitle || "Imóvel ainda não vinculado.",
           done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
         },
         {
           label: "Prazo de exclusividade",
-          detail: selectedContract.content.financial.validity || "Prazo exclusivo ainda nãoinformado.",
+          detail: selectedContract.content.financial.validity || "Prazo exclusivo ainda não informado.",
           done: Boolean(selectedContract.content.financial.validity),
         },
         {
@@ -2564,14 +2564,14 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.content.financial.commissionPercent
               ? `${selectedContract.content.financial.commissionPercent}%`
-              : "Comissão ainda nãoinformada.",
+              : "Comissão ainda não informada.",
           done: Boolean(selectedContract.content.financial.commissionPercent),
         },
         {
           label: "Direitos e obrigações",
           detail:
             selectedContract.content.financial.additionalConditions ||
-            "Direitos e obrigações ainda nãoregistrados.",
+            "Direitos e obrigações ainda não registrados.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]
@@ -2581,12 +2581,12 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Visitante validado",
-          detail: selectedContract.leadName || "Visitante ainda nãovinculado.",
+          detail: selectedContract.leadName || "Visitante ainda não vinculado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
           label: "Imóvel visitado",
-          detail: selectedContract.propertyTitle || "Imóvel ainda nãovinculado.",
+          detail: selectedContract.propertyTitle || "Imóvel ainda não vinculado.",
           done: Boolean(selectedContract.propertyTitle),
         },
         {
@@ -2594,19 +2594,19 @@ export function BrokerContractsPage() {
           detail:
             selectedContract.content.financial.startDate && selectedContract.content.financial.dueDate
               ? `${selectedContract.content.financial.startDate} / ${selectedContract.content.financial.dueDate}`
-              : "Data ou hora da visita ainda nãoinformadas.",
+              : "Data ou hora da visita ainda não informadas.",
           done: Boolean(selectedContract.content.financial.startDate && selectedContract.content.financial.dueDate),
         },
         {
           label: "Ciência da intermediação",
           detail:
-            selectedContract.content.financial.validity || "Ciência da intermediação ainda nãoregistrada.",
+            selectedContract.content.financial.validity || "Ciência da intermediação ainda não registrada.",
           done: Boolean(selectedContract.content.financial.validity),
         },
         {
           label: "Declarações registradas",
           detail:
-            selectedContract.content.financial.additionalConditions || "Declarações da visita ainda nãoregistradas.",
+            selectedContract.content.financial.additionalConditions || "Declarações da visita ainda não registradas.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]
@@ -2616,31 +2616,31 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Interessado validado",
-          detail: selectedContract.leadName || "Interessado ainda nãovinculado.",
+          detail: selectedContract.leadName || "Interessado ainda não vinculado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
           label: "Proprietário identificado",
-          detail: selectedContractProperty?.ownerName || "Proprietário ainda nãoidentificado no imovel.",
+          detail: selectedContractProperty?.ownerName || "Proprietário ainda não identificado no imóvel.",
           done: Boolean(selectedContractProperty?.ownerName),
         },
         {
           label: "Imóvel validado",
-          detail: selectedContract.propertyTitle || "Imóvel ainda nãovinculado.",
+          detail: selectedContract.propertyTitle || "Imóvel ainda não vinculado.",
           done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
         },
         {
-          label: "Prazo e conversao",
+          label: "Prazo e conversão",
           detail:
             selectedContract.content.financial.validity && selectedContract.content.financial.dueDate
               ? `${selectedContract.content.financial.validity} • ${selectedContract.content.financial.dueDate}`
-              : "Prazo e conversao da reserva ainda exigem confirmacao.",
+              : "Prazo e conversão da reserva ainda exigem confirmação.",
           done: Boolean(selectedContract.content.financial.validity && selectedContract.content.financial.dueDate),
         },
         {
           label: "Condições registradas",
           detail:
-            selectedContract.content.financial.additionalConditions || "Condições da reserva ainda nãoregistradas.",
+            selectedContract.content.financial.additionalConditions || "Condições da reserva ainda não registradas.",
           done: Boolean(selectedContract.content.financial.additionalConditions),
         },
       ]
@@ -2650,32 +2650,32 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Contrato original referênciado",
-          detail: selectedContract.content.financial.paymentMethod || "Referência do contrato original ainda nãoinformada.",
+          detail: selectedContract.content.financial.paymentMethod || "Referência do contrato original ainda não informada.",
           done: Boolean(selectedContract.content.financial.paymentMethod),
         },
         {
           label: "Cliente validado",
-          detail: selectedContract.leadName || "Cliente vinculado ainda nãoselecionado.",
+          detail: selectedContract.leadName || "Cliente vinculado ainda não selecionado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
           label: "Imóvel validado",
-          detail: selectedContract.propertyTitle || "Imóvel vinculado ainda nãoselecionado.",
+          detail: selectedContract.propertyTitle || "Imóvel vinculado ainda não selecionado.",
           done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
         },
         {
           label: "Cláusulas modificadas",
-          detail: selectedContract.content.financial.validity || "Cláusulas alteradas ainda nãoregistradas.",
+          detail: selectedContract.content.financial.validity || "Cláusulas alteradas ainda não registradas.",
           done: Boolean(selectedContract.content.financial.validity),
         },
         {
-          label: "Vigencia e foro",
+          label: "Vigência e foro",
           detail:
             selectedContract.content.financial.startDate &&
             selectedContract.content.financial.endDate &&
             selectedContract.content.financial.dueDate
               ? `${selectedContract.content.financial.startDate} • ${selectedContract.content.financial.endDate} • ${selectedContract.content.financial.dueDate}`
-              : "Vigencia ou foro ainda exigem confirmacao.",
+              : "Vigência ou foro ainda exigem confirmação.",
           done: Boolean(
             selectedContract.content.financial.startDate &&
               selectedContract.content.financial.endDate &&
@@ -2689,28 +2689,28 @@ export function BrokerContractsPage() {
       return [
         {
           label: "Contrato original referênciado",
-          detail: selectedContract.content.financial.paymentMethod || "Referência do contrato original ainda nãoinformada.",
+          detail: selectedContract.content.financial.paymentMethod || "Referência do contrato original ainda não informada.",
           done: Boolean(selectedContract.content.financial.paymentMethod),
         },
         {
           label: "Cliente validado",
-          detail: selectedContract.leadName || "Cliente vinculado ainda nãoselecionado.",
+          detail: selectedContract.leadName || "Cliente vinculado ainda não selecionado.",
           done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
         },
         {
           label: "Imóvel validado",
-          detail: selectedContract.propertyTitle || "Imóvel vinculado ainda nãoselecionado.",
+          detail: selectedContract.propertyTitle || "Imóvel vinculado ainda não selecionado.",
           done: Boolean(selectedContract.propertyTitle && selectedContractProperty?.legal.registryNumber),
         },
         {
           label: "Quitação definida",
-          detail: selectedContract.content.financial.validity || "Quitação ainda nãoregistrada.",
+          detail: selectedContract.content.financial.validity || "Quitação ainda não registrada.",
           done: Boolean(selectedContract.content.financial.validity),
         },
         {
           label: "Obrigações remanescentes",
           detail:
-            selectedContract.content.financial.guaranteeType || "Obrigações remanescentes ainda nãoregistradas.",
+            selectedContract.content.financial.guaranteeType || "Obrigações remanescentes ainda não registradas.",
           done: Boolean(selectedContract.content.financial.guaranteeType),
         },
       ]
@@ -2719,7 +2719,7 @@ export function BrokerContractsPage() {
     return [
       {
         label: "Cliente validado",
-        detail: selectedContract.leadName || "Cliente ainda nãovinculado.",
+        detail: selectedContract.leadName || "Cliente ainda não vinculado.",
         done: Boolean(selectedContract.leadName && selectedContractLead?.identification.cpfCnpj),
       },
       {
@@ -2729,19 +2729,19 @@ export function BrokerContractsPage() {
       },
       {
         label: "Valor confirmado",
-        detail: selectedContract.amountLabel || "Valor negociado ainda nãoinformado.",
+        detail: selectedContract.amountLabel || "Valor negociado ainda não informado.",
         done: Boolean(selectedContract.amountLabel),
       },
       {
         label: "Cartório",
-        detail: selectedContractProperty?.legal.registryOffice || "Cartório nãoinformado.",
+        detail: selectedContractProperty?.legal.registryOffice || "Cartório não informado.",
         done: Boolean(selectedContractProperty?.legal.registryOffice),
       },
       {
         label: "Documento consistente",
         detail:
           selectedContract.content.reviewNotes[0] ||
-          "Revisao estruturada pronta para acompanhamento automatico.",
+          "Revisão estruturada pronta para acompanhamento automático.",
         done: selectedContract.content.reviewNotes.length > 0,
       },
     ]
@@ -2768,12 +2768,12 @@ export function BrokerContractsPage() {
       },
       {
         label: "Imóvel",
-        detail: selectedProperty?.title || "Selecione um imovel",
+        detail: selectedProperty?.title || "Selecione um imóvel",
         done: Boolean(selectedProperty),
       },
       {
         label: "Valor negociado",
-        detail: draft.amount || "Defina a condicao comercial",
+        detail: draft.amount || "Defina a condição comercial",
         done: Boolean(draft.amount.trim()),
       },
       {
@@ -2781,7 +2781,7 @@ export function BrokerContractsPage() {
         detail:
           parsePercentInput(draft.commissionPercent) !== null
             ? `${formatPercentInput(draft.commissionPercent)}%`
-            : "Defina a comissao",
+            : "Defina a comissão",
         done: parsePercentInput(draft.commissionPercent) !== null,
       },
     ]
@@ -2908,7 +2908,7 @@ export function BrokerContractsPage() {
       setEditingAttachmentId(null)
       await loadContracts(contract.id)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel salvar o contrato anexado.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível salvar o contrato anexado.")
     } finally {
       setIsSaving(false)
     }
@@ -2930,7 +2930,7 @@ export function BrokerContractsPage() {
       setEditingId(null)
       await loadContracts(contract.id)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel salvar o contrato.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível salvar o contrato.")
     } finally {
       setIsSaving(false)
     }
@@ -2954,7 +2954,7 @@ export function BrokerContractsPage() {
       setFeedback(`Status atualizado para ${getContractStatusLabel(contract.status).toLowerCase()}.`)
       await loadContracts(contract.id)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel atualizar o status.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível atualizar o status.")
     } finally {
       setIsStatusSaving(false)
     }
@@ -2966,7 +2966,7 @@ export function BrokerContractsPage() {
       setFeedback("Contrato duplicado.")
       await loadContracts(contract.id)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel duplicar o contrato.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível duplicar o contrato.")
     }
   }
 
@@ -2978,7 +2978,7 @@ export function BrokerContractsPage() {
       setFeedback("Contrato excluido.")
       await loadContracts(selectedId === contractId ? null : selectedId)
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel excluir o contrato.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o contrato.")
     }
   }
 
@@ -3002,7 +3002,7 @@ export function BrokerContractsPage() {
       openHtmlDocument(html)
       setFeedback("PDF preparado em nova aba para imprimir ou baixar.")
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Nao foi possivel preparar o PDF.")
+      setFeedback(error instanceof Error ? error.message : "Não foi possível preparar o PDF.")
     }
   }
 
@@ -3027,7 +3027,7 @@ export function BrokerContractsPage() {
                 Contratos
               </CardTitle>
               <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                Workspace para criar, anexar e armazenar contratos e documentos da sua operacao.
+                Workspace para criar, anexar e armazenar contratos e documentos da sua operação.
               </p>
             </div>
 
@@ -3056,7 +3056,7 @@ export function BrokerContractsPage() {
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Buscar por titulo, cliente, imovel ou resumo"
+                  placeholder="Buscar por título, cliente, imóvel ou resumo"
                   className="h-11 rounded-xl border-black/[0.06] bg-[#fbfbf8] pl-10 text-[#050505]"
                 />
               </div>
@@ -3185,7 +3185,7 @@ export function BrokerContractsPage() {
                     </CardTitle>
                     {selectedContract ? (
                       <p className="mt-1.5 text-[12px] leading-5 text-[#7B8491]">
-                        Versao {selectedContract.version} por {selectedContract.authorName} · atualizado em{" "}
+                        Versão {selectedContract.version} por {selectedContract.authorName} · atualizado em{" "}
                         {formatDateTime(selectedContract.updatedAt)}
                       </p>
                     ) : null}
@@ -3248,7 +3248,7 @@ export function BrokerContractsPage() {
                         <div>
                           <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Preview do documento</p>
                           <p className="mt-1 text-[13px] leading-5 text-[#5F6B7A]">
-                            A folha A4 permanece no centro enquanto a negociação e as validacoes acompanham o contrato.
+                            A folha A4 permanece no centro enquanto a negociação e as validações acompanham o contrato.
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -3325,7 +3325,7 @@ export function BrokerContractsPage() {
                   <section className="rounded-[1.35rem] border border-black/[0.045] bg-[#fbfbf8] p-3.5">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Painel contextual</p>
                     <h3 className="mt-2.5 text-[1.25rem] font-semibold tracking-[-0.04em] text-[#050505]">
-                      Saude deste contrato
+                      Saúde deste contrato
                     </h3>
                     <div className="mt-3.5 rounded-[1.05rem] bg-white px-3 py-3">
                       <p className="text-[2rem] font-semibold tracking-[-0.06em] text-[#050505]">
@@ -3340,13 +3340,17 @@ export function BrokerContractsPage() {
                       {contractHealthIndicators.map((item) => (
                         <div key={item.label} className="flex items-center justify-between rounded-[0.9rem] bg-white px-3 py-2">
                           <span className="text-[12px] text-[#4B5563]">{item.label}</span>
-                          <span className="text-[12px] font-semibold text-[#050505]">{item.score}%</span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${getContractHealthTone(item.score)}`}
+                          >
+                            {item.score}%
+                          </span>
                         </div>
                       ))}
                     </div>
 
                     <div className="mt-3.5 border-t border-black/[0.06] pt-3.5">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Pendencias</p>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Pendências</p>
                       <div className="mt-2.5 grid gap-1.5">
                         {contractPendingHighlights.length > 0 ? (
                           contractPendingHighlights.map((item) => (
@@ -3358,7 +3362,7 @@ export function BrokerContractsPage() {
                         ) : (
                           <div className="flex items-start gap-2 text-[12px] leading-5 text-[#5F6B7A]">
                             <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
-                            <span>Sem pendencias estruturais neste momento.</span>
+                            <span>Sem pendências estruturais neste momento.</span>
                           </div>
                         )}
                       </div>
@@ -3376,8 +3380,8 @@ export function BrokerContractsPage() {
 
                   <section className="rounded-[1.35rem] border border-black/[0.045] bg-white p-3.5">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Validacao automatica</p>
-                      <h3 className="mt-2.5 text-[0.95rem] font-semibold text-[#050505]">Revisao contextual</h3>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Validação automática</p>
+                      <h3 className="mt-2.5 text-[0.95rem] font-semibold text-[#050505]">Revisão contextual</h3>
                     </div>
                     <div className="mt-3 grid gap-1.5">
                       {contractValidationItems.map((item) => (
@@ -3402,7 +3406,7 @@ export function BrokerContractsPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Notas de revisão</p>
-                        <h3 className="mt-2.5 text-[0.95rem] font-semibold text-[#050505]">Checklist juridico e comercial</h3>
+                        <h3 className="mt-2.5 text-[0.95rem] font-semibold text-[#050505]">Checklist jurídico e comercial</h3>
                       </div>
                       <span className="rounded-full bg-[#f5fbf7] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#009b3a]">
                         {selectedContract.content.reviewNotes.length || 0} itens
@@ -3417,7 +3421,7 @@ export function BrokerContractsPage() {
                         ))
                       ) : (
                         <div className="rounded-[0.95rem] bg-[#fbfbf8] px-3 py-2.5 text-[13px] leading-5 text-[#6B7280]">
-                          Este contrato ainda nãopossui notas de revisão registradas.
+                          Este contrato ainda não possui notas de revisão registradas.
                         </div>
                       )}
                     </div>
@@ -3446,7 +3450,7 @@ export function BrokerContractsPage() {
                 </div>
               ) : (
                 <div className="rounded-[1.5rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] p-6 text-sm leading-6 text-[#6B7280]">
-                  Selecione um contrato para visualizar saude, validacoes e pendencias deste workspace.
+                  Selecione um contrato para visualizar saúde, validações e pendências deste workspace.
                 </div>
               )}
             </div>
@@ -3455,14 +3459,14 @@ export function BrokerContractsPage() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-h-[94vh] max-w-[96vw] overflow-y-auto rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0">
+        <DialogContent className="max-h-[94vh] max-w-[calc(100%-2rem)] sm:max-w-[96vw] overflow-y-auto rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0">
           <DialogHeader className="border-b border-black/[0.06] px-6 py-5">
             <DialogTitle className="flex items-center gap-2 text-xl text-[#050505]">
               <FilePenLine className="size-5 text-[#009b3a]" />
               {editingId ? "Editor de contrato" : "Novo contrato"}
             </DialogTitle>
             <DialogDescription className="text-[#6B7280]">
-              O EME preenche o que ja conhece, organiza as pendencias e mantem o documento sincronizado com o preview em tempo real.
+              O EME preenche o que já conhece, organiza as pendências e mantém o documento sincronizado com o preview em tempo real.
             </DialogDescription>
           </DialogHeader>
 
@@ -3472,7 +3476,7 @@ export function BrokerContractsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-[#050505]">Propriedades do contrato</p>
-                    <p className="text-sm text-[#6B7280]">O contrato consome dados do cliente, do imovel e do corretor.</p>
+                    <p className="text-sm text-[#6B7280]">O contrato consome dados do cliente, do imóvel e do corretor.</p>
                   </div>
                   <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">
                     Editor
@@ -3481,12 +3485,7 @@ export function BrokerContractsPage() {
 
                 <div className="grid gap-3">
                   <label className="grid gap-2 text-sm text-[#5F6B7A]">
-                    <div className="flex items-center justify-between gap-2">
-                      <span>Título</span>
-                      <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
-                        document.title
-                      </span>
-                    </div>
+                    <span>Título</span>
                     <Input
                       value={draft.title}
                       onChange={(event) => {
@@ -3505,7 +3504,7 @@ export function BrokerContractsPage() {
                       onChange={(event) => updateDraftField("kind", event.target.value as ContractType)}
                       className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
                     >
-                      {contractTypeOptions.map((option) => (
+                      {creatableContractTypeOptions.map((option) => (
                         <option key={option} value={option}>
                           {option}
                         </option>
@@ -3539,7 +3538,7 @@ export function BrokerContractsPage() {
                       }}
                       className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
                     >
-                      <option value="">Selecione um imovel</option>
+                      <option value="">Selecione um imóvel</option>
                       {properties.map((property) => (
                         <option key={property.id} value={property.id}>
                           {property.title}
@@ -3580,12 +3579,7 @@ export function BrokerContractsPage() {
                     if (field.type === "currency") {
                       return (
                         <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{field.label}</span>
-                            <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
-                              {field.id}
-                            </span>
-                          </div>
+                          <span>{field.label}</span>
                           <Input
                             value={value}
                             onChange={(event) => {
@@ -3604,12 +3598,7 @@ export function BrokerContractsPage() {
                     if (field.type === "percent") {
                       return (
                         <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{field.label}</span>
-                            <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
-                              {field.id}
-                            </span>
-                          </div>
+                          <span>{field.label}</span>
                           <Input
                             value={value}
                             onChange={(event) => {
@@ -3631,7 +3620,6 @@ export function BrokerContractsPage() {
                           key={field.id}
                           label={field.label}
                           value={value}
-                          identifier={field.id}
                           placeholder={field.placeholder}
                           onChange={(nextValue) => updateDraftField(field.key, nextValue)}
                         />
@@ -3641,12 +3629,7 @@ export function BrokerContractsPage() {
                     if (field.type === "text") {
                       return (
                         <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{field.label}</span>
-                            <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
-                              {field.id}
-                            </span>
-                          </div>
+                          <span>{field.label}</span>
                           <Input
                             value={value}
                             onChange={(event) => {
@@ -3665,12 +3648,7 @@ export function BrokerContractsPage() {
 
                     return (
                       <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span>{field.label}</span>
-                          <span className="rounded-full bg-[#f4f7f3] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#8B95A1]">
-                            {field.id}
-                          </span>
-                        </div>
+                        <span>{field.label}</span>
                         <Textarea
                           value={value}
                           onChange={(event) => updateDraftField(field.key, event.target.value)}
@@ -3708,7 +3686,7 @@ export function BrokerContractsPage() {
                 <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-2 pb-4">
                   <div>
                     <p className="text-sm font-semibold text-[#050505]">Preview A4</p>
-                    <p className="text-sm text-[#6B7280]">Atualizacao automatica a cada alteracao.</p>
+                    <p className="text-sm text-[#6B7280]">Atualização automática a cada alteração.</p>
                   </div>
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/8 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[#009b3a]">
                     <Sparkles className="size-3.5" />
@@ -3724,10 +3702,10 @@ export function BrokerContractsPage() {
             <div className="grid content-start gap-4">
               <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
                 <div>
-                  <p className="text-sm font-semibold text-[#050505]">Pendencias das entidades</p>
+                  <p className="text-sm font-semibold text-[#050505]">Pendências das entidades</p>
                   <p className="text-sm text-[#6B7280]">
                     {pendingSummary.pendingCount
-                      ? `Faltam ${pendingSummary.pendingCount} informacoes nas fontes oficiais.`
+                      ? `Faltam ${pendingSummary.pendingCount} informações nas fontes oficiais.`
                       : "Todas as fontes principais estao completas para este contrato."}
                   </p>
                 </div>
@@ -3795,11 +3773,11 @@ export function BrokerContractsPage() {
               <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white p-5">
                 <div>
                   <p className="text-sm font-semibold text-[#050505]">Workspace da negociação</p>
-                  <p className="text-sm text-[#6B7280]">Centro limpo para revisar o documento e direita reservada para pendencias, comentarios e COS.</p>
+                  <p className="text-sm text-[#6B7280]">Centro limpo para revisar o documento e direita reservada para pendências, comentarios e COS.</p>
                 </div>
 
                 <div className="rounded-[1rem] border border-black/[0.05] bg-[#fbfbf8] p-4 text-sm leading-6 text-[#5F6B7A]">
-                  O preview nunca mostra placeholders tecnicos nem “Nao informado”. Quando faltar dado estrutural, a pendencia aparece aqui e a correcao acontece na entidade de origem.
+                  O preview nunca mostra placeholders tecnicos nem “Não informado”. Quando faltar dado estrutural, a pendência aparece aqui e a correção acontece na entidade de origem.
                 </div>
                 <div className="grid gap-2">
                   {negotiationChecks.map((item) => (
@@ -3824,7 +3802,7 @@ export function BrokerContractsPage() {
                   ))}
                 </div>
                 <div className="rounded-[1rem] border border-dashed border-black/[0.08] bg-[#fcfcfa] p-4 text-sm leading-6 text-[#6B7280]">
-                  Futuro painel do COS: comentarios contextuais, validacoes juridicas e abertura orientada das entidades que ainda precisarem de complemento.
+                  Futuro painel do COS: comentarios contextuais, validações juridicas e abertura orientada das entidades que ainda precisarem de complemento.
                 </div>
               </section>
             </div>
@@ -3832,7 +3810,7 @@ export function BrokerContractsPage() {
 
           <DialogFooter className="border-t border-black/[0.06] px-6 py-5 sm:justify-between">
             <p className="text-sm text-[#6B7280]">
-              O contrato permanece revisavel enquanto o preview acompanha todas as alteracoes em tempo real.
+              O contrato permanece revisável enquanto o preview acompanha todas as alterações em tempo real.
             </p>
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
@@ -3849,7 +3827,7 @@ export function BrokerContractsPage() {
                 disabled={isSaving}
                 className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
               >
-                {isSaving ? "Salvando..." : editingId ? "Salvar alteracoes" : "Criar contrato"}
+                {isSaving ? "Salvando..." : editingId ? "Salvar alterações" : "Criar contrato"}
               </Button>
             </div>
           </DialogFooter>
@@ -3857,14 +3835,14 @@ export function BrokerContractsPage() {
       </Dialog>
 
       <Dialog open={isAttachDialogOpen} onOpenChange={setIsAttachDialogOpen}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[34rem] overflow-hidden rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0 sm:max-h-[calc(100vh-4rem)]">
+        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[calc(100%-2rem)] overflow-hidden rounded-[2rem] border-black/[0.06] bg-[#f7f7f3] p-0 sm:max-h-[calc(100vh-4rem)] sm:max-w-[34rem]">
           <DialogHeader className="border-b border-black/[0.06] px-6 py-5">
             <DialogTitle className="flex items-center gap-2 text-xl text-[#050505]">
               <Paperclip className="size-5 text-[#009b3a]" />
               {editingAttachmentId ? "Editar contrato anexado" : "Anexar contrato"}
             </DialogTitle>
             <DialogDescription className="text-[#6B7280]">
-              Armazene contratos externos na mesma biblioteca do EME, com cliente, imovel e categoria sincronizados para busca e uso pelo COS.
+              Armazene contratos externos na mesma biblioteca do EME, com cliente, imóvel e categoria sincronizados para busca e uso pelo COS.
             </DialogDescription>
           </DialogHeader>
 
@@ -3892,7 +3870,7 @@ export function BrokerContractsPage() {
                 onChange={(event) => setAttachmentDraft((current) => ({ ...current, propertyId: event.target.value }))}
                 className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-[#050505]"
               >
-                <option value="">Sem imovel vinculado</option>
+                <option value="">Sem imóvel vinculado</option>
                 {properties.map((property) => (
                   <option key={property.id} value={property.id}>
                     {property.title}
@@ -3942,7 +3920,7 @@ export function BrokerContractsPage() {
               <Input
                 value={attachmentDraft.title}
                 onChange={(event) => setAttachmentDraft((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Se vazio, o nome do arquivo sera utilizado"
+                placeholder="Se vazio, o nome do arquivo será utilizado"
                 className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
               />
             </label>
@@ -3965,7 +3943,7 @@ export function BrokerContractsPage() {
             </label>
 
             <label className="grid gap-2 text-sm text-[#5F6B7A]">
-              Observacoes
+              Observações
               <Textarea
                 value={attachmentDraft.notes}
                 onChange={(event) => setAttachmentDraft((current) => ({ ...current, notes: event.target.value }))}
@@ -3994,7 +3972,7 @@ export function BrokerContractsPage() {
                 disabled={isSaving}
                 className="h-10 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"
               >
-                {isSaving ? "Salvando..." : editingAttachmentId ? "Salvar alteracoes" : "Anexar contrato"}
+                {isSaving ? "Salvando..." : editingAttachmentId ? "Salvar alterações" : "Anexar contrato"}
               </Button>
             </div>
           </DialogFooter>
