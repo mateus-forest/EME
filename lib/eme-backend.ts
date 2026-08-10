@@ -429,7 +429,6 @@ export function parsePropertyDraftData(message: string, payload?: Record<string,
     cleanText(payload?.description, 2000),
     area ? `Área informada: ${area}.` : "",
     features.length ? `Características: ${features.join(", ")}.` : "",
-    `Dados capturados pelo Assessor EME a partir da mensagem: "${message.slice(0, 240)}"`,
   ].filter(Boolean)
 
   return {

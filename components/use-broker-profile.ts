@@ -174,6 +174,11 @@ export function useBrokerProfile() {
       | null
 
     if (!response.ok || !data?.profile) {
+      if (response.status === 413) {
+        throw new Error(
+          "A imagem de perfil é grande demais para o servidor aceitar. Tente uma foto menor ou mais comprimida.",
+        )
+      }
       throw new Error(data?.error || "Não foi possível salvar a conta do corretor.")
     }
 

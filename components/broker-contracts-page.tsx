@@ -1716,6 +1716,7 @@ function CommercialDateField({
 
 export function BrokerContractsPage() {
   const [contractsList, setContractsList] = useState<ContractRecord[]>([])
+  const [availableKindFilters, setAvailableKindFilters] = useState<ContractType[]>([...creatableContractTypeOptions])
   const [leads, setLeads] = useState<LeadRecord[]>([])
   const [properties, setProperties] = useState<PropertyApiItem[]>([])
   const [brokerProfile, setBrokerProfile] = useState<BrokerProfile | null>(null)
@@ -1793,8 +1794,13 @@ export function BrokerContractsPage() {
       setIsLoading(true)
       setFeedback("")
       try {
-        const nextContracts = await contracts.list({ query, status, kind: kindFilter })
+        const { contracts: nextContracts, contractTypes: nextContractTypes } = await contracts.list({
+          query,
+          status,
+          kind: kindFilter,
+        })
         setContractsList(nextContracts)
+        if (nextContractTypes.length > 0) setAvailableKindFilters(nextContractTypes)
         setSelectedId((current) => {
           const candidateId = preferredId ?? current
           if (candidateId && nextContracts.some((item) => item.id === candidateId)) {
@@ -3067,7 +3073,7 @@ export function BrokerContractsPage() {
                 className="h-11 rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-3 text-[#050505]"
               >
                 <option value="all">Todos os modelos</option>
-                {contractTypeOptions.map((option) => (
+                {availableKindFilters.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>

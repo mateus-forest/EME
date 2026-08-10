@@ -7,6 +7,7 @@ import {
   buildContractHtml,
   contractHtmlToText,
   contractTypeOptions,
+  creatableContractTypeOptions,
   createContractContent,
   isExternalContractContent,
   normalizeContractStatus,
@@ -437,13 +438,21 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: "desc" },
     })
 
-    const contracts = documents
-      .map(serializeContract)
-      .filter((item) => (kind && kind !== "all" ? item.kind === kind : true))
+    const allContracts = documents.map(serializeContract)
+    const contracts = allContracts.filter((item) => (kind && kind !== "all" ? item.kind === kind : true))
+
+    // O filtro "Todos os modelos" nunca deve oferecer uma opcao que garantidamente retorna lista
+    // vazia: mostra os 3 modelos ativos (creatableContractTypeOptions) mais qualquer modelo legado
+    // que este corretor de fato tenha pelo menos 1 contrato usando.
+    const creatableKinds = new Set<string>(creatableContractTypeOptions)
+    const presentKinds = new Set(allContracts.map((item) => item.kind))
+    const availableContractTypes = contractTypeOptions.filter(
+      (option) => creatableKinds.has(option) || presentKinds.has(option),
+    )
 
     return NextResponse.json({
       contracts,
-      contractTypes: contractTypeOptions,
+      contractTypes: availableContractTypes,
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {

@@ -25,6 +25,22 @@ function getImageExtension(file: File) {
   return getImageExtensionFromMimeType(file.type)
 }
 
+// Fotos de imovel chegam direto da camera do celular, que grava a orientacao real como metadado
+// EXIF em vez de girar os pixels. Navegadores modernos respeitam esse EXIF ao exibir a imagem
+// original, mas qualquer reprocessamento posterior (ex: otimizador de imagem do Next.js) pode
+// nao preservar/respeitar essa orientacao, fazendo a foto aparecer virada. Corrigindo aqui, na
+// gravacao, os pixels ja saem fisicamente na orientacao correta e o problema deixa de existir em
+// qualquer consumidor posterior.
+async function normalizeImageOrientation(buffer: Buffer) {
+  try {
+    const sharp = (await import("sharp")).default
+    return await sharp(buffer).rotate().toBuffer()
+  } catch (error) {
+    console.error("[storage][properties] EXIF auto-rotate failed, uploading original bytes", error)
+    return buffer
+  }
+}
+
 function getAudioExtension(file: File) {
   if (file.type === "audio/wav" || file.type === "audio/x-wav") return ".wav"
   if (file.type === "audio/ogg") return ".ogg"
@@ -111,11 +127,14 @@ export function isPropertyStorageUrl(url: string) {
 }
 
 export async function savePropertyImage(propertyId: string, file: File) {
-  return uploadPropertyFile({
+  const buffer = await normalizeImageOrientation(Buffer.from(await file.arrayBuffer()))
+
+  return uploadPropertyBuffer({
     propertyId,
-    file,
+    buffer,
     folder: "images",
     extension: getImageExtension(file),
+    contentType: file.type || "application/octet-stream",
   })
 }
 
@@ -124,7 +143,7 @@ export async function savePropertyImageFromDataUrl(dataUrl: string) {
   if (!match) throw new Error("Formato de imagem inválido para upload.")
 
   const mimeType = match[1] || "image/jpeg"
-  const buffer = Buffer.from(match[2], "base64")
+  const buffer = await normalizeImageOrientation(Buffer.from(match[2], "base64"))
 
   return uploadPropertyBuffer({
     propertyId: randomUUID(),

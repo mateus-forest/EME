@@ -155,7 +155,6 @@ export function parsePropertyDraftData(rawMessage: string, payload?: Record<stri
     cleanText(payload?.description, 2000),
     area ? `Area informada: ${area}.` : "",
     features.length ? `Caracteristicas: ${features.join(", ")}.` : "",
-    `Dados capturados pelo COS a partir da mensagem: "${message.slice(0, 240)}"`,
   ].filter(Boolean)
 
   return {

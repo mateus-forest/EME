@@ -22,14 +22,21 @@ function text(value: string) {
 }
 
 async function remoteImageToDataUrl(url: string) {
-  const response = await fetch(url, { cache: "no-store" }).catch(() => null)
-  if (!response?.ok) return null
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8_000)
 
-  const contentType = response.headers.get("content-type")?.trim() || "image/jpeg"
-  if (!contentType.startsWith("image/")) return null
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: controller.signal }).catch(() => null)
+    if (!response?.ok) return null
 
-  const arrayBuffer = await response.arrayBuffer()
-  return `data:${contentType};base64,${Buffer.from(arrayBuffer).toString("base64")}`
+    const contentType = response.headers.get("content-type")?.trim() || "image/jpeg"
+    if (!contentType.startsWith("image/")) return null
+
+    const arrayBuffer = await response.arrayBuffer()
+    return `data:${contentType};base64,${Buffer.from(arrayBuffer).toString("base64")}`
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function resolveBrokerPhotoDataUrl(photoUrl: string) {
@@ -244,7 +251,11 @@ export async function GET(_request: NextRequest, { params }: OgImageRouteContext
       width: OG_IMAGE_WIDTH,
       height: OG_IMAGE_HEIGHT,
       headers: {
-        "Cache-Control": "no-store, max-age=0, must-revalidate",
+        // A URL ja inclui ?v=<hash da foto do corretor>, entao um cache publico e seguro aqui:
+        // qualquer troca de foto gera uma URL nova. Isso garante que WhatsApp/Facebook/outros
+        // crawlers recebam sempre os mesmos bytes para a mesma versao, em vez de arriscar uma
+        // nova geracao (e uma eventual falha/timeout no fetch da foto remota) a cada crawl.
+        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
       },
     },
   )

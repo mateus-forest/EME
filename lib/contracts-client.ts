@@ -92,6 +92,7 @@ export type ContractDraft = {
 type ContractResponse = {
   contract?: ContractRecord
   contracts?: ContractRecord[]
+  contractTypes?: ContractType[]
   error?: string
 }
 
@@ -155,7 +156,7 @@ export const contracts = {
       cache: "no-store",
     })
     const data = await parseContractResponse(response)
-    return data.contracts ?? []
+    return { contracts: data.contracts ?? [], contractTypes: data.contractTypes ?? [] }
   },
 
   async create(payload: ContractDraft) {

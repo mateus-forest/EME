@@ -21,6 +21,48 @@ export function BrokerAccountPage() {
   )
 }
 
+const MAX_PHOTO_SOURCE_BYTES = 4 * 1024 * 1024
+const MAX_PHOTO_PAYLOAD_CHARS = 4 * 1024 * 1024
+const PHOTO_MAX_DIMENSION = 640
+const PHOTO_JPEG_QUALITY = 0.85
+
+function formatMegabytes(bytes: number) {
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
+
+// Foto de perfil nao precisa de alta resolucao — redimensionar e recomprimir no navegador antes
+// do envio reduz drasticamente a chance de esbarrar no limite de payload da funcao serverless
+// (Vercel, tipicamente ~4.5MB) mesmo quando o arquivo original selecionado e grande.
+function compressImageToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."))
+    reader.onload = () => {
+      const image = new Image()
+      image.onerror = () => reject(new Error("Não foi possível processar a imagem selecionada."))
+      image.onload = () => {
+        const scale = Math.min(1, PHOTO_MAX_DIMENSION / Math.max(image.width, image.height))
+        const width = Math.max(1, Math.round(image.width * scale))
+        const height = Math.max(1, Math.round(image.height * scale))
+
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+        const context = canvas.getContext("2d")
+        if (!context) {
+          reject(new Error("Não foi possível processar a imagem selecionada."))
+          return
+        }
+
+        context.drawImage(image, 0, 0, width, height)
+        resolve(canvas.toDataURL("image/jpeg", PHOTO_JPEG_QUALITY))
+      }
+      image.src = String(reader.result)
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 function AccountForm() {
   const { profile, saveProfile, isLoading } = useBrokerProfile()
   const [fullName, setFullName] = useState(profile.fullName)
@@ -124,8 +166,29 @@ function AccountForm() {
   async function handlePhotoChange(file: File | null) {
     if (!file) return
 
+    if (!file.type.startsWith("image/")) {
+      setFeedbackTone("error")
+      setFeedback("Envie um arquivo de imagem (JPG ou PNG).")
+      return
+    }
+
+    if (file.size > MAX_PHOTO_SOURCE_BYTES) {
+      setFeedbackTone("error")
+      setFeedback(
+        `A imagem tem ${formatMegabytes(file.size)}, o limite é ${formatMegabytes(MAX_PHOTO_SOURCE_BYTES)} — tente uma imagem menor ou comprimida.`,
+      )
+      return
+    }
+
     try {
-      setPhotoUrl(await readFileAsDataUrl(file))
+      const compressed = await compressImageToDataUrl(file)
+      if (compressed.length > MAX_PHOTO_PAYLOAD_CHARS) {
+        setFeedbackTone("error")
+        setFeedback("Não foi possível reduzir a imagem o suficiente. Tente uma foto menor ou com menos detalhe.")
+        return
+      }
+      setFeedback(null)
+      setPhotoUrl(compressed)
     } catch {
       setFeedbackTone("error")
       setFeedback("Não foi possível atualizar a foto agora.")
@@ -168,6 +231,9 @@ function AccountForm() {
           <CardContent className="grid gap-4 p-6 pt-0">
             <div className="grid gap-3">
               <Label className="text-sm font-medium text-[#5F6B7A]">Foto do perfil</Label>
+              <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
+                JPG ou PNG, até {formatMegabytes(MAX_PHOTO_SOURCE_BYTES)}, recomendado 500x500px.
+              </p>
               <div className="flex items-center gap-4">
                 <input
                   ref={fileInputRef}
@@ -309,13 +375,3 @@ function Field({ id, label, value, onChange, error, placeholder, type = "text" }
   )
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."))
-
-    reader.readAsDataURL(file)
-  })
-}
