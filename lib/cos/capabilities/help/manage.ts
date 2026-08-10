@@ -18,6 +18,16 @@ const HELP_SYSTEM_PROMPT = [
 
 const HELP_FALLBACK_EXCERPT_LENGTH = 1400
 
+// Mensagem literal enviada pelo botao "Tirar uma duvida" do menu "+" (ver actionMap em
+// components/broker-portal.tsx). So mostramos o menu fixo de topicos quando a mensagem e
+// exatamente esse gatilho generico — uma pergunta especifica real que caia em general_question
+// continua sendo respondida pela IA usando o manual completo.
+const GENERAL_QUESTION_TRIGGER_MESSAGE = "Preciso de ajuda para entender uma funcionalidade do EME."
+
+function isGeneralQuestionMenuTrigger(message: string) {
+  return message.trim().toLowerCase() === GENERAL_QUESTION_TRIGGER_MESSAGE.toLowerCase()
+}
+
 type GuidedHelpOption = Prisma.InputJsonObject & {
   id: string
   actionId: string
@@ -28,11 +38,11 @@ type GuidedHelpOption = Prisma.InputJsonObject & {
 
 const GUIDED_HELP_RESPONSES: Partial<Record<HelpTopic, string>> = {
   first_steps: "Escolha por onde deseja começar.",
-  use_cos: "Escolha a operação que deseja executar.",
   register_properties: "Escolha como deseja cadastrar o imóvel.",
   manage_clients: "Escolha a frente de clientes que deseja seguir.",
   contracts_proposals: "Escolha o fluxo que deseja abrir.",
   marketing_studio: "Escolha a frente do Studio IA.",
+  general_question: "Sobre o que você quer tirar dúvida?",
 }
 
 const GUIDED_HELP_OPTIONS: Partial<Record<HelpTopic, GuidedHelpOption[]>> = {
@@ -40,11 +50,6 @@ const GUIDED_HELP_OPTIONS: Partial<Record<HelpTopic, GuidedHelpOption[]>> = {
     { id: "first_steps_use_cos", actionId: "help:first_steps:use_cos", action: "help_use_cos", message: "Como usar o COS", label: "Como usar o COS" },
     { id: "first_steps_properties", actionId: "help:first_steps:properties", action: "help_register_properties", message: "Cadastrar imóveis", label: "Cadastrar imóveis" },
     { id: "first_steps_clients", actionId: "help:first_steps:clients", action: "help_manage_clients", message: "Gerenciar clientes", label: "Gerenciar clientes" },
-  ],
-  use_cos: [
-    { id: "use_cos_clients", actionId: "help:use_cos:clients", action: "FIND_LEAD", message: "Clientes", label: "Clientes" },
-    { id: "use_cos_properties", actionId: "help:use_cos:properties", action: "searchProperties", message: "Buscar imóveis", label: "Buscar imóveis" },
-    { id: "use_cos_proposal", actionId: "help:use_cos:proposal", action: "CREATE_PROPOSAL", message: "Criar proposta", label: "Criar proposta" },
   ],
   register_properties: [
     { id: "register_properties_manual", actionId: "help:register_properties:manual", action: "createPropertyDraft", message: "Criar imóvel", label: "Cadastro manual" },
@@ -66,6 +71,14 @@ const GUIDED_HELP_OPTIONS: Partial<Record<HelpTopic, GuidedHelpOption[]>> = {
     { id: "marketing_studio_instagram", actionId: "help:studio:instagram", action: "STUDIO_GENERATE_INSTAGRAM", message: "Criar campanha Instagram", label: "Instagram" },
     { id: "marketing_studio_video", actionId: "help:studio:video", action: "STUDIO_GENERATE_VIDEO", message: "Gerar vídeo do imóvel", label: "Vídeo" },
   ],
+  general_question: [
+    { id: "general_question_first_steps", actionId: "help:general:first_steps", action: "help_first_steps", message: "Primeiros passos", label: "Primeiros passos" },
+    { id: "general_question_use_cos", actionId: "help:general:use_cos", action: "help_use_cos", message: "Como usar o COS", label: "Como usar o COS" },
+    { id: "general_question_properties", actionId: "help:general:properties", action: "help_register_properties", message: "Cadastrar imóveis", label: "Cadastrar imóveis" },
+    { id: "general_question_clients", actionId: "help:general:clients", action: "help_manage_clients", message: "Gerenciar clientes", label: "Gerenciar clientes" },
+    { id: "general_question_contracts", actionId: "help:general:contracts", action: "help_contracts_proposals", message: "Contratos e propostas", label: "Contratos e propostas" },
+    { id: "general_question_studio", actionId: "help:general:studio", action: "help_marketing_studio", message: "Marketing e Studio IA", label: "Marketing e Studio IA" },
+  ],
 }
 
 function buildHelpFallbackResponse(manualContext: string) {
@@ -78,7 +91,8 @@ function buildHelpFallbackResponse(manualContext: string) {
 function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
   return async ({ message, action }) => {
     const guidedResponse = GUIDED_HELP_RESPONSES[topic]
-    if (guidedResponse) {
+    const showGuidedMenu = Boolean(guidedResponse) && (topic !== "general_question" || isGeneralQuestionMenuTrigger(message))
+    if (showGuidedMenu && guidedResponse) {
       return {
         response: guidedResponse,
         metadata: {
@@ -107,11 +121,22 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
       metadata: { topic, action },
       request: {
         model,
-        max_output_tokens: 700,
+        max_output_tokens: 1800,
+        reasoning: {
+          effort: "minimal",
+        },
         instructions: HELP_SYSTEM_PROMPT,
         input: [`Manual oficial do EME:\n\n${manualContext}`, `Pergunta do corretor: ${message}`].join("\n\n"),
       },
     })
+
+    if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
+      console.error("[cos][help][openai-response-truncated]", { topic, status: response.status })
+      return {
+        response: buildHelpFallbackResponse(manualContext),
+        metadata: { noCharge: true, topic, source: "manual_fallback_truncated" },
+      }
+    }
 
     const answer = response.output_text.trim()
 

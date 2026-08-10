@@ -2,6 +2,7 @@ import "server-only"
 
 import { prisma } from "@/lib/prisma"
 
+import { resolveLeadDocumentCandidateChoice } from "@/lib/cos/capabilities/lead/manage"
 import { getEntityIdFromPayload, normalizeText } from "@/lib/cos/capabilities/shared"
 import {
   extractPersonName,
@@ -21,11 +22,6 @@ export type CosEntityResolution<TRecord> = {
   parsedData?: Record<string, unknown>
 }
 
-function pickIdFromOptions(message: string, ids: string[]) {
-  const index = Math.max(0, Number.parseInt(message.replace(/\D/g, ""), 10) - 1)
-  return ids[index] ?? null
-}
-
 function getDirectEntityId(payload: PayloadRecord, entity: CosWorkspaceEntity) {
   return getEntityIdFromPayload(payload, entity)
 }
@@ -36,14 +32,20 @@ export async function resolveLeadEntity(input: {
   payload: PayloadRecord
   pendingField?: string | null
   pendingData?: Record<string, unknown>
+  pendingOptions?: CosPendingInputOption[] | null
   take?: number
 }) {
-  const pendingIds = Array.isArray(input.pendingData?.leadIds)
-    ? input.pendingData.leadIds.filter((item): item is string => typeof item === "string")
-    : []
+  // A opcao clicada num card de selecao chega aqui como texto livre (o label da opcao, ex.: o
+  // nome do lead), nao como indice numerico. Resolver contra a lista de opcoes que o proprio EME
+  // ofereceu no turno anterior (pendingOptions, ja com id+label) evita cair de volta numa busca
+  // livre por nome que pode retornar os MESMOS multiplos candidatos e reexibir o mesmo card em
+  // loop, sem nunca progredir o fluxo — mesmo padrao ja usado por resolveLeadDocumentCandidateChoice.
   const directLeadId =
-    input.pendingField === "lead" && pendingIds.length > 0
-      ? pickIdFromOptions(input.message, pendingIds)
+    input.pendingField === "lead" && input.pendingOptions && input.pendingOptions.length > 0
+      ? resolveLeadDocumentCandidateChoice(
+          input.message,
+          input.pendingOptions.map((option) => ({ id: option.id, name: option.label })),
+        )?.id ?? null
       : getDirectEntityId(input.payload, "lead")
 
   const personName =

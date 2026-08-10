@@ -12,6 +12,7 @@ import type { CosCapabilityHandler } from "@/lib/cos/types"
 export const createProposalCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const pendingData = pendingInput?.action === "CREATE_PROPOSAL" ? pendingInput.parsedData ?? {} : {}
+  const pendingOptions = pendingInput?.action === "CREATE_PROPOSAL" ? pendingInput.options ?? null : null
 
   const [broker, leadResolution] = await Promise.all([
     prisma.broker.findUnique({
@@ -24,6 +25,7 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
       payload: payloadRecord,
       pendingField: pendingInput?.field ?? null,
       pendingData,
+      pendingOptions,
       take: 4,
     }),
   ])

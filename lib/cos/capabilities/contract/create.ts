@@ -24,6 +24,7 @@ function inferContractKind(message: string) {
 export const createContractCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const pendingData = pendingInput?.action === "CREATE_CONTRACT" ? pendingInput.parsedData ?? {} : {}
+  const pendingOptions = pendingInput?.action === "CREATE_CONTRACT" ? pendingInput.options ?? null : null
   const contractKind = inferContractKind(message)
 
   const leadResolution = await resolveLeadEntity({
@@ -32,6 +33,7 @@ export const createContractCapability: CosCapabilityHandler = async ({ brokerId,
     payload: payloadRecord,
     pendingField: pendingInput?.field ?? null,
     pendingData: { ...pendingData, contractKind },
+    pendingOptions,
     take: 4,
   })
 

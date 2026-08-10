@@ -9,6 +9,16 @@ function json(value: Record<string, unknown>): Prisma.InputJsonObject {
   return value as Prisma.InputJsonObject
 }
 
+// Junta titulo/localizacao/preco com " — ", omitindo qualquer parte vazia (e o separador junto)
+// em vez de deixar um traço solto quando o imovel nao tem cidade/bairro cadastrado.
+function formatPropertyListingLine(parts: Array<string | null | undefined>) {
+  return parts.filter((part) => Boolean(part && part.trim())).join(" — ")
+}
+
+function formatPropertyLocationLabel(city?: string | null, neighborhood?: string | null) {
+  return [city, neighborhood].filter((part) => Boolean(part && part.trim())).join(", ")
+}
+
 export const createPropertyDraftCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload }) => {
   return createPropertyDraftRecord({
     brokerId,
@@ -32,7 +42,10 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
     if (resolution.record) {
       const property = resolution.record
       return {
-        response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} — ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
+        response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${formatPropertyListingLine([
+          formatPropertyLocationLabel(property.city, property.neighborhood),
+          formatAssessorPropertyPrice(property.price),
+        ])}\n\nQuer gerar proposta ou ver detalhes?`,
         metadata: json({ propertyId: property.id, publicCode: property.publicCode }),
         propertyId: property.id,
       }
@@ -78,7 +91,10 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
   if (properties.length === 1) {
     const property = properties[0]
     return {
-      response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""} — ${formatAssessorPropertyPrice(property.price)}\n\nQuer gerar proposta ou ver detalhes?`,
+      response: `Imóvel ${property.publicCode ?? "-"} — ${property.title}\n${formatPropertyListingLine([
+        formatPropertyLocationLabel(property.city, property.neighborhood),
+        formatAssessorPropertyPrice(property.price),
+      ])}\n\nQuer gerar proposta ou ver detalhes?`,
       metadata: json({
         propertyId: property.id,
         publicCode: property.publicCode,
@@ -89,7 +105,7 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
   }
 
   return {
-    response: `Encontrei mais de um imóvel. Qual deseja abrir?\n\n${properties.map((item, index) => `${index + 1}. ${item.title} — ${item.neighborhood ?? item.city} — ${formatAssessorPropertyPrice(item.price)}`).join("\n")}`,
+    response: `Encontrei mais de um imóvel. Qual deseja abrir?\n\n${properties.map((item, index) => `${index + 1}. ${formatPropertyListingLine([item.title, formatPropertyLocationLabel(item.city, item.neighborhood), formatAssessorPropertyPrice(item.price)])}`).join("\n")}`,
     metadata: createPendingInputMetadata({
       field: "propertyChoice",
       action: "searchProperties",
@@ -99,7 +115,7 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
         options: properties.map((item) => ({
           id: item.id,
           label: item.title,
-          description: `${item.neighborhood ?? item.city} - ${formatAssessorPropertyPrice(item.price)}`,
+          description: formatPropertyListingLine([formatPropertyLocationLabel(item.city, item.neighborhood), formatAssessorPropertyPrice(item.price)]),
         })),
       },
       extra: {
