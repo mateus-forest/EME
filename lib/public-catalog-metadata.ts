@@ -8,6 +8,13 @@ const DEFAULT_CATALOG_DESCRIPTION =
   "Encontre imóveis disponíveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
 
 export const PREMIUM_FALLBACK_IMAGE_PATH = "/images/catalogo-eme.png"
+export const CATALOG_OG_IMAGE_WIDTH = 1200
+export const CATALOG_OG_IMAGE_HEIGHT = 630
+export const CATALOG_OG_IMAGE_TYPE = "image/png"
+
+// Increment this whenever the generated composition changes so social crawlers
+// cannot keep serving bytes from an older renderer under the same image URL.
+const CATALOG_OG_IMAGE_RENDER_VERSION = "2"
 
 export function getAppBaseUrl() {
   return "https://www.meueme.com"
@@ -30,7 +37,13 @@ export function getBrokerCatalogCanonicalUrl(slug: string) {
 }
 
 function buildOgImageVersion(catalog?: PublicBrokerCatalogData | null) {
-  const source = catalog?.photoUrl?.trim() || "fallback"
+  const source = JSON.stringify({
+    renderer: CATALOG_OG_IMAGE_RENDER_VERSION,
+    photoUrl: catalog?.photoUrl?.trim() || "fallback",
+    title: getBrokerCatalogTitle(catalog),
+    description: getCatalogDescription(catalog),
+  })
+
   return createHash("sha1").update(source).digest("hex").slice(0, 12)
 }
 
@@ -82,9 +95,10 @@ export function buildBrokerCatalogMetadata(slug: string, catalog?: PublicBrokerC
       images: [
         {
           url: imageUrl,
-          width: 1200,
-          height: 630,
-          type: "image/png",
+          secureUrl: imageUrl,
+          width: CATALOG_OG_IMAGE_WIDTH,
+          height: CATALOG_OG_IMAGE_HEIGHT,
+          type: CATALOG_OG_IMAGE_TYPE,
           alt: title,
         },
       ],
@@ -93,7 +107,16 @@ export function buildBrokerCatalogMetadata(slug: string, catalog?: PublicBrokerC
       card: "summary_large_image",
       title,
       description,
-      images: [imageUrl],
+      images: [
+        {
+          url: imageUrl,
+          secureUrl: imageUrl,
+          width: CATALOG_OG_IMAGE_WIDTH,
+          height: CATALOG_OG_IMAGE_HEIGHT,
+          type: CATALOG_OG_IMAGE_TYPE,
+          alt: title,
+        },
+      ],
     },
   }
 }

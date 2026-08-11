@@ -3,15 +3,13 @@ import { ImageResponse } from "next/og"
 import { NextRequest } from "next/server"
 
 import { prisma } from "@/lib/prisma"
+import { CATALOG_OG_IMAGE_HEIGHT, CATALOG_OG_IMAGE_WIDTH } from "@/lib/public-catalog-metadata"
 
 export const dynamic = "force-dynamic"
 
 type OgImageRouteContext = {
   params: Promise<{ slug: string }>
 }
-
-const OG_IMAGE_WIDTH = 1200
-const OG_IMAGE_HEIGHT = 630
 
 function div(style: React.CSSProperties, ...children: React.ReactNode[]) {
   return React.createElement("div", { style }, ...children)
@@ -248,12 +246,12 @@ export async function GET(_request: NextRequest, { params }: OgImageRouteContext
       brokerInitials,
     }),
     {
-      width: OG_IMAGE_WIDTH,
-      height: OG_IMAGE_HEIGHT,
+      width: CATALOG_OG_IMAGE_WIDTH,
+      height: CATALOG_OG_IMAGE_HEIGHT,
       headers: {
-        // A URL ja inclui ?v=<hash da foto do corretor>, entao um cache publico e seguro aqui:
-        // qualquer troca de foto gera uma URL nova. Isso garante que WhatsApp/Facebook/outros
-        // crawlers recebam sempre os mesmos bytes para a mesma versao, em vez de arriscar uma
+        // A URL inclui ?v=<hash da composicao>, entao um cache publico e seguro aqui:
+        // qualquer troca de foto, titulo, descricao ou renderer gera uma URL nova. Isso garante
+        // que crawlers recebam sempre os mesmos bytes para a mesma versao, em vez de arriscar uma
         // nova geracao (e uma eventual falha/timeout no fetch da foto remota) a cada crawl.
         "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
       },
