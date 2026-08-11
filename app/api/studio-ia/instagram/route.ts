@@ -9,7 +9,6 @@ import {
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
-import { getOpenAIEnv } from "@/lib/env.server"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
@@ -19,6 +18,7 @@ import {
   generateInstagramCampaign,
   studioInstagramRequestSchema,
 } from "@/lib/studio-ia-instagram"
+import { XAIProviderError } from "@/lib/studio-providers/xai"
 
 export const dynamic = "force-dynamic"
 
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       description: property.description ?? "",
       status: propertyStatusLabel(property.status),
     })
-    const result = await runWithAiOperationContext(
+    const generated = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/instagram",
         source: "portal",
@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
           status: propertyStatusLabel(property.status),
         }),
     )
+    const result = generated.data
 
     if (user.role === UserRole.BROKER && user.broker) {
       await consumeBrokerAiCredits({
@@ -156,18 +157,20 @@ export async function POST(request: NextRequest) {
         metadata: {
           source: "api/studio-ia/instagram",
           propertyId: property.id,
+          provider: generated.provider,
+          model: generated.model,
         },
       })
     }
 
-    const { model } = getOpenAIEnv()
+    const { provider, model } = generated
     const campaign = await createStudioCampaign(user, {
       kind: "INSTAGRAM",
       status: "PENDING_REVIEW",
       goal: payload.goal,
       visualIdentity: payload.identity,
       version: payload.version,
-      provider: "openai",
+      provider,
       model,
       prompt,
       sourceRoute: "/api/studio-ia/instagram",
@@ -179,13 +182,18 @@ export async function POST(request: NextRequest) {
         propertyImageUrl: Array.isArray(property.imageUrls)
           ? property.imageUrls.find((image): image is string => typeof image === "string" && image.trim().length > 0) ?? null
           : null,
+        capability: generated.capability,
+        externalRequestId: generated.externalRequestId ?? null,
+        durationMs: generated.durationMs,
+        externalCostUsd: generated.costUsd ?? null,
+        externalCostSource: generated.costSource,
       },
       assets: [
         {
           assetKey: "post_feed",
           label: "Post feed",
           type: "IMAGE",
-          provider: "openai",
+          provider,
           model,
           status: "PENDING_REVIEW",
           content: result.postFeed as Prisma.InputJsonValue,
@@ -199,7 +207,7 @@ export async function POST(request: NextRequest) {
           assetKey: "story",
           label: "Story",
           type: "STORY",
-          provider: "openai",
+          provider,
           model,
           status: "PENDING_REVIEW",
           content: result.story as Prisma.InputJsonValue,
@@ -213,7 +221,7 @@ export async function POST(request: NextRequest) {
           assetKey: "carousel",
           label: "Carrossel",
           type: "CAROUSEL",
-          provider: "openai",
+          provider,
           model,
           status: "PENDING_REVIEW",
           content: result.carousel as Prisma.InputJsonValue,
@@ -226,7 +234,7 @@ export async function POST(request: NextRequest) {
           assetKey: "caption",
           label: "Legenda",
           type: "COPY",
-          provider: "openai",
+          provider,
           model,
           status: "PENDING_REVIEW",
           content: result.caption,
@@ -238,7 +246,7 @@ export async function POST(request: NextRequest) {
           assetKey: "cta",
           label: "CTA",
           type: "COPY",
-          provider: "openai",
+          provider,
           model,
           status: "PENDING_REVIEW",
           content: result.cta,
@@ -250,7 +258,7 @@ export async function POST(request: NextRequest) {
           assetKey: "hashtags",
           label: "Hashtags",
           type: "COPY",
-          provider: "openai",
+          provider,
           model,
           status: "PENDING_REVIEW",
           content: result.hashtags as Prisma.InputJsonValue,
@@ -292,6 +300,10 @@ export async function POST(request: NextRequest) {
         { error: "A resposta da OpenAI foi interrompida antes de concluir a campanha. Ajuste aplicado, tente novamente." },
         { status: 502 },
       )
+    }
+
+    if (caughtError instanceof XAIProviderError) {
+      return NextResponse.json({ error: caughtError.message }, { status: caughtError.status })
     }
 
     return NextResponse.json(

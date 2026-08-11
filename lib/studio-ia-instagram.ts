@@ -6,6 +6,8 @@ import { z } from "zod"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
+import type { StudioProviderResult } from "@/lib/studio-providers/types"
+import { createXaiStructuredOutput, XAI_MODELS } from "@/lib/studio-providers/xai"
 
 const OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED = "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED"
 
@@ -29,6 +31,7 @@ export const studioInstagramRequestSchema = z.object({
   propertyId: z.string().trim().min(1).max(191),
   goal: z.enum(studioInstagramGoals),
   identity: z.enum(studioInstagramIdentities),
+  provider: z.enum(["openai", "xai"]).default("openai"),
   version: z.number().int().min(1).max(20).default(1),
 })
 
@@ -104,10 +107,18 @@ export function buildInstagramPrompt(input: StudioInstagramRequest, property: St
   ].join("\n")
 }
 
-export async function generateInstagramCampaign(
+function normalizeCampaignResult(result: StudioInstagramResult) {
+  return {
+    ...result,
+    hashtags: result.hashtags.map((tag) => (tag.startsWith("#") ? tag : `#${tag.replace(/^#+/, "")}`)),
+  } satisfies StudioInstagramResult
+}
+
+async function generateInstagramCampaignWithOpenAI(
   input: StudioInstagramRequest,
   property: StudioInstagramPropertyContext,
-) {
+): Promise<StudioProviderResult<StudioInstagramResult>> {
+  const startedAt = Date.now()
   const client = getOpenAIClient()
 
   if (!client) {
@@ -153,7 +164,50 @@ export async function generateInstagramCampaign(
 
   const parsed = studioInstagramResultSchema.parse(JSON.parse(response.output_text))
   return {
-    ...parsed,
-    hashtags: parsed.hashtags.map((tag) => (tag.startsWith("#") ? tag : `#${tag.replace(/^#+/, "")}`)),
-  } satisfies StudioInstagramResult
+    provider: "openai",
+    model,
+    capability: "campaign.structured_content",
+    status: "completed",
+    data: normalizeCampaignResult(parsed),
+    durationMs: Date.now() - startedAt,
+    externalRequestId: response.id,
+    costUsd: null,
+    costSource: "estimated",
+  }
+}
+
+async function generateInstagramCampaignWithXAI(
+  input: StudioInstagramRequest,
+  property: StudioInstagramPropertyContext,
+): Promise<StudioProviderResult<StudioInstagramResult>> {
+  const generated = await createXaiStructuredOutput({
+    schema: studioInstagramResultSchema,
+    schemaName: "studio_ia_instagram_campaign",
+    operationKey: "studio.instagram.xai",
+    maxOutputTokens: 2200,
+    instructions:
+      "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Responda apenas com o JSON do schema solicitado, sem texto adicional, sempre em portugues do Brasil.",
+    prompt: buildInstagramPrompt(input, property),
+    metadata: {
+      propertyId: property.id,
+      goal: input.goal,
+      identity: input.identity,
+      version: input.version,
+    },
+  })
+
+  return {
+    ...generated,
+    model: XAI_MODELS.structuredText,
+    data: normalizeCampaignResult(generated.data),
+  }
+}
+
+export function generateInstagramCampaign(
+  input: StudioInstagramRequest,
+  property: StudioInstagramPropertyContext,
+) {
+  return input.provider === "xai"
+    ? generateInstagramCampaignWithXAI(input, property)
+    : generateInstagramCampaignWithOpenAI(input, property)
 }

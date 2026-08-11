@@ -20,10 +20,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
 import { getAssetPreviewSource } from "@/lib/studio-campaigns-ui"
+import {
+  getStudioCapabilityProviders,
+  STUDIO_PROVIDER_LABELS,
+} from "@/lib/studio-provider-catalog"
+import type { StudioProviderId } from "@/lib/studio-providers/types"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type CampaignGoal = "Venda" | "Captacao" | "Lancamento" | "Alto padrao" | "Investimento" | "Aluguel"
 type VisualIdentity = "Moderna" | "Luxo" | "Minimalista" | "Comercial"
+type CampaignProvider = Extract<StudioProviderId, "openai" | "xai">
 type CampaignItemKey = "postFeed" | "story" | "carousel" | "caption" | "cta" | "hashtags"
 
 type CampaignPreview = {
@@ -53,6 +59,7 @@ type CreditBlockState = {
 
 const goalOptions: CampaignGoal[] = ["Venda", "Captacao", "Lancamento", "Alto padrao", "Investimento", "Aluguel"]
 const identityOptions: VisualIdentity[] = ["Moderna", "Luxo", "Minimalista", "Comercial"]
+const campaignProviderOptions = getStudioCapabilityProviders("campaign.structured_content", ["active"])
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
   { id: "selection", label: "Seleção" },
@@ -85,6 +92,7 @@ export function BrokerStudioIaInstagramPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
   const [selectedGoal, setSelectedGoal] = useState<CampaignGoal>("Venda")
   const [selectedIdentity, setSelectedIdentity] = useState<VisualIdentity>("Moderna")
+  const [selectedProvider, setSelectedProvider] = useState<CampaignProvider>("openai")
   const [currentStep, setCurrentStep] = useState<StudioStep>("selection")
   const [resultVersion, setResultVersion] = useState(0)
   const [approvedVersion, setApprovedVersion] = useState<number | null>(null)
@@ -166,6 +174,9 @@ export function BrokerStudioIaInstagramPage() {
     if (storedCampaign.visualIdentity) {
       setSelectedIdentity(storedCampaign.visualIdentity as VisualIdentity)
     }
+    if (storedCampaign.provider === "openai" || storedCampaign.provider === "xai") {
+      setSelectedProvider(storedCampaign.provider)
+    }
     setResultVersion(storedCampaign.version)
     setApprovedVersion(storedCampaign.status === "APPROVED" || storedCampaign.status === "PUBLISHED" ? storedCampaign.version : null)
     setApprovedItems(buildApprovalMap(storedCampaign))
@@ -209,6 +220,7 @@ export function BrokerStudioIaInstagramPage() {
           propertyId: selectedProperty.id,
           goal: selectedGoal,
           identity: selectedIdentity,
+          provider: selectedProvider,
           version: nextVersion,
         }),
       })
@@ -324,9 +336,10 @@ export function BrokerStudioIaInstagramPage() {
     () => [
       { label: "Objetivo", value: selectedGoal },
       { label: "Identidade", value: selectedIdentity },
+      { label: "Conteúdo", value: STUDIO_PROVIDER_LABELS[selectedProvider] },
       { label: "Versão", value: resultVersion > 0 ? `${resultVersion}` : "Ainda não gerada" },
     ],
-    [resultVersion, selectedGoal, selectedIdentity],
+    [resultVersion, selectedGoal, selectedIdentity, selectedProvider],
   )
 
   const coverImage = selectedProperty?.images[0] ?? ""
@@ -503,6 +516,30 @@ export function BrokerStudioIaInstagramPage() {
                               {identity}
                             </button>
                           ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-[#050505]">Motor de conteúdo</p>
+                        <p className="mt-1 text-xs text-[#8B95A1]">
+                          O layout das peças permanece o mesmo; muda apenas a geração dos textos.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2" data-testid="campaign-provider-options">
+                          {campaignProviderOptions.map((entry) => {
+                            const provider = entry.provider as CampaignProvider
+                            return (
+                              <button
+                                key={provider}
+                                type="button"
+                                onClick={() => setSelectedProvider(provider)}
+                                aria-pressed={selectedProvider === provider}
+                                data-testid={`campaign-provider-${provider}`}
+                                className={`rounded-full border px-4 py-2 text-sm transition-colors ${selectedProvider === provider ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
+                              >
+                                {STUDIO_PROVIDER_LABELS[provider]}
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
 

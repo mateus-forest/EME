@@ -98,6 +98,12 @@ export function getPedraEnv() {
   return { apiKey }
 }
 
+export function getXAIEnv() {
+  return {
+    apiKey: readEnv("XAI_API_KEY"),
+  }
+}
+
 export function getWhatsAppEnv() {
   const enabled = parseBoolean(readEnv("WHATSAPP_ENABLED"), false)
 
