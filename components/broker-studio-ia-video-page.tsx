@@ -6,7 +6,6 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight,
   Clapperboard,
   Download,
   ImagePlus,
@@ -30,7 +29,6 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   getStudioVideoDurationLabel,
   getStudioVideoEstimatedCredits,
-  requiresTransformationPreview,
   studioVideoCameraMovementOptions,
   studioVideoDefaultDuration,
   studioVideoFormats,
@@ -53,9 +51,8 @@ type StudioVideoTransformation = (typeof studioVideoTransformationOptions)[numbe
 type StudioVideoRhythm = (typeof studioVideoRhythmOptions)[number]
 type StudioVideoCameraMovement = (typeof studioVideoCameraMovementOptions)[number]
 type GeneratedVideoResult = z.infer<typeof studioVideoResultSchema>
-type StudioVideoMovement = "Automático" | "Aproximar" | "Afastar" | "Estático" | "Transição"
-type StudioVideoMusic = "Automática" | "Cinematográfica" | "Chill" | "Upbeat" | "Acústica" | "Eletrônica"
-type StudioVideoNarration = "Sem narração" | "Narração IA"
+type StudioVideoMovement = "Automático" | "Travelling suave" | "Aproximação suave" | "Órbita suave" | "Câmera lenta" | "Quase estático"
+type StudioVideoSourceMode = "property" | "upload" | "prepared"
 
 type UploadPreview = {
   name: string
@@ -73,46 +70,55 @@ const stepLabels: Array<{ id: StudioVideoStep; label: string }> = [
   { id: "preview", label: "Aprovação" },
   { id: "result", label: "Resultado" },
 ]
+const visibleStepLabels = stepLabels.filter((step) => step.id !== "preview")
 
 const formatOptions: Array<{ label: string; value: StudioVideoFormat }> = [
   { label: "Vertical 9:16", value: "Reel vertical 9:16" },
   { label: "Horizontal 16:9", value: "Paisagem 16:9" },
 ]
 
-const movementOptions: StudioVideoMovement[] = ["Automático", "Aproximar", "Afastar", "Estático", "Transição"]
+const videoObjectiveOptions = studioVideoObjectives.filter((objective) => ![
+  "Mobiliar ambiente",
+  "Transformar obra em imovel pronto",
+  "Melhorar iluminacao",
+  "Decorar ambiente",
+  "Home staging",
+  "Modernizar decoracao",
+  "Valorizar area externa",
+  "Simular reforma",
+].includes(objective))
+
+const movementOptions: StudioVideoMovement[] = ["Automático", "Travelling suave", "Aproximação suave", "Órbita suave", "Câmera lenta", "Quase estático"]
 const movementToCurrentCamera: Record<StudioVideoMovement, StudioVideoCameraMovement> = {
   "Automático": "Gimbal",
-  "Aproximar": "Dolly",
-  "Afastar": "Travelling",
-  "Estático": "Estatico elegante",
-  "Transição": "Slow Motion",
+  "Travelling suave": "Travelling",
+  "Aproximação suave": "Dolly",
+  "Órbita suave": "Orbit",
+  "Câmera lenta": "Slow Motion",
+  "Quase estático": "Estatico elegante",
 }
-const propertyInformationOptions = ["Preço", "Localização", "Dormitórios", "Banheiros", "Área", "Vagas"] as const
-const musicOptions: StudioVideoMusic[] = ["Automática", "Cinematográfica", "Chill", "Upbeat", "Acústica", "Eletrônica"]
-const narrationOptions: StudioVideoNarration[] = ["Sem narração", "Narração IA"]
 
-export function BrokerStudioIaVideoPage() {
+type InitialPreparedAsset = {
+  id: string
+  imageUrl: string
+}
+
+export function BrokerStudioIaVideoPage({ initialPreparedAsset = null }: { initialPreparedAsset?: InitialPreparedAsset | null }) {
   const { properties, isLoading } = useBrokerProperties()
+  const [sourceMode, setSourceMode] = useState<StudioVideoSourceMode>(initialPreparedAsset ? "prepared" : "property")
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
-  const [selectedReferenceImages, setSelectedReferenceImages] = useState<string[]>([])
-  const [uploadedImages, setUploadedImages] = useState<UploadPreview[]>([])
-  const [timelineOrder, setTimelineOrder] = useState<string[]>([])
+  const [selectedReferenceImage, setSelectedReferenceImage] = useState("")
+  const [uploadedImage, setUploadedImage] = useState<UploadPreview | null>(null)
+  const [preparedAsset, setPreparedAsset] = useState<InitialPreparedAsset | null>(initialPreparedAsset)
   const [format, setFormat] = useState<StudioVideoFormat>(studioVideoFormats[0])
   const [duration, setDuration] = useState<StudioVideoDuration>(studioVideoDefaultDuration)
   const [objective, setObjective] = useState<StudioVideoObjective>(studioVideoObjectives[0])
   const [style, setStyle] = useState<StudioVideoStyle>(studioVideoStyles[0])
-  const [transformation, setTransformation] = useState<StudioVideoTransformation>(studioVideoTransformationOptions[0])
+  const transformation: StudioVideoTransformation = "Nenhuma"
   const [rhythm, setRhythm] = useState<StudioVideoRhythm>(studioVideoRhythmOptions[1])
   const [cameraMovement, setCameraMovement] = useState<StudioVideoCameraMovement>(studioVideoCameraMovementOptions[3])
   const [movement, setMovement] = useState<StudioVideoMovement>("Automático")
-  const [propertyInformation, setPropertyInformation] = useState<string[]>(["Preço", "Localização", "Dormitórios", "Banheiros", "Área", "Vagas"])
-  const [music, setMusic] = useState<StudioVideoMusic>("Automática")
-  const [narration, setNarration] = useState<StudioVideoNarration>("Sem narração")
   const [scriptMode, setScriptMode] = useState<"Automático" | "Personalizado">("Automático")
-  const [captions, setCaptions] = useState(false)
-  const [identityItems, setIdentityItems] = useState<string[]>([])
-  const [endingTitle, setEndingTitle] = useState("")
-  const [endingSubtitle, setEndingSubtitle] = useState("")
   const [additionalInstructions, setAdditionalInstructions] = useState("")
   const [currentStep, setCurrentStep] = useState<StudioVideoStep>("selection")
   const [resultVersion, setResultVersion] = useState(0)
@@ -122,30 +128,20 @@ export function BrokerStudioIaVideoPage() {
   const [isSavingResult, setIsSavingResult] = useState(false)
   const [isApprovingPreview, setIsApprovingPreview] = useState(false)
   const [generatedResult, setGeneratedResult] = useState<GeneratedVideoResult | null>(null)
-  const uploadedImagesRef = useRef<UploadPreview[]>([])
+  const uploadedImageRef = useRef<UploadPreview | null>(null)
 
   const selectedProperty = useMemo(
     () => properties.find((property) => property.id === selectedPropertyId) ?? null,
     [properties, selectedPropertyId],
   )
 
-  const materialTimeline = useMemo(() => {
-    const items = [
-      ...selectedReferenceImages.map((url) => ({ id: `property:${url}`, url, label: "Foto do imóvel" })),
-      ...uploadedImages.map((image) => ({ id: `upload:${image.url}`, url: image.url, label: image.name })),
-    ]
-    const byId = new Map(items.map((item) => [item.id, item]))
-    return [
-      ...timelineOrder.map((id) => byId.get(id)).filter((item): item is (typeof items)[number] => Boolean(item)),
-      ...items.filter((item) => !timelineOrder.includes(item.id)),
-    ]
-  }, [selectedReferenceImages, timelineOrder, uploadedImages])
-
   const canAdvanceToConfiguration = Boolean(
-    (selectedProperty && selectedReferenceImages.length > 0) || uploadedImages.length > 0,
+    (sourceMode === "property" && selectedProperty && selectedReferenceImage) ||
+    (sourceMode === "upload" && uploadedImage) ||
+    (sourceMode === "prepared" && preparedAsset),
   )
 
-  const requiresPreviewFlow = requiresTransformationPreview(transformation)
+  const requiresPreviewFlow = false
 
   const estimatedStageCredits = useMemo(() => {
     if (generatedResult?.stageEstimatedCredits != null) {
@@ -208,15 +204,19 @@ export function BrokerStudioIaVideoPage() {
     })
   }, [duration, generatedResult?.estimatedCredits, generatedResult?.providerModel, objective, requiresPreviewFlow, transformation])
 
-  const sourcePreviewUrl = materialTimeline[0]?.url || selectedProperty?.images[0] || ""
+  const sourcePreviewUrl = sourceMode === "property"
+    ? selectedReferenceImage
+    : sourceMode === "upload"
+      ? uploadedImage?.url ?? ""
+      : preparedAsset?.imageUrl ?? ""
 
   useEffect(() => {
-    uploadedImagesRef.current = uploadedImages
-  }, [uploadedImages])
+    uploadedImageRef.current = uploadedImage
+  }, [uploadedImage])
 
   useEffect(() => {
     return () => {
-      uploadedImagesRef.current.forEach((image) => URL.revokeObjectURL(image.url))
+      if (uploadedImageRef.current) URL.revokeObjectURL(uploadedImageRef.current.url)
     }
   }, [])
 
@@ -297,97 +297,49 @@ export function BrokerStudioIaVideoPage() {
   function handlePropertyChange(propertyId: string) {
     setSelectedPropertyId(propertyId)
     const property = properties.find((item) => item.id === propertyId) ?? null
-    setSelectedReferenceImages(property?.images[0] ? [property.images[0]] : [])
-    setTimelineOrder((current) => [
-      ...(property?.images[0] ? [`property:${property.images[0]}`] : []),
-      ...current.filter((id) => id.startsWith("upload:")),
-    ])
+    setSelectedReferenceImage(property?.images[0] ?? "")
+    setSourceMode("property")
     resetGeneratedState()
     setCurrentStep("selection")
   }
 
-  function handleToggleReferenceImage(imageUrl: string) {
-    const timelineId = `property:${imageUrl}`
-    setSelectedReferenceImages((current) => {
-      if (current.includes(imageUrl)) {
-        setTimelineOrder((order) => order.filter((id) => id !== timelineId))
-        return current.filter((image) => image !== imageUrl)
-      }
-      if (current.length >= 8) return current
-      setTimelineOrder((order) => [...order.filter((id) => id !== timelineId), timelineId])
-      return [...current, imageUrl]
-    })
+  function handleSelectPropertyImage(imageUrl: string) {
+    setSelectedReferenceImage(imageUrl)
+    setSourceMode("property")
     resetGeneratedState()
   }
 
-  function handleUploadedImages(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    if (files.length === 0) return
+  function handleUploadedImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    setUploadedImages((current) => {
-      const nextEntries = files.slice(0, Math.max(0, 8 - current.length)).map((file) => ({
-        name: file.name,
-        size: file.size,
-        type: file.type || "image/jpeg",
-        url: URL.createObjectURL(file),
-        file,
-      }))
-
-      setTimelineOrder((order) => [...order, ...nextEntries.map((image) => `upload:${image.url}`)])
-      return [...current, ...nextEntries]
+    if (uploadedImage) URL.revokeObjectURL(uploadedImage.url)
+    setUploadedImage({
+      name: file.name,
+      size: file.size,
+      type: file.type || "image/jpeg",
+      url: URL.createObjectURL(file),
+      file,
     })
-
+    setSourceMode("upload")
     resetGeneratedState()
     event.target.value = ""
   }
 
-  function removeUploadedImage(imageUrl: string) {
-    setUploadedImages((current) => {
-      const image = current.find((item) => item.url === imageUrl)
-      if (image) URL.revokeObjectURL(image.url)
-      return current.filter((item) => item.url !== imageUrl)
-    })
-    setTimelineOrder((current) => current.filter((id) => id !== `upload:${imageUrl}`))
-    resetGeneratedState()
-  }
-
-  function moveTimelineItem(itemId: string, direction: -1 | 1) {
-    const normalizedOrder = materialTimeline.map((item) => item.id)
-    const currentIndex = normalizedOrder.indexOf(itemId)
-    const nextIndex = currentIndex + direction
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= normalizedOrder.length) return
-    const nextOrder = [...normalizedOrder]
-    ;[nextOrder[currentIndex], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[currentIndex]]
-    setTimelineOrder(nextOrder)
-    resetGeneratedState()
-  }
-
-  function removeTimelineItem(itemId: string) {
-    if (itemId.startsWith("property:")) {
-      setSelectedReferenceImages((current) => current.filter((url) => `property:${url}` !== itemId))
-      setTimelineOrder((current) => current.filter((id) => id !== itemId))
-      resetGeneratedState()
-      return
-    }
-    const uploadedImage = uploadedImages.find((image) => `upload:${image.url}` === itemId)
-    if (uploadedImage) removeUploadedImage(uploadedImage.url)
-  }
-
   function buildPayload() {
-    const orderedReferenceImages = materialTimeline.filter((item) => item.id.startsWith("property:")).map((item) => item.url)
-    const orderedUploadedImages = materialTimeline
-      .filter((item) => item.id.startsWith("upload:"))
-      .map((item) => uploadedImages.find((image) => image.url === item.url))
-      .filter((image): image is UploadPreview => Boolean(image))
-
     return studioVideoRequestSchema.parse({
-      propertyId: selectedProperty?.id,
-      referenceImageUrls: orderedReferenceImages,
-      uploadedImages: orderedUploadedImages.map((image) => ({
-        name: image.name,
-        type: image.type,
-        size: image.size,
-      })),
+      propertyId: sourceMode === "property" ? selectedProperty?.id : undefined,
+      sourceAssetId: sourceMode === "prepared" ? preparedAsset?.id : undefined,
+      referenceImageUrls: sourceMode === "property" && selectedReferenceImage
+        ? [selectedReferenceImage]
+        : sourceMode === "prepared" && preparedAsset
+          ? [preparedAsset.imageUrl]
+          : [],
+      uploadedImages: sourceMode === "upload" && uploadedImage ? [{
+        name: uploadedImage.name,
+        type: uploadedImage.type,
+        size: uploadedImage.size,
+      }] : [],
       format,
       duration,
       objective,
@@ -412,7 +364,7 @@ export function BrokerStudioIaVideoPage() {
 
   function goToConfiguration() {
     if (!canAdvanceToConfiguration) {
-      setGenerationError("Selecione imagens do imóvel ou envie referências para continuar.")
+      setGenerationError("Selecione uma fotografia do imóvel ou envie uma imagem para continuar.")
       return
     }
 
@@ -443,11 +395,7 @@ export function BrokerStudioIaVideoPage() {
       const payload = buildPayload()
       const formData = new FormData()
       formData.append("payload", JSON.stringify(payload))
-      materialTimeline
-        .filter((item) => item.id.startsWith("upload:"))
-        .map((item) => uploadedImages.find((image) => image.url === item.url))
-        .filter((image): image is UploadPreview => Boolean(image))
-        .forEach((image) => formData.append("images", image.file))
+      if (sourceMode === "upload" && uploadedImage) formData.append("images", uploadedImage.file)
 
       setGenerationError("")
       setDurationNotice("")
@@ -630,27 +578,20 @@ export function BrokerStudioIaVideoPage() {
   }
 
   function restartFlow() {
-    uploadedImages.forEach((image) => URL.revokeObjectURL(image.url))
+    if (uploadedImage) URL.revokeObjectURL(uploadedImage.url)
+    setSourceMode("property")
     setSelectedPropertyId("")
-    setSelectedReferenceImages([])
-    setUploadedImages([])
-    setTimelineOrder([])
+    setSelectedReferenceImage("")
+    setUploadedImage(null)
+    setPreparedAsset(null)
     setFormat(studioVideoFormats[0])
     setDuration(studioVideoDefaultDuration)
     setObjective(studioVideoObjectives[0])
     setStyle(studioVideoStyles[0])
-    setTransformation(studioVideoTransformationOptions[0])
     setRhythm(studioVideoRhythmOptions[1])
     setCameraMovement(studioVideoCameraMovementOptions[3])
     setMovement("Automático")
-    setPropertyInformation(["Preço", "Localização", "Dormitórios", "Banheiros", "Área", "Vagas"])
-    setMusic("Automática")
-    setNarration("Sem narração")
     setScriptMode("Automático")
-    setCaptions(false)
-    setIdentityItems([])
-    setEndingTitle("")
-    setEndingSubtitle("")
     setAdditionalInstructions("")
     setCurrentStep("selection")
     resetGeneratedState()
@@ -658,22 +599,23 @@ export function BrokerStudioIaVideoPage() {
 
   const summaryItems = useMemo(
     () => [
-      { label: "Imóvel", value: selectedProperty?.title ?? "Não selecionado" },
-      { label: "Material", value: `${materialTimeline.length} imagem(ns)` },
+      { label: "Origem", value: sourceMode === "property" ? selectedProperty?.title ?? "Imóvel" : sourceMode === "upload" ? "Upload" : "Preparar imóvel" },
+      { label: "Material", value: sourcePreviewUrl ? "1 imagem principal" : "Não selecionado" },
       { label: "Formato", value: formatOptions.find((item) => item.value === format)?.label ?? format },
+      { label: "Estilo", value: style },
+      { label: "Ritmo", value: rhythm },
       { label: "Movimento", value: movement },
-      { label: "Informações", value: propertyInformation.length ? propertyInformation.join(", ") : "Sem informações" },
-      { label: "Áudio", value: `${music} · ${narration}` },
+      { label: "Duração", value: "9 segundos" },
       { label: "Créditos previstos", value: `${totalEstimatedCredits}` },
     ],
     [
       format,
-      materialTimeline.length,
       movement,
-      music,
-      narration,
-      propertyInformation,
+      rhythm,
       selectedProperty?.title,
+      sourceMode,
+      sourcePreviewUrl,
+      style,
       totalEstimatedCredits,
     ],
   )
@@ -682,9 +624,10 @@ export function BrokerStudioIaVideoPage() {
     () =>
       [
         `Formato: ${formatOptions.find((item) => item.value === format)?.label ?? format}.`,
+        `Estilo: ${style}.`,
+        `Ritmo: ${rhythm}.`,
         `Movimento: ${movement}.`,
-        propertyInformation.length ? `Informações selecionadas: ${propertyInformation.join(", ")}.` : "",
-        scriptMode === "Personalizado" && additionalInstructions.trim() ? `Roteiro e orientações: ${additionalInstructions.trim()}` : "Roteiro automático.",
+        scriptMode === "Personalizado" && additionalInstructions.trim() ? `Orientações: ${additionalInstructions.trim()}` : "Sem orientações adicionais.",
       ]
         .filter(Boolean)
         .join(" "),
@@ -692,8 +635,9 @@ export function BrokerStudioIaVideoPage() {
       additionalInstructions,
       format,
       movement,
-      propertyInformation,
+      rhythm,
       scriptMode,
+      style,
     ],
   )
 
@@ -717,7 +661,7 @@ export function BrokerStudioIaVideoPage() {
               </div>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar vídeo</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Combine fotos do imóvel, formato, movimento e informações comerciais em uma apresentação visual.
+                Anime uma fotografia do imóvel com direção visual simples e duração de 9 segundos.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -746,7 +690,7 @@ export function BrokerStudioIaVideoPage() {
         </section>
 
         <section className="studio-step-grid">
-          {stepLabels.map((step, index) => {
+          {visibleStepLabels.map((step, index) => {
             const isActive = step.id === currentStep
             const isComplete = videoStepOrder(step.id) < videoStepOrder(currentStep)
 
@@ -789,7 +733,7 @@ export function BrokerStudioIaVideoPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">
                 {currentStep === "selection" && "A. Material"}
-                {currentStep === "configuration" && "B–G. Personalize o vídeo"}
+                {currentStep === "configuration" && "B–F. Direcione o vídeo"}
                 {currentStep === "review" && "3. Revise antes de enviar"}
                 {currentStep === "processing" && "4. Acompanhando a etapa atual"}
                 {currentStep === "preview" && "5. Aprove a prévia transformada"}
@@ -803,7 +747,7 @@ export function BrokerStudioIaVideoPage() {
                     <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Selecionar imóvel</p>
                       <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                        Escolha um imóvel existente para reaproveitar imagens e contexto comercial.
+                        Escolha um imóvel e uma única fotografia como imagem principal.
                       </p>
 
                       <div className="mt-4 grid gap-3">
@@ -831,9 +775,9 @@ export function BrokerStudioIaVideoPage() {
                     </div>
 
                     <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Enviar imagens</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Enviar imagem</p>
                       <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                        Envie fotos do imóvel para gerar o fluxo mesmo sem selecionar um cadastro existente.
+                        Use uma imagem própria sem precisar selecionar um imóvel cadastrado.
                       </p>
 
                       <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[1rem] border border-dashed border-black/[0.08] bg-white px-4 py-8 text-center transition-colors hover:border-[#009b3a]/25 hover:bg-[#f8fdf9]">
@@ -841,10 +785,10 @@ export function BrokerStudioIaVideoPage() {
                           <Upload className="size-5" />
                         </span>
                         <div>
-                          <p className="font-semibold text-[#050505]">Adicionar imagens de apoio</p>
-                          <p className="mt-1 text-sm leading-6 text-[#6B7280]">JPG, PNG ou WEBP, até 8 imagens.</p>
+                          <p className="font-semibold text-[#050505]">Escolher imagem principal</p>
+                          <p className="mt-1 text-sm leading-6 text-[#6B7280]">JPG, PNG ou WEBP · uma imagem.</p>
                         </div>
-                        <Input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleUploadedImages} />
+                        <Input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleUploadedImage} />
                       </label>
                     </div>
                   </div>
@@ -855,23 +799,23 @@ export function BrokerStudioIaVideoPage() {
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Imagens do imóvel</p>
                           <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-                            Selecione as fotografias que deseja usar no vídeo.
+                            Selecione a fotografia que iniciará o vídeo.
                           </p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#4B5563]">
-                          {selectedReferenceImages.length} selecionada(s)
+                          Uma imagem principal
                         </span>
                       </div>
 
                       <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {selectedProperty.images.map((imageUrl, index) => {
-                          const selected = selectedReferenceImages.includes(imageUrl)
+                          const selected = sourceMode === "property" && selectedReferenceImage === imageUrl
 
                           return (
                             <button
                               key={imageUrl}
                               type="button"
-                              onClick={() => handleToggleReferenceImage(imageUrl)}
+                              onClick={() => handleSelectPropertyImage(imageUrl)}
                               className={`overflow-hidden rounded-[1rem] border text-left transition ${selected ? "border-[#009b3a]/35 ring-2 ring-[#009b3a]/12" : "border-black/[0.06] hover:border-black/[0.12]"}`}
                             >
                               <div className="h-36 w-full bg-[#eef2f6]" style={{ backgroundImage: `url(${imageUrl})`, backgroundPosition: "center", backgroundSize: "cover" }} />
@@ -886,56 +830,20 @@ export function BrokerStudioIaVideoPage() {
                     </div>
                   ) : null}
 
-                  {uploadedImages.length ? (
-                    <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Uploads desta sessão</p>
-                      <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {uploadedImages.map((image, index) => (
-                          <div key={image.url} className="overflow-hidden rounded-[1rem] border border-black/[0.06] bg-white">
-                            <div className="h-36 w-full bg-[#eef2f6]" style={{ backgroundImage: `url(${image.url})`, backgroundPosition: "center", backgroundSize: "cover" }} />
-                            <div className="grid gap-2 px-3 py-3">
-                              <div>
-                                <p className="text-sm font-medium text-[#050505]">Upload {index + 1}</p>
-                                <p className="mt-1 truncate text-xs text-[#6B7280]">{image.name}</p>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => removeUploadedImage(image.url)}
-                                className="h-9 rounded-xl border border-black/[0.06] bg-white px-3 text-[#4B5563] hover:bg-white hover:text-[#050505]"
-                              >
-                                Remover
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {materialTimeline.length ? (
-                    <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Seleção e ordem</p>
-                          <p className="mt-2 text-sm leading-6 text-[#6B7280]">Revise, remova ou reorganize as imagens da apresentação.</p>
+                  {sourcePreviewUrl ? (
+                    <div className="rounded-[1.2rem] border border-[#009b3a]/20 bg-[#f8fdf9] p-4" data-testid="active-video-source">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="h-28 w-full shrink-0 rounded-2xl bg-[#eef2f6] bg-cover bg-center sm:w-40" style={{ backgroundImage: `url(${sourcePreviewUrl})` }} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#009b3a]">Imagem principal ativa</p>
+                          <p className="mt-2 font-semibold text-[#050505]">
+                            {sourceMode === "property" ? "Fotografia do imóvel" : sourceMode === "upload" ? "Imagem enviada" : "Resultado aprovado de Preparar imóvel"}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
+                            Esta é a única imagem que será enviada para a geração atual.
+                          </p>
+                          {sourceMode === "upload" && uploadedImage ? <p className="mt-1 truncate text-xs text-[#7B8491]">{uploadedImage.name}</p> : null}
                         </div>
-                        <span className="text-xs font-medium text-[#8B95A1]">{materialTimeline.length} imagem(ns)</span>
-                      </div>
-                      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-                        {materialTimeline.map((item, index) => (
-                          <div key={item.id} className="w-36 shrink-0 overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
-                            <div className="relative aspect-[4/3] bg-[#eef2f6] bg-cover bg-center" style={{ backgroundImage: `url(${item.url})` }}>
-                              <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-black/70 text-[11px] font-semibold text-white">{index + 1}</span>
-                            </div>
-                            <p className="truncate px-3 pt-2 text-xs font-medium text-[#4B5563]">{item.label}</p>
-                            <div className="grid grid-cols-3 gap-1 p-2">
-                              <button type="button" aria-label="Mover imagem para a esquerda" disabled={index === 0} onClick={() => moveTimelineItem(item.id, -1)} className="flex h-8 items-center justify-center rounded-lg border border-black/[0.06] text-[#4B5563] disabled:opacity-30"><ChevronLeft className="size-3.5" /></button>
-                              <button type="button" aria-label="Mover imagem para a direita" disabled={index === materialTimeline.length - 1} onClick={() => moveTimelineItem(item.id, 1)} className="flex h-8 items-center justify-center rounded-lg border border-black/[0.06] text-[#4B5563] disabled:opacity-30"><ChevronRight className="size-3.5" /></button>
-                              <button type="button" aria-label="Remover imagem" onClick={() => removeTimelineItem(item.id)} className="h-8 rounded-lg border border-black/[0.06] text-[11px] font-medium text-[#7A4A4A]">×</button>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   ) : null}
@@ -955,9 +863,9 @@ export function BrokerStudioIaVideoPage() {
               {currentStep === "configuration" ? (
                 <>
                   <div className="rounded-[1.2rem] border border-[#dbe8df] bg-[#f8fdf9] p-4">
-                    <p className="text-sm font-semibold text-[#050505]">Personalização comercial</p>
+                    <p className="text-sm font-semibold text-[#050505]">Direção da geração</p>
                     <p className="mt-2 text-sm leading-6 text-[#5F6B7A]">
-                      Escolha apenas o que deve aparecer na apresentação. As configurações técnicas permanecem fora da experiência.
+                      Formato e duração seguem parâmetros do gerador. Estilo, ritmo, movimento e orientações são enviados no prompt e podem variar no resultado.
                     </p>
                   </div>
 
@@ -965,56 +873,42 @@ export function BrokerStudioIaVideoPage() {
                     <ChoiceButtons options={formatOptions.map((item) => item.label)} value={formatOptions.find((item) => item.value === format)?.label ?? "Vertical 9:16"} onChange={(label) => setFormat(formatOptions.find((item) => item.label === label)?.value ?? formatOptions[0].value)} />
                   </FieldCard>
 
-                  <FieldCard label="C. Informações do imóvel">
-                    <p className="mb-3 text-sm leading-6 text-[#6B7280]">Selecione quais informações deverão compor a apresentação.</p>
-                    <ToggleList options={[...propertyInformationOptions]} values={propertyInformation} onChange={setPropertyInformation} />
-                    {selectedProperty ? <p className="mt-3 text-xs leading-5 text-[#8B95A1]">Imóvel selecionado: {selectedProperty.title}. O preenchimento automático completo fica preparado para a evolução deste fluxo.</p> : null}
+                  <FieldCard label="C. Objetivo">
+                    <Select value={objective} onValueChange={(value) => setObjective(value as StudioVideoObjective)}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>{videoObjectiveOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                    </Select>
                   </FieldCard>
 
-                  <FieldCard label="D. Movimento">
-                    <ChoiceButtons options={movementOptions} value={movement} onChange={(value) => { const nextMovement = value as StudioVideoMovement; setMovement(nextMovement); setCameraMovement(movementToCurrentCamera[nextMovement]) }} />
-                  </FieldCard>
-
-                  <FieldCard label="E. Áudio">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Música</p>
-                        <Select value={music} onValueChange={(value) => setMusic(value as StudioVideoMusic)}>
-                          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                          <SelectContent>{musicOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Narração</p>
-                        <ChoiceButtons options={narrationOptions} value={narration} onChange={(value) => setNarration(value as StudioVideoNarration)} compact />
-                      </div>
+                  <FieldCard label="D. Estilo e ritmo">
+                    <div className="grid gap-4">
+                      <Select value={style} onValueChange={(value) => setStyle(value as StudioVideoStyle)}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>{studioVideoStyles.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <ChoiceButtons options={studioVideoRhythmOptions} value={rhythm} onChange={(value) => setRhythm(value as StudioVideoRhythm)} />
                     </div>
-                    <div className="mt-4 border-t border-black/[0.06] pt-4">
+                  </FieldCard>
+
+                  <FieldCard label="E. Movimento sugerido">
+                    <ChoiceButtons options={movementOptions} value={movement} onChange={(value) => { const nextMovement = value as StudioVideoMovement; setMovement(nextMovement); setCameraMovement(movementToCurrentCamera[nextMovement]) }} />
+                    <p className="mt-3 text-xs leading-5 text-[#8B95A1]">A escolha orienta a câmera por linguagem natural; o gerador pode adaptar o movimento à imagem.</p>
+                  </FieldCard>
+
+                  <FieldCard label="F. Orientações adicionais">
+                    <div>
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-[#050505]">Roteiro</p>
+                        <p className="text-sm font-semibold text-[#050505]">Direção livre</p>
                         <ChoiceButtons options={["Automático", "Personalizado"]} value={scriptMode} onChange={(value) => setScriptMode(value as "Automático" | "Personalizado")} compact />
                       </div>
                       {scriptMode === "Personalizado" ? (
-                        <Textarea value={additionalInstructions} onChange={(event) => setAdditionalInstructions(event.target.value)} maxLength={600} placeholder="Escreva o roteiro ou indique a mensagem principal do vídeo." className="mt-4 min-h-28" />
+                        <Textarea value={additionalInstructions} onChange={(event) => setAdditionalInstructions(event.target.value)} maxLength={600} placeholder="Ex.: valorize a luz natural e preserve os materiais do ambiente." className="mt-4 min-h-28" />
                       ) : null}
-                      <button type="button" onClick={() => setCaptions((current) => !current)} className={`mt-4 rounded-xl border px-3 py-2 text-sm font-medium ${captions ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#08752f]" : "border-black/[0.06] bg-white text-[#4B5563]"}`}>Legendas {captions ? "selecionadas" : "opcionais"}</button>
-                    </div>
-                  </FieldCard>
-
-                  <FieldCard label="F. Identidade">
-                    <ToggleList options={["Logo", "Foto do corretor", "Cor da marca"]} values={identityItems} onChange={setIdentityItems} />
-                    <p className="mt-3 text-xs leading-5 text-[#8B95A1]">A identidade será vinculada ao perfil do corretor, sem dependência de contas externas.</p>
-                  </FieldCard>
-
-                  <FieldCard label="G. Encerramento">
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Input value={endingTitle} onChange={(event) => setEndingTitle(event.target.value)} placeholder="Título final" />
-                      <Input value={endingSubtitle} onChange={(event) => setEndingSubtitle(event.target.value)} placeholder="Subtítulo ou CTA" />
                     </div>
                   </FieldCard>
 
                   <div className="rounded-[1.2rem] border border-[#eadfca] bg-[#fffaf1] p-4 text-sm leading-6 text-[#776349]">
-                    Áudio, narração, legendas, identidade e encerramento estão estruturados para a próxima etapa do produto e ainda não alteram a geração atual. Material, formato, movimento e roteiro personalizado continuam usando o fluxo existente.
+                    Duração atual: 9 segundos. O vídeo não adiciona música, narração, legendas, logo, dados sobrepostos ou tela de encerramento.
                   </div>
 
                   <div className="flex flex-wrap gap-3">
@@ -1107,7 +1001,7 @@ export function BrokerStudioIaVideoPage() {
                     message={
                       generatedResult?.activeStage === "preview"
                         ? "Gerando ambiente transformado para aprovação..."
-                        : "Animando a transformação e acompanhando o vídeo..."
+                        : "Animando a imagem principal e acompanhando o vídeo..."
                     }
                     compact={false}
                   />
@@ -1116,7 +1010,7 @@ export function BrokerStudioIaVideoPage() {
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
                       {generatedResult?.activeStage === "preview"
                         ? "A imagem de prévia está sendo criada com base na referência original."
-                        : "As imagens selecionadas estão sendo transformadas em vídeo."}
+                        : "A imagem principal está sendo transformada em vídeo."}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[#6B7280]">
                       {generatedResult?.activeStage === "preview"
@@ -1408,21 +1302,6 @@ function ChoiceButtons({
           {option}
         </button>
       ))}
-    </div>
-  )
-}
-
-function ToggleList({ options, values, onChange }: { options: readonly string[]; values: string[]; onChange: (values: string[]) => void }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const selected = values.includes(option)
-        return (
-          <button key={option} type="button" onClick={() => onChange(selected ? values.filter((value) => value !== option) : [...values, option])} className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${selected ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#08752f]" : "border-black/[0.06] bg-white text-[#4B5563] hover:border-black/[0.12]"}`}>
-            {option}
-          </button>
-        )
-      })}
     </div>
   )
 }

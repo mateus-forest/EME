@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
           ? { type }
           : {
               type: {
-                notIn: ["studio_ia_video_job", "cos_conversation"],
+                notIn: ["studio_ia_video_job", "studio_ia_video_lock", "cos_conversation"],
               },
             }),
         ...(status && status !== "all" ? { status } : {}),

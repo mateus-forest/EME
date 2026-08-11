@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -34,6 +35,12 @@ import {
   studioVideoRequestSchema,
   stringifyStudioVideoJobContent,
 } from "@/lib/studio-ia-video"
+import {
+  acquireStudioVideoGenerationLock,
+  getStudioVideoGenerationLockRequestId,
+  linkStudioVideoGenerationLock,
+  releaseStudioVideoGenerationLock,
+} from "@/lib/studio-ia-video-idempotency"
 
 export const dynamic = "force-dynamic"
 
@@ -93,9 +100,21 @@ async function parseVideoRequestForm(request: NextRequest) {
   const uploadedFiles = formData
     .getAll("images")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0)
-    .slice(0, 12)
+    .slice(0, 1)
 
   if (uploadedFiles.length !== payload.uploadedImages.length) {
+    throw new Error("UPLOADS_MISMATCH")
+  }
+
+  const uploadedFile = uploadedFiles[0]
+  const uploadedDescriptor = payload.uploadedImages[0]
+  if (
+    uploadedFile &&
+    uploadedDescriptor &&
+    (uploadedFile.name !== uploadedDescriptor.name ||
+      uploadedFile.size !== uploadedDescriptor.size ||
+      uploadedFile.type !== uploadedDescriptor.type)
+  ) {
     throw new Error("UPLOADS_MISMATCH")
   }
 
@@ -165,11 +184,94 @@ async function findExistingJobBySignature(brokerId: string, requestSignature: st
   return null
 }
 
+async function waitForExistingJobBySignature(brokerId: string, requestSignature: string, lockId: string) {
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const existingJob = await findExistingJobBySignature(brokerId, requestSignature)
+    if (existingJob) return existingJob
+
+    const linkedRequestId = await getStudioVideoGenerationLockRequestId({ brokerId, lockId })
+    if (linkedRequestId) {
+      const linkedDocument = await prisma.brokerDocument.findFirst({
+        where: { id: linkedRequestId, brokerId, type: "studio_ia_video_job" },
+      })
+      if (linkedDocument) {
+        const job = parseStudioVideoJobContent(linkedDocument.content)
+        if (isSimultaneousJob(job)) return { document: linkedDocument, job }
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+
+  return null
+}
+
+async function resolveApprovedPreparedAsset(sourceAssetId: string, brokerId: string) {
+  return prisma.studioCampaignAsset.findFirst({
+    where: {
+      id: sourceAssetId,
+      type: "IMAGE",
+      status: "APPROVED",
+      campaign: {
+        kind: "PROPERTY_PREPARATION",
+        brokerId,
+      },
+    },
+    select: {
+      fileUrl: true,
+    },
+  })
+}
+
+async function getVideoSource(input: {
+  payload: z.infer<typeof studioVideoRequestSchema>
+  uploadedFiles: File[]
+  property: Exclude<Awaited<ReturnType<typeof resolveAccessibleProperty>>, NextResponse> | null
+  brokerId: string
+}) {
+  const uploadedFile = input.uploadedFiles[0]
+  if (uploadedFile) {
+    const buffer = Buffer.from(await uploadedFile.arrayBuffer())
+    const digest = createHash("sha256").update(buffer).digest("hex")
+    return {
+      referenceInput: { kind: "file" as const, file: uploadedFile },
+      signatureSeed: `upload:${uploadedFile.type}:${uploadedFile.size}:${digest}`,
+    }
+  }
+
+  const selectedUrl = input.payload.referenceImageUrls[0]
+  if (!selectedUrl) throw new Error("VIDEO_SOURCE_REQUIRED")
+
+  if (input.payload.sourceAssetId) {
+    const asset = await resolveApprovedPreparedAsset(input.payload.sourceAssetId, input.brokerId)
+    if (!asset?.fileUrl || asset.fileUrl !== selectedUrl) {
+      throw new Error("PREPARED_ASSET_MISMATCH")
+    }
+    return {
+      referenceInput: { kind: "url" as const, url: asset.fileUrl },
+      signatureSeed: `prepared:${input.payload.sourceAssetId}:${asset.fileUrl}`,
+    }
+  }
+
+  const propertyImages = input.property && Array.isArray(input.property.imageUrls)
+    ? input.property.imageUrls.filter((image): image is string => typeof image === "string" && image.length > 0)
+    : []
+
+  if (!input.property || !propertyImages.includes(selectedUrl)) {
+    throw new Error("PROPERTY_IMAGE_MISMATCH")
+  }
+
+  return {
+    referenceInput: { kind: "url" as const, url: selectedUrl },
+    signatureSeed: `property:${input.property.id}:${selectedUrl}`,
+  }
+}
+
 function buildConcurrentJobPayload() {
   return {
     error:
       "Ja existe uma geracao deste video em andamento. Aguarde a etapa atual terminar antes de iniciar outra.",
-    technicalLimitReached: true,
+    reused: true,
   }
 }
 
@@ -460,6 +562,12 @@ export async function GET(request: NextRequest) {
       requestId,
       job: finalJob,
     })
+    if (finalJob.generationLockId && (finalJob.jobStage === "completed" || finalJob.jobStage === "failed")) {
+      await releaseStudioVideoGenerationLock({
+        brokerId: user.broker.id,
+        lockId: finalJob.generationLockId,
+      })
+    }
 
     const response = NextResponse.json(getStudioVideoResult(requestId, finalJob))
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -507,6 +615,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Acesso não permitido para este fluxo." }, { status: 403 })
   }
 
+  let generationLockId: string | null = null
+  let providerRequestStarted = false
+
   try {
     const contentType = request.headers.get("content-type") || ""
     const requestBody = contentType.includes("multipart/form-data")
@@ -522,8 +633,13 @@ export async function POST(request: NextRequest) {
       if (accessible instanceof NextResponse) return accessible
 
       const property = accessible ? mapPropertyContext(accessible) : null
-      const signatureSeed = payload.referenceImageUrls[0] || payload.uploadedImages[0]?.name || payload.propertyId || "studio-video"
-      const requestSignature = buildStudioVideoRequestSignature(payload, signatureSeed)
+      const source = await getVideoSource({
+        payload,
+        uploadedFiles,
+        property: accessible,
+        brokerId: user.broker.id,
+      })
+      const requestSignature = buildStudioVideoRequestSignature(payload, source.signatureSeed)
       const existingJob = await findExistingJobBySignature(user.broker.id, requestSignature)
 
       if (existingJob) {
@@ -535,13 +651,41 @@ export async function POST(request: NextRequest) {
           existingGenerationStatus: existingJob.job.generationStatus,
         })
 
-        return NextResponse.json(
-          {
-            ...getStudioVideoResult(existingJob.document.id, existingJob.job),
-            ...buildConcurrentJobPayload(),
-          },
-          { status: 409 },
-        )
+        const response = NextResponse.json({
+          ...getStudioVideoResult(existingJob.document.id, existingJob.job),
+          noticeMessage: "Esta geracao ja estava em andamento e foi retomada com seguranca.",
+        }, { status: 202 })
+        response.headers.set("X-Idempotent-Replay", "true")
+        return response
+      }
+
+      const generationLock = await acquireStudioVideoGenerationLock({
+        brokerId: user.broker.id,
+        requestSignature,
+      })
+      if (!generationLock.acquired) {
+        const concurrentJob = await waitForExistingJobBySignature(user.broker.id, requestSignature, generationLock.lockId)
+        if (concurrentJob) {
+          const response = NextResponse.json({
+            ...getStudioVideoResult(concurrentJob.document.id, concurrentJob.job),
+            noticeMessage: "Esta geracao ja estava em andamento e foi retomada com seguranca.",
+          }, { status: 202 })
+          response.headers.set("X-Idempotent-Replay", "true")
+          return response
+        }
+
+        return NextResponse.json(buildConcurrentJobPayload(), { status: 409 })
+      }
+      generationLockId = generationLock.lockId
+
+      const jobCreatedWhileClaiming = await findExistingJobBySignature(user.broker.id, requestSignature)
+      if (jobCreatedWhileClaiming) {
+        const response = NextResponse.json({
+          ...getStudioVideoResult(jobCreatedWhileClaiming.document.id, jobCreatedWhileClaiming.job),
+          noticeMessage: "Esta geracao ja estava em andamento e foi retomada com seguranca.",
+        }, { status: 202 })
+        response.headers.set("X-Idempotent-Replay", "true")
+        return response
       }
 
       const firstStageCredits = getStudioVideoEstimatedCredits({
@@ -562,6 +706,11 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      if (!getStudioVideoProviderConfig().isConfigured) {
+        throw new Error("LUMAAI_API_KEY_NOT_CONFIGURED")
+      }
+
+      providerRequestStarted = true
       const created = await runWithAiOperationContext(
         {
           route: "/api/studio-ia/video",
@@ -575,10 +724,8 @@ export async function POST(request: NextRequest) {
           createInitialStudioVideoJob({
             input: payload,
             property,
-            referenceInput:
-              uploadedFiles[0]
-                ? { kind: "file", file: uploadedFiles[0] }
-                : { kind: "url", url: payload.referenceImageUrls[0]! },
+            referenceInput: source.referenceInput,
+            requestSignature,
           }),
       )
 
@@ -603,6 +750,7 @@ export async function POST(request: NextRequest) {
           transformation: payload.transformation,
           rhythm: payload.rhythm,
           cameraMovement: payload.cameraMovement,
+          sourceAssetId: payload.sourceAssetId ?? null,
           referenceImageUrls: created.jobContent.referenceImageUrls,
           uploadedImages: payload.uploadedImages,
         },
@@ -628,6 +776,7 @@ export async function POST(request: NextRequest) {
       const jobWithCampaign = {
         ...created.jobContent,
         campaignId: campaign.id,
+        generationLockId: generationLock.lockId,
       } satisfies ReturnType<typeof parseStudioVideoJobContent>
 
       const document = await prisma.brokerDocument.create({
@@ -639,6 +788,12 @@ export async function POST(request: NextRequest) {
           content: stringifyStudioVideoJobContent(jobWithCampaign),
           status: "draft",
         },
+      })
+      await linkStudioVideoGenerationLock({
+        brokerId: user.broker.id,
+        lockId: generationLock.lockId,
+        requestId: document.id,
+        requestSignature,
       })
 
       const chargedJob = await chargeStageCredits({
@@ -846,6 +1001,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: studioVideoInvalidDurationMessage }, { status: 400 })
     }
 
+    if (caughtError instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: caughtError.issues[0]?.message || "Revise os dados enviados para criar o video." },
+        { status: 400 },
+      )
+    }
+
+    if (caughtError instanceof SyntaxError) {
+      return NextResponse.json({ error: "O briefing do video nao possui um formato valido." }, { status: 400 })
+    }
+
     if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_NOT_CONFIGURED") {
       return NextResponse.json(
         {
@@ -882,10 +1048,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "As imagens enviadas nao correspondem ao briefing informado." }, { status: 400 })
     }
 
+    if (caughtError instanceof Error && caughtError.message === "PROPERTY_IMAGE_MISMATCH") {
+      return NextResponse.json({ error: "A fotografia selecionada nao pertence a este imovel." }, { status: 400 })
+    }
+
+    if (caughtError instanceof Error && caughtError.message === "PREPARED_ASSET_MISMATCH") {
+      return NextResponse.json({ error: "A imagem preparada nao esta aprovada ou nao pertence a sua Biblioteca." }, { status: 400 })
+    }
+
+    if (caughtError instanceof Error && caughtError.message === "VIDEO_SOURCE_REQUIRED") {
+      return NextResponse.json({ error: "Selecione uma imagem principal para criar o video." }, { status: 400 })
+    }
+
     return NextResponse.json(
       { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao preparar a geracao de video." },
       { status: 500 },
     )
+  } finally {
+    if (generationLockId && !providerRequestStarted) {
+      await releaseStudioVideoGenerationLock({
+        brokerId: user.broker.id,
+        lockId: generationLockId,
+      }).catch(() => undefined)
+    }
   }
 }
 

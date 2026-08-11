@@ -357,12 +357,10 @@ function hashObject(value: unknown) {
 export function buildStudioVideoRequestSignature(input: StudioVideoRequest, sourceReferenceUrl: string) {
   return hashObject({
     propertyId: input.propertyId ?? null,
-    referenceImageUrls: input.referenceImageUrls,
+    sourceAssetId: input.sourceAssetId ?? null,
+    referenceImageUrl: input.referenceImageUrls[0] ?? null,
     uploadedImages: input.uploadedImages.map((item) => ({ name: item.name, size: item.size, type: item.type })),
-    sourceReferenceUrl:
-      input.referenceImageUrls[0] ||
-      input.uploadedImages[0]?.name ||
-      sourceReferenceUrl,
+    sourceReferenceUrl,
     format: input.format,
     duration: input.duration,
     objective: input.objective,
@@ -384,7 +382,9 @@ function buildStoryboard(input: StudioVideoPromptInput, property?: StudioVideoPr
     `Abertura com fachada e contexto de ${clipText(area, 70)}.`,
     `Entrada mostrando ${clipText(property?.title || "apresentacao principal do imovel", 80)} com foco em ${clipText(objective.commercialFocus, 90)}.`,
     `Ambientes internos guiados por ${clipText(objective.storyline, 120)}.`,
-    `Transformacao principal: ${clipText(transformation.sceneDirection, 120)}.`,
+    input.transformation !== "Nenhuma"
+      ? `Transformacao principal: ${clipText(transformation.sceneDirection, 120)}.`
+      : `Movimento principal: ${clipText(getCameraMovementConfig(input.cameraMovement).shotDirection, 120)}.`,
     `Tratamento visual com ${clipText(style.visualDirection, 120)}.`,
   ]
 }
@@ -399,7 +399,9 @@ function buildShotPlan(input: StudioVideoPromptInput, property?: StudioVideoProp
     clipText(cameraMovement.shotDirection, 150),
     `Destaque para ${clipText(property?.type?.toLowerCase() || "ambientes principais", 80)} com foco em amplitude.`,
     `Detalhes de apoio reforcando ${clipText(style.cameraDirection, 120)}.`,
-    `Momento de transformacao: ${clipText(transformation.sceneDirection, 120)}.`,
+    input.transformation !== "Nenhuma"
+      ? `Momento de transformacao: ${clipText(transformation.sceneDirection, 120)}.`
+      : `Continuidade visual: ${clipText(cameraMovement.shotDirection, 120)}.`,
     "Fechamento com cena aspiracional e CTA visual.",
   ]
 }
@@ -429,7 +431,7 @@ function buildScript(input: StudioVideoPromptInput, property?: StudioVideoProper
       `Direcao criativa: ${objective.promptBase}.`,
       `Tratamento visual: ${style.visualDirection}.`,
       `Narrativa: ${style.narrativeDirection}.`,
-      `Transformacao: ${transformation.promptDirection}.`,
+      input.transformation !== "Nenhuma" ? `Transformacao: ${transformation.promptDirection}.` : "",
       `Ritmo: ${rhythm.promptDirection}.`,
       `Camera: ${cameraMovement.promptDirection}.`,
       input.additionalInstructions ? `Instrucoes extras: ${input.additionalInstructions}.` : "",
@@ -444,7 +446,6 @@ function buildDirectVideoPrompt(input: StudioVideoPromptInput, property?: Studio
   const location = property?.location || [property?.neighborhood, property?.city].filter(Boolean).join(", ")
   const objective = getObjectiveConfig(input.objective)
   const style = getStyleConfig(input.style)
-  const transformation = getTransformationConfig(input.transformation)
   const rhythm = getRhythmConfig(input.rhythm)
   const cameraMovement = getCameraMovementConfig(input.cameraMovement)
 
@@ -459,8 +460,6 @@ function buildDirectVideoPrompt(input: StudioVideoPromptInput, property?: Studio
     `Narrativa: ${style.narrativeDirection}`,
     `Ritmo: ${input.rhythm}. ${rhythm.promptDirection}`,
     `Movimento de camera: ${input.cameraMovement}. ${cameraMovement.promptDirection}`,
-    `Transformacao desejada: ${input.transformation}. ${transformation.promptDirection}`,
-    `Comportamento da cena: ${transformation.sceneDirection}`,
     property
       ? `Contexto do imovel: ${property.title}; tipo ${property.type}; finalidade ${property.purpose}; localizacao ${location}; preco ${property.price}; quartos ${property.bedrooms}; banheiros ${property.bathrooms}; vagas ${property.parkingSpots}.`
       : "Use apenas a imagem enviada como base do video.",
@@ -469,9 +468,7 @@ function buildDirectVideoPrompt(input: StudioVideoPromptInput, property?: Studio
     `Ritmo narrativo complementar: ${style.rhythmDirection}`,
     `CTA final: ${objective.ctaDirection}`,
     "Evite apenas aplicar zoom sobre imagem estatica; crie narrativa visual com progressao real e leitura espacial do ambiente.",
-    input.transformation !== "Nenhuma"
-      ? "Os elementos de transformacao devem aparecer de forma realista, com materiais, luz, decoracao e mobiliario coerentes com o imovel."
-      : "Preserve fidelidade ao espaco original e valorize o que ja existe no ambiente.",
+    "Preserve fidelidade ao espaco original e valorize o que ja existe no ambiente.",
     "Nao inclua textos sobrepostos, legendas, logos, marcas d'agua ou interfaces.",
     "Mantenha aparencia fotografica realista, pronta para uso comercial imobiliario.",
     "Preserve a coerencia arquitetonica do imovel e nao invente caracteristicas conflitantes com a imagem de referencia.",
@@ -848,10 +845,12 @@ export async function createInitialStudioVideoJob({
   input,
   property,
   referenceInput,
+  requestSignature: providedRequestSignature,
 }: {
   input: StudioVideoRequest
   property?: StudioVideoPropertyContext | null
   referenceInput: ReferenceInput
+  requestSignature?: string
 }) {
   const config = getStudioVideoProviderConfig()
   if (!config.isConfigured) {
@@ -860,7 +859,7 @@ export async function createInitialStudioVideoJob({
 
   const requestKind = getStudioVideoRequestKind(input.transformation)
   const sourceReferenceUrl = await resolveReferenceImageUrl(referenceInput, property?.id)
-  const requestSignature = buildStudioVideoRequestSignature(input, sourceReferenceUrl)
+  const requestSignature = providedRequestSignature || buildStudioVideoRequestSignature(input, sourceReferenceUrl)
   const storyboard = buildStoryboard(input, property)
   const shotPlan = buildShotPlan(input, property)
   const script = buildScript(input, property)

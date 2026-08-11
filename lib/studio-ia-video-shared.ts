@@ -582,8 +582,9 @@ const studioVideoMetricsSchema = z.object({
 export const studioVideoRequestSchema = z
   .object({
     propertyId: z.string().trim().min(1).max(191).optional(),
-    referenceImageUrls: z.array(z.string().trim().url()).max(12).default([]),
-    uploadedImages: z.array(studioVideoUploadSchema).max(12).default([]),
+    sourceAssetId: z.string().trim().min(1).max(191).optional(),
+    referenceImageUrls: z.array(z.string().trim().url()).max(1).default([]),
+    uploadedImages: z.array(studioVideoUploadSchema).max(1).default([]),
     format: z.enum(studioVideoFormats),
     duration: studioVideoRequestDurationSchema,
     objective: z.enum(studioVideoObjectives),
@@ -595,13 +596,40 @@ export const studioVideoRequestSchema = z
     version: z.number().int().min(1).max(20).default(1),
   })
   .superRefine((payload, ctx) => {
-    const hasPropertySelection = Boolean(payload.propertyId && payload.referenceImageUrls.length > 0)
+    const hasReferenceSelection = payload.referenceImageUrls.length === 1
+    const hasPropertyOrigin = Boolean(payload.propertyId)
+    const hasPreparedAssetOrigin = Boolean(payload.sourceAssetId)
     const hasUploadSelection = payload.uploadedImages.length > 0
+    const sourceCount = Number(hasPropertyOrigin) + Number(hasPreparedAssetOrigin) + Number(hasUploadSelection)
 
-    if (!hasPropertySelection && !hasUploadSelection) {
+    if (sourceCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Selecione ao menos uma imagem do imovel ou envie imagens de referencia.",
+        message: "Selecione uma fotografia do imovel ou envie uma imagem.",
+        path: ["referenceImageUrls"],
+      })
+    }
+
+    if (sourceCount > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Escolha somente uma imagem principal para o video.",
+        path: ["referenceImageUrls"],
+      })
+    }
+
+    if ((hasPropertyOrigin || hasPreparedAssetOrigin) && !hasReferenceSelection) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecione a imagem principal desta origem.",
+        path: ["referenceImageUrls"],
+      })
+    }
+
+    if (hasReferenceSelection && !payload.propertyId && !payload.sourceAssetId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A origem da imagem principal nao foi informada.",
         path: ["referenceImageUrls"],
       })
     }
@@ -645,6 +673,7 @@ export const studioVideoJobContentSchema = z.object({
   providerVideoId: z.string().trim().min(1).optional(),
   providerImageId: z.string().trim().min(1).optional(),
   campaignId: z.string().trim().min(1).optional(),
+  generationLockId: z.string().trim().min(1).optional(),
   estimatedCredits: z.number().int().min(0),
   stageEstimatedCredits: z.number().int().min(0).default(0),
   propertyId: z.string().trim().min(1).optional(),
