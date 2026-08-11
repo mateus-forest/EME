@@ -187,6 +187,20 @@ export async function saveStudioVideoReferenceImage(referenceId: string, file: F
   })
 }
 
+export async function saveStudioPropertyPreparationReferenceImage(referenceId: string, file: File) {
+  const mimeType = file.type || "image/jpeg"
+  const extension = getImageExtensionFromMimeType(mimeType)
+  const buffer = await normalizeImageOrientation(Buffer.from(await file.arrayBuffer()))
+
+  return uploadPropertyBuffer({
+    propertyId: referenceId,
+    buffer,
+    folder: "studio-ia/references",
+    extension,
+    contentType: mimeType,
+  })
+}
+
 export async function savePropertyGeneratedVideo(propertyId: string, videoBuffer: Buffer, mimeType = "video/mp4") {
   const extension = mimeType === "video/webm" ? ".webm" : ".mp4"
   return uploadPropertyBuffer({

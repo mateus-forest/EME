@@ -56,6 +56,7 @@ export function formatStudioCampaignKind(kind: StudioCampaignKind) {
     OWNERS: "Captacao",
     SELL_PROPERTY: "Venda",
     CONSTRUCTION: "Construcao",
+    PROPERTY_PREPARATION: "Preparar imóvel",
     VIDEO: "Video",
   }
 
@@ -233,6 +234,8 @@ function getCampaignThumbnailPriority(campaign: StudioCampaignRecord) {
       return ["preview_image", "video_final", "video_request"]
     case "CONSTRUCTION":
       return ["construction_image"]
+    case "PROPERTY_PREPARATION":
+      return ["furnished_room"]
     case "SELL_PROPERTY":
       return ["campaign", "caption"]
     case "OWNERS":
@@ -298,6 +301,8 @@ export function getStudioCampaignWorkspacePath(kind: StudioCampaignKind) {
       return "/corretor/studio-ia/vender-este-imovel"
     case "CONSTRUCTION":
       return "/corretor/studio-ia/transformar-obra-em-imovel-pronto"
+    case "PROPERTY_PREPARATION":
+      return "/corretor/studio-ia/preparar-imovel"
     case "VIDEO":
       return "/corretor/studio-ia/criar-video-do-imovel"
   }

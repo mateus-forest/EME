@@ -1,6 +1,6 @@
 export type AiPricingSource = "observed_runtime" | "official_pricing" | "catalog_estimate" | "inferred_fallback"
 
-export type AiOperationProvider = "openai" | "lumaai" | "supabase" | "internal"
+export type AiOperationProvider = "openai" | "lumaai" | "pedra" | "supabase" | "internal"
 
 export type AiOperationCriticality = "low" | "medium" | "high"
 

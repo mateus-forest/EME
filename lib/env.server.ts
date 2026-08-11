@@ -92,6 +92,12 @@ export function getLumaAIEnv() {
   }
 }
 
+export function getPedraEnv() {
+  const apiKey = process.env.PEDRA_API_KEY?.trim() ?? ""
+
+  return { apiKey }
+}
+
 export function getWhatsAppEnv() {
   const enabled = parseBoolean(readEnv("WHATSAPP_ENABLED"), false)
 

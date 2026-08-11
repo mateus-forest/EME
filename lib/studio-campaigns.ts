@@ -12,6 +12,7 @@ export type StudioCampaignKind =
   | "OWNERS"
   | "SELL_PROPERTY"
   | "CONSTRUCTION"
+  | "PROPERTY_PREPARATION"
   | "VIDEO"
 
 export type StudioCampaignStatus =
@@ -162,6 +163,7 @@ function formatCampaignKindLabel(kind: StudioCampaignKind) {
     OWNERS: "Captacao",
     SELL_PROPERTY: "Venda",
     CONSTRUCTION: "Construcao",
+    PROPERTY_PREPARATION: "Preparar imovel",
     VIDEO: "Video",
   }
 
@@ -178,6 +180,7 @@ function readKindFromSearch(value: string): StudioCampaignKind | undefined {
   if (normalized.includes("capta")) return "OWNERS"
   if (normalized.includes("venda")) return "SELL_PROPERTY"
   if (normalized.includes("constru") || normalized.includes("obra")) return "CONSTRUCTION"
+  if (normalized.includes("prepara") || normalized.includes("mobiliar")) return "PROPERTY_PREPARATION"
   return undefined
 }
 

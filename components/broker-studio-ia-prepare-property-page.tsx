@@ -1,20 +1,9 @@
 "use client"
 
 import { type ChangeEvent, useEffect, useMemo, useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
-import {
-  ArrowLeft,
-  Aperture,
-  Brush,
-  CloudSun,
-  Crop,
-  Eraser,
-  EyeOff,
-  ImagePlus,
-  Paintbrush,
-  Sparkles,
-  Upload,
-} from "lucide-react"
+import { ArrowLeft, Check, ImagePlus, Library, LoaderCircle, Sparkles, Upload } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProperties } from "@/components/use-broker-properties"
@@ -22,30 +11,61 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
+import {
+  propertyPreparationCreativityLevels,
+  propertyPreparationRoomTypes,
+  propertyPreparationStyles,
+} from "@/lib/studio-property-preparation"
+import { cn } from "@/lib/utils"
 
-const capabilities = [
-  { title: "Mobiliar ambiente", icon: Sparkles },
-  { title: "Esvaziar ambiente", icon: Eraser },
-  { title: "Reformar ou redecorar", icon: Paintbrush },
-  { title: "Editar imagem", icon: Brush },
-  { title: "Remover objeto", icon: Eraser },
-  { title: "Melhorar fotografia", icon: Aperture },
-  { title: "Corrigir perspectiva", icon: Crop },
-  { title: "Melhorar céu", icon: CloudSun },
-  { title: "Desfocar informações sensíveis", icon: EyeOff },
-] as const
+type SourceMode = "property" | "upload"
+
+type UploadedImage = {
+  file: File
+  name: string
+  url: string
+}
+
+async function parseGenerationResponse(response: Response) {
+  const data = (await response.json().catch(() => null)) as
+    | { campaign?: StudioCampaignRecord; error?: string; code?: string }
+    | null
+
+  if (!response.ok || !data?.campaign) {
+    const error = new Error(data?.error || "Não foi possível mobiliar o ambiente.") as Error & { code?: string }
+    error.code = data?.code
+    throw error
+  }
+
+  return data.campaign
+}
 
 export function BrokerStudioIaPreparePropertyPage() {
   const { properties } = useBrokerProperties()
+  const [sourceMode, setSourceMode] = useState<SourceMode>("property")
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
   const [selectedImage, setSelectedImage] = useState("")
-  const [uploadedImage, setUploadedImage] = useState<{ name: string; url: string } | null>(null)
-  const [selectedCapability, setSelectedCapability] = useState<string>(capabilities[0].title)
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null)
+  const [roomType, setRoomType] = useState("Living room")
+  const [style, setStyle] = useState("Modern")
+  const [creativity, setCreativity] = useState("Medium")
+  const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isApproving, setIsApproving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const selectedProperty = useMemo(
     () => properties.find((property) => property.id === selectedPropertyId) ?? null,
     [properties, selectedPropertyId],
   )
+  const resultAsset = campaign?.assets.find((asset) => asset.assetKey === "furnished_room") ?? null
+  const resultImageUrl = resultAsset?.fileUrl ?? null
+  const sourcePreviewUrl = sourceMode === "property" ? selectedImage : uploadedImage?.url ?? ""
+  const sourceReady = sourceMode === "property"
+    ? Boolean(selectedPropertyId && selectedImage)
+    : Boolean(uploadedImage)
 
   useEffect(() => () => {
     if (uploadedImage) URL.revokeObjectURL(uploadedImage.url)
@@ -55,13 +75,84 @@ export function BrokerStudioIaPreparePropertyPage() {
     const property = properties.find((item) => item.id === propertyId)
     setSelectedPropertyId(propertyId)
     setSelectedImage(property?.images[0] ?? "")
+    setSourceMode("property")
+    setError(null)
   }
 
   function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    setUploadedImage({ name: file.name, url: URL.createObjectURL(file) })
+
+    if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
+      setError("Use uma imagem JPG, PNG ou WEBP.")
+      event.target.value = ""
+      return
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("A imagem deve ter no máximo 15 MB.")
+      event.target.value = ""
+      return
+    }
+
+    setUploadedImage({ file, name: file.name, url: URL.createObjectURL(file) })
+    setSourceMode("upload")
+    setError(null)
     event.target.value = ""
+  }
+
+  async function handleGenerate() {
+    if (!sourceReady) {
+      setError(sourceMode === "property" ? "Selecione um imóvel e uma fotografia." : "Envie uma imagem.")
+      return
+    }
+
+    setIsGenerating(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const formData = new FormData()
+      formData.set("sourceType", sourceMode)
+      formData.set("roomType", roomType)
+      formData.set("style", style)
+      formData.set("creativity", creativity)
+
+      if (sourceMode === "property") {
+        formData.set("propertyId", selectedPropertyId)
+        formData.set("imageUrl", selectedImage)
+      } else if (uploadedImage) {
+        formData.set("image", uploadedImage.file)
+      }
+
+      const response = await fetch("/api/studio-ia/prepare-property", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      })
+      const nextCampaign = await parseGenerationResponse(response)
+      setCampaign(nextCampaign)
+      setNotice("Imagem gerada e salva na Biblioteca para sua revisão.")
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível mobiliar o ambiente.")
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  async function handleApprove() {
+    if (!resultAsset) return
+    setIsApproving(true)
+    setError(null)
+
+    try {
+      const nextCampaign = await studioCampaignsClient.updateAssetStatus(resultAsset.id, "APPROVED")
+      setCampaign(nextCampaign)
+      setNotice("Resultado aprovado e disponível na Biblioteca.")
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível aprovar o resultado.")
+    } finally {
+      setIsApproving(false)
+    }
   }
 
   return (
@@ -73,7 +164,7 @@ export function BrokerStudioIaPreparePropertyPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#009b3a]">Fotografia imobiliária</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Preparar imóvel</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                Reúna a imagem e a transformação desejada em um fluxo simples de preparação visual.
+                Transforme uma fotografia real em uma apresentação mobiliada, pronta para revisão.
               </p>
             </div>
             <Button asChild variant="ghost" className="w-fit rounded-xl border border-black/[0.06] bg-white text-[#4B5563]">
@@ -82,49 +173,80 @@ export function BrokerStudioIaPreparePropertyPage() {
           </div>
         </section>
 
-        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(19rem,.75fr)]">
+        {error ? (
+          <section className="rounded-[1.25rem] border border-[#f2caca] bg-[#fff5f5] px-4 py-3 text-sm text-[#c24141]">{error}</section>
+        ) : null}
+        {notice ? (
+          <section className="rounded-[1.25rem] border border-[#009b3a]/16 bg-[#eef9f1] px-4 py-3 text-sm text-[#0a8f3d]">{notice}</section>
+        ) : null}
+
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,.85fr)]">
           <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">1. Escolha o material</CardTitle></CardHeader>
             <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-[1.2rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Selecionar imóvel</p>
-                  <p className="mt-2 text-sm leading-6 text-[#6B7280]">Use uma fotografia já cadastrada no EME.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setSourceMode("property")}
+                  className={cn(
+                    "rounded-[1.2rem] border p-4 text-left transition",
+                    sourceMode === "property" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]",
+                  )}
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><ImagePlus className="size-4 text-[#009b3a]" />Foto de um imóvel</span>
+                  <span className="mt-2 block text-xs leading-5 text-[#6B7280]">Escolha uma fotografia já cadastrada no EME.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceMode("upload")}
+                  className={cn(
+                    "rounded-[1.2rem] border p-4 text-left transition",
+                    sourceMode === "upload" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]",
+                  )}
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><Upload className="size-4 text-[#009b3a]" />Enviar imagem</span>
+                  <span className="mt-2 block text-xs leading-5 text-[#6B7280]">Use uma imagem sem cadastrar um imóvel.</span>
+                </button>
+              </div>
+
+              {sourceMode === "property" ? (
+                <div className="grid gap-4">
                   <Select value={selectedPropertyId} onValueChange={handlePropertyChange}>
-                    <SelectTrigger className="mt-4 w-full"><SelectValue placeholder="Escolha um imóvel" /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Escolha um imóvel" /></SelectTrigger>
                     <SelectContent>
                       {properties.map((property) => <SelectItem key={property.id} value={property.id}>{property.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                </div>
 
+                  {selectedProperty?.images.length ? (
+                    <div>
+                      <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#050505]">Fotografias do imóvel</p><span className="text-xs text-[#8B95A1]">Selecione uma</span></div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {selectedProperty.images.map((image, index) => (
+                          <button key={image} type="button" onClick={() => setSelectedImage(image)} className={cn("overflow-hidden rounded-2xl border text-left", selectedImage === image ? "border-[#009b3a]/35 ring-2 ring-[#009b3a]/12" : "border-black/[0.06]")}>
+                            <div className="aspect-[4/3] bg-[#eef2f6] bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} />
+                            <p className="px-3 py-2 text-xs font-medium text-[#4B5563]">Foto {index + 1}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : selectedProperty ? (
+                    <div className="rounded-xl border border-[#eadfca] bg-[#fffaf1] p-4 text-sm text-[#776349]">Este imóvel ainda não possui fotografias cadastradas.</div>
+                  ) : null}
+                </div>
+              ) : (
                 <label className="cursor-pointer rounded-[1.2rem] border border-dashed border-black/[0.09] bg-[#fbfbf8] p-4 transition hover:border-[#009b3a]/25 hover:bg-[#f8fdf9]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Enviar imagem</p>
-                  <div className="mt-4 flex items-center gap-3">
+                  <div className="flex items-center gap-3">
                     <span className="flex size-11 items-center justify-center rounded-2xl bg-[#eef9f1] text-[#009b3a]"><Upload className="size-5" /></span>
-                    <div><p className="text-sm font-semibold text-[#050505]">Escolher arquivo</p><p className="mt-1 text-xs text-[#6B7280]">JPG, PNG ou WEBP</p></div>
+                    <div><p className="text-sm font-semibold text-[#050505]">Escolher arquivo</p><p className="mt-1 text-xs text-[#6B7280]">JPG, PNG ou WEBP · até 15 MB</p></div>
                   </div>
                   <Input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleUpload} />
                 </label>
-              </div>
+              )}
 
-              {selectedProperty?.images.length ? (
-                <div>
-                  <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#050505]">Fotografias do imóvel</p><span className="text-xs text-[#8B95A1]">Selecione uma</span></div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedProperty.images.map((image, index) => (
-                      <button key={image} type="button" onClick={() => setSelectedImage(image)} className={`overflow-hidden rounded-2xl border text-left ${selectedImage === image ? "border-[#009b3a]/35 ring-2 ring-[#009b3a]/12" : "border-black/[0.06]"}`}>
-                        <div className="aspect-[4/3] bg-[#eef2f6] bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} />
-                        <p className="px-3 py-2 text-xs font-medium text-[#4B5563]">Foto {index + 1}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {uploadedImage ? (
+              {sourceMode === "upload" && uploadedImage ? (
                 <div className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-3">
-                  <div className="size-16 shrink-0 rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${uploadedImage.url})` }} />
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-xl"><Image src={uploadedImage.url} alt="Imagem enviada" fill unoptimized className="object-cover" /></div>
                   <div className="min-w-0"><p className="text-sm font-semibold text-[#050505]">Imagem enviada</p><p className="mt-1 truncate text-xs text-[#6B7280]">{uploadedImage.name}</p></div>
                 </div>
               ) : null}
@@ -132,26 +254,82 @@ export function BrokerStudioIaPreparePropertyPage() {
           </Card>
 
           <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
-            <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">2. O que preparar</CardTitle></CardHeader>
-            <CardContent className="grid gap-4 px-5 pb-6 sm:px-6">
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                {capabilities.map((capability) => {
-                  const Icon = capability.icon
-                  const active = selectedCapability === capability.title
-                  return (
-                    <button key={capability.title} type="button" onClick={() => setSelectedCapability(capability.title)} className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-medium transition ${active ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#08752f]" : "border-black/[0.06] bg-white text-[#4B5563] hover:border-black/[0.12]"}`}>
-                      <Icon className="size-4 shrink-0" />{capability.title}
-                    </button>
-                  )
-                })}
+            <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">2. Mobiliar ambiente</CardTitle></CardHeader>
+            <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
+              <div className="flex items-start gap-3 rounded-[1.2rem] border border-[#009b3a]/18 bg-[#f4fbf6] p-4">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#009b3a]"><Sparkles className="size-5" /></span>
+                <div><p className="text-sm font-semibold text-[#08752f]">Mobiliamento virtual</p><p className="mt-1 text-xs leading-5 text-[#4f715b]">Nesta etapa, esta é a transformação disponível para geração real.</p></div>
               </div>
-              <div className="rounded-xl border border-[#eadfca] bg-[#fffaf1] p-4 text-sm leading-6 text-[#776349]">
-                A experiência está preparada, mas estas transformações ainda não estão conectadas a uma geração nesta fase.
+
+              <div className="grid gap-4">
+                <label className="grid gap-2 text-sm font-medium text-[#374151]">
+                  Ambiente
+                  <Select value={roomType} onValueChange={setRoomType}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{propertyPreparationRoomTypes.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </label>
+                <label className="grid gap-2 text-sm font-medium text-[#374151]">
+                  Estilo
+                  <Select value={style} onValueChange={setStyle}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{propertyPreparationStyles.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </label>
+                <div className="grid gap-2">
+                  <p className="text-sm font-medium text-[#374151]">Composição</p>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                    {propertyPreparationCreativityLevels.map((item) => (
+                      <button key={item.value} type="button" onClick={() => setCreativity(item.value)} className={cn("rounded-xl border p-3 text-left transition", creativity === item.value ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}>
+                        <span className="flex items-center gap-2 text-sm font-semibold text-[#374151]">{creativity === item.value ? <Check className="size-4 text-[#009b3a]" /> : null}{item.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-[#7B8491]">{item.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <Button type="button" disabled className="h-11 rounded-xl disabled:opacity-45">Continuar em breve</Button>
+
+              <Button type="button" disabled={!sourceReady || isGenerating} onClick={handleGenerate} className="h-11 rounded-xl">
+                {isGenerating ? <><LoaderCircle className="size-4 animate-spin" />Processando imagem...</> : <><Sparkles className="size-4" />Mobiliar ambiente</>}
+              </Button>
+              <p className="text-xs leading-5 text-[#7B8491]">O processamento começa somente após o envio. Não há progresso simulado nem repetição automática da geração.</p>
             </CardContent>
           </Card>
         </section>
+
+        {resultImageUrl && campaign ? (
+          <Card className="overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
+            <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">3. Revise o resultado</CardTitle></CardHeader>
+            <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
+              <div className="grid gap-4 lg:grid-cols-2">
+                {sourcePreviewUrl ? (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Original</p>
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#eef2f6]"><Image src={sourcePreviewUrl} alt="Ambiente original" fill unoptimized className="object-cover" /></div>
+                  </div>
+                ) : null}
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Resultado</p>
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#eef2f6]"><Image src={resultImageUrl} alt="Ambiente mobiliado" fill unoptimized className="object-cover" /></div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-[#667085]">O resultado já está salvo na Biblioteca e aguarda sua aprovação.</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button asChild variant="outline" className="rounded-xl"><Link href={`/corretor/studio-ia/biblioteca/${campaign.id}`}><Library className="size-4" />Abrir Biblioteca</Link></Button>
+                  {resultAsset?.status === "APPROVED" ? (
+                    <Button disabled className="rounded-xl"><Check className="size-4" />Aprovado</Button>
+                  ) : (
+                    <Button type="button" onClick={handleApprove} disabled={isApproving} className="rounded-xl">
+                      {isApproving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
+                      Aprovar resultado
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </BrokerPageShell>
   )

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic"
 function readKind(value: string | null): StudioCampaignKind | undefined {
   if (!value) return undefined
   const normalized = value.trim().toUpperCase()
-  return ["INSTAGRAM", "BUYERS", "OWNERS", "SELL_PROPERTY", "CONSTRUCTION", "VIDEO"].includes(normalized)
+  return ["INSTAGRAM", "BUYERS", "OWNERS", "SELL_PROPERTY", "CONSTRUCTION", "PROPERTY_PREPARATION", "VIDEO"].includes(normalized)
     ? (normalized as StudioCampaignKind)
     : undefined
 }

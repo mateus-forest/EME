@@ -6,6 +6,7 @@ export type StudioCampaignKind =
   | "OWNERS"
   | "SELL_PROPERTY"
   | "CONSTRUCTION"
+  | "PROPERTY_PREPARATION"
   | "VIDEO"
 
 export type StudioCampaignAssetStatus =
