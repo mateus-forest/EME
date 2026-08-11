@@ -17,6 +17,7 @@ import { UserRole } from "@/lib/prisma-enums"
 import {
   deletePropertyStorageFile,
   savePropertyGeneratedImage,
+  saveStudioPropertyPreparationMask,
   saveStudioPropertyPreparationReferenceImage,
 } from "@/lib/property-storage"
 import { createStudioCampaign, getStudioCampaignById } from "@/lib/studio-campaigns"
@@ -33,6 +34,7 @@ export const maxDuration = 90
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const MAX_RESULT_BYTES = 30 * 1024 * 1024
+const MAX_MASK_BYTES = 20 * 1024 * 1024
 const ACTIVE_GENERATION_TTL_MS = 3 * 60 * 1000
 const IDEMPOTENCY_KEY_SCHEMA = z.string().uuid()
 const LOCK_ASSET_KEY = "__property_preparation_generation_lock__"
@@ -128,9 +130,110 @@ async function validateUploadedImage(buffer: Buffer) {
     const sharp = (await import("sharp")).default
     const metadata = await sharp(buffer).metadata()
     if (!metadata.width || !metadata.height || !metadata.format) throw new Error("missing image metadata")
+    const mimeType = metadata.format === "jpeg"
+      ? "image/jpeg"
+      : metadata.format === "png"
+        ? "image/png"
+        : metadata.format === "webp"
+          ? "image/webp"
+          : null
+    if (!mimeType) throw new Error("unsupported image format")
+    return { width: metadata.width, height: metadata.height, mimeType }
   } catch {
     throw new PreparationRouteError("INVALID_IMAGE_FILE", "O arquivo enviado não contém uma imagem válida.", 400)
   }
+}
+
+async function getOrientedImageDimensions(buffer: Buffer) {
+  try {
+    const sharp = (await import("sharp")).default
+    const normalized = await sharp(buffer).rotate().toBuffer({ resolveWithObject: true })
+    if (!normalized.info.width || !normalized.info.height) throw new Error("missing image dimensions")
+    return { width: normalized.info.width, height: normalized.info.height }
+  } catch {
+    throw new PreparationRouteError("INVALID_IMAGE_FILE", "O arquivo enviado não contém uma imagem válida.", 400)
+  }
+}
+
+async function downloadSourceImageForMask(imageUrl: string) {
+  let response: Response
+  try {
+    response = await fetch(imageUrl, { cache: "no-store", signal: AbortSignal.timeout(20_000) })
+  } catch {
+    throw new PreparationRouteError("SOURCE_IMAGE_UNAVAILABLE", "Não foi possível acessar a imagem selecionada.", 400)
+  }
+  if (!response.ok) {
+    throw new PreparationRouteError("SOURCE_IMAGE_UNAVAILABLE", "Não foi possível acessar a imagem selecionada.", 400)
+  }
+  const contentLength = Number(response.headers.get("content-length") || 0)
+  if (contentLength > MAX_RESULT_BYTES) {
+    throw new PreparationRouteError("SOURCE_IMAGE_TOO_LARGE", "A imagem selecionada excede o limite de processamento.", 400)
+  }
+  const buffer = Buffer.from(await response.arrayBuffer())
+  if (buffer.byteLength > MAX_RESULT_BYTES) {
+    throw new PreparationRouteError("SOURCE_IMAGE_TOO_LARGE", "A imagem selecionada excede o limite de processamento.", 400)
+  }
+  return buffer
+}
+
+async function validateAndNormalizeMask(mask: File, expected: { width: number; height: number }) {
+  if (mask.type !== "image/png") {
+    throw new PreparationRouteError("INVALID_MASK_TYPE", "A seleção da área precisa estar no formato PNG.", 400)
+  }
+  if (mask.size === 0) {
+    throw new PreparationRouteError("EMPTY_MASK", "Marque na imagem a área que deseja remover.", 400)
+  }
+  if (mask.size > MAX_MASK_BYTES) {
+    throw new PreparationRouteError("MASK_TOO_LARGE", "A seleção da área excede o limite permitido.", 400)
+  }
+
+  try {
+    const sharp = (await import("sharp")).default
+    const source = Buffer.from(await mask.arrayBuffer())
+    const { data, info } = await sharp(source).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+    if (info.width !== expected.width || info.height !== expected.height) {
+      throw new PreparationRouteError("MASK_DIMENSIONS_MISMATCH", "A seleção não está alinhada com a imagem original.", 400)
+    }
+
+    let hasRemovalArea = false
+    for (let offset = 0; offset < data.length; offset += info.channels) {
+      const red = data[offset]
+      const green = data[offset + 1]
+      const blue = data[offset + 2]
+      if (red !== green || green !== blue) {
+        throw new PreparationRouteError("INVALID_MASK_PIXELS", "A seleção da área contém pixels inválidos.", 400)
+      }
+      hasRemovalArea ||= red >= 128
+    }
+    if (!hasRemovalArea) {
+      throw new PreparationRouteError("EMPTY_MASK", "Marque na imagem a área que deseja remover.", 400)
+    }
+
+    const normalized = await sharp(data, { raw: info }).greyscale().threshold(128).png({ compressionLevel: 9 }).toBuffer()
+    return {
+      buffer: normalized,
+      hash: sha256(normalized),
+      width: info.width,
+      height: info.height,
+      bytes: normalized.byteLength,
+    }
+  } catch (caughtError) {
+    if (caughtError instanceof PreparationRouteError) throw caughtError
+    throw new PreparationRouteError("INVALID_MASK_FILE", "A seleção da área não contém uma máscara válida.", 400)
+  }
+}
+
+async function ensureMaskIsPublic(maskUrl: string) {
+  let response: Response
+  try {
+    response = await fetch(maskUrl, { cache: "no-store", signal: AbortSignal.timeout(10_000) })
+  } catch {
+    throw new PreparationRouteError("MASK_UNAVAILABLE", "Não foi possível disponibilizar a seleção para processamento.", 502)
+  }
+  if (!response.ok || response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "image/png") {
+    throw new PreparationRouteError("MASK_UNAVAILABLE", "Não foi possível disponibilizar a seleção para processamento.", 502)
+  }
+  await response.body?.cancel().catch(() => undefined)
 }
 
 async function downloadGeneratedImage(imageUrl: string) {
@@ -162,11 +265,11 @@ async function downloadGeneratedImage(imageUrl: string) {
     throw new PreparationRouteError("RESULT_TOO_LARGE", "A imagem gerada excede o limite de armazenamento.", 502)
   }
 
-  await validateUploadedImage(buffer).catch(() => {
+  const validated = await validateUploadedImage(buffer).catch(() => {
     throw new PreparationRouteError("INVALID_RESULT_FILE", "O serviço visual retornou um arquivo de imagem inválido.", 502)
   })
 
-  return { buffer, mimeType }
+  return { buffer, mimeType: validated.mimeType }
 }
 
 function getConfiguration(formData: FormData) {
@@ -217,6 +320,7 @@ function getAssetLabel(configuration: PropertyPreparationRequest) {
     enhance_and_correct_perspective: "Perspectiva corrigida",
     sky_blue: "Céu melhorado",
     blur: "Elementos sensíveis desfocados",
+    remove_object: "Objeto removido",
   }
   return labels[configuration.operation]
 }
@@ -291,6 +395,7 @@ async function claimGeneration(input: {
   sourceImageUrl: string | null
   configuration: PropertyPreparationRequest
   startedAt: string
+  maskMetadata?: { hash: string; width: number; height: number; bytes: number } | null
 }) {
   const existingRequest = await getStudioCampaignById(input.user, input.campaignId)
   if (existingRequest) {
@@ -324,6 +429,16 @@ async function claimGeneration(input: {
       signature: input.signature,
       lockId: input.lockId,
     },
+    ...(input.maskMetadata ? {
+      mask: {
+        hash: input.maskMetadata.hash,
+        width: input.maskMetadata.width,
+        height: input.maskMetadata.height,
+        bytes: input.maskMetadata.bytes,
+        format: "png",
+        retainedInStorage: false,
+      },
+    } : {}),
   }
 
   try {
@@ -404,6 +519,8 @@ async function recordPreparationTelemetry(input: {
   sourceType: string
   storageBytes?: number
   providerRequestStarted: boolean
+  providerHttpStatus?: number
+  providerDurationMs?: number
 }) {
   const operation = getPropertyPreparationOperation(input.configuration.operation)
   await recordAiOperationTelemetry({
@@ -432,6 +549,8 @@ async function recordPreparationTelemetry(input: {
       sourceType: input.sourceType,
       parameters: getParameters(input.configuration),
       providerRequestStarted: input.providerRequestStarted,
+      providerHttpStatus: input.providerHttpStatus ?? null,
+      providerDurationMs: input.providerDurationMs ?? null,
       externalCredits: input.status === "completed" ? getPropertyPreparationExternalCredits(input.configuration) : null,
       emeCreditsCharged: false,
     },
@@ -470,6 +589,7 @@ export async function POST(request: NextRequest) {
 
   let persistedSourceUrl: string | null = null
   let persistedResultUrl: string | null = null
+  let persistedMaskUrl: string | null = null
   let campaignId: string | null = null
   let lockId: string | null = null
   let claimedMetadata: Record<string, unknown> | null = null
@@ -492,6 +612,7 @@ export async function POST(request: NextRequest) {
     let sourceImageUrl: string | null = null
     let sourceIdentity: string
     let uploadedImage: File | null = null
+    let uploadedImageBuffer: Buffer | null = null
 
     if (sourceType === "property") {
       const propertyId = String(formData.get("propertyId") ?? "").trim()
@@ -519,10 +640,22 @@ export async function POST(request: NextRequest) {
       const imageBuffer = Buffer.from(await image.arrayBuffer())
       await validateUploadedImage(imageBuffer)
       uploadedImage = image
+      uploadedImageBuffer = imageBuffer
       sourceIdentity = `upload:${image.type}:${sha256(imageBuffer)}`
     }
 
-    const signature = sha256(JSON.stringify({ sourceIdentity, configuration }))
+    let maskMetadata: Awaited<ReturnType<typeof validateAndNormalizeMask>> | null = null
+    if (configuration.operation === "remove_object") {
+      const mask = formData.get("mask")
+      if (!(mask instanceof File)) {
+        throw new PreparationRouteError("MASK_REQUIRED", "Marque na imagem a área que deseja remover.", 400)
+      }
+      const sourceBuffer = uploadedImageBuffer ?? await downloadSourceImageForMask(sourceImageUrl!)
+      const sourceDimensions = await getOrientedImageDimensions(sourceBuffer)
+      maskMetadata = await validateAndNormalizeMask(mask, sourceDimensions)
+    }
+
+    const signature = sha256(JSON.stringify({ sourceIdentity, configuration, maskHash: maskMetadata?.hash ?? null }))
     const ids = getRequestIds(workspaceKey(user), idempotencyKey, signature)
     campaignId = ids.campaignId
     lockId = ids.lockId
@@ -538,6 +671,7 @@ export async function POST(request: NextRequest) {
       sourceImageUrl,
       configuration,
       startedAt,
+      maskMetadata,
     })
     if (!claim.acquired) return campaignStateResponse(claim.campaign, true)
     claimedMetadata = asRecord(claim.campaign.metadata)
@@ -556,8 +690,27 @@ export async function POST(request: NextRequest) {
       throw new PreparationRouteError("SOURCE_URL_UNAVAILABLE", "Não foi possível preparar a imagem selecionada.", 500)
     }
 
+    if (maskMetadata) {
+      try {
+        persistedMaskUrl = await saveStudioPropertyPreparationMask(campaignId, maskMetadata.buffer)
+        persistedMaskUrl = requireHttpsUrl(persistedMaskUrl, "Não foi possível disponibilizar a seleção para processamento.")
+        await ensureMaskIsPublic(persistedMaskUrl)
+      } catch (caughtError) {
+        if (caughtError instanceof PreparationRouteError) throw caughtError
+        throw new PreparationRouteError("MASK_STORAGE_FAILED", "Não foi possível salvar a seleção da área.", 502)
+      }
+    }
+
     providerRequestStarted = true
-    const generated = await executePropertyPreparation({ ...configuration, imageUrl: sourceImageUrl })
+    let generated: Awaited<ReturnType<typeof executePropertyPreparation>>
+    try {
+      generated = await executePropertyPreparation({ ...configuration, imageUrl: sourceImageUrl, maskUrl: persistedMaskUrl ?? undefined })
+    } finally {
+      if (persistedMaskUrl) {
+        await deletePropertyStorageFile(persistedMaskUrl)
+        persistedMaskUrl = null
+      }
+    }
     const downloaded = await downloadGeneratedImage(generated.imageUrl)
 
     try {
@@ -576,6 +729,8 @@ export async function POST(request: NextRequest) {
       processingStatus: "completed",
       completedAt,
       externalCredits,
+      providerHttpStatus: generated.providerHttpStatus,
+      providerDurationMs: generated.providerDurationMs,
     }
 
     try {
@@ -609,7 +764,16 @@ export async function POST(request: NextRequest) {
               resultImageUrl: persistedResultUrl,
               providerInternal: "pedra",
               providerOperation: `/api/${configuration!.operation}`,
+              ...(maskMetadata ? {
+                maskHash: maskMetadata.hash,
+                maskWidth: maskMetadata.width,
+                maskHeight: maskMetadata.height,
+                maskBytes: maskMetadata.bytes,
+                maskRetainedInStorage: false,
+              } : {}),
               externalCredits,
+              providerHttpStatus: generated.providerHttpStatus,
+              providerDurationMs: generated.providerDurationMs,
               creditsConsumed: null,
               emeCreditsCharged: false,
               startedAt,
@@ -638,10 +802,13 @@ export async function POST(request: NextRequest) {
       sourceType,
       storageBytes: downloaded.buffer.byteLength,
       providerRequestStarted,
+      providerHttpStatus: generated.providerHttpStatus,
+      providerDurationMs: generated.providerDurationMs,
     })
 
     return campaignStateResponse(campaign, false)
   } catch (caughtError) {
+    if (persistedMaskUrl) await deletePropertyStorageFile(persistedMaskUrl)
     if (persistedResultUrl) await deletePropertyStorageFile(persistedResultUrl)
     if (persistedSourceUrl) await deletePropertyStorageFile(persistedSourceUrl)
 

@@ -54,6 +54,7 @@ export const propertyPreparationOperations = [
   { value: "enhance_and_correct_perspective", label: "Corrigir perspectiva", shortLabel: "Perspectiva", description: "Endireite linhas e melhore a fotografia." },
   { value: "sky_blue", label: "Melhorar céu", shortLabel: "Céu", description: "Substitua um céu apagado e ajuste a iluminação." },
   { value: "blur", label: "Desfocar elementos sensíveis", shortLabel: "Desfocar", description: "Desfoque automaticamente rostos, placas ou logotipos." },
+  { value: "remove_object", label: "Remover objeto", shortLabel: "Remover objeto", description: "Marque visualmente o objeto ou a região que deseja remover." },
 ] as const
 
 export type PropertyPreparationOperation = (typeof propertyPreparationOperations)[number]["value"]
@@ -118,6 +119,10 @@ const blurRequestSchema = z.object({
   ),
 })
 
+const removeObjectRequestSchema = z.object({
+  operation: z.literal("remove_object"),
+})
+
 export const propertyPreparationRequestSchema = z.discriminatedUnion("operation", [
   furnishRoomRequestSchema,
   emptyRoomRequestSchema,
@@ -127,6 +132,7 @@ export const propertyPreparationRequestSchema = z.discriminatedUnion("operation"
   perspectiveRequestSchema,
   skyRequestSchema,
   blurRequestSchema,
+  removeObjectRequestSchema,
 ]).transform((input) => (
   "highFidelity" in input && input.highFidelity
     ? { ...input, preserveOriginalFraming: false }

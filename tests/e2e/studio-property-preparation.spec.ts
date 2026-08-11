@@ -42,8 +42,7 @@ test.describe("Studio IA — Preparar imóvel", () => {
     await page.getByRole("button", { name: /Desfocar/ }).click()
     await expect(page.getByText("Rostos", { exact: true })).toBeVisible()
     await expect(page.getByText("Placas de veículos", { exact: true })).toBeVisible()
-    await expect(page.getByText("Remover objeto", { exact: false })).toBeVisible()
-    await expect(page.getByText("Em validação", { exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: /Remover objeto/ })).toBeVisible()
 
     await page.setViewportSize({ width: 390, height: 844 })
     const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowLeft, Check, ImagePlus, Library, LoaderCircle, Sparkles, Upload, Video } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { StudioObjectMaskEditor, type ObjectMaskValue } from "@/components/studio-object-mask-editor"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -94,6 +95,7 @@ export function BrokerStudioIaPreparePropertyPage() {
   const [preserveOriginalFraming, setPreserveOriginalFraming] = useState(false)
   const [skyStyle, setSkyStyle] = useState("sunny")
   const [blurTargets, setBlurTargets] = useState<string[]>(["faces", "license plates"])
+  const [objectMask, setObjectMask] = useState<ObjectMaskValue | null>(null)
   const [campaign, setCampaign] = useState<StudioCampaignRecord | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isApproving, setIsApproving] = useState(false)
@@ -121,11 +123,13 @@ export function BrokerStudioIaPreparePropertyPage() {
     setSelectedPropertyId(propertyId)
     setSelectedImage(property?.images[0] ?? "")
     setSourceMode("property")
+    setObjectMask(null)
     setError(null)
   }
 
   function handleOperationChange(nextOperation: PropertyPreparationOperation) {
     setOperation(nextOperation)
+    setObjectMask(null)
     setCampaign(null)
     setNotice(null)
     setError(null)
@@ -149,6 +153,7 @@ export function BrokerStudioIaPreparePropertyPage() {
     if (uploadedImage) URL.revokeObjectURL(uploadedImage.url)
     setUploadedImage({ file, name: file.name, url: URL.createObjectURL(file) })
     setSourceMode("upload")
+    setObjectMask(null)
     setError(null)
     event.target.value = ""
   }
@@ -159,6 +164,9 @@ export function BrokerStudioIaPreparePropertyPage() {
     }
     if (operation === "blur" && blurTargets.length === 0) {
       return "Selecione pelo menos um tipo de elemento para desfocar."
+    }
+    if (operation === "remove_object" && !objectMask) {
+      return "Marque na imagem a área que deseja remover."
     }
     return null
   }
@@ -215,6 +223,7 @@ export function BrokerStudioIaPreparePropertyPage() {
       } else if (uploadedImage) {
         formData.set("image", uploadedImage.file)
       }
+      if (operation === "remove_object" && objectMask) formData.set("mask", objectMask.file)
 
       const response = await fetch("/api/studio-ia/prepare-property", {
         method: "POST",
@@ -317,7 +326,13 @@ export function BrokerStudioIaPreparePropertyPage() {
     if (operation === "sky_blue") {
       return <label className="grid gap-2 text-sm font-medium text-[#374151]">Clima do céu<Select value={skyStyle} onValueChange={setSkyStyle}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{propertyPreparationSkyStyles.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></label>
     }
-    return <div className="grid gap-2"><p className="text-sm font-medium text-[#374151]">Elementos a desfocar</p>{propertyPreparationBlurTargets.map((item) => <label key={item.value} className="flex cursor-pointer items-center gap-3 rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#374151]"><Checkbox checked={blurTargets.includes(item.value)} onCheckedChange={(checked) => setBlurTargets((current) => checked ? [...new Set([...current, item.value])] : current.filter((value) => value !== item.value))} />{item.label}</label>)}</div>
+    if (operation === "blur") {
+      return <div className="grid gap-2"><p className="text-sm font-medium text-[#374151]">Elementos a desfocar</p>{propertyPreparationBlurTargets.map((item) => <label key={item.value} className="flex cursor-pointer items-center gap-3 rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#374151]"><Checkbox checked={blurTargets.includes(item.value)} onCheckedChange={(checked) => setBlurTargets((current) => checked ? [...new Set([...current, item.value])] : current.filter((value) => value !== item.value))} />{item.label}</label>)}</div>
+    }
+    if (!sourcePreviewUrl) {
+      return <p className="rounded-xl border border-dashed border-black/[0.08] bg-[#fbfbf8] p-4 text-sm leading-6 text-[#667085]">Escolha uma fotografia ou envie uma imagem para abrir o editor de seleção.</p>
+    }
+    return <StudioObjectMaskEditor imageUrl={sourcePreviewUrl} disabled={isGenerating} onChange={setObjectMask} />
   }
 
   return (
@@ -338,13 +353,13 @@ export function BrokerStudioIaPreparePropertyPage() {
             <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">1. Escolha o material</CardTitle></CardHeader>
             <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
               <div className="grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => setSourceMode("property")} className={cn("rounded-[1.2rem] border p-4 text-left transition", sourceMode === "property" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><ImagePlus className="size-4 text-[#009b3a]" />Foto de um imóvel</span><span className="mt-2 block text-xs leading-5 text-[#6B7280]">Escolha uma fotografia já cadastrada no EME.</span></button>
-                <button type="button" onClick={() => setSourceMode("upload")} className={cn("rounded-[1.2rem] border p-4 text-left transition", sourceMode === "upload" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><Upload className="size-4 text-[#009b3a]" />Enviar imagem</span><span className="mt-2 block text-xs leading-5 text-[#6B7280]">Use uma imagem sem cadastrar um imóvel.</span></button>
+                <button type="button" onClick={() => { setSourceMode("property"); setObjectMask(null) }} className={cn("rounded-[1.2rem] border p-4 text-left transition", sourceMode === "property" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><ImagePlus className="size-4 text-[#009b3a]" />Foto de um imóvel</span><span className="mt-2 block text-xs leading-5 text-[#6B7280]">Escolha uma fotografia já cadastrada no EME.</span></button>
+                <button type="button" onClick={() => { setSourceMode("upload"); setObjectMask(null) }} className={cn("rounded-[1.2rem] border p-4 text-left transition", sourceMode === "upload" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><Upload className="size-4 text-[#009b3a]" />Enviar imagem</span><span className="mt-2 block text-xs leading-5 text-[#6B7280]">Use uma imagem sem cadastrar um imóvel.</span></button>
               </div>
 
               {sourceMode === "property" ? <div className="grid gap-4">
                 <Select value={selectedPropertyId} onValueChange={handlePropertyChange}><SelectTrigger className="w-full"><SelectValue placeholder="Escolha um imóvel" /></SelectTrigger><SelectContent>{properties.map((property) => <SelectItem key={property.id} value={property.id}>{property.title}</SelectItem>)}</SelectContent></Select>
-                {selectedProperty?.images.length ? <div><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#050505]">Fotografias do imóvel</p><span className="text-xs text-[#8B95A1]">Selecione uma</span></div><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{selectedProperty.images.map((image, index) => <button key={image} type="button" onClick={() => setSelectedImage(image)} className={cn("overflow-hidden rounded-2xl border text-left", selectedImage === image ? "border-[#009b3a]/35 ring-2 ring-[#009b3a]/12" : "border-black/[0.06]")}><div className="aspect-[4/3] bg-[#eef2f6] bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} /><p className="px-3 py-2 text-xs font-medium text-[#4B5563]">Foto {index + 1}</p></button>)}</div></div> : selectedProperty ? <div className="rounded-xl border border-[#eadfca] bg-[#fffaf1] p-4 text-sm text-[#776349]">Este imóvel ainda não possui fotografias cadastradas.</div> : null}
+                {selectedProperty?.images.length ? <div><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#050505]">Fotografias do imóvel</p><span className="text-xs text-[#8B95A1]">Selecione uma</span></div><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{selectedProperty.images.map((image, index) => <button key={image} type="button" onClick={() => { setSelectedImage(image); setObjectMask(null) }} className={cn("overflow-hidden rounded-2xl border text-left", selectedImage === image ? "border-[#009b3a]/35 ring-2 ring-[#009b3a]/12" : "border-black/[0.06]")}><div className="aspect-[4/3] bg-[#eef2f6] bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} /><p className="px-3 py-2 text-xs font-medium text-[#4B5563]">Foto {index + 1}</p></button>)}</div></div> : selectedProperty ? <div className="rounded-xl border border-[#eadfca] bg-[#fffaf1] p-4 text-sm text-[#776349]">Este imóvel ainda não possui fotografias cadastradas.</div> : null}
               </div> : <label className="cursor-pointer rounded-[1.2rem] border border-dashed border-black/[0.09] bg-[#fbfbf8] p-4 transition hover:border-[#009b3a]/25 hover:bg-[#f8fdf9]"><div className="flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-2xl bg-[#eef9f1] text-[#009b3a]"><Upload className="size-5" /></span><div><p className="text-sm font-semibold text-[#050505]">Escolher arquivo</p><p className="mt-1 text-xs text-[#6B7280]">JPG, PNG ou WEBP · até 15 MB</p></div></div><Input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleUpload} /></label>}
 
               {sourceMode === "upload" && uploadedImage ? <div className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-3"><div className="relative size-16 shrink-0 overflow-hidden rounded-xl"><Image src={uploadedImage.url} alt="Imagem enviada" fill unoptimized className="object-cover" /></div><div className="min-w-0"><p className="text-sm font-semibold text-[#050505]">Imagem enviada</p><p className="mt-1 truncate text-xs text-[#6B7280]">{uploadedImage.name}</p></div></div> : null}
@@ -356,13 +371,12 @@ export function BrokerStudioIaPreparePropertyPage() {
             <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 {propertyPreparationOperations.map((item) => <button key={item.value} type="button" onClick={() => handleOperationChange(item.value)} className={cn("rounded-xl border p-3 text-left transition", operation === item.value ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}><span className="flex items-center gap-2 text-sm font-semibold text-[#374151]">{operation === item.value ? <Check className="size-4 text-[#009b3a]" /> : null}{item.shortLabel}</span><span className="mt-1 block text-xs leading-5 text-[#7B8491]">{item.description}</span></button>)}
-                <div className="rounded-xl border border-dashed border-black/[0.08] bg-[#fbfbf8] p-3 opacity-70"><span className="flex items-center justify-between gap-2 text-sm font-semibold text-[#374151]">Remover objeto <span className="rounded-full bg-white px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#8B95A1]">Em validação</span></span><span className="mt-1 block text-xs leading-5 text-[#7B8491]">Exigirá uma seleção precisa do objeto na imagem.</span></div>
               </div>
 
               <div className="flex items-start gap-3 rounded-[1.2rem] border border-[#009b3a]/18 bg-[#f4fbf6] p-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#009b3a]"><Sparkles className="size-5" /></span><div><p className="text-sm font-semibold text-[#08752f]">{selectedOperation.label}</p><p className="mt-1 text-xs leading-5 text-[#4f715b]">{selectedOperation.description}</p></div></div>
               <div className="grid gap-4">{renderOperationControls()}</div>
 
-              <Button type="button" disabled={!sourceReady || isGenerating} onClick={handleGenerate} className="h-11 rounded-xl">{isGenerating ? <><LoaderCircle className="size-4 animate-spin" />Processando imagem...</> : <><Sparkles className="size-4" />{selectedOperation.label}</>}</Button>
+              <Button type="button" disabled={!sourceReady || isGenerating || (operation === "remove_object" && !objectMask)} onClick={handleGenerate} className="h-11 rounded-xl">{isGenerating ? <><LoaderCircle className="size-4 animate-spin" />Processando imagem...</> : <><Sparkles className="size-4" />{selectedOperation.label}</>}</Button>
               <p className="text-xs leading-5 text-[#7B8491]">O processamento começa somente após o envio. Repetições da mesma solicitação em andamento reutilizam o processamento existente.</p>
             </CardContent>
           </Card>

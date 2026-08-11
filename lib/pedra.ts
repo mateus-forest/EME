@@ -65,6 +65,7 @@ async function callPedraImageEndpoint(input: {
   outputShape: "array" | "object"
 }) {
   const apiKey = ensurePedraConfigured()
+  const startedAt = Date.now()
   let response: Response
 
   try {
@@ -94,10 +95,14 @@ async function callPedraImageEndpoint(input: {
   }
 
   const output = parsed.data.output
-  return { imageUrl: Array.isArray(output) ? output[0].url : output.url }
+  return {
+    imageUrl: Array.isArray(output) ? output[0].url : output.url,
+    providerHttpStatus: response.status,
+    providerDurationMs: Date.now() - startedAt,
+  }
 }
 
-export async function executePropertyPreparation(input: PropertyPreparationRequest & { imageUrl: string }) {
+export async function executePropertyPreparation(input: PropertyPreparationRequest & { imageUrl: string; maskUrl?: string }) {
   switch (input.operation) {
     case "furnish":
       return callPedraImageEndpoint({
@@ -162,6 +167,15 @@ export async function executePropertyPreparation(input: PropertyPreparationReque
         endpoint: "blur",
         outputShape: "object",
         payload: { imageUrl: input.imageUrl, objectsToBlur: input.objectsToBlur },
+      })
+    case "remove_object":
+      if (!input.maskUrl) {
+        throw new PedraApiError("PEDRA_INVALID_REQUEST", "Marque a área que deseja remover.", 400)
+      }
+      return callPedraImageEndpoint({
+        endpoint: "remove_object",
+        outputShape: "object",
+        payload: { imageUrl: input.imageUrl, maskUrl: input.maskUrl },
       })
   }
 }

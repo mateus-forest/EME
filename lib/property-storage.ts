@@ -215,6 +215,16 @@ export async function saveStudioPropertyPreparationReferenceImage(referenceId: s
   })
 }
 
+export async function saveStudioPropertyPreparationMask(referenceId: string, maskBuffer: Buffer) {
+  return uploadPropertyBuffer({
+    propertyId: referenceId,
+    buffer: maskBuffer,
+    folder: "studio-ia/masks",
+    extension: ".png",
+    contentType: "image/png",
+  })
+}
+
 export async function savePropertyGeneratedVideo(propertyId: string, videoBuffer: Buffer, mimeType = "video/mp4") {
   const extension = mimeType === "video/webm" ? ".webm" : ".mp4"
   return uploadPropertyBuffer({
