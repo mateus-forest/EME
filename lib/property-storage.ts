@@ -7,11 +7,27 @@ function readRequiredEnv(name: string) {
 }
 
 function getStorageConfig() {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  if (!supabaseUrl) throw new Error("Upload indisponível: configure as variáveis do Supabase Storage.")
+
+  let supabaseOrigin: string
+  try {
+    supabaseOrigin = new URL(supabaseUrl).origin
+  } catch {
+    throw new Error("Upload indisponível: a URL do Supabase Storage é inválida.")
+  }
+
   return {
-    supabaseUrl: readRequiredEnv("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, ""),
-    anonKey: readRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    supabaseUrl: supabaseOrigin,
     serviceRoleKey: readRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
     bucket: "properties",
+  }
+}
+
+function getStorageAuthHeaders(serviceRoleKey: string) {
+  return {
+    apikey: serviceRoleKey,
+    ...(serviceRoleKey.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${serviceRoleKey}` }),
   }
 }
 
@@ -65,8 +81,7 @@ async function uploadPropertyFile({
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
       "Content-Type": file.type || "application/octet-stream",
       "x-upsert": "false",
     },
@@ -100,8 +115,7 @@ async function uploadPropertyBuffer({
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
       "Content-Type": contentType,
       "x-upsert": "false",
     },
@@ -227,8 +241,7 @@ export async function deletePropertyStorageFile(fileUrl: string) {
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
     },
   }).catch(() => null)
 
