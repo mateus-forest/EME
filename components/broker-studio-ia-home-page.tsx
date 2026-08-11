@@ -37,7 +37,7 @@ const studioActions: StudioAction[] = [
   },
   {
     title: "Visualizar projeto",
-    description: "Visualize o potencial de terrenos, obras e projetos antes de estarem prontos.",
+    description: "Área reservada para representações arquitetônicas em validação.",
     icon: Building2,
     href: "/corretor/studio-ia/visualizar-projeto",
   },
