@@ -349,11 +349,11 @@ export function BrokerStudioIaInstagramPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
                 <Instagram className="size-3.5" />
-                Segundo fluxo Studio IA
+                Conteúdo para redes sociais
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar campanha para Instagram</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar campanha</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione o imóvel, defina o objetivo da campanha, escolha a identidade visual e acompanhe a geração real do conteúdo até a aprovação final.
+                Crie conteúdo completo para divulgar seus imóveis nas redes sociais.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -407,7 +407,7 @@ export function BrokerStudioIaInstagramPage() {
                     <Instagram className="size-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Criar campanha para Instagram</p>
+                    <p className="text-base font-semibold text-[#050505]">Criar campanha</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                       Monte uma campanha com pecas reais prontas para feed, story, carrossel, legenda, CTA e hashtags.
                     </p>
@@ -830,8 +830,8 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "OpenAI",
-      description: "Este fluxo gera o conteúdo real no servidor com OpenAI, sem expor chaves no cliente.",
+      value: "Processamento interno",
+      description: "Este fluxo gera o conteúdo real no servidor sem expor configurações técnicas ao corretor.",
     },
     {
       title: "Persistência",

@@ -276,9 +276,9 @@ export function BrokerStudioIaOwnersPage() {
                 <Camera className="size-3.5" />
                 Fluxo Studio IA
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Captar proprietários</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Captar imóveis</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Defina o objetivo de captação, configure a região de atuação e gere uma estratégia real completa para abordar proprietários com mais precisão.
+                Crie campanhas para encontrar proprietários e ampliar sua carteira.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -332,7 +332,7 @@ export function BrokerStudioIaOwnersPage() {
                     <Camera className="size-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Captar proprietários</p>
+                    <p className="text-base font-semibold text-[#050505]">Captar imóveis</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                       Estruture a abordagem comercial para aumentar captação de imóveis de acordo com objetivo, região e perfil do proprietário.
                     </p>
@@ -758,8 +758,8 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "OpenAI",
-      description: "Este fluxo gera a estratégia real no servidor com OpenAI, sem expor chaves no cliente.",
+      value: "Processamento interno",
+      description: "Este fluxo gera a estratégia real no servidor sem expor configurações técnicas ao corretor.",
     },
     {
       title: "Persistência",

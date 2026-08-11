@@ -965,8 +965,8 @@ function buildStatusItems(step: StudioStep, isReadyForOperation: boolean, isPlan
     },
     {
       title: "Integrações",
-      value: "OpenAI + fluxos existentes",
-      description: "O plano comercial é gerado no servidor com OpenAI e considera os fluxos do Studio IA já implementados.",
+      value: "Processamento interno",
+      description: "O plano comercial é gerado no servidor e considera os fluxos do Studio IA já implementados.",
     },
     {
       title: "Prontidão",

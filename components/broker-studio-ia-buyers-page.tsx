@@ -305,9 +305,9 @@ export function BrokerStudioIaBuyersPage() {
                 <Users className="size-3.5" />
                 Fluxo Studio IA
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Atrair compradores</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Criar anúncio</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Selecione o imóvel, defina o público ideal, escolha o canal principal e gere uma estratégia real completa para atração de interessados.
+                Crie materiais e mensagens focados em promover um imóvel e gerar oportunidades.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -361,7 +361,7 @@ export function BrokerStudioIaBuyersPage() {
                     <Megaphone className="size-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-[#050505]">Atrair compradores</p>
+                    <p className="text-base font-semibold text-[#050505]">Criar anúncio</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
                       Organize público, canal e mensagem principal para gerar uma estratégia comercial real do imóvel.
                     </p>
@@ -828,8 +828,8 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "OpenAI",
-      description: "Este fluxo gera a estratégia real no servidor com OpenAI, sem expor chaves no cliente.",
+      value: "Processamento interno",
+      description: "Este fluxo gera a estratégia real no servidor sem expor configurações técnicas ao corretor.",
     },
     {
       title: "Persistência",

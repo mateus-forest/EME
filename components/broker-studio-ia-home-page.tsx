@@ -3,146 +3,109 @@
 import Link from "next/link"
 import {
   ArrowRight,
-  BookOpen,
-  Bot,
-  Camera,
+  ArrowUpRight,
+  Building2,
+  Clapperboard,
   Home,
+  ImagePlus,
   Megaphone,
   Sparkles,
-  Users,
-  Video,
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type StudioAction = {
   title: string
   description: string
   icon: typeof Home
-  status: string
-  href?: string
-  cta?: string
+  href: string
 }
 
 const studioActions: StudioAction[] = [
   {
-    title: "Biblioteca",
-    description: "Consulte todo o histórico de campanhas, imagens, vídeos e copys gerados pelo Studio IA.",
-    icon: BookOpen,
-    href: "/corretor/studio-ia/biblioteca",
-    cta: "Abrir biblioteca",
-    status: "Disponível",
-  },
-  {
-    title: "Vender este imóvel",
-    description: "Organize uma ação focada em conversão para apresentar o imóvel certo no momento certo.",
-    icon: Home,
-    href: "/corretor/studio-ia/vender-este-imovel",
-    cta: "Abrir fluxo",
-    status: "Disponível",
-  },
-  {
-    title: "Criar campanha para Instagram",
-    description: "Monte uma campanha visual para publicar o imóvel com narrativa pronta para redes sociais.",
+    title: "Criar campanha",
+    description: "Crie conteúdo completo para divulgar seus imóveis nas redes sociais.",
     icon: Megaphone,
     href: "/corretor/studio-ia/criar-campanha-instagram",
-    cta: "Abrir fluxo",
-    status: "Disponível",
   },
   {
-    title: "Criar vídeo do imóvel",
-    description: "Estruture a produção de um vídeo comercial com foco em captação de atenção e visitas.",
-    icon: Video,
+    title: "Preparar imóvel",
+    description: "Organize e prepare as fotografias do imóvel para uma apresentação mais atraente.",
+    icon: ImagePlus,
+    href: "/corretor/studio-ia/preparar-imovel",
+  },
+  {
+    title: "Visualizar projeto",
+    description: "Visualize o potencial de terrenos, obras e projetos antes de estarem prontos.",
+    icon: Building2,
+    href: "/corretor/studio-ia/visualizar-projeto",
+  },
+  {
+    title: "Criar vídeo",
+    description: "Transforme as melhores imagens do imóvel em uma apresentação em vídeo.",
+    icon: Clapperboard,
     href: "/corretor/studio-ia/criar-video-do-imovel",
-    cta: "Abrir fluxo",
-    status: "Disponível",
   },
   {
-    title: "Transformar obra em imóvel pronto",
-    description: "Use uma imagem real da obra e gere uma versão pronta para venda com aprovação e novas versões.",
+    title: "Criar anúncio",
+    description: "Crie materiais e mensagens focados em promover um imóvel e gerar oportunidades.",
     icon: Sparkles,
-    href: "/corretor/studio-ia/transformar-obra-em-imovel-pronto",
-    cta: "Abrir fluxo",
-    status: "Disponível",
-  },
-  {
-    title: "Atrair compradores",
-    description: "Planeje a mensagem e os ganchos comerciais para aumentar interesse qualificado no imóvel.",
-    icon: Users,
     href: "/corretor/studio-ia/atrair-compradores",
-    cta: "Abrir fluxo",
-    status: "Disponível",
   },
   {
-    title: "Captar proprietários",
-    description: "Estruture abordagens de captação para ampliar a carteira com foco no perfil certo.",
-    icon: Camera,
+    title: "Captar imóveis",
+    description: "Crie campanhas para encontrar proprietários e ampliar sua carteira.",
+    icon: Home,
     href: "/corretor/studio-ia/captar-proprietarios",
-    cta: "Abrir fluxo",
-    status: "Disponível",
   },
 ]
 
 export function BrokerStudioIaHomePage() {
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="min-w-0 grid gap-4 sm:gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
-                <Bot className="size-3.5" />
-                Studio IA
-              </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#050505]">Central de criação com IA</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6B7A]">
-                Crie campanhas, imagens, vídeos, anúncios e conteúdos para divulgar seus imóveis com inteligência artificial.
+      <div className="grid min-w-0 gap-4 sm:gap-5">
+        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-6 lg:p-8">
+          <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#009b3a]">Studio IA</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505] sm:text-4xl">Estúdio</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A] sm:text-base">
+                Crie o material comercial dos seus imóveis.
               </p>
             </div>
+
+            <Link
+              href="/corretor/studio-ia/biblioteca"
+              className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-xl px-1 py-2 text-sm font-semibold text-[#4B5563] transition-colors hover:text-[#009b3a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009b3a]/25"
+            >
+              Biblioteca
+              <ArrowUpRight className="size-4" />
+            </Link>
           </div>
         </section>
 
-        <section className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {studioActions.map((action) => {
             const Icon = action.icon
-            const isAvailable = Boolean(action.href)
 
             return (
-              <Card key={action.title} className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
-                <CardHeader className="px-5 py-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-                      <Icon className="size-5" />
+              <Link key={action.title} href={action.href} className="group min-w-0 rounded-[1.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009b3a]/25">
+                <Card className="h-full min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 transition duration-200 group-hover:-translate-y-0.5 group-hover:border-[#009b3a]/16 group-hover:shadow-[0_18px_50px_rgba(15,23,42,0.07)]">
+                  <CardHeader className="px-5 pb-3 pt-5 sm:px-6 sm:pt-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/14 bg-[#eef9f1] text-[#009b3a]">
+                        <Icon className="size-5" />
+                      </div>
+                      <ArrowRight className="mt-1 size-4 text-[#B0B7C0] transition group-hover:translate-x-0.5 group-hover:text-[#009b3a]" />
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${isAvailable ? "bg-[#eef9f1] text-[#009b3a]" : "bg-[#f2f4f7] text-[#667085]"}`}>
-                      {action.status}
-                    </span>
-                  </div>
-                  <CardTitle className="pt-4 text-xl text-[#050505]">{action.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 p-5 pt-0">
-                  <p className="text-sm leading-6 text-[#6B7280]">{action.description}</p>
-                  {action.href ? (
-                    <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]">
-                      <Link href={action.href}>
-                        {action.cta ?? "Abrir"}
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled
-                      className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#98A2B3] disabled:opacity-100"
-                    >
-                      Em breve
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+                    <CardTitle className="pt-5 text-xl text-[#050505]">{action.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-5 pb-6 pt-0 sm:px-6">
+                    <p className="text-sm leading-6 text-[#6B7280]">{action.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
             )
           })}
         </section>

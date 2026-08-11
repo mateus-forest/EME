@@ -659,7 +659,7 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "OpenAI + storage",
+      value: "Processamento interno",
       description: "A geração final roda no servidor e salva a imagem resultante no storage do EME.",
     },
     {
