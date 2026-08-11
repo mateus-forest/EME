@@ -1,10 +1,18 @@
 import "server-only"
 
+import { zodTextFormat } from "openai/helpers/zod"
 import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
+
+export const studioBuyerGenerationErrorCodes = {
+  emptyResponse: "OPENAI_EMPTY_RESPONSE",
+  incompleteResponse: "OPENAI_INCOMPLETE_RESPONSE",
+  invalidStructuredResponse: "OPENAI_INVALID_STRUCTURED_RESPONSE",
+  maxOutputTokensExceeded: "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED",
+} as const
 
 export const studioBuyerAudiences = [
   "Primeiro imovel",
@@ -110,38 +118,62 @@ export async function generateBuyerStrategy(
     },
     request: {
       model,
-      max_output_tokens: 1400,
+      max_output_tokens: 2400,
+      reasoning: {
+        effort: "minimal",
+      },
       instructions:
-        "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Monte estrategias comerciais praticas e persuasivas para captar interesse de compradores no mercado brasileiro.",
+        "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Monte estrategias comerciais praticas e persuasivas para captar interesse de compradores no mercado brasileiro. Responda apenas com o JSON do schema solicitado, sem texto adicional.",
       input: buildBuyersPrompt(input, property),
       text: {
-        format: {
-          type: "json_schema",
-          name: "studio_ia_buyers_strategy",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              audience: { type: "string" },
-              strategy: { type: "string" },
-              copy: { type: "string" },
-              cta: { type: "string" },
-              timeline: {
-                type: "array",
-                minItems: 3,
-                maxItems: 3,
-                items: { type: "string" },
-              },
-              reach: { type: "string" },
-              leads: { type: "string" },
-            },
-            required: ["audience", "strategy", "copy", "cta", "timeline", "reach", "leads"],
-          },
-        },
+        verbosity: "low",
+        format: zodTextFormat(studioBuyerResultSchema, "studio_ia_buyers_strategy"),
       },
     },
   })
 
-  return studioBuyerResultSchema.parse(JSON.parse(response.output_text))
+  if (response.status === "incomplete") {
+    console.error("[studio-ia][buyers][openai-response-truncated]", {
+      message: response.incomplete_details?.reason === "max_output_tokens"
+        ? studioBuyerGenerationErrorCodes.maxOutputTokensExceeded
+        : studioBuyerGenerationErrorCodes.incompleteResponse,
+      status: response.status,
+      incompleteDetails: response.incomplete_details,
+      rawResponseText: typeof response.output_text === "string" ? response.output_text.slice(0, 6000) : "",
+      responseOutput: JSON.stringify(response.output ?? []).slice(0, 6000),
+    })
+    throw new Error(
+      response.incomplete_details?.reason === "max_output_tokens"
+        ? studioBuyerGenerationErrorCodes.maxOutputTokensExceeded
+        : studioBuyerGenerationErrorCodes.incompleteResponse,
+    )
+  }
+
+  const outputText = response.output_text.trim()
+  if (!outputText) {
+    throw new Error(studioBuyerGenerationErrorCodes.emptyResponse)
+  }
+
+  let parsedOutput: unknown
+  try {
+    parsedOutput = JSON.parse(outputText)
+  } catch (caughtError) {
+    console.error("[studio-ia][buyers][openai-invalid-json]", {
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+      status: response.status,
+      rawResponseText: outputText.slice(0, 6000),
+    })
+    throw new Error(studioBuyerGenerationErrorCodes.invalidStructuredResponse, { cause: caughtError })
+  }
+
+  const parsedResult = studioBuyerResultSchema.safeParse(parsedOutput)
+  if (!parsedResult.success) {
+    console.error("[studio-ia][buyers][openai-invalid-structure]", {
+      issues: parsedResult.error.issues,
+      status: response.status,
+    })
+    throw new Error(studioBuyerGenerationErrorCodes.invalidStructuredResponse)
+  }
+
+  return parsedResult.data
 }

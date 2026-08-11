@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, ArrowRight, Building2, Construction, Home, Map } from "lucide-react"
+import { ArrowLeft, Building2, Construction, Map } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
@@ -49,23 +49,6 @@ export function BrokerStudioIaVisualizeProjectPage() {
             )
           })}
         </section>
-
-        <Card className="rounded-[1.5rem] border-[#009b3a]/14 bg-[#f8fdf9] py-0">
-          <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="flex min-w-0 items-start gap-4">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[#009b3a]"><Home className="size-5" /></span>
-              <div>
-                <p className="font-semibold text-[#050505]">Fluxo atual: obra → imóvel pronto</p>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                  A geração já existente continua disponível sem alterações. Resultados dessa categoria devem ser tratados como representação ilustrativa gerada por IA.
-                </p>
-              </div>
-            </div>
-            <Button asChild className="h-11 shrink-0 rounded-xl bg-[#009b3a] px-5 text-white hover:bg-[#008633]">
-              <Link href="/corretor/studio-ia/transformar-obra-em-imovel-pronto">Abrir fluxo atual<ArrowRight className="size-4" /></Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </BrokerPageShell>
   )

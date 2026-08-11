@@ -9,7 +9,7 @@ import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, pro
 import { prisma } from "@/lib/prisma"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
-import { generateBuyerStrategy, studioBuyerRequestSchema } from "@/lib/studio-ia-buyers"
+import { generateBuyerStrategy, studioBuyerGenerationErrorCodes, studioBuyerRequestSchema } from "@/lib/studio-ia-buyers"
 
 export const dynamic = "force-dynamic"
 
@@ -181,6 +181,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "A geração de estratégias do Studio IA não está configurada neste ambiente." },
         { status: 503 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message === studioBuyerGenerationErrorCodes.maxOutputTokensExceeded) {
+      return NextResponse.json(
+        { error: "A geração foi interrompida antes de concluir a estratégia. Tente novamente." },
+        { status: 502 },
+      )
+    }
+
+    if (
+      caughtError instanceof Error &&
+      (caughtError.message === studioBuyerGenerationErrorCodes.emptyResponse ||
+        caughtError.message === studioBuyerGenerationErrorCodes.incompleteResponse ||
+        caughtError.message === studioBuyerGenerationErrorCodes.invalidStructuredResponse)
+    ) {
+      return NextResponse.json(
+        { error: "Não foi possível gerar a estratégia agora, tente novamente." },
+        { status: 502 },
       )
     }
 
