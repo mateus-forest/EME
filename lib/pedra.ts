@@ -3,14 +3,14 @@ import "server-only"
 import { z } from "zod"
 
 import { getPedraEnv } from "@/lib/env.server"
-import type { FurnishRoomRequest } from "@/lib/studio-property-preparation"
+import type { PropertyPreparationRequest } from "@/lib/studio-property-preparation"
 
 const PEDRA_API_BASE_URL = "https://app.pedra.ai/api"
 const PEDRA_REQUEST_TIMEOUT_MS = 55_000
 
-const furnishResponseSchema = z.object({
-  output: z.array(z.object({ url: z.string().url() })).min(1),
-})
+const outputImageSchema = z.object({ url: z.string().url() })
+const arrayResponseSchema = z.object({ output: z.array(outputImageSchema).min(1) })
+const objectResponseSchema = z.object({ output: outputImageSchema })
 
 export type PedraErrorCode =
   | "PEDRA_NOT_CONFIGURED"
@@ -59,22 +59,19 @@ function mapPedraHttpError(status: number) {
   return new PedraApiError("PEDRA_PROVIDER_ERROR", "Não foi possível concluir a preparação visual agora.", 502)
 }
 
-export async function furnishRoom(input: FurnishRoomRequest & { imageUrl: string }) {
+async function callPedraImageEndpoint(input: {
+  endpoint: string
+  payload: Record<string, unknown>
+  outputShape: "array" | "object"
+}) {
   const apiKey = ensurePedraConfigured()
-
   let response: Response
 
   try {
-    response = await fetch(`${PEDRA_API_BASE_URL}/furnish`, {
+    response = await fetch(`${PEDRA_API_BASE_URL}/${input.endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        apiKey,
-        imageUrl: input.imageUrl,
-        roomType: input.roomType,
-        style: input.style,
-        creativity: input.creativity,
-      }),
+      body: JSON.stringify({ apiKey, ...input.payload }),
       cache: "no-store",
       signal: AbortSignal.timeout(PEDRA_REQUEST_TIMEOUT_MS),
     })
@@ -85,15 +82,86 @@ export async function furnishRoom(input: FurnishRoomRequest & { imageUrl: string
     throw new PedraApiError("PEDRA_PROVIDER_ERROR", "Não foi possível acessar o serviço de preparação visual.", 502)
   }
 
-  if (!response.ok) {
-    throw mapPedraHttpError(response.status)
-  }
+  if (!response.ok) throw mapPedraHttpError(response.status)
 
   const payload = await response.json().catch(() => null)
-  const parsed = furnishResponseSchema.safeParse(payload)
+  const parsed = input.outputShape === "array"
+    ? arrayResponseSchema.safeParse(payload)
+    : objectResponseSchema.safeParse(payload)
+
   if (!parsed.success) {
     throw new PedraApiError("PEDRA_INVALID_RESPONSE", "O serviço de preparação visual retornou um resultado inválido.", 502)
   }
 
-  return { imageUrl: parsed.data.output[0].url }
+  const output = parsed.data.output
+  return { imageUrl: Array.isArray(output) ? output[0].url : output.url }
+}
+
+export async function executePropertyPreparation(input: PropertyPreparationRequest & { imageUrl: string }) {
+  switch (input.operation) {
+    case "furnish":
+      return callPedraImageEndpoint({
+        endpoint: "furnish",
+        outputShape: "array",
+        payload: {
+          imageUrl: input.imageUrl,
+          roomType: input.roomType,
+          style: input.style,
+          creativity: input.creativity,
+        },
+      })
+    case "empty_room":
+      return callPedraImageEndpoint({ endpoint: "empty_room", outputShape: "array", payload: { imageUrl: input.imageUrl } })
+    case "renovation":
+      return callPedraImageEndpoint({
+        endpoint: "renovation",
+        outputShape: "array",
+        payload: {
+          imageUrl: input.imageUrl,
+          style: input.style,
+          preserveWindows: input.preserveWindows,
+          furnish: input.furnish,
+          ...(input.furnish ? { roomType: input.roomType } : {}),
+          creativity: input.creativity,
+        },
+      })
+    case "edit_via_prompt":
+      return callPedraImageEndpoint({
+        endpoint: "edit_via_prompt",
+        outputShape: "object",
+        payload: { imageUrl: input.imageUrl, prompt: input.prompt },
+      })
+    case "enhance":
+      return callPedraImageEndpoint({
+        endpoint: "enhance",
+        outputShape: "array",
+        payload: {
+          imageUrl: input.imageUrl,
+          highFidelity: input.highFidelity,
+          preserveOriginalFraming: input.preserveOriginalFraming,
+        },
+      })
+    case "enhance_and_correct_perspective":
+      return callPedraImageEndpoint({
+        endpoint: "enhance_and_correct_perspective",
+        outputShape: "array",
+        payload: {
+          imageUrl: input.imageUrl,
+          highFidelity: input.highFidelity,
+          preserveOriginalFraming: input.preserveOriginalFraming,
+        },
+      })
+    case "sky_blue":
+      return callPedraImageEndpoint({
+        endpoint: "sky_blue",
+        outputShape: "object",
+        payload: { imageUrl: input.imageUrl, skyStyle: input.skyStyle },
+      })
+    case "blur":
+      return callPedraImageEndpoint({
+        endpoint: "blur",
+        outputShape: "object",
+        payload: { imageUrl: input.imageUrl, objectsToBlur: input.objectsToBlur },
+      })
+  }
 }

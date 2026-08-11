@@ -53,6 +53,7 @@ type WorkspaceRef =
   | { workspaceType: "AGENCY"; brokerId: null; agencyId: string }
 
 export type StudioCampaignAssetDraft = {
+  id?: string
   assetKey: string
   label?: string
   type: StudioCampaignAssetType
@@ -69,6 +70,7 @@ export type StudioCampaignAssetDraft = {
 }
 
 export type StudioCampaignDraft = {
+  id?: string
   kind: StudioCampaignKind
   status?: StudioCampaignStatus
   goal?: string | null
@@ -285,6 +287,7 @@ export async function createStudioCampaign(user: AuthenticatedStudioUser, draft:
   const workspace = resolveWorkspace(user)
   const campaign = await prisma.studioCampaign.create({
     data: {
+      id: draft.id,
       workspaceType: workspace.workspaceType,
       brokerId: workspace.brokerId,
       agencyId: workspace.agencyId,
@@ -303,6 +306,7 @@ export async function createStudioCampaign(user: AuthenticatedStudioUser, draft:
       createdByUserId: user.id,
       assets: {
         create: draft.assets.map((asset) => ({
+          id: asset.id,
           assetKey: asset.assetKey,
           label: toNullableString(asset.label),
           type: asset.type,
