@@ -287,18 +287,50 @@ async function createLumaImageGeneration(payload: LumaImageGenerationCreateReque
   return parseLumaJsonResponse<LumaGeneration>(response)
 }
 
-async function getLumaGeneration(generationId: string, stage: StudioVideoActiveStage) {
-  const suffix = stage === "preview" ? "image" : ""
-  const response = await fetch(
-    suffix ? `${LUMA_API_BASE_URL}/generations/${suffix}/${generationId}` : `${LUMA_API_BASE_URL}/generations/${generationId}`,
-    {
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const LUMA_STATUS_RETRY_DELAYS_MS = [800, 1600, 3200]
+
+// A Luma tem um unico recurso "generations": a criacao usa endpoints separados
+// (POST /generations para video, POST /generations/image para imagem), mas a consulta de status
+// e sempre GET /generations/{id}, seja qual for o tipo — o corpo retornado ja diferencia via
+// assets.image/assets.video (mesmo formato que refreshStudioVideoJob ja le abaixo). Usar
+// GET /generations/image/{id} para a etapa de previa nao existe na API da Luma e sempre retornava
+// 404 "Not Found" nessa etapa — nao era uma condicao de corrida, era URL errada.
+//
+// Mesmo com a URL corrigida, um 404/5xx pontual logo apos a criacao (ou uma instabilidade
+// passageira do lado da Luma) ainda pode acontecer — mantemos um retry curto com backoff aqui
+// (nao no cliente) para nao derrubar o job inteiro por causa de uma unica consulta de status
+// transitoria. Isso e so uma checagem de status: nao dispara nova geracao nem cobra credito.
+async function getLumaGeneration(generationId: string) {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt <= LUMA_STATUS_RETRY_DELAYS_MS.length; attempt++) {
+    const response = await fetch(`${LUMA_API_BASE_URL}/generations/${generationId}`, {
       method: "GET",
       headers: getLumaAuthHeaders(),
       cache: "no-store",
-    },
-  )
+    })
 
-  return parseLumaJsonResponse<LumaGeneration>(response)
+    const isRetryableStatus = response.status === 404 || response.status >= 500
+    if (!isRetryableStatus) {
+      return parseLumaJsonResponse<LumaGeneration>(response)
+    }
+
+    try {
+      return await parseLumaJsonResponse<LumaGeneration>(response)
+    } catch (caughtError) {
+      lastError = caughtError
+    }
+
+    const delayMs = LUMA_STATUS_RETRY_DELAYS_MS[attempt]
+    if (delayMs === undefined) break
+    await delay(delayMs)
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Luma AI nao respondeu a consulta de status.")
 }
 
 async function resolveReferenceImageUrl(referenceInput: ReferenceInput, propertyId?: string) {
@@ -1227,7 +1259,7 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent): Promise
   const providerJobId = activeStage === "preview" ? job.providerImageId : job.providerVideoId
   if (!providerJobId) return job
 
-  const generation = await getLumaGeneration(providerJobId, activeStage)
+  const generation = await getLumaGeneration(providerJobId)
 
   if (generation.failure_reason) {
     logStudioVideoMetric("provider-failure", {

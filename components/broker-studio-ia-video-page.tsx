@@ -200,6 +200,7 @@ export function BrokerStudioIaVideoPage() {
     if (!generatedResult?.requestId || currentStep !== "processing") return
 
     let cancelled = false
+    let consecutiveFailures = 0
     const intervalId = window.setInterval(async () => {
       try {
         const response = await fetch(`/api/studio-ia/video?requestId=${encodeURIComponent(generatedResult.requestId)}`, {
@@ -213,6 +214,7 @@ export function BrokerStudioIaVideoPage() {
 
         const parsed = studioVideoResultSchema.parse(data)
         if (cancelled) return
+        consecutiveFailures = 0
 
         setGeneratedResult(parsed)
 
@@ -242,11 +244,16 @@ export function BrokerStudioIaVideoPage() {
         }
       } catch (caughtError) {
         if (cancelled) return
+
+        // Uma unica falha na consulta de status (rede instavel, blip do provedor) nao deve
+        // derrubar o fluxo inteiro — so desiste apos algumas tentativas seguidas falharem. Isso e
+        // so uma checagem de status: as tentativas extras nao geram nova cobranca de creditos.
+        consecutiveFailures += 1
+        if (consecutiveFailures < 3) return
+
         setCurrentStep(generatedResult.requestKind === "transformation_pipeline" ? "preview" : "review")
         setIsSubmitting(false)
-        setGenerationError(
-          caughtError instanceof Error ? caughtError.message : "Não foi possível acompanhar a geração do vídeo.",
-        )
+        setGenerationError(formatStudioVideoPollingError(caughtError))
         window.clearInterval(intervalId)
       }
     }, 4000)
@@ -409,6 +416,16 @@ export function BrokerStudioIaVideoPage() {
       setCurrentStep("review")
       setIsSubmitting(false)
     }
+  }
+
+  // Retoma a checagem de status do mesmo job (mesmo requestId) sem criar uma nova geracao —
+  // usado quando a consulta de status falhou mas o briefing/previa ja gerados nao devem ser
+  // perdidos. Nao cobra credito: e so uma nova tentativa de leitura de status.
+  function retryStatusCheck() {
+    if (!generatedResult?.requestId) return
+    setGenerationError("")
+    setIsSubmitting(true)
+    setCurrentStep("processing")
   }
 
   async function approvePreview() {
@@ -1209,6 +1226,17 @@ export function BrokerStudioIaVideoPage() {
                         {isApprovingPreview ? "Aprovando..." : "Aprovar previa"}
                       </Button>
                     ) : null}
+                    {generationError && !generatedResult.previewImageUrl ? (
+                      <Button
+                        type="button"
+                        onClick={retryStatusCheck}
+                        disabled={isSubmitting}
+                        className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white hover:bg-[#008633]"
+                      >
+                        <RefreshCcw className="size-4" />
+                        Tentar novamente
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
                       variant="ghost"
@@ -1437,4 +1465,18 @@ function PreviewImageCard({
 
 function videoStepOrder(step: StudioVideoStep) {
   return stepLabels.findIndex((item) => item.id === step)
+}
+
+// Mensagens tecnicas cruas (ex.: "Not Found" de uma falha de rede/provedor) nao ajudam o
+// corretor a entender o que fazer. Falhas com uma explicacao real do provedor (ex.: motivo de
+// recusa da Luma) continuam sendo mostradas como vieram, pois sao informativas.
+function formatStudioVideoPollingError(caughtError: unknown) {
+  const message = caughtError instanceof Error ? caughtError.message : ""
+  const isGenericTechnicalMessage = !message || /^(not found|erro \d+|internal server error)$/i.test(message.trim())
+
+  if (isGenericTechnicalMessage) {
+    return "Não conseguimos confirmar o status desta etapa agora. Tente novamente em instantes — seu briefing e a prévia já geradas não foram perdidos."
+  }
+
+  return message
 }
