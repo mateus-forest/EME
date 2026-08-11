@@ -61,6 +61,7 @@ import {
   isVisualAsset,
   getStudioStatusTone,
 } from "@/lib/studio-campaigns-ui"
+import { getStudioNextActionLinks, isProjectVisualization } from "@/lib/studio-asset-context"
 import { cn } from "@/lib/utils"
 
 type AssetRecord = StudioCampaignRecord["assets"][number]
@@ -557,6 +558,8 @@ function AssetCard({
   const regenerateHref = regenerateBasePath
     ? `${regenerateBasePath}?propertyId=${encodeURIComponent(campaign.propertyId ?? "")}&campaignId=${encodeURIComponent(campaign.id)}&assetKey=${encodeURIComponent(asset.assetKey)}`
     : null
+  const nextActions = getStudioNextActionLinks(campaign, asset)
+  const illustrative = isProjectVisualization(campaign, asset)
 
   return (
     <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/92 py-0">
@@ -582,6 +585,7 @@ function AssetCard({
       </div>
 
       <CardContent className="grid gap-4 p-5">
+        {illustrative ? <div className="rounded-xl border border-[#009b3a]/14 bg-[#f4fbf6] px-3 py-2 text-xs text-[#356047]">Representação ilustrativa gerada por IA</div> : null}
         {isVisualAsset(campaign, asset) && previewSrc ? (
           <button
             type="button"
@@ -674,12 +678,13 @@ function AssetCard({
           <Button
             type="button"
             onClick={onApprove}
-            disabled={isUpdating}
+            disabled={isUpdating || asset.status === "APPROVED"}
             className="h-8.5 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,155,58,0.16)] hover:bg-[#008633] hover:shadow-[0_12px_28px_rgba(0,155,58,0.2)]"
           >
             <Check className="size-4" />
-            Aprovar
+            {asset.status === "APPROVED" ? "Aprovado" : "Aprovar"}
           </Button>
+          {nextActions.map((action) => <Button key={action.href} asChild variant="outline" className="h-8 rounded-xl border-[#009b3a]/18 bg-[#f7fbf8] px-3 text-sm text-[#174c2f]"><Link href={action.href}>{action.label}<ArrowUpRight className="size-4" /></Link></Button>)}
           <Button
             type="button"
             variant="outline"

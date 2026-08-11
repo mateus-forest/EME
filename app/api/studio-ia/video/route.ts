@@ -213,14 +213,30 @@ async function resolveApprovedPreparedAsset(sourceAssetId: string, brokerId: str
       type: "IMAGE",
       status: "APPROVED",
       campaign: {
-        kind: "PROPERTY_PREPARATION",
+        kind: { in: ["PROPERTY_PREPARATION", "CONSTRUCTION"] },
         brokerId,
       },
     },
     select: {
       fileUrl: true,
+      content: true,
+      metadata: true,
+      campaign: { select: { metadata: true } },
     },
   })
+}
+
+function asMetadataRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function getApprovedAssetSourceUrl(asset: NonNullable<Awaited<ReturnType<typeof resolveApprovedPreparedAsset>>>) {
+  const candidates = [
+    asMetadataRecord(asset.metadata).sourceImageUrl,
+    asMetadataRecord(asset.content).sourceImageUrl,
+    asMetadataRecord(asset.campaign.metadata).sourceImageUrl,
+  ]
+  return candidates.find((value): value is string => typeof value === "string" && value.startsWith("https://")) ?? null
 }
 
 async function getVideoSource(input: {
@@ -235,6 +251,8 @@ async function getVideoSource(input: {
     const digest = createHash("sha256").update(buffer).digest("hex")
     return {
       referenceInput: { kind: "file" as const, file: uploadedFile },
+      targetReferenceUrl: undefined,
+      sourceIllustrative: false,
       signatureSeed: `upload:${uploadedFile.type}:${uploadedFile.size}:${digest}`,
     }
   }
@@ -247,9 +265,14 @@ async function getVideoSource(input: {
     if (!asset?.fileUrl || asset.fileUrl !== selectedUrl) {
       throw new Error("PREPARED_ASSET_MISMATCH")
     }
+    const originalUrl = getApprovedAssetSourceUrl(asset)
+    if (!originalUrl) throw new Error("PREPARED_ASSET_SOURCE_MISSING")
     return {
-      referenceInput: { kind: "url" as const, url: asset.fileUrl },
-      signatureSeed: `prepared:${input.payload.sourceAssetId}:${asset.fileUrl}`,
+      referenceInput: { kind: "url" as const, url: originalUrl },
+      targetReferenceUrl: asset.fileUrl,
+      sourceIllustrative: asMetadataRecord(asset.metadata).illustrative === true
+        || asMetadataRecord(asset.campaign.metadata).illustrative === true,
+      signatureSeed: `approved-pair:${input.payload.sourceAssetId}:${originalUrl}:${asset.fileUrl}`,
     }
   }
 
@@ -263,6 +286,8 @@ async function getVideoSource(input: {
 
   return {
     referenceInput: { kind: "url" as const, url: selectedUrl },
+    targetReferenceUrl: undefined,
+    sourceIllustrative: false,
     signatureSeed: `property:${input.property.id}:${selectedUrl}`,
   }
 }
@@ -599,7 +624,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao consultar o video." },
+      { error: "Não foi possível consultar o vídeo agora." },
       { status: 500 },
     )
   }
@@ -629,6 +654,12 @@ export async function POST(request: NextRequest) {
 
     if (action === "create") {
       const { payload, uploadedFiles } = await parseVideoRequestForm(request)
+      if (payload.provider !== "lumaai") {
+        return NextResponse.json(
+          { error: "A IA selecionada ainda não suporta com segurança o frame original e o frame final deste projeto." },
+          { status: 409 },
+        )
+      }
       const accessible = payload.propertyId ? await resolveAccessibleProperty(payload.propertyId, user) : null
       if (accessible instanceof NextResponse) return accessible
 
@@ -725,6 +756,7 @@ export async function POST(request: NextRequest) {
             input: payload,
             property,
             referenceInput: source.referenceInput,
+            targetReferenceUrl: source.targetReferenceUrl,
             requestSignature,
           }),
       )
@@ -751,6 +783,10 @@ export async function POST(request: NextRequest) {
           rhythm: payload.rhythm,
           cameraMovement: payload.cameraMovement,
           sourceAssetId: payload.sourceAssetId ?? null,
+          sourceImageUrl: created.jobContent.sourceReferenceUrl ?? null,
+          resultImageUrl: created.jobContent.targetReferenceUrl ?? null,
+          providerCapability: "video.start_end_transition",
+          sourceIllustrative: source.sourceIllustrative,
           referenceImageUrls: created.jobContent.referenceImageUrls,
           uploadedImages: payload.uploadedImages,
         },
@@ -1056,12 +1092,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A imagem preparada nao esta aprovada ou nao pertence a sua Biblioteca." }, { status: 400 })
     }
 
+    if (caughtError instanceof Error && caughtError.message === "PREPARED_ASSET_SOURCE_MISSING") {
+      return NextResponse.json({ error: "O projeto aprovado não preserva a imagem original necessária para criar o vídeo." }, { status: 400 })
+    }
+
     if (caughtError instanceof Error && caughtError.message === "VIDEO_SOURCE_REQUIRED") {
       return NextResponse.json({ error: "Selecione uma imagem principal para criar o video." }, { status: 400 })
     }
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao preparar a geracao de video." },
+      { error: "Não foi possível iniciar a geração do vídeo agora." },
       { status: 500 },
     )
   } finally {
@@ -1194,7 +1234,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao salvar o video." },
+      { error: "Não foi possível atualizar o vídeo agora." },
       { status: 500 },
     )
   }

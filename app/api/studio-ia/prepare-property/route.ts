@@ -21,6 +21,10 @@ import {
   saveStudioPropertyPreparationReferenceImage,
 } from "@/lib/property-storage"
 import { createStudioCampaign, getStudioCampaignById } from "@/lib/studio-campaigns"
+import { getStudioCapabilityProviders, type StudioCapabilityId } from "@/lib/studio-provider-catalog"
+import { editOpenAIImage, OpenAIImageProviderError } from "@/lib/studio-providers/openai-image"
+import type { StudioProviderResult, StudioImageProviderOutput } from "@/lib/studio-providers/types"
+import { editXaiImage, XAIProviderError } from "@/lib/studio-providers/xai"
 import {
   getPropertyPreparationExternalCredits,
   getPropertyPreparationOperation,
@@ -38,6 +42,9 @@ const MAX_MASK_BYTES = 20 * 1024 * 1024
 const ACTIVE_GENERATION_TTL_MS = 3 * 60 * 1000
 const IDEMPOTENCY_KEY_SCHEMA = z.string().uuid()
 const LOCK_ASSET_KEY = "__property_preparation_generation_lock__"
+const PREPARATION_PROVIDER_SCHEMA = z.enum(["pedra", "openai", "xai"])
+
+type PreparationProvider = z.infer<typeof PREPARATION_PROVIDER_SCHEMA>
 
 type AuthenticatedUser = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>
 type StudioCampaignResponse = NonNullable<Awaited<ReturnType<typeof getStudioCampaignById>>>
@@ -272,6 +279,79 @@ async function downloadGeneratedImage(imageUrl: string) {
   return { buffer, mimeType: validated.mimeType }
 }
 
+async function normalizeGeneratedImage(
+  generated: StudioProviderResult<StudioImageProviderOutput>,
+) {
+  if (generated.data.base64) {
+    const buffer = Buffer.from(generated.data.base64, "base64")
+    if (buffer.byteLength === 0 || buffer.byteLength > MAX_RESULT_BYTES) {
+      throw new PreparationRouteError("INVALID_RESULT_FILE", "O serviço visual retornou uma imagem inválida.", 502)
+    }
+    const validated = await validateUploadedImage(buffer).catch(() => {
+      throw new PreparationRouteError("INVALID_RESULT_FILE", "O serviço visual retornou uma imagem inválida.", 502)
+    })
+    return { buffer, mimeType: validated.mimeType }
+  }
+
+  if (!generated.data.url) {
+    throw new PreparationRouteError("INVALID_RESULT_FILE", "O serviço visual não retornou uma imagem válida.", 502)
+  }
+  return downloadGeneratedImage(generated.data.url)
+}
+
+function getPreparationCapability(operation: PropertyPreparationRequest["operation"]): StudioCapabilityId {
+  return `property_preparation.${operation === "enhance_and_correct_perspective" ? "perspective" : operation}` as StudioCapabilityId
+}
+
+function getPreparationProvider(formData: FormData, configuration: PropertyPreparationRequest) {
+  const provider = PREPARATION_PROVIDER_SCHEMA.parse(formData.get("provider") ?? "pedra")
+  const available = getStudioCapabilityProviders(getPreparationCapability(configuration.operation), ["active", "adapter_ready"])
+  if (!available.some((entry) => entry.provider === provider)) {
+    throw new PreparationRouteError(
+      "PROVIDER_NOT_COMPATIBLE",
+      "A IA selecionada não é compatível com esta preparação.",
+      400,
+    )
+  }
+  return provider
+}
+
+async function executePreparationProvider(input: {
+  provider: PreparationProvider
+  configuration: PropertyPreparationRequest
+  imageUrl: string
+  maskUrl?: string
+}): Promise<StudioProviderResult<StudioImageProviderOutput>> {
+  if (input.provider === "pedra") {
+    const generated = await executePropertyPreparation({
+      ...input.configuration,
+      imageUrl: input.imageUrl,
+      maskUrl: input.maskUrl,
+    })
+    return {
+      provider: "pedra",
+      model: input.configuration.operation,
+      capability: getPreparationCapability(input.configuration.operation),
+      status: "completed",
+      data: { url: generated.imageUrl },
+      durationMs: generated.providerDurationMs,
+      externalRequestId: null,
+      costUsd: null,
+      costSource: "unavailable",
+      metadata: { providerHttpStatus: generated.providerHttpStatus },
+    }
+  }
+
+  if (input.configuration.operation !== "edit_via_prompt") {
+    throw new PreparationRouteError("PROVIDER_NOT_COMPATIBLE", "A IA selecionada não executa esta preparação.", 400)
+  }
+
+  if (input.provider === "openai") {
+    return editOpenAIImage({ imageUrl: input.imageUrl, prompt: input.configuration.prompt })
+  }
+  return editXaiImage({ imageUrl: input.imageUrl, prompt: input.configuration.prompt })
+}
+
 function getConfiguration(formData: FormData) {
   return propertyPreparationRequestSchema.parse({
     operation: formData.get("operation"),
@@ -393,6 +473,7 @@ async function claimGeneration(input: {
   propertyId: string | null
   sourceType: "property" | "upload"
   sourceImageUrl: string | null
+  provider: PreparationProvider
   configuration: PropertyPreparationRequest
   startedAt: string
   maskMetadata?: { hash: string; width: number; height: number; bytes: number } | null
@@ -409,15 +490,17 @@ async function claimGeneration(input: {
   }
 
   const operation = getPropertyPreparationOperation(input.configuration.operation)
-  const externalCredits = getPropertyPreparationExternalCredits(input.configuration)
+  const externalCredits = input.provider === "pedra" ? getPropertyPreparationExternalCredits(input.configuration) : null
   const metadata = {
     origin: input.sourceType === "property" ? "property_photo" : "direct_upload",
     sourceImageUrl: input.sourceImageUrl,
     resultImageUrl: null,
     transformation: input.configuration.operation,
     parameters: getParameters(input.configuration),
-    providerInternal: "pedra",
-    providerOperation: `/api/${input.configuration.operation}`,
+    providerInternal: input.provider,
+    providerOperation: input.provider === "pedra"
+      ? `/api/${input.configuration.operation}`
+      : "POST /v1/images/edits",
     processingStatus: "processing",
     startedAt: input.startedAt,
     completedAt: null,
@@ -449,8 +532,8 @@ async function claimGeneration(input: {
       goal: operation.label,
       visualIdentity: getVisualIdentity(input.configuration),
       version: 1,
-      provider: "EME",
-      model: "Preparação visual",
+      provider: input.provider,
+      model: input.provider === "pedra" ? input.configuration.operation : null,
       prompt: getGenerationPrompt(input.configuration),
       sourceRoute: "/api/studio-ia/prepare-property",
       propertyId: input.propertyId,
@@ -460,8 +543,8 @@ async function claimGeneration(input: {
         assetKey: LOCK_ASSET_KEY,
         label: "Processamento",
         type: "IMAGE",
-        provider: "EME",
-        model: "Preparação visual",
+        provider: input.provider,
+        model: input.provider === "pedra" ? input.configuration.operation : null,
         status: "DRAFT",
         content: { internalType: "idempotency_lock" },
       }],
@@ -512,6 +595,8 @@ async function markGenerationFailed(input: {
 async function recordPreparationTelemetry(input: {
   user: AuthenticatedUser
   configuration: PropertyPreparationRequest
+  provider: PreparationProvider
+  providerModel?: string | null
   status: "completed" | "failed"
   durationMs: number
   workflowId: string
@@ -521,6 +606,8 @@ async function recordPreparationTelemetry(input: {
   providerRequestStarted: boolean
   providerHttpStatus?: number
   providerDurationMs?: number
+  externalCostUsd?: number | null
+  externalRequestId?: string | null
 }) {
   const operation = getPropertyPreparationOperation(input.configuration.operation)
   await recordAiOperationTelemetry({
@@ -530,8 +617,8 @@ async function recordPreparationTelemetry(input: {
     capability: operation.label,
     handler: "POST",
     route: "/api/studio-ia/prepare-property",
-    provider: "pedra",
-    model: input.configuration.operation,
+    provider: input.provider,
+    model: input.providerModel ?? input.configuration.operation,
     status: input.status,
     errorCode: input.errorCode ?? null,
     source: "portal",
@@ -551,7 +638,12 @@ async function recordPreparationTelemetry(input: {
       providerRequestStarted: input.providerRequestStarted,
       providerHttpStatus: input.providerHttpStatus ?? null,
       providerDurationMs: input.providerDurationMs ?? null,
-      externalCredits: input.status === "completed" ? getPropertyPreparationExternalCredits(input.configuration) : null,
+      externalCredits:
+        input.status === "completed" && input.provider === "pedra"
+          ? getPropertyPreparationExternalCredits(input.configuration)
+          : null,
+      externalCostUsd: input.externalCostUsd ?? null,
+      externalRequestId: input.externalRequestId ?? null,
       emeCreditsCharged: false,
     },
   })
@@ -594,11 +686,11 @@ export async function POST(request: NextRequest) {
   let lockId: string | null = null
   let claimedMetadata: Record<string, unknown> | null = null
   let configuration: PropertyPreparationRequest | null = null
+  let provider: PreparationProvider | null = null
   let sourceType: "property" | "upload" | null = null
   let providerRequestStarted = false
 
   try {
-    ensurePedraConfigured()
     const formData = await request.formData()
     const rawSourceType = formData.get("sourceType")
     if (rawSourceType !== "property" && rawSourceType !== "upload") {
@@ -606,6 +698,8 @@ export async function POST(request: NextRequest) {
     }
     sourceType = rawSourceType
     configuration = getConfiguration(formData)
+    provider = getPreparationProvider(formData, configuration)
+    if (provider === "pedra") ensurePedraConfigured()
     const idempotencyKey = IDEMPOTENCY_KEY_SCHEMA.parse(formData.get("idempotencyKey"))
 
     let property: Awaited<ReturnType<typeof resolveAccessibleProperty>> | null = null
@@ -655,7 +749,7 @@ export async function POST(request: NextRequest) {
       maskMetadata = await validateAndNormalizeMask(mask, sourceDimensions)
     }
 
-    const signature = sha256(JSON.stringify({ sourceIdentity, configuration, maskHash: maskMetadata?.hash ?? null }))
+    const signature = sha256(JSON.stringify({ sourceIdentity, provider, configuration, maskHash: maskMetadata?.hash ?? null }))
     const ids = getRequestIds(workspaceKey(user), idempotencyKey, signature)
     campaignId = ids.campaignId
     lockId = ids.lockId
@@ -669,6 +763,7 @@ export async function POST(request: NextRequest) {
       propertyId: property?.id ?? null,
       sourceType,
       sourceImageUrl,
+      provider,
       configuration,
       startedAt,
       maskMetadata,
@@ -702,16 +797,21 @@ export async function POST(request: NextRequest) {
     }
 
     providerRequestStarted = true
-    let generated: Awaited<ReturnType<typeof executePropertyPreparation>>
+    let generated: Awaited<ReturnType<typeof executePreparationProvider>>
     try {
-      generated = await executePropertyPreparation({ ...configuration, imageUrl: sourceImageUrl, maskUrl: persistedMaskUrl ?? undefined })
+      generated = await executePreparationProvider({
+        provider,
+        configuration,
+        imageUrl: sourceImageUrl,
+        maskUrl: persistedMaskUrl ?? undefined,
+      })
     } finally {
       if (persistedMaskUrl) {
         await deletePropertyStorageFile(persistedMaskUrl)
         persistedMaskUrl = null
       }
     }
-    const downloaded = await downloadGeneratedImage(generated.imageUrl)
+    const downloaded = await normalizeGeneratedImage(generated)
 
     try {
       persistedResultUrl = await savePropertyGeneratedImage(property?.id ?? campaignId, downloaded.buffer, downloaded.mimeType)
@@ -721,7 +821,7 @@ export async function POST(request: NextRequest) {
 
     const completedAt = new Date().toISOString()
     const parameters = getParameters(configuration)
-    const externalCredits = getPropertyPreparationExternalCredits(configuration)
+    const externalCredits = provider === "pedra" ? getPropertyPreparationExternalCredits(configuration) : null
     const completedMetadata = {
       ...claimedMetadata,
       sourceImageUrl,
@@ -729,8 +829,12 @@ export async function POST(request: NextRequest) {
       processingStatus: "completed",
       completedAt,
       externalCredits,
-      providerHttpStatus: generated.providerHttpStatus,
-      providerDurationMs: generated.providerDurationMs,
+      providerInternal: provider,
+      providerModel: generated.model,
+      providerHttpStatus: generated.metadata?.providerHttpStatus ?? null,
+      providerDurationMs: generated.durationMs,
+      externalRequestId: generated.externalRequestId ?? null,
+      externalCostUsd: generated.costUsd ?? null,
     }
 
     try {
@@ -746,8 +850,8 @@ export async function POST(request: NextRequest) {
             assetKey: `prepared_${configuration!.operation}`,
             label: getAssetLabel(configuration!),
             type: "IMAGE",
-            provider: "EME",
-            model: "Preparação visual",
+            provider,
+            model: generated.model,
             fileUrl: persistedResultUrl,
             thumbnailUrl: persistedResultUrl,
             status: "PENDING_REVIEW",
@@ -762,8 +866,8 @@ export async function POST(request: NextRequest) {
               propertyId: property?.id ?? null,
               sourceImageUrl,
               resultImageUrl: persistedResultUrl,
-              providerInternal: "pedra",
-              providerOperation: `/api/${configuration!.operation}`,
+              providerInternal: provider,
+              providerOperation: provider === "pedra" ? `/api/${configuration!.operation}` : "POST /v1/images/edits",
               ...(maskMetadata ? {
                 maskHash: maskMetadata.hash,
                 maskWidth: maskMetadata.width,
@@ -772,8 +876,10 @@ export async function POST(request: NextRequest) {
                 maskRetainedInStorage: false,
               } : {}),
               externalCredits,
-              providerHttpStatus: generated.providerHttpStatus,
-              providerDurationMs: generated.providerDurationMs,
+              providerHttpStatus: generated.metadata?.providerHttpStatus ?? null,
+              providerDurationMs: generated.durationMs,
+              externalRequestId: generated.externalRequestId ?? null,
+              externalCostUsd: generated.costUsd ?? null,
               creditsConsumed: null,
               emeCreditsCharged: false,
               startedAt,
@@ -796,14 +902,20 @@ export async function POST(request: NextRequest) {
     await recordPreparationTelemetry({
       user,
       configuration,
+      provider,
+      providerModel: generated.model,
       status: "completed",
       durationMs: Date.now() - startedAtMs,
       workflowId: campaignId,
       sourceType,
       storageBytes: downloaded.buffer.byteLength,
       providerRequestStarted,
-      providerHttpStatus: generated.providerHttpStatus,
-      providerDurationMs: generated.providerDurationMs,
+      providerHttpStatus: typeof generated.metadata?.providerHttpStatus === "number"
+        ? generated.metadata.providerHttpStatus
+        : undefined,
+      providerDurationMs: generated.durationMs,
+      externalCostUsd: generated.costUsd,
+      externalRequestId: generated.externalRequestId,
     })
 
     return campaignStateResponse(campaign, false)
@@ -812,7 +924,10 @@ export async function POST(request: NextRequest) {
     if (persistedResultUrl) await deletePropertyStorageFile(persistedResultUrl)
     if (persistedSourceUrl) await deletePropertyStorageFile(persistedSourceUrl)
 
-    const errorCode = caughtError instanceof PedraApiError || caughtError instanceof PreparationRouteError
+    const errorCode = caughtError instanceof PedraApiError
+      || caughtError instanceof PreparationRouteError
+      || caughtError instanceof OpenAIImageProviderError
+      || caughtError instanceof XAIProviderError
       ? caughtError.code
       : caughtError instanceof ZodError
         ? "INPUT_INVALID"
@@ -828,6 +943,7 @@ export async function POST(request: NextRequest) {
       await recordPreparationTelemetry({
         user,
         configuration,
+        provider: provider ?? "pedra",
         status: "failed",
         durationMs: Date.now() - startedAtMs,
         workflowId: campaignId,
@@ -839,7 +955,12 @@ export async function POST(request: NextRequest) {
 
     console.error("[api][studio-ia][prepare-property] generation failed", { errorCode })
 
-    if (caughtError instanceof PedraApiError || caughtError instanceof PreparationRouteError) {
+    if (
+      caughtError instanceof PedraApiError
+      || caughtError instanceof PreparationRouteError
+      || caughtError instanceof OpenAIImageProviderError
+      || caughtError instanceof XAIProviderError
+    ) {
       return noStoreJson({ error: caughtError.message, code: errorCode }, caughtError.status)
     }
     if (caughtError instanceof ZodError) {

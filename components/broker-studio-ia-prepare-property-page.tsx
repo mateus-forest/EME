@@ -3,7 +3,7 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Check, ImagePlus, Library, LoaderCircle, Sparkles, Upload, Video } from "lucide-react"
+import { ArrowLeft, Check, ImagePlus, Library, LoaderCircle, Megaphone, Sparkles, Upload, Video } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { StudioObjectMaskEditor, type ObjectMaskValue } from "@/components/studio-object-mask-editor"
@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
+import { getStudioCapabilityProviders, STUDIO_PROVIDER_LABELS, type StudioCapabilityId } from "@/lib/studio-provider-catalog"
+import type { StudioProviderId } from "@/lib/studio-providers/types"
 import {
   getPropertyPreparationOperation,
   propertyPreparationBlurTargets,
@@ -29,6 +31,17 @@ import {
 import { cn } from "@/lib/utils"
 
 type SourceMode = "property" | "upload"
+type PreparationProvider = Extract<StudioProviderId, "pedra" | "openai" | "xai">
+
+const providerDescriptions: Record<PreparationProvider, string> = {
+  pedra: "Especializada em transformação imobiliária e preservação do ambiente.",
+  openai: "Versátil para edições visuais orientadas por instrução.",
+  xai: "Alternativa criativa para edição e transformação visual.",
+}
+
+function operationCapability(operation: PropertyPreparationOperation): StudioCapabilityId {
+  return `property_preparation.${operation === "enhance_and_correct_perspective" ? "perspective" : operation}` as StudioCapabilityId
+}
 
 type UploadedImage = {
   file: File
@@ -85,6 +98,7 @@ export function BrokerStudioIaPreparePropertyPage() {
   const [selectedImage, setSelectedImage] = useState("")
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null)
   const [operation, setOperation] = useState<PropertyPreparationOperation>("furnish")
+  const [selectedProvider, setSelectedProvider] = useState<PreparationProvider>("pedra")
   const [roomType, setRoomType] = useState("Living room")
   const [style, setStyle] = useState("Modern")
   const [creativity, setCreativity] = useState("Medium")
@@ -107,6 +121,12 @@ export function BrokerStudioIaPreparePropertyPage() {
     [properties, selectedPropertyId],
   )
   const selectedOperation = getPropertyPreparationOperation(operation)
+  const availableProviders = useMemo(
+    () => getStudioCapabilityProviders(operationCapability(operation), ["active", "adapter_ready"])
+      .map((entry) => entry.provider)
+      .filter((provider): provider is PreparationProvider => provider === "pedra" || provider === "openai" || provider === "xai"),
+    [operation],
+  )
   const resultAsset = campaign?.assets.find((asset) => asset.type === "IMAGE" && Boolean(asset.fileUrl)) ?? null
   const resultImageUrl = resultAsset?.fileUrl ?? null
   const sourcePreviewUrl = sourceMode === "property" ? selectedImage : uploadedImage?.url ?? ""
@@ -129,6 +149,8 @@ export function BrokerStudioIaPreparePropertyPage() {
 
   function handleOperationChange(nextOperation: PropertyPreparationOperation) {
     setOperation(nextOperation)
+    const nextProvider = getStudioCapabilityProviders(operationCapability(nextOperation), ["active", "adapter_ready"])[0]?.provider
+    setSelectedProvider(nextProvider === "openai" || nextProvider === "xai" ? nextProvider : "pedra")
     setObjectMask(null)
     setCampaign(null)
     setNotice(null)
@@ -214,6 +236,7 @@ export function BrokerStudioIaPreparePropertyPage() {
     try {
       const formData = new FormData()
       formData.set("sourceType", sourceMode)
+      formData.set("provider", selectedProvider)
       formData.set("idempotencyKey", activeRequestKey.current)
       appendConfiguration(formData)
 
@@ -374,6 +397,10 @@ export function BrokerStudioIaPreparePropertyPage() {
               </div>
 
               <div className="flex items-start gap-3 rounded-[1.2rem] border border-[#009b3a]/18 bg-[#f4fbf6] p-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#009b3a]"><Sparkles className="size-5" /></span><div><p className="text-sm font-semibold text-[#08752f]">{selectedOperation.label}</p><p className="mt-1 text-xs leading-5 text-[#4f715b]">{selectedOperation.description}</p></div></div>
+              <div className="grid gap-2" data-testid="preparation-provider-options">
+                <p className="text-sm font-medium text-[#374151]">IA</p>
+                {availableProviders.map((provider) => <button key={provider} type="button" onClick={() => setSelectedProvider(provider)} aria-pressed={selectedProvider === provider} className={cn("rounded-xl border p-3 text-left transition", selectedProvider === provider ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}><span className="text-sm font-semibold text-[#374151]">{STUDIO_PROVIDER_LABELS[provider]}</span><span className="mt-1 block text-xs leading-5 text-[#7B8491]">{providerDescriptions[provider]}</span></button>)}
+              </div>
               <div className="grid gap-4">{renderOperationControls()}</div>
 
               <Button type="button" disabled={!sourceReady || isGenerating || (operation === "remove_object" && !objectMask)} onClick={handleGenerate} className="h-11 rounded-xl">{isGenerating ? <><LoaderCircle className="size-4 animate-spin" />Processando imagem...</> : <><Sparkles className="size-4" />{selectedOperation.label}</>}</Button>
@@ -382,7 +409,7 @@ export function BrokerStudioIaPreparePropertyPage() {
           </Card>
         </section>
 
-        {resultImageUrl && campaign ? <Card className="overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0"><CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">3. Revise o resultado</CardTitle></CardHeader><CardContent className="grid gap-5 px-5 pb-6 sm:px-6"><div className="grid gap-4 lg:grid-cols-2">{sourcePreviewUrl ? <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Original</p><div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#eef2f6]"><Image src={sourcePreviewUrl} alt="Imagem original" fill unoptimized className="object-cover" /></div></div> : null}<div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Resultado</p><div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#eef2f6]"><Image src={resultImageUrl} alt="Resultado da preparação" fill unoptimized className="object-cover" /></div></div></div><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm leading-6 text-[#667085]">O resultado já está salvo na Biblioteca e aguarda sua aprovação.</p><div className="flex flex-col gap-2 sm:flex-row"><Button asChild variant="outline" className="rounded-xl"><Link href={`/corretor/studio-ia/biblioteca/${campaign.id}`}><Library className="size-4" />Abrir Biblioteca</Link></Button>{resultAsset?.status === "APPROVED" ? <><Button disabled className="rounded-xl"><Check className="size-4" />Aprovado</Button><Button asChild className="rounded-xl"><Link href={`/corretor/studio-ia/criar-video-do-imovel?preparedAssetId=${encodeURIComponent(resultAsset.id)}&preparedImageUrl=${encodeURIComponent(resultImageUrl)}`}><Video className="size-4" />Criar vídeo com esta imagem</Link></Button></> : <Button type="button" onClick={handleApprove} disabled={isApproving} className="rounded-xl">{isApproving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}Aprovar resultado</Button>}</div></div></CardContent></Card> : null}
+        {resultImageUrl && campaign ? <Card className="overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0"><CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">3. Revise o resultado</CardTitle></CardHeader><CardContent className="grid gap-5 px-5 pb-6 sm:px-6"><div className="grid gap-4 lg:grid-cols-2">{sourcePreviewUrl ? <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Original</p><div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#eef2f6]"><Image src={sourcePreviewUrl} alt="Imagem original" fill unoptimized className="object-cover" /></div></div> : null}<div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8B95A1]">Resultado</p><div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#eef2f6]"><Image src={resultImageUrl} alt="Resultado da preparação" fill unoptimized className="object-cover" /></div></div></div><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm leading-6 text-[#667085]">O resultado já está salvo na Biblioteca e aguarda sua aprovação.</p><div className="flex flex-col gap-2 sm:flex-row"><Button asChild variant="outline" className="rounded-xl"><Link href={`/corretor/studio-ia/biblioteca/${campaign.id}`}><Library className="size-4" />Abrir Biblioteca</Link></Button>{resultAsset?.status === "APPROVED" ? <><Button disabled className="rounded-xl"><Check className="size-4" />Aprovado</Button><Button asChild className="rounded-xl"><Link href={`/corretor/studio-ia/criar-video-do-imovel?sourceAssetId=${encodeURIComponent(resultAsset.id)}`}><Video className="size-4" />Criar vídeo</Link></Button><Button asChild variant="outline" className="rounded-xl"><Link href={`/corretor/studio-ia/atrair-compradores?sourceAssetId=${encodeURIComponent(resultAsset.id)}`}><Megaphone className="size-4" />Criar anúncio</Link></Button></> : <Button type="button" onClick={handleApprove} disabled={isApproving} className="rounded-xl">{isApproving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}Aprovar resultado</Button>}</div></div></CardContent></Card> : null}
       </div>
     </BrokerPageShell>
   )

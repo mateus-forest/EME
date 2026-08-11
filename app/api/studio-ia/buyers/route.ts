@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import type { Prisma } from "@prisma/client"
 
 import { UserRole } from "@/lib/prisma-enums"
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -56,6 +55,26 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   return { error: null, property }
 }
 
+async function resolveApprovedMaterial(id: string, user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
+  return prisma.studioCampaignAsset.findFirst({
+    where: {
+      id,
+      status: "APPROVED",
+      type: { in: ["IMAGE", "VIDEO", "REEL", "STORY", "CAROUSEL"] },
+      campaign: {
+        brokerId: user.role === UserRole.BROKER ? user.broker?.id : undefined,
+        agencyId: user.role === UserRole.AGENCY ? user.ownedAgency?.id : undefined,
+      },
+    },
+    select: {
+      id: true,
+      type: true,
+      fileUrl: true,
+      campaign: { select: { id: true, propertyId: true } },
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
@@ -70,13 +89,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const payload = studioBuyerRequestSchema.parse(body)
-    const accessible = await resolveAccessibleProperty(payload.propertyId, user)
-
+    const material = await resolveApprovedMaterial(payload.sourceAssetId, user)
+    if (!material?.fileUrl) return NextResponse.json({ error: "Escolha um material aprovado da Biblioteca." }, { status: 400 })
+    const materialUrl = material.fileUrl
+    const accessible = material.campaign.propertyId
+      ? await resolveAccessibleProperty(material.campaign.propertyId, user)
+      : { error: null, property: null }
     if (accessible.error) return accessible.error
-    if (!accessible.property) {
-      return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
-    }
-
     const property = accessible.property
     const actionType = "studio_buyers_campaign"
     const creditsUsed = 3
@@ -94,7 +113,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
+    const location = property ? [property.neighborhood, property.city].filter(Boolean).join(", ") : "Não informada"
+    const generationStartedAt = Date.now()
     const result = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/buyers",
@@ -107,21 +127,22 @@ export async function POST(request: NextRequest) {
       },
       () =>
         generateBuyerStrategy(payload, {
-          id: property.id,
-          title: property.title,
-          city: property.city,
-          neighborhood: property.neighborhood ?? "",
+          id: property?.id ?? null,
+          title: property?.title ?? "Material aprovado do Studio",
+          city: property?.city ?? "",
+          neighborhood: property?.neighborhood ?? "",
           location,
-          type: propertyTypeLabel(property.type),
-          purpose: propertyPurposeLabel(property.purpose),
-          price: formatCurrencyFromCents(property.price),
-          bedrooms: property.bedrooms,
-          bathrooms: property.bathrooms,
-          parkingSpots: property.parkingSpots,
-          description: property.description ?? "",
-          status: propertyStatusLabel(property.status),
-        }),
+          type: property ? propertyTypeLabel(property.type) : "Não informado",
+          purpose: property ? propertyPurposeLabel(property.purpose) : "Não informada",
+          price: property ? formatCurrencyFromCents(property.price) : "Não informado",
+          bedrooms: property?.bedrooms ?? 0,
+          bathrooms: property?.bathrooms ?? 0,
+          parkingSpots: property?.parkingSpots ?? 0,
+          description: property?.description ?? "",
+          status: property ? propertyStatusLabel(property.status) : "Não informado",
+        }, { type: material.type, url: materialUrl }),
     )
+    const generationDurationMs = Date.now() - generationStartedAt
 
     if (user.role === UserRole.BROKER && user.broker) {
       await consumeBrokerAiCredits({
@@ -131,7 +152,7 @@ export async function POST(request: NextRequest) {
         description: "Studio IA: atrair compradores",
         metadata: {
           source: "api/studio-ia/buyers",
-          propertyId: property.id,
+          sourceAssetId: material.id,
         },
       })
     }
@@ -140,25 +161,32 @@ export async function POST(request: NextRequest) {
     const campaign = await createStudioCampaign(user, {
       kind: "BUYERS",
       status: "PENDING_REVIEW",
-      goal: payload.audience,
+      goal: payload.objective,
       visualIdentity: payload.channel,
       version: payload.version,
       provider: "openai",
       model,
       sourceRoute: "/api/studio-ia/buyers",
-      propertyId: property.id,
+      propertyId: property?.id ?? null,
       metadata: {
         channel: payload.channel,
-        propertyTitle: property.title,
+        objective: payload.objective,
+        propertyTitle: property?.title ?? null,
+        sourceAssetId: material.id,
+        sourceCampaignId: material.campaign.id,
+        provider: "openai",
+        model,
+        capability: "ad.structured_content",
+        durationMs: generationDurationMs,
+        externalCostUsd: null,
+        externalRequestId: null,
       },
       assets: [
+        { assetKey: "title", label: "Titulo", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.title },
+        { assetKey: "primary_text", label: "Texto principal", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.primaryText },
         { assetKey: "audience", label: "Publico", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.audience },
-        { assetKey: "strategy", label: "Estrategia", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.strategy },
-        { assetKey: "copy", label: "Copy", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.copy },
+        { assetKey: "approach", label: "Abordagem", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.approach },
         { assetKey: "cta", label: "CTA", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.cta },
-        { assetKey: "timeline", label: "Timeline", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.timeline as Prisma.InputJsonValue },
-        { assetKey: "reach", label: "Alcance", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.reach },
-        { assetKey: "leads", label: "Leads", type: "COPY", provider: "openai", model, status: "PENDING_REVIEW", content: result.leads },
       ],
     })
 
@@ -204,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao gerar a estrategia do Studio IA." },
+      { error: "Não foi possível gerar o anúncio agora. Tente novamente." },
       { status: 500 },
     )
   }

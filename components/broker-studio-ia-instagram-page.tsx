@@ -524,7 +524,7 @@ export function BrokerStudioIaInstagramPage() {
                         <p className="mt-1 text-xs text-[#8B95A1]">
                           O layout das peças permanece o mesmo; muda apenas a geração dos textos.
                         </p>
-                        <div className="mt-3 flex flex-wrap gap-2" data-testid="campaign-provider-options">
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="campaign-provider-options">
                           {campaignProviderOptions.map((entry) => {
                             const provider = entry.provider as CampaignProvider
                             return (
@@ -534,9 +534,10 @@ export function BrokerStudioIaInstagramPage() {
                                 onClick={() => setSelectedProvider(provider)}
                                 aria-pressed={selectedProvider === provider}
                                 data-testid={`campaign-provider-${provider}`}
-                                className={`rounded-full border px-4 py-2 text-sm transition-colors ${selectedProvider === provider ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
+                                className={`rounded-xl border px-4 py-3 text-left text-sm transition-colors ${selectedProvider === provider ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
                               >
-                                {STUDIO_PROVIDER_LABELS[provider]}
+                                <span className="block font-semibold">{STUDIO_PROVIDER_LABELS[provider]}{provider === "openai" ? " · Recomendado" : ""}</span>
+                                <span className="mt-1 block text-xs font-normal leading-5 text-[#7B8491]">{provider === "openai" ? "Consistente para campanhas imobiliárias." : "Alternativa criativa para conteúdo e linguagem."}</span>
                               </button>
                             )
                           })}

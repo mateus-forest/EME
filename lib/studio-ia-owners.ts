@@ -1,10 +1,19 @@
 import "server-only"
 
+import { zodTextFormat } from "openai/helpers/zod"
 import { z } from "zod"
 
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
+
+export const STUDIO_OWNER_ERRORS = {
+  disabled: "OPENAI_DISABLED_OR_NOT_CONFIGURED",
+  incomplete: "OPENAI_INCOMPLETE_RESPONSE",
+  empty: "OPENAI_EMPTY_RESPONSE",
+  invalidJson: "OPENAI_INVALID_JSON",
+  invalidSchema: "OPENAI_INVALID_SCHEMA",
+} as const
 
 export const studioOwnerGoals = [
   "Captar imovel para venda",
@@ -67,7 +76,7 @@ export async function generateOwnerStrategy(input: StudioOwnerRequest) {
   const client = getOpenAIClient()
 
   if (!client) {
-    throw new Error("OPENAI_DISABLED_OR_NOT_CONFIGURED")
+    throw new Error(STUDIO_OWNER_ERRORS.disabled)
   }
 
   const { model } = getOpenAIEnv()
@@ -83,44 +92,47 @@ export async function generateOwnerStrategy(input: StudioOwnerRequest) {
     },
     request: {
       model,
-      max_output_tokens: 1700,
+      max_output_tokens: 3200,
+      reasoning: {
+        effort: "minimal",
+      },
       instructions:
-        "Voce e o Studio IA do EME, especialista em captacao de proprietarios para corretores e imobiliarias. Entregue estrategias comerciais objetivas, sofisticadas e prontas para revisao final no mercado brasileiro.",
+        "Voce e o Studio IA do EME, especialista em captacao de proprietarios para corretores e imobiliarias. Entregue estrategias comerciais objetivas, sofisticadas e prontas para revisao final no mercado brasileiro. Responda apenas com o JSON do schema solicitado, sem texto adicional.",
       input: buildOwnersPrompt(input),
       text: {
-        format: {
-          type: "json_schema",
-          name: "studio_ia_owner_strategy",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              audience: { type: "string" },
-              approach: { type: "string" },
-              adCopy: { type: "string" },
-              instagramCaption: { type: "string" },
-              videoScript: {
-                type: "array",
-                minItems: 3,
-                maxItems: 3,
-                items: { type: "string" },
-              },
-              whatsappText: { type: "string" },
-              cta: { type: "string" },
-              timeline: {
-                type: "array",
-                minItems: 3,
-                maxItems: 3,
-                items: { type: "string" },
-              },
-            },
-            required: ["audience", "approach", "adCopy", "instagramCaption", "videoScript", "whatsappText", "cta", "timeline"],
-          },
-        },
+        verbosity: "low",
+        format: zodTextFormat(studioOwnerResultSchema, "studio_ia_owner_strategy"),
       },
     },
   })
 
-  return studioOwnerResultSchema.parse(JSON.parse(response.output_text))
+  if (response.status === "incomplete") {
+    console.error("[studio-ia][owners][openai-response-truncated]", {
+      message: STUDIO_OWNER_ERRORS.incomplete,
+      status: response.status,
+      incompleteDetails: response.incomplete_details,
+    })
+    throw new Error(STUDIO_OWNER_ERRORS.incomplete)
+  }
+
+  const output = response.output_text?.trim()
+  if (!output) throw new Error(STUDIO_OWNER_ERRORS.empty)
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(output)
+  } catch {
+    throw new Error(STUDIO_OWNER_ERRORS.invalidJson)
+  }
+
+  const parsed = studioOwnerResultSchema.safeParse(raw)
+  if (!parsed.success) {
+    console.error("[studio-ia][owners][openai-schema-invalid]", {
+      message: STUDIO_OWNER_ERRORS.invalidSchema,
+      issueCodes: parsed.error.issues.map((issue) => issue.code),
+    })
+    throw new Error(STUDIO_OWNER_ERRORS.invalidSchema)
+  }
+
+  return parsed.data
 }

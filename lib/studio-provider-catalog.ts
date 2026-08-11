@@ -22,6 +22,7 @@ export type StudioCapabilityId =
   | "project.construction_to_finished"
   | "project.design_to_realistic"
   | "video.image_to_video"
+  | "video.start_end_transition"
   | "video.listing_composition"
   | "video.temporal_transformation";
 
@@ -89,7 +90,6 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     "property_preparation.furnish",
     "property_preparation.empty_room",
     "property_preparation.renovation",
-    "property_preparation.edit_via_prompt",
     "property_preparation.enhance",
     "property_preparation.perspective",
     "property_preparation.sky",
@@ -103,6 +103,14 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     model: null,
     note: "Provider previsto na matriz de produto, sem adapter operacional validado para esta operação.",
   })),
+  {
+    capability: "property_preparation.edit_via_prompt",
+    provider: "openai",
+    status: "adapter_ready",
+    operation: "POST /v1/images/edits",
+    model: "gpt-image-2",
+    note: "Edição por imagem e instrução confirmada; usa o mesmo pipeline de Storage e aprovação.",
+  },
   ...([
     "property_preparation.furnish",
     "property_preparation.empty_room",
@@ -136,15 +144,15 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     {
       capability,
       provider: "openai" as const,
-      status: "requires_validation" as const,
-      operation: null,
-      model: null,
-      note: "A matriz prevê OpenAI, mas não há adapter operacional conectado a este caso.",
+      status: "adapter_ready" as const,
+      operation: "POST /v1/images/edits",
+      model: "gpt-image-2",
+      note: "Edição conceitual orientada por prompt; resultado identificado como representação ilustrativa.",
     },
     {
       capability,
       provider: "xai" as const,
-      status: "requires_validation" as const,
+      status: "adapter_ready" as const,
       operation: "POST /v1/images/edits",
       model: "grok-imagine-image-quality",
       note: "A edição genérica não comprova fidelidade arquitetônica nem esta transformação específica.",
@@ -158,6 +166,30 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     operation: "generations.create",
     model: "ray-2",
     note: "Pipeline assíncrono atual de Criar vídeo.",
+  },
+  {
+    capability: "video.start_end_transition",
+    provider: "lumaai",
+    status: "active",
+    operation: "generations.create keyframes.frame0/frame1",
+    model: "ray-2",
+    note: "Contrato com frame inicial e final; não garante semântica física detalhada da transformação.",
+  },
+  {
+    capability: "video.start_end_transition",
+    provider: "pedra",
+    status: "unsupported",
+    operation: "/api/create_video",
+    model: "pedra",
+    note: "O contrato conhecido não comprova frame inicial e final e permanece bloqueado pelo processamento síncrono.",
+  },
+  {
+    capability: "video.start_end_transition",
+    provider: "xai",
+    status: "unsupported",
+    operation: "POST /v1/videos/generations",
+    model: "grok-imagine-video-1.5",
+    note: "Image-to-video aceita imagem inicial; o contrato auditado não garante frame final exato.",
   },
   {
     capability: "video.image_to_video",

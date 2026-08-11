@@ -14,45 +14,35 @@ export const studioBuyerGenerationErrorCodes = {
   maxOutputTokensExceeded: "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED",
 } as const
 
-export const studioBuyerAudiences = [
-  "Primeiro imovel",
-  "Familia",
-  "Investidor",
-  "Alto padrao",
-  "Imovel de praia",
-  "Comercial",
+export const studioBuyerChannels = [
+  "Instagram / Meta",
+  "WhatsApp",
+  "Portal imobiliario",
+  "Geral",
 ] as const
 
-export const studioBuyerChannels = [
-  "Instagram",
-  "Facebook",
-  "Google",
-  "WhatsApp",
-  "Portais imobiliarios",
-] as const
+export const studioBuyerObjectives = ["Vender", "Gerar contatos", "Agendar visitas"] as const
 
 export const studioBuyerRequestSchema = z.object({
-  propertyId: z.string().trim().min(1).max(191),
-  audience: z.enum(studioBuyerAudiences),
+  sourceAssetId: z.string().trim().min(1).max(191),
   channel: z.enum(studioBuyerChannels),
+  objective: z.enum(studioBuyerObjectives),
   version: z.number().int().min(1).max(20).default(1),
 })
 
 export const studioBuyerResultSchema = z.object({
-  audience: z.string().trim().min(1).max(220),
-  strategy: z.string().trim().min(1).max(900),
-  copy: z.string().trim().min(1).max(900),
+  title: z.string().trim().min(1).max(160),
+  primaryText: z.string().trim().min(1).max(900),
   cta: z.string().trim().min(1).max(120),
-  timeline: z.array(z.string().trim().min(1).max(220)).min(3).max(3),
-  reach: z.string().trim().min(1).max(120),
-  leads: z.string().trim().min(1).max(120),
+  audience: z.string().trim().min(1).max(220),
+  approach: z.string().trim().min(1).max(900),
 })
 
 export type StudioBuyerRequest = z.infer<typeof studioBuyerRequestSchema>
 export type StudioBuyerResult = z.infer<typeof studioBuyerResultSchema>
 
 export type StudioBuyerPropertyContext = {
-  id: string
+  id: string | null
   title: string
   city: string
   neighborhood: string
@@ -67,11 +57,11 @@ export type StudioBuyerPropertyContext = {
   status: string
 }
 
-function buildBuyersPrompt(input: StudioBuyerRequest, property: StudioBuyerPropertyContext) {
+function buildBuyersPrompt(input: StudioBuyerRequest, property: StudioBuyerPropertyContext, material: { type: string; url: string }) {
   return [
     "Crie uma estrategia comercial imobiliaria pronta para atrair compradores em portugues do Brasil.",
-    `Perfil principal do publico: ${input.audience}.`,
-    `Canal principal da campanha: ${input.channel}.`,
+    `Canal principal: ${input.channel}.`,
+    `Objetivo: ${input.objective}.`,
     `Versao solicitada: ${input.version}. Gere uma nova abordagem mantendo coerencia com o contexto.`,
     "",
     "Contexto do imovel:",
@@ -87,18 +77,22 @@ function buildBuyersPrompt(input: StudioBuyerRequest, property: StudioBuyerPrope
     `Vagas: ${property.parkingSpots}`,
     `Status: ${property.status}`,
     `Descricao atual: ${property.description || "Nao informada"}`,
+    `Material aprovado: ${material.type}.`,
+    `Referencia visual: ${material.url}.`,
     "",
     "Regras:",
     "Nao invente informacoes factuais que nao estejam no contexto.",
     "Escreva com tom comercial, sofisticado e direto para um corretor de imoveis.",
     "Entregue conteudo pronto para revisao final e uso comercial.",
-    "As estimativas de alcance e leads devem ser plausiveis, em texto curto, sem parecer dado tecnico exato.",
+    "Não gere estimativas de alcance, leads, métricas ou cronograma.",
+    "Entregue título, texto principal, CTA, público sugerido e abordagem.",
   ].join("\n")
 }
 
 export async function generateBuyerStrategy(
   input: StudioBuyerRequest,
   property: StudioBuyerPropertyContext,
+  material: { type: string; url: string },
 ) {
   const client = getOpenAIClient()
 
@@ -112,7 +106,8 @@ export async function generateBuyerStrategy(
     operationKey: "studio.buyers",
     metadata: {
       propertyId: property.id,
-      audience: input.audience,
+      sourceAssetId: input.sourceAssetId,
+      objective: input.objective,
       channel: input.channel,
       version: input.version,
     },
@@ -124,7 +119,7 @@ export async function generateBuyerStrategy(
       },
       instructions:
         "Voce e o Studio IA do EME, especialista em marketing imobiliario para corretores. Monte estrategias comerciais praticas e persuasivas para captar interesse de compradores no mercado brasileiro. Responda apenas com o JSON do schema solicitado, sem texto adicional.",
-      input: buildBuyersPrompt(input, property),
+      input: buildBuyersPrompt(input, property, material),
       text: {
         verbosity: "low",
         format: zodTextFormat(studioBuyerResultSchema, "studio_ia_buyers_strategy"),
@@ -139,8 +134,6 @@ export async function generateBuyerStrategy(
         : studioBuyerGenerationErrorCodes.incompleteResponse,
       status: response.status,
       incompleteDetails: response.incomplete_details,
-      rawResponseText: typeof response.output_text === "string" ? response.output_text.slice(0, 6000) : "",
-      responseOutput: JSON.stringify(response.output ?? []).slice(0, 6000),
     })
     throw new Error(
       response.incomplete_details?.reason === "max_output_tokens"
@@ -158,18 +151,14 @@ export async function generateBuyerStrategy(
   try {
     parsedOutput = JSON.parse(outputText)
   } catch (caughtError) {
-    console.error("[studio-ia][buyers][openai-invalid-json]", {
-      message: caughtError instanceof Error ? caughtError.message : "unknown",
-      status: response.status,
-      rawResponseText: outputText.slice(0, 6000),
-    })
+    console.error("[studio-ia][buyers][openai-invalid-json]", { status: response.status })
     throw new Error(studioBuyerGenerationErrorCodes.invalidStructuredResponse, { cause: caughtError })
   }
 
   const parsedResult = studioBuyerResultSchema.safeParse(parsedOutput)
   if (!parsedResult.success) {
     console.error("[studio-ia][buyers][openai-invalid-structure]", {
-      issues: parsedResult.error.issues,
+      issueCodes: parsedResult.error.issues.map((issue) => issue.code),
       status: response.status,
     })
     throw new Error(studioBuyerGenerationErrorCodes.invalidStructuredResponse)

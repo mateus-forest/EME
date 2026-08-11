@@ -356,6 +356,7 @@ function hashObject(value: unknown) {
 
 export function buildStudioVideoRequestSignature(input: StudioVideoRequest, sourceReferenceUrl: string) {
   return hashObject({
+    provider: input.provider,
     propertyId: input.propertyId ?? null,
     sourceAssetId: input.sourceAssetId ?? null,
     referenceImageUrl: input.referenceImageUrls[0] ?? null,
@@ -845,11 +846,13 @@ export async function createInitialStudioVideoJob({
   input,
   property,
   referenceInput,
+  targetReferenceUrl,
   requestSignature: providedRequestSignature,
 }: {
   input: StudioVideoRequest
   property?: StudioVideoPropertyContext | null
   referenceInput: ReferenceInput
+  targetReferenceUrl?: string
   requestSignature?: string
 }) {
   const config = getStudioVideoProviderConfig()
@@ -956,6 +959,12 @@ export async function createInitialStudioVideoJob({
         type: "image",
         url: sourceReferenceUrl,
       },
+      ...(targetReferenceUrl ? {
+        frame1: {
+          type: "image" as const,
+          url: targetReferenceUrl,
+        },
+      } : {}),
     },
   })
 
@@ -981,6 +990,8 @@ export async function createInitialStudioVideoJob({
 
   const nextJob: StudioVideoJobContent = {
     ...job,
+    sourceAssetId: input.sourceAssetId,
+    targetReferenceUrl,
     providerVideoId: generation.id,
     providerModel: config.model,
     estimatedCredits: directCredits,

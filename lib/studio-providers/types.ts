@@ -23,7 +23,8 @@ export type StudioImageProviderInput = {
 };
 
 export type StudioImageProviderOutput = {
-  url: string;
+  url?: string | null;
+  base64?: string | null;
   mimeType?: string | null;
   revisedPrompt?: string | null;
 };

@@ -581,6 +581,7 @@ const studioVideoMetricsSchema = z.object({
 
 export const studioVideoRequestSchema = z
   .object({
+    provider: z.enum(["lumaai", "pedra", "xai"]).default("lumaai"),
     propertyId: z.string().trim().min(1).max(191).optional(),
     sourceAssetId: z.string().trim().min(1).max(191).optional(),
     referenceImageUrls: z.array(z.string().trim().url()).max(1).default([]),
@@ -682,6 +683,8 @@ export const studioVideoJobContentSchema = z.object({
   referenceImageUrls: z.array(z.string().trim().url()).max(12).default([]),
   uploadedImages: z.array(studioVideoUploadSchema).max(12).default([]),
   sourceReferenceUrl: z.string().trim().url().optional(),
+  targetReferenceUrl: z.string().trim().url().optional(),
+  sourceAssetId: z.string().trim().min(1).max(191).optional(),
   previewImageUrl: z.string().trim().url().optional(),
   previewPrompt: z.string().trim().min(1).max(4000).optional(),
   previewApprovedAt: z.string().trim().min(1).optional(),

@@ -43,4 +43,24 @@ test.describe("Studio IA — providers de Criar campanha", () => {
     await expect(page.getByText("Resposta controlada do teste.", { exact: true })).toBeVisible()
     await expect(page.locator("[data-testid='campaign-provider-options']")).toBeVisible()
   })
+
+  test("real Grok preserva schema, renderer e Biblioteca", async ({ page }) => {
+    test.skip(process.env.RUN_XAI_REAL_TEST !== "1", "Executado manualmente para controlar custo externo e Créditos EME.")
+    test.setTimeout(120_000)
+
+    await page.goto("/corretor/studio-ia/criar-campanha-instagram")
+    await page.getByRole("button", { name: "Reiniciar fluxo", exact: true }).click()
+    await page.getByRole("button", { name: "Avançar para configuração", exact: true }).click()
+    await page.getByTestId("campaign-provider-xai").click()
+    await page.getByRole("button", { name: "Gerar campanha", exact: true }).click()
+
+    await expect(page.getByText("Feed", { exact: true }).first()).toBeVisible({ timeout: 100_000 })
+    await expect(page.getByText("Story", { exact: true }).first()).toBeVisible()
+    await expect(page.getByText("Carrossel", { exact: true }).first()).toBeVisible()
+    const response = await page.request.get("/api/studio-ia/campaigns?kind=INSTAGRAM&limit=1")
+    expect(response.ok()).toBeTruthy()
+    const body = await response.json() as { campaigns: Array<{ provider: string; assets: Array<{ assetKey: string }> }> }
+    expect(body.campaigns[0]?.provider).toBe("xai")
+    expect(body.campaigns[0]?.assets.map((asset) => asset.assetKey)).toEqual(expect.arrayContaining(["post_feed", "story", "carousel"]))
+  })
 })

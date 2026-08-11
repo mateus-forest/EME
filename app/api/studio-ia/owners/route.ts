@@ -7,7 +7,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
 import { createStudioCampaign } from "@/lib/studio-campaigns"
-import { generateOwnerStrategy, studioOwnerRequestSchema } from "@/lib/studio-ia-owners"
+import { generateOwnerStrategy, STUDIO_OWNER_ERRORS, studioOwnerRequestSchema } from "@/lib/studio-ia-owners"
 
 export const dynamic = "force-dynamic"
 
@@ -96,15 +96,32 @@ export async function POST(request: NextRequest) {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
 
-    if (caughtError instanceof Error && caughtError.message === "OPENAI_DISABLED_OR_NOT_CONFIGURED") {
+    if (caughtError instanceof Error && caughtError.message === STUDIO_OWNER_ERRORS.disabled) {
       return NextResponse.json(
         { error: "A geração de estratégias do Studio IA não está configurada neste ambiente." },
         { status: 503 },
       )
     }
 
+    if (caughtError instanceof Error && caughtError.message === STUDIO_OWNER_ERRORS.incomplete) {
+      return NextResponse.json(
+        { error: "A resposta foi interrompida antes de concluir a estratégia. Tente novamente." },
+        { status: 502 },
+      )
+    }
+
+    if (
+      caughtError instanceof Error
+      && Object.values(STUDIO_OWNER_ERRORS).slice(2).includes(caughtError.message as never)
+    ) {
+      return NextResponse.json(
+        { error: "Não foi possível concluir a estratégia agora. Tente novamente." },
+        { status: 502 },
+      )
+    }
+
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao gerar a estrategia do Studio IA." },
+      { error: "Não foi possível gerar a estratégia agora. Tente novamente." },
       { status: 500 },
     )
   }
