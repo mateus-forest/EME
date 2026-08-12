@@ -27,6 +27,7 @@ export const contractTypeOptions = [
   "Reserva",
   "Aditivo",
   "Distrato",
+  "Modelo próprio",
 ] as const
 
 export type ContractType = (typeof contractTypeOptions)[number]
@@ -102,7 +103,7 @@ type ContractFinancial = {
   additionalConditions?: string | null
 }
 
-export type ContractSource = "generated" | "external"
+export type ContractSource = "generated" | "external" | "template"
 
 export type ContractAttachment = {
   fileName: string
@@ -131,6 +132,7 @@ export type ContractContent = {
   clauses: string[]
   reviewNotes: string[]
   attachment?: ContractAttachment | null
+  templateInstanceId?: string | null
   html: string
 }
 
@@ -340,6 +342,8 @@ export function buildContractClauses(kind: ContractType, input: {
     ]
   }
 
+  if (kind === "Modelo próprio") return []
+
   const exhaustiveKind: never = kind
   return [
     `${String(exhaustiveKind)}: minuta base preparada para ${personName}, vinculada ao ativo ${propertyRef}.`,
@@ -429,6 +433,7 @@ export function buildContractReviewNotes(kind: ContractType): string[] {
       "Manter o documento como rascunho ate a confirmação comercial, documental e jurídica final.",
     ]
   }
+  if (kind === "Modelo próprio") return []
 
   const exhaustiveKind: never = kind
   return [

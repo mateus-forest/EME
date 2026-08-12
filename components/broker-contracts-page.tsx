@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FilePenLine,
   FileSignature,
+  FileUp,
   PencilLine,
   Paperclip,
   Plus,
@@ -1714,7 +1715,17 @@ function CommercialDateField({
   )
 }
 
-export function BrokerContractsPage() {
+type BrokerContractsPageProps = {
+  onNewTemplateContract?: () => void
+  onImportTemplate?: () => void
+  onOpenTemplateContract?: (instanceId: string) => void
+}
+
+export function BrokerContractsPage({
+  onNewTemplateContract,
+  onImportTemplate,
+  onOpenTemplateContract,
+}: BrokerContractsPageProps = {}) {
   const [contractsList, setContractsList] = useState<ContractRecord[]>([])
   const [availableKindFilters, setAvailableKindFilters] = useState<ContractType[]>([...creatableContractTypeOptions])
   const [leads, setLeads] = useState<LeadRecord[]>([])
@@ -2794,6 +2805,10 @@ export function BrokerContractsPage() {
   }, [draft.amount, draft.commissionPercent, draft.kind, selectedLead, selectedProperty])
 
   function openCreateDialog() {
+    if (onNewTemplateContract) {
+      onNewTemplateContract()
+      return
+    }
     setEditingId(null)
     setDraft({ ...emptyDraft })
     setTitleCustomized(false)
@@ -2811,6 +2826,10 @@ export function BrokerContractsPage() {
   }
 
   function openEditDialog(contract: ContractRecord) {
+    if (contract.content.source === "template" && contract.content.templateInstanceId && onOpenTemplateContract) {
+      onOpenTemplateContract(contract.content.templateInstanceId)
+      return
+    }
     if (isExternalContract(contract)) {
       setEditingAttachmentId(contract.id)
       setAttachmentDraft({
@@ -2944,6 +2963,10 @@ export function BrokerContractsPage() {
 
   async function updateContractStatus(nextStatus: ContractStatus) {
     if (!selectedContract) return
+    if (selectedContract.content.source === "template" && selectedContract.content.templateInstanceId && onOpenTemplateContract) {
+      onOpenTemplateContract(selectedContract.content.templateInstanceId)
+      return
+    }
 
     setIsStatusSaving(true)
     setFeedback("")
@@ -2967,6 +2990,11 @@ export function BrokerContractsPage() {
   }
 
   async function duplicateContract(contractId: string) {
+    const contractToDuplicate = contractsList.find((contract) => contract.id === contractId)
+    if (contractToDuplicate?.content.source === "template" && contractToDuplicate.content.templateInstanceId && onOpenTemplateContract) {
+      onOpenTemplateContract(contractToDuplicate.content.templateInstanceId)
+      return
+    }
     try {
       const contract = await contracts.duplicate(contractId)
       setFeedback("Contrato duplicado.")
@@ -2977,6 +3005,12 @@ export function BrokerContractsPage() {
   }
 
   async function deleteContract(contractId: string) {
+    const contractToDelete = contractsList.find((contract) => contract.id === contractId)
+    if (contractToDelete?.content.source === "template" && contractToDelete.content.templateInstanceId && onOpenTemplateContract) {
+      setFeedback("Abra o contrato para revisar suas ações e o histórico do modelo.")
+      onOpenTemplateContract(contractToDelete.content.templateInstanceId)
+      return
+    }
     if (!window.confirm("Excluir este contrato?")) return
 
     try {
@@ -2990,6 +3024,10 @@ export function BrokerContractsPage() {
 
   async function exportPdf() {
     if (!selectedContract) return
+    if (selectedContract.content.source === "template" && selectedContract.content.templateInstanceId && onOpenTemplateContract) {
+      onOpenTemplateContract(selectedContract.content.templateInstanceId)
+      return
+    }
 
     try {
       if (selectedContractIsExternal) {
@@ -3082,6 +3120,17 @@ export function BrokerContractsPage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-3">
+              {onImportTemplate ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={onImportTemplate}
+                  className="h-11 rounded-xl border border-black/[0.06] bg-white px-4 text-[#111111] hover:bg-white"
+                >
+                  <FileUp className="size-4" />
+                  Importar modelo
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"

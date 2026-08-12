@@ -2,6 +2,28 @@ import type { AiOperationCatalogEntry } from "@/lib/ai-cost-contract"
 
 const catalog: AiOperationCatalogEntry[] = [
   {
+    id: "contracts.template_analysis",
+    module: "Contratos",
+    feature: "Importação de modelo próprio",
+    capability: "contracts.template.extract",
+    route: "/api/brokers/contract-templates",
+    file: "lib/contract-template-analysis.server.ts",
+    handler: "analyzeContractTemplate",
+    provider: "openai",
+    model: "gpt-5-mini",
+    description: "Extrai estrutura e campos variáveis sem reescrever o conteúdo jurídico original.",
+    billableUnit: "document",
+    avgInputTokens: 9000,
+    avgOutputTokens: 2400,
+    retryProfile: "rare",
+    cacheable: true,
+    criticity: "high",
+    expectedUsagePerBrokerMonthly: 2,
+    expectedCadence: "low",
+    suggestedCredits: 0,
+    notes: "Análise única por hash de arquivo; não debita créditos EME nesta fase.",
+  },
+  {
     id: "cos.message",
     module: "COS",
     feature: "Conversa operacional",

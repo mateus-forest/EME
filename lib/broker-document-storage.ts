@@ -64,6 +64,80 @@ export async function saveBrokerContractFile(input: {
   }
 }
 
+export async function saveBrokerContractTemplateFile(input: {
+  brokerId: string
+  file: File
+}) {
+  const config = getStorageConfig()
+  const safeName = sanitizeFileName(input.file.name)
+  const objectPath = `brokers/${input.brokerId}/contract-templates/${randomUUID()}-${safeName}`
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.anonKey,
+      "Content-Type": input.file.type || "application/octet-stream",
+      "x-upsert": "false",
+    },
+    body: Buffer.from(await input.file.arrayBuffer()),
+  })
+
+  if (!response.ok) {
+    console.error("[storage][contract-templates] upload failed", { status: response.status })
+    throw new Error("Não foi possível preservar o arquivo original do modelo.")
+  }
+
+  return {
+    fileName: input.file.name || safeName,
+    storagePath: objectPath,
+    mimeType: input.file.type || "application/octet-stream",
+    fileSize: input.file.size || null,
+  }
+}
+
+export async function readBrokerContractTemplateFile(storagePath: string) {
+  const config = getStorageConfig()
+  if (!storagePath.startsWith("brokers/") || storagePath.includes("..")) {
+    throw new Error("Arquivo de modelo inválido.")
+  }
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${storagePath}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.anonKey,
+    },
+    cache: "no-store",
+  })
+  if (!response.ok) {
+    console.error("[storage][contract-templates] read failed", { status: response.status })
+    throw new Error("Não foi possível carregar o arquivo original do modelo.")
+  }
+  return {
+    buffer: Buffer.from(await response.arrayBuffer()),
+    mimeType: response.headers.get("Content-Type") || "application/octet-stream",
+  }
+}
+
+export async function deleteBrokerContractTemplateFile(storagePath: string | null | undefined) {
+  if (!storagePath || !storagePath.startsWith("brokers/") || storagePath.includes("..")) return
+  let config: ReturnType<typeof getStorageConfig>
+  try {
+    config = getStorageConfig()
+  } catch {
+    return
+  }
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${storagePath}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.anonKey,
+    },
+  }).catch(() => null)
+  if (response && !response.ok) {
+    console.error("[storage][contract-templates] delete failed", { status: response.status })
+  }
+}
+
 function getObjectPath(fileUrl: string, config: ReturnType<typeof getStorageConfig>) {
   const prefix = getPublicPrefix(config)
   if (!fileUrl.startsWith(prefix)) {

@@ -9,6 +9,7 @@ type CreateOpenAIResponseInput = {
   client: OpenAI
   operationKey: string
   request: OpenAI.Responses.ResponseCreateParamsNonStreaming
+  options?: OpenAI.RequestOptions
   metadata?: Record<string, unknown>
 }
 
@@ -46,7 +47,7 @@ export async function createOpenAIResponse(input: CreateOpenAIResponseInput): Pr
   const context = getAiOperationContext()
 
   try {
-    const response = await input.client.responses.create(input.request)
+    const response = await input.client.responses.create(input.request, input.options)
     const usage = getUsageMetrics(response)
     const cost = estimateOperationCost({
       operationKey: input.operationKey,

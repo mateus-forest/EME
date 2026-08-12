@@ -215,6 +215,8 @@ model Broker {
   financialConfig BrokerFinancialConfig?
   emeMessages EmeMessage[]
   studioCampaigns StudioCampaign[]
+  contractTemplates ContractTemplate[]
+  contractTemplateInstances ContractTemplateInstance[]
 }
 
 model Agency {
@@ -269,6 +271,7 @@ model Property {
   agendaEvents AgendaEvent[]
   documents    BrokerDocument[]
   studioCampaigns StudioCampaign[]
+  contractTemplateInstances ContractTemplateInstance[]
 
   @@unique([brokerId, publicCode])
 }
@@ -424,9 +427,80 @@ model BrokerDocument {
   broker     Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
   lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  templateInstance ContractTemplateInstance?
 
   @@index([brokerId, createdAt])
   @@index([brokerId, status])
+  @@index([leadId])
+  @@index([propertyId])
+}
+
+model ContractTemplate {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  brokerId       String
+  name           String
+  status         String   @default("ANALYZING")
+  sourceHash     String
+  currentVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  broker         Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  versions       ContractTemplateVersion[]
+  instances      ContractTemplateInstance[]
+
+  @@unique([workspaceId, sourceHash])
+  @@index([brokerId, status, updatedAt])
+}
+
+model ContractTemplateVersion {
+  id                String   @id @default(cuid())
+  templateId        String
+  version           Int
+  status            String   @default("ANALYZING")
+  sourceFileName    String
+  sourceStoragePath String?
+  sourceMimeType    String
+  sourceFileSize    Int?
+  originalText      String   @db.Text
+  structure         Json
+  analysisMetadata  Json?
+  reviewedAt        DateTime?
+  createdAt         DateTime @default(now())
+  template          ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  instances         ContractTemplateInstance[]
+
+  @@unique([templateId, version])
+  @@index([templateId, status])
+}
+
+model ContractTemplateInstance {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  brokerId          String
+  templateId        String
+  templateVersionId String
+  brokerDocumentId  String?  @unique
+  leadId            String?
+  propertyId        String?
+  title             String
+  status            String   @default("draft")
+  values             Json
+  additionalParties Json
+  readiness          Int      @default(0)
+  signedAt           DateTime?
+  signatureNote      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  broker             Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  template           ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  templateVersion    ContractTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  brokerDocument     BrokerDocument? @relation(fields: [brokerDocumentId], references: [id], onDelete: SetNull)
+  lead               Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property           Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([brokerId, status, updatedAt])
+  @@index([templateId, createdAt])
   @@index([leadId])
   @@index([propertyId])
 }
@@ -668,6 +742,7 @@ model Lead {
   emeMessages EmeMessage[]
   agendaEvents AgendaEvent[]
   documents BrokerDocument[]
+  contractTemplateInstances ContractTemplateInstance[]
 
   @@index([propertyId])
   @@index([brokerId])

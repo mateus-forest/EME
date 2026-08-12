@@ -22,6 +22,7 @@ export type ContractRecord = {
   textPreview: string
   content: {
     source?: ContractSource
+    templateInstanceId?: string | null
     attachment?: ContractAttachment | null
     html?: string
     financial: {
