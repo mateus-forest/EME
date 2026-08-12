@@ -3110,7 +3110,7 @@ export function BrokerContractsPage({
                 onChange={(event) => setKindFilter(event.target.value as "all" | ContractType)}
                 className="h-11 rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-3 text-[#050505]"
               >
-                <option value="all">Todos os modelos</option>
+                <option value="all">Todos os tipos</option>
                 {availableKindFilters.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -3505,7 +3505,7 @@ export function BrokerContractsPage({
                 </div>
               ) : (
                 <div className="rounded-[1.5rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] p-6 text-sm leading-6 text-[#6B7280]">
-                  Selecione um contrato para visualizar saúde, validações e pendências deste workspace.
+                  Selecione um contrato para visualizar prontidão, validações e pendências deste workspace.
                 </div>
               )}
             </div>

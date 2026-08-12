@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FileText,
   FileUp,
+  LayoutTemplate,
   Loader2,
   PenLine,
   Plus,
@@ -41,6 +42,7 @@ import type { LeadRecord } from "@/lib/lead-contract"
 import type { PropertyApiItem } from "@/lib/property-contract"
 
 type WorkspaceMode = "import" | "new" | "editor" | null
+type WorkspaceView = "contracts" | "templates"
 
 function formatBytes(value: number | null) {
   if (!value) return "Tamanho não informado"
@@ -70,17 +72,19 @@ function FieldInput({
 
 function ImportTemplatePanel({
   templates,
+  initialTemplate,
   onTemplatesChanged,
   onClose,
 }: {
   templates: ContractTemplateRecord[]
+  initialTemplate?: ContractTemplateRecord | null
   onTemplatesChanged: () => Promise<void>
   onClose: () => void
 }) {
   const [file, setFile] = useState<File | null>(null)
-  const [template, setTemplate] = useState<ContractTemplateRecord | null>(null)
-  const [name, setName] = useState("")
-  const [structure, setStructure] = useState<ContractTemplateStructure | null>(null)
+  const [template, setTemplate] = useState<ContractTemplateRecord | null>(initialTemplate ?? null)
+  const [name, setName] = useState(initialTemplate?.name ?? "")
+  const [structure, setStructure] = useState<ContractTemplateStructure | null>(initialTemplate?.version?.structure ?? null)
   const [isBusy, setIsBusy] = useState(false)
   const [feedback, setFeedback] = useState("")
 
@@ -424,6 +428,85 @@ function ImportTemplatePanel({
   )
 }
 
+function TemplateLibrary({
+  templates,
+  loading,
+  feedback,
+  onImport,
+  onInspect,
+  onUse,
+}: {
+  templates: ContractTemplateRecord[]
+  loading: boolean
+  feedback: string
+  onImport: () => void
+  onInspect: (template: ContractTemplateRecord) => void
+  onUse: (templateId: string) => Promise<void>
+}) {
+  const ready = templates.filter((template) => template.status === "READY")
+  const pending = templates.filter((template) => template.status !== "READY")
+
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-[2rem] border border-black/[0.05] bg-white px-6 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[#9aa4b2]">Biblioteca reutilizável</p>
+            <h2 className="mt-2 flex items-center gap-2 text-[2rem] font-semibold tracking-[-0.05em] text-[#050505]"><LayoutTemplate className="size-5 text-[#009b3a]" /> Modelos</h2>
+            <p className="mt-2 text-sm leading-6 text-[#6b7280]">Consulte a estrutura dos seus modelos próprios e use-os em novas operações sem uma nova análise.</p>
+          </div>
+          <Button onClick={onImport} className="h-11 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"><FileUp className="size-4" /> Importar modelo</Button>
+        </div>
+      </section>
+
+      {feedback ? <p className="rounded-xl border border-black/[0.06] bg-white p-3 text-sm text-[#5f6b7a]">{feedback}</p> : null}
+      {loading ? <div className="flex justify-center rounded-2xl border border-black/[0.05] bg-white py-16"><Loader2 className="size-6 animate-spin text-[#009b3a]" /></div> : null}
+
+      {!loading && ready.length > 0 ? (
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {ready.map((template) => (
+            <article key={template.id} className="grid min-w-0 gap-5 rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.035)]">
+              <button type="button" onClick={() => onInspect(template)} className="min-w-0 text-left">
+                <span className="inline-flex rounded-full bg-[#edf8f1] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#17733a]">Pronto para usar</span>
+                <strong className="mt-3 block truncate text-base text-[#111]">{template.name}</strong>
+                <span className="mt-1 block text-xs leading-5 text-[#7b8491]">Versão {template.currentVersion} · atualizado em {new Intl.DateTimeFormat("pt-BR").format(new Date(template.updatedAt))}</span>
+                <span className="mt-3 block text-sm text-[#5f6b7a]">Consultar estrutura e campos</span>
+              </button>
+              <div className="flex gap-2 border-t border-black/[0.05] pt-4">
+                <Button variant="outline" onClick={() => onInspect(template)} className="flex-1 rounded-xl">Consultar</Button>
+                <Button disabled={loading} onClick={() => void onUse(template.id)} className="flex-1 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]"><Plus className="size-4" /> Usar modelo</Button>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
+
+      {!loading && ready.length === 0 ? (
+        <section className="rounded-2xl border border-dashed border-black/[0.08] bg-[#fbfbf8] p-10 text-center">
+          <LayoutTemplate className="mx-auto size-7 text-[#8b95a1]" />
+          <p className="mt-3 font-medium text-[#111]">Nenhum modelo pronto ainda.</p>
+          <p className="mt-1 text-sm text-[#687386]">Importe um PDF ou DOCX, revise a estrutura identificada e salve para reutilizar.</p>
+          <Button onClick={onImport} className="mt-5 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">Importar modelo</Button>
+        </section>
+      ) : null}
+
+      {!loading && pending.length > 0 ? (
+        <section className="rounded-2xl border border-black/[0.05] bg-white p-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Em preparação ou revisão</p>
+          <div className="mt-3 grid gap-2">
+            {pending.map((template) => (
+              <button key={template.id} type="button" onClick={() => onInspect(template)} className="flex items-center justify-between rounded-xl bg-[#fbfbf8] p-4 text-left">
+                <span><strong className="block text-sm text-[#111]">{template.name}</strong><span className="text-xs text-[#7b8491]">{template.status === "ANALYZING" ? "Em preparação" : template.status === "FAILED" ? "Precisa de atenção" : "Aguardando revisão"}</span></span>
+                {template.status === "ANALYZING" ? <Loader2 className="size-4 animate-spin text-[#009b3a]" /> : <PenLine className="size-4 text-[#5f6b7a]" />}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
 function InstanceEditor({
   instanceId,
   onClose,
@@ -495,6 +578,12 @@ function InstanceEditor({
     return groups.filter((group) => group.fields.length > 0)
   }, [instance])
 
+  const readinessGroups = useMemo(() => groupedFields.map((group) => {
+    const required = group.fields.filter((field) => field.required)
+    const missing = required.filter((field) => !values[field.id]?.trim())
+    return { ...group, required: required.length, missing }
+  }), [groupedFields, values])
+
   async function save(patch: Partial<Pick<ContractTemplateInstanceRecord, "leadId" | "propertyId" | "additionalParties">> = {}) {
     if (!instance) return
     setIsBusy(true)
@@ -544,9 +633,10 @@ function InstanceEditor({
   }
 
   function fieldState(field: ContractTemplateField) {
-    if (!values[field.id]?.trim()) return { label: "Precisa completar", tone: "text-[#a06e0f]" }
+    if (!values[field.id]?.trim() && field.required) return { label: "Precisa completar", tone: "text-[#a06e0f]" }
     const knownEntity = ["CLIENT", "PROPERTY", "BROKER"].includes(field.source)
       || (field.source === "ADDITIONAL_PARTY" && Boolean(field.partyId && additionalParties[field.partyId]?.leadId))
+    if (!values[field.id]?.trim()) return { label: "Opcional", tone: "text-[#8b95a1]" }
     return knownEntity
       ? { label: "Preenchido pelo EME", tone: "text-[#009b3a]" }
       : { label: "Informação deste contrato", tone: "text-[#5f6b7a]" }
@@ -648,6 +738,21 @@ function InstanceEditor({
           <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Prontidão</p>
           <p className="mt-2 text-4xl font-semibold tracking-[-0.06em] text-[#050505]">{readiness.score}%</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${readiness.score}%` }} /></div>
+          <div className="mt-4 grid gap-1.5">
+            {readinessGroups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => group.missing[0] && document.getElementById(`contract-field-${group.missing[0].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-left text-xs"
+              >
+                <span className="text-[#4b5563]">{group.label}</span>
+                {group.missing.length === 0
+                  ? <span className="inline-flex items-center gap-1 text-[#17733a]"><CheckCircle2 className="size-3.5" /> Completo</span>
+                  : <span className="inline-flex items-center gap-1 text-[#a06e0f]"><AlertCircle className="size-3.5" /> {group.missing.length} pendente{group.missing.length > 1 ? "s" : ""}</span>}
+              </button>
+            ))}
+          </div>
           <p className="mt-5 text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Pendências</p>
           <div className="mt-2 grid gap-2">
             {readiness.missing.length > 0 ? readiness.missing.map((field) => (
@@ -677,8 +782,10 @@ function InstanceEditor({
 }
 
 export function BrokerContractsExperience() {
+  const [view, setView] = useState<WorkspaceView>("contracts")
   const [mode, setMode] = useState<WorkspaceMode>(null)
   const [templates, setTemplates] = useState<ContractTemplateRecord[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplateRecord | null>(null)
   const [instanceId, setInstanceId] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -696,6 +803,7 @@ export function BrokerContractsExperience() {
 
   function openMode(next: WorkspaceMode) {
     setMode(next)
+    if (next === "import") setSelectedTemplate(null)
     setFeedback("")
     if (next === "import" || next === "new") void loadTemplates()
   }
@@ -720,19 +828,45 @@ export function BrokerContractsExperience() {
 
   const readyTemplates = templates.filter((template) => template.status === "READY")
 
+  useEffect(() => {
+    if (view === "templates") void loadTemplates()
+  }, [loadTemplates, view])
+
+  function inspectTemplate(template: ContractTemplateRecord) {
+    setSelectedTemplate(template)
+    setMode("import")
+    setFeedback("")
+  }
+
   return (
     <>
-      <BrokerContractsPage
-        key={revision}
-        onNewTemplateContract={() => openMode("new")}
-        onImportTemplate={() => openMode("import")}
-        onOpenTemplateContract={openInstance}
-      />
+      <div className="mb-5 flex w-fit rounded-xl border border-black/[0.06] bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
+        <button type="button" onClick={() => setView("contracts")} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${view === "contracts" ? "bg-[#edf8f1] text-[#17733a]" : "text-[#687386]"}`}>Contratos</button>
+        <button type="button" onClick={() => setView("templates")} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${view === "templates" ? "bg-[#edf8f1] text-[#17733a]" : "text-[#687386]"}`}>Modelos</button>
+      </div>
+
+      {view === "contracts" ? (
+        <BrokerContractsPage
+          key={revision}
+          onNewTemplateContract={() => openMode("new")}
+          onImportTemplate={() => openMode("import")}
+          onOpenTemplateContract={openInstance}
+        />
+      ) : (
+        <TemplateLibrary
+          templates={templates}
+          loading={isLoadingTemplates}
+          feedback={feedback}
+          onImport={() => openMode("import")}
+          onInspect={inspectTemplate}
+          onUse={createFromTemplate}
+        />
+      )}
 
       <Dialog open={mode === "import"} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent className="max-h-[95vh] max-w-[min(1120px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-5 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6">
-          <DialogHeader><DialogTitle>Importar modelo</DialogTitle><DialogDescription>Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma.</DialogDescription></DialogHeader>
-          <ImportTemplatePanel templates={templates} onTemplatesChanged={loadTemplates} onClose={() => setMode(null)} />
+          <DialogHeader><DialogTitle>{selectedTemplate ? "Estrutura do modelo" : "Importar modelo"}</DialogTitle><DialogDescription>{selectedTemplate ? "Consulte e revise os campos deste modelo reutilizável." : "Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma."}</DialogDescription></DialogHeader>
+          <ImportTemplatePanel key={selectedTemplate?.id ?? "new-import"} templates={templates} initialTemplate={selectedTemplate} onTemplatesChanged={loadTemplates} onClose={() => setMode(null)} />
         </DialogContent>
       </Dialog>
 

@@ -214,6 +214,17 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.getByLabel("Nome da parte Locatário")).toBeVisible()
   await page.getByRole("button", { name: "Salvar modelo" }).click()
 
+  await page.getByRole("button", { name: "Modelos", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Modelos", exact: true })).toBeVisible()
+  await expect(page.getByText("Biblioteca reutilizável", { exact: true })).toBeVisible()
+  await expect(page.getByText("Contrato Particular de Locação", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Consultar", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Estrutura do modelo" })).toBeVisible()
+  await expect(page.getByText("Fonte preservada", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: /Voltar ao upload/ }).click()
+  await page.keyboard.press("Escape")
+  await page.getByRole("button", { name: "Contratos", exact: true }).click()
+
   await page.getByRole("button", { name: "Novo contrato" }).click()
   await expect(page.getByText("Compra e venda — Modelo EME")).toHaveCount(0)
   await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
