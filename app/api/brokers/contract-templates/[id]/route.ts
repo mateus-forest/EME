@@ -56,19 +56,36 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const template = await prisma.contractTemplate.findFirst({
       where: { id, brokerId: auth.user.broker!.id },
-      include: { ...include, _count: { select: { instances: true } } },
+      include,
     })
     if (!template) return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404 })
     const current = template.versions.find((version) => version.version === template.currentVersion)
     if (!current) return NextResponse.json({ error: "A versão atual do modelo não foi encontrada." }, { status: 409 })
 
     const currentStructure = contractTemplateStructureSchema.safeParse(current.structure)
-    const bodyChanged = currentStructure.success && (
+    const structureChanged = !currentStructure.success || (
+      JSON.stringify(currentStructure.data) !== JSON.stringify(parsedStructure.data)
+    )
+    const bodyChanged = !currentStructure.success || (
       JSON.stringify(currentStructure.data.blocks) !== JSON.stringify(parsedStructure.data.blocks)
     )
-    const mustVersion = template.status === "READY" || template._count.instances > 0
+    const currentVersionInstanceCount = await prisma.contractTemplateInstance.count({
+      where: { templateVersionId: current.id },
+    })
+    // A new immutable version is necessary only when an existing contract already
+    // points at the current structure. Renaming or confirming an unchanged model
+    // must not create version noise.
+    const mustVersion = structureChanged && currentVersionInstanceCount > 0
 
     const updated = await prisma.$transaction(async (tx) => {
+      if (template.status === "READY" && !structureChanged) {
+        return tx.contractTemplate.update({
+          where: { id: template.id },
+          data: { name },
+          include,
+        })
+      }
+
       if (mustVersion) {
         const nextVersion = template.currentVersion + 1
         await tx.contractTemplateVersion.create({
@@ -119,7 +136,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       })
     })
 
-    return NextResponse.json({ template: serializeContractTemplate(updated), legalTextModified: bodyChanged })
+    return NextResponse.json({
+      template: serializeContractTemplate(updated),
+      legalTextModified: bodyChanged,
+      versionCreated: mustVersion,
+    })
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Modelos indisponíveis no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível salvar a revisão deste modelo." }, { status: 500 })

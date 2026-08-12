@@ -4,7 +4,14 @@ import PDFDocument from "pdfkit"
 
 import { extractContractTemplateText } from "../../lib/contract-document-parser.server"
 import { generateContractPdf } from "../../lib/contract-pdf.server"
-import { buildContractTemplateStructure, calculateContractReadiness, renderContractTemplateHtml, splitContractTextIntoBlocks } from "../../lib/contract-template-engine"
+import {
+  buildContractTemplateStructure,
+  calculateContractReadiness,
+  contractBindingOptions,
+  contractFieldBindingSchema,
+  renderContractTemplateHtml,
+  splitContractTextIntoBlocks,
+} from "../../lib/contract-template-engine"
 import { loginAsBroker } from "./helpers/auth"
 
 const structure = buildContractTemplateStructure(
@@ -87,6 +94,7 @@ async function createDocxFixture() {
 async function mockContracts(page: Page, initialReady = false) {
   let templateReady = initialReady
   let currentInstance = structuredClone(instance)
+  const calls = { templateImports: 0, instanceCreations: 0, reanalyses: 0 }
   await page.route("**/api/brokers/contracts**", (route) => route.fulfill({ json: { contracts: [], contractTypes: [] } }))
   await page.route("**/api/brokers/leads**", (route) => route.fulfill({ json: { leads: [{ id: "lead-1", name: "Carlos Souza", email: "carlos@example.com", phone: "11999999999", whatsApp: "11999999999", identification: { cpfCnpj: "123.456.789-00", rg: "12.345.678-9" }, address: {}, legal: {}, documents: [], completion: { score: 80, pending: [] }, status: "NEW", statusLabel: "Novo", message: "", catalogSlug: "", searchTerm: "", intent: "", source: "Manual", propertyId: null, propertyTitle: "", brokerId: "broker-1", brokerName: "Corretor", agencyId: null, agencyName: "", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }] } }))
   await page.route("**/api/properties/me**", (route) => route.fulfill({ json: { properties: [{ id: "property-1", title: "Apartamento Rua X", formattedPrice: "R$ 700.000,00", location: "Rua X", price: 70000000, city: "São Paulo", neighborhood: "Centro", ownerName: "João", legal: {}, images: [], documents: [], completion: { score: 80, pending: [] } }] } }))
@@ -96,20 +104,35 @@ async function mockContracts(page: Page, initialReady = false) {
     if (route.request().method() === "GET") {
       return route.fulfill({ json: { templates: [{ ...reviewTemplate, status: templateReady ? "READY" : "REVIEW_REQUIRED", version: { ...reviewTemplate.version, status: templateReady ? "READY" : "REVIEW_REQUIRED" } }] } })
     }
+    calls.templateImports += 1
     return route.fulfill({ status: 201, json: { template: reviewTemplate, reused: false } })
   })
   await page.route("**/api/brokers/contract-templates/template-1", async (route) => {
     if (route.request().method() === "PATCH") templateReady = true
     return route.fulfill({ json: { template: { ...reviewTemplate, status: "READY", version: { ...reviewTemplate.version, status: "READY" } }, legalTextModified: false } })
   })
-  await page.route("**/api/brokers/contract-instances", (route) => route.fulfill({ status: 201, json: { instance: { id: "instance-1", brokerDocumentId: "document-1" } } }))
+  await page.route("**/api/brokers/contract-templates/template-1/reanalyze", (route) => {
+    calls.reanalyses += 1
+    return route.fulfill({ json: { template: reviewTemplate, reused: false } })
+  })
+  await page.route("**/api/brokers/contract-instances", (route) => {
+    calls.instanceCreations += 1
+    return route.fulfill({ status: 201, json: { instance: { id: "instance-1", brokerDocumentId: "document-1" } } })
+  })
   await page.route("**/api/brokers/contract-instances/instance-1", async (route) => {
     if (route.request().method() === "PATCH") {
       const payload = route.request().postDataJSON()
       currentInstance = { ...currentInstance, ...payload, readiness: calculateContractReadiness(structure, payload.values ?? currentInstance.values) }
     }
+    if (route.request().method() === "POST") {
+      const payload = route.request().postDataJSON()
+      if (payload.action === "sign") {
+        currentInstance = { ...currentInstance, status: "signed", signedAt: payload.signedAt, signatureNote: payload.note }
+      }
+    }
     return route.fulfill({ json: { instance: currentInstance } })
   })
+  return calls
 }
 
 test("engine preserva texto fixo, substitui apenas ocorrências e calcula prontidão", () => {
@@ -120,6 +143,11 @@ test("engine preserva texto fixo, substitui apenas ocorrências e calcula pronti
   expect(html).not.toContain("TEMPLATE OFICIAL EME")
   expect(calculateContractReadiness(structure, values).score).toBe(100)
   expect(calculateContractReadiness(structure, {}).missing).toHaveLength(4)
+})
+
+test("catálogo de bindings permite revisar todas as origens aceitas pelo schema", () => {
+  const available = new Set(contractBindingOptions.map((option) => option.value))
+  expect(contractFieldBindingSchema.options.filter((binding) => !available.has(binding))).toEqual([])
 })
 
 test("parser lê PDF e DOCX localmente sem provider externo", async () => {
@@ -174,7 +202,7 @@ test("importação real rejeita arquivo inválido antes de qualquer análise", a
 
 test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME", async ({ page }) => {
   await loginAsBroker(page)
-  await mockContracts(page)
+  const calls = await mockContracts(page)
   await page.goto("/corretor/documentos/contratos")
   await expect(page.getByRole("button", { name: "Importar modelo" }).first()).toBeVisible()
   await expect(page.getByRole("button", { name: "Anexar contrato" })).toBeVisible()
@@ -182,7 +210,7 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await page.locator('input[type="file"]').setInputFiles({ name: "locacao.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: Buffer.from("fixture") })
   await page.getByRole("button", { name: "Importar modelo", exact: true }).last().click()
   await expect(page.getByText("Modelo identificado")).toBeVisible()
-  await expect(page.getByText("Locatário", { exact: true })).toBeVisible()
+  await expect(page.getByLabel("Nome da parte Locatário")).toBeVisible()
   await page.getByRole("button", { name: "Salvar modelo" }).click()
 
   await page.getByRole("button", { name: "Novo contrato" }).click()
@@ -190,7 +218,34 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
   await expect(page.getByText("Prontidão", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Trocar modelo" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Gerar PDF final" })).toBeDisabled()
+
+  await page.getByRole("button", { name: "Fechar" }).click()
+  await page.getByRole("button", { name: "Novo contrato" }).click()
+  await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
+  await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
+  expect(calls.templateImports).toBe(1)
+  expect(calls.instanceCreations).toBe(2)
+  expect(calls.reanalyses).toBe(0)
+})
+
+test("contrato completo registra assinatura externa com data e observação", async ({ page }) => {
+  await loginAsBroker(page)
+  await mockContracts(page, true)
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Novo contrato" }).click()
+  await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
+
+  for (const field of structure.fields) {
+    await page.locator(`#contract-field-${field.id}`).fill(field.type === "DATE" ? "2026-08-11" : `Valor de ${field.label}`)
+  }
+  await page.getByRole("button", { name: "Salvar alterações" }).click()
+  await expect(page.getByText("100%")).toBeVisible()
+  await page.getByRole("button", { name: "Registrar assinatura" }).click()
+  await page.getByLabel("Observação").fill("Assinado presencialmente pelas partes.")
+  await page.getByRole("button", { name: "Confirmar" }).click()
+  await expect(page.getByRole("button", { name: "Assinatura registrada" })).toBeVisible()
 })
 
 test("editor permanece utilizável em PWA sem overflow horizontal", async ({ page }) => {
@@ -203,4 +258,14 @@ test("editor permanece utilizável em PWA sem overflow horizontal", async ({ pag
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
   expect(overflow).toBe(false)
+})
+
+test("fluxo legado de anexar contrato continua disponível", async ({ page }) => {
+  await loginAsBroker(page)
+  await mockContracts(page, true)
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Anexar contrato" }).first().click()
+  await expect(page.getByRole("heading", { name: "Anexar contrato" })).toBeVisible()
+  await expect(page.getByText(/Armazene contratos externos/)).toBeVisible()
+  await expect(page.locator('input[type="file"]')).toBeVisible()
 })

@@ -263,6 +263,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       const structure = parseTemplateStructure(current.templateVersion.structure)
       const values = stringRecord(current.values)
       const snapshot = buildInstanceSnapshot({ structure, values, title: current.title, draft: false })
+      if (snapshot.readiness.score < 100) {
+        return NextResponse.json(
+          { error: "Complete os campos obrigatórios antes de registrar a assinatura deste contrato." },
+          { status: 409 },
+        )
+      }
       const content = createTemplateContractContent({
         instanceId: current.id,
         title: current.title,

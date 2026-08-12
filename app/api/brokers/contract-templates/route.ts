@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 
 import { NextRequest, NextResponse } from "next/server"
 
+import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { saveBrokerContractTemplateFile } from "@/lib/broker-document-storage"
 import { validateContractTemplateFile } from "@/lib/contract-document-parser.server"
@@ -143,7 +144,19 @@ export async function POST(request: NextRequest) {
       data: { sourceStoragePath: uploaded.storagePath },
     })
 
-    const analysis = await analyzeContractTemplate(fileEntry)
+    const analysis = await runWithAiOperationContext(
+      {
+        route: "/api/brokers/contract-templates",
+        source: "portal",
+        userId: auth.user.id,
+        brokerId,
+        agencyId: auth.user.broker!.agencyId ?? null,
+        planKey: auth.user.plan ?? null,
+        creditsConsumed: null,
+        metadata: { templateId: claimed.id, templateVersion: version.version },
+      },
+      () => analyzeContractTemplate(fileEntry),
+    )
     const finalName = requestedName || analysis.structure.title || fallbackName
     const updated = await prisma.$transaction(async (tx) => {
       await tx.contractTemplateVersion.update({

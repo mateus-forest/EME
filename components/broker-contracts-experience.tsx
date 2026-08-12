@@ -8,11 +8,14 @@ import {
   CheckCircle2,
   CopyPlus,
   Download,
+  ExternalLink,
   FileText,
   FileUp,
   Loader2,
   PenLine,
   Plus,
+  RefreshCw,
+  Trash2,
 } from "lucide-react"
 
 import { BrokerContractsPage } from "@/components/broker-contracts-page"
@@ -81,6 +84,11 @@ function ImportTemplatePanel({
   const [isBusy, setIsBusy] = useState(false)
   const [feedback, setFeedback] = useState("")
 
+  const legalTextModified = useMemo(() => {
+    if (!template?.version?.structure || !structure) return false
+    return JSON.stringify(template.version.structure.blocks) !== JSON.stringify(structure.blocks)
+  }, [structure, template])
+
   function beginReview(next: ContractTemplateRecord) {
     if (!next.version?.structure) {
       setFeedback("A estrutura deste modelo ainda não está disponível para revisão.")
@@ -121,8 +129,16 @@ function ImportTemplatePanel({
     } : current)
   }
 
+  function removeField(fieldId: string) {
+    setStructure((current) => current ? {
+      ...current,
+      fields: current.fields.filter((field) => field.id !== fieldId),
+    } : current)
+  }
+
   async function saveReview() {
     if (!template || !structure || !name.trim()) return
+    if (legalTextModified && !window.confirm("O texto jurídico foi alterado. Confirme que ele deve ser salvo como uma nova revisão do seu modelo.")) return
     setIsBusy(true)
     setFeedback("")
     try {
@@ -175,11 +191,20 @@ function ImportTemplatePanel({
 
             <section className="rounded-2xl border border-black/[0.06] bg-white p-5">
               <h3 className="font-semibold text-[#050505]">Partes identificadas</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {structure.parties.length > 0 ? structure.parties.map((party) => (
-                  <span key={party.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#f2f8f4] px-3 py-1.5 text-sm text-[#17733a]">
-                    <Check className="size-3.5" /> {party.label}
-                  </span>
+                  <label key={party.id} className="flex items-center gap-2 rounded-xl bg-[#f2f8f4] px-3 py-2 text-sm text-[#17733a]">
+                    <Check className="size-3.5 shrink-0" />
+                    <Input
+                      value={party.label}
+                      aria-label={`Nome da parte ${party.label}`}
+                      onChange={(event) => setStructure((current) => current ? {
+                        ...current,
+                        parties: current.parties.map((item) => item.id === party.id ? { ...item, label: event.target.value } : item),
+                      } : current)}
+                      className="h-8 border-0 bg-transparent px-1 text-sm text-[#17733a] shadow-none focus-visible:ring-1"
+                    />
+                  </label>
                 )) : <span className="text-sm text-[#6b7280]">Nenhuma parte inequívoca foi classificada.</span>}
               </div>
             </section>
@@ -191,7 +216,7 @@ function ImportTemplatePanel({
               </div>
               <div className="mt-4 grid gap-3">
                 {structure.fields.map((field) => (
-                  <div key={field.id} className="grid gap-3 rounded-xl bg-[#fafaf7] p-4 md:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_auto] md:items-end">
+                  <div key={field.id} className="grid gap-3 rounded-xl bg-[#fafaf7] p-4 md:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_150px_auto] md:items-end">
                     <label className="grid gap-1.5 text-xs text-[#687386]">
                       Campo no documento
                       <Input value={field.label} onChange={(event) => updateField(field.id, { label: event.target.value })} className="bg-white text-sm text-[#111]" />
@@ -210,10 +235,30 @@ function ImportTemplatePanel({
                         {contractBindingOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                     </label>
+                    <label className="grid gap-1.5 text-xs text-[#687386]">
+                      Tipo
+                      <select
+                        value={field.type}
+                        onChange={(event) => updateField(field.id, { type: event.target.value as ContractTemplateField["type"] })}
+                        className="h-10 rounded-lg border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
+                      >
+                        <option value="TEXT">Texto</option>
+                        <option value="LONG_TEXT">Texto longo</option>
+                        <option value="DATE">Data</option>
+                        <option value="CURRENCY">Valor monetário</option>
+                        <option value="NUMBER">Número</option>
+                        <option value="CPF_CNPJ">CPF ou CNPJ</option>
+                        <option value="PHONE">Telefone</option>
+                        <option value="EMAIL">E-mail</option>
+                      </select>
+                    </label>
                     <label className="flex h-10 items-center gap-2 text-sm text-[#4b5563]">
                       <input type="checkbox" checked={field.required} onChange={(event) => updateField(field.id, { required: event.target.checked })} className="size-4 accent-[#009b3a]" />
                       Obrigatório
                     </label>
+                    <button type="button" onClick={() => removeField(field.id)} className="flex h-10 items-center justify-center gap-2 rounded-lg text-xs text-[#8a4a44] hover:bg-[#fff1ef] md:col-start-4">
+                      <Trash2 className="size-3.5" /> Manter como texto fixo
+                    </button>
                   </div>
                 ))}
               </div>
@@ -222,10 +267,41 @@ function ImportTemplatePanel({
             <details className="rounded-2xl border border-black/[0.06] bg-white p-5">
               <summary className="cursor-pointer font-semibold text-[#111]">Estrutura e texto do modelo</summary>
               <p className="mt-2 text-sm leading-6 text-[#687386]">Use apenas para corrigir o documento. Alterações no texto jurídico criam uma nova versão e recomendam revisão jurídica.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {structure.sections.map((section) => (
+                  <label key={section.id} className="grid gap-1.5 text-xs uppercase tracking-[0.1em] text-[#8b95a1]">
+                    Seção
+                    <Input
+                      value={section.title}
+                      onChange={(event) => setStructure((current) => current ? {
+                        ...current,
+                        sections: current.sections.map((item) => item.id === section.id ? { ...item, title: event.target.value } : item),
+                      } : current)}
+                      className="normal-case tracking-normal text-[#111]"
+                    />
+                  </label>
+                ))}
+              </div>
               <div className="mt-4 grid gap-3">
                 {structure.blocks.map((block) => (
                   <label key={block.id} className="grid gap-1.5 text-xs uppercase tracking-[0.1em] text-[#8b95a1]">
-                    {block.type}
+                    <select
+                      value={block.type}
+                      onChange={(event) => setStructure((current) => current ? {
+                        ...current,
+                        blocks: current.blocks.map((item) => item.id === block.id ? {
+                          ...item,
+                          type: event.target.value as ContractTemplateStructure["blocks"][number]["type"],
+                        } : item),
+                      } : current)}
+                      className="h-9 w-fit rounded-lg border border-black/[0.08] bg-white px-3 text-xs text-[#5f6b7a]"
+                    >
+                      <option value="TITLE">Título</option>
+                      <option value="HEADING">Cabeçalho</option>
+                      <option value="CLAUSE">Cláusula</option>
+                      <option value="PARAGRAPH">Parágrafo</option>
+                      <option value="SIGNATURE">Assinatura</option>
+                    </select>
                     <Textarea
                       value={block.text}
                       onChange={(event) => setStructure((current) => current ? {
@@ -239,12 +315,20 @@ function ImportTemplatePanel({
                 ))}
               </div>
             </details>
+            {legalTextModified ? (
+              <p className="rounded-xl bg-[#fff8e8] p-4 text-sm leading-6 text-[#765a16]">
+                Este modelo foi alterado após a importação. Recomenda-se revisão jurídica antes do uso.
+              </p>
+            ) : null}
           </div>
 
           <aside className="h-fit rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-5 lg:sticky lg:top-0">
             <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Fonte preservada</p>
             <p className="mt-2 font-medium text-[#111]">{template.version?.sourceFileName}</p>
             <p className="mt-1 text-sm text-[#687386]">{formatBytes(template.version?.sourceFileSize ?? null)}</p>
+            <Button variant="outline" onClick={() => window.open(`/api/brokers/contract-templates/${template.id}/original`, "_blank")} className="mt-4 w-full rounded-xl">
+              <ExternalLink className="size-4" /> Abrir original
+            </Button>
             {structure.partiallyRecognized || structure.warnings.length > 0 ? (
               <div className="mt-4 rounded-xl bg-[#fff8e8] p-3 text-sm leading-5 text-[#765a16]">
                 <AlertCircle className="mb-2 size-4" />
@@ -254,6 +338,16 @@ function ImportTemplatePanel({
             <p className="mt-4 text-xs leading-5 text-[#7b8491]">Salvar confirma a estrutura. O texto jurídico não será reanalisado ao criar novos contratos.</p>
             <Button onClick={() => void saveReview()} disabled={isBusy || !name.trim()} className="mt-5 w-full rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
               {isBusy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />} Salvar modelo
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (window.confirm("Reanalisar inicia uma nova leitura do arquivo original. Deseja continuar?")) void reanalyze(template)
+              }}
+              disabled={isBusy}
+              className="mt-2 w-full rounded-xl text-[#5f6b7a]"
+            >
+              <RefreshCw className="size-4" /> Reanalisar arquivo
             </Button>
           </aside>
         </div>
@@ -282,6 +376,19 @@ function ImportTemplatePanel({
                 <span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Revisar campos antes de utilizar</span></span>
                 <PenLine className="size-4 text-[#009b3a]" />
               </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {templates.some((item) => item.status === "ANALYZING") ? (
+        <section>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Em preparação</p>
+          <div className="mt-3 grid gap-2">
+            {templates.filter((item) => item.status === "ANALYZING").map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/[0.06] bg-white p-4">
+                <span className="flex items-center gap-3"><Loader2 className="size-4 animate-spin text-[#009b3a]" /><span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Nenhuma análise adicional será iniciada enquanto esta estiver ativa.</span></span></span>
+                <Button variant="ghost" disabled={isBusy} onClick={() => void reanalyze(item)} className="rounded-xl text-xs">Verificar preparação</Button>
+              </div>
             ))}
           </div>
         </section>
@@ -321,10 +428,12 @@ function InstanceEditor({
   instanceId,
   onClose,
   onChanged,
+  onChangeTemplate,
 }: {
   instanceId: string
   onClose: () => void
   onChanged: () => void
+  onChangeTemplate: () => void
 }) {
   const [instance, setInstance] = useState<ContractTemplateInstanceRecord | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
@@ -434,6 +543,15 @@ function InstanceEditor({
     } finally { setIsBusy(false) }
   }
 
+  function fieldState(field: ContractTemplateField) {
+    if (!values[field.id]?.trim()) return { label: "Precisa completar", tone: "text-[#a06e0f]" }
+    const knownEntity = ["CLIENT", "PROPERTY", "BROKER"].includes(field.source)
+      || (field.source === "ADDITIONAL_PARTY" && Boolean(field.partyId && additionalParties[field.partyId]?.leadId))
+    return knownEntity
+      ? { label: "Preenchido pelo EME", tone: "text-[#009b3a]" }
+      : { label: "Informação deste contrato", tone: "text-[#5f6b7a]" }
+  }
+
   if (isBusy && !instance) return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="size-6 animate-spin text-[#009b3a]" /></div>
   if (!instance) return <p className="rounded-xl bg-[#fff8e8] p-4 text-sm text-[#765a16]">{feedback || "Contrato não encontrado."}</p>
 
@@ -446,7 +564,15 @@ function InstanceEditor({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void duplicate()} className="rounded-xl"><CopyPlus className="size-4" /> Duplicar</Button>
-          <Button variant="outline" onClick={() => setSignatureOpen(true)} className="rounded-xl"><Check className="size-4" /> Registrar assinatura</Button>
+          <Button
+            variant="outline"
+            onClick={() => setSignatureOpen(true)}
+            disabled={readiness.score < 100 || instance.status === "signed"}
+            title={readiness.score < 100 ? "Complete os campos obrigatórios antes de registrar a assinatura." : undefined}
+            className="rounded-xl"
+          >
+            <Check className="size-4" /> {instance.status === "signed" ? "Assinatura registrada" : "Registrar assinatura"}
+          </Button>
           <Button onClick={() => { onClose(); onChanged() }} className="rounded-xl bg-[#111] text-white hover:bg-[#050505]">Fechar</Button>
         </div>
       </div>
@@ -455,7 +581,12 @@ function InstanceEditor({
         <aside className="grid h-fit gap-5 xl:sticky xl:top-0">
           <section className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Modelo</p>
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} className="mt-2 bg-white" />
+            <p className="mt-2 text-sm font-semibold text-[#111]">{instance.template.name}</p>
+            <Button variant="ghost" onClick={onChangeTemplate} className="mt-1 h-8 rounded-lg px-2 text-xs text-[#5f6b7a]">Trocar modelo</Button>
+            <label className="mt-4 grid gap-1.5 text-xs text-[#687386]">
+              Título deste contrato
+              <Input value={title} onChange={(event) => setTitle(event.target.value)} className="bg-white" />
+            </label>
           </section>
           <section className="grid gap-3 rounded-2xl border border-black/[0.06] bg-white p-4">
             <label className="grid gap-1.5 text-xs text-[#687386]">Cliente
@@ -496,7 +627,7 @@ function InstanceEditor({
               <div className="mt-3 grid gap-3">
                 {group.fields.map((field) => (
                   <label key={field.id} className="grid gap-1.5 text-xs text-[#687386]">
-                    <span className="flex items-center justify-between gap-2"><span>{field.label}{field.required ? " *" : ""}</span><span className={values[field.id]?.trim() ? "text-[#009b3a]" : "text-[#a06e0f]"}>{values[field.id]?.trim() ? "Preenchido" : "Precisa completar"}</span></span>
+                    <span className="flex items-center justify-between gap-2"><span>{field.label}{field.required ? " *" : ""}</span><span className={fieldState(field).tone}>{fieldState(field).label}</span></span>
                     <FieldInput field={field} value={values[field.id] ?? ""} onChange={(value) => setValues((current) => ({ ...current, [field.id]: value }))} />
                   </label>
                 ))}
@@ -632,7 +763,17 @@ export function BrokerContractsExperience() {
       <Dialog open={mode === "editor" && Boolean(instanceId)} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent className="max-h-[98vh] max-w-[min(1500px,calc(100vw-1rem))] overflow-hidden rounded-2xl p-4 sm:p-6">
           <DialogHeader className="sr-only"><DialogTitle>Editor de contrato por modelo próprio</DialogTitle><DialogDescription>Preencha os dados, revise a prontidão e gere o documento.</DialogDescription></DialogHeader>
-          {instanceId ? <InstanceEditor instanceId={instanceId} onClose={() => setMode(null)} onChanged={() => setRevision((value) => value + 1)} /> : null}
+          {instanceId ? (
+            <InstanceEditor
+              instanceId={instanceId}
+              onClose={() => setMode(null)}
+              onChanged={() => setRevision((value) => value + 1)}
+              onChangeTemplate={() => {
+                setInstanceId(null)
+                openMode("new")
+              }}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
