@@ -1,6 +1,12 @@
 import type { CosActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
 import { isAwaitingInputResult } from "@/lib/cos/pending-input"
 
+function isValidActionResult(value: unknown): value is CosActionResult {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const result = value as Partial<CosActionResult>
+  return typeof result.response === "string" && Boolean(result.metadata) && typeof result.metadata === "object"
+}
+
 export async function executeCosCapability(input: {
   plan: CosCapabilityPlan
   brokerId: string
@@ -95,6 +101,18 @@ export async function executeCosExecutionPlan(input: {
       continue
     }
 
+    const unmetDependencies = step.dependsOn.filter((dependencyId) => {
+      const dependency = steps.find((candidate) => candidate.id === dependencyId)
+      return !dependency || dependency.status !== "completed"
+    })
+    if (unmetDependencies.length > 0) {
+      step.status = "skipped"
+      step.errorMessage = "DEPENDENCY_NOT_COMPLETED"
+      interruptedStep = step
+      interruptedReason = "dependency_not_completed"
+      break
+    }
+
     step.status = "running"
     const stepStartedAt = Date.now()
 
@@ -107,6 +125,10 @@ export async function executeCosExecutionPlan(input: {
         confirm: input.confirm,
         payload: runtimePayload,
       })
+
+      if (!isValidActionResult(result)) {
+        throw new Error("COS_INVALID_ACTION_RESULT")
+      }
 
       step.durationMs = Date.now() - stepStartedAt
       step.result = result
@@ -145,7 +167,7 @@ export async function executeCosExecutionPlan(input: {
   }
 
   const finalStatus =
-    interruptedReason === "failed"
+    interruptedReason === "failed" || interruptedReason === "dependency_not_completed"
       ? "failed"
       : interruptedReason === "awaiting_input"
         ? "awaiting_input"

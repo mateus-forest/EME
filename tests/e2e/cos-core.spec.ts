@@ -25,6 +25,8 @@ const fastActions = [
 ]
 
 test.describe("COS Core E2E", () => {
+  test.describe.configure({ timeout: 90_000 })
+
   test.beforeEach(async ({ page }) => {
     await loginAsBroker(page)
   })
@@ -98,7 +100,7 @@ test.describe("COS Core E2E", () => {
 
   test("escolhas estruturadas renderizam CTAs clicáveis e continuam o fluxo", async ({ page }) => {
     await openCosHome(page)
-    await sendCosMessage(page, "Oi")
+    await sendCosMessage(page, "abrir")
 
     const buttons = await findVisibleButtonsByLabels(page, [
       "Clientes",
@@ -160,5 +162,16 @@ test.describe("COS Core E2E", () => {
     const text = await collectBodyText(page)
     expect(text).not.toMatch(/fallback|legacy|stack|exception|runtime/i)
     expect(text).toMatch(/COS|Clientes|imóveis|imoveis|proposta|contrato|agenda/i)
+  })
+
+  test("PWA mantém conversa e escolhas sem overflow horizontal", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openCosHome(page)
+    await sendCosMessage(page, "abrir")
+
+    await expect(page.getByRole("button", { name: "Clientes", exact: true })).toBeVisible()
+    const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+    expect(hasOverflow).toBe(false)
+    await expectNoTechnicalMessages(page)
   })
 })

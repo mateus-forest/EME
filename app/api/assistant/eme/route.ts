@@ -893,7 +893,7 @@ export async function POST(request: NextRequest) {
       !activeWorkflowAction ||
       getCosActionDomain(activeWorkflowAction) === getCosActionDomain(effectiveRequestedAction)
     const resumableWorkflow =
-      shouldResumeWorkflow(activeWorkflow) &&
+      shouldResumeWorkflow(activeWorkflow, message) &&
       intentResolution.workflowDecision !== "start_new" &&
       workflowDomainsCompatible
         ? activeWorkflow
@@ -1111,6 +1111,7 @@ export async function POST(request: NextRequest) {
               planCosExecution({
                 message: executionMessage,
                 requestedAction: resolvedRequestedAction ?? undefined,
+                isExplicitAction: Boolean(effectiveRequestedAction),
                 pendingInput,
                 context: {
                 ...normalizedContext,

@@ -2,51 +2,52 @@
 
 ## Objetivo
 
-Gerar, anexar, revisar e acompanhar contratos dentro do workspace documental do corretor.
+Criar, anexar, revisar e acompanhar contratos no workspace do corretor usando modelos próprios reutilizáveis.
 
-## Principais funções
+## Contratos e Modelos
 
-- listar contratos por status;
-- pesquisar contratos;
-- criar contrato a partir de cliente e imóvel;
-- anexar contrato externo em PDF, DOC ou DOCX;
-- visualizar preview A4;
-- atualizar status;
-- abrir arquivo anexado;
-- baixar arquivo;
-- aprovar e revisar blocos do documento;
-- usar o workspace de pendências por entidade.
+- `Contratos` reúne rascunhos, documentos em andamento e assinados.
+- `Modelos` reúne os modelos próprios aprovados e disponíveis para novos contratos.
+- contratos legados continuam acessíveis no histórico, mas não são oferecidos como modelos para novas criações.
 
-## Fluxo de uso
+## Três ações diferentes
 
-1. Abra `Contratos`.
-2. Escolha entre gerar um contrato novo ou anexar um contrato externo.
-3. Vincule cliente, imóvel e tipo de contrato.
-4. Preencha dados comerciais e revise o preview.
-5. Corrija pendências nas entidades de origem quando necessário.
-6. Salve o contrato e acompanhe o status.
+- `Novo contrato`: cria uma instância a partir de um modelo próprio pronto.
+- `Importar modelo`: recebe PDF ou DOCX, identifica a estrutura e os campos, permite revisão e salva um modelo reutilizável.
+- `Anexar contrato`: guarda um contrato ou documento que já existe. Isso não o transforma automaticamente em modelo.
 
-## Dicas
+## Como criar um contrato
 
-- preencha bem cliente e imóvel antes de gerar contrato;
-- use o painel de pendências para corrigir falta de dados na origem, não no texto final;
-- anexe contratos externos quando o documento já existir fora do EME.
+1. Abra `Contratos` e escolha `Novo contrato`.
+2. Selecione um modelo próprio disponível.
+3. Selecione cliente, pessoas e imóvel quando o modelo exigir.
+4. Revise o que foi preenchido pelo EME e complete apenas as pendências da operação.
+5. Acompanhe a `Prontidão do contrato` e o preview A4.
+6. Gere um rascunho, mesmo com pendências, ou o PDF final quando os campos obrigatórios estiverem completos.
 
-## Limitações atuais
+## Modelos reutilizáveis
 
-- o preview elimina placeholders técnicos e depende das entidades de origem estarem completas;
-- há blocos do workspace que o próprio sistema marca como futuros para apoio adicional do COS;
-- contratos anexados usam a mesma biblioteca, mas seguem como documentos externos.
+O documento é analisado na primeira importação ou quando o usuário solicita uma reanálise. Depois de revisado e salvo, sua estrutura persistida é reutilizada no preenchimento de novos contratos, sem nova leitura a cada instância.
 
-## Mensagens de erro comuns
+O EME preserva o texto jurídico fixo. Ele identifica campos e preenche dados conhecidos; não inventa, completa ou melhora cláusulas juridicamente.
 
-- `Não foi possível carregar o contrato.`
-- `Não foi possível salvar o contrato.`
-- `Não foi possível anexar o contrato.`
-- `Não foi possível atualizar o contrato.`
+## Partes e pendências
 
-## Melhores práticas
+- dados já conhecidos aparecem como preenchidos pelo EME;
+- dados obrigatórios ausentes aparecem em pendências clicáveis;
+- informações exclusivas da operação ficam somente naquele contrato;
+- fiador, cônjuge, testemunha e outras partes podem usar uma pessoa existente ou dados informados apenas para o contrato.
 
-- mantenha cliente e imóvel completos antes da minuta;
-- valide datas, comissão e condições comerciais antes de salvar;
-- use anexação externa só quando o documento já estiver pronto fora do fluxo interno.
+## PDF e assinatura
+
+- `Gerar rascunho` cria um PDF identificado discretamente como rascunho.
+- `Gerar PDF final` exige todos os campos obrigatórios.
+- o EME não realiza assinatura eletrônica.
+- `Registrar assinatura` guarda apenas a confirmação interna, a data e uma observação opcional depois que a assinatura ocorreu externamente.
+
+## Boas práticas
+
+- revise os campos reconhecidos antes de aprovar um modelo importado;
+- mantenha o texto jurídico original quando houver dúvida;
+- use `Anexar contrato` para documentos existentes e `Importar modelo` para estruturas que serão reutilizadas;
+- confira o preview e a prontidão antes do PDF final.

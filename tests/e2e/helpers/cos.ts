@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test"
 
-const TECHNICAL_MESSAGE_PATTERNS = [/fallback/i, /legacy/i, /erro interno/i, /stack/i, /exception/i]
+const TECHNICAL_MESSAGE_PATTERNS = [/fallback/i, /legacy/i, /erro interno/i, /stack/i, /exception/i, /zod/i, /tool call/i, /intent score/i, /\{\s*"issues"/i]
 
 export function getCosComposer(page: Page) {
   return page.getByPlaceholder("Fale com o COS...")

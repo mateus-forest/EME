@@ -2,62 +2,42 @@
 
 ## Objetivo
 
-Centralizar os fluxos criativos com IA para imagens, campanhas, estratégias e vídeos do corretor.
+Criar e transformar materiais imobiliários, aprová-los e continuar o trabalho pela Biblioteca.
 
-## Principais funções
+## Áreas atuais
 
-- abrir a central do Studio IA;
-- acessar a Biblioteca;
-- transformar obra em imóvel pronto;
-- criar campanha para Instagram;
-- criar vídeo do imóvel;
-- atrair compradores;
-- captar proprietários;
-- orquestrar `Vender este imóvel`.
+- `Criar campanha`: cria o conteúdo estruturado e mantém o renderer consolidado de Feed, Story e Carrossel.
+- `Preparar imóvel`: trabalha sobre uma fotografia existente para mobiliar, esvaziar, reformar, editar, melhorar, corrigir perspectiva, melhorar o céu, desfocar ou remover um objeto.
+- `Visualizar projeto`: cria representações ilustrativas de terreno, obra, render ou fachada.
+- `Criar vídeo`: usa uma imagem original e um resultado aprovado para gerar movimento quando o provider compatível estiver disponível.
+- `Criar anúncio`: prepara título, texto, chamada, público e abordagem a partir de um material aprovado.
+- `Captar imóveis`: cria estratégia e materiais para captação de proprietários.
+- `Biblioteca`: concentra os materiais, status e próximas ações.
 
-## Fluxo de uso
+## Fluxo recomendado
 
-1. Abra `Studio IA`.
-2. Escolha o fluxo desejado.
-3. Siga as etapas de seleção, configuração, processamento, resultado e aprovação quando o fluxo usar revisão por versões.
-4. Revise blocos, peças ou prévias antes de aprovar.
-5. Consulte a `Biblioteca` para rever campanhas anteriores.
+1. Escolha o que deseja criar ou transformar.
+2. Selecione o material e, quando houver escolha, a IA compatível com a operação.
+3. Aguarde a geração e compare original e resultado quando aplicável.
+4. Aprove o material.
+5. Continue pela Biblioteca para criar vídeo ou anúncio sem reenviar o arquivo.
 
-## O que existe hoje por fluxo
+## Providers
 
-- `Transformar obra em imóvel pronto`: usa imóvel e imagem de base, escolhe estilo e gera versão final com aprovação.
-- `Criar campanha para Instagram`: gera feed, story, carrossel, legenda, CTA e hashtags com aprovação por peça.
-- `Criar vídeo do imóvel`: possui fluxo mais completo com briefing, prévia, aprovação, animação final, download e salvar em `Meus arquivos`.
-- `Atrair compradores`: gera estratégia por público e canal principal, com aprovação por bloco.
-- `Captar proprietários`: gera estratégia por objetivo, região e perfil do proprietário.
-- `Vender este imóvel`: funciona como orquestrador comercial e checklist sobre os outros fluxos.
-- `Biblioteca`: lista campanhas por busca, tipo, status, imagens e vídeos.
+- campanhas podem usar OpenAI ou Grok sem alterar o layout das peças;
+- a preparação de imóvel oferece somente as IAs realmente compatíveis com a operação escolhida;
+- visualizações de projeto usam OpenAI ou Grok e são identificadas como representações ilustrativas;
+- o fluxo atual de vídeo entre imagem original e resultado aprovado usa Luma, único provider habilitado hoje para esse contrato completo.
 
-## Dicas
+O Studio respeita a escolha feita pelo corretor e não troca silenciosamente de provider em caso de falha.
 
-- publique ou ao menos cadastre o imóvel antes de abrir fluxos ligados a propriedades;
-- gere novas versões quando o resultado estiver próximo do ideal, em vez de começar do zero;
-- use a Biblioteca para revisar materiais já criados.
+## Biblioteca
 
-## Limitações atuais
+A Biblioteca preserva o material aprovado, sua origem e a continuidade entre fluxos. Quando uma próxima ação estiver disponível, o contexto segue automaticamente e o arquivo não precisa ser duplicado ou enviado outra vez.
 
-- vários fluxos informam na própria interface que a persistência de aprovações e versões ainda é parcial ou focada na sessão e na campanha salva;
-- alguns blocos exibem textos dizendo `Sem alterar banco` ou comportamento semelhante;
-- o vídeo usa etapas de crédito e provedor externo, então o processamento pode demorar mais;
-- o orquestrador `Vender este imóvel` organiza fluxos e marcações, mas não automatiza sozinho a execução de todos eles.
+## Boas práticas
 
-## Mensagens de erro comuns
-
-- `Não foi possível gerar a campanha.`
-- `Não foi possível gerar a estratégia.`
-- `Não foi possível iniciar o fluxo.`
-- `Não foi possível aprovar a prévia.`
-- `Não foi possível salvar o vídeo.`
-- `Cadastre ou publique um imóvel para iniciar este fluxo do Studio IA.`
-
-## Melhores práticas
-
-- escolha primeiro o imóvel certo para o fluxo;
-- aprove blocos e peças individualmente quando o fluxo permitir;
-- use a Biblioteca como repositório permanente do Studio IA;
-- no vídeo, revise a prévia antes de autorizar a animação final.
+- escolha uma imagem nítida e coerente com a operação;
+- use `Preparar imóvel` antes do vídeo quando a fotografia precisar de transformação visual;
+- trate resultados de `Visualizar projeto` como possibilidades ilustrativas, não como algo já construído;
+- revise e aprove o resultado antes de seguir para vídeo ou anúncio.

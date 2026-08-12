@@ -1162,6 +1162,64 @@ function buildScenarioLibrary() {
     }),
   )
 
+  scenarios.push(
+    createScenario({
+      id: "workflow-composed-lead-proposal-agenda",
+      category: "workflow-composed",
+      description: "encadear cliente, proposta e compromisso",
+      message: "Cadastre a cliente Ana Lima, telefone 11999990000, crie uma proposta de 850 mil para o apartamento Jardins e me lembre de ligar amanhã às 10h.",
+      expected: {
+        capabilityId: "lead.create",
+        workflowActions: ["createLead", "CREATE_PROPOSAL", "CREATE_AGENDA_EVENT"],
+        requiresConfirmation: true,
+        maxProjectedQuestions: 1,
+      },
+      tags: ["workflow", "composition", "dependencies"],
+    }),
+    createScenario({
+      id: "workflow-composed-proposal-agenda-context",
+      category: "workflow-composed",
+      description: "reutilizar cliente e imóvel conhecidos em proposta e compromisso",
+      message: "Crie a proposta de 780 mil para ele e me lembre de ligar amanhã às 14h.",
+      workspace: { page: "property_detail", entity: "property", entityId: "prop-1" },
+      memory: {
+        propertyId: "prop-1",
+        selectedProperty: { id: "prop-1", label: "Apartamento Jardins" },
+        leadId: "lead-1",
+        selectedClient: { id: "lead-1", label: "Carlos Souza" },
+      },
+      expected: {
+        capabilityId: "proposal.create",
+        workflowActions: ["CREATE_PROPOSAL", "CREATE_AGENDA_EVENT"],
+        requiresConfirmation: true,
+        maxProjectedQuestions: 1,
+        contextOrigin: "workspace",
+      },
+      tags: ["workflow", "composition", "memory"],
+    }),
+    createScenario({
+      id: "workflow-contract-create-send-without-sign",
+      category: "workflow-composed",
+      description: "criar e enviar contrato sem registrar assinatura automaticamente",
+      message: "Crie o contrato para este imóvel e envie para revisão.",
+      workspace: { page: "property_detail", entity: "property", entityId: "prop-1" },
+      memory: {
+        propertyId: "prop-1",
+        selectedProperty: { id: "prop-1", label: "Apartamento Jardins" },
+        leadId: "lead-1",
+        selectedClient: { id: "lead-1", label: "Carlos Souza" },
+      },
+      expected: {
+        capabilityId: "contract.create",
+        workflowActions: ["CREATE_CONTRACT", "SEND_CONTRACT"],
+        requiresConfirmation: true,
+        maxProjectedQuestions: 1,
+        contextOrigin: "workspace",
+      },
+      tags: ["workflow", "contracts", "external-signature"],
+    }),
+  )
+
   return scenarios
 }
 

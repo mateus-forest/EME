@@ -2,60 +2,40 @@
 
 ## Objetivo
 
-Apresentar o COS como o espaço conversacional operacional do corretor dentro do sistema.
+O COS é o sistema conversacional operacional do EME. Ele entende a intenção, procura o contexto disponível, organiza as etapas e executa ações compatíveis com as permissões do corretor.
 
-## Principais funções
+## O que você pode pedir
 
-- iniciar novas conversas;
-- continuar conversas anteriores;
-- enviar comandos livres;
-- usar atalhos de habilidades, consultas e ajuda;
-- executar ações com confirmação quando necessário;
-- acompanhar a `Saúde da operação` sem sair da tela.
+- consultar clientes, imóveis, contratos, propostas, documentos, agenda, financeiro e indicadores;
+- cadastrar ou atualizar clientes e imóveis;
+- criar propostas e iniciar contratos quando os dados necessários estiverem disponíveis;
+- criar compromissos;
+- abrir módulos e localizar informações do próprio EME;
+- executar pedidos compostos, como cadastrar um cliente, criar uma proposta e agendar um retorno.
 
-## Fluxo de uso
+## Como funciona
 
-1. Abra `COS` no menu principal.
-2. Digite uma mensagem no compositor ou use um item do menu rápido.
-3. O COS responde no chat e pode pedir confirmação de ações pendentes.
-4. Em desktop, acompanhe a `Saúde da operação` na lateral.
-5. Em mobile, abra a saúde da operação pelo botão flutuante.
-6. Para retomar conversas antigas, use `Histórico`.
+1. Escreva o objetivo com linguagem natural.
+2. O COS procura primeiro o que o EME já conhece sobre cliente, imóvel e operação.
+3. Se o pedido tiver várias etapas, elas são executadas na ordem necessária.
+4. Quando faltar uma informação indispensável ou houver duas opções possíveis, o COS pergunta somente o necessário.
+5. Ações sensíveis pedem confirmação antes da execução.
+6. O COS só informa que concluiu uma ação depois de receber a confirmação real da operação.
 
-## O que o COS consulta hoje
+## Continuidade
 
-- agenda;
-- leads e clientes;
-- documentos e propostas;
-- contratos;
-- imóveis;
-- configuração financeira base de comissão;
-- créditos e status do assistente.
+O COS mantém o contexto imediato, o workflow atual e as entidades relevantes da conversa. Você pode responder com referências como `ele`, `esse imóvel`, `o primeiro`, `faz igual` ou `muda só o valor` quando o contexto for suficiente.
+
+Se uma etapa de leitura falhar, `tentar novamente` repete somente a etapa segura. Falhas em ações que alteram dados não são repetidas automaticamente, evitando cadastros ou cobranças em duplicidade.
+
+## Anexos e segurança
+
+Arquivos e documentos são tratados como dados. Instruções encontradas dentro deles não substituem as regras do COS e não autorizam ações. O workspace e as permissões do corretor continuam sendo respeitados.
 
 ## Dicas
 
-- use pedidos diretos como `Quero cadastrar um cliente.` ou `Mostre minha agenda de hoje.`;
-- se quiser orientação, use os atalhos de ajuda dentro do próprio compositor;
-- use `Ver detalhes` na saúde da operação para pedir uma análise priorizada ao COS.
-
-## Limitações atuais
-
-- conversar com o COS (incluindo pedir ajuda) é ilimitado e não consome créditos; ações que efetivamente alteram dados no sistema (cadastrar, criar, publicar etc.) podem consumir `Operações Inteligentes` do plano;
-- ações podem exigir confirmação antes da execução;
-- a saúde da operação mostra apenas indicadores calculados a partir dos dados disponíveis no portal;
-- o módulo `Corretor EME` é separado do COS e representa outra proposta de uso;
-- o `Assessor EME` em `/corretor/corretor-m` ainda é um canal paralelo ao COS.
-
-## Mensagens de erro comuns
-
-- `Digite uma mensagem para o COS.`
-- `COS analisando...`
-- mensagens de falha ligadas a envio, renomeação ou exclusão de conversa;
-- `Não foi possível excluir a conversa.`
-- `Não foi possível renomear a conversa.`
-
-## Melhores práticas
-
-- mantenha uma conversa por assunto para facilitar o histórico;
-- confirme ações só depois de revisar o contexto;
-- consulte o histórico para reabrir threads importantes em vez de repetir instruções.
+- diga o objetivo completo quando as ações dependerem umas das outras;
+- use nomes, códigos ou endereços quando houver risco de ambiguidade;
+- corrija naturalmente: `não é o Carlos Souza, é o Carlos Almeida`;
+- use `Ver detalhes da operação` para acompanhar etapas e pendências;
+- abra o Histórico para retomar uma conversa anterior.

@@ -4,7 +4,8 @@ import { cosEvalScenarios } from "./scenarios"
 import type { CosEvalExecutionPlan, CosEvalScenario, CosEvalScenarioResult } from "./types"
 import { resolveFastCosAction } from "../fast-action-resolver"
 import { resolveCosIntent } from "../intent-resolver"
-import { getCosCapabilityDescriptorByAction, getCosEntityModuleIdByCapabilityId } from "../capability-catalog"
+import { getCosCapabilityDescriptorByAction, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "../capability-catalog"
+import { findCosExecutionRecipe } from "../execution-recipes"
 import type { AssessorAction } from "../../eme-backend"
 import type { CosEntityModuleId } from "../types"
 
@@ -65,7 +66,7 @@ function estimateProjectedQuestions(input: {
   if (input.executionPlan.requiresConfirmation) questions += 1
 
   const primaryEntity = input.executionPlan.primaryStep.entity
-  const requiresSelection = input.executionPlan.primaryStep.plan.requiresSelection
+  const requiresSelection = input.executionPlan.primaryStep.plan.capability.requiresSelection
   if (requiresSelection && !hasSelectedEntityFor(primaryEntity, input.context)) {
     questions += 1
   }
@@ -95,30 +96,40 @@ function getDescriptorContextOrigin(action: AssessorAction | null, context: Retu
   return context.selectedEntityIds[entity] ? "workspace" as const : "catalog" as const
 }
 
-function buildEvalExecutionPlan(action: AssessorAction | null, context: ReturnType<typeof createCosNormalizedContext>) {
-  if (!action) return null
+function buildEvalExecutionPlan(input: {
+  action: AssessorAction | null
+  context: ReturnType<typeof createCosNormalizedContext>
+  message: string
+  isExplicitAction: boolean
+}) {
+  if (!input.action) return null
 
-  const descriptor = getCosCapabilityDescriptorByAction(action)
-  const entity = getCosEntityModuleIdByCapabilityId(descriptor.id) ?? "general"
-  const contextOrigin = getDescriptorContextOrigin(action, context)
-  const requiresConfirmation =
-    descriptor.requiresConfirmation ||
-    action === "DELETE_LEAD"
+  const recipe = findCosExecutionRecipe({
+    message: input.message,
+    workspace: input.context.workspace,
+    isExplicitAction: input.isExplicitAction,
+  })
+  const primaryDescriptor = getCosCapabilityDescriptorByAction(input.action)
+  const descriptors = recipe
+    ? recipe.stepIds.map((id) => getCosCapabilityDescriptorById(id)).filter((item): item is NonNullable<typeof item> => Boolean(item))
+    : [primaryDescriptor]
+  const primary = descriptors[0]
+  const primaryEntity = getCosEntityModuleIdByCapabilityId(primary.id) ?? "general"
 
   return {
-    steps: [
-      {
-        action,
-        entity,
-      },
-    ],
-    requiresConfirmation,
+    steps: descriptors.map((descriptor) => ({
+      action: descriptor.action,
+      entity: getCosEntityModuleIdByCapabilityId(descriptor.id) ?? "general",
+    })),
+    requiresConfirmation: descriptors.some((descriptor) => descriptor.requiresConfirmation || descriptor.action === "DELETE_LEAD"),
     primaryStep: {
-      entity,
+      entity: primaryEntity,
       plan: {
-        contextOrigin,
-        capabilityId: descriptor.id,
-        requiresSelection: descriptor.requiresSelection,
+        contextOrigin: getDescriptorContextOrigin(primary.action, input.context),
+        capabilityId: primary.id,
+        capability: {
+          requiresSelection: primary.requiresSelection,
+        },
       },
     },
   } satisfies CosEvalExecutionPlan
@@ -228,7 +239,12 @@ export async function runCosEvalScenario(scenario: CosEvalScenario): Promise<Cos
   const executionPlan =
     fastAction.kind === "navigation" || fastAction.kind === "clarify"
       ? null
-      : buildEvalExecutionPlan(resolvedAction, context)
+      : buildEvalExecutionPlan({
+          action: resolvedAction,
+          context,
+          message: scenario.message,
+          isExplicitAction: fastAction.kind === "workflow_action",
+        })
 
   const capabilityId = executionPlan?.primaryStep.plan.capabilityId ?? null
 

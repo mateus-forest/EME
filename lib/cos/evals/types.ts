@@ -5,11 +5,11 @@ import type {
   CosCapabilityId,
   CosCapabilitySurface,
   CosConversationMemory,
+  CosEntityModuleId,
   CosNormalizedContext,
   CosPendingInput,
   CosWorkflow,
   CosWorkspaceContext,
-  CosEntityModuleId,
 } from "@/lib/cos/types"
 import type { CosIntentResolution } from "@/lib/cos/intent-resolver"
 
@@ -24,7 +24,9 @@ export type CosEvalExecutionPlan = {
     plan: {
       contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" | null
       capabilityId: CosCapabilityId | null
-      requiresSelection: boolean
+      capability: {
+        requiresSelection: boolean
+      }
     }
   }
 }

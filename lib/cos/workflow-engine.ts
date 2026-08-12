@@ -354,18 +354,6 @@ export function updateWorkflowFromExecutionResult(input: {
   }
 }
 
-export function resumeWorkflowState(workflow: CosWorkflow) {
-  if (!workflow.pausedAt) return workflow
-  const pausedMs = Date.now() - new Date(workflow.pausedAt).getTime()
-  return {
-    ...workflow,
-    status: "processing" as CosWorkflowStatus,
-    pausedAt: null,
-    totalPausedMs: workflow.totalPausedMs + Math.max(0, pausedMs),
-    updatedAt: new Date().toISOString(),
-  }
-}
-
 export function cancelWorkflow(workflow: CosWorkflow) {
   const now = new Date().toISOString()
   return {
@@ -385,7 +373,7 @@ export function formatWorkflowProgress(workflow: CosWorkflow) {
     return `Etapa ${current} de ${total}\nAguardando: ${workflow.pendingInput.label}.`
   }
   if (workflow.status === "completed") {
-    return `Workflow concluido.\n${total} etapas executadas.`
+    return `Operação concluída.\n${total} etapas executadas.`
   }
   return `Etapa ${current} de ${total}`
 }
@@ -446,11 +434,7 @@ export function formatWorkflowOperationDetails(input: {
   return lines.join("\n")
 }
 
-export function shouldResumeWorkflow(workflow: CosWorkflow | null) {
-  if (!workflow) return false
-  const status = normalizeWorkflowStatus(workflow.status)
-  return status === "awaiting_input" || status === "paused" || status === "processing"
-}
+export { resumeWorkflowState, shouldResumeWorkflow } from "@/lib/cos/workflow-recovery"
 
 export function shouldConfirmWorkflowMessage(message: string, confirm?: boolean) {
   return Boolean(confirm) || isAffirmativeMessage(message)

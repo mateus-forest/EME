@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import type { AssessorAction } from "@/lib/eme-backend"
 
 import { buildRejectedAiPlanGoal, evaluateAiOrchestratorTrigger, generateCosAiExecutionPlan, type CosAiOrchestratorAudit } from "@/lib/cos/ai-orchestrator"
+import { findCosExecutionRecipe, type CosExecutionRecipe } from "@/lib/cos/execution-recipes"
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
 import { getCosCapabilityConfirmationMessage, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
 import { planCosCapability } from "@/lib/cos/planner"
@@ -22,13 +23,6 @@ import type {
   CosWorkspaceEntity,
   CosWorkflow,
 } from "@/lib/cos/types"
-
-type ExecutionRecipe = {
-  id: string
-  match: (input: { normalizedMessage: string; workspace: CosWorkspaceContext | null }) => boolean
-  stepIds: CosCapabilityId[]
-  reason: (input: { normalizedMessage: string; workspace: CosWorkspaceContext | null }) => string
-}
 
 type StepPlanSource = {
   source?: CosCapabilityPlanSource
@@ -58,14 +52,6 @@ function getWorkspaceEntityId(workspace: CosWorkspaceContext | null | undefined)
   return workspace?.entityId || getWorkspaceSelectionItem(workspace)?.entityId || null
 }
 
-function hasAny(normalizedMessage: string, tokens: string[]) {
-  return tokens.some((token) => normalizedMessage.includes(token))
-}
-
-function isPropertyWorkspace(workspace: CosWorkspaceContext | null) {
-  return getWorkspaceEntity(workspace) === "property" && Boolean(getWorkspaceEntityId(workspace))
-}
-
 function summarizeActiveWorkflow(workflow: CosWorkflow | null | undefined) {
   if (!workflow) return null
   return {
@@ -80,45 +66,6 @@ function summarizeActiveWorkflow(workflow: CosWorkflow | null | undefined) {
     })),
   }
 }
-
-const executionRecipes: ExecutionRecipe[] = [
-  {
-    id: "lead_create_then_proposal",
-    match: ({ normalizedMessage }) =>
-      hasAny(normalizedMessage, ["cadastre", "cadastrar", "novo cliente", "novo lead", "crie cliente", "criar cliente"]) &&
-      normalizedMessage.includes("proposta"),
-    stepIds: ["lead.create", "proposal.create"],
-    reason: () => "pedido combinou cadastro de cliente com geracao de proposta",
-  },
-  {
-    id: "contract_create_then_signature",
-    match: ({ normalizedMessage }) =>
-      normalizedMessage.includes("contrato") && hasAny(normalizedMessage, ["assinatura", "assinar", "envie", "enviar"]),
-    stepIds: ["contract.create", "contract.send", "contract.sign"],
-    reason: () => "pedido combinou criacao de contrato com envio e conclusao da assinatura no mesmo workflow",
-  },
-  {
-    id: "operation_analysis",
-    match: ({ normalizedMessage }) =>
-      hasAny(normalizedMessage, ["analise minha operacao", "analisar minha operacao", "analise minha carteira", "analisar minha carteira"]),
-    stepIds: ["lead.summary", "finance.summary", "analytics.summary", "operation.summary"],
-    reason: () => "pedido exige consolidacao operacional em multiplas leituras do Registry",
-  },
-  {
-    id: "property_sale_preparation",
-    match: ({ normalizedMessage, workspace }) =>
-      isPropertyWorkspace(workspace) &&
-      hasAny(normalizedMessage, ["quero vender", "vender este imovel", "gere um anuncio", "criar anuncio", "publicar este imovel"]),
-    stepIds: ["property.description.improve", "catalog.publish", "studio.generateCampaign"],
-    reason: () => "pedido usou um imovel do workspace para preparar a venda com descricao, publicacao e campanha",
-  },
-  {
-    id: "catalog_publish_then_campaign",
-    match: ({ normalizedMessage }) => normalizedMessage.includes("catalogo") && hasAny(normalizedMessage, ["publique", "publicar", "campanha"]),
-    stepIds: ["catalog.publish", "studio.generateCampaign"],
-    reason: () => "pedido combinou publicacao em catalogo com geracao de campanha no Studio IA",
-  },
-]
 
 const confirmationOnlyActions = new Set<AssessorAction>([
   "DELETE_LEAD",
@@ -371,7 +318,7 @@ function buildRecipeExecutionPlan(input: {
   surface: CosCapabilitySurface
   workspace: CosWorkspaceContext | null
   startedAt: number
-  recipe: ExecutionRecipe
+  recipe: CosExecutionRecipe
 }): CosExecutionPlan {
   const planId = randomUUID()
   const normalizedMessage = normalizeText(input.message)
@@ -570,12 +517,12 @@ export async function planCosExecution(input: {
   intentReason?: string | null
   aiOrchestratorOverride?: unknown
   allowAiOrchestrator?: boolean
+  isExplicitAction?: boolean
 }): Promise<CosExecutionPlan> {
   const startedAt = Date.now()
   const surface = input.surface ?? "portal"
   const workspace = input.workspace ?? null
   const pendingInput = input.pendingInput ?? null
-  const normalizedMessage = normalizeText(input.message)
   const primaryCapabilityPlan = planCosCapability({
     message: input.message,
     requestedAction: input.requestedAction,
@@ -594,9 +541,11 @@ export async function planCosExecution(input: {
   // vários itens listados) podia colidir com um recipe genérico e descartar a capability já resolvida
   // com confiança máxima, substituindo-a por um workflow de 3 passos sobre contrato não solicitado.
   // Mesma exceção que shouldTryAiOrchestrator (lib/cos/ai-orchestrator.ts) já aplica para requestedAction.
-  const matchedRecipe = input.requestedAction
-    ? null
-    : executionRecipes.find((recipe) => recipe.match({ normalizedMessage, workspace }))
+  const matchedRecipe = findCosExecutionRecipe({
+    message: input.message,
+    workspace,
+    isExplicitAction: input.isExplicitAction,
+  })
   if (matchedRecipe) {
     return buildRecipeExecutionPlan({
       message: input.message,
@@ -615,7 +564,7 @@ export async function planCosExecution(input: {
   const aiTrigger = evaluateAiOrchestratorTrigger({
     message: input.message,
     surface,
-    requestedAction: input.requestedAction,
+    requestedAction: input.isExplicitAction ? input.requestedAction : undefined,
     workspace,
     pendingInput,
     context: input.context ?? null,
