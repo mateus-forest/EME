@@ -73,6 +73,43 @@ async function downloadSourceImage(imageUrl: string) {
   return { buffer, contentType }
 }
 
+async function downloadOpenAIEditMask(maskUrl: string) {
+  const source = await downloadSourceImage(maskUrl)
+  if (source.contentType !== "image/png") {
+    throw new OpenAIImageProviderError(
+      "OPENAI_IMAGE_SOURCE_UNAVAILABLE",
+      "A seleção da área possui um formato inválido.",
+      400,
+    )
+  }
+
+  try {
+    const sharp = (await import("sharp")).default
+    const { data, info } = await sharp(source.buffer).greyscale().raw().toBuffer({ resolveWithObject: true })
+    const rgba = Buffer.alloc(info.width * info.height * 4)
+    for (let pixel = 0; pixel < info.width * info.height; pixel += 1) {
+      const value = data[pixel]
+      const offset = pixel * 4
+      rgba[offset] = 0
+      rgba[offset + 1] = 0
+      rgba[offset + 2] = 0
+      // EME/Pedra: white = edit. OpenAI: transparent = edit.
+      rgba[offset + 3] = value >= 128 ? 0 : 255
+    }
+    const buffer = await sharp(rgba, { raw: { width: info.width, height: info.height, channels: 4 } })
+      .png({ compressionLevel: 9 })
+      .toBuffer()
+    if (buffer.byteLength > 4 * 1024 * 1024) throw new Error("mask too large")
+    return buffer
+  } catch {
+    throw new OpenAIImageProviderError(
+      "OPENAI_IMAGE_SOURCE_UNAVAILABLE",
+      "A seleção da área não pôde ser preparada.",
+      400,
+    )
+  }
+}
+
 export async function editOpenAIImage(
   input: StudioImageEditProviderInput,
 ): Promise<StudioProviderResult<StudioImageProviderOutput>> {
@@ -87,16 +124,19 @@ export async function editOpenAIImage(
 
   const startedAt = Date.now()
   const source = await downloadSourceImage(input.imageUrl)
+  const mask = input.maskUrl ? await downloadOpenAIEditMask(input.maskUrl) : null
 
   try {
     const response = await client.images.edit({
       model: OPENAI_IMAGE_MODEL,
       image: await toFile(source.buffer, "studio-source.png", { type: source.contentType }),
+      ...(mask ? { mask: await toFile(mask, "studio-mask.png", { type: "image/png" }) } : {}),
       prompt: input.prompt,
       n: 1,
       quality: "medium",
+      input_fidelity: "high",
       output_format: "png",
-      size: "1536x1024",
+      size: "auto",
     })
     const image = response.data?.[0]
     if (!image?.b64_json) {

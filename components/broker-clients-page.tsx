@@ -1145,7 +1145,7 @@ function formatDate(value: string) {
 function formatLeadSource(source: string) {
   const normalized = source.toLowerCase()
   if (normalized.includes("catalog")) return "Catálogo"
-  if (normalized.includes("assessor")) return "Assessor EME"
+  if (normalized.includes("assessor") || normalized === "cos") return "COS"
   if (normalized.includes("corretor_eme")) return "Corretor EME"
   if (normalized.includes("whatsapp")) return "WhatsApp"
   if (normalized.includes("manual")) return "Manual"

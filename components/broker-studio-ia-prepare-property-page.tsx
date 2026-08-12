@@ -34,9 +34,9 @@ type SourceMode = "property" | "upload"
 type PreparationProvider = Extract<StudioProviderId, "pedra" | "openai" | "xai">
 
 const providerDescriptions: Record<PreparationProvider, string> = {
-  pedra: "Especializada em transformação imobiliária e preservação do ambiente.",
-  openai: "Versátil para edições visuais orientadas por instrução.",
-  xai: "Alternativa criativa para edição e transformação visual.",
+  pedra: "Especializada em fotografia e transformação imobiliária.",
+  openai: "Boa compreensão da instrução e edição generativa.",
+  xai: "Edição generativa e interpretação visual criativa.",
 }
 
 function operationCapability(operation: PropertyPreparationOperation): StudioCapabilityId {
@@ -149,8 +149,12 @@ export function BrokerStudioIaPreparePropertyPage() {
 
   function handleOperationChange(nextOperation: PropertyPreparationOperation) {
     setOperation(nextOperation)
-    const nextProvider = getStudioCapabilityProviders(operationCapability(nextOperation), ["active", "adapter_ready"])[0]?.provider
-    setSelectedProvider(nextProvider === "openai" || nextProvider === "xai" ? nextProvider : "pedra")
+    const nextProviders = getStudioCapabilityProviders(operationCapability(nextOperation), ["active", "adapter_ready"])
+      .map((entry) => entry.provider)
+    if (!nextProviders.includes(selectedProvider)) {
+      const nextProvider = nextProviders[0]
+      setSelectedProvider(nextProvider === "openai" || nextProvider === "xai" ? nextProvider : "pedra")
+    }
     setObjectMask(null)
     setCampaign(null)
     setNotice(null)

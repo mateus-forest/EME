@@ -50,7 +50,11 @@ function mapPedraHttpError(status: number) {
     return new PedraApiError("PEDRA_INVALID_REQUEST", "Não foi possível processar esta imagem com as opções selecionadas.", 400)
   }
   if (status === 403) {
-    return new PedraApiError("PEDRA_INSUFFICIENT_PROVIDER_CREDITS", "O serviço de preparação visual está temporariamente indisponível.", 503)
+    return new PedraApiError(
+      "PEDRA_INSUFFICIENT_PROVIDER_CREDITS",
+      "A IA especializada está temporariamente sem saldo. Escolha outra IA disponível ou tente novamente mais tarde.",
+      503,
+    )
   }
   if (status === 404) {
     return new PedraApiError("PEDRA_INVALID_API_KEY", "A preparação visual não está configurada corretamente neste ambiente.", 503)

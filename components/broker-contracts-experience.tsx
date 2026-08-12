@@ -665,7 +665,7 @@ function InstanceEditor({
       </div>
 
       <Dialog open={signatureOpen} onOpenChange={setSignatureOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-w-md rounded-2xl border-black/[0.07] bg-white text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
           <DialogHeader><DialogTitle>Registrar assinatura</DialogTitle><DialogDescription>Confirma que este contrato foi assinado externamente?</DialogDescription></DialogHeader>
           <label className="grid gap-2 text-sm text-[#5f6b7a]">Data da assinatura<Input type="date" value={signedAt} onChange={(event) => setSignedAt(event.target.value)} /></label>
           <label className="grid gap-2 text-sm text-[#5f6b7a]">Observação<Textarea value={signatureNote} onChange={(event) => setSignatureNote(event.target.value)} placeholder="Opcional" /></label>
@@ -730,14 +730,14 @@ export function BrokerContractsExperience() {
       />
 
       <Dialog open={mode === "import"} onOpenChange={(open) => !open && setMode(null)}>
-        <DialogContent className="max-h-[95vh] max-w-[min(1120px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl p-5 sm:p-6">
+        <DialogContent className="max-h-[95vh] max-w-[min(1120px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-5 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6">
           <DialogHeader><DialogTitle>Importar modelo</DialogTitle><DialogDescription>Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma.</DialogDescription></DialogHeader>
           <ImportTemplatePanel templates={templates} onTemplatesChanged={loadTemplates} onClose={() => setMode(null)} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={mode === "new"} onOpenChange={(open) => !open && setMode(null)}>
-        <DialogContent className="max-w-2xl rounded-2xl">
+        <DialogContent className="max-w-2xl rounded-2xl border-black/[0.07] bg-white text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
           <DialogHeader><DialogTitle>Escolha um modelo</DialogTitle><DialogDescription>Seus contratos, preparados com os dados da operação.</DialogDescription></DialogHeader>
           {isLoadingTemplates ? <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-[#009b3a]" /></div> : readyTemplates.length > 0 ? (
             <div className="grid gap-2">
@@ -761,7 +761,7 @@ export function BrokerContractsExperience() {
       </Dialog>
 
       <Dialog open={mode === "editor" && Boolean(instanceId)} onOpenChange={(open) => !open && setMode(null)}>
-        <DialogContent className="max-h-[98vh] max-w-[min(1500px,calc(100vw-1rem))] overflow-hidden rounded-2xl p-4 sm:p-6">
+        <DialogContent className="max-h-[98vh] max-w-[min(1500px,calc(100vw-1rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-4 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6">
           <DialogHeader className="sr-only"><DialogTitle>Editor de contrato por modelo próprio</DialogTitle><DialogDescription>Preencha os dados, revise a prontidão e gere o documento.</DialogDescription></DialogHeader>
           {instanceId ? (
             <InstanceEditor

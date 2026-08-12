@@ -32,6 +32,7 @@ export type StudioImageProviderOutput = {
 export type StudioImageEditProviderInput = {
   prompt: string;
   imageUrl: string;
+  maskUrl?: string;
 };
 
 export type StudioVideoProviderInput = {

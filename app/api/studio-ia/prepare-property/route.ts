@@ -26,6 +26,7 @@ import { editOpenAIImage, OpenAIImageProviderError } from "@/lib/studio-provider
 import type { StudioProviderResult, StudioImageProviderOutput } from "@/lib/studio-providers/types"
 import { editXaiImage, XAIProviderError } from "@/lib/studio-providers/xai"
 import {
+  buildPropertyPreparationEditPrompt,
   getPropertyPreparationExternalCredits,
   getPropertyPreparationOperation,
   propertyPreparationRequestSchema,
@@ -342,14 +343,12 @@ async function executePreparationProvider(input: {
     }
   }
 
-  if (input.configuration.operation !== "edit_via_prompt") {
-    throw new PreparationRouteError("PROVIDER_NOT_COMPATIBLE", "A IA selecionada não executa esta preparação.", 400)
-  }
+  const prompt = buildPropertyPreparationEditPrompt(input.configuration)
 
   if (input.provider === "openai") {
-    return editOpenAIImage({ imageUrl: input.imageUrl, prompt: input.configuration.prompt })
+    return editOpenAIImage({ imageUrl: input.imageUrl, prompt, maskUrl: input.maskUrl })
   }
-  return editXaiImage({ imageUrl: input.imageUrl, prompt: input.configuration.prompt })
+  return editXaiImage({ imageUrl: input.imageUrl, prompt })
 }
 
 function getConfiguration(formData: FormData) {

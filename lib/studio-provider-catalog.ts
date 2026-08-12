@@ -93,15 +93,16 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     "property_preparation.enhance",
     "property_preparation.perspective",
     "property_preparation.sky",
-    "property_preparation.blur",
     "property_preparation.remove_object",
   ] as const).map((capability) => ({
     capability,
     provider: "openai" as const,
-    status: "requires_validation" as const,
-    operation: null,
-    model: null,
-    note: "Provider previsto na matriz de produto, sem adapter operacional validado para esta operação.",
+    status: "adapter_ready" as const,
+    operation: "POST /v1/images/edits",
+    model: "gpt-image-2",
+    note: capability === "property_preparation.remove_object"
+      ? "Edição com máscara alinhada à imagem original e instrução controlada."
+      : "Edição generativa implementada com uma instrução específica e regras de preservação imobiliária.",
   })),
   {
     capability: "property_preparation.edit_via_prompt",
@@ -118,14 +119,21 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     "property_preparation.enhance",
     "property_preparation.perspective",
     "property_preparation.sky",
-    "property_preparation.blur",
   ] as const).map((capability) => ({
     capability,
     provider: "xai" as const,
-    status: "requires_validation" as const,
+    status: "adapter_ready" as const,
     operation: "POST /v1/images/edits",
     model: "grok-imagine-image-quality",
-    note: "A edição genérica existe, mas o contrato não garante esta operação imobiliária específica.",
+    note: "Edição generativa implementada com uma instrução específica e regras de preservação imobiliária.",
+  })),
+  ...(["openai", "xai"] as const).map((provider) => ({
+    capability: "property_preparation.blur" as const,
+    provider,
+    status: "unsupported" as const,
+    operation: null,
+    model: null,
+    note: "Edição generativa não garante desfoque determinístico de todos os elementos sensíveis.",
   })),
   {
     capability: "property_preparation.remove_object",

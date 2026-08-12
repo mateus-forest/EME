@@ -72,7 +72,9 @@ export function leadSourceLabel(source: string) {
   const normalized = source.trim().toLowerCase()
   if (normalized === "catalog" || normalized === "catalogo" || normalized === "catálogo") return "Catálogo"
   if (normalized === "corretor_eme") return "Corretor EME"
-  if (normalized === "assessor_eme") return "Assessor EME"
+  // Historical COS-created leads store the legacy source key `assessor_eme`.
+  // Keep the persisted audit value and normalize only its current presentation.
+  if (normalized === "assessor_eme") return "COS"
   if (normalized === "manual") return "Manual"
   if (normalized === "whatsapp") return "WhatsApp"
   if (normalized === "landing") return "Landing page"
