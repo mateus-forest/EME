@@ -758,13 +758,13 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "Processamento interno",
-      description: "Este fluxo gera a estratégia real no servidor sem expor configurações técnicas ao corretor.",
+      value: "Estratégia em criação",
+      description: "O conteúdo é preparado a partir das informações fornecidas para a captação.",
     },
     {
       title: "Persistência",
-      value: "Sem alterar banco",
-      description: "As aprovações e versões desta estratégia continuam apenas na sessão atual, preservando a arquitetura do portal.",
+      value: "Revisão imediata",
+      description: "O resultado fica disponível para revisar e copiar assim que a criação terminar.",
     },
   ]
 }

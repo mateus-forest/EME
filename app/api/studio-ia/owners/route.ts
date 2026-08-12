@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
+import { ZodError } from "zod"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
@@ -95,6 +96,13 @@ export async function POST(request: NextRequest) {
     console.error("[api][studio-ia][owners] generation failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
+
+    if (caughtError instanceof ZodError) {
+      return NextResponse.json(
+        { error: "Revise as informações necessárias para criar a estratégia." },
+        { status: 400 },
+      )
+    }
 
     if (caughtError instanceof Error && caughtError.message === STUDIO_OWNER_ERRORS.disabled) {
       return NextResponse.json(

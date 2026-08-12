@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O Studio IA está temporariamente indisponível. Tente novamente em instantes." },
         { status: 503 },
       )
     }
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao gerar o plano comercial do Studio IA." },
+      { error: "Não foi possível gerar o plano comercial agora. Tente novamente." },
       { status: 500 },
     )
   }

@@ -7,8 +7,8 @@ import {
   getAuthenticatedUser,
   isPrismaSchemaMismatch,
   isPrismaUnavailable,
-  prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import {
   escapeXml,
   getOfficialStudioLogoPath,
@@ -79,7 +79,7 @@ export async function GET(
     })
   } catch (caughtError) {
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / renderizacao de campanha")
+      return studioUnavailableResponse()
     }
 
     if (isPrismaUnavailable(caughtError)) {

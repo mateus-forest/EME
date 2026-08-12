@@ -4,8 +4,8 @@ import {
   getAuthenticatedUser,
   isPrismaSchemaMismatch,
   isPrismaUnavailable,
-  prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import { approveStudioCampaign, getStudioCampaignById } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
@@ -32,7 +32,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ campaign })
   } catch (caughtError) {
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / campanha")
+      return studioUnavailableResponse()
     }
 
     if (isPrismaUnavailable(caughtError)) {
@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / aprovacao de campanha")
+      return studioUnavailableResponse()
     }
 
     if (isPrismaUnavailable(caughtError)) {

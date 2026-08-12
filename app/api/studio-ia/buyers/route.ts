@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O Studio IA está temporariamente indisponível. Tente novamente em instantes." },
         { status: 503 },
       )
     }

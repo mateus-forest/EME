@@ -91,6 +91,14 @@ export function formatStudioCampaignAssetType(type: StudioCampaignAssetType) {
   return labels[type]
 }
 
+export function formatStudioProvider(provider: string | null | undefined) {
+  if (provider === "openai") return "OpenAI"
+  if (provider === "xai") return "Grok"
+  if (provider === "lumaai") return "Luma"
+  if (provider === "pedra") return "Pedra"
+  return "Não informado"
+}
+
 export function getStudioStatusTone(status: StudioCampaignStatus | StudioCampaignAssetStatus) {
   switch (status) {
     case "APPROVED":

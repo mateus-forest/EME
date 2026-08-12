@@ -9,8 +9,8 @@ import {
   getAuthenticatedUser,
   isPrismaSchemaMismatch,
   isPrismaUnavailable,
-  prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import { executePropertyPreparation, PedraApiError, ensurePedraConfigured } from "@/lib/pedra"
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
@@ -965,7 +965,7 @@ export async function POST(request: NextRequest) {
     if (caughtError instanceof ZodError) {
       return noStoreJson({ error: "Revise os dados necessários para esta preparação.", code: "INPUT_INVALID" }, 400)
     }
-    if (isPrismaSchemaMismatch(caughtError)) return prismaSchemaMismatchResponse("Studio IA / preparação de imóvel")
+    if (isPrismaSchemaMismatch(caughtError)) return studioUnavailableResponse()
     if (isPrismaUnavailable(caughtError)) {
       return noStoreJson({ error: "O serviço do Studio IA está indisponível no momento.", code: "DATABASE_UNAVAILABLE" }, 503)
     }

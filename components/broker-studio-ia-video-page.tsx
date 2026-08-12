@@ -18,9 +18,7 @@ import { cn } from "@/lib/utils"
 type Motion = "automatic" | "soft" | "cinematic"
 
 const providers = [
-  { value: "lumaai", label: "Luma", description: "Movimento generativo e transição entre o frame original e o resultado.", enabled: true },
-  { value: "pedra", label: "Pedra", description: "Vídeo imobiliário estruturado; indisponível aqui enquanto o processamento síncrono não tiver executor durável.", enabled: false },
-  { value: "xai", label: "Grok", description: "Movimento generativo a partir de uma imagem; o contrato atual não garante frame final exato.", enabled: false },
+  { value: "lumaai", label: "Luma", description: "Movimento generativo entre a imagem original e o resultado aprovado." },
 ] as const
 
 const motions: Array<{ value: Motion; label: string; description: string }> = [
@@ -129,7 +127,7 @@ export function BrokerStudioIaVideoPage() {
           </CardContent></Card>
 
           <Card className="rounded-[1.5rem] border-black/[0.06] py-0"><CardHeader className="px-5 py-5"><CardTitle>2. Configuração</CardTitle></CardHeader><CardContent className="grid gap-4 px-5 pb-6">
-            <div className="grid gap-2"><p className="text-sm font-medium">IA</p>{providers.map((item) => <button key={item.value} type="button" disabled={!item.enabled} className={cn("rounded-xl border p-3 text-left", item.enabled ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "cursor-not-allowed border-black/[0.06] bg-[#f7f7f5] opacity-60")}><span className="flex items-center gap-2 text-sm font-semibold">{item.enabled ? <Check className="size-4 text-[#009b3a]" /> : null}{item.label}</span><span className="mt-1 block text-xs leading-5 text-[#667085]">{item.description}</span></button>)}</div>
+            <div className="grid gap-2"><p className="text-sm font-medium">IA</p>{providers.map((item) => <button key={item.value} type="button" aria-pressed="true" className="rounded-xl border border-[#009b3a]/28 bg-[#f4fbf6] p-3 text-left"><span className="flex items-center gap-2 text-sm font-semibold"><Check className="size-4 text-[#009b3a]" />{item.label}</span><span className="mt-1 block text-xs leading-5 text-[#667085]">{item.description}</span></button>)}</div>
             <label className="grid gap-2 text-sm font-medium">Formato<Select value={format} onValueChange={(value) => setFormat(value as typeof format)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Reel vertical 9:16">Reel 9:16</SelectItem><SelectItem value="Paisagem 16:9">Horizontal 16:9</SelectItem></SelectContent></Select></label>
             <div className="grid gap-2"><p className="text-sm font-medium">Movimento</p><div className="grid grid-cols-3 gap-2">{motions.map((item) => <button key={item.value} type="button" onClick={() => setMotion(item.value)} title={item.description} className={cn("rounded-xl border px-2 py-3 text-xs font-semibold", motion === item.value ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06]")}>{item.label}</button>)}</div></div>
             <label className="grid gap-2 text-sm font-medium">Orientação adicional <span className="font-normal text-[#8B95A1]">(opcional)</span><Textarea rows={3} maxLength={600} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="Faça a transformação acontecer de forma progressiva enquanto a câmera se aproxima." /></label>
@@ -137,7 +135,7 @@ export function BrokerStudioIaVideoPage() {
           </CardContent></Card>
         </section>
 
-        {result ? <Card className="rounded-[1.5rem] border-black/[0.06] py-0"><CardHeader className="px-5 py-5"><CardTitle>Resultado</CardTitle></CardHeader><CardContent className="grid gap-4 px-5 pb-6">{result.videoUrl ? <video src={result.videoUrl} controls className="max-h-[560px] w-full rounded-2xl bg-black" /> : <div className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-5"><div className="flex items-center gap-3"><Film className="size-5 text-[#009b3a]" /><div><p className="font-semibold">{result.generationStatus === "failed" ? "Não foi possível concluir" : "Vídeo em processamento"}</p><p className="mt-1 text-sm text-[#667085]">Progresso real informado pelo job: {result.progress}%.</p></div></div></div>}<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href="/corretor/studio-ia/biblioteca"><Library className="size-4" />Abrir Biblioteca</Link></Button></div></CardContent></Card> : null}
+        {result ? <Card className="rounded-[1.5rem] border-black/[0.06] py-0"><CardHeader className="px-5 py-5"><CardTitle>Resultado</CardTitle></CardHeader><CardContent className="grid gap-4 px-5 pb-6">{result.videoUrl ? <video src={result.videoUrl} controls className="max-h-[560px] w-full rounded-2xl bg-black" /> : <div className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-5"><div className="flex items-center gap-3"><Film className="size-5 text-[#009b3a]" /><div><p className="font-semibold">{result.generationStatus === "failed" ? "Não foi possível concluir" : "Vídeo em processamento"}</p><p className="mt-1 text-sm text-[#667085]">Progresso: {result.progress}%.</p></div></div></div>}<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href="/corretor/studio-ia/biblioteca"><Library className="size-4" />Abrir Biblioteca</Link></Button></div></CardContent></Card> : null}
       </div>
     </BrokerPageShell>
   )

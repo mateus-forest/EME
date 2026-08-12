@@ -106,8 +106,8 @@ export function StudioObjectMaskEditor({ imageUrl, disabled = false, onChange }:
       }
     }
 
-    setHasSelection(containsWhitePixel)
     if (!containsWhitePixel) {
+      setHasSelection(false)
       onChangeRef.current(null)
       return
     }
@@ -122,6 +122,9 @@ export function StudioObjectMaskEditor({ imageUrl, disabled = false, onChange }:
       width: dimensions.width,
       height: dimensions.height,
     })
+    // Only announce a valid selection after the PNG has been produced and shared
+    // with the parent. This keeps the visible state and the generation CTA aligned.
+    setHasSelection(true)
   }
 
   function resetEditor(nextDimensions?: { width: number; height: number }) {

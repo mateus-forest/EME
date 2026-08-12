@@ -4,8 +4,8 @@ import {
   getAuthenticatedUser,
   isPrismaSchemaMismatch,
   isPrismaUnavailable,
-  prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import {
   deleteStudioCampaignAsset,
   updateStudioCampaignAssetContent,
@@ -60,7 +60,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / asset de campanha")
+      return studioUnavailableResponse()
     }
 
     if (isPrismaUnavailable(caughtError)) {
@@ -92,7 +92,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     }
 
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / exclusao de asset")
+      return studioUnavailableResponse()
     }
 
     if (isPrismaUnavailable(caughtError)) {

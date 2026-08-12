@@ -27,6 +27,8 @@ test.describe("Studio IA — providers de Criar campanha", () => {
 
     await page.goto("/corretor/studio-ia/criar-campanha-instagram")
     await expect(page.getByRole("heading", { name: "Criar campanha", exact: true })).toBeVisible()
+    await expect(page.getByText("Geração simulada", { exact: true })).toHaveCount(0)
+    await expect(page.getByText("Sem alterar banco", { exact: true })).toHaveCount(0)
     await page.getByRole("button", { name: "Reiniciar fluxo", exact: true }).click()
     await page.getByRole("button", { name: "Avançar para configuração", exact: true }).click()
 

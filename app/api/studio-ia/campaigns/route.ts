@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { getAuthenticatedUser, isPrismaSchemaMismatch, isPrismaUnavailable, prismaSchemaMismatchResponse } from "@/lib/auth-route"
+import { getAuthenticatedUser, isPrismaSchemaMismatch, isPrismaUnavailable } from "@/lib/auth-route"
+import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import {
   getLatestStudioCampaign,
   listStudioCampaigns,
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result)
   } catch (caughtError) {
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / campanhas")
+      return studioUnavailableResponse()
     }
 
     if (isPrismaUnavailable(caughtError)) {

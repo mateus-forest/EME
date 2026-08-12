@@ -659,13 +659,13 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "Processamento interno",
-      description: "A geração final roda no servidor e salva a imagem resultante no storage do EME.",
+      value: "Criação em andamento",
+      description: "A imagem é preparada e guardada com segurança para você continuar o trabalho.",
     },
     {
       title: "Persistência",
-      value: "Sem alterar banco",
-      description: "A aprovação continua na interface e a imagem gerada é persistida apenas no storage.",
+      value: "Resultado preservado",
+      description: "A imagem aprovada permanece disponível para as próximas ações do Studio.",
     },
   ]
 }

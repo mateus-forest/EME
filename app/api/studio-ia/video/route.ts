@@ -604,21 +604,21 @@ export async function GET(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O servico de videos esta indisponivel no momento. Verifique a conexao com o banco de dados." },
+        { error: "O vídeo está temporariamente indisponível. Tente novamente em instantes." },
         { status: 503 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_NOT_CONFIGURED") {
       return NextResponse.json(
-        { error: "A chave LUMAAI_API_KEY nao esta configurada para o fluxo de video do Studio IA." },
+        { error: "A criação de vídeo não está disponível neste ambiente." },
         { status: 503 },
       )
     }
 
     if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_INVALID") {
       return NextResponse.json(
-        { error: "A chave LUMAAI_API_KEY foi rejeitada pela Luma AI." },
+        { error: "Não foi possível acessar a IA de vídeo. Tente novamente mais tarde." },
         { status: 502 },
       )
     }
@@ -1015,7 +1015,7 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O Studio IA está temporariamente indisponível. Tente novamente em instantes." },
         { status: 503 },
       )
     }
@@ -1025,7 +1025,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          error: "A geracao de video do Studio IA requer a configuracao da LUMAAI_API_KEY neste ambiente.",
+          error: "A criação de vídeo não está disponível neste ambiente.",
           estimatedCredits: config.estimatedCredits,
           providerConfigured: false,
         },
@@ -1051,7 +1051,7 @@ export async function POST(request: NextRequest) {
     if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_NOT_CONFIGURED") {
       return NextResponse.json(
         {
-          error: "A chave LUMAAI_API_KEY nao esta configurada para o fluxo de video do Studio IA.",
+          error: "A criação de vídeo não está disponível neste ambiente.",
           estimatedCredits: getStudioVideoEstimatedCredits({
             duration: studioVideoDefaultDuration,
             objective: "Atrair interessados",
@@ -1067,7 +1067,7 @@ export async function POST(request: NextRequest) {
     if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_KEY_INVALID") {
       return NextResponse.json(
         {
-          error: "A chave LUMAAI_API_KEY foi rejeitada pela Luma AI.",
+          error: "Não foi possível acessar a IA de vídeo. Tente novamente mais tarde.",
           estimatedCredits: getStudioVideoEstimatedCredits({
             duration: studioVideoDefaultDuration,
             objective: "Atrair interessados",

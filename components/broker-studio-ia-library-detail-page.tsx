@@ -53,6 +53,7 @@ import {
   formatStudioCampaignDate,
   formatStudioCampaignKind,
   formatStudioCampaignStatus,
+  formatStudioProvider,
   getCampaignCoverUrl,
   getCampaignPropertyLabel,
   getStudioCampaignWorkspacePath,
@@ -289,11 +290,10 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
             </div>
 
             {campaign ? (
-              <div className="grid gap-2 text-sm text-[#667085] sm:grid-cols-2 xl:grid-cols-4">
-                <Metric label="Assets" value={String(campaign.assets.length)} />
+              <div className="grid gap-2 text-sm text-[#667085] sm:grid-cols-3">
+                <Metric label="Itens" value={String(campaign.assets.length)} />
                 <Metric label="Criada em" value={formatStudioCampaignDate(campaign.createdAt)} />
-                <Metric label="Provider" value={campaign.provider || "Não informado"} />
-                <Metric label="Modelo" value={campaign.model || "Não informado"} />
+                <Metric label="IA" value={formatStudioProvider(campaign.provider)} />
               </div>
             ) : null}
           </div>
@@ -324,18 +324,11 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   </div>
                 </div>
                 <CardContent className="grid gap-4 p-5">
-                  <div className="flex flex-wrap gap-2">
-                    {["Versões", "Histórico", "Prompts", "Downloads", "Biblioteca", "Coleções"].map((item) => (
-                      <span key={item} className="rounded-full border border-black/[0.06] bg-[#f9fafb] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#7b8491]">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <InfoBlock label="Tipo" value={formatStudioCampaignKind(campaign.kind)} />
                     <InfoBlock label="Status" value={formatStudioCampaignStatus(campaign.status)} />
                     <InfoBlock label="Imóvel" value={getCampaignPropertyLabel(campaign)} />
-                    <InfoBlock label="Assets" value={`${campaign.assets.length} salvos`} />
+                    <InfoBlock label="Itens" value={`${campaign.assets.length} salvos`} />
                   </div>
                 </CardContent>
               </Card>
@@ -344,16 +337,14 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                 <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
                   <CardContent className="grid gap-4 p-5">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">Prompt utilizado</p>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">Orientação da criação</p>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#44505f]">{campaignPrompt}</p>
                     </div>
                   </CardContent>
                 </Card>
                 <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
                   <CardContent className="grid gap-3 p-5">
-                    <InfoBlock label="Provider" value={campaign.provider || "Não informado"} />
-                    <InfoBlock label="Modelo" value={campaign.model || "Não informado"} />
-                    <InfoBlock label="Rota" value={campaign.sourceRoute || "Não informada"} />
+                    <InfoBlock label="IA" value={formatStudioProvider(campaign.provider)} />
                   </CardContent>
                 </Card>
               </div>
@@ -362,8 +353,8 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
             <section className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-2xl font-semibold tracking-tight text-[#050505]">Assets da campanha</h3>
-                  <p className="mt-2 text-sm text-[#667085]">Assets organizados como biblioteca premium, com visualização, abertura, download e ações por tipo.</p>
+                  <h3 className="text-2xl font-semibold tracking-tight text-[#050505]">Conteúdos da campanha</h3>
+                  <p className="mt-2 text-sm text-[#667085]">Conteúdos organizados para visualização, download, revisão e próximas ações.</p>
                 </div>
               </div>
 
@@ -372,9 +363,9 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   <div className="mx-auto flex size-14 items-center justify-center rounded-[1.25rem] border border-[#009b3a]/12 bg-[#eef9f1] text-[#009b3a]">
                     <BookOpen className="size-6" />
                   </div>
-                  <h4 className="mt-5 text-xl font-semibold tracking-tight text-[#050505]">Nenhum asset disponível</h4>
+                  <h4 className="mt-5 text-xl font-semibold tracking-tight text-[#050505]">Nenhum conteúdo disponível</h4>
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#667085]">
-                    Esta campanha permanece no histórico, mas no momento não possui assets ativos.
+                    Esta campanha permanece no histórico, mas no momento não possui conteúdos ativos.
                   </p>
                 </div>
               ) : (

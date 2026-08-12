@@ -47,4 +47,36 @@ test.describe("Studio IA — continuidade Biblioteca → anúncio", () => {
     await expect(page.getByRole("heading", { name: "Criar anúncio", exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy()
   })
+
+  test("Biblioteca apresenta histórico operacional sem expor rota ou modelo interno", async ({ page }) => {
+    await page.route("**/api/studio-ia/campaigns/prepared-campaign", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ campaign: approvedMaterial }),
+    }))
+    await page.goto("/corretor/studio-ia/biblioteca/prepared-campaign")
+    await expect(page.getByRole("heading", { name: "Sala preparada", exact: true }).first()).toBeVisible()
+    await expect(page.getByText("IA", { exact: true }).first()).toBeVisible()
+    await expect(page.getByText("Pedra", { exact: true }).first()).toBeVisible()
+    await expect(page.getByText("/api/studio-ia/prepare-property", { exact: true })).toHaveCount(0)
+    await expect(page.getByText("furnish", { exact: true })).toHaveCount(0)
+    await expect(page.getByText("Assets da campanha", { exact: true })).toHaveCount(0)
+  })
+
+  test("Captar imóveis rejeita entrada inválida com mensagem humana", async ({ page }) => {
+    const response = await page.request.post("/api/studio-ia/owners", {
+      data: {
+        goal: "Captar imovel para venda",
+        city: "S".repeat(81),
+        neighborhood: "Centro",
+        operationRadius: "10 km",
+        ownerProfile: "Proprietario particular",
+        version: 1,
+      },
+    })
+    expect(response.status()).toBe(400)
+    const body = await response.json() as { error: string; issues?: unknown }
+    expect(body.error).toBe("Revise as informações necessárias para criar a estratégia.")
+    expect(body).not.toHaveProperty("issues")
+  })
 })

@@ -965,8 +965,8 @@ function buildStatusItems(step: StudioStep, isReadyForOperation: boolean, isPlan
     },
     {
       title: "Integrações",
-      value: "Processamento interno",
-      description: "O plano comercial é gerado no servidor e considera os fluxos do Studio IA já implementados.",
+      value: "Plano em criação",
+      description: "A estratégia é preparada a partir do imóvel e das informações da venda.",
     },
     {
       title: "Prontidão",

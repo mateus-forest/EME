@@ -6,8 +6,8 @@ import {
   getAuthenticatedUser,
   isPrismaSchemaMismatch,
   isPrismaUnavailable,
-  prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
+import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import { consumeBrokerAiCredits, createInsufficientCreditsPayload, hasBrokerAiCredits } from "@/lib/eme-plan-service"
 import { formatCurrencyFromCents, propertyPurposeLabel, propertyStatusLabel, propertyTypeLabel } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
@@ -279,13 +279,13 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json(
-        { error: "O serviço de imóveis está indisponível no momento. Verifique a conexão com o banco de dados." },
+        { error: "O Studio IA está temporariamente indisponível. Tente novamente em instantes." },
         { status: 503 },
       )
     }
 
     if (isPrismaSchemaMismatch(caughtError)) {
-      return prismaSchemaMismatchResponse("Studio IA / geracao de campanha")
+      return studioUnavailableResponse()
     }
 
     if (caughtError instanceof Error && caughtError.message === "OPENAI_DISABLED_OR_NOT_CONFIGURED") {
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
 
     if (caughtError instanceof Error && caughtError.message === "OPENAI_MAX_OUTPUT_TOKENS_EXCEEDED") {
       return NextResponse.json(
-        { error: "A resposta da OpenAI foi interrompida antes de concluir a campanha. Ajuste aplicado, tente novamente." },
+        { error: "A campanha não foi concluída. Tente novamente." },
         { status: 502 },
       )
     }
@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: caughtError instanceof Error ? caughtError.message : "Erro interno ao gerar a campanha do Studio IA." },
+      { error: "Não foi possível gerar a campanha agora. Tente novamente." },
       { status: 500 },
     )
   }

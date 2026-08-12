@@ -34,8 +34,10 @@ test.describe("Studio IA — Criar vídeo", () => {
     await expect(page.getByText("Original", { exact: true })).toBeVisible()
     await expect(page.getByText("Resultado", { exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: /Luma/ })).toBeEnabled()
-    await expect(page.getByRole("button", { name: /Pedra/ })).toBeDisabled()
-    await expect(page.getByRole("button", { name: /Grok/ })).toBeDisabled()
+    await expect(page.getByRole("button", { name: /Pedra/ })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /Grok/ })).toHaveCount(0)
+    await expect(page.getByText(/executor durável/i)).toHaveCount(0)
+    await expect(page.getByText(/contrato atual não garante/i)).toHaveCount(0)
     await expect(page.getByText("Música", { exact: true })).toHaveCount(0)
     await expect(page.getByText("Narração", { exact: true })).toHaveCount(0)
 

@@ -860,7 +860,7 @@ function buildStatusItems(step: StudioStep) {
           : step === "configuration"
             ? "Configuração"
             : step === "processing"
-              ? "Geração simulada"
+              ? "Geração"
               : step === "result"
                 ? "Resultado"
                 : "Aprovação",
@@ -868,13 +868,13 @@ function buildStatusItems(step: StudioStep) {
     },
     {
       title: "Integrações",
-      value: "Processamento interno",
-      description: "Este fluxo gera o conteúdo real no servidor sem expor configurações técnicas ao corretor.",
+      value: "Conteúdo em criação",
+      description: "O Studio prepara o conteúdo e mantém o formato visual já aprovado para a campanha.",
     },
     {
       title: "Persistência",
-      value: "Sem alterar banco",
-      description: "As aprovações e versões da campanha continuam na sessão atual, preservando a arquitetura do portal.",
+      value: "Salvo na Biblioteca",
+      description: "Versões e aprovações ficam disponíveis para consulta e continuidade no Studio.",
     },
   ]
 }

@@ -24,6 +24,7 @@ import {
   formatStudioCampaignDate,
   formatStudioCampaignKind,
   formatStudioCampaignStatus,
+  formatStudioProvider,
   getCampaignPropertyLabel,
   getStudioStatusTone,
   resolveStudioLibraryThumbnail,
@@ -140,8 +141,8 @@ function CampaignCard({ campaign }: { campaign: StudioCampaignRecord }) {
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-[#7b8491]">
               <span>{formatStudioCampaignKind(campaign.kind)}</span>
               <span className="h-1 w-1 rounded-full bg-[#c7d0db]" />
-              <span>{campaign.assets.length} assets</span>
-              {campaign.provider ? <><span className="h-1 w-1 rounded-full bg-[#c7d0db]" /><span>{campaign.provider === "xai" ? "Grok" : campaign.provider}</span></> : null}
+              <span>{campaign.assets.length} itens</span>
+              {campaign.provider ? <><span className="h-1 w-1 rounded-full bg-[#c7d0db]" /><span>{formatStudioProvider(campaign.provider)}</span></> : null}
             </div>
             <h3 className="line-clamp-2 text-lg font-semibold tracking-tight text-[#050505]">{campaign.title}</h3>
             <p className="line-clamp-2 text-sm leading-6 text-[#667085]">{getCampaignPropertyLabel(campaign)}</p>
