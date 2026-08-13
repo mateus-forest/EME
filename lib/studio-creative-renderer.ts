@@ -80,6 +80,7 @@ export type StudioTextRun = {
   letterSpacingEm: number
   lineHeight: number
   anchor: "start" | "middle" | "end"
+  italic?: boolean
 }
 
 // Real ink-bbox measurement of a single line, via the same sharp text rasterizer used to draw it
@@ -329,7 +330,7 @@ async function renderInstagramFeedTemplate(
     renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", payload.accentColor, 0.16),
     renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(70, dividerY, 96, payload.accentColor),
-    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 235, payload.accentColor),
+    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 175, payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
@@ -347,8 +348,8 @@ async function renderInstagramFeedTemplate(
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 1010,
           bottomY: 1010,
-          width: 150,
-          height: 120,
+          width: 200,
+          height: 160,
           opacity: PERSONAL_WATERMARK_OPACITY,
         })
       : payload.showAgencyWatermark && payload.agencyName
@@ -396,7 +397,7 @@ async function renderInstagramStoryTemplate(
   const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
   const dividerY = Math.max(720, Math.round(titleBottom + 32))
-  const featureSpacing = featureItems.length > 3 ? 160 : 184
+  const featureSpacing = featureItems.length > 3 ? 122 : 140
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -450,8 +451,8 @@ async function renderInstagramStoryTemplate(
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 998,
           bottomY: 1850,
-          width: 210,
-          height: 165,
+          width: 280,
+          height: 220,
           opacity: PERSONAL_WATERMARK_OPACITY,
         })
       : payload.showAgencyWatermark && payload.agencyName
@@ -505,7 +506,7 @@ function renderBottomWave(width: number, height: number, waveId: string, portrai
 const BADGE_ICON_LEFT_PAD = 22
 const BADGE_ICON_WIDTH = 38
 const BADGE_ICON_TEXT_GAP = 22
-const BADGE_FONT_SIZE = 22
+const BADGE_FONT_SIZE = 17
 const BADGE_VERTICAL_PADDING = 14
 // Local SVG-path bounds of the "badge" icon in renderFeatureIcon (a star spanning y 0-38, no
 // top offset) and the "calendar" icon (y 2-51, so a 2px top offset before its own 49px height) —
@@ -517,18 +518,18 @@ const CALENDAR_ICON_HEIGHT = 49
 // role as BADGE_ICON_WIDTH: a fixed glyph-art size, not a text-content measurement.
 const CALENDAR_ICON_WIDTH = 54
 
-const PANEL_PADDING_X = 34
-const PANEL_VERTICAL_PADDING = 28
-const PANEL_DIVIDER_GAP = 30
-const PANEL_ICON_TEXT_GAP = 26
+const PANEL_PADDING_X = 24
+const PANEL_VERTICAL_PADDING = 18
+const PANEL_DIVIDER_GAP = 20
+const PANEL_ICON_TEXT_GAP = 18
 
 // CTA text wrap budget (Feed only — Story's price panel has no CTA column). A max width bounds how
 // wide a single unwrapped line can get before wrapText breaks it, so a long custom CTA can't blow
 // up the panel width unboundedly; 2 lines with a shrink-then-truncate-with-ellipsis fallback mirror
 // the same protection already used for the title (fitMultilineText, see resolveDisplayTitle).
 const CTA_MAX_WIDTH = 170
-const CTA_MAX_FONT_SIZE = 20
-const CTA_MIN_FONT_SIZE = 16
+const CTA_MAX_FONT_SIZE = 17
+const CTA_MIN_FONT_SIZE = 14
 const CTA_MAX_LINES = 2
 
 // Container = measured content + fixed padding, never a fixed total size. Width comes from a real
@@ -561,9 +562,9 @@ async function computeMetricPanelBox(
     cta?: { lines: string[]; fontSize: number; lineHeight: number }
   },
 ) {
-  const labelFontSize = 20
-  const supportFontSize = 18
-  const stackGap = 12
+  const labelFontSize = 16
+  const supportFontSize = 15
+  const stackGap = 9
 
   const [labelBox, valueBox, supportBox] = await Promise.all([
     measure(input.metricLabel, labelFontSize, "500", 0.01),
@@ -657,6 +658,11 @@ function getInitials(name: string) {
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "EM"
 }
 
+// Explicit breathing room between the avatar's bottom edge and the name/CRECI text block below
+// it — previously implicit (baked into a fontSize multiplier), which read as the text being
+// crowded right up against the photo.
+const HEADER_TEXT_TOP_GAP = 20
+
 // Top-right identity block that replaced the old fixed EME "M" mark: broker photo (or initials
 // when none on file) plus name, then agency name + CRECI on the line below — or just CRECI when
 // the broker has no agency (never blank: falls back to "Corretor EME" if even the name is
@@ -705,7 +711,12 @@ function renderBrokerHeader(
         ),
       ].join("")
 
-  const nameY = avatarCy + input.avatarRadius + Math.round(input.nameFontSize * 1.35)
+  // Anchored "middle" at avatarCx (the avatar's own center), not "end" at rightX (the avatar's
+  // right edge) — right-anchoring here always kept the text's right edge flush with the avatar's
+  // right edge instead of centering it under the avatar, which visually reads as the whole
+  // name/CRECI block being shifted left of where it should sit. HEADER_TEXT_TOP_GAP is an explicit
+  // breathing-room constant between the avatar and the text block, independent of font size.
+  const nameY = avatarCy + input.avatarRadius + HEADER_TEXT_TOP_GAP + Math.round(input.nameFontSize * STUDIO_FONT_ASCENT_RATIO)
   const detailY = nameY + Math.round(input.detailFontSize * 1.5)
   const detailText = input.agencyName
     ? `${input.agencyName} | CRECI ${input.creci || "-"}`
@@ -716,9 +727,9 @@ function renderBrokerHeader(
   return [
     `<circle cx="${avatarCx}" cy="${avatarCy}" r="${input.avatarRadius + 3}" fill="none" stroke="${input.accentColor}" stroke-width="3" />`,
     avatarContent,
-    renderSingleLineText(runs, displayName, input.rightX, nameY, input.nameFontSize, "700", "#ffffff", 0, "end"),
+    renderSingleLineText(runs, displayName, avatarCx, nameY, input.nameFontSize, "700", "#ffffff", 0, "middle"),
     detailText
-      ? renderSingleLineText(runs, detailText, input.rightX, detailY, input.detailFontSize, "500", "#e6e6e6", 0, "end")
+      ? renderSingleLineText(runs, detailText, avatarCx, detailY, input.detailFontSize, "500", "#e6e6e6", 0, "middle")
       : "",
   ].join("")
 }
@@ -806,6 +817,11 @@ function renderDivider(x: number, y: number, width: number, accentColor: string)
   return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="${accentColor}" />`
 }
 
+// Scaled down from the icons' native 1:1 art size (~46-56 units) for a more delicate look in the
+// attribute row/stack — everything else here (divider height, icon-to-text gaps) is sized relative
+// to this so the whole group shrinks together instead of just the glyph.
+const FEATURE_ICON_SCALE = 0.7
+
 // columnWidth is a fixed per-item budget, not a total row width divided by item count: with a
 // fixed total, fewer items (e.g. 3 instead of 4 when the property has no area on file) stretched
 // each column wider, leaving uneven leftover space after each item's actual (shorter) text before
@@ -817,16 +833,16 @@ function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: 
     .map((item, index) => {
       const originX = x + index * columnWidth
       const lines = [item.line1, item.line2].filter(Boolean) as string[]
-      const textLayout = fitMultilineText(lines.join("\n"), columnWidth - 70, 18, 14, 3)
+      const textLayout = fitMultilineText(lines.join("\n"), columnWidth - 50, 15, 12, 3)
 
       return [
         `<g transform="translate(${originX} ${y})">`,
-        renderFeatureIcon(item.icon, 0, 0, accentColor),
+        renderFeatureIcon(item.icon, 0, 0, accentColor, FEATURE_ICON_SCALE),
         index < items.length - 1
-          ? `<rect x="${columnWidth - 26}" y="6" width="1.2" height="124" fill="rgba(255,255,255,0.22)" />`
+          ? `<rect x="${columnWidth - 20}" y="4" width="1.2" height="92" fill="rgba(255,255,255,0.22)" />`
           : "",
         "</g>",
-        renderMultilineText(runs, textLayout.lines, originX, y + 112, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
+        renderMultilineText(runs, textLayout.lines, originX, y + 84, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
       ].join("")
     })
     .join("")
@@ -839,22 +855,22 @@ function renderFeatureStack(
   y: number,
   width: number,
   accentColor: string,
-  spacing = 184,
+  spacing = 140,
 ) {
-  const dividerY = spacing - 30
+  const dividerY = spacing - 24
 
   return items
     .map((item, index) => {
       const offsetY = index * spacing
       const groupY = y + offsetY
-      const textLayout = fitMultilineText([item.line1, item.line2].filter(Boolean).join("\n"), width - 132, 20, 16, 3)
+      const textLayout = fitMultilineText([item.line1, item.line2].filter(Boolean).join("\n"), width - 96, 16, 13, 3)
 
       return [
         `<g transform="translate(${x} ${groupY})">`,
-        renderFeatureIcon(item.icon, 0, 6, accentColor),
+        renderFeatureIcon(item.icon, 0, 6, accentColor, FEATURE_ICON_SCALE),
         index < items.length - 1 ? `<rect x="0" y="${dividerY}" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
         "</g>",
-        renderMultilineText(runs, textLayout.lines, x + 136, groupY + 46, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
+        renderMultilineText(runs, textLayout.lines, x + 100, groupY + 40, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
       ].join("")
     })
     .join("")
@@ -881,9 +897,9 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   const dividerX = input.cta ? Math.round(PANEL_PADDING_X + input.stackColumnWidth + PANEL_DIVIDER_GAP) : 0
   const iconX = dividerX + PANEL_DIVIDER_GAP
   const panelPaddingX = PANEL_PADDING_X
-  const labelFontSize = 20
-  const supportFontSize = 18
-  const stackGap = 12
+  const labelFontSize = 16
+  const supportFontSize = 15
+  const stackGap = 9
 
   // Relative positions first (as if the label/value/support stack started at y=0), then shift
   // the whole stack so it's vertically centered in the panel. Anchoring from a fixed top padding
@@ -917,7 +933,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
       : "",
     "</g>",
     renderSingleLineText(runs, input.metricLabel, input.x + panelPaddingX, input.y + labelY, labelFontSize, "500", "#ffffff", 0.01),
-    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "700", input.accentColor, 0),
+    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "700", input.accentColor, 0, "start", true),
     supportY !== null
       ? renderSingleLineText(runs, input.metricSupport, input.x + panelPaddingX, input.y + supportY, supportFontSize, "400", "#ffffff", 0)
       : "",
@@ -937,22 +953,30 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   ].join("")
 }
 
-function renderFeatureIcon(type: "location" | "area" | "bath" | "car" | "bed" | "calendar" | "badge", x: number, y: number, color: string) {
+function renderFeatureIcon(
+  type: "location" | "area" | "bath" | "car" | "bed" | "calendar" | "badge",
+  x: number,
+  y: number,
+  color: string,
+  scale = 1,
+) {
+  const transform = scale === 1 ? `translate(${x} ${y})` : `translate(${x} ${y}) scale(${scale})`
+
   switch (type) {
     case "location":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M26 54 C15 38 10 29 10 20 C10 9 18 0 28 0 C38 0 46 9 46 20 C46 29 41 38 30 54 Z" /><circle cx="28" cy="20" r="8" /></g>`
+      return `<g transform="${transform}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M26 54 C15 38 10 29 10 20 C10 9 18 0 28 0 C38 0 46 9 46 20 C46 29 41 38 30 54 Z" /><circle cx="28" cy="20" r="8" /></g>`
     case "area":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="38" height="38" rx="2" /><path d="M8 28 H46 M27 8 V46" /></g>`
+      return `<g transform="${transform}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="38" height="38" rx="2" /><path d="M8 28 H46 M27 8 V46" /></g>`
     case "bath":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8 H42 V26 C42 38 35 46 28 46 C21 46 14 38 14 26 Z" /><path d="M10 26 H46" /><path d="M20 46 V56" /><path d="M36 46 V56" /></g>`
+      return `<g transform="${transform}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8 H42 V26 C42 38 35 46 28 46 C21 46 14 38 14 26 Z" /><path d="M10 26 H46" /><path d="M20 46 V56" /><path d="M36 46 V56" /></g>`
     case "car":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 34 L17 16 H39 L46 34 V43 H10 Z" /><circle cx="18" cy="43" r="6" /><circle cx="38" cy="43" r="6" /><path d="M10 34 H46" /></g>`
+      return `<g transform="${transform}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 34 L17 16 H39 L46 34 V43 H10 Z" /><circle cx="18" cy="43" r="6" /><circle cx="38" cy="43" r="6" /><path d="M10 34 H46" /></g>`
     case "bed":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 34 V18 H22 C27 18 30 21 30 26 V34" /><path d="M10 34 H46 V50" /><path d="M10 50 V28 H46 V50" /></g>`
+      return `<g transform="${transform}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 34 V18 H22 C27 18 30 21 30 26 V34" /><path d="M10 34 H46 V50" /><path d="M10 50 V28 H46 V50" /></g>`
     case "calendar":
-      return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="10" width="42" height="40" rx="7" /><path d="M18 2 V16 M40 2 V16 M8 20 H50 M18 30 H20 M29 30 H31 M40 30 H42 M18 40 H20 M29 40 H31" /><path d="M35 51 L52 34" /><path d="M52 40 V34 H46" /></g>`
+      return `<g transform="${transform}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="10" width="42" height="40" rx="7" /><path d="M18 2 V16 M40 2 V16 M8 20 H50 M18 30 H20 M29 30 H31 M40 30 H42 M18 40 H20 M29 40 H31" /><path d="M35 51 L52 34" /><path d="M52 40 V34 H46" /></g>`
     case "badge":
-      return `<g transform="translate(${x} ${y})"><path d="M18 0 L24 12 L38 18 L24 24 L18 38 L12 24 L0 18 L12 12 Z" fill="${color}" /></g>`
+      return `<g transform="${transform}"><path d="M18 0 L24 12 L38 18 L24 24 L18 38 L12 24 L0 18 L12 12 Z" fill="${color}" /></g>`
   }
 }
 
@@ -1300,6 +1324,7 @@ function renderSingleLineText(
   color: string,
   letterSpacingEm = 0,
   anchor: "start" | "middle" | "end" = "start",
+  italic = false,
 ) {
   if (!text) return ""
 
@@ -1313,6 +1338,7 @@ function renderSingleLineText(
     letterSpacingEm,
     lineHeight: 0,
     anchor,
+    italic,
   })
 
   return ""

@@ -178,6 +178,7 @@ type StudioTextLine = {
   color: string
   letterSpacingEm: number
   anchor: StudioTextRun["anchor"]
+  italic: boolean
 }
 
 // Rasterization density for the background SVG. librsvg treats the unitless width/height on
@@ -209,7 +210,8 @@ async function renderStudioCreativePng(sharp: SharpFactory, svg: string, textRun
       const letterSpacingAttr = line.letterSpacingEm
         ? ` letter_spacing="${Math.round(line.letterSpacingEm * fontSizePx * 1024)}"`
         : ""
-      const markup = `<span foreground="${escapeXml(line.color)}" size="${Math.round(fontSizePx * 1024)}"${letterSpacingAttr}>${escapeXml(line.text)}</span>`
+      const styleAttr = line.italic ? ` style="italic"` : ""
+      const markup = `<span foreground="${escapeXml(line.color)}" size="${Math.round(fontSizePx * 1024)}"${letterSpacingAttr}${styleAttr}>${escapeXml(line.text)}</span>`
 
       const buffer = await sharp({
         text: {
@@ -253,6 +255,7 @@ function flattenTextRun(run: StudioTextRun): StudioTextLine[] {
       color: run.color,
       letterSpacingEm: run.letterSpacingEm,
       anchor: run.anchor,
+      italic: run.italic ?? false,
     }))
 }
 
