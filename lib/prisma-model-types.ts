@@ -36,6 +36,8 @@ export type Broker = {
   status: BrokerAccountStatus
   creci: string | null
   description: string | null
+  brandColor: string | null
+  showAgencyWatermark: boolean
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number
   aiAssistantEnabled: boolean
@@ -53,6 +55,7 @@ export type Agency = {
   cnpj: string | null
   logoUrl: string | null
   description: string | null
+  brandColor: string | null
   createdAt: Date
 }
 

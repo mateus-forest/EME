@@ -10,6 +10,7 @@ export type AgencyProfile = {
   cnpj: string
   whatsApp: string
   logoUrl: string
+  brandColor: string
 }
 
 const PROFILE_UPDATED_EVENT = "eme-agency-profile-updated"
@@ -22,6 +23,7 @@ const defaultProfile: AgencyProfile = {
   cnpj: "",
   whatsApp: "",
   logoUrl: "",
+  brandColor: "",
 }
 
 function normalizeProfile(payload?: Partial<AgencyProfile>) {
@@ -55,6 +57,7 @@ export function useAgencyProfile() {
               phone: string
               cnpj: string
               logoUrl: string
+              brandColor?: string
             }
           }
         | null
@@ -73,6 +76,7 @@ export function useAgencyProfile() {
           cnpj: data.profile.cnpj,
           whatsApp: data.profile.phone,
           logoUrl: data.profile.logoUrl,
+          brandColor: data.profile.brandColor ?? "",
         }),
       )
     } finally {
@@ -114,13 +118,26 @@ export function useAgencyProfile() {
         phone: updates.whatsApp,
         cnpj: updates.cnpj,
         logoUrl: updates.logoUrl,
+        brandColor: updates.brandColor,
         currentPassword: updates.currentPassword,
         newPassword: updates.newPassword,
       }),
     })
 
     const data = (await response.json().catch(() => null)) as
-      | { error?: string; profile?: { id: string; companyName: string; ownerName: string; email: string; phone: string; cnpj: string; logoUrl: string } }
+      | {
+          error?: string
+          profile?: {
+            id: string
+            companyName: string
+            ownerName: string
+            email: string
+            phone: string
+            cnpj: string
+            logoUrl: string
+            brandColor?: string
+          }
+        }
       | null
 
     if (!response.ok || !data?.profile) {
@@ -135,6 +152,7 @@ export function useAgencyProfile() {
       whatsApp: data.profile.phone,
       cnpj: data.profile.cnpj,
       logoUrl: data.profile.logoUrl,
+      brandColor: data.profile.brandColor ?? "",
     })
 
     setProfileState(nextProfile)

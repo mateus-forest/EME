@@ -53,6 +53,15 @@ export type StudioCampaignRecord = {
   promptRevised: string | null
   sourceRoute: string | null
   metadata: unknown
+  branding: {
+    brokerName: string | null
+    brokerPhotoUrl: string | null
+    brokerCreci: string | null
+    agencyName: string | null
+    agencyLogoUrl: string | null
+    accentColor: string | null
+    showAgencyWatermark: boolean
+  }
   property: {
     id: string
     title: string

@@ -543,7 +543,12 @@ function AssetCard({
   const canOpen = Boolean(getAssetOpenDescriptor(campaign, asset))
   const canDownload = Boolean(getAssetDownloadDescriptor(campaign, asset)) && asset.type !== "COPY" && asset.type !== "CAROUSEL"
   const canCopyText = Boolean(textPreview.trim())
-  const canEdit = ["APPROVED", "PUBLISHED"].includes(campaign.status) && isTextEditableAsset(campaign, asset)
+  // Previously gated to APPROVED/PUBLISHED only, which left "Editar texto" disabled on every
+  // campaign right after generation (campaigns start at PENDING_REVIEW) — exactly when a broker
+  // is most likely to want to fix a typo before approving. Editing text pre-approval doesn't
+  // publish anything by itself, so there's no reason to block it; only REJECTED/FAILED (nothing
+  // left to usefully edit) and DRAFT (no generated content yet) stay disabled.
+  const canEdit = ["PENDING_REVIEW", "APPROVED", "PUBLISHED"].includes(campaign.status) && isTextEditableAsset(campaign, asset)
   const isPortrait = isPortraitStudioAsset(asset)
   const regenerateBasePath = getStudioCampaignWorkspacePath(campaign.kind)
   const regenerateHref = regenerateBasePath

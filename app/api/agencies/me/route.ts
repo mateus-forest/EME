@@ -15,7 +15,7 @@ type AgencyProfileUser = {
   name: string
   email: string
   phone: string | null
-  ownedAgency: Pick<Agency, "id" | "name" | "phone" | "cnpj" | "logoUrl"> | null
+  ownedAgency: Pick<Agency, "id" | "name" | "phone" | "cnpj" | "logoUrl" | "brandColor"> | null
 }
 
 function buildAgencyProfile(user: AgencyProfileUser | null) {
@@ -29,6 +29,7 @@ function buildAgencyProfile(user: AgencyProfileUser | null) {
     phone: user.ownedAgency.phone ?? user.phone ?? "",
     cnpj: user.ownedAgency.cnpj ?? "",
     logoUrl: user.ownedAgency.logoUrl ?? "",
+    brandColor: user.ownedAgency.brandColor ?? "",
   }
 }
 
@@ -78,6 +79,8 @@ export async function PATCH(request: NextRequest) {
     const phone = typeof body?.phone === "string" ? body.phone.trim() : ""
     const cnpj = typeof body?.cnpj === "string" ? body.cnpj.trim() : ""
     const logoUrl = typeof body?.logoUrl === "string" ? body.logoUrl.trim() : ""
+    const brandColorInput = typeof body?.brandColor === "string" ? body.brandColor.trim() : ""
+    const brandColor = /^#[0-9a-fA-F]{6}$/.test(brandColorInput) ? brandColorInput : ""
     const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : ""
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : ""
 
@@ -146,6 +149,7 @@ export async function PATCH(request: NextRequest) {
           phone,
           cnpj,
           logoUrl: logoUrl || null,
+          brandColor: brandColor || null,
         },
       })
 

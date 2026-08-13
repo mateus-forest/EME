@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { Camera, CheckCircle2, LockKeyhole, ShieldCheck, UserRound } from "lucide-react"
+import { Camera, CheckCircle2, LockKeyhole, Palette, ShieldCheck, UserRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { AccountSecuritySection } from "@/components/account-security-section"
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProfile } from "@/components/use-broker-profile"
+import { DEFAULT_STUDIO_ACCENT_COLOR } from "@/lib/studio-creative-renderer"
 
 export function BrokerAccountPage() {
   return (
@@ -71,6 +72,8 @@ function AccountForm() {
   const [whatsApp, setWhatsApp] = useState(profile.whatsApp)
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl)
   const [description, setDescription] = useState(profile.description)
+  const [brandColor, setBrandColor] = useState(profile.brandColor)
+  const [showAgencyWatermark, setShowAgencyWatermark] = useState(profile.showAgencyWatermark)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -87,6 +90,8 @@ function AccountForm() {
     setWhatsApp(profile.whatsApp)
     setPhotoUrl(profile.photoUrl)
     setDescription(profile.description)
+    setBrandColor(profile.brandColor)
+    setShowAgencyWatermark(profile.showAgencyWatermark)
   }, [profile])
 
   function validate() {
@@ -141,6 +146,8 @@ function AccountForm() {
         whatsApp,
         photoUrl,
         description,
+        brandColor,
+        showAgencyWatermark,
         currentPassword,
         newPassword,
       })
@@ -296,6 +303,67 @@ function AccountForm() {
                 className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF]"
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+          <CardHeader className="px-6 py-5">
+            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
+              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+                <Palette className="size-4.5" />
+              </span>
+              Identidade visual do Studio IA
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-6 pt-0">
+            <div className="grid gap-2">
+              <Label htmlFor="brandColor" className="text-sm font-medium text-[#5F6B7A]">
+                Cor de destaque
+              </Label>
+              <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
+                Usada nos ícones, divisórias e preço das imagens geradas para Post Feed e Story.
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  id="brandColor"
+                  type="color"
+                  value={brandColor || DEFAULT_STUDIO_ACCENT_COLOR}
+                  onChange={(event) => setBrandColor(event.target.value)}
+                  className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-black/[0.06] bg-white/80 p-1"
+                />
+                <Input
+                  value={brandColor}
+                  onChange={(event) => setBrandColor(event.target.value.trim())}
+                  placeholder={DEFAULT_STUDIO_ACCENT_COLOR}
+                  className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35"
+                />
+                {brandColor ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setBrandColor("")}
+                    className="h-11 shrink-0 rounded-xl px-3 text-xs text-[#7B8491] hover:bg-white hover:text-[#050505]"
+                  >
+                    Usar padrão
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {profile.agencyId ? (
+              <label htmlFor="showAgencyWatermark" className="flex cursor-pointer items-start gap-3 rounded-xl border border-black/[0.06] bg-white/60 p-3.5">
+                <input
+                  id="showAgencyWatermark"
+                  type="checkbox"
+                  checked={showAgencyWatermark}
+                  onChange={(event) => setShowAgencyWatermark(event.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-[#009b3a]"
+                />
+                <span className="text-sm leading-6 text-[#44505F]">
+                  Mostrar a marca d&apos;água de {profile.agencyName || "sua imobiliária"} no rodapé das imagens geradas
+                </span>
+              </label>
+            ) : null}
           </CardContent>
         </Card>
 

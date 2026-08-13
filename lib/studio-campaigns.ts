@@ -86,6 +86,12 @@ export type StudioCampaignDraft = {
   assets: StudioCampaignAssetDraft[]
 }
 
+const brandingAgencySelect = {
+  name: true,
+  logoUrl: true,
+  brandColor: true,
+} satisfies Prisma.AgencySelect
+
 const studioCampaignInclude = {
   property: {
     select: {
@@ -105,6 +111,16 @@ const studioCampaignInclude = {
       imageUrls: true,
     },
   },
+  broker: {
+    select: {
+      creci: true,
+      brandColor: true,
+      showAgencyWatermark: true,
+      user: { select: { name: true, photoUrl: true } },
+      agency: { select: brandingAgencySelect },
+    },
+  },
+  agency: { select: brandingAgencySelect },
   assets: {
     orderBy: {
       createdAt: "asc" as const,
@@ -203,6 +219,28 @@ function deriveCampaignTitle(
   return formatCampaignKindLabel(campaign.kind)
 }
 
+// A campaign's brokerId/agencyId are mutually exclusive (set by resolveWorkspace at creation
+// time), but a broker's OWN agency link (broker.agencyId) is independent of that — an individual
+// broker campaign (brokerId set, agencyId null) can still belong to a broker who's part of an
+// agency. Header/footer branding cares about that agency link regardless of which workspace
+// created the campaign, so it's resolved here once: direct campaign.agency (agency-workspace
+// campaigns) first, then the acting broker's own agency (broker-workspace campaigns).
+function resolveCampaignBranding(
+  campaign: Pick<Prisma.StudioCampaignGetPayload<{ include: typeof studioCampaignInclude }>, "broker" | "agency">,
+) {
+  const agency = campaign.agency ?? campaign.broker?.agency ?? null
+
+  return {
+    brokerName: campaign.broker?.user.name ?? null,
+    brokerPhotoUrl: campaign.broker?.user.photoUrl ?? null,
+    brokerCreci: campaign.broker?.creci ?? null,
+    agencyName: agency?.name ?? null,
+    agencyLogoUrl: agency?.logoUrl ?? null,
+    accentColor: campaign.broker?.brandColor || agency?.brandColor || null,
+    showAgencyWatermark: Boolean(agency) && (campaign.broker?.showAgencyWatermark ?? true),
+  }
+}
+
 function serializeCampaign(
   campaign: Prisma.StudioCampaignGetPayload<{ include: typeof studioCampaignInclude }>,
 ) {
@@ -231,6 +269,7 @@ function serializeCampaign(
     promptRevised: campaign.promptRevised,
     sourceRoute: campaign.sourceRoute,
     metadata: campaign.metadata,
+    branding: resolveCampaignBranding(campaign),
     property: campaign.property
         ? {
           id: campaign.property.id,

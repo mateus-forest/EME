@@ -25,6 +25,16 @@ export type StudioCreativeRenderResult = {
   textRuns: StudioTextRun[]
 }
 
+export type StudioCreativeBranding = {
+  brokerName: string | null
+  brokerPhotoDataUri: string | null
+  brokerCreci: string | null
+  agencyName: string | null
+  agencyLogoDataUri: string | null
+  accentColor: string | null
+  showAgencyWatermark: boolean
+}
+
 type StudioCreativePayload = {
   width: number
   height: number
@@ -38,11 +48,16 @@ type StudioCreativePayload = {
   metricLabel: string
   metricSupport: string
   ctaLabel: string
-  footer: string
   propertyImageSrc: string | null
-  officialLogoDataUri: string
   gradientId: string
   waveId: string
+  accentColor: string
+  brokerName: string | null
+  brokerPhotoDataUri: string | null
+  brokerCreci: string | null
+  agencyName: string | null
+  agencyLogoDataUri: string | null
+  showAgencyWatermark: boolean
 }
 
 type StudioFeatureItem = {
@@ -78,7 +93,32 @@ export type StudioTextMeasurer = (
   letterSpacingEm?: number,
 ) => Promise<{ width: number; height: number }>
 
-const OFFICIAL_STUDIO_LOGO_PATH = "/images/studio-eme-logo-official.svg"
+// Fallback accent when neither the acting broker nor their agency has configured a brand color —
+// matches the lime-green this renderer always used before the color became configurable, so
+// existing brokers/campaigns keep the exact same look with zero setup.
+export const DEFAULT_STUDIO_ACCENT_COLOR = "#73df30"
+
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
+
+function resolveAccentColor(value: string | null | undefined) {
+  const normalized = value?.trim() ?? ""
+  return HEX_COLOR_PATTERN.test(normalized) ? normalized : DEFAULT_STUDIO_ACCENT_COLOR
+}
+
+function hexToRgbTuple(hex: string): [number, number, number] {
+  const normalized = HEX_COLOR_PATTERN.test(hex) ? hex : DEFAULT_STUDIO_ACCENT_COLOR
+  const int = parseInt(normalized.slice(1), 16)
+  return [(int >> 16) & 255, (int >> 8) & 255, int & 255]
+}
+
+// Same accent hex used for every "colored" element in the template (icons, divider, price,
+// badge/panel borders, wave), just re-expressed at whatever alpha that particular element used
+// to hardcode against the old fixed lime green — so recoloring stays a single source of truth
+// instead of independently-tinted elements drifting out of sync with each other.
+function accentRgba(hex: string, alpha: number) {
+  const [r, g, b] = hexToRgbTuple(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 
 // Embedded directly (public/fonts/geist/*.ttf) and rasterized per text run via sharp's native
 // text renderer with an explicit `fontfile`, instead of a CSS font-family resolved through the
@@ -135,10 +175,6 @@ export function isSyntheticStudioCreative(campaign: StudioCampaignRecord, asset:
   return Boolean(resolveStudioTemplate(campaign, asset))
 }
 
-export function getOfficialStudioLogoPath() {
-  return OFFICIAL_STUDIO_LOGO_PATH
-}
-
 export function resolveStudioCreativeFormat(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
@@ -149,7 +185,7 @@ export function resolveStudioCreativeFormat(
 export async function renderStudioCreativeLayers(
   campaign: StudioCampaignRecord,
   asset: CampaignAssetRecord,
-  officialLogoDataUri: string,
+  branding: StudioCreativeBranding,
   propertyImageSrc: string | null | undefined,
   measure: StudioTextMeasurer,
 ): Promise<StudioCreativeRenderResult | null> {
@@ -160,7 +196,7 @@ export async function renderStudioCreativeLayers(
     campaign,
     asset,
     template,
-    officialLogoDataUri,
+    branding,
     propertyImageSrc: propertyImageSrc ?? null,
   })
 
@@ -182,7 +218,7 @@ function buildStudioCreativePayload(input: {
   campaign: StudioCampaignRecord
   asset: CampaignAssetRecord
   template: StudioTemplateDefinition
-  officialLogoDataUri: string
+  branding: StudioCreativeBranding
   propertyImageSrc: string | null
 }): StudioCreativePayload {
   const content = asRecord(input.asset.content)
@@ -210,11 +246,16 @@ function buildStudioCreativePayload(input: {
     metricLabel: metric.label,
     metricSupport: metric.support,
     ctaLabel,
-    footer: "EME • SOLUÇÕES PARA CORRETORES",
     propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
-    officialLogoDataUri: input.officialLogoDataUri,
     gradientId: `studio-gradient-${gradientToken}`,
     waveId: `studio-wave-${gradientToken}`,
+    accentColor: resolveAccentColor(input.branding.accentColor),
+    brokerName: input.branding.brokerName,
+    brokerPhotoDataUri: input.branding.brokerPhotoDataUri,
+    brokerCreci: input.branding.brokerCreci,
+    agencyName: input.branding.agencyName,
+    agencyLogoDataUri: input.branding.agencyLogoDataUri,
+    showAgencyWatermark: input.branding.showAgencyWatermark,
   }
 }
 
@@ -260,21 +301,32 @@ async function renderInstagramFeedTemplate(
     `<stop offset="100%" stop-color="rgba(5,18,10,0.04)" />`,
     "</linearGradient>",
     `<radialGradient id="${payload.waveId}" cx="94%" cy="100%" r="68%">`,
-    `<stop offset="0%" stop-color="rgba(123,226,63,0.24)" />`,
-    `<stop offset="60%" stop-color="rgba(123,226,63,0.08)" />`,
-    `<stop offset="100%" stop-color="rgba(123,226,63,0)" />`,
+    `<stop offset="0%" stop-color="${accentRgba(payload.accentColor, 0.24)}" />`,
+    `<stop offset="60%" stop-color="${accentRgba(payload.accentColor, 0.08)}" />`,
+    `<stop offset="100%" stop-color="${accentRgba(payload.accentColor, 0)}" />`,
     "</radialGradient>",
     "</defs>",
     renderBackgroundImage(payload.propertyImageSrc, payload.width, payload.height),
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, false),
-    renderBottomWave(payload.width, payload.height, payload.waveId, false),
-    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeBox.width, badgeBox.height),
-    renderLogo(payload.officialLogoDataUri, 915, 46, 146, 68),
-    renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
+    renderBottomWave(payload.width, payload.height, payload.waveId, false, payload.accentColor),
+    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeBox.width, badgeBox.height, payload.accentColor),
+    renderBrokerHeader(textRuns, {
+      rightX: 1010,
+      topY: 40,
+      avatarRadius: 40,
+      nameFontSize: 23,
+      detailFontSize: 15,
+      photoDataUri: payload.brokerPhotoDataUri,
+      name: payload.brokerName,
+      agencyName: payload.agencyName,
+      creci: payload.brokerCreci,
+      accentColor: payload.accentColor,
+    }),
+    renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", payload.accentColor, 0.16),
     renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
-    renderDivider(70, dividerY, 96),
-    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 235),
+    renderDivider(70, dividerY, 96, payload.accentColor),
+    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 235, payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 68,
       y: 905,
@@ -286,7 +338,20 @@ async function renderInstagramFeedTemplate(
       metricValueFontSize: 38,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
+      accentColor: payload.accentColor,
     }),
+    payload.showAgencyWatermark && payload.agencyName
+      ? renderAgencyWatermark(textRuns, {
+          rightX: 1010,
+          bottomY: 1010,
+          boxWidth: 108,
+          boxHeight: 86,
+          logoDataUri: payload.agencyLogoDataUri,
+          agencyName: payload.agencyName,
+          creci: payload.brokerCreci,
+          accentColor: payload.accentColor,
+        })
+      : "",
     "</svg>",
   ].join("")
 
@@ -332,21 +397,32 @@ async function renderInstagramStoryTemplate(
     `<stop offset="100%" stop-color="rgba(5,18,10,0.05)" />`,
     "</linearGradient>",
     `<radialGradient id="${payload.waveId}" cx="96%" cy="100%" r="70%">`,
-    `<stop offset="0%" stop-color="rgba(123,226,63,0.22)" />`,
-    `<stop offset="62%" stop-color="rgba(123,226,63,0.08)" />`,
-    `<stop offset="100%" stop-color="rgba(123,226,63,0)" />`,
+    `<stop offset="0%" stop-color="${accentRgba(payload.accentColor, 0.22)}" />`,
+    `<stop offset="62%" stop-color="${accentRgba(payload.accentColor, 0.08)}" />`,
+    `<stop offset="100%" stop-color="${accentRgba(payload.accentColor, 0)}" />`,
     "</radialGradient>",
     "</defs>",
     renderBackgroundImage(payload.propertyImageSrc, payload.width, payload.height),
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, true),
-    renderBottomWave(payload.width, payload.height, payload.waveId, true),
-    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeBox.width, badgeBox.height),
-    renderLogo(payload.officialLogoDataUri, 810, 78, 184, 82),
-    renderSingleLineText(textRuns, payload.eyebrow, 82, eyebrowY, eyebrowFontSize, "700", "#73df30", 0.16),
+    renderBottomWave(payload.width, payload.height, payload.waveId, true, payload.accentColor),
+    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeBox.width, badgeBox.height, payload.accentColor),
+    renderBrokerHeader(textRuns, {
+      rightX: 998,
+      topY: 50,
+      avatarRadius: 54,
+      nameFontSize: 28,
+      detailFontSize: 18,
+      photoDataUri: payload.brokerPhotoDataUri,
+      name: payload.brokerName,
+      agencyName: payload.agencyName,
+      creci: payload.brokerCreci,
+      accentColor: payload.accentColor,
+    }),
+    renderSingleLineText(textRuns, payload.eyebrow, 82, eyebrowY, eyebrowFontSize, "700", payload.accentColor, 0.16),
     renderMultilineText(textRuns, titleLayout.lines, 82, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
-    renderDivider(82, dividerY, 104),
-    renderFeatureStack(textRuns, featureItems, 82, dividerY + 72, 360, featureSpacing),
+    renderDivider(82, dividerY, 104, payload.accentColor),
+    renderFeatureStack(textRuns, featureItems, 82, dividerY + 72, 360, payload.accentColor, featureSpacing),
     renderMetricPanel(textRuns, {
       x: 80,
       y: 1560,
@@ -357,8 +433,20 @@ async function renderInstagramStoryTemplate(
       metricValue: payload.price,
       metricValueFontSize: 40,
       metricSupport: payload.metricSupport,
+      accentColor: payload.accentColor,
     }),
-    renderSingleLineText(textRuns, payload.footer, 540, 1808, 16, "500", "#f7f7f7", 0.26, "middle"),
+    payload.showAgencyWatermark && payload.agencyName
+      ? renderAgencyWatermark(textRuns, {
+          rightX: 998,
+          bottomY: 1850,
+          boxWidth: 150,
+          boxHeight: 118,
+          logoDataUri: payload.agencyLogoDataUri,
+          agencyName: payload.agencyName,
+          creci: payload.brokerCreci,
+          accentColor: payload.accentColor,
+        })
+      : "",
     "</svg>",
   ].join("")
 
@@ -381,17 +469,17 @@ function renderLeftOverlay(width: number, height: number, portrait: boolean) {
   return `<path d="M0 0 H534 C594 210 604 506 542 784 C482 960 288 1046 0 ${height} Z" fill="rgba(2,12,7,0.38)" />`
 }
 
-function renderBottomWave(width: number, height: number, waveId: string, portrait: boolean) {
+function renderBottomWave(width: number, height: number, waveId: string, portrait: boolean, accentColor: string) {
   if (portrait) {
     return [
       `<path d="M628 ${height} C756 ${height - 146} 898 ${height - 218} ${width} ${height - 168} L${width} ${height} Z" fill="url(#${waveId})" />`,
-      `<path d="M628 ${height} C760 ${height - 150} 908 ${height - 222} ${width} ${height - 176}" fill="none" stroke="rgba(123,226,63,0.72)" stroke-width="2.2" />`,
+      `<path d="M628 ${height} C760 ${height - 150} 908 ${height - 222} ${width} ${height - 176}" fill="none" stroke="${accentRgba(accentColor, 0.72)}" stroke-width="2.2" />`,
     ].join("")
   }
 
   return [
     `<path d="M820 ${height} C928 ${height - 120} 1012 ${height - 136} ${width} ${height - 102} L${width} ${height} Z" fill="url(#${waveId})" />`,
-    `<path d="M818 ${height} C926 ${height - 124} 1018 ${height - 142} ${width} ${height - 108}" fill="none" stroke="rgba(123,226,63,0.72)" stroke-width="2" />`,
+    `<path d="M818 ${height} C926 ${height - 124} 1018 ${height - 142} ${width} ${height - 108}" fill="none" stroke="${accentRgba(accentColor, 0.72)}" stroke-width="2" />`,
   ].join("")
 }
 
@@ -499,10 +587,10 @@ async function computeMetricPanelBox(
   return { width: Math.round(width), height, stackColumnWidth }
 }
 
-function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number) {
+function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number, accentColor: string) {
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="rgba(123,226,63,0.88)" stroke-width="2.1" />`,
+    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="${accentRgba(accentColor, 0.88)}" stroke-width="2.1" />`,
     renderFeatureIcon("badge", BADGE_ICON_LEFT_PAD, centerIconY(height, 0, BADGE_ICON_HEIGHT), "#ffffff"),
     "</g>",
     renderSingleLineText(
@@ -522,8 +610,142 @@ function renderLogo(logoDataUri: string, x: number, y: number, width: number, he
   return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`
 }
 
-function renderDivider(x: number, y: number, width: number) {
-  return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="#73df30" />`
+// Mirrors the "MC"/"EP" initials fallback already used in the broker/agency account settings
+// pages whenever no photo/logo is on file — same rule (first letter of up to the first 2 words).
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return "EM"
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "EM"
+}
+
+// Top-right identity block that replaced the old fixed EME "M" mark: broker photo (or initials
+// when none on file) plus name, then agency name + CRECI on the line below — or just CRECI when
+// the broker has no agency (never blank: falls back to "Corretor EME" if even the name is
+// missing, since this is the one thing the creative uses to say "who to contact").
+// Right-anchored at a fixed x so it never needs a text-width measurement pass: this stays
+// correctly positioned regardless of how long the broker/agency name is, unlike the
+// badge/metric-panel boxes elsewhere in this file which size themselves from real glyph ink.
+function renderBrokerHeader(
+  runs: StudioTextRun[],
+  input: {
+    rightX: number
+    topY: number
+    avatarRadius: number
+    nameFontSize: number
+    detailFontSize: number
+    photoDataUri: string | null
+    name: string | null
+    agencyName: string | null
+    creci: string | null
+    accentColor: string
+  },
+) {
+  const avatarCx = input.rightX - input.avatarRadius
+  const avatarCy = input.topY + input.avatarRadius
+  const diameter = input.avatarRadius * 2
+  const clipId = `studio-avatar-clip-${Math.round(avatarCx)}-${Math.round(avatarCy)}`
+  const displayName = input.name?.trim() || "Corretor EME"
+
+  const avatarContent = input.photoDataUri
+    ? [
+        `<clipPath id="${clipId}"><circle cx="${avatarCx}" cy="${avatarCy}" r="${input.avatarRadius}" /></clipPath>`,
+        `<image href="${escapeXml(input.photoDataUri)}" x="${avatarCx - input.avatarRadius}" y="${avatarCy - input.avatarRadius}" width="${diameter}" height="${diameter}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})" />`,
+      ].join("")
+    : [
+        `<circle cx="${avatarCx}" cy="${avatarCy}" r="${input.avatarRadius}" fill="rgba(6,17,10,0.62)" />`,
+        renderSingleLineText(
+          runs,
+          getInitials(displayName),
+          avatarCx,
+          avatarCy - input.avatarRadius + centerTextBlockY(diameter, Math.round(input.avatarRadius * 0.8), 0, 1),
+          Math.round(input.avatarRadius * 0.8),
+          "700",
+          "#ffffff",
+          0,
+          "middle",
+        ),
+      ].join("")
+
+  const nameY = avatarCy + input.avatarRadius + Math.round(input.nameFontSize * 1.35)
+  const detailY = nameY + Math.round(input.detailFontSize * 1.5)
+  const detailText = input.agencyName
+    ? `${input.agencyName} | CRECI ${input.creci || "-"}`
+    : input.creci
+      ? `CRECI ${input.creci}`
+      : ""
+
+  return [
+    `<circle cx="${avatarCx}" cy="${avatarCy}" r="${input.avatarRadius + 3}" fill="none" stroke="${input.accentColor}" stroke-width="3" />`,
+    avatarContent,
+    renderSingleLineText(runs, displayName, input.rightX, nameY, input.nameFontSize, "700", "#ffffff", 0, "end"),
+    detailText
+      ? renderSingleLineText(runs, detailText, input.rightX, detailY, input.detailFontSize, "500", "#e6e6e6", 0, "end")
+      : "",
+  ].join("")
+}
+
+// Bottom-right agency co-branding watermark — the agency's own uploaded logo when present,
+// otherwise a generated initials mark (same fallback idea as renderBrokerHeader/the account
+// settings pages) plus "IMÓVEIS", with the broker's CRECI printed just below. Only ever called
+// when payload.showAgencyWatermark && payload.agencyName are both truthy (see call sites).
+function renderAgencyWatermark(
+  runs: StudioTextRun[],
+  input: {
+    rightX: number
+    bottomY: number
+    boxWidth: number
+    boxHeight: number
+    logoDataUri: string | null
+    agencyName: string
+    creci: string | null
+    accentColor: string
+  },
+) {
+  const boxX = input.rightX - input.boxWidth
+  const boxTop = input.bottomY - input.boxHeight
+  const boxCenterX = boxX + input.boxWidth / 2
+
+  const mark = input.logoDataUri
+    ? renderLogo(input.logoDataUri, boxX + 10, boxTop + 10, input.boxWidth - 20, input.boxHeight - 20)
+    : [
+        renderSingleLineText(
+          runs,
+          getInitials(input.agencyName),
+          boxCenterX,
+          boxTop + input.boxHeight * 0.56,
+          Math.round(input.boxHeight * 0.42),
+          "700",
+          input.accentColor,
+          0,
+          "middle",
+        ),
+        renderSingleLineText(
+          runs,
+          "IMÓVEIS",
+          boxCenterX,
+          boxTop + input.boxHeight * 0.82,
+          Math.round(input.boxHeight * 0.14),
+          "700",
+          "#e6e6e6",
+          0.12,
+          "middle",
+        ),
+      ].join("")
+
+  const creciText = input.creci ? `CRECI ${input.creci}` : ""
+  const creciY = input.bottomY + Math.round(input.boxHeight * 0.32)
+
+  return [
+    `<rect x="${boxX}" y="${boxTop}" width="${input.boxWidth}" height="${input.boxHeight}" rx="14" fill="rgba(6,17,10,0.5)" stroke="${accentRgba(input.accentColor, 0.55)}" stroke-width="1.6" />`,
+    mark,
+    creciText
+      ? renderSingleLineText(runs, creciText, boxCenterX, creciY, Math.round(input.boxHeight * 0.16), "500", "#dcdcdc", 0, "middle")
+      : "",
+  ].join("")
+}
+
+function renderDivider(x: number, y: number, width: number, accentColor: string) {
+  return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="${accentColor}" />`
 }
 
 // columnWidth is a fixed per-item budget, not a total row width divided by item count: with a
@@ -532,7 +754,7 @@ function renderDivider(x: number, y: number, width: number) {
 // hitting the next divider — items *looked* unevenly spaced even though the column boundaries
 // were mathematically even. A constant column width keeps the same visual rhythm regardless of
 // how many items are actually present; the row is simply shorter with fewer of them.
-function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, columnWidth: number) {
+function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, columnWidth: number, accentColor: string) {
   return items
     .map((item, index) => {
       const originX = x + index * columnWidth
@@ -541,7 +763,7 @@ function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: 
 
       return [
         `<g transform="translate(${originX} ${y})">`,
-        renderFeatureIcon(item.icon, 0, 0, "#73df30"),
+        renderFeatureIcon(item.icon, 0, 0, accentColor),
         index < items.length - 1
           ? `<rect x="${columnWidth - 26}" y="6" width="1.2" height="124" fill="rgba(255,255,255,0.22)" />`
           : "",
@@ -552,7 +774,15 @@ function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: 
     .join("")
 }
 
-function renderFeatureStack(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, width: number, spacing = 184) {
+function renderFeatureStack(
+  runs: StudioTextRun[],
+  items: StudioFeatureItem[],
+  x: number,
+  y: number,
+  width: number,
+  accentColor: string,
+  spacing = 184,
+) {
   const dividerY = spacing - 30
 
   return items
@@ -563,7 +793,7 @@ function renderFeatureStack(runs: StudioTextRun[], items: StudioFeatureItem[], x
 
       return [
         `<g transform="translate(${x} ${groupY})">`,
-        renderFeatureIcon(item.icon, 0, 6, "#73df30"),
+        renderFeatureIcon(item.icon, 0, 6, accentColor),
         index < items.length - 1 ? `<rect x="0" y="${dividerY}" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
         "</g>",
         renderMultilineText(runs, textLayout.lines, x + 136, groupY + 46, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
@@ -588,6 +818,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   // Story's panel has no calendar/CTA section at all (see the two approved reference images side
   // by side) — omit entirely rather than rendering an empty divider.
   cta?: { lines: string[]; fontSize: number; lineHeight: number }
+  accentColor: string
 }) {
   const dividerX = input.cta ? Math.round(PANEL_PADDING_X + input.stackColumnWidth + PANEL_DIVIDER_GAP) : 0
   const iconX = dividerX + PANEL_DIVIDER_GAP
@@ -619,16 +850,16 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(5,14,8,0.42)" stroke="rgba(123,226,63,0.72)" stroke-width="1.6" />`,
+    `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(5,14,8,0.42)" stroke="${accentRgba(input.accentColor, 0.72)}" stroke-width="1.6" />`,
     input.cta
       ? [
           `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
-          renderFeatureIcon("calendar", iconX, ctaIconY, "#73df30"),
+          renderFeatureIcon("calendar", iconX, ctaIconY, input.accentColor),
         ].join("")
       : "",
     "</g>",
     renderSingleLineText(runs, input.metricLabel, input.x + panelPaddingX, input.y + labelY, labelFontSize, "500", "#ffffff", 0.01),
-    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "700", "#73df30", 0),
+    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "700", input.accentColor, 0),
     supportY !== null
       ? renderSingleLineText(runs, input.metricSupport, input.x + panelPaddingX, input.y + supportY, supportFontSize, "400", "#ffffff", 0)
       : "",

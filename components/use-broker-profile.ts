@@ -8,13 +8,16 @@ export type BrokerProfile = {
   id: string
   brokerId: string
   agencyId: string | null
-  accountType: "BROKER_INDEPENDENT" | null
+  agencyName: string
+  accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY" | null
   fullName: string
   email: string
   creci: string
   whatsApp: string
   photoUrl: string
   description: string
+  brandColor: string
+  showAgencyWatermark: boolean
   pinConfigured: boolean
 }
 
@@ -24,6 +27,7 @@ const defaultProfile: BrokerProfile = {
   id: "",
   brokerId: "",
   agencyId: null,
+  agencyName: "",
   accountType: null,
   fullName: "",
   email: "",
@@ -31,6 +35,8 @@ const defaultProfile: BrokerProfile = {
   whatsApp: "",
   photoUrl: "",
   description: "",
+  brandColor: "",
+  showAgencyWatermark: true,
   pinConfigured: false,
 }
 
@@ -61,13 +67,16 @@ export function useBrokerProfile() {
               id: string
               brokerId: string
               agencyId: string | null
-              accountType: "BROKER_INDEPENDENT"
+              agencyName?: string
+              accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY"
               name: string
               email: string
               phone: string
               photoUrl: string
               creci: string
               description: string
+              brandColor?: string
+              showAgencyWatermark?: boolean
               pinConfigured?: boolean
             }
           }
@@ -86,14 +95,17 @@ export function useBrokerProfile() {
         normalizeProfile({
           id: data.profile.id,
           brokerId: data.profile.brokerId,
-          agencyId: null,
-          accountType: "BROKER_INDEPENDENT",
+          agencyId: data.profile.agencyId,
+          agencyName: data.profile.agencyName ?? "",
+          accountType: data.profile.accountType,
           fullName: data.profile.name,
           email: data.profile.email,
           creci: data.profile.creci,
           whatsApp: data.profile.phone,
           photoUrl: data.profile.photoUrl,
           description: data.profile.description,
+          brandColor: data.profile.brandColor ?? "",
+          showAgencyWatermark: data.profile.showAgencyWatermark ?? true,
           pinConfigured: Boolean(data.profile.pinConfigured),
         }),
       )
@@ -146,6 +158,8 @@ export function useBrokerProfile() {
         creci: updates.creci,
         description: updates.description,
         photoUrl: updates.photoUrl,
+        brandColor: updates.brandColor,
+        showAgencyWatermark: updates.showAgencyWatermark,
         currentPassword: updates.currentPassword,
         newPassword: updates.newPassword,
         pinAction: updates.pinAction,
@@ -161,13 +175,16 @@ export function useBrokerProfile() {
             id: string
             brokerId: string
             agencyId: string | null
-            accountType: "BROKER_INDEPENDENT"
+            agencyName?: string
+            accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY"
             name: string
             email: string
             phone: string
             creci: string
             description: string
             photoUrl: string
+            brandColor?: string
+            showAgencyWatermark?: boolean
             pinConfigured?: boolean
           }
         }
@@ -185,14 +202,17 @@ export function useBrokerProfile() {
     const nextProfile = normalizeProfile({
       id: data.profile.id,
       brokerId: data.profile.brokerId,
-      agencyId: null,
-      accountType: "BROKER_INDEPENDENT",
+      agencyId: data.profile.agencyId,
+      agencyName: data.profile.agencyName ?? "",
+      accountType: data.profile.accountType,
       fullName: data.profile.name,
       email: data.profile.email,
       whatsApp: data.profile.phone,
       creci: data.profile.creci,
       description: data.profile.description,
       photoUrl: data.profile.photoUrl,
+      brandColor: data.profile.brandColor ?? "",
+      showAgencyWatermark: data.profile.showAgencyWatermark ?? true,
       pinConfigured: Boolean(data.profile.pinConfigured),
     })
 

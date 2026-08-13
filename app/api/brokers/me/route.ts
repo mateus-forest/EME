@@ -10,7 +10,7 @@ import { prisma, type PrismaTransaction } from "@/lib/prisma"
 type BrokerProfileUser = Pick<User, "id" | "name" | "email" | "phone" | "photoUrl" | "passwordHash" | "pinHash"> & {
   pinSchemaAvailable?: boolean
   broker:
-    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description"> & {
+    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description" | "brandColor" | "showAgencyWatermark"> & {
         agency?: {
           id: string
           name: string
@@ -36,6 +36,8 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     accountType: user.broker.agencyId ? "BROKER_AGENCY" : "BROKER_INDEPENDENT",
     creci: user.broker.creci ?? "",
     description: user.broker.description ?? "",
+    brandColor: user.broker.brandColor ?? "",
+    showAgencyWatermark: user.broker.showAgencyWatermark,
     pinConfigured: Boolean(user.pinHash),
   }
 }
@@ -86,6 +88,9 @@ export async function PATCH(request: NextRequest) {
     const creci = typeof body?.creci === "string" ? body.creci.trim() : ""
     const description = typeof body?.description === "string" ? body.description.trim() : ""
     const photoUrl = typeof body?.photoUrl === "string" ? body.photoUrl.trim() : ""
+    const brandColorInput = typeof body?.brandColor === "string" ? body.brandColor.trim() : ""
+    const brandColor = /^#[0-9a-fA-F]{6}$/.test(brandColorInput) ? brandColorInput : ""
+    const showAgencyWatermark = typeof body?.showAgencyWatermark === "boolean" ? body.showAgencyWatermark : true
     const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : ""
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : ""
     const pinAction = body?.pinAction === "set" || body?.pinAction === "remove" ? body.pinAction : null
@@ -226,6 +231,8 @@ export async function PATCH(request: NextRequest) {
           phone,
           creci,
           description: description || null,
+          brandColor: brandColor || null,
+          showAgencyWatermark,
         },
       })
 

@@ -14,6 +14,8 @@ const authRelationSelect = {
       creci: true,
       description: true,
       catalogSlug: true,
+      brandColor: true,
+      showAgencyWatermark: true,
       agency: {
         select: {
           id: true,
@@ -33,6 +35,7 @@ const authRelationSelect = {
       logoUrl: true,
       catalogSlug: true,
       description: true,
+      brandColor: true,
     },
   },
 } as const

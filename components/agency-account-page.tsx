@@ -11,6 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DEFAULT_STUDIO_ACCENT_COLOR } from "@/lib/studio-creative-renderer"
+
+// Restricted to formats the Studio IA server-side renderer can reliably composite (librsvg here
+// has no WebP/AVIF decoder for embedded data URIs — an agency logo saved in one of those formats
+// silently fails to draw in the generated Post Feed/Story images, with no error surfaced anywhere).
+const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/svg+xml"]
+const MAX_LOGO_SOURCE_BYTES = 2 * 1024 * 1024
+
+function formatMegabytes(bytes: number) {
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
 
 export function AgencyAccountPage() {
   return (
@@ -28,6 +39,7 @@ function AccountForm() {
   const [cnpj, setCnpj] = useState(profile.cnpj)
   const [whatsApp, setWhatsApp] = useState(profile.whatsApp)
   const [logoUrl, setLogoUrl] = useState(profile.logoUrl)
+  const [brandColor, setBrandColor] = useState(profile.brandColor)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -44,6 +56,7 @@ function AccountForm() {
     setCnpj(profile.cnpj)
     setWhatsApp(profile.whatsApp)
     setLogoUrl(profile.logoUrl)
+    setBrandColor(profile.brandColor)
   }, [profile])
 
   function validate() {
@@ -100,6 +113,7 @@ function AccountForm() {
         cnpj,
         whatsApp,
         logoUrl,
+        brandColor,
         currentPassword,
         newPassword,
       })
@@ -125,7 +139,22 @@ function AccountForm() {
   async function handleLogoChange(file: File | null) {
     if (!file) return
 
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setFeedbackTone("error")
+      setFeedback("Envie um arquivo JPG, PNG ou SVG — outros formatos podem não aparecer corretamente nas imagens geradas pelo Studio IA.")
+      return
+    }
+
+    if (file.size > MAX_LOGO_SOURCE_BYTES) {
+      setFeedbackTone("error")
+      setFeedback(
+        `O logo tem ${formatMegabytes(file.size)}, o limite é ${formatMegabytes(MAX_LOGO_SOURCE_BYTES)} — tente uma imagem menor ou comprimida.`,
+      )
+      return
+    }
+
     try {
+      setFeedback(null)
       setLogoUrl(await readFileAsDataUrl(file))
     } catch {
       setFeedbackTone("error")
@@ -159,11 +188,14 @@ function AccountForm() {
           <CardContent className="grid gap-4 p-6 pt-0">
             <div className="grid gap-3">
               <Label className="text-sm font-medium text-white/70">Logo</Label>
+              <p className="-mt-1 text-xs leading-5 text-white/45">
+                JPG, PNG ou SVG, até {formatMegabytes(MAX_LOGO_SOURCE_BYTES)} — usado no rodapé das imagens geradas pelo Studio IA.
+              </p>
               <div className="flex items-center gap-4">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={ALLOWED_LOGO_TYPES.join(",")}
                   className="sr-only"
                   onChange={(event) => handleLogoChange(event.target.files?.[0] ?? null)}
                 />
@@ -198,6 +230,40 @@ function AccountForm() {
                 <p className="-mt-1 text-xs leading-5 text-white/45">
                   Este número será utilizado para receber contatos, leads e interações relacionadas ao catálogo e aos anúncios da imobiliária.
                 </p>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="brandColor" className="text-sm font-medium text-white/70">
+                Cor de destaque do Studio IA
+              </Label>
+              <p className="-mt-1 text-xs leading-5 text-white/45">
+                Usada nos ícones, divisórias e preço das imagens geradas para Post Feed e Story.
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  id="brandColor"
+                  type="color"
+                  value={brandColor || DEFAULT_STUDIO_ACCENT_COLOR}
+                  onChange={(event) => setBrandColor(event.target.value)}
+                  className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.04] p-1"
+                />
+                <Input
+                  value={brandColor}
+                  onChange={(event) => setBrandColor(event.target.value.trim())}
+                  placeholder={DEFAULT_STUDIO_ACCENT_COLOR}
+                  className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25 focus-visible:ring-[#00C853]/35"
+                />
+                {brandColor ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setBrandColor("")}
+                    className="h-11 shrink-0 rounded-xl px-3 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white"
+                  >
+                    Usar padrão
+                  </Button>
+                ) : null}
               </div>
             </div>
           </CardContent>

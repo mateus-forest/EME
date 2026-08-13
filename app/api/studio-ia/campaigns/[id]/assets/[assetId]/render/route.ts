@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises"
 import path from "node:path"
 
 import { NextRequest, NextResponse } from "next/server"
@@ -11,19 +10,16 @@ import {
 import { studioUnavailableResponse } from "@/lib/studio-api-errors"
 import {
   escapeXml,
-  getOfficialStudioLogoPath,
   renderStudioCreativeLayers,
   STUDIO_FONT_ASCENT_RATIO,
   STUDIO_FONT_ASSETS,
 } from "@/lib/studio-creative-renderer"
-import type { StudioTextRun } from "@/lib/studio-creative-renderer"
+import type { StudioCreativeBranding, StudioTextRun } from "@/lib/studio-creative-renderer"
 import { createStudioTextMeasurer } from "@/lib/studio-text-metrics.server"
 import { getStudioCampaignById } from "@/lib/studio-campaigns"
 import { UserRole } from "@/lib/prisma-enums"
 
 export const dynamic = "force-dynamic"
-
-let cachedLogoDataUriPromise: Promise<string> | null = null
 
 export async function GET(
   request: NextRequest,
@@ -52,16 +48,25 @@ export async function GET(
       return NextResponse.json({ error: "Asset nao encontrado." }, { status: 404 })
     }
 
-    const propertyImageDataUri = await getPropertyImageDataUri(campaign.property?.imageUrls?.[0])
     const sharp = (await import("sharp")).default
+
+    const [propertyImageDataUri, brokerPhotoDataUri, agencyLogoDataUri] = await Promise.all([
+      toImageDataUri(campaign.property?.imageUrls?.[0]),
+      toAvatarDataUri(sharp, campaign.branding.brokerPhotoUrl),
+      toAvatarDataUri(sharp, campaign.branding.agencyLogoUrl),
+    ])
+    const branding: StudioCreativeBranding = {
+      brokerName: campaign.branding.brokerName,
+      brokerPhotoDataUri,
+      brokerCreci: campaign.branding.brokerCreci,
+      agencyName: campaign.branding.agencyName,
+      agencyLogoDataUri,
+      accentColor: campaign.branding.accentColor,
+      showAgencyWatermark: campaign.branding.showAgencyWatermark,
+    }
+
     const measure = createStudioTextMeasurer(sharp)
-    const layers = await renderStudioCreativeLayers(
-      campaign,
-      asset,
-      await getOfficialStudioLogoDataUri(),
-      propertyImageDataUri,
-      measure,
-    )
+    const layers = await renderStudioCreativeLayers(campaign, asset, branding, propertyImageDataUri, measure)
     if (!layers) {
       return NextResponse.json({ error: "Este asset nao possui renderizacao visual oficial." }, { status: 404 })
     }
@@ -86,24 +91,24 @@ export async function GET(
       return NextResponse.json({ error: "O serviço do Studio IA está indisponível no momento." }, { status: 503 })
     }
 
+    console.error("[api][studio-ia][campaigns][render] failed", {
+      message: caughtError instanceof Error ? caughtError.message : "unknown",
+      stack: caughtError instanceof Error ? caughtError.stack : undefined,
+    })
+
     return NextResponse.json({ error: "Nao foi possivel renderizar o criativo do Studio IA." }, { status: 500 })
   }
 }
 
-async function getOfficialStudioLogoDataUri() {
-  if (!cachedLogoDataUriPromise) {
-    cachedLogoDataUriPromise = readFile(
-      path.join(process.cwd(), "public", getOfficialStudioLogoPath().replace(/^\//, "")),
-      "utf8",
-    ).then((content) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`)
-  }
-
-  return cachedLogoDataUriPromise
-}
-
-async function getPropertyImageDataUri(imageUrl: string | null | undefined) {
+// Broker photos and agency logos are stored either as a base64 data URL straight on the
+// User/Agency row (the account-settings upload flow — see components/broker-account-page.tsx /
+// agency-account-page.tsx) or, for property photos, as a real remote Supabase Storage URL — this
+// covers both without the caller needing to know which one it's dealing with.
+async function toImageDataUri(imageUrl: string | null | undefined) {
   const normalized = imageUrl?.trim()
   if (!normalized) return null
+
+  if (normalized.startsWith("data:")) return normalized
 
   try {
     const response = await fetch(normalized, { cache: "no-store" })
@@ -114,6 +119,47 @@ async function getPropertyImageDataUri(imageUrl: string | null | undefined) {
     if (!buffer.length) return null
 
     return `data:${contentType};base64,${buffer.toString("base64")}`
+  } catch {
+    return null
+  }
+}
+
+// Broker photo / agency logo need to render inside the server-side SVG creative regardless of
+// what format they were originally uploaded/stored in — librsvg here has no WebP/AVIF decoder for
+// embedded data URIs (confirmed: a broker photo stored as data:image/webp rendered as a blank box
+// with no error anywhere, while an identically-sourced JPEG rendered fine). Re-encoding through
+// sharp to a fixed PNG guarantees this always works regardless of source format. `fit: "inside"`
+// (not "cover") preserves the original aspect ratio instead of force-cropping to a square — the
+// broker avatar is drawn inside a circle via `preserveAspectRatio="slice"` in the SVG itself, and
+// an agency logo is very often a wide wordmark, so a pre-crop here would clip it before it ever
+// reaches the "meet" (contain) placement the footer watermark box already uses. The resize also
+// doubles as a downscale: these only ever draw at ~100px, so there's no reason to embed a
+// multi-megapixel original in the SVG payload.
+const AVATAR_MAX_DIMENSION = 240
+
+async function toAvatarDataUri(sharp: SharpFactory, imageUrl: string | null | undefined) {
+  const normalized = imageUrl?.trim()
+  if (!normalized) return null
+
+  try {
+    let inputBuffer: Buffer
+
+    if (normalized.startsWith("data:")) {
+      inputBuffer = Buffer.from(normalized.slice(normalized.indexOf(",") + 1), "base64")
+    } else {
+      const response = await fetch(normalized, { cache: "no-store" })
+      if (!response.ok) return null
+      inputBuffer = Buffer.from(await response.arrayBuffer())
+    }
+
+    if (!inputBuffer.length) return null
+
+    const pngBuffer = await sharp(inputBuffer)
+      .resize({ width: AVATAR_MAX_DIMENSION, height: AVATAR_MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+      .png()
+      .toBuffer()
+
+    return `data:image/png;base64,${pngBuffer.toString("base64")}`
   } catch {
     return null
   }

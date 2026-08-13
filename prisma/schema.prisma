@@ -193,6 +193,8 @@ model Broker {
   status      BrokerAccountStatus @default(ACTIVE)
   creci       String?
   description String?
+  brandColor  String?
+  showAgencyWatermark Boolean @default(true)
   aiCreditsBalance Int      @default(10)
   aiCreditsUsedThisMonth Int @default(0)
   aiAssistantEnabled Boolean @default(true)
@@ -228,6 +230,7 @@ model Agency {
   cnpj        String?
   logoUrl     String?
   description String?
+  brandColor  String?
   createdAt   DateTime   @default(now())
   ownerUser   User       @relation("AgencyOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   brokers     Broker[]
