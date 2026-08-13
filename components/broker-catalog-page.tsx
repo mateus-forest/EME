@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  ExternalLink,
   Flame,
   Heart,
   Link2,
@@ -91,6 +92,10 @@ export function BrokerCatalogPage() {
     return buildBrokerCatalogUrl(draftSettings.slug)
   }, [draftSettings.slug])
   const catalogInternalUrl = useMemo(() => `${buildBrokerCatalogPath(draftSettings.slug)}?from=portal`, [draftSettings.slug])
+  const marketplaceProfilePath = useMemo(
+    () => settings.marketplaceProfileAvailable && settings.slug ? `/imoveis/corretores/${encodeURIComponent(settings.slug)}` : "",
+    [settings.marketplaceProfileAvailable, settings.slug],
+  )
   const currentImage = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
   const needsMore = (selectedProperty?.description.length ?? 0) > 180
   const shortDescription = selectedProperty?.description.slice(0, 180)
@@ -377,17 +382,40 @@ export function BrokerCatalogPage() {
           <div className="grid gap-4">
 
             <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <CardHeader className="flex-row items-center justify-between gap-3 px-5 py-4">
+              <CardHeader className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                 <div>
                   <CardTitle className="text-base text-[#050505]">Preview no Marketplace</CardTitle>
                   <p className="mt-1 text-xs text-[#7B8491]">Atualização em tempo real</p>
                 </div>
-                <div className="inline-flex rounded-full bg-[#f2f4f1] p-1">
-                  {(['card', 'profile'] as const).map((mode) => (
-                    <button key={mode} type="button" onClick={() => setPreviewMode(mode)} className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${previewMode === mode ? 'bg-white text-[#050505] shadow-sm' : 'text-[#6B7280]'}`}>
-                      {mode === 'card' ? 'Card' : 'Perfil'}
-                    </button>
-                  ))}
+                <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+                  <div className="inline-flex rounded-full bg-[#f2f4f1] p-1">
+                    {(['card', 'profile'] as const).map((mode) => (
+                      <button key={mode} type="button" onClick={() => setPreviewMode(mode)} className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${previewMode === mode ? 'bg-white text-[#050505] shadow-sm' : 'text-[#6B7280]'}`}>
+                        {mode === 'card' ? 'Card' : 'Perfil'}
+                      </button>
+                    ))}
+                  </div>
+                  {marketplaceProfilePath ? (
+                    <Button asChild type="button" variant="ghost" size="sm" className="rounded-full border border-black/[0.06] bg-white/70 px-3 text-xs text-[#5F6B7A] shadow-none hover:bg-white hover:text-[#050505]">
+                      <a href={marketplaceProfilePath} target="_blank" rel="noopener noreferrer">
+                        Ver no Marketplace
+                        <ExternalLink className="size-3.5" aria-hidden="true" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled
+                      title="Publique ao menos um imóvel no Marketplace para disponibilizar seu perfil público."
+                      aria-label="Ver no Marketplace — perfil público ainda indisponível"
+                      className="rounded-full border border-black/[0.06] bg-white/70 px-3 text-xs text-[#5F6B7A] shadow-none"
+                    >
+                      Ver no Marketplace
+                      <ExternalLink className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="p-5 pt-0">

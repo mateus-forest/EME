@@ -1,4 +1,4 @@
-import { CatalogOwnerType, UserRole } from "@/lib/prisma-enums"
+import { BrokerAccountStatus, CatalogOwnerType, UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
   NextResponse } from "next/server"
@@ -21,7 +21,7 @@ function serializeBrokerCatalog(user: {
     marketplaceRating: unknown
     marketplaceReviewCount: number
   } | null
-}, activeListings = 0) {
+}, activeListings = 0, marketplaceProfileAvailable = false) {
   return {
     settings: {
       slug: user.broker?.catalogSlug ?? "",
@@ -36,6 +36,7 @@ function serializeBrokerCatalog(user: {
       rating: user.broker?.marketplaceRating ? Number(user.broker.marketplaceRating) : 0,
       reviewCount: user.broker?.marketplaceReviewCount ?? 0,
       activeListings,
+      marketplaceProfileAvailable,
     },
   }
 }
@@ -56,8 +57,18 @@ export async function GET() {
     return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
-  const activeListings = await prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } })
-  const response = NextResponse.json(serializeBrokerCatalog(user, activeListings))
+  const [activeListings, publicProfile] = await Promise.all([
+    prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } }),
+    prisma.broker.findFirst({
+      where: {
+        id: user.broker.id,
+        status: BrokerAccountStatus.ACTIVE,
+        properties: { some: { marketplacePublished: true } },
+      },
+      select: { id: true },
+    }),
+  ])
+  const response = NextResponse.json(serializeBrokerCatalog(user, activeListings, Boolean(publicProfile)))
   response.headers.set("Cache-Control", "no-store, max-age=0")
   return response
 }
@@ -190,8 +201,18 @@ export async function PATCH(request: NextRequest) {
       })
     })
 
-    const activeListings = await prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } })
-    const response = NextResponse.json(serializeBrokerCatalog(updated, activeListings))
+    const [activeListings, publicProfile] = await Promise.all([
+      prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } }),
+      prisma.broker.findFirst({
+        where: {
+          id: user.broker.id,
+          status: BrokerAccountStatus.ACTIVE,
+          properties: { some: { marketplacePublished: true } },
+        },
+        select: { id: true },
+      }),
+    ])
+    const response = NextResponse.json(serializeBrokerCatalog(updated, activeListings, Boolean(publicProfile)))
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

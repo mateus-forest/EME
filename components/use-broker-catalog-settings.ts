@@ -15,6 +15,7 @@ export type BrokerCatalogSettings = {
   rating: number
   reviewCount: number
   activeListings: number
+  marketplaceProfileAvailable: boolean
 }
 
 const STORAGE_KEY = "eme-broker-catalog-settings"
@@ -33,6 +34,7 @@ const defaultSettings: BrokerCatalogSettings = {
   rating: 0,
   reviewCount: 0,
   activeListings: 0,
+  marketplaceProfileAvailable: false,
 }
 
 function clearLegacyCatalogStorage() {

@@ -102,6 +102,12 @@ test.describe('Marketplace integrado ao EME', () => {
     })
     expect(configured.ok()).toBe(true)
 
+    const unavailableCatalog = await page.request.get('/api/brokers/catalog')
+    const unavailableSettings = await unavailableCatalog.json()
+    expect(unavailableSettings.settings.marketplaceProfileAvailable).toBe(false)
+    await page.goto('/corretor/catalogo')
+    await expect(page.getByRole('button', { name: /Ver no Marketplace/ })).toBeDisabled()
+
     const slugs: string[] = []
     for (const propertyId of propertyIds) {
       const response = await page.request.patch(`/api/properties/${propertyId}/marketplace`, { data: { published: true } })
@@ -116,6 +122,12 @@ test.describe('Marketplace integrado ao EME', () => {
     const catalog = await catalogResponse.json()
     expect(catalog.settings.activeListings).toBe(3)
     expect(catalog.settings.specialty).toBe('Residencial e primeiro imóvel')
+    expect(catalog.settings.marketplaceProfileAvailable).toBe(true)
+
+    await page.goto('/corretor/catalogo')
+    const marketplaceProfileLink = page.getByRole('link', { name: /Ver no Marketplace/ })
+    await expect(marketplaceProfileLink).toHaveAttribute('href', `/imoveis/corretores/${FIXTURE_SLUG}`)
+    await expect(marketplaceProfileLink).toHaveAttribute('target', '_blank')
 
     await page.goto('/imoveis/busca?finalidade=compra')
     await expect(page.getByText('Casa Integração Marketplace').first()).toBeVisible({ timeout: 30_000 })
