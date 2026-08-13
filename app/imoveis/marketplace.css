@@ -1,0 +1,240 @@
+@font-face {
+  font-family: 'EME Marketplace Geist';
+  src: url('/fonts/geist/Geist-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'EME Marketplace Geist';
+  src: url('/fonts/geist/Geist-Medium.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'EME Marketplace Geist';
+  src: url('/fonts/geist/Geist-Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
+
+.marketplace-shell {
+  color-scheme: light;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.22 0.008 145);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.008 145);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.008 145);
+  --primary: oklch(0.6 0.13 148);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.97 0.004 145);
+  --secondary-foreground: oklch(0.28 0.008 145);
+  --muted: oklch(0.975 0.003 145);
+  --muted-foreground: oklch(0.53 0.006 145);
+  --accent: oklch(0.965 0.012 148);
+  --accent-foreground: oklch(0.3 0.02 148);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.928 0.004 145);
+  --input: oklch(0.928 0.004 145);
+  --ring: oklch(0.6 0.13 148);
+  --eme-50: oklch(0.975 0.02 148);
+  --eme-100: oklch(0.94 0.045 148);
+  --eme-500: oklch(0.63 0.14 148);
+  --eme-600: oklch(0.56 0.13 148);
+  --eme-700: oklch(0.46 0.11 148);
+  --color-eme-50: var(--eme-50);
+  --color-eme-100: var(--eme-100);
+  --color-eme-500: var(--eme-500);
+  --color-eme-600: var(--eme-600);
+  --color-eme-700: var(--eme-700);
+  --surface: oklch(0.988 0.004 145);
+  --radius: 0.75rem;
+  --shadow-soft: 0 1px 2px rgba(16, 24, 20, 0.04), 0 10px 30px rgba(16, 24, 20, 0.05);
+  --shadow-float: 0 6px 16px rgba(16, 24, 20, 0.05), 0 30px 60px rgba(16, 24, 20, 0.1);
+  --shadow-glass: 0 8px 20px rgba(16, 24, 20, 0.06), 0 24px 60px rgba(16, 24, 20, 0.14);
+
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'EME Marketplace Geist', ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+}
+
+.marketplace-shell *,
+.marketplace-shell *::before,
+.marketplace-shell *::after {
+  border-color: var(--border);
+}
+
+.marketplace-shell ::selection {
+  background: color-mix(in oklab, var(--primary) 20%, transparent);
+  color: var(--foreground);
+}
+
+.marketplace-shell :where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--ring) 75%, transparent);
+  outline-offset: 3px;
+}
+
+.marketplace-shell :where(button, [role='button']):not(:disabled) {
+  cursor: pointer;
+}
+
+/* Route-local equivalents of the source project's EME theme utilities. */
+.marketplace-shell .bg-eme-50 { background-color: var(--eme-50); }
+.marketplace-shell .bg-eme-100 { background-color: var(--eme-100); }
+.marketplace-shell .bg-eme-600 { background-color: var(--eme-600); }
+.marketplace-shell .bg-surface { background-color: var(--surface); }
+.marketplace-shell .bg-surface\/60 { background-color: color-mix(in oklab, var(--surface) 60%, transparent); }
+.marketplace-shell .text-eme-700 { color: var(--eme-700); }
+.marketplace-shell .border-eme-100 { border-color: var(--eme-100); }
+.marketplace-shell .hover\:bg-eme-50:hover { background-color: var(--eme-50); }
+.marketplace-shell .hover\:bg-eme-100:hover { background-color: var(--eme-100); }
+.marketplace-shell .hover\:bg-eme-600:hover { background-color: var(--eme-600); }
+.marketplace-shell .hover\:text-eme-700:hover { color: var(--eme-700); }
+.marketplace-shell .shadow-soft { box-shadow: var(--shadow-soft); }
+.marketplace-shell .shadow-float { box-shadow: var(--shadow-float); }
+.marketplace-shell .shadow-glass { box-shadow: var(--shadow-glass); }
+.marketplace-shell .rounded-2xl { border-radius: calc(var(--radius) * 2); }
+.marketplace-shell .rounded-3xl { border-radius: calc(var(--radius) * 2.8); }
+.marketplace-shell .rounded-4xl { border-radius: calc(var(--radius) * 3.6); }
+
+@keyframes marketplace-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes marketplace-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes marketplace-loader-breathe {
+  0%, 100% {
+    transform: scale(.96);
+    opacity: .84;
+    filter: brightness(.98) drop-shadow(0 4px 10px rgba(20, 120, 70, .08));
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 1;
+    filter: brightness(1.06) drop-shadow(0 8px 18px rgba(20, 120, 70, .14));
+  }
+}
+
+@keyframes marketplace-loader-halo {
+  0%, 100% { transform: scale(.82); opacity: .12; }
+  50% { transform: scale(1.12); opacity: .44; }
+}
+
+@keyframes marketplace-loader-glint {
+  0%, 28% { left: -34px; opacity: 0; }
+  42% { opacity: .65; }
+  66%, 100% { left: 92px; opacity: 0; }
+}
+
+@keyframes marketplace-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-1.5%, 1%, 0); }
+}
+
+.marketplace-shell .animate-rise {
+  animation: marketplace-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.marketplace-shell .animate-float {
+  animation: marketplace-float 6s ease-in-out infinite;
+}
+
+.marketplace-shell .animate-drift {
+  animation: marketplace-drift 14s ease-in-out infinite alternate;
+}
+
+.marketplace-shell .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.marketplace-shell .reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.marketplace-shell .no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.marketplace-shell .no-scrollbar::-webkit-scrollbar { display: none; }
+
+.marketplace-shell .glass {
+  background-color: color-mix(in oklab, white 74%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid color-mix(in oklab, white 55%, transparent);
+}
+
+.marketplace-shell .glass-strong {
+  background-color: color-mix(in oklab, white 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid color-mix(in oklab, white 60%, transparent);
+}
+
+.marketplace-shell .marketplace-loader-halo {
+  background: rgba(20, 190, 95, .16);
+  filter: blur(14px);
+  animation: marketplace-loader-halo 1.35s ease-in-out infinite;
+}
+
+.marketplace-shell .marketplace-loader-logo {
+  animation: marketplace-loader-breathe 1.35s cubic-bezier(.4, 0, .2, 1) infinite;
+  filter: drop-shadow(0 6px 14px rgba(20, 120, 70, .10));
+}
+
+.marketplace-shell .marketplace-loader-glint { mix-blend-mode: screen; }
+
+.marketplace-shell .marketplace-loader-glint::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -34px;
+  width: 22px;
+  transform: rotate(14deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .82), transparent);
+  filter: blur(2px);
+  animation: marketplace-loader-glint 1.8s ease-in-out infinite;
+}
+
+@media (min-width: 64rem) {
+  .marketplace-shell .lg\:rounded-2xl { border-radius: calc(var(--radius) * 2); }
+  .marketplace-shell .lg\:rounded-3xl { border-radius: calc(var(--radius) * 2.8); }
+  .marketplace-shell .lg\:rounded-4xl { border-radius: calc(var(--radius) * 3.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketplace-shell *,
+  .marketplace-shell *::before,
+  .marketplace-shell *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .marketplace-shell .reveal { opacity: 1; transform: none; }
+  .marketplace-shell .marketplace-loader-logo,
+  .marketplace-shell .marketplace-loader-halo,
+  .marketplace-shell .marketplace-loader-glint::before { animation: none !important; }
+}
