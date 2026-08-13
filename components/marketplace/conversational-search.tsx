@@ -30,7 +30,7 @@ export function ConversationalSearch({
     if (query) params.set('q', query)
     if (purpose) params.set('finalidade', purpose)
     const qs = params.toString()
-    router.push(qs ? `/imoveis?${qs}#imoveis` : '/imoveis#imoveis')
+    router.push(qs ? `/imoveis/busca?${qs}` : '/imoveis/busca')
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

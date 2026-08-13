@@ -28,9 +28,9 @@ export function PropertyCard({
           featured ? 'aspect-[16/11] lg:aspect-auto lg:min-h-[300px] lg:flex-1' : 'aspect-[16/10]',
         )}
       >
-        <Link href={`/imoveis?imovel=${property.slug}#imoveis`} className="absolute inset-0">
+        <Link href={`/imoveis/imovel/${property.slug}`} className="absolute inset-0">
           <Image
-            src={property.image || '/placeholder.svg'}
+            src={property.image || '/marketplace/placeholder.svg'}
             alt={property.title}
             fill
             sizes={featured ? '(max-width: 1024px) 100vw, 60vw' : '(max-width: 1024px) 100vw, 30vw'}
@@ -65,7 +65,7 @@ export function PropertyCard({
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-pretty text-base font-medium text-foreground">
               <Link
-                href={`/imoveis?imovel=${property.slug}#imoveis`}
+                href={`/imoveis/imovel/${property.slug}`}
                 className="outline-none transition-colors hover:text-primary focus-visible:text-primary"
               >
                 {property.title}

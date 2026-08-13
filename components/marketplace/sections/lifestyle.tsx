@@ -31,14 +31,14 @@ export function LifestyleSection() {
           return (
             <Reveal key={item.slug} delay={i * 80}>
               <Link
-                href={`/imoveis?estilo=${item.slug}#imoveis`}
+                href={`/imoveis/busca?intencao=${item.slug}`}
                 className={cn(
                   'group relative block overflow-hidden rounded-[1.75rem] shadow-[var(--shadow-soft)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-float)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                   tall ? 'aspect-[3/4] lg:aspect-[3/4.4]' : 'aspect-[3/4] lg:aspect-[3/3.8]',
                 )}
               >
                 <Image
-                  src={item.image || '/placeholder.svg'}
+                  src={item.image || '/marketplace/placeholder.svg'}
                   alt={item.title}
                   fill
                   sizes="(max-width: 1024px) 45vw, 22vw"

@@ -40,7 +40,7 @@ export function ComparisonSection() {
                   >
                     <div className="relative aspect-[4/3]">
                       <Image
-                        src={item.image || '/placeholder.svg'}
+                        src={item.image || '/marketplace/placeholder.svg'}
                         alt={item.title}
                         fill
                         sizes="(max-width: 640px) 45vw, 26vw"
@@ -80,7 +80,7 @@ export function ComparisonSection() {
                   })}
                 </ul>
                 <Link
-                  href="/imoveis#imoveis"
+                  href="/imoveis/busca"
                   className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:text-eme-700"
                 >
                   Ver comparação completa

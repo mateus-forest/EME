@@ -11,8 +11,8 @@ export type NavItem = {
 
 // Navegação principal do header (rotas internas).
 export const mainNav: NavItem[] = [
-  { label: 'Comprar', href: '/imoveis?finalidade=compra#imoveis' },
-  { label: 'Alugar', href: '/imoveis?finalidade=aluguel#imoveis' },
-  { label: 'Regiões', href: '/imoveis#regioes' },
-  { label: 'Corretores', href: '/imoveis#corretores' },
+  { label: 'Comprar', href: '/imoveis/comprar' },
+  { label: 'Alugar', href: '/imoveis/alugar' },
+  { label: 'Regiões', href: '/imoveis/regioes' },
+  { label: 'Corretores', href: '/imoveis/corretores' },
 ]

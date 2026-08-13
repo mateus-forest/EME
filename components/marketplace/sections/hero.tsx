@@ -31,7 +31,7 @@ export function Hero() {
               placeholder="Quero uma casa com pátio em Vacaria, até R$ 750 mil..."
             />
             <Link
-              href="/imoveis#imoveis"
+              href="/imoveis/busca"
               className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
             >
               <Zap className="h-4 w-4 text-primary" aria-hidden="true" />

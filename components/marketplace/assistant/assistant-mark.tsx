@@ -29,6 +29,7 @@ export function AssistantMark({
         alt=""
         width={48}
         height={48}
+        priority
         className={cn(
           'brightness-0 invert',
           size === 'sm' ? 'h-4 w-4' : size === 'md' ? 'h-6 w-6' : 'h-8 w-8',

@@ -117,7 +117,7 @@ function PropertySuggestion({
       </div>
       <div className="grid grid-cols-2 border-t border-border/60">
         <Link
-          href={`/imoveis?imovel=${property.slug}#imoveis`}
+          href={`/imoveis/imovel/${property.slug}`}
           className="inline-flex min-h-11 items-center justify-center gap-1 border-r border-border/60 px-2 text-xs font-medium text-primary transition-colors hover:bg-eme-50"
         >
           Ver imóvel <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

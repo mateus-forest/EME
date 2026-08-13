@@ -1,0 +1,66 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { Search, X } from 'lucide-react'
+import { regionDetails } from '@/lib/marketplace/pages-data'
+import { RegionFeatureCard } from '@/components/marketplace/pages/region-feature-card'
+import { Reveal } from '@/components/marketplace/reveal'
+
+// Busca local por cidade, bairro ou região, filtrando os destaques exibidos.
+export function RegionsDirectory() {
+  const [query, setQuery] = useState('')
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return regionDetails
+    return regionDetails.filter((region) => {
+      const haystack = [region.name, ...region.tags, ...region.areas].join(' ').toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [query])
+
+  return (
+    <div>
+      <div className="mx-auto max-w-xl">
+        <div className="group flex items-center gap-2 rounded-full border border-border bg-card p-2 pl-5 shadow-[var(--shadow-soft)] transition-all duration-300 focus-within:border-primary/40 focus-within:shadow-[var(--shadow-float)] focus-within:ring-4 focus-within:ring-primary/10">
+          <Search className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cidade, bairro ou região"
+            aria-label="Buscar por cidade, bairro ou região"
+            className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Limpar busca"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-10 flex flex-col gap-6">
+        {results.map((region, i) => (
+          <Reveal key={region.slug} delay={i * 80}>
+            <RegionFeatureCard region={region} reversed={i % 2 === 1} />
+          </Reveal>
+        ))}
+      </div>
+
+      {results.length === 0 && (
+        <div className="mx-auto mt-10 max-w-md rounded-[1.75rem] border border-border/70 bg-card p-8 text-center shadow-[var(--shadow-soft)]">
+          <p className="text-base font-medium text-foreground">Nenhuma região encontrada</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Tente outro nome de cidade, bairro ou região da serra e dos campos.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}

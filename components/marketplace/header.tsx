@@ -20,10 +20,10 @@ import { EME_OFFICIAL_URL, mainNav } from '@/lib/marketplace/site'
 import { cn } from '@/lib/utils'
 
 const navIcons: Record<string, LucideIcon> = {
-  '/imoveis?finalidade=compra#imoveis': Building2,
-  '/imoveis?finalidade=aluguel#imoveis': KeyRound,
-  '/imoveis#regioes': MapPinned,
-  '/imoveis#corretores': UsersRound,
+  '/imoveis/comprar': Building2,
+  '/imoveis/alugar': KeyRound,
+  '/imoveis/regioes': MapPinned,
+  '/imoveis/corretores': UsersRound,
 }
 
 export function Header() {

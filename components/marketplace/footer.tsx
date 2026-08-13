@@ -7,18 +7,18 @@ const columns = [
   {
     title: 'Navegação',
     links: [
-      { label: 'Comprar', href: '/imoveis?finalidade=compra#imoveis' },
-      { label: 'Alugar', href: '/imoveis?finalidade=aluguel#imoveis' },
-      { label: 'Regiões', href: '/imoveis#regioes' },
-      { label: 'Corretores', href: '/imoveis#corretores' },
+      { label: 'Comprar', href: '/imoveis/comprar' },
+      { label: 'Alugar', href: '/imoveis/alugar' },
+      { label: 'Regiões', href: '/imoveis/regioes' },
+      { label: 'Corretores', href: '/imoveis/corretores' },
     ],
   },
   {
     title: 'Institucional',
     links: [
       { label: 'Como funciona', href: '/imoveis#tecnologia' },
-      { label: 'Privacidade', href: '/imoveis#rodape' },
-      { label: 'Termos de uso', href: '/imoveis#rodape' },
+      { label: 'Privacidade', href: '/imoveis/privacidade' },
+      { label: 'Termos de uso', href: '/imoveis/termos-de-uso' },
     ],
   },
 ]

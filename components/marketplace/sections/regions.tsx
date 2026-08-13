@@ -19,11 +19,11 @@ export function RegionsSection() {
         {regions.map((region, i) => (
           <Reveal key={region.slug} delay={i * 90}>
             <Link
-              href={`/imoveis?regiao=${region.slug}#regioes`}
+              href={`/imoveis/regioes/${region.slug}`}
               className="group relative block aspect-[4/3] overflow-hidden rounded-[1.75rem] shadow-[var(--shadow-soft)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-float)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:aspect-[4/5] lg:aspect-[4/3]"
             >
               <Image
-                src={region.image || '/placeholder.svg'}
+                src={region.image || '/marketplace/placeholder.svg'}
                 alt={`Região de ${region.name}`}
                 fill
                 sizes="(max-width: 768px) 100vw, 30vw"

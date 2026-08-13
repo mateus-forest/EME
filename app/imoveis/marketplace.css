@@ -90,16 +90,26 @@
 
 /* Route-local equivalents of the source project's EME theme utilities. */
 .marketplace-shell .bg-eme-50 { background-color: var(--eme-50); }
+.marketplace-shell .bg-eme-50\/60 { background-color: color-mix(in oklab, var(--eme-50) 60%, transparent); }
 .marketplace-shell .bg-eme-100 { background-color: var(--eme-100); }
 .marketplace-shell .bg-eme-600 { background-color: var(--eme-600); }
 .marketplace-shell .bg-surface { background-color: var(--surface); }
 .marketplace-shell .bg-surface\/60 { background-color: color-mix(in oklab, var(--surface) 60%, transparent); }
 .marketplace-shell .text-eme-700 { color: var(--eme-700); }
 .marketplace-shell .border-eme-100 { border-color: var(--eme-100); }
+.marketplace-shell .from-eme-50 {
+  --tw-gradient-from: var(--eme-50);
+  --tw-gradient-to: color-mix(in oklab, var(--eme-50) 0%, transparent);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
 .marketplace-shell .hover\:bg-eme-50:hover { background-color: var(--eme-50); }
+.marketplace-shell .hover\:bg-eme-50\/50:hover { background-color: color-mix(in oklab, var(--eme-50) 50%, transparent); }
 .marketplace-shell .hover\:bg-eme-100:hover { background-color: var(--eme-100); }
 .marketplace-shell .hover\:bg-eme-600:hover { background-color: var(--eme-600); }
+.marketplace-shell .hover\:text-eme-600:hover { color: var(--eme-600); }
 .marketplace-shell .hover\:text-eme-700:hover { color: var(--eme-700); }
+.marketplace-shell .group:hover .group-hover\:bg-eme-50 { background-color: var(--eme-50); }
+.marketplace-shell .group:hover .group-hover\:bg-eme-100 { background-color: var(--eme-100); }
 .marketplace-shell .shadow-soft { box-shadow: var(--shadow-soft); }
 .marketplace-shell .shadow-float { box-shadow: var(--shadow-float); }
 .marketplace-shell .shadow-glass { box-shadow: var(--shadow-glass); }
@@ -221,6 +231,10 @@
   .marketplace-shell .lg\:rounded-2xl { border-radius: calc(var(--radius) * 2); }
   .marketplace-shell .lg\:rounded-3xl { border-radius: calc(var(--radius) * 2.8); }
   .marketplace-shell .lg\:rounded-4xl { border-radius: calc(var(--radius) * 3.6); }
+}
+
+@media (min-width: 40rem) {
+  .marketplace-shell .sm\:rounded-3xl { border-radius: calc(var(--radius) * 2.8); }
 }
 
 @media (prefers-reduced-motion: reduce) {

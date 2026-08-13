@@ -8,7 +8,7 @@ export function BrokerCard({ broker }: { broker: Broker }) {
     <article className="flex items-center gap-5 rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]">
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[1.25rem]">
         <Image
-          src={broker.image || '/placeholder-user.jpg'}
+          src={broker.image || '/marketplace/placeholder-user.jpg'}
           alt={broker.name}
           fill
           sizes="96px"
@@ -31,7 +31,7 @@ export function BrokerCard({ broker }: { broker: Broker }) {
             </span>
           )}
           <Link
-            href={`/imoveis?corretor=${broker.slug}#corretores`}
+            href={`/imoveis/corretores/${broker.slug}`}
             aria-label={`Conhecer o perfil de ${broker.name}`}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary hover:bg-eme-50 hover:text-primary"
           >
