@@ -313,7 +313,7 @@ async function renderInstagramFeedTemplate(
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, false),
     renderBottomWave(payload.width, payload.height, payload.waveId, false, payload.accentColor),
-    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeBox.width, badgeBox.height, payload.accentColor),
+    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
     renderBrokerHeader(textRuns, {
       rightX: 1010,
       topY: 40,
@@ -347,9 +347,9 @@ async function renderInstagramFeedTemplate(
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 1010,
           bottomY: 1010,
-          boxWidth: 108,
-          boxHeight: 86,
-          accentColor: payload.accentColor,
+          width: 150,
+          height: 120,
+          opacity: PERSONAL_WATERMARK_OPACITY,
         })
       : payload.showAgencyWatermark && payload.agencyName
         ? renderAgencyWatermark(textRuns, {
@@ -417,7 +417,7 @@ async function renderInstagramStoryTemplate(
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, true),
     renderBottomWave(payload.width, payload.height, payload.waveId, true, payload.accentColor),
-    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeBox.width, badgeBox.height, payload.accentColor),
+    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
     renderBrokerHeader(textRuns, {
       rightX: 998,
       topY: 50,
@@ -450,9 +450,9 @@ async function renderInstagramStoryTemplate(
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 998,
           bottomY: 1850,
-          boxWidth: 150,
-          boxHeight: 118,
-          accentColor: payload.accentColor,
+          width: 210,
+          height: 165,
+          opacity: PERSONAL_WATERMARK_OPACITY,
         })
       : payload.showAgencyWatermark && payload.agencyName
         ? renderAgencyWatermark(textRuns, {
@@ -537,13 +537,13 @@ const CTA_MAX_LINES = 2
 // metrics already established for this renderer, so it doesn't jitter per-string based on which
 // glyphs happen to have descenders.
 async function computeBadgeBox(measure: StudioTextMeasurer, label: string) {
-  const { width: textWidth } = await measure(label, BADGE_FONT_SIZE, "500", 0.01)
+  const { width: textWidth, height: labelInkHeight } = await measure(label, BADGE_FONT_SIZE, "500", 0.01)
   const textInkHeight = BADGE_FONT_SIZE * (STUDIO_FONT_ASCENT_RATIO + STUDIO_FONT_DESCENT_RATIO)
 
   const width = BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP + Math.ceil(textWidth) + BADGE_ICON_LEFT_PAD
   const height = Math.round(Math.max(BADGE_ICON_HEIGHT, textInkHeight) + BADGE_VERTICAL_PADDING * 2)
 
-  return { width, height }
+  return { width, height, labelInkHeight }
 }
 
 // Same principle as computeBadgeBox, for the price panel (both the Feed variant, with a CTA
@@ -606,17 +606,37 @@ async function computeMetricPanelBox(
   return { width: Math.round(width), height, stackColumnWidth }
 }
 
-function renderBadge(runs: StudioTextRun[], label: string, x: number, y: number, width: number, height: number, accentColor: string) {
+// The badge's pill height is driven by BADGE_ICON_HEIGHT (see computeBadgeBox), not by the
+// label's own ink — so centering the label text generically by the font's fixed ascent+descent
+// ratios (centerTextBlockY) systematically shifts it upward for short all-caps labels with no
+// descenders/diacritics (e.g. "VENDA"): sharp/Pango's actual ink-crop for that string is shorter
+// than the assumed full ascent+descent box, but the render route's compositing step still offsets
+// the cropped image up by the FULL assumed ascent (see renderStudioCreativePng's `top` calc in the
+// render route) — so the real, measured ink height (labelInkHeight, from the same rasterizer) is
+// needed here to land the baseline where the ink is actually centered, not just where a generic
+// full-em box would be.
+function renderBadge(
+  runs: StudioTextRun[],
+  label: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  labelInkHeight: number,
+  accentColor: string,
+) {
+  const labelBaselineY = Math.round(BADGE_FONT_SIZE * STUDIO_FONT_ASCENT_RATIO + (height - labelInkHeight) / 2)
+
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(25,116,44,0.74)" stroke="${accentRgba(accentColor, 0.88)}" stroke-width="2.1" />`,
+    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="${accentRgba(accentColor, 0.74)}" stroke="${accentRgba(accentColor, 0.88)}" stroke-width="2.1" />`,
     renderFeatureIcon("badge", BADGE_ICON_LEFT_PAD, centerIconY(height, 0, BADGE_ICON_HEIGHT), "#ffffff"),
     "</g>",
     renderSingleLineText(
       runs,
       label,
       x + BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP,
-      y + centerTextBlockY(height, BADGE_FONT_SIZE, 0, 1),
+      y + labelBaselineY,
       BADGE_FONT_SIZE,
       "500",
       "#ffffff",
@@ -703,21 +723,23 @@ function renderBrokerHeader(
   ].join("")
 }
 
+// Translucent enough to read as a watermark rather than a solid logo badge, opaque enough to
+// still be recognizable over a bright patch of the property photo.
+const PERSONAL_WATERMARK_OPACITY = 0.5
+
 // Bottom-right personal watermark — a broker's own logo (personal brand or their own uploaded
-// imobiliária mark, no Agency entity involved), shown as-is with no fallback initials/text. Only
-// ever called when payload.brokerLogoDataUri is present; absent entirely otherwise (see call
-// sites), which is also what makes "no logo uploaded" mean "no watermark at all".
+// imobiliária mark, no Agency entity involved). A true watermark: no frame/background box, just
+// the logo image itself at reduced opacity, laid straight over the property photo. Only ever
+// called when payload.brokerLogoDataUri is present; absent entirely otherwise (see call sites),
+// which is also what makes "no logo uploaded" mean "no watermark at all".
 function renderPersonalWatermark(
   logoDataUri: string,
-  input: { rightX: number; bottomY: number; boxWidth: number; boxHeight: number; accentColor: string },
+  input: { rightX: number; bottomY: number; width: number; height: number; opacity: number },
 ) {
-  const boxX = input.rightX - input.boxWidth
-  const boxTop = input.bottomY - input.boxHeight
+  const x = input.rightX - input.width
+  const y = input.bottomY - input.height
 
-  return [
-    `<rect x="${boxX}" y="${boxTop}" width="${input.boxWidth}" height="${input.boxHeight}" rx="14" fill="rgba(6,17,10,0.5)" stroke="${accentRgba(input.accentColor, 0.55)}" stroke-width="1.6" />`,
-    renderLogo(logoDataUri, boxX + 10, boxTop + 10, input.boxWidth - 20, input.boxHeight - 20),
-  ].join("")
+  return `<image href="${escapeXml(logoDataUri)}" x="${x}" y="${y}" width="${input.width}" height="${input.height}" preserveAspectRatio="xMidYMid meet" opacity="${input.opacity}" />`
 }
 
 // Bottom-right agency co-branding watermark — the agency's own uploaded logo when present,
