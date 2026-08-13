@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, PencilLine, Plus, Trash2, X } from "lucide-react"
+import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
@@ -65,6 +65,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     updateProperty,
     deleteProperty,
     publishProperty,
+    publishPropertyToMarketplace,
     uploadPropertyImages,
     deletePropertyImage,
     uploadPropertyAudio,
@@ -366,6 +367,18 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     }
   }
 
+  async function toggleMarketplace(property: Property) {
+    try {
+      const nextPublished = !property.marketplacePublished
+      await publishPropertyToMarketplace(property.id, nextPublished)
+      setListFeedback(nextPublished ? 'Imóvel publicado no Marketplace.' : 'Imóvel removido do Marketplace.')
+      window.setTimeout(() => setListFeedback(''), 2500)
+    } catch (caughtError) {
+      setListFeedback(caughtError instanceof Error ? caughtError.message : 'Não foi possível atualizar o Marketplace.')
+      window.setTimeout(() => setListFeedback(''), 2500)
+    }
+  }
+
   async function applyCardStatus(property: Property, nextStatus: Property["status"]) {
     try {
       await publishProperty(property.id, nextStatus)
@@ -553,6 +566,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         {property.status}
                       </Badge>
                     </div>
+                    {property.marketplacePublished ? (
+                      <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#009b3a] backdrop-blur-md">
+                        <Store className="size-3" /> Marketplace
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -582,6 +600,18 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       <MetricCard label="Visualizações" value={property.views} />
                       <MetricCard label="Leads" value={property.leads} />
                     </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void toggleMarketplace(property)}
+                      className={property.marketplacePublished
+                        ? "h-10 rounded-xl border border-[#009b3a]/18 bg-[#009b3a]/8 px-4 text-sm text-[#008633] hover:bg-[#009b3a]/12"
+                        : "h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"}
+                    >
+                      <Store className="size-4" />
+                      {property.marketplacePublished ? 'Remover do Marketplace' : 'Publicar no Marketplace'}
+                    </Button>
 
                     <div className="hidden">
                       <Button type="button" variant="ghost" onClick={() => void changePropertyStatus(property, property.status === "Publicado" ? "Rascunho" : "Publicado")} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">

@@ -4,10 +4,8 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import {
-  brokerProfiles,
-  brokerRegionOptions,
-  brokerSpecialtyOptions,
   brokerTransactionOptions,
+  type BrokerProfile,
 } from '@/lib/marketplace/pages-data'
 import { BrokerProfileCard } from '@/components/marketplace/pages/broker-profile-card'
 import { cn } from '@/lib/utils'
@@ -55,7 +53,7 @@ function Segmented({ label, options, value, onChange }: {
   )
 }
 
-export function BrokersDirectory() {
+export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('all')
   const [specialty, setSpecialty] = useState('all')
@@ -63,19 +61,21 @@ export function BrokersDirectory() {
   const [rating, setRating] = useState('all')
   const [featured, setFeatured] = useState('all')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const regionOptions = useMemo(() => [{ value: 'all', label: 'Todas as regiões' }, ...Array.from(new Map(brokers.map((broker) => [broker.regionSlug, broker.region])).entries()).map(([value, label]) => ({ value, label }))], [brokers])
+  const specialtyOptions = useMemo(() => [{ value: 'all', label: 'Todas as especialidades' }, ...Array.from(new Set(brokers.map((broker) => broker.specialty))).map((value) => ({ value, label: value }))], [brokers])
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR')
-    return brokerProfiles.filter((broker) => {
+    return brokers.filter((broker) => {
       if (normalizedQuery && !`${broker.name} ${broker.region} ${broker.specialty}`.toLocaleLowerCase('pt-BR').includes(normalizedQuery)) return false
       if (region !== 'all' && broker.regionSlug !== region) return false
-      if (specialty !== 'all' && !broker.propertyTypes.includes(specialty as never)) return false
+      if (specialty !== 'all' && broker.specialty !== specialty) return false
       if (transaction !== 'all' && broker.transaction !== transaction && broker.transaction !== 'ambos') return false
       if (rating !== 'all' && broker.rating < Number(rating)) return false
       if (featured === 'featured' && !broker.featured) return false
       return true
     })
-  }, [featured, query, rating, region, specialty, transaction])
+  }, [brokers, featured, query, rating, region, specialty, transaction])
 
   const activeFilters = [region, specialty, transaction, rating, featured].filter((value) => value !== 'all').length
 
@@ -89,8 +89,8 @@ export function BrokersDirectory() {
 
   const filterControls = (
     <div className="flex flex-col gap-6">
-      <Segmented label="Região" options={brokerRegionOptions} value={region} onChange={setRegion} />
-      <Segmented label="Especialidade" options={brokerSpecialtyOptions} value={specialty} onChange={setSpecialty} />
+      <Segmented label="Região" options={regionOptions} value={region} onChange={setRegion} />
+      <Segmented label="Especialidade" options={specialtyOptions} value={specialty} onChange={setSpecialty} />
       <Segmented label="Finalidade" options={brokerTransactionOptions} value={transaction} onChange={setTransaction} />
       <Segmented label="Avaliação" options={ratingOptions} value={rating} onChange={setRating} />
       <Segmented label="Destaques" options={featuredOptions} value={featured} onChange={setFeatured} />

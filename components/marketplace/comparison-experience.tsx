@@ -10,6 +10,9 @@ import {
 } from '@/lib/marketplace/comparison-analysis'
 
 export function ComparisonExperience({ results }: { results: SearchResult[] }) {
+  if (results.length < 2) {
+    return <div className="mx-auto w-full max-w-3xl px-5 py-24 text-center md:px-8"><h1 className="text-3xl font-semibold text-foreground">Selecione pelo menos dois imóveis</h1><p className="mt-3 text-muted-foreground">A comparação usa somente imóveis publicados no Marketplace.</p><Link href="/imoveis/busca" className="mt-6 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Ver imóveis disponíveis</Link></div>
+  }
   const compared = withOptionLabels(results)
   const insights = comparisonInsights(results)
   const recommendations = comparisonRecommendations(results)
@@ -34,7 +37,7 @@ export function ComparisonExperience({ results }: { results: SearchResult[] }) {
           Compare o que realmente muda sua escolha.
         </h1>
         <p className="mt-3 text-pretty text-base leading-relaxed text-muted-foreground">
-          Três opções demonstrativas lado a lado, usando apenas os dados disponíveis neste protótipo.
+          Até três imóveis publicados lado a lado, usando os dados cadastrados pelos corretores responsáveis.
         </p>
       </header>
 
@@ -76,7 +79,7 @@ export function ComparisonExperience({ results }: { results: SearchResult[] }) {
                   ))}
                 </dl>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {formatPrice(pricePerSquareMeter(property))}/m² · {property.suites} {property.suites === 1 ? 'suíte' : 'suítes'}
+                  {property.area > 0 ? `${formatPrice(pricePerSquareMeter(property))}/m²` : 'Área não informada'} · {property.suites} {property.suites === 1 ? 'suíte' : 'suítes'}
                 </p>
 
                 <div className="mt-5 border-t border-border/70 pt-5">
@@ -141,7 +144,7 @@ export function ComparisonExperience({ results }: { results: SearchResult[] }) {
       </section>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        Comparação demonstrativa. Disponibilidade, condições e localização exata dependem da futura integração com os catálogos.
+        Comparação baseada nos dados cadastrados. Confirme disponibilidade, condições e localização exata com o corretor responsável.
       </p>
     </div>
   )

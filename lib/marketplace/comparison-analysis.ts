@@ -16,7 +16,7 @@ function extrema(items: ComparedProperty[], value: (item: ComparedProperty) => n
 }
 
 export function pricePerSquareMeter(item: SearchResult) {
-  return Math.round(item.price / item.area)
+  return item.area > 0 ? Math.round(item.price / item.area) : 0
 }
 
 export function comparisonInsights(results: SearchResult[], limit = 10) {
@@ -26,7 +26,8 @@ export function comparisonInsights(results: SearchResult[], limit = 10) {
   const priciest = extrema(items, (item) => item.price, 'max')
   const largest = extrema(items, (item) => item.area, 'max')
   const smallest = extrema(items, (item) => item.area, 'min')
-  const bestSquareMeter = extrema(items, pricePerSquareMeter, 'min')
+  const itemsWithArea = items.filter((item) => item.area > 0)
+  const bestSquareMeter = itemsWithArea.length ? extrema(itemsWithArea, pricePerSquareMeter, 'min') : []
   const maxBedrooms = extrema(items, (item) => item.bedrooms, 'max')
   const maxParking = extrema(items, (item) => item.parking, 'max')
   const insights: string[] = []
@@ -63,7 +64,9 @@ export function comparisonInsights(results: SearchResult[], limit = 10) {
   if (new Set(items.map((item) => item.parking)).size > 1) {
     insights.push(`${joinedLabels(maxParking)} oferece mais vagas, com ${maxParking[0].parking}.`)
   }
-  insights.push(`${joinedLabels(bestSquareMeter)} apresenta o menor valor por m²: ${formatPrice(pricePerSquareMeter(bestSquareMeter[0]))}/m².`)
+  if (bestSquareMeter.length) {
+    insights.push(`${joinedLabels(bestSquareMeter)} apresenta o menor valor por m²: ${formatPrice(pricePerSquareMeter(bestSquareMeter[0]))}/m².`)
+  }
 
   const maxSuites = extrema(items, (item) => item.suites, 'max')
   if (new Set(items.map((item) => item.suites)).size > 1) {
@@ -100,7 +103,10 @@ export function comparisonRecommendations(results: SearchResult[]) {
     [...items].sort((a, b) => direction === 'max' ? score(b) - score(a) : score(a) - score(b))[0]
   const space = choose((item) => item.area)
   const investment = choose((item) => item.price, 'min')
-  const value = choose(pricePerSquareMeter, 'min')
+  const itemsWithArea = items.filter((item) => item.area > 0)
+  const value = itemsWithArea.length
+    ? [...itemsWithArea].sort((a, b) => pricePerSquareMeter(a) - pricePerSquareMeter(b))[0]
+    : investment
   const largestArea = Math.max(...items.map((current) => current.area), 1)
   const mostBedrooms = Math.max(...items.map((current) => current.bedrooms), 1)
   const mostParking = Math.max(...items.map((current) => current.parking), 1)
@@ -114,6 +120,8 @@ export function comparisonRecommendations(results: SearchResult[]) {
     { priority: 'Mais espaço', property: space, detail: `${space.area} m² e ${space.bedrooms} quartos` },
     { priority: 'Melhor equilíbrio', property: balance, detail: 'Combinação de área, preço, quartos e vagas' },
     { priority: 'Menor investimento', property: investment, detail: formatPrice(investment.price) },
-    { priority: 'Melhor relação valor/m²', property: value, detail: `${formatPrice(pricePerSquareMeter(value))}/m²` },
+    ...(itemsWithArea.length
+      ? [{ priority: 'Melhor relação valor/m²', property: value, detail: `${formatPrice(pricePerSquareMeter(value))}/m²` }]
+      : []),
   ]
 }

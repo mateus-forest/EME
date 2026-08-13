@@ -1,10 +1,7 @@
-// Estrutura demonstrativa do lead de interesse em um imóvel.
-// Preparada para, futuramente:
-//  1. cadastrar o visitante como cliente no EME;
-//  2. registrar o imóvel e a origem do contato;
-//  3. qualificar o lead pelas respostas opcionais;
-//  4. abrir o WhatsApp da corretora com uma mensagem natural.
-// Nesta etapa nada é enviado — apenas montamos os dados localmente.
+// Contrato do interesse originado no Marketplace. O registro é persistido
+// no fluxo de Clientes/Leads antes de encaminhar o visitante ao WhatsApp.
+
+import { createPublicLead } from '@/lib/lead-client'
 
 export type LeadOrigin = 'pagina-imovel' | 'card-corretora' | 'cta-mobile' | 'contato-rapido'
 
@@ -18,6 +15,7 @@ export type Lead = {
   name: string
   whatsapp: string
   propertySlug: string
+  propertyId: string
   propertyTitle: string
   propertyCode: string
   origin: LeadOrigin
@@ -49,7 +47,16 @@ export function buildWhatsappMessage(lead: Pick<Lead, 'name' | 'propertyTitle' |
   return message
 }
 
-// Registro demonstrativo — mantém a interface preparada para futura integração com o CRM.
-export function registerLead(lead: Lead): void {
-  void lead
+export async function registerLead(lead: Lead) {
+  const selectedQualifications = qualificationLabels
+    .filter(({ key }) => lead.qualification[key])
+    .map(({ label }) => label)
+  return createPublicLead({
+    propertyId: lead.propertyId,
+    source: 'marketplace',
+    name: lead.name,
+    phone: lead.whatsapp,
+    message: buildWhatsappMessage(lead),
+    intent: [lead.origin, ...selectedQualifications].join(' | '),
+  })
 }

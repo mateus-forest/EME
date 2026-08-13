@@ -8,6 +8,7 @@ import { buildWhatsappMessage, registerLead, type LeadQualification } from '@/li
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import type { PropertyDetail } from '@/lib/marketplace/property-detail'
 import { cn } from '@/lib/utils'
+import { createWhatsAppUrl } from '@/lib/whatsapp'
 
 const options: { key: keyof LeadQualification; label: string }[] = [
   { key: 'financiamento', label: 'Financiamento' },
@@ -28,23 +29,24 @@ export function PropertyContact({
   const [whatsapp, setWhatsapp] = useState('')
   const [qualification, setQualification] = useState<LeadQualification>({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const toggle = (key: keyof LeadQualification) =>
     setQualification((q) => ({ ...q, [key]: !q[key] }))
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    registerLead({
-      name,
-      whatsapp,
-      propertySlug: property.slug,
-      propertyTitle: property.title,
-      propertyCode: property.code,
-      origin: 'contato-rapido',
-      qualification,
-      createdAt: new Date().toISOString(),
-    })
-    setSubmitted(true)
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      await registerLead({ name, whatsapp, propertyId: property.propertyId, propertySlug: property.slug, propertyTitle: property.title, propertyCode: property.code, origin: 'contato-rapido', qualification, createdAt: new Date().toISOString() })
+      setSubmitted(true)
+    } catch (caughtError) {
+      setSubmitError(caughtError instanceof Error ? caughtError.message : 'Não foi possível registrar seu interesse agora.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const message = buildWhatsappMessage({
@@ -101,9 +103,7 @@ export function PropertyContact({
               <p className="mt-2 rounded-xl bg-secondary/60 px-3 py-2.5 text-left text-xs leading-relaxed text-foreground">
                 {message}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Demonstrativo — nenhuma mensagem é enviada nesta etapa.
-              </p>
+              <a href={createWhatsAppUrl(broker.phone, message)} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Abrir WhatsApp</a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
@@ -128,11 +128,13 @@ export function PropertyContact({
               />
               <button
                 type="submit"
+                disabled={submitting}
                 className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-[0_6px_20px_rgba(35,120,55,0.32)] transition-transform hover:scale-[1.02] active:scale-95"
               >
                 <WhatsappGlyph className="h-4 w-4" />
-                Continuar pelo WhatsApp
+                {submitting ? 'Enviando contato...' : 'Continuar pelo WhatsApp'}
               </button>
+              {submitError ? <p role="alert" className="text-xs text-red-600">{submitError}</p> : null}
             </form>
           )}
         </div>

@@ -70,6 +70,7 @@ export function parseLeadStatus(value: unknown) {
 
 export function leadSourceLabel(source: string) {
   const normalized = source.trim().toLowerCase()
+  if (normalized === "marketplace") return "Marketplace"
   if (normalized === "catalog" || normalized === "catalogo" || normalized === "catálogo") return "Catálogo"
   if (normalized === "corretor_eme") return "Corretor EME"
   // Historical COS-created leads store the legacy source key `assessor_eme`.

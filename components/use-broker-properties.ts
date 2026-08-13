@@ -31,6 +31,8 @@ export type BrokerProperty = {
   parking: number
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
+  marketplacePublished: boolean
+  marketplaceSlug: string
   views: string
   leads: string
   type: BrokerPropertyType
@@ -42,7 +44,7 @@ export type BrokerProperty = {
   completion: CompletionSummary
 }
 
-type BrokerPropertyInput = Omit<BrokerProperty, "id" | "publicCode" | "published" | "priceValue"> & {
+type BrokerPropertyInput = Omit<BrokerProperty, "id" | "publicCode" | "published" | "priceValue" | "marketplacePublished" | "marketplaceSlug"> & {
   id?: string
   published?: boolean
 }
@@ -65,6 +67,8 @@ type PropertyApiItem = {
   purpose: BrokerPropertyPurpose
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
+  marketplacePublished: boolean
+  marketplaceSlug: string
   images: string[]
   views: number
   leads: number
@@ -102,6 +106,8 @@ function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
     parking: property.parkingSpots,
     status: normalizedStatus,
     published: property.published,
+    marketplacePublished: property.marketplacePublished,
+    marketplaceSlug: property.marketplaceSlug,
     views: String(property.views),
     leads: String(property.leads),
     type: property.type,
@@ -371,12 +377,28 @@ export function useBrokerProperties() {
     return updated
   }
 
+  async function publishPropertyToMarketplace(id: string, published: boolean) {
+    const response = await fetch(`/api/properties/${id}/marketplace`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      cache: 'no-store',
+      body: JSON.stringify({ published }),
+    })
+    const updated = await parsePropertyResponse(response)
+    setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
+    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    dispatchEntitySync({ type: 'property', entityId: id })
+    return updated
+  }
+
   return {
     properties,
     addProperty,
     updateProperty,
     deleteProperty,
     publishProperty,
+    publishPropertyToMarketplace,
     uploadPropertyImages,
     deletePropertyImage,
     uploadPropertyAudio,

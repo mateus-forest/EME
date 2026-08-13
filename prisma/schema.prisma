@@ -116,28 +116,28 @@ enum LeadStatus {
 }
 
 model User {
-  id                   String                        @id @default(cuid())
-  name                 String
-  email                String                        @unique
-  passwordHash         String
-  pinHash              String?
-  role                 UserRole
-  phone                String?
-  photoUrl             String?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  plan                 BillingPlan                   @default(NONE)
-  subscriptionStatus   BillingUserSubscriptionStatus @default(INACTIVE)
-  createdAt            DateTime                      @default(now())
-  broker               Broker?
-  ownedAgency          Agency?                       @relation("AgencyOwner")
-  notifications        Notification[]
-  leads                Lead[]
+  id                      String                        @id @default(cuid())
+  name                    String
+  email                   String                        @unique
+  passwordHash            String
+  pinHash                 String?
+  role                    UserRole
+  phone                   String?
+  photoUrl                String?
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?
+  plan                    BillingPlan                   @default(NONE)
+  subscriptionStatus      BillingUserSubscriptionStatus @default(INACTIVE)
+  createdAt               DateTime                      @default(now())
+  broker                  Broker?
+  ownedAgency             Agency?                       @relation("AgencyOwner")
+  notifications           Notification[]
+  leads                   Lead[]
   aiAssistantInteractions AiAssistantInteraction[]
-  emeMessages          EmeMessage[]
-  studioCampaigns      StudioCampaign[]
-  trustedDevices       UserTrustedDevice[]
-  passkeyCredentials   UserPasskeyCredential[]
+  emeMessages             EmeMessage[]
+  studioCampaigns         StudioCampaign[]
+  trustedDevices          UserTrustedDevice[]
+  passkeyCredentials      UserPasskeyCredential[]
 }
 
 model UserTrustedDevice {
@@ -166,118 +166,129 @@ model UserTrustedDevice {
 }
 
 model UserPasskeyCredential {
-  id          String   @id @default(cuid())
-  userId      String
-  deviceId    String
-  credentialId String  @unique
-  publicKey   Bytes
-  counter     Int      @default(0)
-  transports  Json?
-  deviceType  String?
-  backedUp    Boolean  @default(false)
-  lastUsedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  device      UserTrustedDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  id           String            @id @default(cuid())
+  userId       String
+  deviceId     String
+  credentialId String            @unique
+  publicKey    Bytes
+  counter      Int               @default(0)
+  transports   Json?
+  deviceType   String?
+  backedUp     Boolean           @default(false)
+  lastUsedAt   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device       UserTrustedDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 
   @@index([userId, deviceId])
 }
 
 model Broker {
-  id          String     @id @default(cuid())
-  userId      String     @unique
-  agencyId    String?
-  phone       String
-  catalogSlug String     @unique
-  status      BrokerAccountStatus @default(ACTIVE)
-  creci       String?
-  description String?
-  brandColor  String?
-  logoUrl     String?
-  showAgencyWatermark Boolean @default(true)
-  aiCreditsBalance Int      @default(10)
-  aiCreditsUsedThisMonth Int @default(0)
-  aiAssistantEnabled Boolean @default(true)
-  aiMonthlyUsage Int @default(0)
-  aiLastInteractionAt DateTime?
-  createdAt   DateTime   @default(now())
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agency      Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-  properties  Property[]
-  leads       Lead[]
-  catalogEvents CatalogEvent[]
-  searchEvents SearchEvent[]
-  agendaEvents AgendaEvent[]
-  documents BrokerDocument[]
-  aiAssistantInteractions AiAssistantInteraction[]
-  planAccount BrokerPlanAccount?
-  aiCreditTransactions AiCreditTransaction[]
-  extraPackagePurchases ExtraPackagePurchase[]
-  corretorEmeConfig BrokerEmeConfig?
-  financialConfig BrokerFinancialConfig?
-  emeMessages EmeMessage[]
-  studioCampaigns StudioCampaign[]
-  contractTemplates ContractTemplate[]
+  id                        String                     @id @default(cuid())
+  userId                    String                     @unique
+  agencyId                  String?
+  phone                     String
+  catalogSlug               String                     @unique
+  status                    BrokerAccountStatus        @default(ACTIVE)
+  creci                     String?
+  description               String?
+  brandColor                String?
+  logoUrl                   String?
+  showAgencyWatermark       Boolean                    @default(true)
+  marketplaceSpecialty      String?
+  marketplaceRegion         String?
+  marketplaceTransactions   String?                    @default("BOTH")
+  marketplaceAbout          String?
+  marketplaceFeatured       Boolean                    @default(false)
+  marketplaceRating         Decimal?                   @db.Decimal(2, 1)
+  marketplaceReviewCount    Int                        @default(0)
+  aiCreditsBalance          Int                        @default(10)
+  aiCreditsUsedThisMonth    Int                        @default(0)
+  aiAssistantEnabled        Boolean                    @default(true)
+  aiMonthlyUsage            Int                        @default(0)
+  aiLastInteractionAt       DateTime?
+  createdAt                 DateTime                   @default(now())
+  user                      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agency                    Agency?                    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  properties                Property[]
+  leads                     Lead[]
+  catalogEvents             CatalogEvent[]
+  searchEvents              SearchEvent[]
+  agendaEvents              AgendaEvent[]
+  documents                 BrokerDocument[]
+  aiAssistantInteractions   AiAssistantInteraction[]
+  planAccount               BrokerPlanAccount?
+  aiCreditTransactions      AiCreditTransaction[]
+  extraPackagePurchases     ExtraPackagePurchase[]
+  corretorEmeConfig         BrokerEmeConfig?
+  financialConfig           BrokerFinancialConfig?
+  emeMessages               EmeMessage[]
+  studioCampaigns           StudioCampaign[]
+  contractTemplates         ContractTemplate[]
   contractTemplateInstances ContractTemplateInstance[]
 }
 
 model Agency {
-  id          String     @id @default(cuid())
-  ownerUserId String     @unique
-  name        String
-  catalogSlug String     @unique
-  phone       String?
-  cnpj        String?
-  logoUrl     String?
-  description String?
-  brandColor  String?
-  createdAt   DateTime   @default(now())
-  ownerUser   User       @relation("AgencyOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  brokers     Broker[]
-  properties  Property[]
-  leads       Lead[]
-  catalogEvents CatalogEvent[]
+  id              String           @id @default(cuid())
+  ownerUserId     String           @unique
+  name            String
+  catalogSlug     String           @unique
+  phone           String?
+  cnpj            String?
+  logoUrl         String?
+  description     String?
+  brandColor      String?
+  createdAt       DateTime         @default(now())
+  ownerUser       User             @relation("AgencyOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  brokers         Broker[]
+  properties      Property[]
+  leads           Lead[]
+  catalogEvents   CatalogEvent[]
   studioCampaigns StudioCampaign[]
 }
 
 model Property {
-  id           String         @id @default(cuid())
-  publicCode   Int?
-  title        String
-  description  String?
-  audioUrl     String?
-  price        Int
-  city         String
-  neighborhood String?
-  ownerName    String?
-  bedrooms     Int            @default(0)
-  bathrooms    Int            @default(0)
-  parkingSpots Int            @default(0)
-  type         PropertyType   @default(APARTMENT)
-  purpose      String         @default("SALE")
-  status       PropertyStatus @default(DRAFT)
-  published    Boolean        @default(false)
-  imageUrls    Json?
-  legalData    Json?
-  documentsData Json?
-  viewsCount   Int            @default(0)
-  leadsCount   Int            @default(0)
-  brokerId     String
-  agencyId     String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  broker       Broker         @relation(fields: [brokerId], references: [id], onDelete: Cascade)
-  agency       Agency?        @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-  leads        Lead[]
-  catalogEvents CatalogEvent[]
-  emeMessages  EmeMessage[]
-  agendaEvents AgendaEvent[]
-  documents    BrokerDocument[]
-  studioCampaigns StudioCampaign[]
+  id                        String                     @id @default(cuid())
+  publicCode                Int?
+  title                     String
+  description               String?
+  audioUrl                  String?
+  price                     Int
+  city                      String
+  neighborhood              String?
+  ownerName                 String?
+  bedrooms                  Int                        @default(0)
+  bathrooms                 Int                        @default(0)
+  parkingSpots              Int                        @default(0)
+  type                      PropertyType               @default(APARTMENT)
+  purpose                   String                     @default("SALE")
+  status                    PropertyStatus             @default(DRAFT)
+  published                 Boolean                    @default(false)
+  marketplacePublished      Boolean                    @default(false)
+  marketplacePublishedAt    DateTime?
+  marketplaceSlug           String?                    @unique
+  imageUrls                 Json?
+  legalData                 Json?
+  documentsData             Json?
+  viewsCount                Int                        @default(0)
+  leadsCount                Int                        @default(0)
+  brokerId                  String
+  agencyId                  String?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  broker                    Broker                     @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  agency                    Agency?                    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  leads                     Lead[]
+  catalogEvents             CatalogEvent[]
+  emeMessages               EmeMessage[]
+  agendaEvents              AgendaEvent[]
+  documents                 BrokerDocument[]
+  studioCampaigns           StudioCampaign[]
   contractTemplateInstances ContractTemplateInstance[]
 
   @@unique([brokerId, publicCode])
+  @@index([marketplacePublished, marketplacePublishedAt])
 }
 
 model BrokerEmeConfig {
@@ -302,18 +313,18 @@ model BrokerEmeConfig {
 }
 
 model AssessorEmeConfig {
-  id                 String   @id @default(cuid())
-  officialNumber     String?
-  displayName        String?
-  status             String   @default("IN_PREPARATION")
+  id                   String   @id @default(cuid())
+  officialNumber       String?
+  displayName          String?
+  status               String   @default("IN_PREPARATION")
   internalInstructions String?
-  notes              String?
-  provider           String?
-  phoneNumberId      String?
-  webhookVerifyToken String?
-  webhookStatus      String   @default("NOT_CONFIGURED")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  notes                String?
+  provider             String?
+  phoneNumberId        String?
+  webhookVerifyToken   String?
+  webhookStatus        String   @default("NOT_CONFIGURED")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model BrokerFinancialConfig {
@@ -395,20 +406,20 @@ model SearchEvent {
 }
 
 model AgendaEvent {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   brokerId   String
   title      String
-  type       String   @default("task")
+  type       String    @default("task")
   date       DateTime
   time       String?
   leadId     String?
   propertyId String?
   notes      String?
-  status     String   @default("pending")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  broker     Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
-  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  status     String    @default("pending")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  broker     Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
   @@index([brokerId, date])
@@ -418,19 +429,19 @@ model AgendaEvent {
 }
 
 model BrokerDocument {
-  id         String   @id @default(cuid())
-  brokerId   String
-  leadId     String?
-  propertyId String?
-  type       String   @default("proposal")
-  title      String
-  content    String
-  status     String   @default("draft")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  broker     Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
-  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  id               String                    @id @default(cuid())
+  brokerId         String
+  leadId           String?
+  propertyId       String?
+  type             String                    @default("proposal")
+  title            String
+  content          String
+  status           String                    @default("draft")
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  broker           Broker                    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead             Lead?                     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property         Property?                 @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   templateInstance ContractTemplateInstance?
 
   @@index([brokerId, createdAt])
@@ -440,16 +451,16 @@ model BrokerDocument {
 }
 
 model ContractTemplate {
-  id             String   @id @default(cuid())
+  id             String                     @id @default(cuid())
   workspaceId    String
   brokerId       String
   name           String
-  status         String   @default("ANALYZING")
+  status         String                     @default("ANALYZING")
   sourceHash     String
-  currentVersion Int      @default(1)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  broker         Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  currentVersion Int                        @default(1)
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  broker         Broker                     @relation(fields: [brokerId], references: [id], onDelete: Cascade)
   versions       ContractTemplateVersion[]
   instances      ContractTemplateInstance[]
 
@@ -458,20 +469,20 @@ model ContractTemplate {
 }
 
 model ContractTemplateVersion {
-  id                String   @id @default(cuid())
+  id                String                     @id @default(cuid())
   templateId        String
   version           Int
-  status            String   @default("ANALYZING")
+  status            String                     @default("ANALYZING")
   sourceFileName    String
   sourceStoragePath String?
   sourceMimeType    String
   sourceFileSize    Int?
-  originalText      String   @db.Text
+  originalText      String                     @db.Text
   structure         Json
   analysisMetadata  Json?
   reviewedAt        DateTime?
-  createdAt         DateTime @default(now())
-  template          ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                   @default(now())
+  template          ContractTemplate           @relation(fields: [templateId], references: [id], onDelete: Cascade)
   instances         ContractTemplateInstance[]
 
   @@unique([templateId, version])
@@ -479,29 +490,29 @@ model ContractTemplateVersion {
 }
 
 model ContractTemplateInstance {
-  id                String   @id @default(cuid())
+  id                String                  @id @default(cuid())
   workspaceId       String
   brokerId          String
   templateId        String
   templateVersionId String
-  brokerDocumentId  String?  @unique
+  brokerDocumentId  String?                 @unique
   leadId            String?
   propertyId        String?
   title             String
-  status            String   @default("draft")
-  values             Json
+  status            String                  @default("draft")
+  values            Json
   additionalParties Json
-  readiness          Int      @default(0)
-  signedAt           DateTime?
-  signatureNote      String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  broker             Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
-  template           ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  templateVersion    ContractTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
-  brokerDocument     BrokerDocument? @relation(fields: [brokerDocumentId], references: [id], onDelete: SetNull)
-  lead               Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  property           Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  readiness         Int                     @default(0)
+  signedAt          DateTime?
+  signatureNote     String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  broker            Broker                  @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  template          ContractTemplate        @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  templateVersion   ContractTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  brokerDocument    BrokerDocument?         @relation(fields: [brokerDocumentId], references: [id], onDelete: SetNull)
+  lead              Lead?                   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property          Property?               @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
   @@index([brokerId, status, updatedAt])
   @@index([templateId, createdAt])
@@ -510,30 +521,30 @@ model ContractTemplateInstance {
 }
 
 model StudioCampaign {
-  id             String                   @id @default(cuid())
-  workspaceType  StudioCampaignWorkspaceType
-  kind           StudioCampaignKind
-  status         StudioCampaignStatus     @default(DRAFT)
-  goal           String?
-  visualIdentity String?
-  version        Int                      @default(1)
-  provider       String?
-  model          String?
-  prompt         String?
-  promptRevised  String?
-  sourceRoute    String?
-  metadata       Json?
-  brokerId       String?
-  agencyId       String?
-  propertyId     String?
+  id              String                      @id @default(cuid())
+  workspaceType   StudioCampaignWorkspaceType
+  kind            StudioCampaignKind
+  status          StudioCampaignStatus        @default(DRAFT)
+  goal            String?
+  visualIdentity  String?
+  version         Int                         @default(1)
+  provider        String?
+  model           String?
+  prompt          String?
+  promptRevised   String?
+  sourceRoute     String?
+  metadata        Json?
+  brokerId        String?
+  agencyId        String?
+  propertyId      String?
   createdByUserId String
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  broker         Broker?                  @relation(fields: [brokerId], references: [id], onDelete: Cascade)
-  agency         Agency?                  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  property       Property?                @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  createdByUser  User                     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  assets         StudioCampaignAsset[]
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+  broker          Broker?                     @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  agency          Agency?                     @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  property        Property?                   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  createdByUser   User                        @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  assets          StudioCampaignAsset[]
 
   @@index([brokerId, kind, createdAt])
   @@index([agencyId, kind, createdAt])
@@ -543,7 +554,7 @@ model StudioCampaign {
 }
 
 model StudioCampaignAsset {
-  id            String                   @id @default(cuid())
+  id            String                    @id @default(cuid())
   campaignId    String
   assetKey      String
   label         String?
@@ -558,9 +569,9 @@ model StudioCampaignAsset {
   approvedAt    DateTime?
   content       Json?
   metadata      Json?
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
-  campaign      StudioCampaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  campaign      StudioCampaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, assetKey])
   @@index([campaignId, status])
@@ -578,23 +589,23 @@ model Catalog {
 }
 
 model AiAssistantInteraction {
-  id          String   @id @default(cuid())
-  userId      String
-  brokerId    String
-  prompt      String
-  response    String
-  actionType  String
-  creditsUsed Int      @default(1)
-  channel     String   @default("assessor_eme")
-  intent      String?
+  id           String   @id @default(cuid())
+  userId       String
+  brokerId     String
+  prompt       String
+  response     String
+  actionType   String
+  creditsUsed  Int      @default(1)
+  channel      String   @default("assessor_eme")
+  intent       String?
   actionStatus String?
-  metadata    Json?
+  metadata     Json?
   errorMessage String?
-  leadId      String?
-  propertyId  String?
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  leadId       String?
+  propertyId   String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  broker       Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 
   @@index([brokerId, createdAt])
   @@index([userId, createdAt])
@@ -616,30 +627,30 @@ model Subscription {
 }
 
 model BrokerPlanAccount {
-  id                             String    @id @default(cuid())
-  brokerId                       String    @unique
-  planKey                        String    @default("free")
-  propertyExtraLimit             Int       @default(0)
-  initialCreditsGrantedAt        DateTime?
-  currentPeriodCreditsGrantedAt  DateTime?
-  createdAt                      DateTime  @default(now())
-  updatedAt                      DateTime  @updatedAt
-  broker                         Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  id                            String    @id @default(cuid())
+  brokerId                      String    @unique
+  planKey                       String    @default("free")
+  propertyExtraLimit            Int       @default(0)
+  initialCreditsGrantedAt       DateTime?
+  currentPeriodCreditsGrantedAt DateTime?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+  broker                        Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 
   @@index([planKey])
 }
 
 model AiCreditTransaction {
-  id          String   @id @default(cuid())
-  brokerId    String
-  type        String
-  amount      Int
+  id           String   @id @default(cuid())
+  brokerId     String
+  type         String
+  amount       Int
   balanceAfter Int
-  actionType  String?
-  description String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  broker      Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  actionType   String?
+  description  String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  broker       Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 
   @@index([brokerId, createdAt])
   @@index([type, createdAt])
@@ -708,44 +719,44 @@ model ExtraPackagePurchase {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String
-  message   String
-  read      Boolean  @default(false)
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  message    String
+  read       Boolean   @default(false)
   archivedAt DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Lead {
-  id         String     @id @default(cuid())
-  name       String?
-  email      String?
-  phone      String?
-  whatsapp   String?
-  message    String?
-  catalogSlug String?
-  searchTerm String?
-  intent     String?
-  source     String
-  status     LeadStatus @default(NEW)
-  legalData  Json?
-  addressData Json?
-  documentsData Json?
-  propertyId String?
-  brokerId   String?
-  agencyId   String?
-  userId     String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  property   Property?  @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  broker     Broker?    @relation(fields: [brokerId], references: [id], onDelete: SetNull)
-  agency     Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  emeMessages EmeMessage[]
-  agendaEvents AgendaEvent[]
-  documents BrokerDocument[]
+  id                        String                     @id @default(cuid())
+  name                      String?
+  email                     String?
+  phone                     String?
+  whatsapp                  String?
+  message                   String?
+  catalogSlug               String?
+  searchTerm                String?
+  intent                    String?
+  source                    String
+  status                    LeadStatus                 @default(NEW)
+  legalData                 Json?
+  addressData               Json?
+  documentsData             Json?
+  propertyId                String?
+  brokerId                  String?
+  agencyId                  String?
+  userId                    String?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  property                  Property?                  @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  broker                    Broker?                    @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  agency                    Agency?                    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user                      User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  emeMessages               EmeMessage[]
+  agendaEvents              AgendaEvent[]
+  documents                 BrokerDocument[]
   contractTemplateInstances ContractTemplateInstance[]
 
   @@index([propertyId])

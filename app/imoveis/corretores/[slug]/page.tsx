@@ -3,17 +3,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, BadgeCheck, Building2, MapPin, Star } from 'lucide-react'
-import { brokerProfiles } from '@/lib/marketplace/pages-data'
-import { properties } from '@/lib/marketplace/data'
+import { getMarketplaceBroker, getMarketplaceBrokerPropertyCards } from '@/lib/marketplace/server-data'
 import { PageShell } from '@/components/marketplace/pages/page-shell'
 import { PropertyCard } from '@/components/marketplace/property-card'
 import { BrokerContactForm } from '@/components/marketplace/pages/broker-contact-form'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 
-export function generateStaticParams() {
-  return brokerProfiles.map((b) => ({ slug: b.slug }))
-}
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({
   params,
@@ -21,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const broker = brokerProfiles.find((b) => b.slug === slug)
+  const broker = await getMarketplaceBroker(slug)
   if (!broker) return { title: 'Corretor | EME Imóveis' }
   return {
     title: `${broker.name} | Corretores EME`,
@@ -41,15 +38,15 @@ export default async function BrokerProfilePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const broker = brokerProfiles.find((b) => b.slug === slug)
+  const broker = await getMarketplaceBroker(slug)
   if (!broker) notFound()
 
-  // Imóveis demonstrativos atribuídos ao corretor.
-  const brokerListings = properties.slice(0, 3)
+  // Carteira ativa publicada pelo corretor no Marketplace.
+  const brokerListings = await getMarketplaceBrokerPropertyCards(broker.id, 3)
 
   const stats = [
     { icon: Building2, label: 'Imóveis ativos', value: String(broker.activeListings) },
-    { icon: Star, label: `${broker.reviewCount} avaliações`, value: broker.rating.toFixed(1).replace('.', ',') },
+    { icon: Star, label: broker.reviewCount ? `${broker.reviewCount} avaliações` : 'Avaliações', value: broker.rating ? broker.rating.toFixed(1).replace('.', ',') : '—' },
     { icon: MapPin, label: 'Atua em', value: broker.region },
   ]
 
@@ -122,16 +119,14 @@ export default async function BrokerProfilePage({
               <div className="mt-8">
                 <h2 className="text-lg font-semibold text-foreground">Sobre o atendimento</h2>
                 <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
-                  {broker.name.split(' ')[0]} atua em {broker.region} com foco em {broker.specialty.toLowerCase()}.
-                  Acompanha cada etapa de perto, entende o que importa para você e indica caminhos com transparência —
-                  do primeiro contato à assinatura.
+                  {broker.about || `${broker.name.split(' ')[0]} atua em ${broker.region} com foco em ${broker.specialty.toLowerCase()}. Acompanha cada etapa de perto, entende o que importa para você e indica caminhos com transparência — do primeiro contato à assinatura.`}
                 </p>
               </div>
             </div>
 
             {/* Contato */}
             <aside id="contato-corretor" className="scroll-mt-28 lg:sticky lg:top-24 lg:self-start">
-              <BrokerContactForm brokerName={broker.name} />
+              <BrokerContactForm brokerName={broker.name} brokerSlug={broker.slug} brokerPhone={broker.phone} />
             </aside>
           </section>
 

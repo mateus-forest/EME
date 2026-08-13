@@ -7,6 +7,7 @@ import { buildWhatsappMessage, registerLead, type LeadOrigin, type LeadQualifica
 import type { PropertyDetail } from '@/lib/marketplace/property-detail'
 import { formatPrice } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'
+import { createWhatsAppUrl } from '@/lib/whatsapp'
 
 type InterestContextValue = {
   open: (origin: LeadOrigin) => void
@@ -29,10 +30,12 @@ const qualificationOptions: { key: keyof LeadQualification; label: string }[] = 
 export function InterestProvider({
   property,
   brokerName,
+  brokerPhone,
   children,
 }: {
   property: PropertyDetail
   brokerName: string
+  brokerPhone: string
   children: React.ReactNode
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -41,6 +44,8 @@ export function InterestProvider({
   const [whatsapp, setWhatsapp] = useState('')
   const [qualification, setQualification] = useState<LeadQualification>({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const open = useCallback((from: LeadOrigin) => {
     setOrigin(from)
@@ -73,20 +78,18 @@ export function InterestProvider({
   const toggle = (key: keyof LeadQualification) =>
     setQualification((q) => ({ ...q, [key]: !q[key] }))
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    // Estrutura demonstrativa do lead — pronto para integração futura.
-    registerLead({
-      name,
-      whatsapp,
-      propertySlug: property.slug,
-      propertyTitle: property.title,
-      propertyCode: property.code,
-      origin,
-      qualification,
-      createdAt: new Date().toISOString(),
-    })
-    setSubmitted(true)
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      await registerLead({ name, whatsapp, propertyId: property.propertyId, propertySlug: property.slug, propertyTitle: property.title, propertyCode: property.code, origin, qualification, createdAt: new Date().toISOString() })
+      setSubmitted(true)
+    } catch (caughtError) {
+      setSubmitError(caughtError instanceof Error ? caughtError.message : 'Não foi possível registrar seu interesse agora.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const message = buildWhatsappMessage({
@@ -140,22 +143,12 @@ export function InterestProvider({
                   Tudo pronto, {name.split(' ')[0] || 'obrigado'}!
                 </h3>
                 <p className="mt-2 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">
-                  Seu contato foi preparado para {brokerName}, com o imóvel e o que você respondeu.
-                  A conversa seguiria pelo WhatsApp com esta mensagem:
+                  Seu contato foi enviado para {brokerName}, com o imóvel e as informações que você respondeu.
                 </p>
                 <p className="mt-4 w-full rounded-2xl border border-border/70 bg-secondary/60 px-4 py-3 text-left text-sm leading-relaxed text-foreground">
                   {message}
                 </p>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Demonstrativo — nenhuma mensagem é enviada nesta etapa.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] active:scale-95"
-                >
-                  Fechar
-                </button>
+                <a href={createWhatsAppUrl(brokerPhone, message)} target="_blank" rel="noreferrer" className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] active:scale-95">Abrir WhatsApp</a>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6">
@@ -213,11 +206,13 @@ export function InterestProvider({
 
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-[0_6px_20px_rgba(35,120,55,0.35)] transition-transform hover:scale-[1.02] active:scale-95"
                 >
                   <WhatsappGlyph className="h-4 w-4" />
-                  Continuar pelo WhatsApp
+                  {submitting ? 'Enviando contato...' : 'Continuar pelo WhatsApp'}
                 </button>
+                {submitError ? <p role="alert" className="text-center text-xs text-red-600">{submitError}</p> : null}
                 <p className="text-center text-xs text-muted-foreground">
                   Seu contato será enviado diretamente à corretora responsável.
                 </p>

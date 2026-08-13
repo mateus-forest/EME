@@ -1,5 +1,4 @@
-// Dados demonstrativos locais da página de resultados do EME Imóveis.
-// Preparados para futura substituição por busca real, IA de intenção e catálogos dos corretores.
+// Contratos e utilitários compartilhados da busca pública do EME Imóveis.
 
 export type Compatibility = 'muito' | 'boa' | 'considerar'
 
@@ -10,6 +9,8 @@ export type SearchResult = {
   city: string
   state: string
   price: number
+  purpose: 'compra' | 'aluguel'
+  propertyType: 'casa' | 'apartamento' | 'terreno' | 'sobrado' | 'comercial'
   bedrooms: number
   suites: number
   bathrooms: number
@@ -19,6 +20,8 @@ export type SearchResult = {
   furnished: boolean
   isNew: boolean
   neighborhood: string
+  region: string
+  brokerSlug: string
   intentTags: string[]
   image: string
   compatibility: Compatibility
@@ -91,6 +94,8 @@ export const searchResults: SearchResult[] = [
     city: 'Vacaria',
     state: 'RS',
     price: 720000,
+    purpose: 'compra',
+    propertyType: 'casa',
     bedrooms: 3,
     suites: 1,
     bathrooms: 2,
@@ -100,6 +105,8 @@ export const searchResults: SearchResult[] = [
     furnished: false,
     isNew: false,
     neighborhood: 'Bela Vista',
+    region: 'Vacaria e região',
+    brokerSlug: 'carla-goulart',
     intentTags: ['mais-espaco', 'espaco-familia', 'vida-no-campo', 'natureza-e-lazer', 'amplo-terreno'],
     image: '/marketplace/images/result-terrea-patio.png',
     compatibility: 'muito',
@@ -117,6 +124,8 @@ export const searchResults: SearchResult[] = [
     city: 'Vacaria',
     state: 'RS',
     price: 680000,
+    purpose: 'compra',
+    propertyType: 'casa',
     bedrooms: 3,
     suites: 1,
     bathrooms: 2,
@@ -126,6 +135,8 @@ export const searchResults: SearchResult[] = [
     furnished: false,
     isNew: false,
     neighborhood: 'Centro',
+    region: 'Vacaria e região',
+    brokerSlug: 'carla-goulart',
     intentTags: ['perto-de-tudo', 'perto-do-centro', 'perto-do-trabalho', 'para-investir', 'primeiro-imovel'],
     image: '/marketplace/images/result-churrasqueira.png',
     compatibility: 'boa',
@@ -143,6 +154,8 @@ export const searchResults: SearchResult[] = [
     city: 'Vacaria',
     state: 'RS',
     price: 610000,
+    purpose: 'compra',
+    propertyType: 'apartamento',
     bedrooms: 2,
     suites: 1,
     bathrooms: 1,
@@ -152,6 +165,8 @@ export const searchResults: SearchResult[] = [
     furnished: false,
     isNew: true,
     neighborhood: 'Centro',
+    region: 'Vacaria e região',
+    brokerSlug: 'carla-goulart',
     intentTags: ['pronto-para-morar', 'pronto-para-entrar', 'morar-sozinho', 'primeiro-imovel', 'para-investir'],
     image: '/marketplace/images/result-gramado.png',
     compatibility: 'considerar',

@@ -1,10 +1,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
-import { searchResults, formatPrice } from '@/lib/marketplace/search-data'
+import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'
 
-const rows: { label: string; get: (r: (typeof searchResults)[number]) => React.ReactNode }[] = [
+const rows: { label: string; get: (r: SearchResult) => React.ReactNode }[] = [
   { label: 'Valor', get: (r) => formatPrice(r.price) },
   { label: 'Área', get: (r) => `${r.area} m²` },
   { label: 'Quartos', get: (r) => r.bedrooms },
@@ -20,8 +20,8 @@ const rows: { label: string; get: (r: (typeof searchResults)[number]) => React.R
   },
 ]
 
-export function PropertyCompare({ currentSlug }: { currentSlug: string }) {
-  const items = searchResults
+export function PropertyCompare({ currentSlug, items }: { currentSlug: string; items: SearchResult[] }) {
+  if (items.length < 2) return null
 
   return (
     <div>
@@ -92,7 +92,7 @@ export function PropertyCompare({ currentSlug }: { currentSlug: string }) {
       </div>
 
       <Link
-        href="/imoveis/busca"
+        href={`/imoveis/comparar?imoveis=${items.map((item) => item.slug).join(',')}`}
         className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-eme-700"
       >
         Abrir comparação completa

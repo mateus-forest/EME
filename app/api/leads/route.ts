@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const propertyId = cleanText(body?.propertyId, 120)
     const catalogSlug = cleanText(body?.catalogSlug, 160)
-    const source = cleanText(body?.source, 80) || "catalog"
+    const requestedSource = cleanText(body?.source, 80) || "catalog"
+    const marketplaceSource = requestedSource.toLowerCase() === "marketplace"
+    const source = marketplaceSource ? "marketplace" : requestedSource
     const name = cleanText(body?.name, 120)
     const email = cleanText(body?.email, 160).toLowerCase()
     const phone = cleanText(body?.phone, 40)
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
       ? await prisma.property.findFirst({
           where: {
             id: propertyId,
-            published: true,
+            ...(marketplaceSource ? { marketplacePublished: true } : { published: true }),
           },
           select: {
             id: true,
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
         name: name || null,
         email: email || null,
         phone: phone || null,
+        whatsapp: phone || null,
         message: message || (property ? `Interesse no imóvel ${property.title}` : "Interesse no catálogo"),
         catalogSlug: catalogSlug || null,
         searchTerm: searchTerm || null,

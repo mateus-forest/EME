@@ -30,12 +30,12 @@ export function BrokerCard({ broker }: { broker: BrokerProfile }) {
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1 font-medium text-foreground">
             <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden="true" />
-            {broker.rating.toFixed(1).replace('.', ',')}
+            {broker.reviewCount > 0 ? broker.rating.toFixed(1).replace('.', ',') : 'Sem avaliações'}
           </span>
           <span className="rounded-full border border-border px-2.5 py-1">{broker.activeListings} imóveis ativos</span>
         </div>
         <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{broker.reviewCount} avaliações</span>
+          <span className="text-xs text-muted-foreground">{broker.reviewCount > 0 ? `${broker.reviewCount} avaliações` : 'Perfil novo'}</span>
           <Link
             href={`/imoveis/corretores/${broker.slug}#contato-corretor`}
             aria-label={`Falar com ${broker.name}`}

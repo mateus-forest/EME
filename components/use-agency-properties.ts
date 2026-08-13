@@ -21,6 +21,8 @@ export type AgencyProperty = {
   parking: number
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
+  marketplacePublished: boolean
+  marketplaceSlug: string
   type: "Apartamento" | "Casa" | "Comercial"
   description: string
   broker: {
@@ -48,6 +50,8 @@ type PropertyApiItem = {
   parkingSpots: number
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
+  marketplacePublished: boolean
+  marketplaceSlug: string
   type: "Apartamento" | "Casa" | "Comercial"
   brokerId: string
   agencyId: string | null
@@ -82,6 +86,8 @@ function normalizeAgencyProperty(property: PropertyApiItem): AgencyProperty {
     parking: property.parkingSpots,
     status: property.status,
     published: property.published,
+    marketplacePublished: property.marketplacePublished,
+    marketplaceSlug: property.marketplaceSlug,
     type: property.type,
     description: property.description,
     broker: property.broker,
@@ -156,7 +162,7 @@ export function useAgencyProperties() {
     return () => window.removeEventListener(PROPERTIES_UPDATED_EVENT, syncProperties)
   }, [refreshProperties])
 
-  async function addProperty(property: Omit<AgencyProperty, "id"> | AgencyProperty) {
+  async function addProperty(property: Omit<AgencyProperty, "id" | "marketplacePublished" | "marketplaceSlug"> | AgencyProperty) {
     const response = await fetch("/api/properties/agency", {
       method: "POST",
       headers: {
@@ -294,6 +300,21 @@ export function useAgencyProperties() {
     return updated
   }
 
+  async function publishPropertyToMarketplace(id: string, published: boolean) {
+    const response = await fetch(`/api/properties/${id}/marketplace`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({ published }),
+    })
+
+    const updated = await parsePropertyResponse(response)
+    setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
+    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
+    return updated
+  }
+
   async function uploadPropertyAudio(id: string, file: File) {
     const formData = new FormData()
     formData.append("audio", file)
@@ -330,6 +351,7 @@ export function useAgencyProperties() {
     updateProperty,
     deleteProperty,
     publishProperty,
+    publishPropertyToMarketplace,
     uploadPropertyImages,
     deletePropertyImage,
     uploadPropertyAudio,

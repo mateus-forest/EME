@@ -216,8 +216,9 @@ export function removeFilterCriterion(filters: MarketplaceFilters, key: Criteria
 export function filterSearchResults(results: SearchResult[], filters: MarketplaceFilters) {
   const location = filters.location?.toLocaleLowerCase('pt-BR')
   const filtered = results.filter((result) => {
-    if (filters.propertyType && !result.title.toLocaleLowerCase('pt-BR').includes(filters.propertyType)) return false
-    if (location && !`${result.city} ${result.state}`.toLocaleLowerCase('pt-BR').includes(location)) return false
+    if (filters.purpose && result.purpose !== filters.purpose) return false
+    if (filters.propertyType && result.propertyType !== filters.propertyType) return false
+    if (location && !`${result.city} ${result.state} ${result.region}`.toLocaleLowerCase('pt-BR').includes(location)) return false
     if (filters.priceMin && result.price < filters.priceMin) return false
     if (filters.priceMax && result.price > filters.priceMax) return false
     if (filters.bedrooms && result.bedrooms < filters.bedrooms) return false

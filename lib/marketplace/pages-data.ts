@@ -279,12 +279,15 @@ export const regionLifestyles: Intent[] = [
 /* ---------------------------- CORRETORES --------------------------- */
 
 export type BrokerProfile = {
+  id: string
   slug: string
   name: string
   creci: string
   region: string
   regionSlug: string
   specialty: string
+  about: string
+  phone: string
   image: string
   activeListings: number
   rating: number
@@ -297,12 +300,15 @@ export type BrokerProfile = {
 
 export const brokerProfiles: BrokerProfile[] = [
   {
+    id: 'mock-carla',
     slug: 'carla-goulart',
     name: 'Carla Goulart',
     creci: 'CRECI 00.000-F',
     region: 'Vacaria e região',
     regionSlug: 'vacaria',
     specialty: 'Casas e primeiro imóvel',
+    about: '',
+    phone: '',
     image: '/marketplace/images/broker-carla.png',
     activeListings: 32,
     rating: 4.9,
@@ -313,12 +319,15 @@ export const brokerProfiles: BrokerProfile[] = [
     propertyTypes: ['casa', 'apartamento'],
   },
   {
+    id: 'mock-rafael',
     slug: 'rafael-martins',
     name: 'Rafael Martins',
     creci: 'CRECI 00.000-F',
     region: 'Serra Gaúcha',
     regionSlug: 'serra-gaucha',
     specialty: 'Imóveis de alto padrão',
+    about: '',
+    phone: '',
     image: '/marketplace/images/broker-rafael.png',
     activeListings: 27,
     rating: 4.8,
@@ -329,12 +338,15 @@ export const brokerProfiles: BrokerProfile[] = [
     propertyTypes: ['casa', 'terreno'],
   },
   {
+    id: 'mock-juliana',
     slug: 'juliana-ramos',
     name: 'Juliana Ramos',
     creci: 'CRECI 00.000-F',
     region: 'Campos de Cima da Serra',
     regionSlug: 'campos-de-cima-da-serra',
     specialty: 'Casas de campo e terrenos',
+    about: '',
+    phone: '',
     image: '/marketplace/images/broker-juliana.png',
     activeListings: 19,
     rating: 4.9,
@@ -345,12 +357,15 @@ export const brokerProfiles: BrokerProfile[] = [
     propertyTypes: ['casa', 'terreno'],
   },
   {
+    id: 'mock-marcos',
     slug: 'marcos-teixeira',
     name: 'Marcos Teixeira',
     creci: 'CRECI 00.000-F',
     region: 'Vacaria e região',
     regionSlug: 'vacaria',
     specialty: 'Locação residencial',
+    about: '',
+    phone: '',
     image: '/marketplace/images/broker-marcos.png',
     activeListings: 41,
     rating: 4.7,
@@ -361,12 +376,15 @@ export const brokerProfiles: BrokerProfile[] = [
     propertyTypes: ['apartamento', 'casa', 'mobiliado'],
   },
   {
+    id: 'mock-fernanda',
     slug: 'fernanda-lima',
     name: 'Fernanda Lima',
     creci: 'CRECI 00.000-F',
     region: 'Serra Gaúcha',
     regionSlug: 'serra-gaucha',
     specialty: 'Apartamentos e investimento',
+    about: '',
+    phone: '',
     image: '/marketplace/images/broker-fernanda.png',
     activeListings: 23,
     rating: 4.8,
@@ -377,12 +395,15 @@ export const brokerProfiles: BrokerProfile[] = [
     propertyTypes: ['apartamento', 'comercial'],
   },
   {
+    id: 'mock-diego',
     slug: 'diego-souza',
     name: 'Diego Souza',
     creci: 'CRECI 00.000-F',
     region: 'Campos de Cima da Serra',
     regionSlug: 'campos-de-cima-da-serra',
     specialty: 'Imóveis comerciais',
+    about: '',
+    phone: '',
     image: '/marketplace/images/broker-diego.png',
     activeListings: 15,
     rating: 4.5,

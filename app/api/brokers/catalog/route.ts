@@ -13,14 +13,29 @@ function serializeBrokerCatalog(user: {
   broker: {
     catalogSlug: string
     description: string | null
+    marketplaceSpecialty: string | null
+    marketplaceRegion: string | null
+    marketplaceTransactions: string | null
+    marketplaceAbout: string | null
+    marketplaceFeatured: boolean
+    marketplaceRating: unknown
+    marketplaceReviewCount: number
   } | null
-}) {
+}, activeListings = 0) {
   return {
     settings: {
       slug: user.broker?.catalogSlug ?? "",
       displayName: user.name,
       photoUrl: user.photoUrl ?? "",
       description: user.broker?.description ?? "",
+      specialty: user.broker?.marketplaceSpecialty ?? "",
+      region: user.broker?.marketplaceRegion ?? "",
+      transactions: user.broker?.marketplaceTransactions ?? "BOTH",
+      about: user.broker?.marketplaceAbout ?? "",
+      featured: user.broker?.marketplaceFeatured ?? false,
+      rating: user.broker?.marketplaceRating ? Number(user.broker.marketplaceRating) : 0,
+      reviewCount: user.broker?.marketplaceReviewCount ?? 0,
+      activeListings,
     },
   }
 }
@@ -41,7 +56,8 @@ export async function GET() {
     return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
   }
 
-  const response = NextResponse.json(serializeBrokerCatalog(user))
+  const activeListings = await prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } })
+  const response = NextResponse.json(serializeBrokerCatalog(user, activeListings))
   response.headers.set("Cache-Control", "no-store, max-age=0")
   return response
 }
@@ -68,6 +84,10 @@ export async function PATCH(request: NextRequest) {
       typeof data.slug === "string" && data.slug.trim() ? slugify(data.slug) : user.broker.catalogSlug
     const photoUrl = typeof data.photoUrl === "string" ? data.photoUrl.trim() : user.photoUrl ?? ""
     const description = typeof data.description === "string" ? data.description.trim() : user.broker.description ?? ""
+    const specialty = typeof data.specialty === 'string' ? data.specialty.trim() : user.broker.marketplaceSpecialty ?? ''
+    const region = typeof data.region === 'string' ? data.region.trim() : user.broker.marketplaceRegion ?? ''
+    const transactions = ['SALE', 'RENT', 'BOTH'].includes(String(data.transactions)) ? String(data.transactions) : user.broker.marketplaceTransactions ?? 'BOTH'
+    const about = typeof data.about === 'string' ? data.about.trim() : user.broker.marketplaceAbout ?? ''
 
     if (!displayName) {
       return NextResponse.json({ error: "Nome do corretor e obrigatorio." }, { status: 400 })
@@ -87,6 +107,12 @@ export async function PATCH(request: NextRequest) {
 
     if (description.length > 600) {
       return NextResponse.json({ error: "Descrição do catálogo deve ter no máximo 600 caracteres." }, { status: 400 })
+    }
+    if (specialty.length > 120 || region.length > 120) {
+      return NextResponse.json({ error: 'Especialidade e região devem ter no máximo 120 caracteres.' }, { status: 400 })
+    }
+    if (about.length > 900) {
+      return NextResponse.json({ error: 'Sobre o atendimento deve ter no máximo 900 caracteres.' }, { status: 400 })
     }
 
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
@@ -126,6 +152,10 @@ export async function PATCH(request: NextRequest) {
         data: {
           catalogSlug: requestedSlug,
           description: description || null,
+          marketplaceSpecialty: specialty || null,
+          marketplaceRegion: region || null,
+          marketplaceTransactions: transactions,
+          marketplaceAbout: about || null,
         },
       })
 
@@ -160,7 +190,8 @@ export async function PATCH(request: NextRequest) {
       })
     })
 
-    const response = NextResponse.json(serializeBrokerCatalog(updated))
+    const activeListings = await prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } })
+    const response = NextResponse.json(serializeBrokerCatalog(updated, activeListings))
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {

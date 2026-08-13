@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Bath,
+  BadgeCheck,
   Bed,
   Building2,
   Camera,
@@ -19,6 +20,7 @@ import {
   RefreshCw,
   Search,
   Share2,
+  Star,
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -68,6 +70,7 @@ export function BrokerCatalogPage() {
   const [expandedDescription, setExpandedDescription] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
+  const [previewMode, setPreviewMode] = useState<'card' | 'profile'>('card')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -309,6 +312,28 @@ export function BrokerCatalogPage() {
                       className="min-h-24 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505]"
                     />
                   </label>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium text-[#5F6B7A]">Especialidade / posicionamento</span>
+                      <Input value={draftSettings.specialty} onChange={(event) => setDraftSettings((current) => ({ ...current, specialty: event.target.value }))} placeholder="Ex.: Casas e primeiro imóvel" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium text-[#5F6B7A]">Região de atuação</span>
+                      <Input value={draftSettings.region} onChange={(event) => setDraftSettings((current) => ({ ...current, region: event.target.value }))} placeholder="Ex.: Vacaria e região" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                    </label>
+                  </div>
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium text-[#5F6B7A]">Atuação no Marketplace</span>
+                    <select value={draftSettings.transactions} onChange={(event) => setDraftSettings((current) => ({ ...current, transactions: event.target.value as 'SALE' | 'RENT' | 'BOTH' }))} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505] outline-none">
+                      <option value="BOTH">Compra e locação</option>
+                      <option value="SALE">Compra</option>
+                      <option value="RENT">Locação</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium text-[#5F6B7A]">Sobre o atendimento</span>
+                    <Textarea value={draftSettings.about} onChange={(event) => setDraftSettings((current) => ({ ...current, about: event.target.value }))} placeholder="Conte como você atende e orienta seus clientes." className="min-h-28 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505]" />
+                  </label>
                   <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                     <Button
                       type="button"
@@ -350,6 +375,50 @@ export function BrokerCatalogPage() {
           </Card>
 
           <div className="grid gap-4">
+
+            <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+              <CardHeader className="flex-row items-center justify-between gap-3 px-5 py-4">
+                <div>
+                  <CardTitle className="text-base text-[#050505]">Preview no Marketplace</CardTitle>
+                  <p className="mt-1 text-xs text-[#7B8491]">Atualização em tempo real</p>
+                </div>
+                <div className="inline-flex rounded-full bg-[#f2f4f1] p-1">
+                  {(['card', 'profile'] as const).map((mode) => (
+                    <button key={mode} type="button" onClick={() => setPreviewMode(mode)} className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${previewMode === mode ? 'bg-white text-[#050505] shadow-sm' : 'text-[#6B7280]'}`}>
+                      {mode === 'card' ? 'Card' : 'Perfil'}
+                    </button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                {previewMode === 'card' ? (
+                  <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#eef9f1] font-semibold text-[#009b3a]">
+                        {draftSettings.photoUrl ? <img src={draftSettings.photoUrl} alt="" className="h-full w-full object-cover" /> : getInitials(draftSettings.displayName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 truncate font-semibold text-[#050505]">{draftSettings.displayName || 'Seu nome'}{profile.creci ? <BadgeCheck className="size-4 shrink-0 text-[#009b3a]" /> : null}</p>
+                        <p className="mt-1 flex items-center gap-1 text-xs text-[#5F6B7A]"><Star className="size-3.5 text-[#009b3a]" />{draftSettings.rating > 0 ? draftSettings.rating.toFixed(1).replace('.', ',') : 'Sem avaliações'}{draftSettings.reviewCount > 0 ? ` (${draftSettings.reviewCount})` : ''}</p>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm font-medium text-[#050505]">{draftSettings.specialty || 'Especialidade não informada'}</p>
+                    <p className="mt-1 text-xs text-[#6B7280]">{draftSettings.region || 'Região não informada'} · {draftSettings.activeListings} imóveis ativos</p>
+                  </div>
+                ) : (
+                  <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#eef9f1] text-xl font-semibold text-[#009b3a]">{draftSettings.photoUrl ? <img src={draftSettings.photoUrl} alt="" className="h-full w-full object-cover" /> : getInitials(draftSettings.displayName)}</div>
+                      <div className="min-w-0"><p className="text-lg font-semibold text-[#050505]">{draftSettings.displayName || 'Seu nome'}</p><p className="mt-1 text-xs text-[#6B7280]">{profile.creci ? `CRECI ${profile.creci}` : 'CRECI não informado'}</p><p className="mt-1 text-xs text-[#6B7280]">{draftSettings.region || 'Região não informada'}</p></div>
+                    </div>
+                    <p className="mt-5 text-sm font-medium text-[#050505]">{draftSettings.specialty || 'Atendimento imobiliário'}</p>
+                    <p className="mt-2 line-clamp-5 text-sm leading-6 text-[#5F6B7A]">{draftSettings.about || 'Seu texto sobre o atendimento aparecerá aqui.'}</p>
+                    <div className="mt-4 flex items-center justify-between border-t border-black/[0.06] pt-4 text-xs text-[#6B7280]"><span>{draftSettings.transactions === 'SALE' ? 'Compra' : draftSettings.transactions === 'RENT' ? 'Locação' : 'Compra e locação'}</span><span>{draftSettings.activeListings} imóveis ativos</span></div>
+                  </div>
+                )}
+                <p className="mt-3 text-xs leading-relaxed text-[#7B8491]">Avaliação, quantidade de avaliações, destaque e imóveis ativos são calculados pelo EME e não podem ser editados.</p>
+              </CardContent>
+            </Card>
 
             <Card className="rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <CardContent className="flex flex-wrap items-center gap-4 p-5">

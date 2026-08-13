@@ -84,7 +84,7 @@ export function Footer() {
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} EME Imóveis. Todos os direitos reservados.
           </p>
-          <p className="text-xs text-muted-foreground">Dados demonstrativos para apresentação.</p>
+          <p className="text-xs text-muted-foreground">Imóveis publicados pelos profissionais da rede EME.</p>
         </div>
       </div>
     </footer>

@@ -5,6 +5,7 @@ import { BrokersDirectory } from '@/components/marketplace/pages/brokers-directo
 import { HelpCta } from '@/components/marketplace/pages/help-cta'
 import { Reveal } from '@/components/marketplace/reveal'
 import { FeaturedBrokers } from '@/components/marketplace/pages/featured-brokers'
+import { getMarketplaceBrokers } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Corretores | EME Imóveis',
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
     'Conheça os especialistas da rede EME. Profissionais verificados que conhecem cada região e ajudam você a encontrar o imóvel certo.',
 }
 
-export default function CorretoresPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function CorretoresPage() {
+  const brokers = await getMarketplaceBrokers()
   return (
     <PageShell>
       <PageHero
@@ -23,10 +27,10 @@ export default function CorretoresPage() {
 
       <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
         <Reveal>
-          <FeaturedBrokers />
+          <FeaturedBrokers brokers={brokers} />
         </Reveal>
         <Reveal className="mt-14 border-t border-border/70 pt-12 md:mt-16 md:pt-14">
-          <BrokersDirectory />
+          <BrokersDirectory brokers={brokers} />
         </Reveal>
       </section>
 

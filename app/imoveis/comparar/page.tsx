@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { ComparisonExperience } from '@/components/marketplace/comparison-experience'
 import { PageShell } from '@/components/marketplace/pages/page-shell'
-import { searchResults } from '@/lib/marketplace/search-data'
+import { getMarketplaceProperties } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Comparar imóveis | EME Imóveis',
-  description: 'Compare imóveis demonstrativos lado a lado no Marketplace EME.',
+  description: 'Compare imóveis publicados lado a lado no Marketplace EME.',
 }
+
+export const dynamic = 'force-dynamic'
 
 export default async function ComparePropertiesPage({
   searchParams,
@@ -14,6 +16,7 @@ export default async function ComparePropertiesPage({
   searchParams: Promise<{ imoveis?: string }>
 }) {
   const { imoveis } = await searchParams
+  const searchResults = await getMarketplaceProperties()
   const selectedSlugs = imoveis?.split(',').filter(Boolean) || []
   const selected = selectedSlugs
     .map((slug) => searchResults.find((property) => property.slug === slug))

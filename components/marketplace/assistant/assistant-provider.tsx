@@ -21,8 +21,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react'
-import { searchResults, formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
-import { brokerProfiles } from '@/lib/marketplace/pages-data'
+import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { AssistantMark } from '@/components/marketplace/assistant/assistant-mark'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
 import { cn } from '@/lib/utils'
@@ -61,8 +61,6 @@ const initialMessages: ChatMessage[] = [
 
 const intentOptions = ['Quero comprar', 'Quero alugar', 'Ainda estou pesquisando']
 const priorityOptions = ['Pátio maior', 'Perto do centro', 'Imóvel mais novo']
-const featured = searchResults.slice(0, 2)
-
 export function useEmeAssistant() {
   const context = useContext(AssistantContext)
   if (!context) throw new Error('useEmeAssistant deve ser usado dentro de AssistantProvider')
@@ -158,11 +156,12 @@ function QuickChoices({
   )
 }
 
-function AssistantPanel({ onClose }: { onClose: () => void }) {
+function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void; properties: SearchResult[]; brokers: BrokerProfile[] }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
   const [handoff, setHandoff] = useState<SearchResult | null>(null)
+  const handoffBroker = handoff ? brokers.find((broker) => broker.slug === handoff.brokerSlug) : null
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const nextId = useRef(10)
@@ -212,7 +211,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
     window.setTimeout(() => {
       append(
         'assistant',
-        `Certo. A ${brokerProfiles[0].name} é a responsável por este imóvel. Confirme abaixo e ela receberá o contexto desta conversa em uma futura integração.`,
+        `Certo. ${brokers.find((broker) => broker.slug === property.brokerSlug)?.name || 'O corretor responsável'} receberá o contexto desta conversa.`,
       )
       setThinking(false)
     }, 650)
@@ -263,7 +262,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
           <QuickChoices options={priorityOptions} onChoose={answer} />
 
           <div className="ml-0 flex gap-3 overflow-x-auto pb-1 pl-9 no-scrollbar sm:pl-9">
-            {featured.map((property) => (
+            {properties.map((property) => (
               <PropertySuggestion key={property.slug} property={property} onBroker={requestBroker} />
             ))}
           </div>
@@ -277,22 +276,22 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {handoff && !thinking && (
+          {handoff && handoffBroker && !thinking && (
             <div className="ml-9 rounded-2xl border border-primary/20 bg-eme-50 p-4">
               <div className="flex items-center gap-3">
                 <Image
-                  src={brokerProfiles[0].image}
-                  alt={brokerProfiles[0].name}
+                  src={handoffBroker.image}
+                  alt={handoffBroker.name}
                   width={48}
                   height={48}
                   className="h-12 w-12 rounded-full object-cover"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    {brokerProfiles[0].name}
+                    {handoffBroker.name}
                     <Check className="h-3.5 w-3.5 text-primary" aria-label="Verificada" />
                   </p>
-                  <p className="text-xs text-muted-foreground">{brokerProfiles[0].specialty}</p>
+                  <p className="text-xs text-muted-foreground">{handoffBroker.specialty}</p>
                 </div>
               </div>
               <button
@@ -344,7 +343,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function AssistantProvider({ children }: { children: ReactNode }) {
+export function AssistantProvider({ children, properties, brokers }: { children: ReactNode; properties: SearchResult[]; brokers: BrokerProfile[] }) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -369,7 +368,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       value={{ open, openAssistant: () => setOpen(true), closeAssistant: () => setOpen(false) }}
     >
       {children}
-      {open && <AssistantPanel onClose={() => setOpen(false)} />}
+      {open && <AssistantPanel onClose={() => setOpen(false)} properties={properties} brokers={brokers} />}
     </AssistantContext.Provider>
   )
 }

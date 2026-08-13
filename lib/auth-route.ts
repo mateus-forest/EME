@@ -17,6 +17,13 @@ const authRelationSelect = {
       brandColor: true,
       logoUrl: true,
       showAgencyWatermark: true,
+      marketplaceSpecialty: true,
+      marketplaceRegion: true,
+      marketplaceTransactions: true,
+      marketplaceAbout: true,
+      marketplaceFeatured: true,
+      marketplaceRating: true,
+      marketplaceReviewCount: true,
       agency: {
         select: {
           id: true,

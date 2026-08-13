@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import {
-  alternatives,
   defaultQuery,
   formatPrice,
-  searchResults,
   sortResults,
   type Criterion,
+  type SearchResult,
   type SortValue,
 } from '@/lib/marketplace/search-data'
 import {
@@ -21,7 +20,7 @@ import {
   removeFilterCriterion,
   type MarketplaceFilters,
 } from '@/lib/marketplace/search-filters'
-import { brokerProfiles } from '@/lib/marketplace/pages-data'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { BrokerCard } from '@/components/marketplace/broker-card'
@@ -52,10 +51,14 @@ export function SearchResults({
   initialQuery,
   initialFilters,
   estado,
+  results,
+  brokers,
 }: {
   initialQuery?: string
   initialFilters: MarketplaceFilters
   estado?: 'erro' | 'vazio'
+  results: SearchResult[]
+  brokers: BrokerProfile[]
 }) {
   const [query, setQuery] = useState(initialQuery?.trim() || defaultQuery)
   const [filters, setFilters] = useState<MarketplaceFilters>(() =>
@@ -107,14 +110,14 @@ export function SearchResults({
 
   const filtered = useMemo(() => {
     if (forceEmpty) return []
-    let list = filterSearchResults(searchResults, filters)
+    let list = filterSearchResults(results, filters)
     list = sortResults(list, sort)
     return list
-  }, [filters, forceEmpty, sort])
+  }, [filters, forceEmpty, results, sort])
 
   const selectedResults = useMemo(
-    () => compare.map((slug) => searchResults.find((r) => r.slug === slug)).filter(Boolean) as typeof searchResults,
-    [compare],
+    () => compare.map((slug) => results.find((r) => r.slug === slug)).filter(Boolean) as SearchResult[],
+    [compare, results],
   )
 
   function toggleFavorite(slug: string) {
@@ -349,9 +352,9 @@ export function SearchResults({
           />
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {alternatives.map((alternative, i) => (
+          {results.slice(3, 5).map((alternative, i) => (
             <Reveal key={alternative.slug} delay={i * 90}>
-              <AlternativePropertyCard alternative={alternative} />
+              <AlternativePropertyCard alternative={{ ...alternative, reason: alternative.reasons[0] || 'Outra opção publicada no Marketplace' }} />
             </Reveal>
           ))}
         </div>
@@ -366,7 +369,7 @@ export function SearchResults({
           />
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {brokerProfiles.filter((broker) => broker.featured).slice(0, 3).map((broker, i) => (
+          {brokers.slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 90} className="flex flex-col gap-2">
               {i === 0 && (
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-eme-50 px-3 py-1 text-xs font-medium text-eme-700">

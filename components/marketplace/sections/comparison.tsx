@@ -1,7 +1,9 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, MapPin, Maximize, Wallet } from 'lucide-react'
-import { comparison, formatPrice } from '@/lib/marketplace/data'
+import { formatPrice } from '@/lib/marketplace/data'
+import type { SearchResult } from '@/lib/marketplace/search-data'
+import { comparisonInsights } from '@/lib/marketplace/comparison-analysis'
 import { Reveal } from '@/components/marketplace/reveal'
 
 const highlightIcons = {
@@ -10,8 +12,14 @@ const highlightIcons = {
   check: Wallet,
 } as const
 
-export function ComparisonSection() {
-  const { a, b, highlights } = comparison
+export function ComparisonSection({ results }: { results: SearchResult[] }) {
+  if (results.length < 2) return null
+  const [a, b] = results
+  const highlights = comparisonInsights(results, 3).map((description, index) => ({
+    title: index === 0 ? 'Diferença de valor' : index === 1 ? 'Diferença de espaço' : 'Relação valor/m²',
+    description,
+    icon: index === 0 ? 'check' as const : index === 1 ? 'space' as const : 'location' as const,
+  }))
 
   return (
     <section className="bg-surface">
@@ -52,7 +60,7 @@ export function ComparisonSection() {
                       <p className="mt-1 text-sm font-semibold text-foreground">
                         {formatPrice(item.price)}
                       </p>
-                      <p className="text-xs text-muted-foreground">{item.city}</p>
+                      <p className="text-xs text-muted-foreground">{item.city} · {item.state}</p>
                     </div>
                   </div>
                 ))}
@@ -80,7 +88,7 @@ export function ComparisonSection() {
                   })}
                 </ul>
                 <Link
-                  href="/imoveis/comparar"
+                  href={`/imoveis/comparar?imoveis=${a.slug},${b.slug}`}
                   className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:text-eme-700"
                 >
                   Ver comparação completa

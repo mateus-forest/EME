@@ -2,10 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, BedDouble, Maximize } from 'lucide-react'
 import { CompatibilityBadge } from '@/components/marketplace/search/compatibility-badge'
-import { similarProperties } from '@/lib/marketplace/property-detail'
+import type { SimilarProperty } from '@/lib/marketplace/property-detail'
 import { formatPrice } from '@/lib/marketplace/search-data'
 
-export function SimilarProperties() {
+export function SimilarProperties({ properties }: { properties: SimilarProperty[] }) {
+  if (!properties.length) return null
   return (
     <div>
       <div className="flex items-end justify-between gap-4">
@@ -22,7 +23,7 @@ export function SimilarProperties() {
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {similarProperties.map((item) => (
+        {properties.map((item) => (
           <Link
             key={item.slug}
             href={`/imoveis/imovel/${item.slug}`}

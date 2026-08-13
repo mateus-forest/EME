@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState, type ReactNode } from "react"
-import { Bath, Bed, Building2, Car, Eye, FileText, Keyboard, PencilLine, SlidersHorizontal, Sparkles, Upload, Users, type LucideIcon } from "lucide-react"
+import { Bath, Bed, Building2, Car, Eye, FileText, Keyboard, PencilLine, SlidersHorizontal, Sparkles, Store, Upload, Users, type LucideIcon } from "lucide-react"
 
 import { AdImportPanel } from "@/components/ad-import-panel"
 import { AgencyPageShell } from "@/components/agency-page-shell"
@@ -48,6 +48,7 @@ export function AgencyPropertiesPage() {
     updateProperty,
     deleteProperty,
     publishProperty,
+    publishPropertyToMarketplace,
     uploadPropertyImages,
     deletePropertyImage,
     uploadPropertyAudio,
@@ -256,6 +257,16 @@ export function AgencyPropertiesPage() {
       window.alert(
         caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.",
       )
+    }
+  }
+
+  async function handleToggleMarketplace(property: AgencyProperty) {
+    try {
+      const updatedProperty = await publishPropertyToMarketplace(property.id, !property.marketplacePublished)
+      setSelectedProperty((current) => (current?.id === property.id ? updatedProperty : current))
+      setActionFeedback(updatedProperty.marketplacePublished ? "Imóvel publicado no Marketplace." : "Imóvel removido do Marketplace.")
+    } catch (caughtError) {
+      setActionFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o Marketplace.")
     }
   }
 
@@ -593,6 +604,7 @@ export function AgencyPropertiesPage() {
                 <div className="absolute left-4 bottom-4">
                   <p className="text-lg font-bold text-white">{property.price}</p>
                 </div>
+                {property.marketplacePublished ? <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full border border-[#69F0AE]/20 bg-black/65 px-2.5 py-1 text-xs text-[#69F0AE] backdrop-blur"><Store className="size-3" /> Marketplace</span> : null}
               </div>
               <CardContent className="grid gap-4 p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -638,6 +650,9 @@ export function AgencyPropertiesPage() {
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => handleTogglePublish(property)} className="h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
                     {property.status === "Publicado" ? "Despublicar" : "Publicar"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => void handleToggleMarketplace(property)} className="h-9 rounded-xl border border-[#69F0AE]/15 bg-[#69F0AE]/[0.06] px-4 text-[#69F0AE] hover:bg-[#69F0AE]/10 hover:text-[#8ff7bd]">
+                    <Store className="size-4" /> {property.marketplacePublished ? "Remover do Marketplace" : "Publicar no Marketplace"}
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => handleDelete(property)} className="h-9 rounded-xl border border-[#ff6b6b]/15 bg-[#ff6b6b]/8 px-4 text-[#ff9b9b] hover:bg-[#ff6b6b]/12 hover:text-[#ffc1c1]">
                     Excluir
@@ -743,6 +758,9 @@ export function AgencyPropertiesPage() {
                   </Button>
                   <Button variant="ghost" onClick={() => handleTogglePublish(selectedProperty)} className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-white/75 hover:bg-white/[0.08] hover:text-white">
                     {selectedProperty.status === "Publicado" ? "Despublicar" : "Publicar"}
+                  </Button>
+                  <Button variant="ghost" onClick={() => void handleToggleMarketplace(selectedProperty)} className="h-10 rounded-xl border border-[#69F0AE]/15 bg-[#69F0AE]/[0.06] px-4 text-[#69F0AE] hover:bg-[#69F0AE]/10 hover:text-[#8ff7bd]">
+                    <Store className="size-4" /> {selectedProperty.marketplacePublished ? "Remover do Marketplace" : "Publicar no Marketplace"}
                   </Button>
                   <Button variant="ghost" onClick={() => handleDelete(selectedProperty)} className="h-10 rounded-xl border border-[#ff6b6b]/15 bg-[#ff6b6b]/8 px-4 text-[#ff9b9b] hover:bg-[#ff6b6b]/12 hover:text-[#ffc1c1]">
                     Excluir

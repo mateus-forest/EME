@@ -1,9 +1,9 @@
-import { properties } from '@/lib/marketplace/data'
+import type { Property } from '@/lib/marketplace/data'
 import { PropertyCard } from '@/components/marketplace/property-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 
-export function PropertiesSection() {
+export function PropertiesSection({ properties }: { properties: Property[] }) {
   const [featured, ...rest] = properties
 
   return (
@@ -15,7 +15,7 @@ export function PropertiesSection() {
         />
       </Reveal>
 
-      <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 lg:grid-cols-3">
+      {featured ? <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 lg:grid-cols-3">
         <Reveal className="lg:col-span-2 lg:row-span-2">
           <div className="h-full">
             <PropertyCard property={featured} featured />
@@ -28,7 +28,7 @@ export function PropertiesSection() {
             </div>
           </Reveal>
         ))}
-      </div>
+      </div> : <p className="mt-8 rounded-3xl border border-border/70 bg-card px-6 py-10 text-center text-sm text-muted-foreground">Novos imóveis serão publicados aqui em breve.</p>}
     </section>
   )
 }

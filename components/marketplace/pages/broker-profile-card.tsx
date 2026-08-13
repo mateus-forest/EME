@@ -31,7 +31,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
             <h3 className="text-pretty text-base font-semibold leading-tight text-foreground">
               {broker.name}
             </h3>
-            <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" />
+            {broker.verified ? <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" /> : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{broker.creci}</p>
           <p className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -55,7 +55,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
       <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-4">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
           <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden="true" />
-          {broker.rating.toFixed(1).replace('.', ',')} · {broker.reviewCount} avaliações
+          {broker.reviewCount > 0 ? `${broker.rating.toFixed(1).replace('.', ',')} · ${broker.reviewCount} avaliações` : 'Sem avaliações ainda'}
         </span>
         <span className="text-sm font-medium text-primary transition-transform duration-300 group-hover:translate-x-0.5">
           Ver perfil &rarr;

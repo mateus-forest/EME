@@ -45,6 +45,8 @@ export type PropertyApiItem = {
   purpose: "Venda" | "Locação"
   status: "Publicado" | "Rascunho" | "Pausado"
   published: boolean
+  marketplacePublished: boolean
+  marketplaceSlug: string
   images: string[]
   views: number
   leads: number
@@ -167,6 +169,8 @@ export function serializeProperty(property: PropertyWithRelations): PropertyApiI
     purpose: propertyPurposeLabel(property.purpose),
     status: propertyStatusLabel(property.status),
     published: property.published,
+    marketplacePublished: property.marketplacePublished,
+    marketplaceSlug: property.marketplaceSlug ?? '',
     images,
     views: property.viewsCount,
     leads: property._count?.leads ?? property.leadsCount,

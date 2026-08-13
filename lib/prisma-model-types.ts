@@ -39,6 +39,13 @@ export type Broker = {
   brandColor: string | null
   logoUrl: string | null
   showAgencyWatermark: boolean
+  marketplaceSpecialty: string | null
+  marketplaceRegion: string | null
+  marketplaceTransactions: string | null
+  marketplaceAbout: string | null
+  marketplaceFeatured: boolean
+  marketplaceRating: unknown
+  marketplaceReviewCount: number
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number
   aiAssistantEnabled: boolean
@@ -77,6 +84,9 @@ export type Property = {
   purpose: string
   status: PropertyStatus
   published: boolean
+  marketplacePublished: boolean
+  marketplacePublishedAt: Date | null
+  marketplaceSlug: string | null
   imageUrls: unknown
   legalData: unknown
   documentsData: unknown

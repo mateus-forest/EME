@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { brokerProfiles } from '@/lib/marketplace/pages-data'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { BrokerCard } from '@/components/marketplace/broker-card'
 import { Reveal } from '@/components/marketplace/reveal'
 
-export function BrokersSection() {
+export function BrokersSection({ brokers }: { brokers: BrokerProfile[] }) {
   return (
     <section id="corretores" className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
       <Reveal>
@@ -15,7 +15,7 @@ export function BrokersSection() {
       </Reveal>
 
       <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 md:grid-cols-3">
-        {brokerProfiles.filter((broker) => broker.featured).slice(0, 3).map((broker, i) => (
+        {brokers.slice(0, 3).map((broker, i) => (
           <Reveal key={broker.slug} delay={i * 90}>
             <BrokerCard broker={broker} />
           </Reveal>

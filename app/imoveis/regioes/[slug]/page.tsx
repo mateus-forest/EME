@@ -9,7 +9,8 @@ import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { OrganicLines } from '@/components/marketplace/organic-lines'
-import { brokerProfiles, regionDetails, buyProperties } from '@/lib/marketplace/pages-data'
+import { regionDetails } from '@/lib/marketplace/pages-data'
+import { getMarketplaceBrokers, getMarketplaceProperties } from '@/lib/marketplace/server-data'
 
 export function generateStaticParams() {
   return regionDetails.map((region) => ({ slug: region.slug }))
@@ -38,9 +39,15 @@ export default async function RegiaoPage({
   const region = regionDetails.find((r) => r.slug === slug)
   if (!region) notFound()
 
-  // Seleção demonstrativa de imóveis e profissionais para a região.
-  const regionProperties = buyProperties.slice(0, 3)
-  const regionBrokers = brokerProfiles.filter((broker) => broker.regionSlug === slug || broker.featured).slice(0, 3)
+  // Seleção dos imóveis e profissionais publicados que atendem à região.
+  const [allProperties, allBrokers] = await Promise.all([getMarketplaceProperties(), getMarketplaceBrokers()])
+  const regionTerms = [region.name, ...region.areas].map((value) => value.toLocaleLowerCase('pt-BR'))
+  const matchesRegion = (value: string) => regionTerms.some((term) => value.toLocaleLowerCase('pt-BR').includes(term))
+  const regionResults = allProperties.filter((property) => matchesRegion(`${property.city} ${property.neighborhood} ${property.region}`))
+  const regionProperties = regionResults.slice(0, 3)
+  const regionBrokers = allBrokers.filter((broker) => broker.regionSlug === slug || matchesRegion(broker.region)).slice(0, 3)
+  const forSale = regionResults.filter((property) => property.purpose === 'compra').length
+  const forRent = regionResults.filter((property) => property.purpose === 'aluguel').length
 
   return (
     <PageShell>
@@ -96,14 +103,14 @@ export default async function RegiaoPage({
               href={`/imoveis/busca?regiao=${region.slug}&finalidade=compra`}
               className="flex flex-1 flex-col rounded-2xl border border-border/70 bg-card px-4 py-4 shadow-[var(--shadow-soft)] transition-colors hover:border-primary/40"
             >
-              <span className="text-2xl font-semibold text-foreground">{region.forSale}</span>
+              <span className="text-2xl font-semibold text-foreground">{forSale}</span>
               <span className="text-xs text-muted-foreground">para comprar</span>
             </Link>
             <Link
               href={`/imoveis/busca?regiao=${region.slug}&finalidade=aluguel`}
               className="flex flex-1 flex-col rounded-2xl border border-border/70 bg-card px-4 py-4 shadow-[var(--shadow-soft)] transition-colors hover:border-primary/40"
             >
-              <span className="text-2xl font-semibold text-foreground">{region.forRent}</span>
+              <span className="text-2xl font-semibold text-foreground">{forRent}</span>
               <span className="text-xs text-muted-foreground">para alugar</span>
             </Link>
           </div>

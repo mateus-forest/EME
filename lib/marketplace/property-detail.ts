@@ -12,6 +12,7 @@ export type EnvironmentPhoto = {
 
 export type PropertyDetail = {
   slug: string
+  propertyId: string
   code: string
   title: string
   city: string
@@ -58,6 +59,7 @@ export type SimilarProperty = {
 
 export const propertyDetail: PropertyDetail = {
   slug: 'casa-terrea-com-patio-amplo-1842',
+  propertyId: '1842',
   code: 'EME 1842',
   title: 'Casa térrea com pátio amplo',
   city: 'Vacaria',

@@ -1,10 +1,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { BadgeCheck, MapPin, Star } from 'lucide-react'
-import { brokerProfiles } from '@/lib/marketplace/pages-data'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 
-export function FeaturedBrokers() {
-  const featured = brokerProfiles.filter((broker) => broker.featured).slice(0, 3)
+export function FeaturedBrokers({ brokers }: { brokers: BrokerProfile[] }) {
+  const featured = brokers.filter((broker) => broker.featured).slice(0, 3)
+  if (!featured.length) return null
   return (
     <section aria-labelledby="featured-brokers-title">
       <div className="max-w-2xl">
@@ -32,8 +33,8 @@ export function FeaturedBrokers() {
                 </div>
                 <p className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-foreground">
                   <Star className="h-4 w-4 fill-primary text-primary" aria-hidden="true" />
-                  {broker.rating.toFixed(1).replace('.', ',')}
-                  <span className="font-normal text-muted-foreground">({broker.reviewCount})</span>
+                  {broker.reviewCount > 0 ? broker.rating.toFixed(1).replace('.', ',') : 'Sem avaliações'}
+                  {broker.reviewCount > 0 ? <span className="font-normal text-muted-foreground">({broker.reviewCount})</span> : null}
                 </p>
               </div>
             </div>

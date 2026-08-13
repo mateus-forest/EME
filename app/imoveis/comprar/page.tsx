@@ -12,7 +12,8 @@ import { ConversationalSearch } from '@/components/marketplace/conversational-se
 import { PropertyCard } from '@/components/marketplace/property-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
-import { buyTypes, buyProperties, buyIntents } from '@/lib/marketplace/pages-data'
+import { buyTypes, buyIntents } from '@/lib/marketplace/pages-data'
+import { getMarketplacePropertyCards } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Comprar imóveis | EME Imóveis',
@@ -30,7 +31,10 @@ const quickFilters = [
   { label: '3+ quartos', value: '3', param: 'quartos' },
 ]
 
-export default function ComprarPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function ComprarPage() {
+  const buyProperties = await getMarketplacePropertyCards(5, 'SALE')
   const [featured, ...rest] = buyProperties
 
   return (
@@ -84,7 +88,7 @@ export default function ComprarPage() {
           <QuickFilters groups={quickFilters} purpose="compra" />
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {featured ? <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
           <Reveal className="lg:col-span-2 lg:row-span-2">
             <div className="h-full">
               <PropertyCard property={featured} featured />
@@ -97,7 +101,7 @@ export default function ComprarPage() {
               </div>
             </Reveal>
           ))}
-        </div>
+        </div> : <p className="mt-8 rounded-3xl border border-border/70 bg-card px-6 py-10 text-center text-sm text-muted-foreground">Ainda não há imóveis para comprar publicados no Marketplace.</p>}
       </section>
 
       {/* Encontre pelo que importa */}

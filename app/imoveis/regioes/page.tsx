@@ -8,7 +8,8 @@ import { HelpCta } from '@/components/marketplace/pages/help-cta'
 import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
-import { brokerProfiles, popularAreas, regionLifestyles } from '@/lib/marketplace/pages-data'
+import { popularAreas, regionDetails, regionLifestyles } from '@/lib/marketplace/pages-data'
+import { getMarketplaceBrokers, getMarketplaceProperties } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Regiões | EME Imóveis',
@@ -16,7 +17,15 @@ export const metadata: Metadata = {
     'Descubra onde sua próxima história pode acontecer. Explore cidades e regiões, conheça suas características e encontre imóveis disponíveis.',
 }
 
-export default function RegioesPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function RegioesPage() {
+  const [brokers, properties] = await Promise.all([getMarketplaceBrokers(), getMarketplaceProperties()])
+  const regions = regionDetails.map((region) => {
+    const terms = [region.name, ...region.areas].map((value) => value.toLocaleLowerCase('pt-BR'))
+    const matching = properties.filter((property) => terms.some((term) => `${property.city} ${property.neighborhood} ${property.region}`.toLocaleLowerCase('pt-BR').includes(term)))
+    return { ...region, properties: matching.length, forSale: matching.filter((property) => property.purpose === 'compra').length, forRent: matching.filter((property) => property.purpose === 'aluguel').length }
+  })
   return (
     <PageShell>
       <PageHero
@@ -28,7 +37,7 @@ export default function RegioesPage() {
 
       {/* Regiões principais + busca */}
       <section className="mx-auto w-full max-w-6xl px-5 pb-4 md:px-8">
-        <RegionsDirectory />
+        <RegionsDirectory regions={regions} />
       </section>
 
       {/* Regiões mais procuradas */}
@@ -85,7 +94,7 @@ export default function RegioesPage() {
           </div>
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {brokerProfiles.filter((broker) => broker.featured).slice(0, 3).map((broker, i) => (
+          {brokers.slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 80}>
               <BrokerCard broker={broker} />
             </Reveal>

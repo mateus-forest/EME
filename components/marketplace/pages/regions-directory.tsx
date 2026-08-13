@@ -2,22 +2,22 @@
 
 import { useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
-import { regionDetails } from '@/lib/marketplace/pages-data'
+import type { RegionDetail } from '@/lib/marketplace/pages-data'
 import { RegionFeatureCard } from '@/components/marketplace/pages/region-feature-card'
 import { Reveal } from '@/components/marketplace/reveal'
 
 // Busca local por cidade, bairro ou região, filtrando os destaques exibidos.
-export function RegionsDirectory() {
+export function RegionsDirectory({ regions }: { regions: RegionDetail[] }) {
   const [query, setQuery] = useState('')
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return regionDetails
-    return regionDetails.filter((region) => {
+    if (!q) return regions
+    return regions.filter((region) => {
       const haystack = [region.name, ...region.tags, ...region.areas].join(' ').toLowerCase()
       return haystack.includes(q)
     })
-  }, [query])
+  }, [query, regions])
 
   return (
     <div>

@@ -12,7 +12,8 @@ import { ConversationalSearch } from '@/components/marketplace/conversational-se
 import { RentalCard } from '@/components/marketplace/rental-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
-import { rentTypes, rentals, rentIntents } from '@/lib/marketplace/pages-data'
+import { rentTypes, rentIntents } from '@/lib/marketplace/pages-data'
+import { getMarketplaceRentals } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Alugar imóveis | EME Imóveis',
@@ -30,7 +31,10 @@ const quickFilters = [
   { label: '2+ quartos', value: '2', param: 'quartos' },
 ]
 
-export default function AlugarPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function AlugarPage() {
+  const rentals = await getMarketplaceRentals(5)
   const [featured, ...rest] = rentals
 
   return (
@@ -84,7 +88,7 @@ export default function AlugarPage() {
           <QuickFilters groups={quickFilters} purpose="aluguel" />
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {featured ? <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
           <Reveal className="lg:col-span-2 lg:row-span-2">
             <div className="h-full">
               <RentalCard rental={featured} featured />
@@ -97,7 +101,7 @@ export default function AlugarPage() {
               </div>
             </Reveal>
           ))}
-        </div>
+        </div> : <p className="mt-8 rounded-3xl border border-border/70 bg-card px-6 py-10 text-center text-sm text-muted-foreground">Ainda não há imóveis para alugar publicados no Marketplace.</p>}
       </section>
 
       {/* Encontre para o seu momento */}
