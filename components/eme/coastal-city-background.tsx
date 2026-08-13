@@ -11,24 +11,15 @@ export function CoastalCityBackground() {
         }}
       >
         <Image
-          src="/images/eme-landing-hero-2026-07-28.png"
+          src="/images/eme-landing-hero-2026-08-13.webp"
           alt=""
           fill
           priority
           unoptimized
           sizes="100vw"
-          className="scale-[1.06] object-cover object-[58%_50%] sm:object-[60%_50%] 2xl:object-center"
+          className="object-cover object-[50%_38%] sm:object-[50%_40%] 2xl:object-[50%_42%]"
         />
       </div>
-
-      <div className="absolute inset-0 bg-white/8" />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(120% 120% at 50% 30%, transparent 52%, rgba(8,16,12,0.16) 100%)",
-        }}
-      />
     </div>
   )
 }

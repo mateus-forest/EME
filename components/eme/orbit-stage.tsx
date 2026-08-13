@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "motion/react"
 
-import { EmeLogoSculpture } from "@/components/eme/eme-logo-sculpture"
 import { ModuleCard } from "@/components/eme/module-card"
 import { emeModules } from "@/lib/eme-modules"
 
@@ -83,7 +82,10 @@ export function OrbitStage({
       const cos = Math.cos(rad)
       const front = -cos
       const x = sin * cfg.radiusX
-      const y = -cos * cfg.archLift * (cos > 0 ? 0.46 : 0.9) + Math.abs(sin) * 34 * cfg.baseScale
+      // Front-facing half (cos < 0) is pushed further down than before (0.9 -> 1.55) so the
+      // card whose angle lands nearest the viewer never sits high enough to cover the logo —
+      // it now settles in front of the pedestal instead of across the "EME" lettering.
+      const y = -cos * cfg.archLift * (cos > 0 ? 0.46 : 1.55) + Math.abs(sin) * 34 * cfg.baseScale
       const z = front >= 0 ? front * cfg.radiusZ * 1.1 : front * cfg.radiusZ * 1.7
 
       const scale = cfg.baseScale * map(front, -1, 1, 0.66, 1.04)
@@ -115,38 +117,26 @@ export function OrbitStage({
       style={{ perspective: "1600px", perspectiveOrigin: "50% 42%" }}
     >
       <div className="relative" style={{ transformStyle: "preserve-3d" }}>
+        {/* Ambient stage light pooling at the pedestal's base — a soft green glow consistent
+            with the brand accent, simulating stage lighting under the logo/pedestal group. Kept
+            in the flat 2D plane (no rotateX) — a radial-gradient under this file's extreme 83deg
+            pedestal tilt foreshortens unevenly and rendered as a stray bright band across the
+            scene, so this glow is drawn as a plain top-down ellipse instead. */}
         <div
           aria-hidden
-          className="absolute left-1/2 top-1/2 h-[260px] w-[1180px] max-w-[94vw] -translate-x-1/2 rounded-[100%] border border-eme/12"
-          style={{ transform: "translate(-50%,6%) rotateX(83deg)" }}
+          className="absolute left-1/2 top-1/2 z-[5] h-[210px] w-[980px] max-w-[88vw] -translate-x-1/2 rounded-[100%]"
+          style={{
+            background:
+              "radial-gradient(50% 50% at 50% 50%, rgba(115,223,48,0.22) 0%, rgba(115,223,48,0.1) 38%, rgba(115,223,48,0) 72%)",
+            transform: "translateY(16%)",
+          }}
         />
 
         <div
-          className="absolute left-1/2 top-1/2"
-          style={{
-            zIndex: 60,
-            transform: "translate(-50%,-50%) translateY(54px) rotateX(3deg)",
-            transformStyle: "preserve-3d",
-          }}
-        >
-          <div
-            style={{
-              transform: "translate3d(calc(var(--px,0) * 6px), calc(var(--py,0) * 6px), 0)",
-              transition: "transform 0.35s ease-out",
-              transformStyle: "preserve-3d",
-            }}
-          >
-            <div
-              style={{
-                transform: authOpen ? "translateX(-13vw)" : "translateX(0px)",
-                transition: "transform 0.6s cubic-bezier(0.22,1,0.36,1)",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <EmeLogoSculpture />
-            </div>
-          </div>
-        </div>
+          aria-hidden
+          className="absolute left-1/2 top-1/2 h-[260px] w-[1180px] max-w-[94vw] -translate-x-1/2 rounded-[100%] border border-eme/12"
+          style={{ transform: "translate(-50%,6%) rotateX(83deg)", zIndex: 10 }}
+        />
 
         {placed.map(({ module, x, y, z, scale, opacity, blur, rotateY, zIndex, parallax }, i) => {
           const isSelected = selectedId === module.id
