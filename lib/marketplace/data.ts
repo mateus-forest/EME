@@ -22,15 +22,6 @@ export type Region = {
   image: string
 }
 
-export type Broker = {
-  slug: string
-  name: string
-  role: string
-  region: string
-  image: string
-  respondsFast: boolean
-}
-
 export type Lifestyle = {
   slug: string
   title: string
@@ -100,33 +91,6 @@ export const regions: Region[] = [
   { slug: 'vacaria', name: 'Vacaria', properties: 124, image: '/marketplace/images/region-vacaria.png' },
   { slug: 'serra-gaucha', name: 'Serra Gaúcha', properties: 86, image: '/marketplace/images/region-serra.png' },
   { slug: 'campos-de-cima-da-serra', name: 'Campos de Cima da Serra', properties: 53, image: '/marketplace/images/region-campos.png' },
-]
-
-export const brokers: Broker[] = [
-  {
-    slug: 'carla-goulart',
-    name: 'Carla Goulart',
-    role: 'Especialista em Vacaria e região',
-    region: 'Vacaria · RS',
-    image: '/marketplace/images/broker-carla.png',
-    respondsFast: true,
-  },
-  {
-    slug: 'rafael-martins',
-    name: 'Rafael Martins',
-    role: 'Especialista em Serra Gaúcha',
-    region: 'Serra Gaúcha · RS',
-    image: '/marketplace/images/broker-rafael.png',
-    respondsFast: true,
-  },
-  {
-    slug: 'juliana-ramos',
-    name: 'Juliana Ramos',
-    role: 'Especialista em Campos de Cima da Serra',
-    region: 'Campos de Cima da Serra · RS',
-    image: '/marketplace/images/broker-juliana.png',
-    respondsFast: true,
-  },
 ]
 
 export const features: Feature[] = [

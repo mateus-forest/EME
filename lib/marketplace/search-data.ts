@@ -18,6 +18,8 @@ export type SearchResult = {
   patio: boolean
   furnished: boolean
   isNew: boolean
+  neighborhood: string
+  intentTags: string[]
   image: string
   compatibility: Compatibility
   reasons: string[]
@@ -48,6 +50,7 @@ export type CriteriaKey =
   | 'patio'
   | 'mobiliado'
   | 'novo'
+  | `intencao:${string}`
 
 export type Criterion = {
   key: CriteriaKey
@@ -96,6 +99,8 @@ export const searchResults: SearchResult[] = [
     patio: true,
     furnished: false,
     isNew: false,
+    neighborhood: 'Bela Vista',
+    intentTags: ['mais-espaco', 'espaco-familia', 'vida-no-campo', 'natureza-e-lazer', 'amplo-terreno'],
     image: '/marketplace/images/result-terrea-patio.png',
     compatibility: 'muito',
     reasons: [
@@ -120,6 +125,8 @@ export const searchResults: SearchResult[] = [
     patio: true,
     furnished: false,
     isNew: false,
+    neighborhood: 'Centro',
+    intentTags: ['perto-de-tudo', 'perto-do-centro', 'perto-do-trabalho', 'para-investir', 'primeiro-imovel'],
     image: '/marketplace/images/result-churrasqueira.png',
     compatibility: 'boa',
     reasons: [
@@ -144,6 +151,8 @@ export const searchResults: SearchResult[] = [
     patio: true,
     furnished: false,
     isNew: true,
+    neighborhood: 'Centro',
+    intentTags: ['pronto-para-morar', 'pronto-para-entrar', 'morar-sozinho', 'primeiro-imovel', 'para-investir'],
     image: '/marketplace/images/result-gramado.png',
     compatibility: 'considerar',
     reasons: [

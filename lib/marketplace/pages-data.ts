@@ -286,8 +286,11 @@ export type BrokerProfile = {
   regionSlug: string
   specialty: string
   image: string
-  respondsFast: boolean
   activeListings: number
+  rating: number
+  reviewCount: number
+  featured: boolean
+  verified: boolean
   transaction: 'compra' | 'aluguel' | 'ambos'
   propertyTypes: PropertyType[]
 }
@@ -301,8 +304,11 @@ export const brokerProfiles: BrokerProfile[] = [
     regionSlug: 'vacaria',
     specialty: 'Casas e primeiro imóvel',
     image: '/marketplace/images/broker-carla.png',
-    respondsFast: true,
     activeListings: 32,
+    rating: 4.9,
+    reviewCount: 87,
+    featured: true,
+    verified: true,
     transaction: 'ambos',
     propertyTypes: ['casa', 'apartamento'],
   },
@@ -314,8 +320,11 @@ export const brokerProfiles: BrokerProfile[] = [
     regionSlug: 'serra-gaucha',
     specialty: 'Imóveis de alto padrão',
     image: '/marketplace/images/broker-rafael.png',
-    respondsFast: true,
     activeListings: 27,
+    rating: 4.8,
+    reviewCount: 64,
+    featured: true,
+    verified: true,
     transaction: 'compra',
     propertyTypes: ['casa', 'terreno'],
   },
@@ -327,8 +336,11 @@ export const brokerProfiles: BrokerProfile[] = [
     regionSlug: 'campos-de-cima-da-serra',
     specialty: 'Casas de campo e terrenos',
     image: '/marketplace/images/broker-juliana.png',
-    respondsFast: true,
     activeListings: 19,
+    rating: 4.9,
+    reviewCount: 51,
+    featured: true,
+    verified: true,
     transaction: 'compra',
     propertyTypes: ['casa', 'terreno'],
   },
@@ -340,8 +352,11 @@ export const brokerProfiles: BrokerProfile[] = [
     regionSlug: 'vacaria',
     specialty: 'Locação residencial',
     image: '/marketplace/images/broker-marcos.png',
-    respondsFast: false,
     activeListings: 41,
+    rating: 4.7,
+    reviewCount: 73,
+    featured: false,
+    verified: true,
     transaction: 'aluguel',
     propertyTypes: ['apartamento', 'casa', 'mobiliado'],
   },
@@ -353,8 +368,11 @@ export const brokerProfiles: BrokerProfile[] = [
     regionSlug: 'serra-gaucha',
     specialty: 'Apartamentos e investimento',
     image: '/marketplace/images/broker-fernanda.png',
-    respondsFast: true,
     activeListings: 23,
+    rating: 4.8,
+    reviewCount: 58,
+    featured: false,
+    verified: true,
     transaction: 'ambos',
     propertyTypes: ['apartamento', 'comercial'],
   },
@@ -366,8 +384,11 @@ export const brokerProfiles: BrokerProfile[] = [
     regionSlug: 'campos-de-cima-da-serra',
     specialty: 'Imóveis comerciais',
     image: '/marketplace/images/broker-diego.png',
-    respondsFast: false,
     activeListings: 15,
+    rating: 4.5,
+    reviewCount: 29,
+    featured: false,
+    verified: true,
     transaction: 'ambos',
     propertyTypes: ['comercial', 'terreno'],
   },

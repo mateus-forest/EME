@@ -9,8 +9,7 @@ import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { OrganicLines } from '@/components/marketplace/organic-lines'
-import { brokers } from '@/lib/marketplace/data'
-import { regionDetails, buyProperties } from '@/lib/marketplace/pages-data'
+import { brokerProfiles, regionDetails, buyProperties } from '@/lib/marketplace/pages-data'
 
 export function generateStaticParams() {
   return regionDetails.map((region) => ({ slug: region.slug }))
@@ -41,7 +40,7 @@ export default async function RegiaoPage({
 
   // Seleção demonstrativa de imóveis e profissionais para a região.
   const regionProperties = buyProperties.slice(0, 3)
-  const regionBrokers = brokers.slice(0, 3)
+  const regionBrokers = brokerProfiles.filter((broker) => broker.regionSlug === slug || broker.featured).slice(0, 3)
 
   return (
     <PageShell>

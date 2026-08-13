@@ -8,8 +8,7 @@ import { HelpCta } from '@/components/marketplace/pages/help-cta'
 import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
-import { brokers } from '@/lib/marketplace/data'
-import { popularAreas, regionLifestyles } from '@/lib/marketplace/pages-data'
+import { brokerProfiles, popularAreas, regionLifestyles } from '@/lib/marketplace/pages-data'
 
 export const metadata: Metadata = {
   title: 'Regiões | EME Imóveis',
@@ -86,7 +85,7 @@ export default function RegioesPage() {
           </div>
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {brokers.map((broker, i) => (
+          {brokerProfiles.filter((broker) => broker.featured).slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 80}>
               <BrokerCard broker={broker} />
             </Reveal>

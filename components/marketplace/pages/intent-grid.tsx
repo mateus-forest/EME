@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import type { Intent } from '@/lib/marketplace/pages-data'
 import { Reveal } from '@/components/marketplace/reveal'
+import { buildIntentSearchHref } from '@/lib/marketplace/search-filters'
 
 // Grade de intenções ("Encontre pelo que importa" / "para o seu momento").
 // Cartões fotográficos que levam a uma busca já orientada.
@@ -18,7 +19,7 @@ export function IntentGrid({
       {items.map((item, i) => (
         <Reveal key={item.slug} delay={i * 70} className={i === 0 ? 'col-span-2 md:col-span-1' : ''}>
           <Link
-            href={`/imoveis/busca?intencao=${item.slug}&finalidade=${purpose}`}
+            href={buildIntentSearchHref(item.slug, purpose)}
             className="group relative flex aspect-[4/5] items-end overflow-hidden rounded-[1.5rem] shadow-[var(--shadow-soft)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-float)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <Image

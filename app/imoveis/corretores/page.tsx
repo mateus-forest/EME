@@ -4,6 +4,7 @@ import { PageHero } from '@/components/marketplace/pages/page-hero'
 import { BrokersDirectory } from '@/components/marketplace/pages/brokers-directory'
 import { HelpCta } from '@/components/marketplace/pages/help-cta'
 import { Reveal } from '@/components/marketplace/reveal'
+import { FeaturedBrokers } from '@/components/marketplace/pages/featured-brokers'
 
 export const metadata: Metadata = {
   title: 'Corretores | EME Imóveis',
@@ -22,6 +23,9 @@ export default function CorretoresPage() {
 
       <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
         <Reveal>
+          <FeaturedBrokers />
+        </Reveal>
+        <Reveal className="mt-14 border-t border-border/70 pt-12 md:mt-16 md:pt-14">
           <BrokersDirectory />
         </Reveal>
       </section>

@@ -68,6 +68,11 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.marketplace-shell.marketplace-overlay {
+  min-height: 0;
+  background: transparent;
+}
+
 .marketplace-shell *,
 .marketplace-shell *::before,
 .marketplace-shell *::after {

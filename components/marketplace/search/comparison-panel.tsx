@@ -2,8 +2,10 @@
 
 import { useEffect } from 'react'
 import Image from 'next/image'
-import { Check, Minus, Sparkles, X } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Check, Minus, Sparkles, X } from 'lucide-react'
 import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
+import { comparisonInsights } from '@/lib/marketplace/comparison-analysis'
 import { cn } from '@/lib/utils'
 
 const rows: { label: string; get: (r: SearchResult) => string }[] = [
@@ -11,6 +13,7 @@ const rows: { label: string; get: (r: SearchResult) => string }[] = [
   { label: 'Área', get: (r) => `${r.area} m²` },
   { label: 'Quartos', get: (r) => String(r.bedrooms) },
   { label: 'Suítes', get: (r) => String(r.suites) },
+  { label: 'Banheiros', get: (r) => String(r.bathrooms) },
   { label: 'Vagas', get: (r) => String(r.parking) },
   { label: 'Localização', get: (r) => `${r.city} · ${r.state}` },
 ]
@@ -39,6 +42,8 @@ export function ComparisonPanel({
 
   const cheapest = Math.min(...results.map((r) => r.price))
   const largest = Math.max(...results.map((r) => r.area))
+  const insights = comparisonInsights(results, 4)
+  const completeHref = `/imoveis/comparar?imoveis=${results.map((result) => result.slug).join(',')}`
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
@@ -137,12 +142,21 @@ export function ComparisonPanel({
             </div>
           </div>
 
-          <div className="mt-6 flex items-start gap-2 rounded-2xl bg-eme-50 p-4 text-sm text-eme-700">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <p className="text-pretty">
-              As principais diferenças estão no valor e na área. O EME destaca o mais econômico e o mais
-              amplo para ajudar você a decidir com clareza.
-            </p>
+          <div className="mt-6 rounded-2xl bg-eme-50 p-4 text-sm text-eme-700">
+            <div className="flex items-start gap-2">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <ul className="space-y-1.5">
+                {insights.map((insight) => <li key={insight}>{insight}</li>)}
+              </ul>
+            </div>
+            <Link
+              href={completeHref}
+              onClick={onClose}
+              className="mt-4 inline-flex items-center gap-1.5 font-semibold text-primary transition-colors hover:text-eme-700"
+            >
+              Abrir análise completa
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
         </div>
       </div>

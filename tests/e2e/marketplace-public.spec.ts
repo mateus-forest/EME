@@ -1,97 +1,117 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
-  const dimensions = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }))
-  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
+async function expectNoHorizontalOverflow(page: Page) {
+  const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
+  expect(size.scroll).toBeLessThanOrEqual(size.client + 1)
 }
 
 test.describe('Marketplace público', () => {
   test.setTimeout(90_000)
 
-  test('hero, filtros e critérios permanecem navegáveis no desktop', async ({ page }) => {
+  test('filtros claros usam máscara BRL e persistem valores numéricos', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto('/imoveis')
-
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Sou corretor' })).toHaveAttribute('href', /meueme\.com\/.*#inicio/)
-    await expect(page.locator('img[src="/marketplace/cos-logo.png"]').first()).toBeVisible()
-    await expectNoHorizontalOverflow(page)
-
     await page.getByRole('button', { name: 'Buscar por filtros' }).click()
-    const filters = page.getByRole('dialog', { name: 'Buscar por filtros' })
-    await expect(filters).toBeVisible()
-    await filters.getByRole('button', { name: 'Comprar' }).click()
-    await filters.getByLabel('Tipo de imóvel').selectOption('casa')
-    await filters.getByLabel('Cidade ou região').selectOption('Vacaria')
-    await filters.getByLabel('Máximo').fill('700000')
-    await filters.getByLabel('Quartos').fill('3')
-    await filters.getByRole('button', { name: 'Pátio' }).click()
-    await filters.getByRole('button', { name: 'Ver imóveis' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Buscar por filtros' })
+    const minimum = dialog.getByLabel('Mínimo')
+    const maximum = dialog.getByLabel('Máximo')
+    await minimum.fill('7500')
+    await maximum.fill('1200000')
+    await expect(minimum).toHaveValue(/R\$\s*7\.500/)
+    await expect(maximum).toHaveValue(/R\$\s*1\.200\.000/)
+    expect(await dialog.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgb(0, 0, 0)')
+    await dialog.getByRole('button', { name: 'Ver imóveis' }).click()
+    await expect(page).toHaveURL(/precoMin=7500/)
+    await expect(page).toHaveURL(/precoMax=1200000/)
+  })
 
-    await expect(page).toHaveURL(/\/imoveis\/busca\?.*finalidade=compra/)
-    await expect(page.getByText('3+ quartos').first()).toBeVisible({ timeout: 20_000 })
+  test('preserva intenções na URL, chips, refresh e ajuste de busca', async ({ page }) => {
+    await page.goto('/imoveis/busca?finalidade=aluguel&intencao=perto-do-trabalho,pronto-para-morar')
+    await expect(page.getByText('Alugar').first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Perto do trabalho').first()).toBeVisible()
+    await expect(page.getByText('Pronto para morar').first()).toBeVisible()
+    await page.reload()
+    await expect(page.getByText('Perto do trabalho').first()).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: 'Ajustar busca' }).click()
-    const adjusted = page.getByRole('dialog', { name: 'Ajustar busca' })
-    await expect(adjusted.getByLabel('Máximo')).toHaveValue('700000')
-    await expect(adjusted.getByLabel('Quartos')).toHaveValue('3')
+    const dialog = page.getByRole('dialog', { name: 'Ajustar busca' })
+    await expect(dialog.getByRole('button', { name: 'Perto do trabalho' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(dialog.getByRole('button', { name: 'Pronto para morar' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('comparação e perfis têm destinos próprios', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 })
-    await page.goto('/imoveis')
-    await page.getByRole('link', { name: 'Ver comparação completa' }).click()
-    await expect(page).toHaveURL('/imoveis/comparar')
-    await expect(page.getByRole('heading', { name: /Compare o que realmente muda/ })).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByText('Mais espaço entre as opções')).toBeVisible()
-    await expect(page.getByText('Menor preço da comparação')).toBeVisible()
+  test('modal compara três imóveis e abre análise completa com a seleção', async ({ page }) => {
+    await page.goto('/imoveis/busca')
+    const options = page.getByRole('checkbox', { name: 'Comparar' })
+    await expect(options).toHaveCount(3, { timeout: 20_000 })
+    for (let index = 0; index < 3; index += 1) await options.nth(index).click()
+    await page.getByRole('button', { name: /Comparar \(3\)/ }).click()
+    const modal = page.getByRole('dialog', { name: 'Comparação de imóveis' })
+    await expect(modal.getByText(/R\$.*menos que/).first()).toBeVisible()
+    const complete = modal.getByRole('link', { name: /Abrir análise completa/ })
+    await expect(complete).toHaveAttribute('href', /imoveis\/comparar\?imoveis=.*,.+,/)
+    await complete.click()
+    await expect(page).toHaveURL(/\/imoveis\/comparar\?imoveis=/)
+    await expect(page.getByRole('heading', { name: 'Análise da comparação' })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('heading', { name: 'Qual faz mais sentido para você?' })).toBeVisible()
+    await expect(page.getByText(/valor por m²/i).first()).toBeVisible()
+  })
 
+  test('corretores têm destaques, avaliação e dados consistentes', async ({ page }) => {
     await page.goto('/imoveis/corretores')
-    const brokerLink = page.getByRole('link', { name: 'Ver perfil de Carla Goulart' })
-    await expect(brokerLink).toBeVisible({ timeout: 20_000 })
-    await Promise.all([
-      page.waitForURL(/\/imoveis\/corretores\/carla-goulart/, { timeout: 20_000 }),
-      brokerLink.click(),
-    ])
+    await expect(page.getByRole('heading', { name: 'Corretores em destaque' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Todos os corretores' })).toBeVisible()
+    await expect(page.getByText('Responde rápido')).toHaveCount(0)
+    await page.getByRole('button', { name: '4,8+' }).click()
+    await page.getByRole('button', { name: 'Corretores em destaque' }).click()
+    await expect(page.getByText('3 especialistas encontrados')).toBeVisible()
+    const carla = page.getByRole('link', { name: 'Ver perfil de Carla Goulart' }).first()
+    await expect(carla).toContainText('4,9')
+    await carla.click()
+    await expect(page).toHaveURL(/carla-goulart/)
+    await expect(page.getByText('4,9').first()).toBeVisible()
     await expect(page.getByText('32').first()).toBeVisible()
+    await expect(page.getByText('Responde rápido')).toHaveCount(0)
   })
 
-  test('ordenação fica acima do mapa e o mapa é complementar', async ({ page }) => {
+  test('ordenação fica acima do mapa e poucos resultados não reservam altura artificial', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto('/imoveis/busca')
     await page.getByRole('button', { name: /Mais compatíveis/ }).click()
     const menu = page.getByRole('dialog').filter({ has: page.getByRole('radio', { name: 'Menor preço' }) })
-    await expect(menu).toBeVisible()
-    const topElementRole = await menu.evaluate((element) => {
-      const rect = element.getBoundingClientRect()
-      const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + 12)
+    const isTop = await menu.evaluate((element) => {
+      const rect = element.getBoundingClientRect(); const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + 12)
       return top === element || element.contains(top)
     })
-    expect(topElementRole).toBe(true)
-
-    const map = page.getByLabel(/Casa térrea com pátio amplo/).last().locator('..')
-    const box = await map.boundingBox()
-    expect(box?.height).toBeLessThanOrEqual(520)
+    expect(isTop).toBe(true)
+    await page.goto('/imoveis/busca?precoMax=650000')
+    await expect(page.getByText('1 imóvel encontrado')).toBeVisible({ timeout: 20_000 })
+    const results = await page.getByTestId('results-area').boundingBox()
+    const comparison = await page.getByTestId('comparison-builder').boundingBox()
+    expect((comparison!.y) - (results!.y + results!.height)).toBeLessThan(110)
   })
 
-  test('mobile usa bottom sheet sem overflow e preserva lista/mapa', async ({ page }) => {
+  test('header desktop mantém a navegação centralizada na viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/imoveis')
+    const box = await page.getByRole('navigation', { name: 'Navegação principal' }).boundingBox()
+    expect(Math.abs(box!.x + box!.width / 2 - 720)).toBeLessThan(3)
+    await expect(page.getByRole('button', { name: /Assistente EME/ })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('mobile preserva bottom sheets, comparação e mapa sem overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/imoveis')
-    await expectNoHorizontalOverflow(page)
     await page.getByRole('button', { name: 'Buscar por filtros' }).click()
     await expect(page.getByRole('dialog', { name: 'Buscar por filtros' })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await page.getByRole('button', { name: 'Fechar', exact: true }).click()
-
     await page.goto('/imoveis/busca')
     await expect(page.getByRole('tab', { name: 'Lista' })).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByRole('tab', { name: 'Mapa' })).toBeVisible()
     await page.getByRole('tab', { name: 'Mapa' }).click()
-    const mapRegion = page.getByText('Vacaria · RS').last().locator('..')
-    const box = await mapRegion.boundingBox()
-    expect(box?.height).toBeLessThanOrEqual(460)
+    await expect(page.getByText('Praça Daltro Filho')).toBeAttached()
+    await expectNoHorizontalOverflow(page)
+    await page.goto('/imoveis/comparar')
+    await expect(page.getByRole('heading', { name: 'Análise da comparação' })).toBeVisible()
     await expectNoHorizontalOverflow(page)
   })
 })

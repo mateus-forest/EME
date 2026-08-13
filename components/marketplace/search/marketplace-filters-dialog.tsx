@@ -5,8 +5,10 @@ import { createPortal } from 'react-dom'
 import { Check, X } from 'lucide-react'
 import {
   emptyMarketplaceFilters,
+  formatBRLInput,
   type MarketplaceFilters,
 } from '@/lib/marketplace/search-filters'
+import { searchIntents } from '@/lib/marketplace/search-intents'
 import { cn } from '@/lib/utils'
 
 const propertyTypes = [
@@ -44,7 +46,7 @@ export function MarketplaceFiltersDialog({
   const [draft, setDraft] = useState<MarketplaceFilters>(filters)
 
   useEffect(() => {
-    if (open) setDraft({ ...filters, features: [...filters.features] })
+    if (open) setDraft({ ...filters, features: [...filters.features], intentions: [...filters.intentions] })
   }, [filters, open])
 
   useEffect(() => {
@@ -70,11 +72,20 @@ export function MarketplaceFiltersDialog({
     }))
   }
 
+  function toggleIntent(value: string) {
+    setDraft((current) => ({
+      ...current,
+      intentions: current.intentions.includes(value)
+        ? current.intentions.filter((item) => item !== value)
+        : [...current.intentions, value],
+    }))
+  }
+
   const fieldClass =
     'h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10'
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-6">
+    <div className="marketplace-shell marketplace-overlay fixed inset-0 z-[100] flex items-end justify-center bg-transparent p-0 sm:items-center sm:p-6">
       <button
         type="button"
         className="absolute inset-0 bg-foreground/30 backdrop-blur-[2px]"
@@ -169,7 +180,7 @@ export function MarketplaceFiltersDialog({
                 <label className="space-y-2 text-xs text-muted-foreground">
                   Mínimo
                   <input
-                    value={draft.priceMin || ''}
+                    value={formatBRLInput(draft.priceMin)}
                     onChange={(event) => setDraft((current) => ({ ...current, priceMin: numberValue(event.target.value) }))}
                     inputMode="numeric"
                     placeholder="R$ 0"
@@ -179,7 +190,7 @@ export function MarketplaceFiltersDialog({
                 <label className="space-y-2 text-xs text-muted-foreground">
                   Máximo
                   <input
-                    value={draft.priceMax || ''}
+                    value={formatBRLInput(draft.priceMax)}
                     onChange={(event) => setDraft((current) => ({ ...current, priceMax: numberValue(event.target.value) }))}
                     inputMode="numeric"
                     placeholder="R$ 750.000"
@@ -236,13 +247,38 @@ export function MarketplaceFiltersDialog({
                 })}
               </div>
             </fieldset>
+
+            <fieldset>
+              <legend className="mb-3 text-sm font-medium text-foreground">O que importa para você</legend>
+              <div className="flex flex-wrap gap-2">
+                {searchIntents.map((intent) => {
+                  const active = draft.intentions.includes(intent.slug)
+                  return (
+                    <button
+                      key={intent.slug}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleIntent(intent.slug)}
+                      className={cn(
+                        'rounded-full border px-4 py-2 text-sm transition-colors',
+                        active
+                          ? 'border-primary/35 bg-eme-50 font-medium text-eme-700'
+                          : 'border-border bg-card text-foreground hover:bg-secondary',
+                      )}
+                    >
+                      {intent.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
           </div>
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-border/70 bg-background px-5 py-4 sm:px-6">
           <button
             type="button"
-            onClick={() => setDraft({ ...emptyMarketplaceFilters })}
+            onClick={() => setDraft({ ...emptyMarketplaceFilters, features: [], intentions: [] })}
             className="rounded-full px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Limpar filtros

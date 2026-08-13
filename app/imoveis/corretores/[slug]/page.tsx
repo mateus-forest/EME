@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, BadgeCheck, Building2, MapPin, Star, Zap } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Building2, MapPin, Star } from 'lucide-react'
 import { brokerProfiles } from '@/lib/marketplace/pages-data'
 import { properties } from '@/lib/marketplace/data'
 import { PageShell } from '@/components/marketplace/pages/page-shell'
@@ -49,7 +49,7 @@ export default async function BrokerProfilePage({
 
   const stats = [
     { icon: Building2, label: 'Imóveis ativos', value: String(broker.activeListings) },
-    { icon: Star, label: 'Avaliação', value: '4,9' },
+    { icon: Star, label: `${broker.reviewCount} avaliações`, value: broker.rating.toFixed(1).replace('.', ',') },
     { icon: MapPin, label: 'Atua em', value: broker.region },
   ]
 
@@ -94,10 +94,9 @@ export default async function BrokerProfilePage({
                     <span className="rounded-full bg-eme-50 px-3 py-1 text-xs font-medium text-primary">
                       {transactionLabel[broker.transaction]}
                     </span>
-                    {broker.respondsFast && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground">
-                        <Zap className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                        Responde rápido
+                    {broker.featured && (
+                      <span className="rounded-full border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
+                        Corretor em destaque
                       </span>
                     )}
                   </div>

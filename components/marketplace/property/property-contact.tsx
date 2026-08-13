@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { BadgeCheck, CheckCircle2 } from 'lucide-react'
 import { WhatsappGlyph } from '@/components/marketplace/property/whatsapp-glyph'
 import { buildWhatsappMessage, registerLead, type LeadQualification } from '@/lib/marketplace/lead'
-import type { Broker } from '@/lib/marketplace/data'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import type { PropertyDetail } from '@/lib/marketplace/property-detail'
 import { cn } from '@/lib/utils'
 
@@ -21,7 +21,7 @@ export function PropertyContact({
   creci,
 }: {
   property: PropertyDetail
-  broker: Broker
+  broker: BrokerProfile
   creci: string
 }) {
   const [name, setName] = useState('')
@@ -78,7 +78,7 @@ export function PropertyContact({
                 <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" />
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">{creci}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{broker.role}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{broker.specialty}</p>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { lifestyles, type Lifestyle } from '@/lib/marketplace/data'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { cn } from '@/lib/utils'
+import { buildIntentSearchHref } from '@/lib/marketplace/search-filters'
 
 const icons: Record<Lifestyle['icon'], React.ElementType> = {
   space: LayoutGrid,
@@ -31,7 +32,7 @@ export function LifestyleSection() {
           return (
             <Reveal key={item.slug} delay={i * 80}>
               <Link
-                href={`/imoveis/busca?intencao=${item.slug}`}
+                href={buildIntentSearchHref(item.slug)}
                 className={cn(
                   'group relative block overflow-hidden rounded-[1.75rem] shadow-[var(--shadow-soft)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-float)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                   tall ? 'aspect-[3/4] lg:aspect-[3/4.4]' : 'aspect-[3/4] lg:aspect-[3/3.8]',

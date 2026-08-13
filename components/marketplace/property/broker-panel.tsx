@@ -4,13 +4,13 @@ import Image from 'next/image'
 import { BadgeCheck } from 'lucide-react'
 import { WhatsappGlyph } from '@/components/marketplace/property/whatsapp-glyph'
 import { useInterest } from '@/components/marketplace/property/interest-provider'
-import type { Broker } from '@/lib/marketplace/data'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 
 export function BrokerPanel({
   broker,
   creci,
 }: {
-  broker: Broker
+  broker: BrokerProfile
   creci: string
 }) {
   const { open } = useInterest()
@@ -38,13 +38,7 @@ export function BrokerPanel({
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{broker.role}</p>
-      {broker.respondsFast && (
-        <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-          Responde rápido
-        </p>
-      )}
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{broker.specialty}</p>
 
       <div className="mt-5 flex flex-col gap-2.5">
         <button

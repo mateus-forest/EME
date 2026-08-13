@@ -58,7 +58,7 @@ export function Header() {
           : 'border-b border-transparent bg-background/55 backdrop-blur-md',
       )}
     >
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 md:h-20 md:px-8">
+      <div className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 md:h-20 md:px-8">
         <Link
           href="/imoveis"
           aria-label="EME Imóveis — página inicial"
@@ -68,7 +68,7 @@ export function Header() {
         </Link>
 
         <nav
-          className="glass-strong hidden items-center gap-1 rounded-full p-1 shadow-[var(--shadow-soft)] md:flex"
+          className="glass-strong hidden items-center gap-1 rounded-full p-1 shadow-[var(--shadow-soft)] md:flex lg:absolute lg:left-1/2 lg:-translate-x-1/2"
           aria-label="Navegação principal"
         >
           {mainNav.map((item) => {
@@ -107,12 +107,13 @@ export function Header() {
           })}
         </nav>
 
+        <div className="ml-auto hidden items-center gap-1.5 md:flex lg:gap-2">
         <button
           type="button"
           onClick={openAssistant}
           aria-expanded={assistantOpen}
           aria-haspopup="dialog"
-          className="group hidden items-center gap-2 rounded-full border border-border/70 bg-background/85 py-1.5 pl-2 pr-3.5 text-sm font-medium text-foreground shadow-[var(--shadow-soft)] outline-none transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus-visible:ring-4 focus-visible:ring-primary/15 md:flex"
+          className="group flex items-center gap-1.5 rounded-full border border-border/70 bg-background/85 py-1 pl-1.5 pr-2.5 text-xs font-medium text-foreground shadow-[var(--shadow-soft)] outline-none transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus-visible:ring-4 focus-visible:ring-primary/15"
         >
           <AssistantMark size="sm" className="h-7 w-7" />
           <span>Assistente EME</span>
@@ -123,7 +124,7 @@ export function Header() {
           href={EME_OFFICIAL_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="group hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-foreground/75 outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex"
+          className="group hidden items-center gap-1.5 rounded-full px-2.5 py-2 text-sm font-medium text-foreground/75 outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex"
         >
           Sou corretor
           <ArrowUpRight
@@ -131,6 +132,7 @@ export function Header() {
             aria-hidden="true"
           />
         </a>
+        </div>
 
         <button
           type="button"

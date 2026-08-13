@@ -4,6 +4,7 @@ import {
   type CriteriaKey,
   type SearchResult,
 } from '@/lib/marketplace/search-data'
+import { getIntentLabel, intentionsFromQuery, intentReasons, intentScore, normalizeIntentSlugs } from '@/lib/marketplace/search-intents'
 
 export type MarketplaceFilters = {
   purpose?: 'compra' | 'aluguel'
@@ -16,9 +17,10 @@ export type MarketplaceFilters = {
   parking?: number
   areaMin?: number
   features: string[]
+  intentions: string[]
 }
 
-export const emptyMarketplaceFilters: MarketplaceFilters = { features: [] }
+export const emptyMarketplaceFilters: MarketplaceFilters = { features: [], intentions: [] }
 
 export const defaultMarketplaceFilters: MarketplaceFilters = {
   purpose: 'compra',
@@ -26,6 +28,7 @@ export const defaultMarketplaceFilters: MarketplaceFilters = {
   location: 'Vacaria',
   priceMax: 750000,
   features: ['patio'],
+  intentions: [],
 }
 
 type SearchParamValue = string | string[] | undefined
@@ -47,12 +50,17 @@ export function filtersFromSearchParams(source: SearchParamSource): MarketplaceF
   const rawPurpose = readParam(source, 'finalidade')
   const rawType = readParam(source, 'tipo')
   const rawFeatures = readParam(source, 'caracteristicas')
+  const rawIntentions = readParam(source, 'intencao') || readParam(source, 'intencoes')
+  const rawValue = readParam(source, 'valor')
+  const rawQuery = readParam(source, 'q')
+  const valueRange = rawValue?.split('-').map(positiveNumber) || []
   const purpose = rawPurpose === 'compra' || rawPurpose === 'aluguel' ? rawPurpose : undefined
   const propertyType = ['casa', 'apartamento', 'terreno', 'sobrado'].includes(rawType || '')
     ? (rawType as MarketplaceFilters['propertyType'])
     : undefined
 
-  const rawLocation = readParam(source, 'regiao') || readParam(source, 'cidade') || readParam(source, 'local')
+  const rawRegion = readParam(source, 'regiao')
+  const rawLocation = rawRegion === 'centro' ? undefined : rawRegion || readParam(source, 'cidade') || readParam(source, 'local')
   const knownLocations: Record<string, string> = {
     vacaria: 'Vacaria',
     'serra-gaucha': 'Serra Gaúcha',
@@ -63,13 +71,21 @@ export function filtersFromSearchParams(source: SearchParamSource): MarketplaceF
     purpose,
     propertyType,
     location: rawLocation ? knownLocations[rawLocation] || rawLocation : undefined,
-    priceMin: positiveNumber(readParam(source, 'precoMin')),
-    priceMax: positiveNumber(readParam(source, 'precoMax') || readParam(source, 'valor')),
+    priceMin: positiveNumber(readParam(source, 'precoMin')) || (valueRange.length > 1 ? valueRange[0] : undefined),
+    priceMax: positiveNumber(readParam(source, 'precoMax')) || valueRange[1] || (valueRange.length === 1 ? valueRange[0] : undefined),
     bedrooms: positiveNumber(readParam(source, 'quartos')),
     bathrooms: positiveNumber(readParam(source, 'banheiros')),
     parking: positiveNumber(readParam(source, 'vagas')),
     areaMin: positiveNumber(readParam(source, 'area')),
-    features: rawFeatures ? rawFeatures.split(',').filter(Boolean) : [],
+    features: [
+      ...(rawFeatures ? rawFeatures.split(',').filter(Boolean) : []),
+      ...(rawType === 'mobiliado' ? ['mobiliado'] : []),
+    ],
+    intentions: normalizeIntentSlugs([
+      ...(rawIntentions ? rawIntentions.split(',') : []),
+      ...(rawRegion === 'centro' ? ['perto-do-centro'] : []),
+      ...intentionsFromQuery(rawQuery),
+    ]),
   }
 }
 
@@ -84,8 +100,18 @@ export function hasActiveFilters(filters: MarketplaceFilters) {
       filters.bathrooms ||
       filters.parking ||
       filters.areaMin ||
-      filters.features.length,
+      filters.features.length ||
+      filters.intentions.length,
   )
+}
+
+export function formatBRLInput(value?: number) {
+  if (!value) return ''
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 export function filtersToSearchParams(filters: MarketplaceFilters) {
@@ -100,7 +126,37 @@ export function filtersToSearchParams(filters: MarketplaceFilters) {
   if (filters.parking) params.set('vagas', String(filters.parking))
   if (filters.areaMin) params.set('area', String(filters.areaMin))
   if (filters.features.length) params.set('caracteristicas', filters.features.join(','))
+  if (filters.intentions.length) params.set('intencao', filters.intentions.join(','))
   return params
+}
+
+export function buildMarketplaceSearchHref(filters: MarketplaceFilters, query?: string) {
+  const params = filtersToSearchParams(filters)
+  if (query?.trim()) params.set('q', query.trim())
+  return `/imoveis/busca${params.size ? `?${params.toString()}` : ''}`
+}
+
+export function buildIntentSearchHref(intent: string, purpose?: MarketplaceFilters['purpose']) {
+  return buildMarketplaceSearchHref({ ...emptyMarketplaceFilters, purpose, intentions: [intent] })
+}
+
+export function buildQuickSearchHref(
+  purpose: MarketplaceFilters['purpose'],
+  param: string,
+  value: string,
+) {
+  const filters: MarketplaceFilters = { ...emptyMarketplaceFilters, purpose, features: [], intentions: [] }
+  if (param === 'cidade') filters.location = value
+  if (param === 'regiao' && value === 'centro') filters.intentions = ['perto-do-centro']
+  if (param === 'tipo' && value === 'mobiliado') filters.features = ['mobiliado']
+  else if (param === 'tipo') filters.propertyType = value as MarketplaceFilters['propertyType']
+  if (param === 'quartos') filters.bedrooms = positiveNumber(value)
+  if (param === 'valor') {
+    const [minimum, maximum] = value.split('-').map(positiveNumber)
+    filters.priceMin = minimum
+    filters.priceMax = maximum || minimum
+  }
+  return buildMarketplaceSearchHref(filters)
 }
 
 export function filtersToCriteria(filters: MarketplaceFilters): Criterion[] {
@@ -133,6 +189,9 @@ export function filtersToCriteria(filters: MarketplaceFilters): Criterion[] {
   if (filters.features.includes('patio')) criteria.push({ key: 'patio', label: 'Pátio', icon: 'tree' })
   if (filters.features.includes('mobiliado')) criteria.push({ key: 'mobiliado', label: 'Mobiliado', icon: 'home' })
   if (filters.features.includes('novo')) criteria.push({ key: 'novo', label: 'Imóvel novo', icon: 'home' })
+  filters.intentions.forEach((intent) => {
+    criteria.push({ key: `intencao:${intent}`, label: getIntentLabel(intent), icon: 'home' })
+  })
   return criteria
 }
 
@@ -150,12 +209,13 @@ export function removeFilterCriterion(filters: MarketplaceFilters, key: Criteria
   if (key === 'patio') next.features = next.features.filter((item) => item !== 'patio')
   if (key === 'mobiliado') next.features = next.features.filter((item) => item !== 'mobiliado')
   if (key === 'novo') next.features = next.features.filter((item) => item !== 'novo')
+  if (key.startsWith('intencao:')) next.intentions = next.intentions.filter((item) => item !== key.slice(10))
   return next
 }
 
 export function filterSearchResults(results: SearchResult[], filters: MarketplaceFilters) {
   const location = filters.location?.toLocaleLowerCase('pt-BR')
-  return results.filter((result) => {
+  const filtered = results.filter((result) => {
     if (filters.propertyType && !result.title.toLocaleLowerCase('pt-BR').includes(filters.propertyType)) return false
     if (location && !`${result.city} ${result.state}`.toLocaleLowerCase('pt-BR').includes(location)) return false
     if (filters.priceMin && result.price < filters.priceMin) return false
@@ -169,4 +229,17 @@ export function filterSearchResults(results: SearchResult[], filters: Marketplac
     if (filters.features.includes('novo') && !result.isNew) return false
     return true
   })
+  if (!filters.intentions.length) return filtered
+  return filtered
+    .map((result) => {
+      const score = intentScore(result, filters.intentions)
+      const reasons = intentReasons(result, filters.intentions)
+      return {
+        ...result,
+        compatibility: score >= 6 ? 'muito' as const : score >= 3 ? 'boa' as const : 'considerar' as const,
+        reasons: reasons.length ? [...reasons, ...result.reasons].slice(0, 3) : result.reasons,
+        intentCompatibilityScore: score,
+      }
+    })
+    .sort((a, b) => b.intentCompatibilityScore - a.intentCompatibilityScore)
 }

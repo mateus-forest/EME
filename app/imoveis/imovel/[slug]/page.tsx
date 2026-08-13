@@ -17,7 +17,7 @@ import { PropertyContact } from '@/components/marketplace/property/property-cont
 import { MobileInterestBar } from '@/components/marketplace/property/mobile-interest-bar'
 import { propertyDetail } from '@/lib/marketplace/property-detail'
 import { searchProperties, formatPrice } from '@/lib/marketplace/search-data'
-import { brokers } from '@/lib/marketplace/data'
+import { brokerProfiles } from '@/lib/marketplace/pages-data'
 
 export function generateStaticParams() {
   return searchProperties.map((p) => ({ slug: p.slug }))
@@ -92,7 +92,7 @@ export default async function ImovelPage({
   }
 
   const property = propertyDetail
-  const broker = brokers.find((b) => b.slug === property.brokerSlug) ?? brokers[0]
+  const broker = brokerProfiles.find((b) => b.slug === property.brokerSlug) ?? brokerProfiles[0]
 
   return (
     <div className="flex min-h-svh flex-col bg-background">

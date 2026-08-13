@@ -21,7 +21,7 @@ import {
   removeFilterCriterion,
   type MarketplaceFilters,
 } from '@/lib/marketplace/search-filters'
-import { brokers } from '@/lib/marketplace/data'
+import { brokerProfiles } from '@/lib/marketplace/pages-data'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { BrokerCard } from '@/components/marketplace/broker-card'
@@ -43,6 +43,7 @@ import {
 import type { ResultsView } from '@/components/marketplace/search/view-toggle'
 import { cn } from '@/lib/utils'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
+import { intentionsFromQuery } from '@/lib/marketplace/search-intents'
 
 type Phase = 'loading' | 'ready' | 'error'
 const MAX_COMPARE = 3
@@ -86,7 +87,12 @@ export function SearchResults({
   function runSearch(nextQuery?: string) {
     const resolvedQuery = nextQuery?.trim() || query
     if (nextQuery) setQuery(resolvedQuery)
-    const params = filtersToSearchParams(filters)
+    const inferredIntentions = intentionsFromQuery(resolvedQuery)
+    const nextFilters = inferredIntentions.length
+      ? { ...filters, intentions: [...new Set([...filters.intentions, ...inferredIntentions])] }
+      : filters
+    if (nextFilters !== filters) setFilters(nextFilters)
+    const params = filtersToSearchParams(nextFilters)
     if (resolvedQuery) params.set('q', resolvedQuery)
     window.history.replaceState(null, '', `/imoveis/busca?${params.toString()}`)
     setPhase('loading')
@@ -137,7 +143,11 @@ export function SearchResults({
   }
 
   function applyFilters(nextFilters: MarketplaceFilters, closeDialog = true) {
-    setFilters({ ...nextFilters, features: [...nextFilters.features] })
+    setFilters({
+      ...nextFilters,
+      features: [...nextFilters.features],
+      intentions: [...nextFilters.intentions],
+    })
     setForceEmpty(false)
     if (closeDialog) setFiltersOpen(false)
     const params = filtersToSearchParams(nextFilters)
@@ -194,7 +204,7 @@ export function SearchResults({
       </section>
 
       {/* Área principal: lista + mapa */}
-      <section className="mx-auto mt-6 w-full max-w-6xl px-5 md:px-8">
+      <section data-testid="results-area" className="mx-auto mt-6 w-full max-w-6xl px-5 md:px-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,34%)]">
           {/* Coluna de resultados */}
           <div className={cn('min-w-0', showMap && 'hidden lg:block')}>
@@ -233,7 +243,10 @@ export function SearchResults({
           {/* Mapa */}
           <div className={cn('relative z-0', showList && 'hidden lg:block')}>
             <div className="lg:sticky lg:top-24">
-              <div className="h-[52vh] min-h-[320px] max-h-[460px] lg:h-[min(58vh,520px)] lg:max-h-[520px]">
+              <div className={cn(
+                'h-[52vh] min-h-[320px] max-h-[460px]',
+                filtered.length <= 2 ? 'lg:h-[360px] lg:min-h-0' : 'lg:h-[min(58vh,520px)] lg:max-h-[520px]',
+              )}>
                 {phase === 'loading' ? (
                   <div className="grid h-full w-full place-items-center rounded-[1.75rem] border border-border/70 bg-card">
                     <EmeLoader label="Carregando mapa" />
@@ -253,7 +266,7 @@ export function SearchResults({
       </section>
 
       {/* Comparação — construtor de seleção */}
-      <section className="mx-auto mt-16 w-full max-w-6xl px-5 md:mt-20 md:px-8">
+      <section data-testid="comparison-builder" className="mx-auto mt-16 w-full max-w-6xl px-5 md:mt-20 md:px-8">
         <Reveal>
           <SectionHeading
             title="Compare suas melhores opções"
@@ -353,7 +366,7 @@ export function SearchResults({
           />
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {brokers.map((broker, i) => (
+          {brokerProfiles.filter((broker) => broker.featured).slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 90} className="flex flex-col gap-2">
               {i === 0 && (
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-eme-50 px-3 py-1 text-xs font-medium text-eme-700">

@@ -22,7 +22,7 @@ import {
   type ReactNode,
 } from 'react'
 import { searchResults, formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
-import { brokers } from '@/lib/marketplace/data'
+import { brokerProfiles } from '@/lib/marketplace/pages-data'
 import { AssistantMark } from '@/components/marketplace/assistant/assistant-mark'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
 import { cn } from '@/lib/utils'
@@ -212,7 +212,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
     window.setTimeout(() => {
       append(
         'assistant',
-        `Certo. A ${brokers[0].name} é a responsável por este imóvel. Confirme abaixo e ela receberá o contexto desta conversa em uma futura integração.`,
+        `Certo. A ${brokerProfiles[0].name} é a responsável por este imóvel. Confirme abaixo e ela receberá o contexto desta conversa em uma futura integração.`,
       )
       setThinking(false)
     }, 650)
@@ -281,18 +281,18 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             <div className="ml-9 rounded-2xl border border-primary/20 bg-eme-50 p-4">
               <div className="flex items-center gap-3">
                 <Image
-                  src={brokers[0].image}
-                  alt={brokers[0].name}
+                  src={brokerProfiles[0].image}
+                  alt={brokerProfiles[0].name}
                   width={48}
                   height={48}
                   className="h-12 w-12 rounded-full object-cover"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    {brokers[0].name}
+                    {brokerProfiles[0].name}
                     <Check className="h-3.5 w-3.5 text-primary" aria-label="Verificada" />
                   </p>
-                  <p className="text-xs text-muted-foreground">{brokers[0].role}</p>
+                  <p className="text-xs text-muted-foreground">{brokerProfiles[0].specialty}</p>
                 </div>
               </div>
               <button
