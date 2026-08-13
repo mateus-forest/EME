@@ -172,9 +172,9 @@ export function AuthPanel({
               type="button"
               aria-label="Fechar"
               onClick={onClose}
-              className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full text-foreground/40 transition-colors hover:bg-foreground/5 hover:text-foreground/70"
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-foreground/10 bg-white/80 text-foreground/70 shadow-sm transition-colors hover:border-foreground/20 hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/40"
             >
-              <X className="h-[18px] w-[18px]" strokeWidth={1.8} />
+              <X className="h-[18px] w-[18px]" strokeWidth={2} />
             </button>
 
             <AnimatePresence mode="wait" initial={false}>

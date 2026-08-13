@@ -161,8 +161,10 @@ export function OrbitStage({
             authScale = 0.95
           } else if (selectedId != null) {
             effectiveOpacity = isSelected ? 0 : opacity * 0.3
+            authScale = isSelected ? 0.92 : 0.97
           } else if (dimmedByHover) {
             effectiveOpacity = opacity * 0.87
+            authScale = 0.985
           }
 
           return (
@@ -175,7 +177,7 @@ export function OrbitStage({
                 filter: effectiveBlur ? `blur(${effectiveBlur}px)` : undefined,
                 transform: `translate(-50%,-50%) translate3d(${x}px, ${y}px, ${z}px) rotateY(${rotateY}deg) scale(${scale})`,
                 transformStyle: "preserve-3d",
-                transition: "opacity 0.5s ease, filter 0.5s ease",
+                transition: "opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
                 pointerEvents: frozen ? "none" : undefined,
               }}
             >
@@ -208,7 +210,7 @@ export function OrbitStage({
                     <button
                       type="button"
                       aria-label={`Abrir modulo ${module.name}`}
-                      className="eme-card group block cursor-none rounded-[30px] text-left transition-[transform,box-shadow] duration-500 ease-out hover:shadow-[0_44px_74px_-24px_rgba(28,52,40,0.5)]"
+                      className="eme-card group block cursor-none rounded-[30px] text-left transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_44px_74px_-24px_rgba(28,52,40,0.5)]"
                       style={{
                         transform:
                           "translate3d(0, calc(var(--hv,0) * -6px), 0) rotateX(calc(var(--py,0) * var(--hv,0) * -5deg)) rotateY(calc(var(--px,0) * var(--hv,0) * 6deg))",

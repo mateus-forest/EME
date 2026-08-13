@@ -29,7 +29,7 @@ export function LandingHeader({
             type="button"
             onClick={onEntrar}
             tabIndex={authOpen ? -1 : undefined}
-            className="rounded-full border border-foreground/10 bg-white/60 px-4 py-1.5 text-[13px] font-medium tracking-tight text-foreground/80 backdrop-blur-sm transition-colors hover:bg-white/90 hover:text-foreground sm:px-5 sm:py-2 sm:text-[13.5px]"
+            className="rounded-full border border-eme/25 bg-white/60 px-4 py-1.5 text-[13px] font-medium tracking-tight text-eme-dark backdrop-blur-sm transition-colors hover:bg-eme/10 sm:px-5 sm:py-2 sm:text-[13.5px]"
           >
             Entrar
           </button>

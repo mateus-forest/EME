@@ -242,7 +242,7 @@ function MobileHeader({
             type="button"
             onClick={onEntrar}
             tabIndex={authOpen ? -1 : 0}
-            className="rounded-full border border-foreground/10 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium tracking-tight text-foreground/85 backdrop-blur-sm transition-opacity duration-500"
+            className="rounded-full border border-eme/25 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium tracking-tight text-eme-dark backdrop-blur-sm transition-[opacity,background-color,color] duration-500 hover:bg-eme/10"
             style={{ opacity: authOpen ? 0 : 1, pointerEvents: authOpen ? "none" : undefined }}
             aria-hidden={authOpen}
           >
@@ -252,7 +252,7 @@ function MobileHeader({
             type="button"
             onClick={onComecar}
             tabIndex={authOpen ? -1 : 0}
-            className="rounded-full bg-[#111111] px-3.5 py-1.5 text-[12px] font-medium tracking-tight text-white transition-opacity duration-500"
+            className="eme-gradient rounded-full px-3.5 py-1.5 text-[12px] font-medium tracking-tight text-primary-foreground shadow-[0_10px_20px_-10px_rgba(28,120,60,0.6)] transition-[opacity,transform,filter] duration-500 hover:-translate-y-0.5"
             style={{ opacity: authOpen ? 0 : 1, pointerEvents: authOpen ? "none" : undefined }}
             aria-hidden={authOpen}
           >

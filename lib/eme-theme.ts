@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react"
 
 export const emeLandingTheme = {
-  "--eme": "oklch(0.62 0.16 148)",
-  "--eme-dark": "oklch(0.5 0.15 150)",
-  "--eme-soft": "oklch(0.95 0.03 150)",
+  "--eme": "oklch(0.61 0.19 148)",
+  "--eme-dark": "oklch(0.48 0.18 150)",
+  "--eme-soft": "oklch(0.95 0.035 150)",
   "--graphite": "oklch(0.45 0.01 260)",
   "--background": "oklch(0.98 0.004 150)",
   "--foreground": "oklch(0.2 0.01 260)",
@@ -11,7 +11,7 @@ export const emeLandingTheme = {
   "--card-foreground": "oklch(0.145 0 0)",
   "--popover": "oklch(1 0 0)",
   "--popover-foreground": "oklch(0.145 0 0)",
-  "--primary": "oklch(0.62 0.16 148)",
+  "--primary": "oklch(0.61 0.19 148)",
   "--primary-foreground": "oklch(0.99 0.01 150)",
   "--secondary": "oklch(0.97 0 0)",
   "--secondary-foreground": "oklch(0.205 0 0)",

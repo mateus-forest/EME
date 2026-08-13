@@ -22,6 +22,13 @@ export function CoastalCityBackground() {
       </div>
 
       <div className="absolute inset-0 bg-white/8" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(120% 120% at 50% 30%, transparent 52%, rgba(8,16,12,0.16) 100%)",
+        }}
+      />
     </div>
   )
 }
