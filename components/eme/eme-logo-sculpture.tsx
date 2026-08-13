@@ -3,7 +3,12 @@
 // size there made the logo oversized for ~640-767px phones/small tablets.
 const LOGO_SIZE = "h-auto w-[210px] max-w-none md:w-[456px] lg:w-[552px]"
 
-export function EmeLogoSculpture() {
+export function EmeLogoSculpture({ widthPx }: { widthPx?: number }) {
+  // When the stage supplies a width, the logo is sized from the background
+  // plate's own scale so it always sits on the podium exactly as in the render.
+  const sizeClass = widthPx ? "h-auto max-w-none" : LOGO_SIZE
+  const sizeStyle = widthPx ? { width: `${widthPx}px` } : undefined
+
   return (
     <div
       className="relative flex flex-col items-center justify-center"
@@ -14,8 +19,9 @@ export function EmeLogoSculpture() {
         alt=""
         aria-hidden
         draggable={false}
-        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${LOGO_SIZE}`}
+        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${sizeClass}`}
         style={{
+          ...sizeStyle,
           transformOrigin: "50% 96%",
           transform:
             "translate(9%, 6%) scaleY(0.34) skewX(-36deg) rotate(1deg)",
@@ -32,14 +38,15 @@ export function EmeLogoSculpture() {
         src="/eme-logo-3d.svg"
         alt="EME"
         draggable={false}
-        className={`relative ${LOGO_SIZE}`}
-        style={{ filter: "saturate(0.92)" }}
+        className={`relative ${sizeClass}`}
+        style={{ ...sizeStyle, filter: "saturate(0.92)" }}
       />
 
       <div
         aria-hidden
-        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${LOGO_SIZE}`}
+        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${sizeClass}`}
         style={{
+          ...sizeStyle,
           maskImage: "url(/eme-logo-3d.svg)",
           WebkitMaskImage: "url(/eme-logo-3d.svg)",
           maskSize: "100% 100%",
@@ -54,8 +61,9 @@ export function EmeLogoSculpture() {
       />
       <div
         aria-hidden
-        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${LOGO_SIZE}`}
+        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${sizeClass}`}
         style={{
+          ...sizeStyle,
           maskImage: "url(/eme-logo-3d.svg)",
           WebkitMaskImage: "url(/eme-logo-3d.svg)",
           maskSize: "100% 100%",
@@ -70,8 +78,9 @@ export function EmeLogoSculpture() {
       />
       <div
         aria-hidden
-        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${LOGO_SIZE}`}
+        className={`pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 ${sizeClass}`}
         style={{
+          ...sizeStyle,
           maskImage: "url(/eme-logo-3d.svg)",
           WebkitMaskImage: "url(/eme-logo-3d.svg)",
           maskSize: "100% 100%",

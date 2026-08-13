@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, useMotionValue, useMotionValueEvent, useSpring } from "motion/react"
+import { ArrowDown } from "lucide-react"
 
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
@@ -123,7 +124,7 @@ export function EmeLandingScene({
       />
 
       <div
-        className="absolute inset-0 flex items-center justify-center -translate-y-[72px] pt-4 transition-opacity duration-700 ease-out sm:pt-2"
+        className="absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-out max-md:-translate-y-[72px] max-md:pt-4"
         style={{ opacity: mounted ? 1 : 0 }}
       >
         {mounted && (
@@ -180,10 +181,15 @@ export function EmeLandingScene({
         />
       </div>
 
-      <div className="pointer-events-none absolute bottom-8 left-6 z-40 hidden sm:block sm:left-12">
-        <div className="flex h-9 w-[22px] justify-center rounded-full border border-graphite/30 pt-1.5">
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-graphite/50" />
-        </div>
+      <div className="absolute bottom-8 left-6 z-40 hidden sm:block sm:left-12">
+        <button
+          type="button"
+          aria-label="Ver mais abaixo"
+          onClick={() => window.scrollBy({ top: window.innerHeight, behavior: "smooth" })}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2f3a35] text-white shadow-[0_14px_28px_-12px_rgba(15,32,24,0.6)] transition-transform duration-300 ease-out hover:scale-105"
+        >
+          <ArrowDown className="h-[18px] w-[18px] animate-bounce" strokeWidth={2} aria-hidden />
+        </button>
       </div>
     </main>
   )

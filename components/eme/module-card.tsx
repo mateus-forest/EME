@@ -27,7 +27,7 @@ export function ModuleCard({
       />
 
       <div
-        className={`absolute inset-[5px] overflow-hidden bg-gradient-to-b from-white via-white to-[#f3f7f4] backdrop-blur-md transition-[filter] duration-500 ease-out group-hover:brightness-[1.04] ${compact ? "rounded-[23px]" : "rounded-[25px]"}`}
+        className={`absolute inset-[5px] overflow-hidden bg-gradient-to-b from-white/78 via-white/68 to-[#eef4f0]/72 backdrop-blur-xl transition-[filter] duration-500 ease-out group-hover:brightness-[1.04] ${compact ? "rounded-[23px]" : "rounded-[25px]"}`}
       />
       <div
         aria-hidden

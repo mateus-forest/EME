@@ -6,10 +6,14 @@ export function CoastalCityBackground() {
       <div
         className="absolute inset-0"
         style={{
-          transform: "translate3d(calc(var(--px,0) * 3px), calc(var(--py,0) * 2px), 0) scale(1.035)",
+          transform: "translate3d(calc(var(--px,0) * 3px), calc(var(--py,0) * 2px), 0) scale(1.02)",
           transition: "transform 0.5s ease-out",
         }}
       >
+        {/* The plate carries the podium, floor rings and foliage of the reference
+            composition. Its podium sits at 51.2% of the render's width, so the
+            horizontal object-position keeps the podium centred under the logo at
+            every aspect ratio instead of drifting with the crop. */}
         <Image
           src="/images/eme-landing-hero-2026-07-28.png"
           alt=""
@@ -17,14 +21,12 @@ export function CoastalCityBackground() {
           priority
           unoptimized
           sizes="100vw"
-          className="object-cover object-[58%_50%] saturate-[0.86] contrast-[1.03] sm:object-[60%_50%] 2xl:object-center"
+          className="object-cover object-[51.2%_50%]"
         />
       </div>
 
-      <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(255,249,240,0.44)_0%,rgba(255,255,255,0.08)_42%,rgba(194,222,235,0.16)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_20%_28%,rgba(255,249,231,0.62),transparent_72%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(238,247,251,0.15)_0%,transparent_48%,rgba(16,48,31,0.13)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(115%_110%_at_50%_34%,transparent_54%,rgba(7,27,18,0.2)_100%)]" />
+      {/* Only the faintest depth cue: the plate's own grading is the reference. */}
+      <div className="absolute inset-0 bg-[radial-gradient(120%_115%_at_50%_36%,transparent_62%,rgba(10,34,22,0.1)_100%)]" />
     </div>
   )
 }

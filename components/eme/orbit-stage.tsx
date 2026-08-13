@@ -7,11 +7,41 @@ import { EmeLogoSculpture } from "@/components/eme/eme-logo-sculpture"
 import { ModuleCard } from "@/components/eme/module-card"
 import { emeModules } from "@/lib/eme-modules"
 
+// The background plate is a 1659x948 render whose podium, floor rings and
+// foliage are already baked in. Every stage measurement below is expressed in
+// that render's own pixels and then multiplied by the plate's `object-cover`
+// scale, so the logo and the ring of cards land on the podium exactly where
+// they sit in the reference composition, at any viewport size.
+const PLATE_W = 1659
+const PLATE_H = 948
+/** Logo centre inside the plate. */
+const ANCHOR_X = 850
+const ANCHOR_Y = 488
+/** Logo width in plate pixels — it has to sit on the podium, so it scales with the plate. */
+const LOGO_W = 614
+/**
+ * The ring, in contrast, is framed against the viewport in the reference, so its
+ * radius and arch are kept as fractions of the window: the outer cards keep the
+ * same margins the render has instead of sliding off a cropped edge.
+ */
+const ORBIT_X_FRACTION = 576 / PLATE_W
+const ORBIT_Z_FRACTION = 150 / PLATE_W
+const ARCH_FRACTION = 255 / PLATE_H
+/** The ring rides slightly above the logo anchor, as it does in the render. */
+const RING_LIFT_FRACTION = -0.038
+/** Card width in the reference vs. the ModuleCard's intrinsic width. */
+const CARD_H_FRACTION = 132 / PLATE_H
+const CARD_INTRINSIC_W = 184
+
 type StageConfig = {
   radiusX: number
   radiusZ: number
   archLift: number
   baseScale: number
+  ringLift: number
+  logoWidth?: number
+  offsetX: number
+  offsetY: number
   onlyPriority: boolean
   isMobile: boolean
 }
@@ -22,6 +52,9 @@ function useStageConfig(): StageConfig {
     radiusZ: 150,
     archLift: 250,
     baseScale: 1,
+    ringLift: 0,
+    offsetX: 0,
+    offsetY: 0,
     onlyPriority: false,
     isMobile: false,
   })
@@ -29,7 +62,29 @@ function useStageConfig(): StageConfig {
   useEffect(() => {
     const compute = () => {
       const w = window.innerWidth
-      if (w < 768) {
+      const h = window.innerHeight
+
+      if (w >= 768) {
+        // `object-cover` scale of the background plate.
+        const s = Math.max(w / PLATE_W, PLATE_H === 0 ? 0 : h / PLATE_H)
+        setConfig({
+          radiusX: ORBIT_X_FRACTION * w,
+          radiusZ: ORBIT_Z_FRACTION * w,
+          archLift: ARCH_FRACTION * h,
+          // Cards keep the reference proportion, with a floor so the copy stays
+          // legible inside small desktop windows.
+          baseScale: clamp((CARD_H_FRACTION * h) / CARD_INTRINSIC_W, 0.6, 1.05),
+          ringLift: RING_LIFT_FRACTION * h,
+          logoWidth: LOGO_W * s,
+          offsetX: (ANCHOR_X / PLATE_W - 0.5) * w,
+          offsetY: ANCHOR_Y * s - (PLATE_H * s - h) / 2 - h / 2,
+          onlyPriority: false,
+          isMobile: false,
+        })
+        return
+      }
+
+      {
         // Mobile: the SAME elliptical orbit as desktop, scaled to the phone. The
         // horizontal radius is wide enough that only the front card and its two
         // neighbours read at once (the rest sweep off the sides / tuck behind the
@@ -37,13 +92,17 @@ function useStageConfig(): StageConfig {
         // desktop's "ring seen in perspective" look. Threshold matches the
         // device switcher in eme-experience.tsx (max-width: 767px), since this
         // branch is what EmeMobileExperience actually renders through now.
-        setConfig({ radiusX: 222, radiusZ: 150, archLift: 184, baseScale: 0.66, onlyPriority: false, isMobile: true })
-      } else if (w < 1024) {
-        setConfig({ radiusX: 320, radiusZ: 140, archLift: 118, baseScale: 0.68, onlyPriority: false, isMobile: false })
-      } else if (w < 1440) {
-        setConfig({ radiusX: 465, radiusZ: 160, archLift: 132, baseScale: 0.74, onlyPriority: false, isMobile: false })
-      } else {
-        setConfig({ radiusX: 560, radiusZ: 178, archLift: 146, baseScale: 0.82, onlyPriority: false, isMobile: false })
+        setConfig({
+          radiusX: 222,
+          radiusZ: 150,
+          archLift: 184,
+          baseScale: 0.66,
+          ringLift: 0,
+          offsetX: 0,
+          offsetY: 0,
+          onlyPriority: false,
+          isMobile: true,
+        })
       }
     }
     compute()
@@ -83,12 +142,18 @@ export function OrbitStage({
       const cos = Math.cos(rad)
       const front = -cos
       const x = sin * cfg.radiusX
-      const y = -cos * cfg.archLift * (cos > 0 ? 0.46 : 0.9) + Math.abs(sin) * 34 * cfg.baseScale
+      const y =
+        -cos * cfg.archLift * (cos > 0 ? 0.46 : 0.9) +
+        Math.abs(sin) * 34 * cfg.baseScale +
+        cfg.ringLift
       const z = front >= 0 ? front * cfg.radiusZ * 1.1 : front * cfg.radiusZ * 1.7
 
-      const scale = cfg.baseScale * map(front, -1, 1, 0.66, 1.04)
-      const opacity = map(front, -1, 1, 0.42, 1)
-      const blur = front < 0 ? clamp(-front * 4.5, 0, 4.5) : 0
+      const scale = cfg.baseScale * map(front, -1, 1, 0.72, 1.06)
+      // In the reference composition only the five front-facing cards read; the
+      // ones sweeping behind the logo fade out entirely instead of ghosting
+      // over the sculpture.
+      const opacity = clamp(map(front, -0.32, -0.02, 0, 1), 0, 1)
+      const blur = front < 0 ? clamp(-front * 3, 0, 3) : 0
       const rotateY = -sin * 14
       const zIndex = Math.round(front * 100)
       const parallax = clamp(map(front, -1, 1, 3, 10), 3, 10)
@@ -114,19 +179,18 @@ export function OrbitStage({
       className="relative flex h-full w-full items-center justify-center"
       style={{ perspective: "1600px", perspectiveOrigin: "50% 42%" }}
     >
-      <div className="relative" style={{ transformStyle: "preserve-3d" }}>
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 translate-y-[92px]">
-          <div className="absolute left-1/2 top-1/2 h-[300px] w-[1180px] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] border border-white/75 shadow-[0_0_48px_rgba(0,200,83,0.12)]" style={{ transform: "translate(-50%,-50%) rotateX(79deg)" }} />
-          <div className="absolute left-1/2 top-1/2 h-[246px] w-[820px] max-w-[76vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-white/80 shadow-[0_30px_45px_-18px_rgba(15,49,31,0.3),inset_0_2px_0_white,inset_0_-14px_24px_rgba(68,105,84,0.12)] backdrop-blur-md" style={{ transform: "translate(-50%,-50%) rotateX(72deg)" }} />
-          <div className="absolute left-1/2 top-1/2 h-[188px] w-[650px] max-w-[66vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-[radial-gradient(circle,rgba(255,255,255,0.98)_25%,rgba(224,242,231,0.9)_67%,rgba(0,200,83,0.18)_100%)] shadow-[0_0_52px_rgba(0,200,83,0.2),inset_0_5px_8px_white]" style={{ transform: "translate(-50%,-62%) rotateX(69deg)" }} />
-          <div className="absolute left-1/2 top-1/2 h-12 w-[420px] max-w-[54vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-eme/20 blur-2xl" />
-        </div>
-
+      <div
+        className="relative"
+        style={{
+          transformStyle: "preserve-3d",
+          transform: `translate3d(${cfg.offsetX.toFixed(2)}px, ${cfg.offsetY.toFixed(2)}px, 0)`,
+        }}
+      >
         <div
           className="absolute left-1/2 top-1/2"
           style={{
             zIndex: 60,
-            transform: "translate(-50%,-50%) translateY(30px) rotateX(3deg)",
+            transform: "translate(-50%,-50%) rotateX(3deg)",
             transformStyle: "preserve-3d",
           }}
         >
@@ -144,7 +208,7 @@ export function OrbitStage({
                 transformStyle: "preserve-3d",
               }}
             >
-              <EmeLogoSculpture />
+              <EmeLogoSculpture widthPx={cfg.logoWidth} />
             </div>
           </div>
         </div>

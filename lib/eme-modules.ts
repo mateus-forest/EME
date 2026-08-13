@@ -59,7 +59,7 @@ export const emeModules: EmeModule[] = [
     name: "COS",
     description: "Seu assistente inteligente",
     icon: Sparkles,
-    angle: 270,
+    angle: 315,
     priorityMobile: false,
     tagline: "Seu sistema conversacional operacional, sempre ao seu lado.",
     longDescription:
@@ -85,7 +85,7 @@ export const emeModules: EmeModule[] = [
     name: "Clientes",
     description: "Relacionamentos organizados",
     icon: Users,
-    angle: 315,
+    angle: 0,
     priorityMobile: true,
     tagline: "Todo relacionamento, organizado em um só lugar.",
     longDescription:
@@ -107,7 +107,7 @@ export const emeModules: EmeModule[] = [
     name: "Imóveis",
     description: "Sua carteira conectada",
     icon: Home,
-    angle: 0,
+    angle: 45,
     priorityMobile: true,
     tagline: "Sua carteira de imóveis, sempre atualizada.",
     longDescription:
@@ -129,7 +129,7 @@ export const emeModules: EmeModule[] = [
     name: "Catálogo",
     description: "Apresente e compartilhe",
     icon: BookOpen,
-    angle: 45,
+    angle: 90,
     priorityMobile: true,
     tagline: "Catálogo de imóveis que impressiona e converte.",
     longDescription:
@@ -153,7 +153,7 @@ export const emeModules: EmeModule[] = [
     name: "Studio IA",
     description: "Crie campanhas com IA",
     icon: WandSparkles,
-    angle: 90,
+    angle: 135,
     priorityMobile: false,
     tagline: "Sua central de criação com Inteligência Artificial.",
     longDescription:
@@ -177,7 +177,7 @@ export const emeModules: EmeModule[] = [
     name: "Propostas",
     description: "Negociações mais simples",
     icon: FileText,
-    angle: 135,
+    angle: 180,
     priorityMobile: false,
     tagline: "Propostas profissionais, prontas para impressionar.",
     longDescription:
@@ -200,8 +200,8 @@ export const emeModules: EmeModule[] = [
     name: "Contratos",
     description: "Documentos em poucos passos",
     icon: ShieldCheck,
-    // Front-centre of the ring, on the uniform 45° grid — no manual offset.
-    angle: 180,
+    // Near-left seat of the ring, on the uniform 45° grid — no manual offset.
+    angle: 225,
     priorityMobile: false,
     tagline: "Contratos organizados, sem burocracia.",
     longDescription:
@@ -223,7 +223,7 @@ export const emeModules: EmeModule[] = [
     name: "Compromissos",
     description: "Sua rotina organizada",
     icon: CalendarDays,
-    angle: 225,
+    angle: 270,
     priorityMobile: false,
     tagline: "Sua rotina de compromissos, sempre sob controle.",
     longDescription:
