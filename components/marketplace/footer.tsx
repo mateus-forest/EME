@@ -38,7 +38,7 @@ export function Footer() {
             rel="noopener noreferrer"
             className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary outline-none transition-colors hover:text-eme-700 focus-visible:ring-2 focus-visible:ring-primary/30"
           >
-            Conhecer o EME
+            Conheça o EME
             <ArrowUpRight
               className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
               aria-hidden="true"

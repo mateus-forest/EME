@@ -13,6 +13,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
   return (
     <Link
       href={`/imoveis/corretores/${broker.slug}`}
+      aria-label={`Ver perfil de ${broker.name}`}
       className="group flex flex-col rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-float)]"
     >
       <div className="flex items-center gap-4">

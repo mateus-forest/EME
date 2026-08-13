@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { ConversationalSearch } from '@/components/marketplace/conversational-search'
 import { Reveal } from '@/components/marketplace/reveal'
 import { OrganicLines } from '@/components/marketplace/organic-lines'
+import { EME_OFFICIAL_URL } from '@/lib/marketplace/site'
 
 export function ClosingCta() {
   return (
@@ -25,12 +25,14 @@ export function ClosingCta() {
               </p>
               <p className="mt-6 pl-1 text-sm text-muted-foreground">
                 Você é corretor?{' '}
-                <Link
-                  href="#tecnologia"
+                <a
+                  href={EME_OFFICIAL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="font-medium text-primary transition-colors hover:text-eme-700"
                 >
                   Conheça o EME.
-                </Link>
+                </a>
               </p>
             </div>
           </div>

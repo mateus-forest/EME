@@ -39,13 +39,20 @@ export type CriteriaKey =
   | 'finalidade'
   | 'tipo'
   | 'cidade'
+  | 'valorMin'
   | 'valorMax'
+  | 'quartos'
+  | 'banheiros'
+  | 'vagas'
+  | 'areaMin'
   | 'patio'
+  | 'mobiliado'
+  | 'novo'
 
 export type Criterion = {
   key: CriteriaKey
   label: string
-  icon: 'buy' | 'home' | 'pin' | 'wallet' | 'tree'
+  icon: 'buy' | 'home' | 'pin' | 'wallet' | 'tree' | 'bed' | 'bath' | 'car' | 'ruler'
 }
 
 export const compatibilityLabel: Record<Compatibility, string> = {

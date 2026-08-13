@@ -11,6 +11,9 @@ export function ConversationalSearch({
   showIcon = true,
   size = 'md',
   purpose,
+  value: controlledValue,
+  onValueChange,
+  onSubmitQuery,
 }: {
   placeholder: string
   className?: string
@@ -18,14 +21,22 @@ export function ConversationalSearch({
   size?: 'md' | 'lg'
   // Finalidade da busca. Quando informada, é anexada à rota de resultados.
   purpose?: 'compra' | 'aluguel'
+  value?: string
+  onValueChange?: (value: string) => void
+  onSubmitQuery?: (value: string) => void
 }) {
   const router = useRouter()
-  const [value, setValue] = useState('')
+  const [internalValue, setInternalValue] = useState('')
   const [composing, setComposing] = useState(false)
+  const value = controlledValue ?? internalValue
 
   function submit() {
     // Leva a consulta em linguagem natural para a página de resultados.
     const query = value.trim()
+    if (onSubmitQuery) {
+      onSubmitQuery(query)
+      return
+    }
     const params = new URLSearchParams()
     if (query) params.set('q', query)
     if (purpose) params.set('finalidade', purpose)
@@ -67,7 +78,10 @@ export function ConversationalSearch({
       <input
         type="text"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          setInternalValue(e.target.value)
+          onValueChange?.(e.target.value)
+        }}
         onKeyDown={onKeyDown}
         onCompositionStart={() => setComposing(true)}
         onCompositionEnd={() => setComposing(false)}

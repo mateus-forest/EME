@@ -114,7 +114,7 @@ export function Header() {
           aria-haspopup="dialog"
           className="group hidden items-center gap-2 rounded-full border border-border/70 bg-background/85 py-1.5 pl-2 pr-3.5 text-sm font-medium text-foreground shadow-[var(--shadow-soft)] outline-none transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus-visible:ring-4 focus-visible:ring-primary/15 md:flex"
         >
-          <AssistantMark size="sm" className="h-7 w-7 [&_img]:h-5 [&_img]:w-5" />
+          <AssistantMark size="sm" className="h-7 w-7" />
           <span>Assistente EME</span>
           <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_4px_rgba(43,167,94,.10)]" aria-label="Online" />
         </button>
@@ -125,7 +125,7 @@ export function Header() {
           rel="noopener noreferrer"
           className="group hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-foreground/75 outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex"
         >
-          Conhecer o EME
+          Sou corretor
           <ArrowUpRight
             className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
             aria-hidden="true"
@@ -202,7 +202,7 @@ export function Header() {
               rel="noopener noreferrer"
               className="mt-2 flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-4 text-base font-medium text-primary outline-none transition-colors hover:bg-eme-50 focus-visible:ring-4 focus-visible:ring-primary/15"
             >
-              Conhecer o EME
+              Sou corretor
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </a>
           </nav>

@@ -2,7 +2,7 @@
 // Centraliza rotas de navegação e o link externo institucional.
 
 // URL oficial do EME. Ajustar aqui quando o endereço definitivo estiver disponível.
-export const EME_OFFICIAL_URL = 'https://www.meueme.com/'
+export const EME_OFFICIAL_URL = 'https://www.meueme.com/#inicio'
 
 export type NavItem = {
   label: string

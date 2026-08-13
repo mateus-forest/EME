@@ -80,7 +80,7 @@ export function ComparisonSection() {
                   })}
                 </ul>
                 <Link
-                  href="/imoveis/busca"
+                  href="/imoveis/comparar"
                   className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:text-eme-700"
                 >
                   Ver comparação completa

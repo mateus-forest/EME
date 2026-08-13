@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, KeyRound, MapPin, TreePine, Wallet, X } from 'lucide-react'
+import { Bath, BedDouble, CarFront, Home, KeyRound, MapPin, Ruler, TreePine, Wallet, X } from 'lucide-react'
 import type { Criterion } from '@/lib/marketplace/search-data'
 
 const icons = {
@@ -9,6 +9,10 @@ const icons = {
   pin: MapPin,
   wallet: Wallet,
   tree: TreePine,
+  bed: BedDouble,
+  bath: Bath,
+  car: CarFront,
+  ruler: Ruler,
 } as const
 
 export function SearchCriteriaChip({

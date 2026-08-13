@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import {
   alternatives,
-  defaultCriteria,
   defaultQuery,
   formatPrice,
   searchResults,
@@ -12,13 +11,23 @@ import {
   type Criterion,
   type SortValue,
 } from '@/lib/marketplace/search-data'
+import {
+  defaultMarketplaceFilters,
+  emptyMarketplaceFilters,
+  filterSearchResults,
+  filtersToCriteria,
+  filtersToSearchParams,
+  hasActiveFilters,
+  removeFilterCriterion,
+  type MarketplaceFilters,
+} from '@/lib/marketplace/search-filters'
 import { brokers } from '@/lib/marketplace/data'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SearchInterpretation } from '@/components/marketplace/search/search-interpretation'
 import { ResultsToolbar, type QuickFilters } from '@/components/marketplace/search/results-toolbar'
-import { FiltersSheet } from '@/components/marketplace/search/filters-sheet'
+import { MarketplaceFiltersDialog } from '@/components/marketplace/search/marketplace-filters-dialog'
 import { ResultsPropertyCard } from '@/components/marketplace/search/results-property-card'
 import { ResultsMap } from '@/components/marketplace/search/results-map'
 import { AlternativePropertyCard } from '@/components/marketplace/search/alternative-card'
@@ -40,23 +49,25 @@ const MAX_COMPARE = 3
 
 export function SearchResults({
   initialQuery,
+  initialFilters,
   estado,
 }: {
   initialQuery?: string
+  initialFilters: MarketplaceFilters
   estado?: 'erro' | 'vazio'
 }) {
   const [query, setQuery] = useState(initialQuery?.trim() || defaultQuery)
-  const [criteria, setCriteria] = useState<Criterion[]>(defaultCriteria)
+  const [filters, setFilters] = useState<MarketplaceFilters>(() =>
+    hasActiveFilters(initialFilters) ? initialFilters : defaultMarketplaceFilters,
+  )
   const [sort, setSort] = useState<SortValue>('compatibilidade')
-  const [quickFilters, setQuickFilters] = useState<QuickFilters>({})
-  const [moreSelected, setMoreSelected] = useState<Set<string>>(new Set())
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [compare, setCompare] = useState<string[]>([])
   const [view, setView] = useState<ResultsView>('lista')
   const [highlighted, setHighlighted] = useState<string | null>(null)
 
   const [phase, setPhase] = useState<Phase>(estado === 'erro' ? 'error' : 'loading')
-  const forceEmpty = estado === 'vazio'
+  const [forceEmpty, setForceEmpty] = useState(estado === 'vazio')
 
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [comparisonOpen, setComparisonOpen] = useState(false)
@@ -73,21 +84,27 @@ export function SearchResults({
   }, [phase])
 
   function runSearch(nextQuery?: string) {
-    if (nextQuery) setQuery(nextQuery)
+    const resolvedQuery = nextQuery?.trim() || query
+    if (nextQuery) setQuery(resolvedQuery)
+    const params = filtersToSearchParams(filters)
+    if (resolvedQuery) params.set('q', resolvedQuery)
+    window.history.replaceState(null, '', `/imoveis/busca?${params.toString()}`)
     setPhase('loading')
+  }
+
+  const criteria = useMemo(() => filtersToCriteria(filters), [filters])
+  const quickFilters: QuickFilters = {
+    precoMax: filters.priceMax,
+    quartos: filters.bedrooms,
+    areaMin: filters.areaMin,
   }
 
   const filtered = useMemo(() => {
     if (forceEmpty) return []
-    let list = searchResults.filter((r) => {
-      if (quickFilters.precoMax && r.price > quickFilters.precoMax) return false
-      if (quickFilters.quartos && r.bedrooms < quickFilters.quartos) return false
-      if (quickFilters.areaMin && r.area < quickFilters.areaMin) return false
-      return true
-    })
+    let list = filterSearchResults(searchResults, filters)
     list = sortResults(list, sort)
     return list
-  }, [forceEmpty, quickFilters, sort])
+  }, [filters, forceEmpty, sort])
 
   const selectedResults = useMemo(
     () => compare.map((slug) => searchResults.find((r) => r.slug === slug)).filter(Boolean) as typeof searchResults,
@@ -112,23 +129,22 @@ export function SearchResults({
   }
 
   function removeCriterion(key: Criterion['key']) {
-    setCriteria((prev) => prev.filter((c) => c.key !== key))
-    // Remover a faixa de valor também libera o filtro rápido correspondente.
-    if (key === 'valorMax') setQuickFilters((f) => ({ ...f, precoMax: undefined }))
-  }
-
-  function toggleMore(value: string) {
-    setMoreSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(value)) next.delete(value)
-      else next.add(value)
-      return next
-    })
+    applyFilters(removeFilterCriterion(filters, key), false)
   }
 
   function clearFilters() {
-    setQuickFilters({})
-    setMoreSelected(new Set())
+    applyFilters({ ...emptyMarketplaceFilters }, false)
+  }
+
+  function applyFilters(nextFilters: MarketplaceFilters, closeDialog = true) {
+    setFilters({ ...nextFilters, features: [...nextFilters.features] })
+    setForceEmpty(false)
+    if (closeDialog) setFiltersOpen(false)
+    const params = filtersToSearchParams(nextFilters)
+    if (query) params.set('q', query)
+    const search = params.toString()
+    window.history.replaceState(null, '', search ? `/imoveis/busca?${search}` : '/imoveis/busca')
+    setPhase('loading')
   }
 
   const showMap = view === 'mapa'
@@ -145,19 +161,25 @@ export function SearchResults({
             criteria={criteria}
             onSubmitQuery={(value) => runSearch(value)}
             onRemoveCriterion={removeCriterion}
+            onAdjustFilters={() => setFiltersOpen(true)}
           />
         </Reveal>
       </section>
 
       {/* Toolbar */}
-      <section className="mx-auto mt-8 w-full max-w-6xl px-5 md:px-8">
+      <section className="relative z-40 mx-auto mt-8 w-full max-w-6xl overflow-visible px-5 md:px-8">
         <Reveal>
           <ResultsToolbar
             count={filtered.length}
             sort={sort}
             onSortChange={setSort}
             filters={quickFilters}
-            onFiltersChange={setQuickFilters}
+            onFiltersChange={(next) => applyFilters({
+              ...filters,
+              priceMax: next.precoMax,
+              bedrooms: next.quartos,
+              areaMin: next.areaMin,
+            }, false)}
             onOpenMoreFilters={() => setFiltersOpen(true)}
             onClear={clearFilters}
             view={view}
@@ -173,7 +195,7 @@ export function SearchResults({
 
       {/* Área principal: lista + mapa */}
       <section className="mx-auto mt-6 w-full max-w-6xl px-5 md:px-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_44%]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,34%)]">
           {/* Coluna de resultados */}
           <div className={cn('min-w-0', showMap && 'hidden lg:block')}>
             {phase === 'loading' ? (
@@ -182,10 +204,7 @@ export function SearchResults({
               <SearchErrorState onRetry={() => runSearch()} />
             ) : filtered.length === 0 ? (
               <SearchEmptyState
-                onAdjust={() => {
-                  clearFilters()
-                  topRef.current?.scrollIntoView({ behavior: 'smooth' })
-                }}
+                onAdjust={() => setFiltersOpen(true)}
                 onAlternatives={() =>
                   alternativesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }
@@ -212,9 +231,9 @@ export function SearchResults({
           </div>
 
           {/* Mapa */}
-          <div className={cn(showList && 'hidden lg:block')}>
+          <div className={cn('relative z-0', showList && 'hidden lg:block')}>
             <div className="lg:sticky lg:top-24">
-              <div className="h-[70vh] lg:h-[calc(100vh-7rem)]">
+              <div className="h-[52vh] min-h-[320px] max-h-[460px] lg:h-[min(58vh,520px)] lg:max-h-[520px]">
                 {phase === 'loading' ? (
                   <div className="grid h-full w-full place-items-center rounded-[1.75rem] border border-border/70 bg-card">
                     <EmeLoader label="Carregando mapa" />
@@ -363,12 +382,12 @@ export function SearchResults({
         onClose={() => setComparisonOpen(false)}
         results={selectedResults}
       />
-      <FiltersSheet
+      <MarketplaceFiltersDialog
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        selected={moreSelected}
-        onToggle={toggleMore}
-        onClear={() => setMoreSelected(new Set())}
+        filters={filters}
+        onApply={applyFilters}
+        title="Ajustar busca"
       />
     </div>
   )

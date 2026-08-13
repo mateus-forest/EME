@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { Header } from '@/components/marketplace/header'
 import { Footer } from '@/components/marketplace/footer'
 import { SearchResults } from '@/components/marketplace/search/search-results'
+import { filtersFromSearchParams } from '@/lib/marketplace/search-filters'
 
 export const metadata: Metadata = {
   title: 'Resultados da busca | EME Imóveis',
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default async function BuscarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; estado?: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
   const estado = params.estado === 'erro' || params.estado === 'vazio' ? params.estado : undefined
@@ -23,7 +24,11 @@ export default async function BuscarPage({
       <Header />
       <main id="conteudo" className="flex-1">
         <Suspense fallback={null}>
-          <SearchResults initialQuery={params.q} estado={estado} />
+          <SearchResults
+            initialQuery={Array.isArray(params.q) ? params.q[0] : params.q}
+            initialFilters={filtersFromSearchParams(params)}
+            estado={estado}
+          />
         </Suspense>
       </main>
       <Footer />

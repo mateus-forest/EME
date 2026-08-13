@@ -131,7 +131,7 @@ export default async function BrokerProfilePage({
             </div>
 
             {/* Contato */}
-            <aside className="lg:sticky lg:top-24 lg:self-start">
+            <aside id="contato-corretor" className="scroll-mt-28 lg:sticky lg:top-24 lg:self-start">
               <BrokerContactForm brokerName={broker.name} />
             </aside>
           </section>

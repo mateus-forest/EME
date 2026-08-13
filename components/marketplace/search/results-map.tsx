@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { MapPin, Minus, Plus } from 'lucide-react'
 import type { SearchResult } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,8 @@ export function ResultsMap({
   onSelect: (slug: string) => void
   className?: string
 }) {
+  const [zoom, setZoom] = useState(1)
+
   return (
     <div
       className={cn(
@@ -32,7 +35,8 @@ export function ResultsMap({
       <svg
         viewBox="0 0 400 500"
         preserveAspectRatio="xMidYMid slice"
-        className="absolute inset-0 h-full w-full"
+        className="absolute inset-0 h-full w-full transition-transform duration-300"
+        style={{ transform: `scale(${zoom})` }}
         aria-hidden="true"
       >
         <rect width="400" height="500" fill="var(--color-muted)" />
@@ -78,6 +82,8 @@ export function ResultsMap({
         <button
           type="button"
           aria-label="Aproximar (demonstrativo)"
+          onClick={() => setZoom((value) => Math.min(1.12, Number((value + 0.04).toFixed(2))))}
+          disabled={zoom >= 1.12}
           className="flex h-9 w-9 items-center justify-center text-foreground transition-colors hover:bg-eme-50"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -86,6 +92,8 @@ export function ResultsMap({
         <button
           type="button"
           aria-label="Afastar (demonstrativo)"
+          onClick={() => setZoom((value) => Math.max(1, Number((value - 0.04).toFixed(2))))}
+          disabled={zoom <= 1}
           className="flex h-9 w-9 items-center justify-center text-foreground transition-colors hover:bg-eme-50"
         >
           <Minus className="h-4 w-4" aria-hidden="true" />

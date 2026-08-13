@@ -44,7 +44,7 @@ export function Popover({
   }, [open])
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative z-[70]">
       <button
         ref={triggerRef}
         type="button"
@@ -65,7 +65,7 @@ export function Popover({
         <div
           role="dialog"
           className={cn(
-            'absolute top-[calc(100%+0.5rem)] z-40 w-64 origin-top rounded-2xl border border-border/70 bg-popover p-4 shadow-[var(--shadow-float)]',
+            'absolute top-[calc(100%+0.5rem)] z-[80] w-64 origin-top rounded-2xl border border-border/70 bg-popover p-4 shadow-[var(--shadow-float)]',
             'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-150',
             align === 'end' ? 'right-0' : 'left-0',
             className,

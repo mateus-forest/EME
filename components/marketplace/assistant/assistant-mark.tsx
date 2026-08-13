@@ -17,7 +17,7 @@ export function AssistantMark({
   return (
     <span
       className={cn(
-        'grid shrink-0 place-items-center rounded-xl bg-foreground text-background shadow-sm',
+        'grid shrink-0 place-items-center overflow-hidden rounded-xl bg-black text-white shadow-sm',
         size === 'sm' && 'rounded-lg',
         sizes[size],
         className,
@@ -25,15 +25,12 @@ export function AssistantMark({
       aria-hidden="true"
     >
       <Image
-        src="/marketplace/eme-logo-raw.svg"
+        src="/marketplace/cos-logo.png"
         alt=""
         width={48}
         height={48}
         priority
-        className={cn(
-          'brightness-0 invert',
-          size === 'sm' ? 'h-4 w-4' : size === 'md' ? 'h-6 w-6' : 'h-8 w-8',
-        )}
+        className="h-full w-full object-cover"
       />
     </span>
   )

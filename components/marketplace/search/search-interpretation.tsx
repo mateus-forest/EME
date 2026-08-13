@@ -11,11 +11,13 @@ export function SearchInterpretation({
   criteria,
   onSubmitQuery,
   onRemoveCriterion,
+  onAdjustFilters,
 }: {
   query: string
   criteria: Criterion[]
   onSubmitQuery: (value: string) => void
   onRemoveCriterion: (key: Criterion['key']) => void
+  onAdjustFilters: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(query)
@@ -116,10 +118,7 @@ export function SearchInterpretation({
           <p className="text-sm font-medium text-foreground">O que entendemos</p>
           <button
             type="button"
-            onClick={() => {
-              setDraft(query)
-              setEditing(true)
-            }}
+            onClick={onAdjustFilters}
             className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline"
           >
             Ajustar busca

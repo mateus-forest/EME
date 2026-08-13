@@ -1,7 +1,6 @@
 import Image from 'next/image'
-import Link from 'next/link'
-import { Check, TreePine, BedDouble, Wallet, Zap } from 'lucide-react'
-import { ConversationalSearch } from '@/components/marketplace/conversational-search'
+import { Check, TreePine, BedDouble, Wallet } from 'lucide-react'
+import { HeroSearchPanel } from '@/components/marketplace/hero-search-panel'
 import { OrganicLines } from '@/components/marketplace/organic-lines'
 
 const chips = [
@@ -26,17 +25,7 @@ export function Hero() {
           </p>
 
           <div className="mt-8 max-w-xl">
-            <ConversationalSearch
-              size="lg"
-              placeholder="Quero uma casa com pátio em Vacaria, até R$ 750 mil..."
-            />
-            <Link
-              href="/imoveis/busca"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
-            >
-              <Zap className="h-4 w-4 text-primary" aria-hidden="true" />
-              Usar busca rápida
-            </Link>
+            <HeroSearchPanel />
           </div>
         </div>
 
