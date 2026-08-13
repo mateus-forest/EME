@@ -22,6 +22,7 @@ const MODAL_AR: Record<string, number> = {
   propostas: 1469 / 965,
   contratos: 1483 / 962,
   agenda: 1452 / 941,
+  marketplace: 1293 / 880,
 }
 const DEFAULT_AR = 1480 / 962
 
@@ -67,6 +68,7 @@ export function ExpandedModulePanel({
   const [target, setTarget] = useState<Rect | null>(null)
   const [open, setOpen] = useState(false)
   const closingRef = useRef(false)
+  const closeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Measure the card and kick off the growth on the next frame.
   useLayoutEffect(() => {
@@ -91,6 +93,7 @@ export function ExpandedModulePanel({
     const r = originEl.getBoundingClientRect()
     setStart({ left: r.left, top: r.top, width: r.width, height: r.height })
     setOpen(false)
+    if (module.id === "marketplace") closeFallbackRef.current = setTimeout(onClose, 700)
   }
 
   useEffect(() => {
@@ -101,6 +104,13 @@ export function ExpandedModulePanel({
     return () => window.removeEventListener("keydown", onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(
+    () => () => {
+      if (closeFallbackRef.current) clearTimeout(closeFallbackRef.current)
+    },
+    [],
+  )
 
   if (!start || !target) return null
 
@@ -127,11 +137,17 @@ export function ExpandedModulePanel({
         }}
         transition={{ type: "spring", stiffness: 200, damping: 30, mass: 0.9 }}
         onAnimationComplete={() => {
-          if (!open && closingRef.current) onClose()
+          if (!open && closingRef.current) {
+            if (closeFallbackRef.current) clearTimeout(closeFallbackRef.current)
+            onClose()
+          }
         }}
         // A soft drop-shadow that hugs the artwork's rounded, transparent shape,
         // so the modal lifts off the page without any added white frame.
-        style={{ filter: "drop-shadow(0 40px 80px rgba(28,52,40,0.34))" }}
+        style={{
+          filter: "drop-shadow(0 40px 80px rgba(28,52,40,0.34))",
+          pointerEvents: module.id === "marketplace" && !open ? "none" : "auto",
+        }}
       >
         {/* The approved, pre-cropped modal artwork — shown exactly as delivered.
             The box is locked to the artwork's own ratio, so `fill` covers it
@@ -149,6 +165,16 @@ export function ExpandedModulePanel({
             className="object-contain"
             priority
           />
+
+          {module.id === "marketplace" && module.demoHref ? (
+            <a
+              href={module.demoHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Ver exemplo no Marketplace — Abrir demonstração"
+              className="absolute bottom-[4.4%] left-[62.9%] h-[8.7%] w-[24.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
+            />
+          ) : null}
         </motion.div>
 
         {/* Transparent close hit-area, placed over the artwork's own close mark

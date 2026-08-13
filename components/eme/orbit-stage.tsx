@@ -1,10 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { motion } from "motion/react"
-
+import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { ModuleCard } from "@/components/eme/module-card"
-import { emeModules } from "@/lib/eme-modules"
+import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 type StageConfig = {
   radiusX: number
@@ -57,6 +55,26 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 const map = (v: number, a1: number, a2: number, b1: number, b2: number) =>
   b1 + ((v - a1) * (b2 - b1)) / (a2 - a1)
 
+const logoSilhouetteSegments = [
+  { id: "left-e", clipPath: "inset(0 68.5% 0 0)" },
+  { id: "middle-m", clipPath: "inset(0 29% 0 32%)" },
+  { id: "right-e", clipPath: "inset(0 0 0 72%)" },
+] as const
+
+function LogoSilhouetteLayer({ layer, style }: { layer: string; style: CSSProperties }) {
+  return logoSilhouetteSegments.map(({ id, clipPath }) => (
+    <img
+      key={`${layer}-${id}`}
+      aria-hidden
+      src="/images/eme-logo-3d-premium.webp"
+      alt=""
+      draggable={false}
+      className="pointer-events-none absolute inset-0 h-full w-full max-w-none select-none"
+      style={{ ...style, clipPath }}
+    />
+  ))
+}
+
 export function OrbitStage({
   orbitAngle = 0,
   activeId = null,
@@ -85,15 +103,15 @@ export function OrbitStage({
       // Front-facing half (cos < 0) is pushed further down than before (0.9 -> 1.55) so the
       // card whose angle lands nearest the viewer never sits high enough to cover the logo —
       // it now settles in front of the pedestal instead of across the "EME" lettering.
-      const y = -cos * cfg.archLift * (cos > 0 ? 0.46 : 1.55) + Math.abs(sin) * 34 * cfg.baseScale
-      const z = front >= 0 ? front * cfg.radiusZ * 1.1 : front * cfg.radiusZ * 1.7
+      const y = front * cfg.archLift + Math.abs(sin) * 18 * cfg.baseScale
+      const z = front * cfg.radiusZ
+      const depth = clamp((front + 1) / 2, 0, 1)
 
-      const scale = cfg.baseScale * map(front, -1, 1, 0.66, 1.04)
-      const opacity = map(front, -1, 1, 0.42, 1)
-      const blur = front < 0 ? clamp(-front * 4.5, 0, 4.5) : 0
-      const rotateY = -sin * 14
+      const scale = cfg.baseScale * map(depth, 0, 1, 0.62, 1.06)
+      const opacity = map(depth, 0, 1, 0.34, 1)
+      const blur = map(depth, 0, 1, 5.2, 0)
+      const rotateY = -sin * 9
       const zIndex = Math.round(front * 100)
-      const parallax = clamp(map(front, -1, 1, 3, 10), 3, 10)
       const r = (n: number, d = 2) => Number(n.toFixed(d))
 
       return {
@@ -106,7 +124,6 @@ export function OrbitStage({
         blur: r(blur, 3),
         rotateY: r(rotateY, 3),
         zIndex,
-        parallax: r(parallax, 2),
       }
     })
   }, [cfg, orbitAngle])
@@ -138,6 +155,32 @@ export function OrbitStage({
           style={{ transform: "translate(-50%,6%) rotateX(83deg)", zIndex: 10 }}
         />
 
+        {/* Marketplace is fixed behind the sculpture and never joins the rotating ring. */}
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          style={{
+            zIndex: 36,
+            transformStyle: "preserve-3d",
+            pointerEvents: frozen ? "none" : undefined,
+          }}
+        >
+          <div className="-translate-y-[50px] sm:-translate-y-[82px]">
+            <div className="scale-[0.72] sm:scale-[0.78] lg:scale-[0.82]">
+              <button
+                type="button"
+                aria-label="Abrir modulo Marketplace"
+                className="eme-card group block cursor-none rounded-[30px] text-left"
+                style={{ transformStyle: "preserve-3d" }}
+                onMouseEnter={() => !frozen && onHover?.(marketplaceModule.id)}
+                onMouseLeave={() => onHover?.(null)}
+                onClick={(event) => onSelect?.(marketplaceModule.id, event.currentTarget)}
+              >
+                <ModuleCard module={marketplaceModule} badge="Novo" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Isolated "EME" logo, sitting on the pedestal at the same position/scale as the
             original EmeLogoSculpture. Placed at its own zIndex (60) between the pedestal ring
             (10) and the card stack (roughly -100..100 via front-facing angle) so cards in the
@@ -146,35 +189,78 @@ export function OrbitStage({
           className="absolute left-1/2 top-1/2"
           style={{
             zIndex: 60,
-            transform: "translate(-50%,-50%) translateY(54px) rotateX(3deg)",
+            pointerEvents: "none",
+            transform: "translate(-50%,-50%) translateY(54px)",
             transformStyle: "preserve-3d",
           }}
         >
-          <div
-            style={{
-              transform: "translate3d(calc(var(--px,0) * 6px), calc(var(--py,0) * 6px), 0)",
-              transition: "transform 0.35s ease-out",
-              transformStyle: "preserve-3d",
-            }}
-          >
-            <div
-              style={{
-                transform: authOpen ? "translateX(-13vw)" : "translateX(0px)",
-                transition: "transform 0.6s cubic-bezier(0.22,1,0.36,1)",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <img
-                src="/images/eme-logo-3d-cutout.webp"
-                alt="EME"
-                draggable={false}
-                className="pointer-events-none h-auto w-[195px] max-w-none sm:w-[368px] lg:w-[445px]"
-              />
-            </div>
+          <div className="relative aspect-[5/2] w-[195px] sm:w-[368px] lg:w-[445px]">
+                {/* The three grounding layers reuse the logo alpha itself, so each letter casts
+                    its own footprint instead of creating a uniform dark strip beneath the word. */}
+                <LogoSilhouetteLayer
+                  layer="cast-shadow"
+                  style={{
+                    zIndex: 0,
+                    opacity: 0.085,
+                    filter: "brightness(0) blur(5px)",
+                    mixBlendMode: "multiply",
+                    transform: "translateY(7%) scaleY(-0.16)",
+                    transformOrigin: "50% 100%",
+                    maskImage: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 48%, transparent 100%)",
+                    WebkitMaskImage:
+                      "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 48%, transparent 100%)",
+                  }}
+                />
+                <LogoSilhouetteLayer
+                  layer="contact-shadow"
+                  style={{
+                    zIndex: 1,
+                    opacity: 0.16,
+                    filter: "brightness(0) blur(1.2px)",
+                    mixBlendMode: "multiply",
+                    transform: "translateY(0.4%) scaleY(0.016)",
+                    transformOrigin: "50% 100%",
+                  }}
+                />
+                <LogoSilhouetteLayer
+                  layer="ambient-occlusion"
+                  style={{
+                    zIndex: 1,
+                    opacity: 0.14,
+                    filter: "brightness(0) blur(0.5px)",
+                    mixBlendMode: "multiply",
+                    transform: "translateY(0.15%) scaleY(0.008)",
+                    transformOrigin: "50% 100%",
+                  }}
+                />
+
+                {/* A short, diffuse vertical reflection stays attached to the same per-letter
+                    silhouette and fades into the glossy pedestal instead of mirroring as a band. */}
+                <LogoSilhouetteLayer
+                  layer="reflection"
+                  style={{
+                    zIndex: 1,
+                    opacity: 0.13,
+                    filter: "blur(2.4px) saturate(1.05) brightness(1.08)",
+                    transform: "translateY(2%) scaleY(-0.28)",
+                    transformOrigin: "50% 100%",
+                    maskImage:
+                      "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.24) 32%, transparent 82%)",
+                    WebkitMaskImage:
+                      "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.24) 32%, transparent 82%)",
+                  }}
+                />
+
+                <img
+                  src="/images/eme-logo-3d-premium.webp"
+                  alt="EME"
+                  draggable={false}
+                  className="pointer-events-none relative z-[2] h-full w-full max-w-none select-none"
+                />
           </div>
         </div>
 
-        {placed.map(({ module, x, y, z, scale, opacity, blur, rotateY, zIndex, parallax }, i) => {
+        {placed.map(({ module, x, y, z, scale, opacity, blur, rotateY, zIndex }) => {
           const isSelected = selectedId === module.id
           const dimmedByHover = activeId != null && activeId !== module.id
           let effectiveOpacity = opacity
@@ -207,13 +293,7 @@ export function OrbitStage({
                 pointerEvents: frozen ? "none" : undefined,
               }}
             >
-              <div
-                style={{
-                  transform: `translate3d(calc(var(--px,0) * ${parallax}px), calc(var(--py,0) * ${parallax}px), 0)`,
-                  transition: "transform 0.3s ease-out",
-                  transformStyle: "preserve-3d",
-                }}
-              >
+              <div style={{ transformStyle: "preserve-3d" }}>
                 <div
                   style={{
                     transform: `scale(${authScale})`,
@@ -221,34 +301,19 @@ export function OrbitStage({
                     transformStyle: "preserve-3d",
                   }}
                 >
-                  <motion.div
-                    animate={
-                      frozen
-                        ? { y: 0, rotateZ: 0 }
-                        : { y: [0, -3, 0], rotateZ: [-0.5, 0.5, -0.5] }
-                    }
-                    transition={
-                      frozen
-                        ? { duration: 0.6, ease: "easeOut" }
-                        : { duration: 7 + (i % 4), repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }
-                    }
-                  >
+                  <div>
                     <button
                       type="button"
                       aria-label={`Abrir modulo ${module.name}`}
-                      className="eme-card group block cursor-none rounded-[30px] text-left transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_44px_74px_-24px_rgba(28,52,40,0.5)]"
-                      style={{
-                        transform:
-                          "translate3d(0, calc(var(--hv,0) * -6px), 0) rotateX(calc(var(--py,0) * var(--hv,0) * -5deg)) rotateY(calc(var(--px,0) * var(--hv,0) * 6deg))",
-                        transformStyle: "preserve-3d",
-                      }}
+                      className="eme-card group block cursor-none rounded-[30px] text-left"
+                      style={{ transformStyle: "preserve-3d" }}
                       onMouseEnter={() => !frozen && onHover?.(module.id)}
                       onMouseLeave={() => onHover?.(null)}
                       onClick={(e) => onSelect?.(module.id, e.currentTarget)}
                     >
                       <ModuleCard module={module} />
                     </button>
-                  </motion.div>
+                  </div>
                 </div>
               </div>
             </div>

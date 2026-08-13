@@ -7,7 +7,7 @@ import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import { OrbitStage } from "@/components/eme/orbit-stage"
-import { emeModules } from "@/lib/eme-modules"
+import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 /**
  * Mobile / PWA experience — a faithful port of the desktop scene, not a
@@ -38,7 +38,11 @@ export function EmeMobileExperience({
   useMotionValueEvent(orbitAngle, "change", (value) => setAngle(value))
 
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
-  const selectedModule = selected ? emeModules.find((module) => module.id === selected.id) : undefined
+  const selectedModule = selected
+    ? selected.id === marketplaceModule.id
+      ? marketplaceModule
+      : emeModules.find((module) => module.id === selected.id)
+    : undefined
   const authOpen = authMode != null
   selectedRef.current = selected?.id ?? null
   authOpenRef.current = authOpen
@@ -112,6 +116,25 @@ export function EmeMobileExperience({
       stageEl.removeEventListener("touchend", handleEnd)
       stageEl.removeEventListener("touchcancel", handleEnd)
     }
+  }, [orbitTarget])
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    let raf = 0
+    let previous = performance.now()
+
+    const advanceOrbit = (now: number) => {
+      const elapsed = Math.min(now - previous, 64)
+      previous = now
+      if (!selectedRef.current && !authOpenRef.current) {
+        orbitTarget.set(orbitTarget.get() + elapsed * 0.002)
+      }
+      raf = requestAnimationFrame(advanceOrbit)
+    }
+
+    raf = requestAnimationFrame(advanceOrbit)
+    return () => cancelAnimationFrame(raf)
   }, [orbitTarget])
 
   // Which module currently reads as "front-facing", for the progress dots below —

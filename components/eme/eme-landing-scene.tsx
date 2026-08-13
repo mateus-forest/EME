@@ -8,7 +8,7 @@ import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import { LandingHeader } from "@/components/eme/landing-header"
 import { OrbitStage } from "@/components/eme/orbit-stage"
-import { emeModules } from "@/lib/eme-modules"
+import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 export function EmeLandingScene({
   authMode,
@@ -28,7 +28,11 @@ export function EmeLandingScene({
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
   const selectedRef = useRef<string | null>(null)
   selectedRef.current = selected?.id ?? null
-  const selectedModule = selected ? emeModules.find((m) => m.id === selected.id) : undefined
+  const selectedModule = selected
+    ? selected.id === marketplaceModule.id
+      ? marketplaceModule
+      : emeModules.find((m) => m.id === selected.id)
+    : undefined
 
   const handleSelect = (id: string, el: HTMLElement) => {
     setActiveId(null)
@@ -62,6 +66,25 @@ export function EmeLandingScene({
 
     window.addEventListener("wheel", onWheel, { passive: false })
     return () => window.removeEventListener("wheel", onWheel)
+  }, [orbitTarget])
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    let raf = 0
+    let previous = performance.now()
+
+    const advanceOrbit = (now: number) => {
+      const elapsed = Math.min(now - previous, 64)
+      previous = now
+      if (!selectedRef.current && !authOpenRef.current) {
+        orbitTarget.set(orbitTarget.get() + elapsed * 0.002)
+      }
+      raf = requestAnimationFrame(advanceOrbit)
+    }
+
+    raf = requestAnimationFrame(advanceOrbit)
+    return () => cancelAnimationFrame(raf)
   }, [orbitTarget])
 
   useEffect(() => {
