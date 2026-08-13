@@ -138,6 +138,42 @@ export function OrbitStage({
           style={{ transform: "translate(-50%,6%) rotateX(83deg)", zIndex: 10 }}
         />
 
+        {/* Isolated "EME" logo, sitting on the pedestal at the same position/scale as the
+            original EmeLogoSculpture. Placed at its own zIndex (60) between the pedestal ring
+            (10) and the card stack (roughly -100..100 via front-facing angle) so cards in the
+            back half of the orbit render behind it and cards in the front half render in front. */}
+        <div
+          className="absolute left-1/2 top-1/2"
+          style={{
+            zIndex: 60,
+            transform: "translate(-50%,-50%) translateY(54px) rotateX(3deg)",
+            transformStyle: "preserve-3d",
+          }}
+        >
+          <div
+            style={{
+              transform: "translate3d(calc(var(--px,0) * 6px), calc(var(--py,0) * 6px), 0)",
+              transition: "transform 0.35s ease-out",
+              transformStyle: "preserve-3d",
+            }}
+          >
+            <div
+              style={{
+                transform: authOpen ? "translateX(-13vw)" : "translateX(0px)",
+                transition: "transform 0.6s cubic-bezier(0.22,1,0.36,1)",
+                transformStyle: "preserve-3d",
+              }}
+            >
+              <img
+                src="/images/eme-logo-3d-cutout.webp"
+                alt="EME"
+                draggable={false}
+                className="pointer-events-none h-auto w-[195px] max-w-none sm:w-[368px] lg:w-[445px]"
+              />
+            </div>
+          </div>
+        </div>
+
         {placed.map(({ module, x, y, z, scale, opacity, blur, rotateY, zIndex, parallax }, i) => {
           const isSelected = selectedId === module.id
           const dimmedByHover = activeId != null && activeId !== module.id
