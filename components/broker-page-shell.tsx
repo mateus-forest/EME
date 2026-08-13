@@ -68,6 +68,7 @@ export function BrokerPageShell({
   return (
     <SidebarProvider
       defaultOpen
+      className={isCosVariant ? "h-[100dvh] min-h-0 overflow-hidden" : undefined}
       style={
         {
           "--sidebar-width": isCosVariant ? "17rem" : "15rem",
@@ -75,12 +76,12 @@ export function BrokerPageShell({
         } as CSSProperties
       }
     >
-      <div className={`pwa-safe-shell relative min-h-svh w-full overflow-hidden text-[#050505] ${isCosVariant ? "bg-[#f4f1eb]" : "bg-[#f6f2eb] sm:bg-[#fbfbf8]"}`}>
+      <div className={`pwa-safe-shell relative w-full overflow-hidden text-[#050505] ${isCosVariant ? "h-full min-h-0 bg-[#f4f1eb]" : "min-h-svh bg-[#f6f2eb] sm:bg-[#fbfbf8]"}`}>
         {!isCosVariant ? (
           <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
         ) : null}
 
-        <div className="relative z-0 flex min-h-svh w-full flex-col">
+        <div className={`relative z-0 flex w-full flex-col ${isCosVariant ? "h-full min-h-0" : "min-h-svh"}`}>
           {!isCosVariant ? (
             <header className="sticky top-0 z-20 border-b border-transparent bg-[#f6f2eb]/96 backdrop-blur-2xl sm:border-black/[0.06] sm:bg-white/86">
               <div className="px-4 py-3 sm:px-6 lg:px-8">
@@ -159,13 +160,13 @@ export function BrokerPageShell({
             </div>
           )}
 
-          <div className={`flex min-h-0 flex-1 ${isCosVariant ? "gap-0 px-0 py-0" : "gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5"}`}>
+          <div className={`flex min-h-0 flex-1 overflow-hidden ${isCosVariant ? "gap-0 px-0 py-0" : "gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5"}`}>
             <BrokerSidebar variant={isCosVariant ? "cos" : "default"} />
 
             <main
               className={
                 isCosVariant
-                  ? "min-w-0 flex-1 overflow-hidden rounded-none border-y-0 border-r border-l border-black/[0.06] bg-transparent shadow-none"
+                  ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-none border-y-0 border-r border-l border-black/[0.06] bg-transparent shadow-none"
                   : "min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none md:rounded-[1.75rem] md:border md:border-black/[0.06] md:bg-white/86 md:shadow-[0_18px_60px_rgba(15,23,42,0.06)]"
               }
             >

@@ -41,6 +41,51 @@ test.describe("COS Core E2E", () => {
     await expectNoTechnicalMessages(page)
   })
 
+  test("desktop isola o scroll da conversa e mantém os controles estáticos", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await openCosHome(page)
+    await sendCosMessage(page, "Oi")
+
+    const composer = page.getByTestId("cos-composer-dock")
+    const operationHealth = page.getByTestId("cos-operation-health")
+    await expect(composer).toBeVisible()
+    await expect(operationHealth).toBeVisible()
+
+    const layout = await page.evaluate(() => {
+      const conversation = document.querySelector<HTMLElement>('[data-testid="cos-conversation-scroll"]')
+      const composerDock = document.querySelector<HTMLElement>('[data-testid="cos-composer-dock"]')
+      const health = document.querySelector<HTMLElement>('[data-testid="cos-operation-health"]')
+      const sidebar = document.querySelector<HTMLElement>('aside:not([data-testid="cos-operation-health"])')
+      if (!composerDock || !health || !sidebar) return null
+
+      const before = {
+        composerTop: composerDock.getBoundingClientRect().top,
+        healthTop: health.getBoundingClientRect().top,
+        sidebarTop: sidebar.getBoundingClientRect().top,
+      }
+      window.scrollTo(0, 500)
+      if (conversation) conversation.scrollTop = conversation.scrollHeight
+
+      return {
+        pageHeight: document.documentElement.scrollHeight,
+        viewportHeight: window.innerHeight,
+        pageScroll: window.scrollY,
+        conversationOverflowY: conversation ? getComputedStyle(conversation).overflowY : null,
+        composerDelta: composerDock.getBoundingClientRect().top - before.composerTop,
+        healthDelta: health.getBoundingClientRect().top - before.healthTop,
+        sidebarDelta: sidebar.getBoundingClientRect().top - before.sidebarTop,
+      }
+    })
+
+    expect(layout).not.toBeNull()
+    expect(layout!.pageHeight).toBeLessThanOrEqual(layout!.viewportHeight + 1)
+    expect(layout!.pageScroll).toBe(0)
+    expect(layout!.conversationOverflowY).toBe("auto")
+    expect(Math.abs(layout!.composerDelta)).toBeLessThan(1)
+    expect(Math.abs(layout!.healthDelta)).toBeLessThan(1)
+    expect(Math.abs(layout!.sidebarDelta)).toBeLessThan(1)
+  })
+
   test("conversa simples responde sem mensagens técnicas", async ({ page }) => {
     await openCosHome(page)
     await sendCosMessage(page, "Oi")
@@ -199,6 +244,15 @@ test.describe("COS Core E2E", () => {
     await expect(page.getByRole("button", { name: "Clientes", exact: true }).last()).toBeVisible()
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
     expect(hasOverflow).toBe(false)
+    const viewportLayout = await page.evaluate(() => ({
+      pageHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      pageScroll: window.scrollY,
+      composerBottom: document.querySelector<HTMLElement>('[data-testid="cos-composer-dock"]')?.getBoundingClientRect().bottom,
+    }))
+    expect(viewportLayout.pageHeight).toBeLessThanOrEqual(viewportLayout.viewportHeight + 1)
+    expect(viewportLayout.pageScroll).toBe(0)
+    expect(viewportLayout.composerBottom).toBeLessThanOrEqual(viewportLayout.viewportHeight)
     await expectNoTechnicalMessages(page)
   })
 })

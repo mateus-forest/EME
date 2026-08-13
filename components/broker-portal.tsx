@@ -458,9 +458,9 @@ export function BrokerPortal() {
   return (
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
-        <section className="min-h-full w-full bg-[#f4f1eb]">
-          <div className="mx-auto grid min-h-[calc(100svh_-_env(safe-area-inset-top,0px))] w-full max-w-[86rem] grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-5 pt-2 sm:px-6 lg:min-h-[calc(100dvh_-_1.5rem)] lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
-            <div className="relative min-h-0 pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
+        <section className="h-full min-h-0 w-full overflow-hidden bg-[#f4f1eb]">
+          <div className="mx-auto grid h-full min-h-0 w-full max-w-[86rem] grid-cols-[minmax(0,1fr)] gap-6 overflow-hidden px-4 pb-5 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
+            <div className="relative flex min-h-0 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
                   <div className="flex flex-1 flex-col">
@@ -527,7 +527,7 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
+                  <div ref={chatViewportRef} data-testid="cos-conversation-scroll" className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
                     {hasVisibleConversation &&
                       conversation.map((item) => (
                         <div
@@ -569,7 +569,7 @@ export function BrokerPortal() {
                 </div>
               )}
 
-              <div className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+40px)] z-20">
+              <div data-testid="cos-composer-dock" className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+40px)] z-20">
                 <div className="mx-auto flex w-full max-w-[48rem] flex-col items-end gap-2 px-1 pointer-events-auto">
                   <MobileOperationHealthTrigger
                     operationHealth={displayedOperationHealth}
@@ -597,8 +597,8 @@ export function BrokerPortal() {
               </div>
             </div>
 
-            <aside className="hidden lg:flex lg:min-h-full lg:flex-col lg:justify-end">
-              <div className="sticky bottom-6 ml-auto w-full max-w-[17rem] rounded-[1.6rem] border border-black/[0.06] bg-white/82 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl transition-all duration-200">
+            <aside data-testid="cos-operation-health" className="hidden min-h-0 overflow-hidden lg:flex lg:flex-col lg:justify-end">
+              <div className="ml-auto w-full max-w-[17rem] rounded-[1.6rem] border border-black/[0.06] bg-white/82 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl transition-all duration-200">
                 <button
                   type="button"
                   onClick={() => setIsOperationHealthExpanded((current) => !current)}
