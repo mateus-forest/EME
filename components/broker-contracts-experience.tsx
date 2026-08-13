@@ -509,12 +509,10 @@ function TemplateLibrary({
 
 function InstanceEditor({
   instanceId,
-  onClose,
   onChanged,
   onChangeTemplate,
 }: {
   instanceId: string
-  onClose: () => void
   onChanged: () => void
   onChangeTemplate: () => void
 }) {
@@ -646,8 +644,8 @@ function InstanceEditor({
   if (!instance) return <p className="rounded-xl bg-[#fff8e8] p-4 text-sm text-[#765a16]">{feedback || "Contrato não encontrado."}</p>
 
   return (
-    <div className="grid max-h-[calc(100vh-5rem)] gap-4 overflow-y-auto pr-1">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4">
+    <div data-testid="contract-instance-editor" className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4 pr-10">
         <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Modelo · versão {instance.template.version}</p>
           <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#050505]">{instance.template.name}</h2>
@@ -663,12 +661,11 @@ function InstanceEditor({
           >
             <Check className="size-4" /> {instance.status === "signed" ? "Assinatura registrada" : "Registrar assinatura"}
           </Button>
-          <Button onClick={() => { onClose(); onChanged() }} className="rounded-xl bg-[#111] text-white hover:bg-[#050505]">Fechar</Button>
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(260px,0.85fr)_minmax(360px,1.35fr)_260px]">
-        <aside className="grid h-fit gap-5 xl:sticky xl:top-0">
+      <div className="grid min-h-0 min-w-0 flex-1 gap-5 overflow-x-hidden overflow-y-auto pt-4 lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)] lg:items-start">
+        <aside data-testid="contract-editor-form" className="grid min-w-0 gap-5 lg:col-start-1 lg:row-start-1">
           <section className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Modelo</p>
             <p className="mt-2 text-sm font-semibold text-[#111]">{instance.template.name}</p>
@@ -727,14 +724,14 @@ function InstanceEditor({
           <Button onClick={() => void save()} disabled={isBusy} className="rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">{isBusy ? <Spinner className="size-4" /> : <Check className="size-4" />} Salvar alterações</Button>
         </aside>
 
-        <main className="min-w-0 rounded-2xl bg-[#f3f2ee] p-3 sm:p-5">
+        <main data-testid="contract-editor-preview" className="min-w-0 rounded-2xl bg-[#f3f2ee] p-3 sm:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <p className="mb-3 text-center text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Preview A4 sincronizado</p>
-          <div className="mx-auto aspect-[210/297] w-full max-w-[700px] overflow-hidden rounded-lg bg-white shadow-[0_12px_35px_rgba(15,23,42,.08)]">
+          <div className="mx-auto aspect-[210/297] w-full max-w-[760px] overflow-hidden rounded-lg bg-white shadow-[0_12px_35px_rgba(15,23,42,.08)]">
             <iframe title="Preview do contrato" srcDoc={previewHtml} className="h-full w-full bg-white" />
           </div>
         </main>
 
-        <aside className="h-fit rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-4 xl:sticky xl:top-0">
+        <aside className="min-w-0 rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-4 lg:col-start-1 lg:row-start-2">
           <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Prontidão</p>
           <p className="mt-2 text-4xl font-semibold tracking-[-0.06em] text-[#050505]">{readiness.score}%</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${readiness.score}%` }} /></div>
@@ -895,12 +892,11 @@ export function BrokerContractsExperience() {
       </Dialog>
 
       <Dialog open={mode === "editor" && Boolean(instanceId)} onOpenChange={(open) => !open && setMode(null)}>
-        <DialogContent className="max-h-[98vh] max-w-[min(1500px,calc(100vw-1rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-4 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6">
+        <DialogContent className="h-[min(96dvh,1040px)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[1680px] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-4 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:max-w-[1680px] sm:p-6">
           <DialogHeader className="sr-only"><DialogTitle>Editor de contrato por modelo próprio</DialogTitle><DialogDescription>Preencha os dados, revise a prontidão e gere o documento.</DialogDescription></DialogHeader>
           {instanceId ? (
             <InstanceEditor
               instanceId={instanceId}
-              onClose={() => setMode(null)}
               onChanged={() => setRevision((value) => value + 1)}
               onChangeTemplate={() => {
                 setInstanceId(null)

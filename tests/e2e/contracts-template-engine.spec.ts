@@ -173,17 +173,13 @@ test("PDF preserva PT-BR, pagina documentos longos e marca rascunho", async () =
     })),
   }
   const pdf = await generateContractPdf({ title: "Contrato de locação", draft: true, structure: longStructure, values: {} })
-  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs")
-  const task = getDocument({ data: new Uint8Array(pdf), useSystemFonts: true })
-  const document = await task.promise
+  const { extractText, getDocumentProxy } = await import("unpdf")
+  const document = await getDocumentProxy(new Uint8Array(pdf))
   expect(document.numPages).toBeGreaterThan(1)
-  const firstPage = await document.getPage(1)
-  const content = await firstPage.getTextContent()
-  const text = content.items.map((item) => ("str" in item ? item.str : "")).join(" ")
+  const { text } = await extractText(document, { mergePages: true })
   expect(text).toContain("CONTRATO PARTICULAR DE LOCAÇÃO")
   expect(text).toContain("RASCUNHO")
-  await document.cleanup()
-  await task.destroy()
+  await document.loadingTask.destroy()
 })
 
 test("importação real rejeita arquivo inválido antes de qualquer análise", async ({ page }) => {
@@ -207,7 +203,7 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.getByRole("button", { name: "Importar modelo" }).first()).toBeVisible()
   await expect(page.getByRole("button", { name: "Anexar contrato" })).toBeVisible()
   await page.getByRole("button", { name: "Importar modelo" }).first().click()
-  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
+  await expect(page.locator('[data-slot="dialog-content"][data-state="open"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
   await page.locator('input[type="file"]').setInputFiles({ name: "locacao.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: Buffer.from("fixture") })
   await page.getByRole("button", { name: "Importar modelo", exact: true }).last().click()
   await expect(page.getByText("Modelo identificado")).toBeVisible()
@@ -229,12 +225,16 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.getByText("Compra e venda — Modelo EME")).toHaveCount(0)
   await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
-  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
+  const previewFrame = page.frameLocator('iframe[title="Preview do contrato"]')
+  await expect(previewFrame.getByText("CONTRATO PARTICULAR DE LOCAÇÃO")).toBeVisible()
+  await expect(previewFrame.getByText("CLÁUSULA PRIMEIRA — DO OBJETO")).toBeVisible()
+  await expect(page.locator('[data-slot="dialog-content"][data-state="open"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
   await expect(page.getByText("Prontidão", { exact: true })).toBeVisible()
   await expect(page.getByRole("button", { name: "Trocar modelo" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Gerar PDF final" })).toBeDisabled()
 
-  await page.getByRole("button", { name: "Fechar" }).click()
+  await expect(page.getByRole("button", { name: "Fechar", exact: true })).toHaveCount(0)
+  await page.keyboard.press("Escape")
   await page.getByRole("button", { name: "Novo contrato" }).click()
   await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
@@ -269,9 +269,52 @@ test("editor permanece utilizável em PWA sem overflow horizontal", async ({ pag
   await page.getByRole("button", { name: "Novo contrato" }).click()
   await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
-  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
-  expect(overflow).toBe(false)
+  await expect(page.locator('[data-slot="dialog-content"][data-state="open"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
+  const mobileLayout = await page.evaluate(() => {
+    const dialog = document.querySelector<HTMLElement>('[data-slot="dialog-content"][data-state="open"]')
+    const editor = document.querySelector<HTMLElement>('[data-testid="contract-instance-editor"]')
+    const form = document.querySelector<HTMLElement>('[data-testid="contract-editor-form"]')
+    const preview = document.querySelector<HTMLElement>('[data-testid="contract-editor-preview"]')
+    return {
+      documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      dialogOverflow: Boolean(dialog && dialog.scrollWidth > dialog.clientWidth + 1),
+      editorOverflow: Boolean(editor && editor.scrollWidth > editor.clientWidth + 1),
+      stacked: Boolean(form && preview && preview.getBoundingClientRect().top >= form.getBoundingClientRect().bottom),
+    }
+  })
+  expect(mobileLayout).toEqual({ documentOverflow: false, dialogOverflow: false, editorOverflow: false, stacked: true })
+})
+
+test("editor desktop organiza formulário e A4 em duas colunas sem cortar o preview", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 960 })
+  await loginAsBroker(page)
+  await mockContracts(page, true)
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Novo contrato" }).click()
+  await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
+  await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
+
+  const layout = await page.evaluate(() => {
+    const dialog = document.querySelector<HTMLElement>('[data-slot="dialog-content"][data-state="open"]')
+    const form = document.querySelector<HTMLElement>('[data-testid="contract-editor-form"]')
+    const preview = document.querySelector<HTMLElement>('[data-testid="contract-editor-preview"]')
+    const frame = preview?.querySelector<HTMLIFrameElement>("iframe")
+    if (!dialog || !form || !preview || !frame) return null
+    const formBox = form.getBoundingClientRect()
+    const previewBox = preview.getBoundingClientRect()
+    const frameBox = frame.getBoundingClientRect()
+    return {
+      horizontalOverflow: dialog.scrollWidth > dialog.clientWidth + 1,
+      sideBySide: previewBox.left > formBox.right,
+      a4Ratio: frameBox.width / frameBox.height,
+      frameVisible: frameBox.top >= dialog.getBoundingClientRect().top && frameBox.width > 500,
+    }
+  })
+  expect(layout).not.toBeNull()
+  expect(layout!.horizontalOverflow).toBe(false)
+  expect(layout!.sideBySide).toBe(true)
+  expect(layout!.a4Ratio).toBeCloseTo(210 / 297, 2)
+  expect(layout!.frameVisible).toBe(true)
 })
 
 test("fluxo legado de anexar contrato continua disponível", async ({ page }) => {

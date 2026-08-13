@@ -1,4 +1,5 @@
 import mammoth from "mammoth"
+import { extractText } from "unpdf"
 
 const PDF_MIME = "application/pdf"
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -27,25 +28,21 @@ export async function extractContractTemplateText(file: File) {
 
   try {
     if (mimeType === PDF_MIME) {
-      const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs")
-      const loadingTask = getDocument({ data: new Uint8Array(buffer), useSystemFonts: true })
-      const document = await loadingTask.promise
-      const pages: string[] = []
-      for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-        const page = await document.getPage(pageNumber)
-        const content = await page.getTextContent()
-        pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "))
-        page.cleanup()
-      }
-      text = pages.join("\n\n")
-      await document.cleanup()
-      await loadingTask.destroy()
+      // This parser uses unpdf's serverless PDF.js build. Text extraction does not
+      // initialize @napi-rs/canvas, DOMMatrix or Path2D because no page is rendered.
+      const parsed = await extractText(new Uint8Array(buffer), { mergePages: true })
+      text = parsed.text
     } else {
       const parsed = await mammoth.extractRawText({ buffer })
       text = parsed.value
     }
-  } catch {
-    throw new Error(mimeType === PDF_MIME ? "Não foi possível ler este PDF." : "Não foi possível ler este DOCX.")
+  } catch (error) {
+    console.error("[contracts][template-parser] extraction failed", {
+      fileName: file.name,
+      mimeType,
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    throw new Error(mimeType === PDF_MIME ? "Não foi possível ler este PDF." : "Não foi possível ler este DOCX.", { cause: error })
   }
 
   const normalized = text.split("\u0000").join("").trim()

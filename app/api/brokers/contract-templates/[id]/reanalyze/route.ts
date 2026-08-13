@@ -4,7 +4,10 @@ import type { Prisma } from "@prisma/client"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { readBrokerContractTemplateFile } from "@/lib/broker-document-storage"
-import { analyzeContractTemplate } from "@/lib/contract-template-analysis.server"
+import {
+  analyzeContractTemplate,
+  describeContractTemplateAnalysisError,
+} from "@/lib/contract-template-analysis.server"
 import { serializeContractTemplate } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -24,59 +27,67 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
   try {
     const template = await prisma.contractTemplate.findFirst({ where: { id, brokerId: user.broker.id }, include })
     if (!template) return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404 })
-    const analysisIsStale = template.status === "ANALYZING"
-      && template.updatedAt.getTime() < Date.now() - 10 * 60 * 1000
-    if (template.status === "ANALYZING" && !analysisIsStale) {
+
+    const activeCandidate = template.versions.find((version) => version.status === "ANALYZING")
+    const candidateIsFresh = activeCandidate
+      && activeCandidate.createdAt.getTime() >= Date.now() - 10 * 60 * 1000
+    if (candidateIsFresh) {
       return NextResponse.json({ template: serializeContractTemplate(template), reused: true }, { status: 202 })
     }
 
-    const current = template.versions.find((item) => item.version === template.currentVersion)
-    if (!current?.sourceStoragePath) {
+    const current = template.versions.find((version) => version.version === template.currentVersion)
+    const lastValid = template.versions.find((version) => ["READY", "REVIEW_REQUIRED"].includes(version.status))
+    const sourceVersion = current?.sourceStoragePath ? current : lastValid
+    if (!sourceVersion?.sourceStoragePath) {
       return NextResponse.json({ error: "O arquivo original deste modelo não está disponível." }, { status: 409 })
     }
 
-    const createsVersion = template.status === "READY"
-    const nextVersionNumber = Math.max(...template.versions.map((item) => item.version), 0) + 1
+    const recoveringStaleAnalysis = template.status === "ANALYZING" && !candidateIsFresh
+    const previousStatus = recoveringStaleAnalysis ? (lastValid?.status ?? "FAILED") : template.status
+    const previousVersion = recoveringStaleAnalysis ? (lastValid?.version ?? template.currentVersion) : template.currentVersion
+    const nextVersionNumber = Math.max(...template.versions.map((version) => version.version), 0) + 1
     const claimed = await prisma.$transaction(async (tx) => {
       const lock = await tx.contractTemplate.updateMany({
         where: {
           id: template.id,
           brokerId: user.broker!.id,
           status: template.status,
+          currentVersion: template.currentVersion,
           updatedAt: template.updatedAt,
         },
         data: { status: "ANALYZING" },
       })
       if (lock.count !== 1) return null
 
-      if (createsVersion) {
-        const version = await tx.contractTemplateVersion.create({
+      if (activeCandidate) {
+        await tx.contractTemplateVersion.update({
+          where: { id: activeCandidate.id },
           data: {
-            templateId: template.id,
-            version: nextVersionNumber,
-            status: "ANALYZING",
-            sourceFileName: current.sourceFileName,
-            sourceStoragePath: current.sourceStoragePath,
-            sourceMimeType: current.sourceMimeType,
-            sourceFileSize: current.sourceFileSize,
-            originalText: current.originalText,
-            structure: current.structure as Prisma.InputJsonValue,
+            status: "FAILED",
             analysisMetadata: {
-              reanalysisRequestedAt: new Date().toISOString(),
-              basedOnVersion: current.version,
+              staleAnalysisRecoveredAt: new Date().toISOString(),
+              basedOnVersion: previousVersion,
             },
           },
         })
-        await tx.contractTemplate.update({
-          where: { id: template.id },
-          data: { currentVersion: nextVersionNumber },
-        })
-        return version
       }
 
-      return tx.contractTemplateVersion.update({
-        where: { id: current.id },
-        data: { status: "ANALYZING" },
+      return tx.contractTemplateVersion.create({
+        data: {
+          templateId: template.id,
+          version: nextVersionNumber,
+          status: "ANALYZING",
+          sourceFileName: sourceVersion.sourceFileName,
+          sourceStoragePath: sourceVersion.sourceStoragePath,
+          sourceMimeType: sourceVersion.sourceMimeType,
+          sourceFileSize: sourceVersion.sourceFileSize,
+          originalText: sourceVersion.originalText,
+          structure: sourceVersion.structure as Prisma.InputJsonValue,
+          analysisMetadata: {
+            reanalysisRequestedAt: new Date().toISOString(),
+            basedOnVersion: previousVersion,
+          },
+        },
       })
     })
 
@@ -115,24 +126,38 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
         })
         return tx.contractTemplate.update({
           where: { id: template.id },
-          data: { status: "REVIEW_REQUIRED", name: analysis.structure.title || template.name },
+          data: {
+            status: "REVIEW_REQUIRED",
+            currentVersion: claimed.version,
+            name: analysis.structure.title || template.name,
+          },
           include,
         })
       })
       return NextResponse.json({ template: serializeContractTemplate(updated), reused: false })
-    } catch {
-      await prisma.$transaction(async (tx) => {
-        await tx.contractTemplateVersion.update({ where: { id: claimed.id }, data: { status: "FAILED" } })
-        await tx.contractTemplate.update({
+    } catch (analysisError) {
+      await prisma.$transaction([
+        prisma.contractTemplateVersion.update({
+          where: { id: claimed.id },
+          data: {
+            status: "FAILED",
+            analysisMetadata: {
+              failedAt: new Date().toISOString(),
+              basedOnVersion: previousVersion,
+              reason: analysisError instanceof Error ? analysisError.message.slice(0, 500) : "unknown",
+            },
+          },
+        }),
+        prisma.contractTemplate.update({
           where: { id: template.id },
-          data: createsVersion
-            ? { status: "READY", currentVersion: template.currentVersion }
-            : { status: "FAILED" },
-        })
-      }).catch(() => null)
+          data: { status: previousStatus, currentVersion: previousVersion },
+        }),
+      ]).catch(() => null)
+
+      const described = describeContractTemplateAnalysisError(analysisError)
       return NextResponse.json(
-        { error: "Não foi possível reanalisar este modelo. O arquivo original e a última versão pronta continuam preservados." },
-        { status: 400 },
+        { error: `${described.message} A última versão válida continua disponível.` },
+        { status: described.status },
       )
     }
   } catch (caughtError) {

@@ -5,6 +5,7 @@ import {
   calculateContractReadiness,
   contractTemplateStructureSchema,
   renderContractTemplateHtml,
+  splitContractTextIntoBlocks,
   type ContractFieldBinding,
   type ContractTemplateStructure,
 } from "@/lib/contract-template-engine"
@@ -159,6 +160,26 @@ export function parseTemplateStructure(value: unknown) {
   return contractTemplateStructureSchema.parse(value)
 }
 
+export function parseStoredTemplateStructure(value: unknown, originalText: string) {
+  const parsed = contractTemplateStructureSchema.parse(value)
+  if (parsed.blocks.length > 0) return parsed
+
+  const blocks = splitContractTextIntoBlocks(originalText)
+  if (blocks.length === 0) {
+    throw new Error("A versão deste modelo não possui conteúdo textual preservado.")
+  }
+
+  return contractTemplateStructureSchema.parse({
+    ...parsed,
+    title: parsed.title || blocks[0]?.text || "Contrato",
+    blocks,
+    sections: [],
+    fields: [],
+    warnings: [...parsed.warnings, "Estrutura textual restaurada a partir do arquivo original preservado."],
+    partiallyRecognized: true,
+  })
+}
+
 export function buildInstanceSnapshot(input: {
   structure: ContractTemplateStructure
   values: Record<string, string>
@@ -191,6 +212,7 @@ export function serializeContractTemplate(template: {
     sourceFileName: string
     sourceMimeType: string
     sourceFileSize: number | null
+    originalText: string
     structure: unknown
     analysisMetadata: unknown
     reviewedAt: Date | null
@@ -198,7 +220,14 @@ export function serializeContractTemplate(template: {
   }>
 }) {
   const version = template.versions.find((item) => item.version === template.currentVersion) ?? template.versions[0]
-  const structure = version ? contractTemplateStructureSchema.safeParse(version.structure) : null
+  let structure: ContractTemplateStructure | null = null
+  if (version) {
+    try {
+      structure = parseStoredTemplateStructure(version.structure, version.originalText)
+    } catch {
+      structure = null
+    }
+  }
   return {
     id: template.id,
     name: template.name,
@@ -213,7 +242,7 @@ export function serializeContractTemplate(template: {
       sourceFileName: version.sourceFileName,
       sourceMimeType: version.sourceMimeType,
       sourceFileSize: version.sourceFileSize,
-      structure: structure?.success ? structure.data : null,
+      structure,
       analysisMetadata: version.analysisMetadata,
       reviewedAt: version.reviewedAt?.toISOString() ?? null,
       createdAt: version.createdAt.toISOString(),

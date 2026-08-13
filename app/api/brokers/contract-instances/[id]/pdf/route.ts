@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
 import { calculateContractReadiness, renderContractTemplateHtml } from "@/lib/contract-template-engine"
 import { generateContractPdf } from "@/lib/contract-pdf.server"
-import { createTemplateContractContent, parseTemplateStructure } from "@/lib/contract-template-server"
+import { createTemplateContractContent, parseStoredTemplateStructure } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       },
     })
     if (!instance) return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
-    const structure = parseTemplateStructure(instance.templateVersion.structure)
+    const structure = parseStoredTemplateStructure(instance.templateVersion.structure, instance.templateVersion.originalText)
     const values = stringRecord(instance.values)
     const readiness = calculateContractReadiness(structure, values)
     if (!draft && readiness.score < 100) {

@@ -23,6 +23,7 @@ import {
   removeLinkedContractDocument,
   upsertLinkedContractDocument,
 } from "@/lib/linked-contract-document"
+import { buildInstanceSnapshot, parseStoredTemplateStructure } from "@/lib/contract-template-server"
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
@@ -58,8 +59,33 @@ function serializeContract(document: {
   content: string
   leadId: string | null
   propertyId: string | null
+  templateInstance?: {
+    title: string
+    status: string
+    values: unknown
+    templateVersion: { structure: unknown; originalText: string }
+  } | null
 }) {
   const content = parseContractContent(document.content)
+  if (document.templateInstance && !isExternalContractContent(content)) {
+    try {
+      const structure = parseStoredTemplateStructure(
+        document.templateInstance.templateVersion.structure,
+        document.templateInstance.templateVersion.originalText,
+      )
+      const values = document.templateInstance.values && typeof document.templateInstance.values === "object" && !Array.isArray(document.templateInstance.values)
+        ? Object.fromEntries(Object.entries(document.templateInstance.values).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+        : {}
+      content.html = buildInstanceSnapshot({
+        structure,
+        values,
+        title: document.templateInstance.title,
+        draft: document.templateInstance.status === "draft",
+      }).html
+    } catch {
+      // Keep the last persisted preview if this legacy instance has no recoverable source text.
+    }
+  }
   const status = normalizeContractStatus(document.status) ?? "draft"
   const amountLabel = isExternalContractContent(content)
     ? content.attachment?.fileName ?? content.financial.amountLabel ?? ""
@@ -100,6 +126,7 @@ async function requireBroker() {
 async function getContractOr404(id: string, brokerId: string) {
   const contract = await prisma.brokerDocument.findFirst({
     where: { id, brokerId, type: "contract" },
+    include: { templateInstance: { include: { templateVersion: true } } },
   })
 
   if (!contract) {

@@ -369,7 +369,15 @@ export function renderContractTemplateHtml(input: {
   .contract-value { background: transparent; }
   .contract-missing { border-bottom: 1px dotted #8a6a13; color: #8a6a13; padding: 0 2px; }
   .draft-watermark { position: fixed; inset: 42% 0 auto; z-index: -1; transform: rotate(-28deg); text-align: center; color: rgba(40,40,40,.08); font: 700 72pt Arial,sans-serif; letter-spacing: .08em; }
-  @media screen { body { min-height: 297mm; padding: 22mm 20mm; } }
+  @media screen {
+    html, body { min-height: 100%; }
+    body { min-height: 100vh; padding: 7.4vh 9.52vw; font-size: clamp(7px, 1.93vw, 11.5pt); }
+    .block { margin-bottom: .95em; }
+    .title { margin-bottom: 1.7em; font-size: 1.22em; }
+    .heading, .clause { margin-top: 1.45em; }
+    .signature { margin-top: 2.6em; }
+    .draft-watermark { font-size: clamp(38px, 12vw, 72pt); }
+  }
 </style></head><body>${input.draft ? '<div class="draft-watermark">RASCUNHO</div>' : ""}<main>${body}</main></body></html>`
 }
 

@@ -6,7 +6,7 @@ import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { saveBrokerContractTemplateFile } from "@/lib/broker-document-storage"
 import { validateContractTemplateFile } from "@/lib/contract-document-parser.server"
-import { analyzeContractTemplate } from "@/lib/contract-template-analysis.server"
+import { analyzeContractTemplate, describeContractTemplateAnalysisError } from "@/lib/contract-template-analysis.server"
 import { serializeContractTemplate } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -35,24 +35,6 @@ async function requireBroker() {
 
 const templateInclude = {
   versions: { orderBy: { version: "desc" as const } },
-}
-
-function humanImportError(error: unknown) {
-  if (error instanceof Error) {
-    const safePrefixes = [
-      "Envie um arquivo",
-      "O arquivo",
-      "Não foi possível ler",
-      "O PDF",
-      "O DOCX",
-      "O documento",
-      "A preparação",
-      "A análise",
-      "Não foi possível preservar",
-    ]
-    if (safePrefixes.some((prefix) => error.message.startsWith(prefix))) return error.message
-  }
-  return "Não foi possível preparar este modelo agora. O arquivo original foi preservado para revisão."
 }
 
 export async function GET() {
@@ -189,6 +171,7 @@ export async function POST(request: NextRequest) {
     if (isPrismaUnavailable(error)) {
       return NextResponse.json({ error: "O serviço de contratos está temporariamente indisponível." }, { status: 503 })
     }
-    return NextResponse.json({ error: humanImportError(error) }, { status: 400 })
+    const described = describeContractTemplateAnalysisError(error)
+    return NextResponse.json({ error: described.message }, { status: described.status })
   }
 }

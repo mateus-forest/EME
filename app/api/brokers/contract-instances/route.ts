@@ -5,7 +5,7 @@ import {
   buildInstanceSnapshot,
   createTemplateContractContent,
   mergeKnownContractValues,
-  parseTemplateStructure,
+  parseStoredTemplateStructure,
 } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (!version || version.status !== "READY") {
       return NextResponse.json({ error: "Revise e confirme este modelo antes de utilizá-lo." }, { status: 409 })
     }
-    const structure = parseTemplateStructure(version.structure)
+    const structure = parseStoredTemplateStructure(version.structure, version.originalText)
     const values = mergeKnownContractValues({
       structure,
       context: { lead, property, broker },

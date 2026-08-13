@@ -26,6 +26,24 @@ export type ContractTemplateAnalysisResult = {
   }
 }
 
+export function describeContractTemplateAnalysisError(error: unknown) {
+  const message = error instanceof Error ? error.message : ""
+  if (/^(Envie um arquivo|O arquivo)/.test(message)) {
+    return { message, status: 400 }
+  }
+  if (/^(Não foi possível ler|O PDF|O DOCX|O documento)/.test(message)) {
+    return { message, status: 422 }
+  }
+  if (message.startsWith("A preparação")) return { message, status: 503 }
+  if (message.startsWith("A análise") || message.startsWith("Não foi possível identificar")) {
+    return { message, status: 502 }
+  }
+  return {
+    message: "Não foi possível analisar este modelo agora. Tente novamente; o arquivo e a última versão válida foram preservados.",
+    status: 500,
+  }
+}
+
 function buildAnalysisPrompt(blocks: ReturnType<typeof splitContractTextIntoBlocks>) {
   const indexed = blocks.map((block, index) => `[BLOCO ${index}] ${block.text}`).join("\n\n")
   return `Analise o modelo de contrato abaixo exclusivamente como extrator e classificador.

@@ -5,7 +5,7 @@ import {
   buildInstanceSnapshot,
   createTemplateContractContent,
   mergeKnownContractValues,
-  parseTemplateStructure,
+  parseStoredTemplateStructure,
 } from "@/lib/contract-template-server"
 import { parseLeadAddress, parseLeadIdentification } from "@/lib/legal-entities"
 import { UserRole } from "@/lib/prisma-enums"
@@ -74,7 +74,7 @@ function addressLine(address: ReturnType<typeof parseLeadAddress>) {
 
 async function applyAdditionalPartyBindings(input: {
   brokerId: string
-  structure: ReturnType<typeof parseTemplateStructure>
+  structure: ReturnType<typeof parseStoredTemplateStructure>
   values: Record<string, string>
   additionalParties: AdditionalPartyState
 }) {
@@ -116,7 +116,7 @@ async function applyAdditionalPartyBindings(input: {
 
 function serializeInstance(instance: Awaited<ReturnType<typeof loadInstance>>) {
   if (!instance) return null
-  const structure = parseTemplateStructure(instance.templateVersion.structure)
+  const structure = parseStoredTemplateStructure(instance.templateVersion.structure, instance.templateVersion.originalText)
   const values = stringRecord(instance.values)
   const snapshot = buildInstanceSnapshot({ structure, values, title: instance.title, draft: instance.status === "draft" })
   return {
@@ -189,7 +189,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (leadId && !lead) return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 })
     if (propertyId && !property) return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
 
-    const structure = parseTemplateStructure(current.templateVersion.structure)
+    const structure = parseStoredTemplateStructure(current.templateVersion.structure, current.templateVersion.originalText)
     const incomingValues = body?.values ? stringRecord(body.values) : stringRecord(current.values)
     const refreshSources: Array<"CLIENT" | "PROPERTY" | "BROKER"> = []
     if (leadId !== current.leadId) refreshSources.push("CLIENT")
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       const signedAt = typeof body?.signedAt === "string" ? new Date(body.signedAt) : new Date()
       if (Number.isNaN(signedAt.getTime())) return NextResponse.json({ error: "Informe uma data de assinatura válida." }, { status: 400 })
       const note = typeof body?.note === "string" ? body.note.trim().slice(0, 1000) : null
-      const structure = parseTemplateStructure(current.templateVersion.structure)
+      const structure = parseStoredTemplateStructure(current.templateVersion.structure, current.templateVersion.originalText)
       const values = stringRecord(current.values)
       const snapshot = buildInstanceSnapshot({ structure, values, title: current.title, draft: false })
       if (snapshot.readiness.score < 100) {
@@ -293,7 +293,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     if (action === "duplicate") {
-      const structure = parseTemplateStructure(current.templateVersion.structure)
+      const structure = parseStoredTemplateStructure(current.templateVersion.structure, current.templateVersion.originalText)
       const values = stringRecord(current.values)
       const title = `${current.title} — cópia`.slice(0, 180)
       const snapshot = buildInstanceSnapshot({ structure, values, title, draft: true })
