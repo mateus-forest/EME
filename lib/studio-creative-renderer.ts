@@ -29,6 +29,7 @@ export type StudioCreativeBranding = {
   brokerName: string | null
   brokerPhotoDataUri: string | null
   brokerCreci: string | null
+  brokerLogoDataUri: string | null
   agencyName: string | null
   agencyLogoDataUri: string | null
   accentColor: string | null
@@ -55,6 +56,7 @@ type StudioCreativePayload = {
   brokerName: string | null
   brokerPhotoDataUri: string | null
   brokerCreci: string | null
+  brokerLogoDataUri: string | null
   agencyName: string | null
   agencyLogoDataUri: string | null
   showAgencyWatermark: boolean
@@ -253,6 +255,7 @@ function buildStudioCreativePayload(input: {
     brokerName: input.branding.brokerName,
     brokerPhotoDataUri: input.branding.brokerPhotoDataUri,
     brokerCreci: input.branding.brokerCreci,
+    brokerLogoDataUri: input.branding.brokerLogoDataUri,
     agencyName: input.branding.agencyName,
     agencyLogoDataUri: input.branding.agencyLogoDataUri,
     showAgencyWatermark: input.branding.showAgencyWatermark,
@@ -340,18 +343,26 @@ async function renderInstagramFeedTemplate(
       cta: ctaConfig,
       accentColor: payload.accentColor,
     }),
-    payload.showAgencyWatermark && payload.agencyName
-      ? renderAgencyWatermark(textRuns, {
+    payload.brokerLogoDataUri
+      ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 1010,
           bottomY: 1010,
           boxWidth: 108,
           boxHeight: 86,
-          logoDataUri: payload.agencyLogoDataUri,
-          agencyName: payload.agencyName,
-          creci: payload.brokerCreci,
           accentColor: payload.accentColor,
         })
-      : "",
+      : payload.showAgencyWatermark && payload.agencyName
+        ? renderAgencyWatermark(textRuns, {
+            rightX: 1010,
+            bottomY: 1010,
+            boxWidth: 108,
+            boxHeight: 86,
+            logoDataUri: payload.agencyLogoDataUri,
+            agencyName: payload.agencyName,
+            creci: payload.brokerCreci,
+            accentColor: payload.accentColor,
+          })
+        : "",
     "</svg>",
   ].join("")
 
@@ -435,18 +446,26 @@ async function renderInstagramStoryTemplate(
       metricSupport: payload.metricSupport,
       accentColor: payload.accentColor,
     }),
-    payload.showAgencyWatermark && payload.agencyName
-      ? renderAgencyWatermark(textRuns, {
+    payload.brokerLogoDataUri
+      ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 998,
           bottomY: 1850,
           boxWidth: 150,
           boxHeight: 118,
-          logoDataUri: payload.agencyLogoDataUri,
-          agencyName: payload.agencyName,
-          creci: payload.brokerCreci,
           accentColor: payload.accentColor,
         })
-      : "",
+      : payload.showAgencyWatermark && payload.agencyName
+        ? renderAgencyWatermark(textRuns, {
+            rightX: 998,
+            bottomY: 1850,
+            boxWidth: 150,
+            boxHeight: 118,
+            logoDataUri: payload.agencyLogoDataUri,
+            agencyName: payload.agencyName,
+            creci: payload.brokerCreci,
+            accentColor: payload.accentColor,
+          })
+        : "",
     "</svg>",
   ].join("")
 
@@ -681,6 +700,23 @@ function renderBrokerHeader(
     detailText
       ? renderSingleLineText(runs, detailText, input.rightX, detailY, input.detailFontSize, "500", "#e6e6e6", 0, "end")
       : "",
+  ].join("")
+}
+
+// Bottom-right personal watermark — a broker's own logo (personal brand or their own uploaded
+// imobiliária mark, no Agency entity involved), shown as-is with no fallback initials/text. Only
+// ever called when payload.brokerLogoDataUri is present; absent entirely otherwise (see call
+// sites), which is also what makes "no logo uploaded" mean "no watermark at all".
+function renderPersonalWatermark(
+  logoDataUri: string,
+  input: { rightX: number; bottomY: number; boxWidth: number; boxHeight: number; accentColor: string },
+) {
+  const boxX = input.rightX - input.boxWidth
+  const boxTop = input.bottomY - input.boxHeight
+
+  return [
+    `<rect x="${boxX}" y="${boxTop}" width="${input.boxWidth}" height="${input.boxHeight}" rx="14" fill="rgba(6,17,10,0.5)" stroke="${accentRgba(input.accentColor, 0.55)}" stroke-width="1.6" />`,
+    renderLogo(logoDataUri, boxX + 10, boxTop + 10, input.boxWidth - 20, input.boxHeight - 20),
   ].join("")
 }
 

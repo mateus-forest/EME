@@ -15,6 +15,7 @@ const authRelationSelect = {
       description: true,
       catalogSlug: true,
       brandColor: true,
+      logoUrl: true,
       showAgencyWatermark: true,
       agency: {
         select: {

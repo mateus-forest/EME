@@ -50,15 +50,17 @@ export async function GET(
 
     const sharp = (await import("sharp")).default
 
-    const [propertyImageDataUri, brokerPhotoDataUri, agencyLogoDataUri] = await Promise.all([
+    const [propertyImageDataUri, brokerPhotoDataUri, brokerLogoDataUri, agencyLogoDataUri] = await Promise.all([
       toImageDataUri(campaign.property?.imageUrls?.[0]),
       toAvatarDataUri(sharp, campaign.branding.brokerPhotoUrl),
+      toAvatarDataUri(sharp, campaign.branding.brokerLogoUrl),
       toAvatarDataUri(sharp, campaign.branding.agencyLogoUrl),
     ])
     const branding: StudioCreativeBranding = {
       brokerName: campaign.branding.brokerName,
       brokerPhotoDataUri,
       brokerCreci: campaign.branding.brokerCreci,
+      brokerLogoDataUri,
       agencyName: campaign.branding.agencyName,
       agencyLogoDataUri,
       accentColor: campaign.branding.accentColor,

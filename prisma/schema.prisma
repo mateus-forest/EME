@@ -194,6 +194,7 @@ model Broker {
   creci       String?
   description String?
   brandColor  String?
+  logoUrl     String?
   showAgencyWatermark Boolean @default(true)
   aiCreditsBalance Int      @default(10)
   aiCreditsUsedThisMonth Int @default(0)

@@ -27,8 +27,24 @@ const MAX_PHOTO_PAYLOAD_CHARS = 4 * 1024 * 1024
 const PHOTO_MAX_DIMENSION = 640
 const PHOTO_JPEG_QUALITY = 0.85
 
+// Same size limit as the profile photo field above, but no format-based canvas re-encode: unlike
+// a photo, a logo is usually a small file with a transparent background (or an SVG), and the
+// canvas/JPEG pipeline used for the photo field would flatten transparency to black and can't
+// preserve vector data. The server-side render pipeline already normalizes any accepted format to
+// PNG at render time, so storing the original file as-is here is both simpler and safer.
+const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/svg+xml"]
+
 function formatMegabytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."))
+    reader.readAsDataURL(file)
+  })
 }
 
 // Foto de perfil nao precisa de alta resolucao — redimensionar e recomprimir no navegador antes
@@ -73,6 +89,7 @@ function AccountForm() {
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl)
   const [description, setDescription] = useState(profile.description)
   const [brandColor, setBrandColor] = useState(profile.brandColor)
+  const [logoUrl, setLogoUrl] = useState(profile.logoUrl)
   const [showAgencyWatermark, setShowAgencyWatermark] = useState(profile.showAgencyWatermark)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -82,6 +99,7 @@ function AccountForm() {
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("success")
   const [isSaving, setIsSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const logoInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     setFullName(profile.fullName)
@@ -91,6 +109,7 @@ function AccountForm() {
     setPhotoUrl(profile.photoUrl)
     setDescription(profile.description)
     setBrandColor(profile.brandColor)
+    setLogoUrl(profile.logoUrl)
     setShowAgencyWatermark(profile.showAgencyWatermark)
   }, [profile])
 
@@ -147,6 +166,7 @@ function AccountForm() {
         photoUrl,
         description,
         brandColor,
+        logoUrl,
         showAgencyWatermark,
         currentPassword,
         newPassword,
@@ -199,6 +219,32 @@ function AccountForm() {
     } catch {
       setFeedbackTone("error")
       setFeedback("Não foi possível atualizar a foto agora.")
+    }
+  }
+
+  async function handleLogoChange(file: File | null) {
+    if (!file) return
+
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setFeedbackTone("error")
+      setFeedback("Envie um arquivo JPG, PNG ou SVG — outros formatos podem não aparecer corretamente nas imagens geradas pelo Studio IA.")
+      return
+    }
+
+    if (file.size > MAX_PHOTO_SOURCE_BYTES) {
+      setFeedbackTone("error")
+      setFeedback(
+        `O logo tem ${formatMegabytes(file.size)}, o limite é ${formatMegabytes(MAX_PHOTO_SOURCE_BYTES)} — tente uma imagem menor ou comprimida.`,
+      )
+      return
+    }
+
+    try {
+      setFeedback(null)
+      setLogoUrl(await readFileAsDataUrl(file))
+    } catch {
+      setFeedbackTone("error")
+      setFeedback("Não foi possível atualizar o logo agora.")
     }
   }
 
@@ -345,6 +391,50 @@ function AccountForm() {
                     className="h-11 shrink-0 rounded-xl px-3 text-xs text-[#7B8491] hover:bg-white hover:text-[#050505]"
                   >
                     Usar padrão
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <Label className="text-sm font-medium text-[#5F6B7A]">Logo (pessoal ou da sua imobiliária)</Label>
+              <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
+                JPG, PNG ou SVG, até {formatMegabytes(MAX_PHOTO_SOURCE_BYTES)}. Exibido como marca d&apos;água opcional
+                no rodapé das imagens geradas para Post Feed e Story — sem logo, nenhuma marca d&apos;água aparece.
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept={ALLOWED_LOGO_TYPES.join(",")}
+                  className="sr-only"
+                  onChange={(event) => handleLogoChange(event.target.files?.[0] ?? null)}
+                />
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-black/[0.06] bg-white/80 text-xs text-[#5F6B7A]">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+                  ) : (
+                    "—"
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                >
+                  <Camera className="size-4" />
+                  {logoUrl ? "Trocar logo" : "Adicionar logo"}
+                </Button>
+                {logoUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setLogoUrl("")}
+                    className="h-10 shrink-0 rounded-xl px-3 text-xs text-[#7B8491] hover:bg-white hover:text-[#050505]"
+                  >
+                    Remover
                   </Button>
                 ) : null}
               </div>

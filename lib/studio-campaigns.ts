@@ -115,6 +115,7 @@ const studioCampaignInclude = {
     select: {
       creci: true,
       brandColor: true,
+      logoUrl: true,
       showAgencyWatermark: true,
       user: { select: { name: true, photoUrl: true } },
       agency: { select: brandingAgencySelect },
@@ -234,6 +235,7 @@ function resolveCampaignBranding(
     brokerName: campaign.broker?.user.name ?? null,
     brokerPhotoUrl: campaign.broker?.user.photoUrl ?? null,
     brokerCreci: campaign.broker?.creci ?? null,
+    brokerLogoUrl: campaign.broker?.logoUrl ?? null,
     agencyName: agency?.name ?? null,
     agencyLogoUrl: agency?.logoUrl ?? null,
     accentColor: campaign.broker?.brandColor || agency?.brandColor || null,

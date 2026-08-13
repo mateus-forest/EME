@@ -17,6 +17,7 @@ export type BrokerProfile = {
   photoUrl: string
   description: string
   brandColor: string
+  logoUrl: string
   showAgencyWatermark: boolean
   pinConfigured: boolean
 }
@@ -36,6 +37,7 @@ const defaultProfile: BrokerProfile = {
   photoUrl: "",
   description: "",
   brandColor: "",
+  logoUrl: "",
   showAgencyWatermark: true,
   pinConfigured: false,
 }
@@ -76,6 +78,7 @@ export function useBrokerProfile() {
               creci: string
               description: string
               brandColor?: string
+              logoUrl?: string
               showAgencyWatermark?: boolean
               pinConfigured?: boolean
             }
@@ -105,6 +108,7 @@ export function useBrokerProfile() {
           photoUrl: data.profile.photoUrl,
           description: data.profile.description,
           brandColor: data.profile.brandColor ?? "",
+          logoUrl: data.profile.logoUrl ?? "",
           showAgencyWatermark: data.profile.showAgencyWatermark ?? true,
           pinConfigured: Boolean(data.profile.pinConfigured),
         }),
@@ -159,6 +163,7 @@ export function useBrokerProfile() {
         description: updates.description,
         photoUrl: updates.photoUrl,
         brandColor: updates.brandColor,
+        logoUrl: updates.logoUrl,
         showAgencyWatermark: updates.showAgencyWatermark,
         currentPassword: updates.currentPassword,
         newPassword: updates.newPassword,
@@ -184,6 +189,7 @@ export function useBrokerProfile() {
             description: string
             photoUrl: string
             brandColor?: string
+            logoUrl?: string
             showAgencyWatermark?: boolean
             pinConfigured?: boolean
           }
@@ -193,7 +199,7 @@ export function useBrokerProfile() {
     if (!response.ok || !data?.profile) {
       if (response.status === 413) {
         throw new Error(
-          "A imagem de perfil é grande demais para o servidor aceitar. Tente uma foto menor ou mais comprimida.",
+          "A foto ou o logo enviados são grandes demais para o servidor aceitar. Tente uma imagem menor ou mais comprimida.",
         )
       }
       throw new Error(data?.error || "Não foi possível salvar a conta do corretor.")
@@ -212,6 +218,7 @@ export function useBrokerProfile() {
       description: data.profile.description,
       photoUrl: data.profile.photoUrl,
       brandColor: data.profile.brandColor ?? "",
+      logoUrl: data.profile.logoUrl ?? "",
       showAgencyWatermark: data.profile.showAgencyWatermark ?? true,
       pinConfigured: Boolean(data.profile.pinConfigured),
     })

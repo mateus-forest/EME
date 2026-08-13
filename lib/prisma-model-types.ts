@@ -37,6 +37,7 @@ export type Broker = {
   creci: string | null
   description: string | null
   brandColor: string | null
+  logoUrl: string | null
   showAgencyWatermark: boolean
   aiCreditsBalance: number
   aiCreditsUsedThisMonth: number

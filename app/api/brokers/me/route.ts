@@ -10,7 +10,7 @@ import { prisma, type PrismaTransaction } from "@/lib/prisma"
 type BrokerProfileUser = Pick<User, "id" | "name" | "email" | "phone" | "photoUrl" | "passwordHash" | "pinHash"> & {
   pinSchemaAvailable?: boolean
   broker:
-    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description" | "brandColor" | "showAgencyWatermark"> & {
+    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description" | "brandColor" | "logoUrl" | "showAgencyWatermark"> & {
         agency?: {
           id: string
           name: string
@@ -37,6 +37,7 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     creci: user.broker.creci ?? "",
     description: user.broker.description ?? "",
     brandColor: user.broker.brandColor ?? "",
+    logoUrl: user.broker.logoUrl ?? "",
     showAgencyWatermark: user.broker.showAgencyWatermark,
     pinConfigured: Boolean(user.pinHash),
   }
@@ -90,6 +91,7 @@ export async function PATCH(request: NextRequest) {
     const photoUrl = typeof body?.photoUrl === "string" ? body.photoUrl.trim() : ""
     const brandColorInput = typeof body?.brandColor === "string" ? body.brandColor.trim() : ""
     const brandColor = /^#[0-9a-fA-F]{6}$/.test(brandColorInput) ? brandColorInput : ""
+    const logoUrl = typeof body?.logoUrl === "string" ? body.logoUrl.trim() : ""
     const showAgencyWatermark = typeof body?.showAgencyWatermark === "boolean" ? body.showAgencyWatermark : true
     const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : ""
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : ""
@@ -232,6 +234,7 @@ export async function PATCH(request: NextRequest) {
           creci,
           description: description || null,
           brandColor: brandColor || null,
+          logoUrl: logoUrl || null,
           showAgencyWatermark,
         },
       })
