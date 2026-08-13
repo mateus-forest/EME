@@ -18,6 +18,7 @@ function toNumber(value: string) {
 type BrokerAnalytics = {
   totalViews: number
   catalogViews: number
+  marketplaceViews: number
   propertyViews: number
   whatsappClicks: number
   leads: number
@@ -94,7 +95,7 @@ export function BrokerAnalyticsPage() {
             </div>
             <h3 className="mt-4 text-2xl font-semibold text-[#050505]">Desempenho pronto para acompanhar</h3>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[#5F6B7A]">
-              Cadastre imóveis para acompanhar visualizações do catálogo, cliques no WhatsApp, leads recebidos e imóveis mais acessados.
+              Cadastre imóveis para acompanhar visualizações do Catálogo e Marketplace, cliques no WhatsApp, leads recebidos e imóveis mais acessados.
             </p>
             <Button asChild className="mt-6 h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
               <Link href="/corretor/novo-imovel">Cadastrar imóvel</Link>
@@ -107,7 +108,7 @@ export function BrokerAnalyticsPage() {
             Array.from({ length: 4 }).map((_, index) => <MetricSkeleton key={index} />)
           ) : (
             <>
-              <MetricCard icon={Eye} label="Visualizações do catálogo" value={totalViews.toLocaleString("pt-BR")} />
+              <MetricCard icon={Eye} label="Visualizações totais" value={totalViews.toLocaleString("pt-BR")} />
               <MetricCard icon={MousePointerClick} label="Cliques no WhatsApp" value={String(whatsappClicks)} />
               <MetricCard icon={UsersRound} label="Leads recebidos" value={totalLeads.toLocaleString("pt-BR")} />
               <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
@@ -175,16 +176,17 @@ export function BrokerAnalyticsPage() {
           </ResponsiveCollapsibleSection>
         </section>
 
-        <ResponsiveCollapsibleSection title="Origem dos leads">
+        <ResponsiveCollapsibleSection title="Origem dos resultados">
         <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
               <MessageCircle className="size-5 text-[#009b3a]" />
-              Origem dos leads
+              Origem dos resultados
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-3">
+          <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-4">
             <InfoBlock label="Catálogo" value={`${analytics?.catalogViews ?? 0} visualizações`} />
+            <InfoBlock label="Marketplace" value={`${analytics?.marketplaceViews ?? 0} visualizações`} />
             <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
             <InfoBlock label="Leads" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} />
           </CardContent>
@@ -226,6 +228,7 @@ export function BrokerAnalyticsPage() {
 function formatSourceLabel(source: string) {
   const normalized = source.toLowerCase()
   if (normalized.includes("catalog")) return "Catálogo"
+  if (normalized.includes("marketplace")) return "Marketplace"
   if (normalized.includes("assessor") || normalized.includes("whatsapp")) return "WhatsApp"
   if (normalized.includes("dashboard")) return "Dashboard"
   if (normalized.includes("manual")) return "Manual"

@@ -35,9 +35,9 @@ export function getIntentLabel(slug: string) {
 
 export function intentionsFromQuery(query?: string) {
   if (!query) return []
-  const normalized = query.toLocaleLowerCase('pt-BR')
+  const normalized = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
   return searchIntents
-    .filter((intent) => intent.keywords.some((keyword) => normalized.includes(keyword)))
+    .filter((intent) => intent.keywords.some((keyword) => normalized.includes(keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR'))))
     .map((intent) => intent.slug)
 }
 

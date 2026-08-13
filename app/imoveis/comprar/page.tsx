@@ -13,7 +13,7 @@ import { PropertyCard } from '@/components/marketplace/property-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { buyTypes, buyIntents } from '@/lib/marketplace/pages-data'
-import { getMarketplacePropertyCards } from '@/lib/marketplace/server-data'
+import { getMarketplaceProperties, getMarketplacePropertyCards } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Comprar imóveis | EME Imóveis',
@@ -34,8 +34,10 @@ const quickFilters = [
 export const dynamic = 'force-dynamic'
 
 export default async function ComprarPage() {
-  const buyProperties = await getMarketplacePropertyCards(5, 'SALE')
+  const [buyProperties, searchResults] = await Promise.all([getMarketplacePropertyCards(5, 'SALE'), getMarketplaceProperties()])
   const [featured, ...rest] = buyProperties
+  const buyResults = searchResults.filter((property) => property.purpose === 'compra')
+  const realBuyTypes = buyTypes.map((type) => ({ ...type, count: buyResults.filter((property) => property.propertyType === type.slug).length }))
 
   return (
     <PageShell>
@@ -61,7 +63,7 @@ export default async function ComprarPage() {
           />
         </Reveal>
         <div className="mt-8">
-          <TypeExplorer items={buyTypes} purpose="compra" />
+          <TypeExplorer items={realBuyTypes} purpose="compra" />
         </div>
       </section>
 
@@ -71,7 +73,7 @@ export default async function ComprarPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading
               title="Imóveis para comprar"
-              support="Uma seleção editorial para começar a comparar com calma."
+              support="Imóveis reais publicados para começar a comparar com calma."
               className="sm:flex-1"
             />
             <Link
@@ -136,7 +138,7 @@ export default async function ComprarPage() {
           </div>
         </Reveal>
         <div className="mt-8">
-          <RegionHighlights metric="forSale" />
+          <RegionHighlights metric="forSale" results={buyResults} />
         </div>
       </section>
 

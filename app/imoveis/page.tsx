@@ -28,7 +28,7 @@ export default async function HomePage() {
         <PropertiesSection properties={properties} />
         <ComparisonSection results={searchResults.slice(0, 2)} />
         <EnvironmentExplorer />
-        <RegionsSection />
+        <RegionsSection results={searchResults} />
         <BrokersSection brokers={brokers} />
         <FeaturesSection />
         <ClosingCta />

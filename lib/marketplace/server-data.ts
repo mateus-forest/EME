@@ -102,6 +102,18 @@ export function mapMarketplaceProperty(record: MarketplacePropertyRecord): Searc
     region: record.broker.marketplaceRegion || '',
     brokerSlug: record.broker.catalogSlug,
     intentTags,
+    searchableText: normalizeText([
+      record.title,
+      record.description,
+      record.type,
+      record.purpose,
+      record.neighborhood,
+      record.city,
+      legal.district,
+      legal.city,
+      record.broker.marketplaceRegion,
+      record.broker.marketplaceSpecialty,
+    ].filter(Boolean).join(' ')),
     image: propertyImage(record),
     compatibility: 'boa',
     reasons: reasons.length ? reasons : ['Dados fornecidos pelo corretor responsável'],
@@ -134,7 +146,7 @@ export async function getMarketplacePropertyCards(limit?: number, purpose?: 'SAL
     ...(limit ? { take: limit } : {}),
   })
   const properties = records.map(mapMarketplaceProperty)
-  return (limit ? properties.slice(0, limit) : properties).map((property, index) => ({
+  return (limit ? properties.slice(0, limit) : properties).map((property) => ({
     slug: property.slug,
     title: property.title,
     city: property.city,
@@ -144,8 +156,7 @@ export async function getMarketplacePropertyCards(limit?: number, purpose?: 'SAL
     area: property.area,
     parking: property.parking,
     image: property.image,
-    badge: index === 0 ? 'Destaque' : undefined,
-    featured: index === 0,
+    featured: false,
   }))
 }
 
@@ -156,7 +167,7 @@ export async function getMarketplaceRentals(limit?: number): Promise<Rental[]> {
     orderBy: [{ marketplacePublishedAt: 'desc' }, { updatedAt: 'desc' }],
     ...(limit ? { take: limit } : {}),
   })
-  return records.map((record, index) => {
+  return records.map((record) => {
     const mapped = mapMarketplaceProperty(record)
     return {
       slug: mapped.slug,
@@ -168,8 +179,7 @@ export async function getMarketplaceRentals(limit?: number): Promise<Rental[]> {
       area: mapped.area,
       parking: mapped.parking,
       image: mapped.image,
-      badge: index === 0 ? 'Destaque' : undefined,
-      featured: index === 0,
+      featured: false,
     }
   })
 }
@@ -189,6 +199,7 @@ type BrokerWithMarketplaceCount = Prisma.BrokerGetPayload<{
 }>
 
 export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): BrokerProfile {
+  const hasVerifiedRating = record.marketplaceReviewCount > 0 && Boolean(record.marketplaceRating)
   return {
     id: record.id,
     slug: record.catalogSlug,
@@ -203,8 +214,8 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
     phone: record.phone || record.user.phone || '',
     image: record.user.photoUrl || '/marketplace/placeholder-user.jpg',
     activeListings: record._count.properties,
-    rating: record.marketplaceRating ? Number(record.marketplaceRating) : 0,
-    reviewCount: record.marketplaceReviewCount,
+    rating: hasVerifiedRating ? Number(record.marketplaceRating) : 0,
+    reviewCount: hasVerifiedRating ? record.marketplaceReviewCount : 0,
     featured: record.marketplaceFeatured,
     verified: Boolean(record.creci),
     transaction: brokerTransaction(record, record.properties.map((property) => property.purpose)),
@@ -223,7 +234,7 @@ export async function getMarketplaceBrokers() {
       properties: { where: { marketplacePublished: true }, select: { purpose: true } },
       _count: { select: { properties: { where: { marketplacePublished: true } } } },
     },
-    orderBy: [{ marketplaceFeatured: 'desc' }, { marketplaceRating: 'desc' }, { createdAt: 'asc' }],
+    orderBy: [{ marketplaceFeatured: 'desc' }, { createdAt: 'asc' }],
   })
   return records.map(mapMarketplaceBroker)
 }
@@ -247,7 +258,7 @@ export async function getMarketplaceBrokerPropertyCards(brokerId: string, limit 
     orderBy: [{ marketplacePublishedAt: 'desc' }, { updatedAt: 'desc' }],
     take: limit,
   })
-  return records.map((record, index) => {
+  return records.map((record) => {
     const property = mapMarketplaceProperty(record)
     return {
       slug: property.slug,
@@ -259,8 +270,7 @@ export async function getMarketplaceBrokerPropertyCards(brokerId: string, limit 
       area: property.area,
       parking: property.parking,
       image: property.image,
-      badge: index === 0 ? 'Destaque' : undefined,
-      featured: index === 0,
+      featured: false,
     } satisfies Property
   })
 }

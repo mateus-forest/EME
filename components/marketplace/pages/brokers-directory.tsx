@@ -63,6 +63,8 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const regionOptions = useMemo(() => [{ value: 'all', label: 'Todas as regiões' }, ...Array.from(new Map(brokers.map((broker) => [broker.regionSlug, broker.region])).entries()).map(([value, label]) => ({ value, label }))], [brokers])
   const specialtyOptions = useMemo(() => [{ value: 'all', label: 'Todas as especialidades' }, ...Array.from(new Set(brokers.map((broker) => broker.specialty))).map((value) => ({ value, label: value }))], [brokers])
+  const hasRealRatings = brokers.some((broker) => broker.reviewCount > 0 && broker.rating > 0)
+  const hasFeatured = brokers.some((broker) => broker.featured)
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR')
@@ -77,7 +79,7 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
     })
   }, [brokers, featured, query, rating, region, specialty, transaction])
 
-  const activeFilters = [region, specialty, transaction, rating, featured].filter((value) => value !== 'all').length
+  const activeFilters = [region, specialty, transaction, ...(hasRealRatings ? [rating] : []), ...(hasFeatured ? [featured] : [])].filter((value) => value !== 'all').length
 
   function reset() {
     setRegion('all')
@@ -92,8 +94,8 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
       <Segmented label="Região" options={regionOptions} value={region} onChange={setRegion} />
       <Segmented label="Especialidade" options={specialtyOptions} value={specialty} onChange={setSpecialty} />
       <Segmented label="Finalidade" options={brokerTransactionOptions} value={transaction} onChange={setTransaction} />
-      <Segmented label="Avaliação" options={ratingOptions} value={rating} onChange={setRating} />
-      <Segmented label="Destaques" options={featuredOptions} value={featured} onChange={setFeatured} />
+      {hasRealRatings ? <Segmented label="Avaliação" options={ratingOptions} value={rating} onChange={setRating} /> : null}
+      {hasFeatured ? <Segmented label="Destaques" options={featuredOptions} value={featured} onChange={setFeatured} /> : null}
     </div>
   )
 

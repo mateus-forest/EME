@@ -15,8 +15,6 @@ function cleanText(value: string | null, maxLength: number) {
   return value?.trim().slice(0, maxLength) ?? ""
 }
 
-const CATALOG_SEARCH_SOURCE = "catalog"
-
 export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
@@ -51,6 +49,7 @@ export async function GET(request: NextRequest) {
       ...(periodStart ? { createdAt: { gte: periodStart } } : {}),
       ...(propertyId ? { propertyId } : {}),
       ...(search && propertyRelationFilter ? { property: propertyRelationFilter } : {}),
+      ...(source ? { source } : {}),
     }
     const leadWhere = {
       brokerId: user.broker.id,
@@ -68,8 +67,9 @@ export async function GET(request: NextRequest) {
       } : {}),
     }
 
-    const [catalogViews, propertyViews, whatsappClicks, leads, properties, leadOrigins, propertyViewGroups, leadPropertyGroups, sources, recentSearches] = await Promise.all([
-      prisma.catalogEvent.count({ where: { ...eventWhere, eventType: "catalog_view" } }),
+    const [catalogViews, marketplaceViews, propertyViews, whatsappClicks, leads, properties, leadOrigins, propertyViewGroups, leadPropertyGroups, leadSources, eventSources, searchSources, recentSearches] = await Promise.all([
+      source && source !== "catalog" ? Promise.resolve(0) : prisma.catalogEvent.count({ where: { ...eventWhere, source: "catalog", eventType: { in: ["catalog_view", "property_view"] } } }),
+      source && source !== "marketplace" ? Promise.resolve(0) : prisma.catalogEvent.count({ where: { ...eventWhere, source: "marketplace", eventType: { in: ["marketplace_view", "property_view"] } } }),
       prisma.catalogEvent.count({ where: { ...eventWhere, eventType: "property_view" } }),
       prisma.catalogEvent.count({ where: { ...eventWhere, eventType: "whatsapp_click" } }),
       prisma.lead.count({ where: leadWhere }),
@@ -107,10 +107,20 @@ export async function GET(request: NextRequest) {
         where: { brokerId: user.broker.id },
         _count: { _all: true },
       }),
+      prisma.catalogEvent.groupBy({
+        by: ["source"],
+        where: { brokerId: user.broker.id },
+        _count: { _all: true },
+      }),
+      prisma.searchEvent.groupBy({
+        by: ["source"],
+        where: { brokerId: user.broker.id },
+        _count: { _all: true },
+      }),
       prisma.searchEvent.findMany({
         where: {
           brokerId: user.broker.id,
-          source: CATALOG_SEARCH_SOURCE,
+          ...(source ? { source } : { source: { in: ["catalog", "marketplace"] } }),
           ...(periodStart ? { createdAt: { gte: periodStart } } : {}),
           ...(search ? { query: { contains: search, mode: "insensitive" as const } } : {}),
         },
@@ -130,8 +140,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       catalogViews,
+      marketplaceViews,
       propertyViews,
-      totalViews: catalogViews + propertyViews,
+      totalViews: catalogViews + marketplaceViews,
       whatsappClicks,
       leads,
       monitoredProperties: properties.length,
@@ -148,7 +159,11 @@ export async function GET(request: NextRequest) {
         source: origin.source || "Sem origem",
         count: origin._count._all,
       })),
-      sources: sources.map((origin) => origin.source || "Sem origem").filter(Boolean),
+      sources: [...new Set([
+        ...leadSources.map((origin) => origin.source || "Sem origem"),
+        ...eventSources.map((origin) => origin.source || "Sem origem"),
+        ...searchSources.map((origin) => origin.source || "Sem origem"),
+      ].filter(Boolean))],
       recentSearches: recentSearches.map((item) => ({
         ...item,
         createdAt: item.createdAt.toISOString(),

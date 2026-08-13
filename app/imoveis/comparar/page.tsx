@@ -21,7 +21,7 @@ export default async function ComparePropertiesPage({
   const selected = selectedSlugs
     .map((slug) => searchResults.find((property) => property.slug === slug))
     .filter((property): property is (typeof searchResults)[number] => Boolean(property))
-  const compared = selected.length >= 2 ? selected.slice(0, 3) : searchResults.slice(0, 3)
+  const compared = selected.slice(0, 3)
 
   return (
     <PageShell>

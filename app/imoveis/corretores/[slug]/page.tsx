@@ -9,6 +9,7 @@ import { PropertyCard } from '@/components/marketplace/property-card'
 import { BrokerContactForm } from '@/components/marketplace/pages/broker-contact-form'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
+import { BrokerProfileTracker } from '@/components/marketplace/broker-profile-tracker'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,7 @@ export default async function BrokerProfilePage({
 
   return (
     <PageShell>
+      <BrokerProfileTracker catalogSlug={broker.slug} />
       <main className="flex-1 pb-20 pt-16 md:pt-20">
         <div className="mx-auto w-full max-w-6xl px-5 md:px-8">
           {/* Voltar */}

@@ -11,7 +11,7 @@ export function FeaturedBrokers({ brokers }: { brokers: BrokerProfile[] }) {
       <div className="max-w-2xl">
         <h2 id="featured-brokers-title" className="text-2xl font-semibold tracking-tight text-foreground">Corretores em destaque</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Profissionais reconhecidos na rede EME por sua atuação, experiência e avaliações.
+          Profissionais selecionados pela rede EME entre os perfis com imóveis publicados.
         </p>
       </div>
       <div className="no-scrollbar -mx-5 mt-7 flex snap-x gap-4 overflow-x-auto px-5 pb-3 md:mx-0 md:grid md:grid-cols-3 md:px-0">

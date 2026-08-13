@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import {
-  defaultQuery,
   formatPrice,
   sortResults,
   type Criterion,
@@ -11,12 +10,12 @@ import {
   type SortValue,
 } from '@/lib/marketplace/search-data'
 import {
-  defaultMarketplaceFilters,
   emptyMarketplaceFilters,
   filterSearchResults,
+  inferMarketplaceFilters,
+  mergeMarketplaceFilters,
   filtersToCriteria,
   filtersToSearchParams,
-  hasActiveFilters,
   removeFilterCriterion,
   type MarketplaceFilters,
 } from '@/lib/marketplace/search-filters'
@@ -42,7 +41,7 @@ import {
 import type { ResultsView } from '@/components/marketplace/search/view-toggle'
 import { cn } from '@/lib/utils'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
-import { intentionsFromQuery } from '@/lib/marketplace/search-intents'
+import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
 
 type Phase = 'loading' | 'ready' | 'error'
 const MAX_COMPARE = 3
@@ -60,10 +59,8 @@ export function SearchResults({
   results: SearchResult[]
   brokers: BrokerProfile[]
 }) {
-  const [query, setQuery] = useState(initialQuery?.trim() || defaultQuery)
-  const [filters, setFilters] = useState<MarketplaceFilters>(() =>
-    hasActiveFilters(initialFilters) ? initialFilters : defaultMarketplaceFilters,
-  )
+  const [query, setQuery] = useState(initialQuery?.trim() || '')
+  const [filters, setFilters] = useState<MarketplaceFilters>(() => initialFilters)
   const [sort, setSort] = useState<SortValue>('compatibilidade')
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [compare, setCompare] = useState<string[]>([])
@@ -80,21 +77,17 @@ export function SearchResults({
   const alternativesRef = useRef<HTMLDivElement | null>(null)
   const topRef = useRef<HTMLDivElement | null>(null)
 
-  // Simula o processamento da intenção ao abrir a página.
   useEffect(() => {
     if (phase !== 'loading') return
-    const t = setTimeout(() => setPhase('ready'), 650)
+    const t = setTimeout(() => setPhase('ready'), 180)
     return () => clearTimeout(t)
   }, [phase])
 
   function runSearch(nextQuery?: string) {
     const resolvedQuery = nextQuery?.trim() || query
     if (nextQuery) setQuery(resolvedQuery)
-    const inferredIntentions = intentionsFromQuery(resolvedQuery)
-    const nextFilters = inferredIntentions.length
-      ? { ...filters, intentions: [...new Set([...filters.intentions, ...inferredIntentions])] }
-      : filters
-    if (nextFilters !== filters) setFilters(nextFilters)
+    const nextFilters = mergeMarketplaceFilters(filters, inferMarketplaceFilters(resolvedQuery, results))
+    setFilters(nextFilters)
     const params = filtersToSearchParams(nextFilters)
     if (resolvedQuery) params.set('q', resolvedQuery)
     window.history.replaceState(null, '', `/imoveis/busca?${params.toString()}`)
@@ -110,10 +103,19 @@ export function SearchResults({
 
   const filtered = useMemo(() => {
     if (forceEmpty) return []
-    let list = filterSearchResults(results, filters)
+    let list = filterSearchResults(results, filters, query)
     list = sortResults(list, sort)
     return list
-  }, [filters, forceEmpty, results, sort])
+  }, [filters, forceEmpty, query, results, sort])
+
+  const trackedSearch = useRef('')
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const signature = JSON.stringify([query, filters, filtered.map((item) => item.id)])
+    if (trackedSearch.current === signature) return
+    trackedSearch.current = signature
+    void trackMarketplaceEvent({ eventType: 'marketplace_search', query: query || 'Busca por filtros', filters, resultCount: filtered.length, propertyIds: filtered.map((item) => item.id) })
+  }, [filtered, filters, phase, query])
 
   const selectedResults = useMemo(
     () => compare.map((slug) => results.find((r) => r.slug === slug)).filter(Boolean) as SearchResult[],
@@ -138,14 +140,16 @@ export function SearchResults({
   }
 
   function removeCriterion(key: Criterion['key']) {
-    applyFilters(removeFilterCriterion(filters, key), false)
+    setQuery('')
+    applyFilters(removeFilterCriterion(filters, key), false, '')
   }
 
   function clearFilters() {
-    applyFilters({ ...emptyMarketplaceFilters }, false)
+    setQuery('')
+    applyFilters({ ...emptyMarketplaceFilters }, false, '')
   }
 
-  function applyFilters(nextFilters: MarketplaceFilters, closeDialog = true) {
+  function applyFilters(nextFilters: MarketplaceFilters, closeDialog = true, activeQuery = query) {
     setFilters({
       ...nextFilters,
       features: [...nextFilters.features],
@@ -154,7 +158,7 @@ export function SearchResults({
     setForceEmpty(false)
     if (closeDialog) setFiltersOpen(false)
     const params = filtersToSearchParams(nextFilters)
-    if (query) params.set('q', query)
+    if (activeQuery) params.set('q', activeQuery)
     const search = params.toString()
     window.history.replaceState(null, '', search ? `/imoveis/busca?${search}` : '/imoveis/busca')
     setPhase('loading')
@@ -352,7 +356,7 @@ export function SearchResults({
           />
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {results.slice(3, 5).map((alternative, i) => (
+          {results.filter((item) => (!filters.purpose || item.purpose === filters.purpose) && !filtered.some((match) => match.id === item.id)).slice(0, 2).map((alternative, i) => (
             <Reveal key={alternative.slug} delay={i * 90}>
               <AlternativePropertyCard alternative={{ ...alternative, reason: alternative.reasons[0] || 'Outra opção publicada no Marketplace' }} />
             </Reveal>

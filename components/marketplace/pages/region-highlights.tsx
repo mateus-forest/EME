@@ -3,14 +3,19 @@ import Link from 'next/link'
 import { ArrowUpRight, MapPin } from 'lucide-react'
 import { regionDetails } from '@/lib/marketplace/pages-data'
 import { Reveal } from '@/components/marketplace/reveal'
+import type { SearchResult } from '@/lib/marketplace/search-data'
 
 // Grade compacta de regiões em destaque (reutilizada em /imoveis/comprar e /imoveis/alugar).
-export function RegionHighlights({ metric = 'total' }: { metric?: 'total' | 'forSale' | 'forRent' }) {
+export function RegionHighlights({ metric = 'total', results }: { metric?: 'total' | 'forSale' | 'forRent'; results: SearchResult[] }) {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
       {regionDetails.map((region, i) => {
-        const count =
-          metric === 'forSale' ? region.forSale : metric === 'forRent' ? region.forRent : region.properties
+        const count = results.filter((property) => {
+          const location = `${property.city} ${property.region}`.toLocaleLowerCase('pt-BR')
+          const matchesRegion = location.includes(region.name.toLocaleLowerCase('pt-BR'))
+          const matchesPurpose = metric === 'forSale' ? property.purpose === 'compra' : metric === 'forRent' ? property.purpose === 'aluguel' : true
+          return matchesRegion && matchesPurpose
+        }).length
         const suffix = metric === 'forRent' ? 'para alugar' : metric === 'forSale' ? 'à venda' : 'imóveis'
         return (
           <Reveal key={region.slug} delay={i * 90}>

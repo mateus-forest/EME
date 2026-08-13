@@ -72,7 +72,7 @@ export function SearchInterpretation({
             className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
           />
         ) : (
-          <p className="min-w-0 flex-1 truncate py-2 text-[15px] text-foreground">{query}</p>
+          <p className="min-w-0 flex-1 truncate py-2 text-[15px] text-foreground">{query || 'Todos os imóveis publicados no Marketplace'}</p>
         )}
 
         {editing ? (

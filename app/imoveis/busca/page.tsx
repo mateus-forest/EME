@@ -30,7 +30,7 @@ export default async function BuscarPage({
         <Suspense fallback={null}>
           <SearchResults
             initialQuery={Array.isArray(params.q) ? params.q[0] : params.q}
-            initialFilters={filtersFromSearchParams(params)}
+            initialFilters={filtersFromSearchParams(params, results)}
             estado={estado}
             results={results}
             brokers={brokers}

@@ -1,11 +1,12 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowUpRight, MapPin } from 'lucide-react'
-import { regions } from '@/lib/marketplace/data'
+import { regionDetails } from '@/lib/marketplace/pages-data'
+import type { SearchResult } from '@/lib/marketplace/search-data'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 
-export function RegionsSection() {
+export function RegionsSection({ results }: { results: SearchResult[] }) {
   return (
     <section id="regioes" className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
       <Reveal>
@@ -16,7 +17,7 @@ export function RegionsSection() {
       </Reveal>
 
       <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 md:grid-cols-3">
-        {regions.map((region, i) => (
+        {regionDetails.map((region, i) => (
           <Reveal key={region.slug} delay={i * 90}>
             <Link
               href={`/imoveis/regioes/${region.slug}`}
@@ -32,7 +33,7 @@ export function RegionsSection() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
               <span className="glass absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-medium text-foreground">
-                {region.properties} imóveis
+                {results.filter((property) => `${property.city} ${property.region}`.toLocaleLowerCase('pt-BR').includes(region.name.toLocaleLowerCase('pt-BR'))).length} imóveis
               </span>
 
               <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-5">

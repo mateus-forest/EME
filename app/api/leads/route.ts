@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Não foi possível identificar o responsável pelo lead." }, { status: 400 })
     }
 
-    const lead = await prisma.lead.create({
-      data: {
+    const [lead] = await prisma.$transaction([
+      prisma.lead.create({ data: {
         name: name || null,
         email: email || null,
         phone: phone || null,
@@ -116,8 +116,16 @@ export async function POST(request: NextRequest) {
         propertyId: property?.id ?? null,
         brokerId,
         agencyId,
-      },
-    })
+      } }),
+      prisma.catalogEvent.create({ data: {
+        eventType: 'lead',
+        source,
+        catalogSlug: catalogSlug || null,
+        propertyId: property?.id ?? null,
+        brokerId,
+        agencyId,
+      } }),
+    ])
 
     notifyLeadRecipients({ property, brokerId, agencyId }).catch((error) => {
       console.error("[api][leads] notification failed after lead creation", {

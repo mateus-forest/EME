@@ -5,6 +5,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { WhatsappGlyph } from '@/components/marketplace/property/whatsapp-glyph'
 import { createPublicLead } from '@/lib/lead-client'
 import { createWhatsAppUrl } from '@/lib/whatsapp'
+import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
 
 export function BrokerContactForm({ brokerName, brokerSlug, brokerPhone }: { brokerName: string; brokerSlug: string; brokerPhone: string }) {
   const [name, setName] = useState('')
@@ -21,7 +22,7 @@ export function BrokerContactForm({ brokerName, brokerSlug, brokerPhone }: { bro
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-eme-50 text-primary"><CheckCircle2 className="h-7 w-7" aria-hidden="true" /></span>
         <h3 className="mt-5 text-lg font-semibold text-foreground">Contato enviado</h3>
         <p className="mt-2 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">{brokerName.split(' ')[0]} recebeu seu interesse no fluxo de Clientes do EME.</p>
-        <a href={createWhatsAppUrl(brokerPhone, whatsappMessage)} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"><WhatsappGlyph className="h-4 w-4" />Abrir WhatsApp</a>
+        <a onClick={() => void trackMarketplaceEvent({ eventType: 'whatsapp_click', catalogSlug: brokerSlug })} href={createWhatsAppUrl(brokerPhone, whatsappMessage)} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"><WhatsappGlyph className="h-4 w-4" />Abrir WhatsApp</a>
       </div>
     )
   }

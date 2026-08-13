@@ -16,6 +16,7 @@ import { PropertyCompare } from '@/components/marketplace/property/property-comp
 import { SimilarProperties } from '@/components/marketplace/property/similar-properties'
 import { PropertyContact } from '@/components/marketplace/property/property-contact'
 import { MobileInterestBar } from '@/components/marketplace/property/mobile-interest-bar'
+import { PropertyViewTracker } from '@/components/marketplace/property/property-view-tracker'
 import { formatPrice } from '@/lib/marketplace/search-data'
 import { getMarketplaceProperties, getMarketplacePropertyDetail } from '@/lib/marketplace/server-data'
 
@@ -54,6 +55,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ slug: s
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
       <InterestProvider property={property} brokerName={broker.name} brokerPhone={broker.phone}>
+        <PropertyViewTracker propertyId={property.propertyId} />
         <main className="flex-1 pb-24 pt-16 md:pt-20 lg:pb-0">
           <section className="mx-auto w-full max-w-6xl px-5 pt-6 md:px-8 md:pt-8">
             <Link href="/imoveis/busca" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">

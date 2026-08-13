@@ -373,6 +373,7 @@ model EmeMessage {
 model CatalogEvent {
   id          String    @id @default(cuid())
   eventType   String
+  source      String    @default("catalog")
   catalogSlug String?
   visitorKey  String?
   propertyId  String?
@@ -384,6 +385,7 @@ model CatalogEvent {
   agency      Agency?   @relation(fields: [agencyId], references: [id], onDelete: SetNull)
 
   @@index([eventType, createdAt])
+  @@index([source, createdAt])
   @@index([brokerId, createdAt])
   @@index([agencyId, createdAt])
   @@index([propertyId, createdAt])

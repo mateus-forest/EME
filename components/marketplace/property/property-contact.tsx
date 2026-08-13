@@ -9,6 +9,7 @@ import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import type { PropertyDetail } from '@/lib/marketplace/property-detail'
 import { cn } from '@/lib/utils'
 import { createWhatsAppUrl } from '@/lib/whatsapp'
+import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
 
 const options: { key: keyof LeadQualification; label: string }[] = [
   { key: 'financiamento', label: 'Financiamento' },
@@ -103,7 +104,7 @@ export function PropertyContact({
               <p className="mt-2 rounded-xl bg-secondary/60 px-3 py-2.5 text-left text-xs leading-relaxed text-foreground">
                 {message}
               </p>
-              <a href={createWhatsAppUrl(broker.phone, message)} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Abrir WhatsApp</a>
+              <a onClick={() => void trackMarketplaceEvent({ eventType: 'whatsapp_click', propertyId: property.propertyId })} href={createWhatsAppUrl(broker.phone, message)} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Abrir WhatsApp</a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">

@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function CorretoresPage() {
   const brokers = await getMarketplaceBrokers()
+  const hasFeatured = brokers.some((broker) => broker.featured)
   return (
     <PageShell>
       <PageHero
@@ -26,10 +27,8 @@ export default async function CorretoresPage() {
       />
 
       <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
-        <Reveal>
-          <FeaturedBrokers brokers={brokers} />
-        </Reveal>
-        <Reveal className="mt-14 border-t border-border/70 pt-12 md:mt-16 md:pt-14">
+        {hasFeatured ? <Reveal><FeaturedBrokers brokers={brokers} /></Reveal> : null}
+        <Reveal className={hasFeatured ? 'mt-14 border-t border-border/70 pt-12 md:mt-16 md:pt-14' : ''}>
           <BrokersDirectory brokers={brokers} />
         </Reveal>
       </section>

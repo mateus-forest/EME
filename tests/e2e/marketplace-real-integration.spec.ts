@@ -29,6 +29,7 @@ test.describe('Marketplace integrado ao EME', () => {
     const fixtureUserId = user?.id || broker?.userId
 
     if (fixtureBrokerId) {
+      await prisma.catalogEvent.deleteMany({ where: { brokerId: fixtureBrokerId } })
       await prisma.lead.deleteMany({ where: { brokerId: fixtureBrokerId, source: 'marketplace' } })
       await prisma.catalog.deleteMany({ where: { ownerType: 'BROKER', ownerId: fixtureBrokerId } })
     }
@@ -118,7 +119,16 @@ test.describe('Marketplace integrado ao EME', () => {
 
     await page.goto('/imoveis/busca?finalidade=compra')
     await expect(page.getByText('Casa Integração Marketplace').first()).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText('Casa para Alugar Integração')).toHaveCount(0)
+    await expect(page.getByTestId('results-area').getByText('Casa para Alugar Integração')).toHaveCount(0)
+    await page.goto('/imoveis/busca?q=casa%20com%20p%C3%A1tio%20no%20centro%20at%C3%A9%20R%24%20750%20mil')
+    await expect(page.getByText('Casa Integração Marketplace').first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('Perto do centro').first()).toBeVisible()
+    await expect(page.getByText('Pátio').first()).toBeVisible()
+    await expect(page.getByText('Até R$ 750.000').first()).toBeVisible()
+    await page.reload()
+    await expect(page.getByText('Perto do centro').first()).toBeVisible({ timeout: 30_000 })
+    await expect.poll(async () => prisma.searchEvent.count({ where: { brokerId, source: 'marketplace' } })).toBeGreaterThan(0)
+
     await page.getByRole('link', { name: 'Casa Integração Marketplace', exact: true }).click()
     await expect(page).toHaveURL(new RegExp(`/imoveis/imovel/${slugs[0]}$`))
     await expect(page.getByText('Corretora Integração EME').first()).toBeVisible()
@@ -134,11 +144,17 @@ test.describe('Marketplace integrado ao EME', () => {
 
     const lead = await prisma.lead.findFirst({ where: { name: 'Cliente Marketplace E2E' }, orderBy: { createdAt: 'desc' } })
     expect(lead).toMatchObject({ source: 'marketplace', brokerId, propertyId: propertyIds[0] })
+    await expect.poll(async () => prisma.catalogEvent.count({ where: { brokerId, source: 'marketplace', eventType: 'lead', propertyId: propertyIds[0] } })).toBeGreaterThan(0)
+    await expect.poll(async () => prisma.catalogEvent.count({ where: { brokerId, source: 'marketplace', eventType: 'property_view', propertyId: propertyIds[0] } })).toBeGreaterThan(0)
 
     await page.goto(`/imoveis/corretores/${FIXTURE_SLUG}`)
     await expect(page.getByText('Residencial e primeiro imóvel').first()).toBeVisible()
     const activeListingsStat = page.getByText('Imóveis ativos').locator('..')
     await expect(activeListingsStat.getByText('3', { exact: true })).toBeVisible()
+
+    await page.goto('/imoveis/corretores')
+    await expect(page.getByRole('button', { name: '4,8+' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Corretores em destaque' })).toHaveCount(0)
 
     await page.goto(`/imoveis/comparar?imoveis=${slugs.join(',')}`)
     await expect(page.getByRole('heading', { name: 'Análise da comparação' })).toBeVisible()

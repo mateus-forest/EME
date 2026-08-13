@@ -10,8 +10,8 @@ export function PropertiesSection({ properties }: { properties: Property[] }) {
     <section id="imoveis" className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
       <Reveal>
         <SectionHeading
-          title="Imóveis em destaque"
-          support="Uma seleção de imóveis para começar a descobrir."
+          title="Imóveis recém-publicados"
+          support="As publicações mais recentes dos corretores da rede EME."
         />
       </Reveal>
 

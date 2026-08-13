@@ -8,6 +8,7 @@ import type { PropertyDetail } from '@/lib/marketplace/property-detail'
 import { formatPrice } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'
 import { createWhatsAppUrl } from '@/lib/whatsapp'
+import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
 
 type InterestContextValue = {
   open: (origin: LeadOrigin) => void
@@ -50,7 +51,8 @@ export function InterestProvider({
   const open = useCallback((from: LeadOrigin) => {
     setOrigin(from)
     setIsOpen(true)
-  }, [])
+    void trackMarketplaceEvent({ eventType: 'interest', propertyId: property.propertyId })
+  }, [property.propertyId])
 
   useEffect(() => {
     if (!isOpen) return
@@ -148,7 +150,7 @@ export function InterestProvider({
                 <p className="mt-4 w-full rounded-2xl border border-border/70 bg-secondary/60 px-4 py-3 text-left text-sm leading-relaxed text-foreground">
                   {message}
                 </p>
-                <a href={createWhatsAppUrl(brokerPhone, message)} target="_blank" rel="noreferrer" className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] active:scale-95">Abrir WhatsApp</a>
+                <a onClick={() => void trackMarketplaceEvent({ eventType: 'whatsapp_click', propertyId: property.propertyId })} href={createWhatsAppUrl(brokerPhone, message)} target="_blank" rel="noreferrer" className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] active:scale-95">Abrir WhatsApp</a>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6">
