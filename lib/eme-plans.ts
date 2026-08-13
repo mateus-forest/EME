@@ -346,6 +346,7 @@ export const EME_INSUFFICIENT_CREDITS_MESSAGE =
   "Creditos IA insuficientes. Compre um pacote de creditos ou aguarde a renovacao do seu plano."
 
 export const EME_FREE_COS_ACTIONS = new Set<EmeCreditActionKey>([
+  "general",
   "help_first_steps",
   "help_use_cos",
   "help_register_properties",

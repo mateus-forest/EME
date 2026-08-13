@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Check, Film, Library, LoaderCircle, Sparkles } from "lucide-react"
+import { ArrowLeft, Check, Film, Library, Sparkles } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -122,7 +123,7 @@ export function BrokerStudioIaVideoPage() {
 
         <section className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
           <Card className="rounded-[1.5rem] border-black/[0.06] py-0"><CardHeader className="px-5 py-5"><CardTitle>1. Projeto da Biblioteca</CardTitle></CardHeader><CardContent className="grid gap-4 px-5 pb-6">
-            {isLoadingLibrary ? <div className="flex items-center gap-2 text-sm text-[#667085]"><LoaderCircle className="size-4 animate-spin" />Carregando projetos...</div> : items.length ? <Select value={sourceAssetId} onValueChange={setSourceAssetId}><SelectTrigger data-testid="video-library-project"><SelectValue placeholder="Escolha um projeto" /></SelectTrigger><SelectContent>{items.map((item) => <SelectItem key={item.asset.id} value={item.asset.id}>{item.campaign.title} · {item.asset.label || "Resultado aprovado"}</SelectItem>)}</SelectContent></Select> : <div className="rounded-xl border border-dashed border-black/[0.08] bg-[#fbfbf8] p-5 text-sm leading-6 text-[#667085]">Aprove uma imagem em Preparar imóvel ou Visualizar projeto para criar um vídeo.</div>}
+            {isLoadingLibrary ? <div className="flex items-center gap-2 text-sm text-[#667085]"><Spinner className="size-4" />Carregando projetos...</div> : items.length ? <Select value={sourceAssetId} onValueChange={setSourceAssetId}><SelectTrigger data-testid="video-library-project"><SelectValue placeholder="Escolha um projeto" /></SelectTrigger><SelectContent>{items.map((item) => <SelectItem key={item.asset.id} value={item.asset.id}>{item.campaign.title} · {item.asset.label || "Resultado aprovado"}</SelectItem>)}</SelectContent></Select> : <div className="rounded-xl border border-dashed border-black/[0.08] bg-[#fbfbf8] p-5 text-sm leading-6 text-[#667085]">Aprove uma imagem em Preparar imóvel ou Visualizar projeto para criar um vídeo.</div>}
             {selected ? <><div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[#8B95A1]">Original</p><div className="relative aspect-[4/3] overflow-hidden rounded-2xl"><Image src={selected.originalUrl} alt="Frame inicial" fill unoptimized className="object-cover" /></div></div><div><p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[#8B95A1]">Resultado</p><div className="relative aspect-[4/3] overflow-hidden rounded-2xl"><Image src={selected.resultUrl} alt="Frame final" fill unoptimized className="object-cover" /></div></div></div>{selected.illustrative ? <p className="rounded-xl border border-[#009b3a]/14 bg-[#f4fbf6] px-4 py-3 text-xs text-[#356047]">Representação ilustrativa gerada por IA</p> : null}</> : null}
           </CardContent></Card>
 
@@ -131,7 +132,7 @@ export function BrokerStudioIaVideoPage() {
             <label className="grid gap-2 text-sm font-medium">Formato<Select value={format} onValueChange={(value) => setFormat(value as typeof format)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Reel vertical 9:16">Reel 9:16</SelectItem><SelectItem value="Paisagem 16:9">Horizontal 16:9</SelectItem></SelectContent></Select></label>
             <div className="grid gap-2"><p className="text-sm font-medium">Movimento</p><div className="grid grid-cols-3 gap-2">{motions.map((item) => <button key={item.value} type="button" onClick={() => setMotion(item.value)} title={item.description} className={cn("rounded-xl border px-2 py-3 text-xs font-semibold", motion === item.value ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06]")}>{item.label}</button>)}</div></div>
             <label className="grid gap-2 text-sm font-medium">Orientação adicional <span className="font-normal text-[#8B95A1]">(opcional)</span><Textarea rows={3} maxLength={600} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="Faça a transformação acontecer de forma progressiva enquanto a câmera se aproxima." /></label>
-            <Button onClick={generate} disabled={!selected || isGenerating} className="h-11 rounded-xl">{isGenerating ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{isGenerating ? "Criando vídeo..." : "Criar vídeo"}</Button>
+            <Button onClick={generate} disabled={!selected || isGenerating} className="h-11 rounded-xl">{isGenerating ? <Spinner className="size-4" /> : <Sparkles className="size-4" />}{isGenerating ? "Criando vídeo..." : "Criar vídeo"}</Button>
           </CardContent></Card>
         </section>
 

@@ -38,6 +38,7 @@ import {
   type CosWorkflow,
 } from "@/lib/cos"
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
+import { classifyCosSocialIntent, getSafeFirstName } from "@/lib/cos/conversation"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
 import type { FastActionResolution } from "@/lib/cos/fast-action-resolver"
@@ -699,14 +700,19 @@ export async function POST(request: NextRequest) {
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
   const isWorkflowDetailsRequest = requestedAction === "workflow_details"
   const attachments = sanitizeIncomingAttachments(body?.attachments)
+  const socialIntent = classifyCosSocialIntent(message)
   // Pre-flight estimate used only to gate on balance before the real plan is known. Defaults to 1
-  // like before for the vast majority of messages (no requestedAction at all). When a known free
-  // action is requested (the 7 COS help capabilities), this must be 0 too — otherwise a broker at
-  // 0 credit balance would be blocked from even asking for help, contradicting "conversar com o
-  // COS é ilimitado". Cancelamentos também devem ser 0 sem consultar a tabela: cancelar nunca cobra
+  // like before for the vast majority of messages (no requestedAction at all). Conversa social,
+  // general.chat e as capabilities gratuitas precisam começar em 0 — caso contrário um corretor
+  // sem saldo é bloqueado antes de o roteamento descobrir que conversar com o COS é ilimitado.
+  // Cancelamentos também devem ser 0 sem consultar a tabela: cancelar nunca cobra
   // crédito, e getEmeCreditCost lança em dev para actions ainda não cadastradas (ex.: CANCEL_CONTRACT),
   // o que quebrava o botão "Cancelar ação" com 500 antes mesmo de processar o cancelamento.
-  let creditsUsed: number = isWorkflowDetailsRequest || isCancellation ? 0 : requestedAction ? getEmeCreditCost(requestedAction) : 1
+  let creditsUsed: number = isWorkflowDetailsRequest || isCancellation || socialIntent || requestedAction === "general"
+    ? 0
+    : requestedAction
+      ? getEmeCreditCost(requestedAction)
+      : 1
 
   if (!message) {
     return NextResponse.json({ error: "Digite uma mensagem para o COS." }, { status: 400 })
@@ -780,6 +786,9 @@ export async function POST(request: NextRequest) {
     const normalizedContext = createCosNormalizedContext({
       brokerId: user.broker.id,
       userId: user.id,
+      actor: {
+        firstName: getSafeFirstName(user.name),
+      },
       surface,
       message: structuredSelectionMessage ?? message,
       workspace,
@@ -788,7 +797,7 @@ export async function POST(request: NextRequest) {
       attachments: effectiveAttachments,
     })
     const fastAction =
-      !requestedAction && !isCancellation
+      !requestedAction && !isCancellation && !socialIntent
         ? resolveFastCosAction({
             message,
             workspace,
@@ -797,6 +806,7 @@ export async function POST(request: NextRequest) {
         : { kind: "none" as const, confidence: 0 }
     const effectiveRequestedAction =
       requestedAction ||
+      (socialIntent ? "general" : null) ||
       (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null)
 
     if (fastAction.kind === "clarify") {
@@ -1557,9 +1567,13 @@ export async function POST(request: NextRequest) {
     }
 
     const actionMetadata = (executionResult?.metadata ?? {}) as Prisma.InputJsonObject
+    // Uma interação social não deve apagar um workflow operacional que já estava em andamento.
+    // O general.chat responde normalmente, mas a sessão preserva o estado anterior para a próxima
+    // mensagem do corretor.
+    const workflowToPersist = socialIntent && activeWorkflow ? activeWorkflow : updatedWorkflow
     const nextConversationMemory = buildConversationMemory({
       current: conversationMemory,
-      workflow: updatedWorkflow,
+      workflow: workflowToPersist,
       action,
       message: displayMessage || message,
       result: responseText,
@@ -1611,7 +1625,7 @@ export async function POST(request: NextRequest) {
             primaryPropertyDraft: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message, attachmentAnalysis.imageUrl),
           }
         : null,
-      workflow: workflowMetadata(updatedWorkflow),
+      workflow: workflowMetadata(workflowToPersist),
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
       attachments: effectiveAttachments,
@@ -1641,7 +1655,7 @@ export async function POST(request: NextRequest) {
 
     const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([
       getBrokerCredits(user.broker.id),
-      conversationDocument ? persistConversationWorkflow(conversationDocument.id, updatedWorkflow, nextConversationMemory) : Promise.resolve(conversationDocument),
+      conversationDocument ? persistConversationWorkflow(conversationDocument.id, workflowToPersist, nextConversationMemory) : Promise.resolve(conversationDocument),
       touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
       prisma.aiAssistantInteraction.create({
         data: {

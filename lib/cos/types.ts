@@ -430,6 +430,9 @@ export type CosConversationMemoryAttachment = CosAttachmentInput
 export type CosNormalizedContext = {
   brokerId: string
   userId: string
+  actor?: {
+    firstName: string | null
+  }
   surface: CosCapabilitySurface
   message: string
   workspace: CosWorkspaceContext | null

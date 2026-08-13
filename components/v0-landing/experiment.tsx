@@ -1,7 +1,9 @@
 'use client'
 
+import { Spinner } from '@/components/ui/spinner'
+
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowUp, Check, Loader2 } from 'lucide-react'
+import { ArrowUp, Check } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Reveal } from './reveal'
 
@@ -92,7 +94,7 @@ export function Experiment() {
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all duration-300 enabled:hover:scale-105 disabled:opacity-40"
                 >
                   {status === 'generating' ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Spinner className="size-4" />
                   ) : (
                     <ArrowUp className="h-5 w-5" strokeWidth={2.5} />
                   )}
@@ -145,7 +147,7 @@ export function Experiment() {
                               {done ? (
                                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
                               ) : (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <Spinner className="size-3.5" />
                               )}
                             </span>
                             <span className={done ? 'text-foreground' : 'text-muted-foreground'}>

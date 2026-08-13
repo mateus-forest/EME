@@ -176,9 +176,43 @@
     animation: eme-swipe-hint 2.2s ease-in-out infinite;
   }
 
-  .eme-logo-3d-spin {
-    animation: eme-logo-3d-spin 10s linear infinite;
-    transform-origin: center;
+  .eme-loader-mark {
+    container-type: inline-size;
+    flex: none;
+  }
+
+  .eme-loader-mark-halo {
+    inset: 16%;
+    border-radius: 50%;
+    background: rgba(20, 190, 95, 0.16);
+    filter: blur(17.9487cqi);
+    animation: eme-loader-halo 1.35s ease-in-out infinite;
+  }
+
+  .eme-loader-mark-logo {
+    width: 84.6154%;
+    height: 84.6154%;
+    animation: eme-loader-breathe 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    filter: drop-shadow(0 7.6923cqi 17.9487cqi rgba(20, 120, 70, 0.1));
+  }
+
+  .eme-loader-mark-glint {
+    inset: 6.4103cqi;
+    border-radius: 23.0769cqi;
+    mix-blend-mode: screen;
+  }
+
+  .eme-loader-mark-glint::before {
+    content: "";
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: -43.5897cqi;
+    width: 28.2051cqi;
+    transform: rotate(14deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.82), transparent);
+    filter: blur(2.5641cqi);
+    animation: eme-loader-glint 1.8s ease-in-out infinite;
   }
 
   .eme-loading-bar {
@@ -380,15 +414,48 @@
   }
 }
 
-@keyframes eme-logo-3d-spin {
-  0% {
-    transform: perspective(1200px) rotateX(8deg) rotateY(0deg) rotateZ(-1.5deg);
+@keyframes eme-loader-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.84;
+    filter: brightness(0.98) drop-shadow(0 5.1282cqi 12.8205cqi rgba(20, 120, 70, 0.08));
   }
   50% {
-    transform: perspective(1200px) rotateX(-7deg) rotateY(180deg) rotateZ(1deg);
+    transform: scale(1.035);
+    opacity: 1;
+    filter: brightness(1.06) drop-shadow(0 10.2564cqi 23.0769cqi rgba(20, 120, 70, 0.14));
+  }
+}
+
+@keyframes eme-loader-halo {
+  0%,
+  100% {
+    transform: scale(0.82);
+    opacity: 0.12;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.44;
+  }
+}
+
+@keyframes eme-loader-glint {
+  0%,
+  28% {
+    left: -43.5897cqi;
+    opacity: 0;
+  }
+  42% {
+    opacity: 0.65;
+  }
+  66% {
+    left: 117.9487cqi;
+    opacity: 0;
   }
   100% {
-    transform: perspective(1200px) rotateX(8deg) rotateY(360deg) rotateZ(-1.5deg);
+    left: 117.9487cqi;
+    opacity: 0;
   }
 }
 
@@ -439,7 +506,9 @@
   .eme-shimmer::after,
   .landing-float,
   .eme-ambient-light,
-  .eme-logo-3d-spin,
+  .eme-loader-mark-logo,
+  .eme-loader-mark-halo,
+  .eme-loader-mark-glint::before,
   .eme-loading-bar {
     animation: none;
   }

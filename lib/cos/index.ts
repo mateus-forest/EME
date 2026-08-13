@@ -17,6 +17,7 @@ export { createStepPlanForCapability, planCosExecution } from "@/lib/cos/executi
 export { buildCosCapabilityInventoryMarkdown, getCosCapabilityInventory } from "@/lib/cos/inventory"
 export { normalizeCosAttachments, runCosAttachmentPipeline, splitCosAttachmentsByCategory } from "@/lib/cos/attachment-pipeline"
 export { createCosNormalizedContext } from "@/lib/cos/context"
+export { buildCosConversationResponse, classifyCosSocialIntent, getSafeFirstName } from "@/lib/cos/conversation"
 export { resolveAgendaEntity, resolveCampaignEntity, resolveContractEntity, resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 export { planCosCapability } from "@/lib/cos/planner"
 export {

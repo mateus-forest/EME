@@ -1,8 +1,10 @@
 "use client"
 
+import { Spinner } from "@/components/ui/spinner"
+
 import type { FormEvent } from "react"
 import { useMemo, useState } from "react"
-import { Bot, ClipboardList, ImageIcon, Loader2, Search, Sparkles, Video } from "lucide-react"
+import { Bot, ClipboardList, ImageIcon, Search, Sparkles, Video } from "lucide-react"
 
 type LandingDemoMode = "create_ad" | "generate_video" | "create_catalog" | "search_property" | "chat_cos"
 
@@ -167,7 +169,7 @@ export function LandingCosDemoSection() {
             disabled={isSending}
             className="landing-hover-button inline-flex h-[62px] items-center justify-center gap-3 rounded-[18px] bg-[#16a34a] px-7 text-[15px] font-medium text-white shadow-[0_14px_28px_rgba(22,163,74,0.18)] transition-all hover:bg-[#14803d] disabled:cursor-not-allowed disabled:bg-[#7fc999]"
           >
-            {isSending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {isSending ? <Spinner className="size-4" /> : <Sparkles className="size-4" />}
             {isSending ? "COS processando..." : "Gerar com IA"}
           </button>
         </div>

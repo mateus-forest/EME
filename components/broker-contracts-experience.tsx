@@ -12,7 +12,6 @@ import {
   FileText,
   FileUp,
   LayoutTemplate,
-  Loader2,
   PenLine,
   Plus,
   RefreshCw,
@@ -23,6 +22,7 @@ import { BrokerContractsPage } from "@/components/broker-contracts-page"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import {
   contractTemplates,
@@ -341,7 +341,7 @@ function ImportTemplatePanel({
             ) : null}
             <p className="mt-4 text-xs leading-5 text-[#7b8491]">Salvar confirma a estrutura. O texto jurídico não será reanalisado ao criar novos contratos.</p>
             <Button onClick={() => void saveReview()} disabled={isBusy || !name.trim()} className="mt-5 w-full rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
-              {isBusy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />} Salvar modelo
+              {isBusy ? <Spinner className="size-4" /> : <CheckCircle2 className="size-4" />} Salvar modelo
             </Button>
             <Button
               variant="ghost"
@@ -368,7 +368,7 @@ function ImportTemplatePanel({
         <p className="mt-1 text-sm text-[#687386]">PDF ou DOCX, até 15 MB. O conteúdo jurídico será preservado.</p>
         <Input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mx-auto mt-5 max-w-xl bg-white" />
         <Button onClick={() => void importFile()} disabled={!file || isBusy} className="mt-4 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
-          {isBusy ? <><Loader2 className="size-4 animate-spin" /> Preparando seu modelo...</> : "Importar modelo"}
+          {isBusy ? <><Spinner className="size-4" /> Preparando seu modelo...</> : "Importar modelo"}
         </Button>
       </section>
       {templates.some((item) => item.status === "REVIEW_REQUIRED") ? (
@@ -390,7 +390,7 @@ function ImportTemplatePanel({
           <div className="mt-3 grid gap-2">
             {templates.filter((item) => item.status === "ANALYZING").map((item) => (
               <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/[0.06] bg-white p-4">
-                <span className="flex items-center gap-3"><Loader2 className="size-4 animate-spin text-[#009b3a]" /><span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Nenhuma análise adicional será iniciada enquanto esta estiver ativa.</span></span></span>
+                <span className="flex items-center gap-3"><Spinner className="size-4 text-[#009b3a]" /><span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Nenhuma análise adicional será iniciada enquanto esta estiver ativa.</span></span></span>
                 <Button variant="ghost" disabled={isBusy} onClick={() => void reanalyze(item)} className="rounded-xl text-xs">Verificar preparação</Button>
               </div>
             ))}
@@ -460,7 +460,7 @@ function TemplateLibrary({
       </section>
 
       {feedback ? <p className="rounded-xl border border-black/[0.06] bg-white p-3 text-sm text-[#5f6b7a]">{feedback}</p> : null}
-      {loading ? <div className="flex justify-center rounded-2xl border border-black/[0.05] bg-white py-16"><Loader2 className="size-6 animate-spin text-[#009b3a]" /></div> : null}
+      {loading ? <div className="flex justify-center rounded-2xl border border-black/[0.05] bg-white py-16"><Spinner className="size-6 text-[#009b3a]" /></div> : null}
 
       {!loading && ready.length > 0 ? (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -497,7 +497,7 @@ function TemplateLibrary({
             {pending.map((template) => (
               <button key={template.id} type="button" onClick={() => onInspect(template)} className="flex items-center justify-between rounded-xl bg-[#fbfbf8] p-4 text-left">
                 <span><strong className="block text-sm text-[#111]">{template.name}</strong><span className="text-xs text-[#7b8491]">{template.status === "ANALYZING" ? "Em preparação" : template.status === "FAILED" ? "Precisa de atenção" : "Aguardando revisão"}</span></span>
-                {template.status === "ANALYZING" ? <Loader2 className="size-4 animate-spin text-[#009b3a]" /> : <PenLine className="size-4 text-[#5f6b7a]" />}
+                {template.status === "ANALYZING" ? <Spinner className="size-4 text-[#009b3a]" /> : <PenLine className="size-4 text-[#5f6b7a]" />}
               </button>
             ))}
           </div>
@@ -642,7 +642,7 @@ function InstanceEditor({
       : { label: "Informação deste contrato", tone: "text-[#5f6b7a]" }
   }
 
-  if (isBusy && !instance) return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="size-6 animate-spin text-[#009b3a]" /></div>
+  if (isBusy && !instance) return <div className="flex min-h-[40vh] items-center justify-center"><Spinner className="size-6 text-[#009b3a]" /></div>
   if (!instance) return <p className="rounded-xl bg-[#fff8e8] p-4 text-sm text-[#765a16]">{feedback || "Contrato não encontrado."}</p>
 
   return (
@@ -724,7 +724,7 @@ function InstanceEditor({
               </div>
             </section>
           ))}
-          <Button onClick={() => void save()} disabled={isBusy} className="rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">{isBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Salvar alterações</Button>
+          <Button onClick={() => void save()} disabled={isBusy} className="rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">{isBusy ? <Spinner className="size-4" /> : <Check className="size-4" />} Salvar alterações</Button>
         </aside>
 
         <main className="min-w-0 rounded-2xl bg-[#f3f2ee] p-3 sm:p-5">
@@ -873,7 +873,7 @@ export function BrokerContractsExperience() {
       <Dialog open={mode === "new"} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent className="max-w-2xl rounded-2xl border-black/[0.07] bg-white text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
           <DialogHeader><DialogTitle>Escolha um modelo</DialogTitle><DialogDescription>Seus contratos, preparados com os dados da operação.</DialogDescription></DialogHeader>
-          {isLoadingTemplates ? <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-[#009b3a]" /></div> : readyTemplates.length > 0 ? (
+          {isLoadingTemplates ? <div className="flex justify-center py-10"><Spinner className="size-6 text-[#009b3a]" /></div> : readyTemplates.length > 0 ? (
             <div className="grid gap-2">
               {readyTemplates.map((template) => (
                 <button key={template.id} type="button" onClick={() => void createFromTemplate(template.id)} className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-white p-4 text-left transition hover:border-[#009b3a]/20 hover:bg-[#f8fcf9]">

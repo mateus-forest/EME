@@ -1,9 +1,11 @@
 "use client"
 
+import { Spinner } from "@/components/ui/spinner"
+
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, LoaderCircle, Play, Sparkles, Video } from "lucide-react"
+import { ArrowRight, CheckCircle2, Play, Sparkles, Video } from "lucide-react"
 
 const demoFrames = {
   original: "/images/eme-landing-hero.jpeg",
@@ -124,7 +126,7 @@ function DemoStageCard({
         {state !== "image" ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="inline-flex size-14 items-center justify-center rounded-full bg-white/92 text-[#16a34a] shadow-[0_12px_24px_rgba(15,23,42,0.16)]">
-              {state === "processing" ? <LoaderCircle className="size-7 animate-spin" /> : <Play className="size-7" />}
+              {state === "processing" ? <Spinner className="size-7" /> : <Play className="size-7" />}
             </span>
           </div>
         ) : null}
@@ -134,8 +136,10 @@ function DemoStageCard({
         <div className="inline-flex items-center gap-2 rounded-[12px] border border-black/[0.045] bg-white px-3.5 py-1.5 text-[13px] text-[#334155] shadow-[0_10px_18px_rgba(15,23,42,0.07)]">
           {state === "image" ? (
             <CheckCircle2 className="size-4 text-[#16a34a]" />
+          ) : state === "processing" ? (
+            <Spinner className="size-4 text-[#16a34a]" />
           ) : (
-            <LoaderCircle className={`size-4 text-[#16a34a] ${state === "processing" ? "animate-spin" : ""}`} />
+            <Play className="size-4 text-[#16a34a]" />
           )}
           {status}
         </div>

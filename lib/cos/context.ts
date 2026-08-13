@@ -36,6 +36,9 @@ function collectSelectedEntityIds(input: {
 export function createCosNormalizedContext(input: {
   brokerId: string
   userId: string
+  actor?: {
+    firstName?: string | null
+  }
   surface: CosNormalizedContext["surface"]
   message: string
   workspace: CosWorkspaceContext | null
@@ -46,6 +49,9 @@ export function createCosNormalizedContext(input: {
   return {
     brokerId: input.brokerId,
     userId: input.userId,
+    actor: {
+      firstName: input.actor?.firstName ?? null,
+    },
     surface: input.surface,
     message: input.message,
     workspace: input.workspace,

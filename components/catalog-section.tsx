@@ -1,6 +1,8 @@
 "use client"
 
-import { Bath, Bed, Car, ExternalLink, Flame, Heart, RefreshCw, Search, Zap } from "lucide-react"
+import { Bath, Bed, Car, ExternalLink, Flame, Heart, Search, Zap } from "lucide-react"
+
+import { Spinner } from "@/components/ui/spinner"
 
 export function CatalogSection() {
   const properties = [
@@ -63,7 +65,7 @@ export function CatalogSection() {
             </div>
 
             <div className="flex items-center gap-2 mt-6">
-              <RefreshCw className="w-4 h-4 text-[#00C853] animate-spin" style={{ animationDuration: "3s" }} />
+              <Spinner className="size-4 text-[#00C853]" />
               <span className="text-sm text-white/50">Atualização em tempo real</span>
             </div>
           </div>
