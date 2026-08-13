@@ -24,13 +24,13 @@ const LOGO_W = 614
  * radius and arch are kept as fractions of the window: the outer cards keep the
  * same margins the render has instead of sliding off a cropped edge.
  */
-const ORBIT_X_FRACTION = 576 / PLATE_W
+const ORBIT_X_FRACTION = 636 / PLATE_W
 const ORBIT_Z_FRACTION = 150 / PLATE_W
-const ARCH_FRACTION = 255 / PLATE_H
+const ARCH_FRACTION = 290 / PLATE_H
 /** The ring rides slightly above the logo anchor, as it does in the render. */
-const RING_LIFT_FRACTION = -0.038
+const RING_LIFT_FRACTION = -0.075
 /** Card width in the reference vs. the ModuleCard's intrinsic width. */
-const CARD_H_FRACTION = 132 / PLATE_H
+const CARD_H_FRACTION = 168 / PLATE_H
 const CARD_INTRINSIC_W = 184
 
 type StageConfig = {
@@ -142,10 +142,11 @@ export function OrbitStage({
       const cos = Math.cos(rad)
       const front = -cos
       const x = sin * cfg.radiusX
-      const y =
-        -cos * cfg.archLift * (cos > 0 ? 0.46 : 0.9) +
-        Math.abs(sin) * 34 * cfg.baseScale +
-        cfg.ringLift
+      // In the reference the ring reads as a bowl: the two outermost cards sit
+      // highest, the intermediate pair drops, and the front-centre card is the
+      // lowest of all. `front` alone drives that, so the arch is applied
+      // symmetrically with a bias toward the front half.
+      const y = -cos * cfg.archLift * (cos > 0 ? 0.5 : 1) + cfg.ringLift
       const z = front >= 0 ? front * cfg.radiusZ * 1.1 : front * cfg.radiusZ * 1.7
 
       const scale = cfg.baseScale * map(front, -1, 1, 0.72, 1.06)
