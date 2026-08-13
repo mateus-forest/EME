@@ -32,8 +32,16 @@ export type EmeModule = {
   benefits: string[]
   /** Call-to-action label. */
   cta: string
-  /** Premium device mockup for the panel's left side. */
+  /** Mockup used in the structured presentation panel. */
   mockup: string
+  /** Optional premium render; the standard mockup remains a deliberate fallback. */
+  premiumMockup?: string
+  /** Phrase highlighted in green inside the modal headline. */
+  highlight: string
+  /** Trust message shown in the modal footer. */
+  security: string
+  /** Optional supporting action rendered alongside the primary CTA. */
+  secondaryAction: { label: string; href: string }
   /** How the mockup fills the panel's left column.
    *  - "contain" (default): centred with padding — for single-device renders.
    *  - "cover": full-bleed edge-to-edge — for full device scenes (e.g. COS). */
@@ -65,7 +73,11 @@ export const emeModules: EmeModule[] = [
       "Ensina e orienta no uso do sistema",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/cos.png",
+    mockup: "/mockups/cos.png",
+    premiumMockup: "/mockups/cos-premium.png",
+    highlight: "sempre ao seu lado.",
+    security: "Operação assistida com controle e privacidade.",
+    secondaryAction: { label: "Ver o COS em ação", href: "/cos" },
     mockupFit: "cover",
   },
   {
@@ -85,7 +97,10 @@ export const emeModules: EmeModule[] = [
       "Acompanhamento do funil de atendimento",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/clientes.png",
+    mockup: "/mockups/clientes.png",
+    highlight: "em um só lugar.",
+    security: "Histórico e documentos protegidos por padrão.",
+    secondaryAction: { label: "Conhecer o CRM", href: "/clientes" },
   },
   {
     id: "imoveis",
@@ -104,7 +119,10 @@ export const emeModules: EmeModule[] = [
       "Importação em massa de imóveis",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/imoveis.png",
+    mockup: "/mockups/imoveis.png",
+    highlight: "sempre atualizada.",
+    security: "Dados do portfólio centralizados e protegidos.",
+    secondaryAction: { label: "Ver gestão de imóveis", href: "/imoveis" },
   },
   {
     id: "catalogo",
@@ -124,7 +142,11 @@ export const emeModules: EmeModule[] = [
       "Mais profissionalismo e credibilidade",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/catalogo.png",
+    mockup: "/mockups/catalogo.png",
+    premiumMockup: "/mockups/catalogo-premium.png",
+    highlight: "impressiona e converte.",
+    security: "Seus dados e os de seus clientes sempre protegidos.",
+    secondaryAction: { label: "Ver exemplo de catálogo", href: "/catalogo" },
   },
   {
     id: "studio-ia",
@@ -145,7 +167,10 @@ export const emeModules: EmeModule[] = [
       "Biblioteca inteligente de conteúdos",
     ],
     cta: "Explorar módulo",
-    mockup: "/modals/studio-ia.png",
+    mockup: "/mockups/studio-ia.png",
+    highlight: "Inteligência Artificial.",
+    security: "Criações preservadas na sua biblioteca privada.",
+    secondaryAction: { label: "Explorar possibilidades", href: "/studio" },
   },
   {
     id: "propostas",
@@ -164,7 +189,11 @@ export const emeModules: EmeModule[] = [
       "Mais agilidade, mais resultados",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/propostas.png",
+    mockup: "/mockups/propostas.png",
+    premiumMockup: "/mockups/propostas-premium.png",
+    highlight: "prontas para impressionar.",
+    security: "Informações comerciais tratadas com confidencialidade.",
+    secondaryAction: { label: "Ver uma proposta", href: "/propostas" },
   },
   {
     id: "contratos",
@@ -183,7 +212,11 @@ export const emeModules: EmeModule[] = [
       "Tudo organizado em um só lugar",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/contratos.png",
+    mockup: "/mockups/contratos.png",
+    premiumMockup: "/mockups/contratos-premium.png",
+    highlight: "sem burocracia.",
+    security: "Documentos armazenados com segurança e rastreabilidade.",
+    secondaryAction: { label: "Conhecer documentos", href: "/contratos" },
   },
   {
     id: "agenda",
@@ -202,6 +235,10 @@ export const emeModules: EmeModule[] = [
       "Acompanhamento claro das atividades",
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/agenda.png",
+    mockup: "/mockups/agenda.png",
+    premiumMockup: "/mockups/compromissos-premium.png",
+    highlight: "sempre sob controle.",
+    security: "Sua agenda acessível apenas para quem você autorizar.",
+    secondaryAction: { label: "Ver agenda inteligente", href: "/compromissos" },
   },
 ]

@@ -1,58 +1,30 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { motion } from "motion/react"
 import Image from "next/image"
+import Link from "next/link"
+import { Check, ExternalLink, ShieldCheck, X } from "lucide-react"
+import { motion } from "motion/react"
+
 import type { EmeModule } from "@/lib/eme-modules"
 
 type Rect = { left: number; top: number; width: number; height: number }
 
-/**
- * Intrinsic aspect ratio (width / height) of each approved modal artwork AFTER
- * it was cropped to the real card (the surrounding white frame was trimmed and
- * the corners rounded to transparency). The panel is sized to the exact ratio
- * of the module's artwork so the image fills it with no crop and no margins.
- */
-const MODAL_AR: Record<string, number> = {
-  cos: 1448 / 932,
-  clientes: 1486 / 972,
-  imoveis: 1480 / 962,
-  catalogo: 1478 / 971,
-  "studio-ia": 1495 / 980,
-  propostas: 1469 / 965,
-  contratos: 1483 / 962,
-  agenda: 1452 / 941,
-}
-const DEFAULT_AR = 1480 / 962
-
-/**
- * The centred resting size the card grows into, locked to the artwork's own
- * aspect ratio and fit inside the viewport on BOTH axes so it never needs an
- * internal scrollbar on any device.
- */
-function computeTarget(ar: number): Rect {
+function computeTarget(): Rect {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const isNarrow = vw < 768
-  const maxW = vw * (isNarrow ? 0.94 : 0.9)
-  const maxH = vh * (isNarrow ? 0.9 : 0.92)
-  const width = Math.min(maxW, maxH * ar)
-  const height = width / ar
+  const narrow = vw < 768
+  const width = Math.min(vw * (narrow ? 0.94 : 0.88), 1240)
+  const height = Math.min(vh * (narrow ? 0.92 : 0.86), 780)
   return { left: (vw - width) / 2, top: (vh - height) / 2, width, height }
 }
 
-/**
- * Phase 4 — the selected card literally becomes its own presentation panel.
- *
- * Using a FLIP technique, we measure the clicked card's exact on-screen
- * rectangle and animate a single slab from that rectangle to the centred panel.
- * The panel's only content is the approved modal artwork for the module — a
- * pre-cropped, transparent-cornered PNG of the real modal card (scene, copy,
- * benefits and the close mark are all part of the image), shown exactly as
- * delivered with a soft drop-shadow that follows its rounded shape. There is no
- * extra white frame around it. A transparent hit-area over the artwork's close
- * mark, plus outside-click and Escape, dismiss the panel.
- */
+function splitTagline(tagline: string, highlight: string) {
+  const start = tagline.lastIndexOf(highlight)
+  if (start < 0) return { before: tagline, highlight: "" }
+  return { before: tagline.slice(0, start), highlight }
+}
+
 export function ExpandedModulePanel({
   module,
   originEl,
@@ -62,105 +34,153 @@ export function ExpandedModulePanel({
   originEl: HTMLElement
   onClose: () => void
 }) {
-  const ar = MODAL_AR[module.id] ?? DEFAULT_AR
   const [start, setStart] = useState<Rect | null>(null)
   const [target, setTarget] = useState<Rect | null>(null)
   const [open, setOpen] = useState(false)
   const closingRef = useRef(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const Icon = module.icon
+  const headline = splitTagline(module.tagline, module.highlight)
+  const artwork = module.premiumMockup ?? module.mockup
 
-  // Measure the card and kick off the growth on the next frame.
   useLayoutEffect(() => {
     const r = originEl.getBoundingClientRect()
     setStart({ left: r.left, top: r.top, width: r.width, height: r.height })
-    setTarget(computeTarget(ar))
+    setTarget(computeTarget())
     const id = requestAnimationFrame(() => setOpen(true))
     return () => cancelAnimationFrame(id)
-  }, [originEl, ar])
+  }, [originEl])
 
   useEffect(() => {
-    const onResize = () => setTarget(computeTarget(ar))
+    const onResize = () => setTarget(computeTarget())
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
-  }, [ar])
+  }, [])
 
   const handleClose = () => {
     if (closingRef.current) return
     closingRef.current = true
-    // Re-measure the origin in case the orbit drifted, so the card returns to
-    // its true current position.
     const r = originEl.getBoundingClientRect()
     setStart({ left: r.left, top: r.top, width: r.width, height: r.height })
     setOpen(false)
   }
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose()
+    closeRef.current?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!start || !target) return null
-
   const geo = open ? target : start
 
   return (
     <>
-      {/* Transparent click-catcher — closes on outside click. No visual scrim,
-          so the dimmed orbit and logo stay fully visible behind. Sits above the
-          landing header so the header never overlaps the panel. */}
-      <div className="fixed inset-0 z-[80]" onClick={handleClose} aria-hidden />
+      <motion.div
+        className="fixed inset-0 z-[80] bg-graphite/20 backdrop-blur-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: open ? 1 : 0 }}
+        onClick={handleClose}
+        aria-hidden
+      />
 
       <motion.section
         role="dialog"
-        aria-label={module.name}
-        aria-modal={false}
-        className="fixed z-[82] cursor-default"
+        aria-label={`Apresentação do módulo ${module.name}`}
+        aria-modal="true"
+        className="fixed z-[82] overflow-hidden rounded-[32px] border border-white/80 bg-white text-graphite shadow-[0_48px_120px_-36px_rgba(9,40,24,0.55)] md:rounded-[40px]"
         initial={false}
-        animate={{
-          left: geo.left,
-          top: geo.top,
-          width: geo.width,
-          height: geo.height,
-        }}
-        transition={{ type: "spring", stiffness: 200, damping: 30, mass: 0.9 }}
+        animate={{ left: geo.left, top: geo.top, width: geo.width, height: geo.height }}
+        transition={{ type: "spring", stiffness: 220, damping: 30, mass: 0.9 }}
         onAnimationComplete={() => {
           if (!open && closingRef.current) onClose()
         }}
-        // A soft drop-shadow that hugs the artwork's rounded, transparent shape,
-        // so the modal lifts off the page without any added white frame.
-        style={{ filter: "drop-shadow(0 40px 80px rgba(28,52,40,0.34))" }}
       >
-        {/* The approved, pre-cropped modal artwork — shown exactly as delivered.
-            The box is locked to the artwork's own ratio, so `fill` covers it
-            perfectly with no crop and no empty margins. */}
-        <motion.div
-          className="absolute inset-0"
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={{ duration: open ? 0.4 : 0.18, delay: open ? 0.16 : 0 }}
-        >
-          <Image
-            src={module.mockup || "/placeholder.svg"}
-            alt={`Módulo ${module.name}`}
-            fill
-            sizes="(max-width: 768px) 94vw, 90vw"
-            className="object-contain"
-            priority
-          />
-        </motion.div>
-
-        {/* Transparent close hit-area, placed over the artwork's own close mark
-            (top-right). Generous enough to cover its slight per-artwork offset. */}
-        <motion.button
+        <button
+          ref={closeRef}
           type="button"
           onClick={handleClose}
-          aria-label="Fechar"
-          className="absolute right-0 top-0 z-10 h-[14%] w-[12%] cursor-pointer"
+          aria-label="Fechar apresentação"
+          className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-graphite/10 bg-white/90 text-graphite shadow-lg backdrop-blur-md transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-eme md:right-6 md:top-6"
+        >
+          <X className="h-5 w-5" aria-hidden />
+        </button>
+
+        <motion.div
+          className="flex h-full flex-col"
           animate={{ opacity: open ? 1 : 0 }}
-          transition={{ duration: 0.2, delay: open ? 0.15 : 0 }}
-        />
+          transition={{ duration: open ? 0.4 : 0.14, delay: open ? 0.12 : 0 }}
+        >
+          <div className="grid min-h-0 flex-1 overflow-y-auto md:grid-cols-[1.05fr_0.95fr] md:overflow-hidden">
+            <div className="relative flex min-h-[260px] items-center justify-center overflow-hidden bg-[#edf5f0] p-5 md:min-h-0 md:p-10">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_42%,rgba(255,255,255,0.96),rgba(224,241,231,0.72)_48%,rgba(194,220,204,0.5))]" />
+              <div className="absolute bottom-[12%] left-[14%] right-[14%] h-8 rounded-full bg-graphite/15 blur-xl" />
+              <div className="relative h-full max-h-[470px] w-full">
+                <Image
+                  src={artwork}
+                  alt={`Prévia premium do módulo ${module.name}`}
+                  fill
+                  sizes="(max-width: 768px) 88vw, 46vw"
+                  className={`${module.mockupFit === "cover" ? "object-cover" : "object-contain"} drop-shadow-[0_28px_30px_rgba(22,68,42,0.2)]`}
+                  priority
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col px-6 pb-7 pt-16 md:min-h-0 md:px-12 md:pb-8 md:pt-12 lg:px-14">
+              <div className="flex items-center gap-3 text-eme">
+                <Icon className="h-7 w-7" strokeWidth={1.6} aria-hidden />
+                <span className="text-sm font-semibold uppercase tracking-[0.2em]">{module.name}</span>
+              </div>
+
+              <h2 className="mt-6 text-balance text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-graphite lg:text-5xl">
+                {headline.before}
+                {headline.highlight && <span className="text-eme">{headline.highlight}</span>}
+              </h2>
+              <p className="mt-5 text-pretty text-[15px] leading-relaxed text-graphite/65 lg:text-base">
+                {module.longDescription}
+              </p>
+
+              <ul className="mt-7 grid gap-3 lg:mt-8">
+                {module.benefits.slice(0, 5).map((benefit) => (
+                  <li key={benefit} className="flex items-start gap-3 text-sm leading-5 text-graphite/80">
+                    <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-eme/10 text-eme">
+                      <Check className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    </span>
+                    <span className="pt-0.5">{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-auto flex flex-col gap-3 pt-7 sm:flex-row">
+                <Link
+                  href="/cadastro"
+                  className="eme-gradient inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-primary-foreground shadow-[0_14px_28px_-14px_rgba(0,144,60,0.7)] transition-transform hover:-translate-y-0.5"
+                >
+                  {module.cta}
+                </Link>
+                <Link
+                  href={module.secondaryAction.href}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-eme/20 px-5 text-sm font-semibold text-eme-dark transition-colors hover:bg-eme/5"
+                >
+                  {module.secondaryAction.label}
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <footer className="flex flex-col gap-2 border-t border-graphite/8 bg-[#f8faf8] px-6 py-4 sm:flex-row sm:items-center sm:justify-between md:px-10">
+            <div className="flex items-center gap-3 text-graphite/65">
+              <ShieldCheck className="h-5 w-5 flex-none text-eme" aria-hidden />
+              <p className="text-xs font-medium leading-5">{module.security}</p>
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-eme/70">EME</span>
+          </footer>
+        </motion.div>
       </motion.section>
     </>
   )

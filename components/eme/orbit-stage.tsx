@@ -115,17 +115,18 @@ export function OrbitStage({
       style={{ perspective: "1600px", perspectiveOrigin: "50% 42%" }}
     >
       <div className="relative" style={{ transformStyle: "preserve-3d" }}>
-        <div
-          aria-hidden
-          className="absolute left-1/2 top-1/2 h-[260px] w-[1180px] max-w-[94vw] -translate-x-1/2 rounded-[100%] border border-eme/12"
-          style={{ transform: "translate(-50%,6%) rotateX(83deg)" }}
-        />
+        <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 translate-y-[92px]">
+          <div className="absolute left-1/2 top-1/2 h-[300px] w-[1180px] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] border border-white/75 shadow-[0_0_48px_rgba(0,200,83,0.12)]" style={{ transform: "translate(-50%,-50%) rotateX(79deg)" }} />
+          <div className="absolute left-1/2 top-1/2 h-[246px] w-[820px] max-w-[76vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-white/80 shadow-[0_30px_45px_-18px_rgba(15,49,31,0.3),inset_0_2px_0_white,inset_0_-14px_24px_rgba(68,105,84,0.12)] backdrop-blur-md" style={{ transform: "translate(-50%,-50%) rotateX(72deg)" }} />
+          <div className="absolute left-1/2 top-1/2 h-[188px] w-[650px] max-w-[66vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-[radial-gradient(circle,rgba(255,255,255,0.98)_25%,rgba(224,242,231,0.9)_67%,rgba(0,200,83,0.18)_100%)] shadow-[0_0_52px_rgba(0,200,83,0.2),inset_0_5px_8px_white]" style={{ transform: "translate(-50%,-62%) rotateX(69deg)" }} />
+          <div className="absolute left-1/2 top-1/2 h-12 w-[420px] max-w-[54vw] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-eme/20 blur-2xl" />
+        </div>
 
         <div
           className="absolute left-1/2 top-1/2"
           style={{
             zIndex: 60,
-            transform: "translate(-50%,-50%) translateY(54px) rotateX(3deg)",
+            transform: "translate(-50%,-50%) translateY(30px) rotateX(3deg)",
             transformStyle: "preserve-3d",
           }}
         >

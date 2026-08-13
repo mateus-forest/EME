@@ -12,11 +12,7 @@ export function LandingHeader({
       className="absolute inset-x-0 top-0 z-[75]"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 sm:px-12 sm:py-9">
-        <p className="max-w-[62%] text-balance text-[12px] font-normal italic leading-snug tracking-[0.03em] text-graphite sm:max-w-none sm:whitespace-nowrap sm:text-[14px]">
-          Sistema Operacional do Corretor de Imóveis
-        </p>
-
+      <div className="mx-auto flex max-w-7xl items-center justify-end px-5 py-3.5 sm:px-12 sm:py-9">
         <div
           className="flex flex-shrink-0 items-center gap-2.5 transition-opacity duration-500 ease-out"
           style={{
