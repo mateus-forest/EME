@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 
+import { createCosErrorResult, normalizeCosActionResult } from "@/lib/cos/action-result"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 import { createPropertyDraftRecord, formatAssessorPropertyPrice, searchBrokerProperties } from "@/lib/cos/runtime-helpers"
@@ -20,12 +21,25 @@ function formatPropertyLocationLabel(city?: string | null, neighborhood?: string
 }
 
 export const createPropertyDraftCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload }) => {
-  return createPropertyDraftRecord({
+  const legacyResult = await createPropertyDraftRecord({
     brokerId,
     userId,
     message,
     payload: payload ?? undefined,
   })
+  const result = normalizeCosActionResult({
+    result: legacyResult,
+    action: "createPropertyDraft",
+    entity: "property",
+  })
+  if (result.status === "success" && typeof result.metadata.propertyLimit === "number") {
+    return createCosErrorResult({
+      errorCode: "COS_PROPERTY_LIMIT_REACHED",
+      response: result.response,
+      metadata: result.metadata,
+    })
+  }
+  return result
 }
 
 export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerId, message, pendingInput }) => {

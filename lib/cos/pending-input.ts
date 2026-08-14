@@ -1,7 +1,8 @@
 import type { Prisma } from "@prisma/client"
 
 import type {
-  CosActionResult,
+  CosRuntimeActionResult,
+  CosCapabilityId,
   CosEntityModuleId,
   CosPendingInput,
   CosPendingInputOption,
@@ -9,6 +10,9 @@ import type {
   CosWorkflowStatus,
 } from "@/lib/cos/types"
 import type { AssessorAction } from "@/lib/eme-backend"
+
+export const COS_PENDING_INPUT_SCHEMA_VERSION = 2 as const
+export const COS_PENDING_INPUT_TTL_MS = 24 * 60 * 60 * 1000
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -56,8 +60,19 @@ export function createPendingInput(input: {
   label?: string
   type?: CosPendingInputType
   options?: CosPendingInputOption[]
+  capabilityId?: CosCapabilityId
+  source?: CosPendingInput["source"]
+  reason?: string
+  now?: Date
 }): CosPendingInput {
+  const now = input.now ?? new Date()
   return {
+    schemaVersion: COS_PENDING_INPUT_SCHEMA_VERSION,
+    createdAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + COS_PENDING_INPUT_TTL_MS).toISOString(),
+    source: input.source ?? "handler",
+    reason: input.reason ?? `missing_${input.field}`,
+    capabilityId: input.capabilityId,
     field: input.field,
     label: input.label ?? parsePendingInputLabel(input.field, input.action),
     type: input.type ?? parsePendingInputType(input.field),
@@ -79,6 +94,9 @@ export function createPendingInputMetadata(input: {
   type?: CosPendingInputType
   noCharge?: boolean
   extra?: Record<string, unknown>
+  capabilityId?: CosCapabilityId
+  source?: CosPendingInput["source"]
+  reason?: string
 }): Prisma.InputJsonObject {
   const pendingInput = createPendingInput({
     field: input.field,
@@ -88,6 +106,9 @@ export function createPendingInputMetadata(input: {
     options: input.options,
     label: input.label,
     type: input.type,
+    capabilityId: input.capabilityId,
+    source: input.source,
+    reason: input.reason,
   })
 
   return {
@@ -106,34 +127,73 @@ export function extractPendingInputFromMetadata(input: {
   const metadata = asRecord(input.metadata)
   const explicit = asRecord(metadata.pendingInput)
   if (typeof explicit.field === "string") {
-    return createPendingInput({
-      field: explicit.field,
-      action: (typeof explicit.action === "string" ? explicit.action : input.action) as AssessorAction,
-      entity: (typeof explicit.entity === "string" ? explicit.entity : input.entity) as CosEntityModuleId,
-      parsedData: asRecord(explicit.parsedData),
-      label: typeof explicit.label === "string" ? explicit.label : undefined,
-      type: typeof explicit.type === "string" ? (explicit.type as CosPendingInputType) : undefined,
-      options: parseOptions(explicit.options),
+    return normalizeCosPendingInput({
+      pendingInput: explicit,
+      fallbackAction: input.action,
+      fallbackEntity: input.entity,
     })
   }
   return null
 }
 
-export function isAwaitingInputResult(result: CosActionResult) {
-  if (extractPendingInputFromMetadata({
-    metadata: result.metadata,
-    action: "general",
-    entity: "general",
-  })) {
-    return true
+export function normalizeCosPendingInput(input: {
+  pendingInput: unknown
+  fallbackAction: AssessorAction
+  fallbackEntity: CosEntityModuleId
+  now?: Date
+}): CosPendingInput | null {
+  const explicit = asRecord(input.pendingInput)
+  if (typeof explicit.field !== "string") return null
+
+  const normalized = createPendingInput({
+      field: explicit.field,
+      action: (typeof explicit.action === "string" ? explicit.action : input.fallbackAction) as AssessorAction,
+      entity: (typeof explicit.entity === "string" ? explicit.entity : input.fallbackEntity) as CosEntityModuleId,
+      parsedData: asRecord(explicit.parsedData),
+      label: typeof explicit.label === "string" ? explicit.label : undefined,
+      type: typeof explicit.type === "string" ? (explicit.type as CosPendingInputType) : undefined,
+      options: parseOptions(explicit.options),
+      capabilityId: typeof explicit.capabilityId === "string" ? explicit.capabilityId as CosCapabilityId : undefined,
+      source: explicit.schemaVersion === COS_PENDING_INPUT_SCHEMA_VERSION ? explicit.source as CosPendingInput["source"] : "legacy_adapter",
+      reason: typeof explicit.reason === "string" ? explicit.reason : undefined,
+      now: input.now,
+    })
+
+  if (explicit.schemaVersion === COS_PENDING_INPUT_SCHEMA_VERSION) {
+    normalized.createdAt = typeof explicit.createdAt === "string" ? explicit.createdAt : normalized.createdAt
+    normalized.expiresAt = typeof explicit.expiresAt === "string" ? explicit.expiresAt : normalized.expiresAt
   }
 
-  return (
-    result.response.includes("preciso de confirmacao") ||
-    result.response.includes("confirmacao") ||
-    result.response.includes("Qual ") ||
-    result.response.includes("Pode confirmar")
-  )
+  return normalized
+}
+
+export function isAwaitingInputResult(result: CosRuntimeActionResult) {
+  return result.status === "awaiting_input"
+}
+
+export function isCosPendingInputExpired(pendingInput: CosPendingInput, now = new Date()) {
+  if (!pendingInput.expiresAt) return false
+  const expiresAt = Date.parse(pendingInput.expiresAt)
+  return Number.isFinite(expiresAt) && expiresAt <= now.getTime()
+}
+
+export type CosPendingReplyKind = "confirm" | "reject" | "cancel" | "correction" | "answer"
+
+export function classifyCosPendingReply(message: string): CosPendingReplyKind {
+  const normalized = message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[.!?]+$/g, "")
+    .trim()
+
+  if (/^(sim|pode|confirmo|confirmar|pode confirmar)$/.test(normalized)) return "confirm"
+  if (/^(cancelar|cancela|deixa|deixa pra la|deixa para la|esquece|nao quero)$/.test(normalized)) return "cancel"
+  if (/^(nao|n)$/.test(normalized)) return "reject"
+  if (/^(nao[,;:]?\s+|na verdade\s+|corrige para\s+|muda para\s+|troca para\s+|quis dizer\s+)/.test(normalized)) {
+    return "correction"
+  }
+  return "answer"
 }
 
 export function normalizeWorkflowStatus(status: CosWorkflowStatus): Exclude<CosWorkflowStatus, "running"> {

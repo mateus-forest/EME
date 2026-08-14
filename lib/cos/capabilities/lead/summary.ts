@@ -3,9 +3,10 @@ import type { Prisma } from "@prisma/client"
 import { LeadStatus } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
+import { createCosAwaitingInputResult, createCosSuccessResult } from "@/lib/cos/action-result"
 import { cleanText } from "@/lib/cos/capabilities/shared"
 import { extractClientIdentity } from "@/lib/cos/entity-extraction"
-import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { createPendingInput } from "@/lib/cos/pending-input"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function json(value: Record<string, unknown>): Prisma.InputJsonObject {
@@ -34,32 +35,33 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
     cleanText(extracted.phone, 40)
 
   if (!name) {
-    return {
+    const pending = createPendingInput({
+      field: "name",
+      action: "createLead",
+      entity: "lead",
+      capabilityId: "lead.create",
+      parsedData: pendingLeadData,
+    })
+    return createCosAwaitingInputResult({
       response: "Qual o nome do lead?",
-      metadata: createPendingInputMetadata({
-        field: "name",
-        action: "createLead",
-        entity: "lead",
-        parsedData: pendingLeadData,
-        extra: { readyForConfirmation: false },
-      }),
-    }
+      pendingInput: pending,
+      metadata: { readyForConfirmation: false },
+    })
   }
 
   if (!phone) {
-    return {
+    const pending = createPendingInput({
+      field: "phone",
+      action: "createLead",
+      entity: "lead",
+      capabilityId: "lead.create",
+      parsedData: { ...pendingLeadData, extractedName: name },
+    })
+    return createCosAwaitingInputResult({
       response: "Qual o telefone dele?",
-      metadata: createPendingInputMetadata({
-        field: "phone",
-        action: "createLead",
-        entity: "lead",
-        parsedData: { ...pendingLeadData, extractedName: name },
-        extra: {
-          readyForConfirmation: false,
-          extractedName: name,
-        },
-      }),
-    }
+      pendingInput: pending,
+      metadata: { readyForConfirmation: false, extractedName: name },
+    })
   }
 
   const requestedStatus = parseLeadStatusFromText(message)
@@ -95,11 +97,11 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
     },
   })
 
-  return {
+  return createCosSuccessResult({
     response: existingLead ? "Esse lead já existia. Atualizei as informações." : `Lead ${name} cadastrado com sucesso.`,
     metadata: json({ leadId: lead.id, phone, name, status: requestedStatus, updatedExisting: Boolean(existingLead) }),
     leadId: lead.id,
-  }
+  })
 }
 
 export const leadSummaryCapability: CosCapabilityHandler = async ({ brokerId }) => {

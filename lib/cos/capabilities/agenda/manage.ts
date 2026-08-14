@@ -1,6 +1,7 @@
 import "server-only"
 
 import { resolveAgendaEntity } from "@/lib/cos/entity-resolver"
+import { createCosSuccessResult } from "@/lib/cos/action-result"
 import { prisma } from "@/lib/prisma"
 
 import { cleanText, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
@@ -52,7 +53,11 @@ async function listAgendaWindow(brokerId: string, from: Date, to: Date, label: s
 export const updateAgendaCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
   const event = await resolveAgendaEvent(brokerId, payloadRecord)
-  if (!event) return requiredSelectionResponse("compromisso", "agendaEventId")
+  if (!event) return requiredSelectionResponse("compromisso", "agendaEventId", undefined, {
+    action: "UPDATE_AGENDA_EVENT",
+    entity: "agenda",
+    capabilityId: "agenda.update",
+  })
 
   const timeMatch = message.match(/\b(\d{1,2}:\d{2}|\d{1,2}h)\b/i)?.[0]?.replace("h", ":00") ?? event.time ?? null
   const updated = await prisma.agendaEvent.update({
@@ -64,32 +69,36 @@ export const updateAgendaCapability: CosCapabilityHandler = async ({ brokerId, m
     },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `Compromisso atualizado.\n\n${updated.title}${updated.time ? ` às ${updated.time}` : ""}`,
     metadata: {
       agendaEventId: updated.id,
       status: updated.status,
     },
-  }
+  })
 }
 
 export const cancelAgendaCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
   const event = await resolveAgendaEvent(brokerId, payloadRecord)
-  if (!event) return requiredSelectionResponse("compromisso", "agendaEventId")
+  if (!event) return requiredSelectionResponse("compromisso", "agendaEventId", undefined, {
+    action: "CANCEL_AGENDA_EVENT",
+    entity: "agenda",
+    capabilityId: "agenda.cancel",
+  })
 
   const updated = await prisma.agendaEvent.update({
     where: { id: event.id },
     data: { status: "cancelled" },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `Compromisso cancelado.\n\n${updated.title}`,
     metadata: {
       agendaEventId: updated.id,
       status: updated.status,
     },
-  }
+  })
 }
 
 export const todayAgendaCapability: CosCapabilityHandler = async ({ brokerId }) => {

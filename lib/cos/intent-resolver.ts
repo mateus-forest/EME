@@ -85,7 +85,7 @@ function getActionDomain(action: AssessorAction | null | undefined) {
     action === "LIST_CONTRACTS" ||
     action === "CONTRACT_HISTORY"
   ) return "contract"
-  if (action.startsWith("CREATE_PROPOSAL") || action === "LIST_DOCUMENTS") return "proposal"
+  if (action.startsWith("CREATE_PROPOSAL") || action === "LIST_PROPOSALS") return "proposal"
   if (
     action.includes("PROPERTY") ||
     action === "createPropertyDraft" ||
@@ -349,7 +349,7 @@ function buildIntentCandidates(input: {
   // Mesma classe de bug do CONTRACT_HISTORY: exige sinal real de proposta antes do bônus de intent.
   const hasProposalSignal = mentionsProposal || proposalContextScore > 0
   pushCandidate(
-    "LIST_DOCUMENTS",
+    "LIST_PROPOSALS",
     hasProposalSignal
       ? ((isStatisticsIntent || isConsultIntent || isAnalysisIntent) ? 30 : 0) + (mentionsProposal ? 32 : 0) + (mentionsPending ? 8 : 0) + proposalContextScore - (mentionsCampaign ? 20 : 0)
       : 0,

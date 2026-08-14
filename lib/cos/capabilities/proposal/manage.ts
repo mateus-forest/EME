@@ -3,9 +3,10 @@ import "server-only"
 import { buildProposalHtml } from "@/lib/proposal-template"
 import { prisma } from "@/lib/prisma"
 
+import { createCosAwaitingInputResult, createCosSuccessResult } from "@/lib/cos/action-result"
 import { cleanText, getPayloadRecord } from "@/lib/cos/capabilities/shared"
 import { resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
-import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { createPendingInput } from "@/lib/cos/pending-input"
 import { firstImageUrl } from "@/lib/cos/runtime-helpers"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
@@ -31,34 +32,38 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
   ])
 
   if ((leadResolution.recordIds?.length ?? 0) > 1 && leadResolution.options) {
-    return {
+    const proposalPending = createPendingInput({
+      field: "lead",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: {
+        ...leadResolution.parsedData,
+        leadIds: leadResolution.recordIds ?? [],
+      },
+      options: leadResolution.options,
+    })
+    return createCosAwaitingInputResult({
       response: `Encontrei mais de um cliente. Qual deles devo usar?\n\n${leadResolution.options.map((option, index) => `${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`).join("\n")}`,
-      metadata: createPendingInputMetadata({
-        field: "lead",
-        action: "CREATE_PROPOSAL",
-        entity: "proposal",
-        parsedData: {
-          ...leadResolution.parsedData,
-          leadIds: leadResolution.recordIds ?? [],
-        },
-        options: leadResolution.options,
-      }),
-    }
+      pendingInput: proposalPending,
+    })
   }
 
   const lead = leadResolution.record
   const personName = cleanText(leadResolution.parsedData?.personName, 120)
 
   if (!lead && !personName) {
-    return {
+    const proposalPending = createPendingInput({
+      field: "lead",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: leadResolution.parsedData,
+    })
+    return createCosAwaitingInputResult({
       response: "Para qual cliente devo gerar a proposta?",
-      metadata: createPendingInputMetadata({
-        field: "lead",
-        action: "CREATE_PROPOSAL",
-        entity: "proposal",
-        parsedData: leadResolution.parsedData,
-      }),
-    }
+      pendingInput: proposalPending,
+    })
   }
 
   const propertyResolution = await resolvePropertyEntity({
@@ -75,30 +80,34 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
   })
 
   if ((propertyResolution.recordIds?.length ?? 0) > 1 && propertyResolution.options) {
-    return {
+    const proposalPending = createPendingInput({
+      field: "propertyChoice",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: propertyResolution.parsedData,
+      options: propertyResolution.options,
+    })
+    return createCosAwaitingInputResult({
       response: `Encontrei mais de um imóvel. Qual devo usar?\n\n${propertyResolution.options.map((option, index) => `${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`).join("\n")}`,
-      metadata: createPendingInputMetadata({
-        field: "propertyChoice",
-        action: "CREATE_PROPOSAL",
-        entity: "proposal",
-        parsedData: propertyResolution.parsedData,
-        options: propertyResolution.options,
-      }),
-    }
+      pendingInput: proposalPending,
+    })
   }
 
   const resolvedProperty = propertyResolution.record
   if (!resolvedProperty) {
-    return {
+    const proposalPending = createPendingInput({
+      field: "property",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: propertyResolution.parsedData,
+    })
+    return createCosAwaitingInputResult({
       response: "Qual imóvel devo usar na proposta?",
-      metadata: createPendingInputMetadata({
-        field: "property",
-        action: "CREATE_PROPOSAL",
-        entity: "proposal",
-        parsedData: propertyResolution.parsedData,
-      }),
+      pendingInput: proposalPending,
       leadId: lead?.id,
-    }
+    })
   }
 
   const proposalLead = lead ?? {
@@ -141,7 +150,7 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
     },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `Proposta criada em rascunho.\nCliente: ${proposalLead.name || "Cliente"}\nImóvel: ${resolvedProperty.publicCode ?? resolvedProperty.id}\nRevise e preencha os dados restantes antes de enviar.`,
     metadata: {
       documentId: document.id,
@@ -151,7 +160,7 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
     },
     leadId: lead?.id ?? undefined,
     propertyId: resolvedProperty.id,
-  }
+  })
 }
 
 export const proposalSummaryCapability: CosCapabilityHandler = async ({ brokerId }) => {

@@ -2,12 +2,14 @@ import "server-only"
 
 import type { Prisma } from "@prisma/client"
 
+import { createCosAwaitingInputResult } from "@/lib/cos/action-result"
 import { normalizeCosAttachments } from "@/lib/cos/attachment-pipeline"
-import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { createPendingInput } from "@/lib/cos/pending-input"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { prisma } from "@/lib/prisma"
 
-import type { CosAttachmentInput, CosCapabilityExecutionInput, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
+import type { CosAttachmentInput, CosCapabilityExecutionInput, CosCapabilityId, CosEntityModuleId, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
+import type { AssessorAction } from "@/lib/eme-backend"
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -97,16 +99,24 @@ export function formatCurrency(value: number | null | undefined) {
   return formatCurrencyBRLFromCents(Math.max(0, value ?? 0))
 }
 
-export function requiredSelectionResponse(entityLabel: string, field: string, metadata?: Prisma.InputJsonObject) {
-  return {
+export function requiredSelectionResponse(
+  entityLabel: string,
+  field: string,
+  metadata?: Prisma.InputJsonObject,
+  contract?: { action: AssessorAction; entity: CosEntityModuleId; capabilityId: CosCapabilityId },
+) {
+  const pendingInput = createPendingInput({
+    field,
+    action: contract?.action ?? "general",
+    entity: contract?.entity ?? "general",
+    capabilityId: contract?.capabilityId,
+    reason: `${field}_target_required`,
+  })
+  return createCosAwaitingInputResult({
     response: `Preciso saber qual ${entityLabel} devo usar para continuar.`,
-    metadata: createPendingInputMetadata({
-      field,
-      action: "general",
-      entity: "general",
-      extra: metadata ? (metadata as Record<string, unknown>) : undefined,
-    }),
-  }
+    pendingInput,
+    metadata: metadata ?? {},
+  })
 }
 
 export async function getBrokerWorkspaceSummary(brokerId: string) {

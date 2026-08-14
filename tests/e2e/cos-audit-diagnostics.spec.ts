@@ -133,7 +133,7 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
 
     const result = resolve("Na verdade coloca R$ 850 mil.", { activeWorkflow: workflow })
 
-    expect(result.requestedAction).toBe("LIST_DOCUMENTS")
+    expect(result.requestedAction).toBe("LIST_PROPOSALS")
     expect(result.workflowDecision).toBe("start_new")
   })
 

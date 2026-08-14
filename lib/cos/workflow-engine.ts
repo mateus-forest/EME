@@ -1,7 +1,8 @@
 import { executeCosExecutionPlan } from "@/lib/cos/executor"
+import { normalizeCosActionResult } from "@/lib/cos/action-result"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { createStepPlanForCapability } from "@/lib/cos/execution-planner"
-import { createPendingInput, extractPendingInputFromMetadata, normalizeWorkflowStatus } from "@/lib/cos/pending-input"
+import { createPendingInput, extractPendingInputFromMetadata, isCosPendingInputExpired, normalizeCosPendingInput, normalizeWorkflowStatus } from "@/lib/cos/pending-input"
 import type { Prisma } from "@prisma/client"
 import type {
   CosConversationMemory,
@@ -64,12 +65,18 @@ function buildPendingInput(input: {
   action: string
   entity: string
   parsedData?: Record<string, unknown>
+  capabilityId?: CosPendingInput["capabilityId"]
+  source?: CosPendingInput["source"]
+  reason?: string
 }): CosPendingInput {
   return createPendingInput({
     field: input.field,
     action: input.action as CosPendingInput["action"],
     entity: input.entity as CosPendingInput["entity"],
     parsedData: input.parsedData ?? {},
+    capabilityId: input.capabilityId,
+    source: input.source,
+    reason: input.reason,
   })
 }
 
@@ -137,6 +144,8 @@ function serializeStep(step: CosExecutionStep) {
     errorMessage: step.errorMessage,
     resultResponse: step.result?.response ?? null,
     resultMetadata: step.result?.metadata ? jsonObject(step.result.metadata) : null,
+    resultStatus: step.result?.status ?? null,
+    resultErrorCode: step.result?.status === "error" ? step.result.errorCode : null,
     leadId: step.result?.leadId,
     propertyId: step.result?.propertyId,
   }
@@ -162,12 +171,25 @@ function hydrateStep(step: CosWorkflow["steps"][number], workflow: CosWorkflow):
     errorMessage: step.errorMessage,
     result:
       step.resultResponse || step.resultMetadata
-        ? {
+        ? normalizeCosActionResult({
+            result: step.resultStatus === "error"
+              ? {
+                  status: "error",
+                  errorCode: step.resultErrorCode ?? "COS_PERSISTED_ERROR",
+                  response: step.resultResponse ?? "",
+                  metadata: jsonObject(step.resultMetadata),
+                  leadId: step.leadId,
+                  propertyId: step.propertyId,
+                }
+              : {
             response: step.resultResponse ?? "",
             metadata: jsonObject(step.resultMetadata),
             leadId: step.leadId,
             propertyId: step.propertyId,
-          }
+                },
+            action: step.action,
+            entity: step.entity,
+          })
         : null,
   }
 }
@@ -177,7 +199,16 @@ export function parseConversationWorkflowContent(content: string | null | undefi
 
   try {
     const parsed = JSON.parse(content) as Partial<ConversationEnvelope>
-    const workflow = parsed?.workflow && typeof parsed.workflow === "object" ? (parsed.workflow as CosWorkflow) : null
+    const rawWorkflow = parsed?.workflow && typeof parsed.workflow === "object" ? (parsed.workflow as CosWorkflow) : null
+    const currentStep = rawWorkflow?.steps[rawWorkflow.currentStep] ?? rawWorkflow?.steps[0]
+    const normalizedPending = rawWorkflow?.pendingInput && currentStep
+      ? normalizeCosPendingInput({
+          pendingInput: rawWorkflow.pendingInput,
+          fallbackAction: currentStep.action,
+          fallbackEntity: currentStep.entity,
+        })
+      : null
+    const workflow = rawWorkflow ? { ...rawWorkflow, pendingInput: normalizedPending } : null
     const memory = parsed?.memory && typeof parsed.memory === "object" ? (parsed.memory as CosConversationMemory) : null
     return { workflow, memory }
   } catch {
@@ -194,6 +225,7 @@ export function getActiveWorkflow(content: string | null | undefined) {
   if (!envelope.workflow) return null
   const normalizedStatus = normalizeWorkflowStatus(envelope.workflow.status)
   if (["completed", "failed", "cancelled"].includes(normalizedStatus)) return null
+  if (envelope.workflow.pendingInput && isCosPendingInputExpired(envelope.workflow.pendingInput)) return null
   return {
     ...envelope.workflow,
     status: normalizedStatus,
@@ -231,6 +263,9 @@ export function createWorkflowFromExecutionPlan(input: {
             field: "confirmation",
             action: input.plan.primaryStep.action,
             entity: input.plan.primaryStep.entity,
+            capabilityId: input.plan.primaryStep.capabilityId,
+            source: "confirmation",
+            reason: "capability_confirmation_required",
           })
         : null,
     startedAt: now,
@@ -327,7 +362,9 @@ export function updateWorkflowFromExecutionResult(input: {
   const completedAt = input.result.status === "completed" ? now : null
   const pendingInput =
     input.result.status === "awaiting_input" && interruptedStep
-      ? extractPendingInputFromMetadata({
+      ? interruptedStep.result?.status === "awaiting_input"
+        ? interruptedStep.result.pendingInput
+        : extractPendingInputFromMetadata({
           metadata: interruptedStep.result?.metadata,
           action: interruptedStep.action,
           entity: interruptedStep.entity,

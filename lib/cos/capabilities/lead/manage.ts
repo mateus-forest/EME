@@ -3,6 +3,7 @@ import "server-only"
 import { LeadStatus } from "@/lib/prisma-enums"
 
 import { prisma } from "@/lib/prisma"
+import { createCosErrorResult, createCosSuccessResult } from "@/lib/cos/action-result"
 import { detectNamedClientReference, detectNamedClientReferenceForDeletion } from "@/lib/cos/entity-extraction"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
@@ -33,13 +34,17 @@ async function resolveLead(brokerId: string, payload: Record<string, unknown>, m
     })
   }
 
-  return prisma.lead.findFirst({ where: { brokerId }, orderBy: { updatedAt: "desc" } })
+  return null
 }
 
 export const updateLeadCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
   const lead = await resolveLead(brokerId, payloadRecord, message)
-  if (!lead) return requiredSelectionResponse("cliente", "leadId")
+  if (!lead) return requiredSelectionResponse("cliente", "leadId", undefined, {
+    action: "UPDATE_LEAD",
+    entity: "lead",
+    capabilityId: "lead.update",
+  })
 
   const normalizedMessage = normalizeText(message)
   const emailMatch = message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? ""
@@ -63,7 +68,7 @@ export const updateLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
     },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `Cliente atualizado com sucesso.\n\n${updated.name ?? "Cliente sem nome"}${emailMatch ? `\nEmail: ${emailMatch}` : ""}${phoneMatch ? `\nTelefone: ${phoneMatch}` : ""}`,
     metadata: {
       leadId: updated.id,
@@ -72,16 +77,17 @@ export const updateLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
       phone: updated.phone,
     },
     leadId: updated.id,
-  }
+  })
 }
 
 async function finalizeLeadDeletion(brokerId: string, leadId: string, fallbackName: string) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, brokerId } })
   if (!lead) {
-    return {
+    return createCosErrorResult({
+      errorCode: "COS_LEAD_NOT_FOUND",
       response: "Não encontrei mais esse cliente — ele já deve ter sido excluído.",
       metadata: { noCharge: true },
-    }
+    })
   }
 
   const name = lead.name ?? fallbackName
@@ -89,20 +95,21 @@ async function finalizeLeadDeletion(brokerId: string, leadId: string, fallbackNa
   try {
     await prisma.lead.delete({ where: { id: lead.id } })
 
-    return {
+    return createCosSuccessResult({
       response: `Cliente excluído permanentemente.\n\n${name}`,
       metadata: { leadId: lead.id, leadDeleted: true },
       leadId: lead.id,
-    }
+    })
   } catch (error) {
     console.error("[cos][lead][delete] failed", {
       message: error instanceof Error ? error.message : "unknown",
       leadId: lead.id,
     })
-    return {
+    return createCosErrorResult({
+      errorCode: "COS_LEAD_DELETE_FAILED",
       response: "Não consegui excluir o cliente agora. Tente novamente em instantes.",
       metadata: { noCharge: true },
-    }
+    })
   }
 }
 

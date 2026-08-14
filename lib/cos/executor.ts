@@ -1,9 +1,9 @@
-import type { CosActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
-import { isAwaitingInputResult } from "@/lib/cos/pending-input"
+import { normalizeCosActionResult } from "@/lib/cos/action-result"
+import type { CosRuntimeActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
 
-function isValidActionResult(value: unknown): value is CosActionResult {
+function isValidActionResult(value: unknown): value is CosRuntimeActionResult {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
-  const result = value as Partial<CosActionResult>
+  const result = value as Partial<CosRuntimeActionResult>
   return typeof result.response === "string" && Boolean(result.metadata) && typeof result.metadata === "object"
 }
 
@@ -14,14 +14,14 @@ export async function executeCosCapability(input: {
   message: string
   confirm?: boolean
   payload?: Record<string, unknown>
-}): Promise<CosActionResult> {
+}): Promise<CosRuntimeActionResult> {
   const mergedPayload = {
     ...(input.payload ?? {}),
     ...input.plan.payload,
   }
 
   if (input.plan.capability.handler) {
-    return input.plan.capability.handler({
+    const result = await input.plan.capability.handler({
       brokerId: input.brokerId,
       userId: input.userId,
       message: input.message,
@@ -30,6 +30,11 @@ export async function executeCosCapability(input: {
       payload: mergedPayload,
       pendingInput: input.plan.pendingInput ?? null,
       context: input.plan.context,
+    })
+    return normalizeCosActionResult({
+      result,
+      action: input.plan.action,
+      entity: input.plan.entity,
     })
   }
 
@@ -145,7 +150,16 @@ export async function executeCosExecutionPlan(input: {
         runtimePayload.lastStepMetadata = result.metadata
       }
 
-      if (isAwaitingInputResult(result)) {
+      if (result.status === "error") {
+        step.status = "failed"
+        step.errorMessage = result.errorCode
+        interruptedStep = step
+        interruptedReason = "failed"
+        executedSteps.push(step)
+        break
+      }
+
+      if (result.status === "awaiting_input") {
         step.status = "awaiting_input"
         interruptedStep = step
         interruptedReason = "awaiting_input"

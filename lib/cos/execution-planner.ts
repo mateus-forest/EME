@@ -1,11 +1,9 @@
 import { randomUUID } from "crypto"
 
-import type { AssessorAction } from "@/lib/eme-backend"
-
 import { buildRejectedAiPlanGoal, evaluateAiOrchestratorTrigger, generateCosAiExecutionPlan, type CosAiOrchestratorAudit } from "@/lib/cos/ai-orchestrator"
 import { findCosExecutionRecipe, type CosExecutionRecipe } from "@/lib/cos/execution-recipes"
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
-import { getCosCapabilityConfirmationMessage, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
+import { doesCosCapabilityRequireConfirmation, getCosCapabilityConfirmationMessage, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
 import { planCosCapability } from "@/lib/cos/planner"
 import type {
   CosCapabilityId,
@@ -65,19 +63,6 @@ function summarizeActiveWorkflow(workflow: CosWorkflow | null | undefined) {
       status: step.status,
     })),
   }
-}
-
-const confirmationOnlyActions = new Set<AssessorAction>([
-  "DELETE_LEAD",
-  "PUBLISH_PROPERTY",
-  "PUBLISH_CATALOG",
-  "SEND_CONTRACT",
-  "CANCEL_CONTRACT",
-  "CANCEL_AGENDA_EVENT",
-])
-
-function shouldRequireConfirmation(action: AssessorAction) {
-  return confirmationOnlyActions.has(action)
 }
 
 export function createStepPlanForCapability(input: {
@@ -215,7 +200,7 @@ function buildTelemetry(input: {
       entity: step.entity,
       source: step.plan.source,
       mutatesData: step.plan.capability.mutatesData,
-        requiresConfirmation: shouldRequireConfirmation(step.action),
+      requiresConfirmation: doesCosCapabilityRequireConfirmation(step.capabilityId),
     })),
     unresolvedGoals: input.unresolvedGoals,
     requestedAction: input.requestedAction?.trim() || null,
@@ -266,7 +251,7 @@ function buildSingleExecutionPlan(input: {
     input.intentConfidence < 0.8 &&
     !input.pendingInput,
   )
-  const requiresConfirmation = shouldRequireConfirmation(step.action) || requiresIntentConfirmation
+  const requiresConfirmation = doesCosCapabilityRequireConfirmation(step.capabilityId) || requiresIntentConfirmation
   return {
     id: planId,
     source: "single",
@@ -345,7 +330,7 @@ function buildRecipeExecutionPlan(input: {
     input.intentConfidence < 0.8 &&
     !input.pendingInput,
   )
-  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
+  const requiresConfirmation = steps.some((step) => doesCosCapabilityRequireConfirmation(step.capabilityId)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)
@@ -452,7 +437,7 @@ function buildAiExecutionPlan(input: {
     input.intentConfidence < 0.8 &&
     !input.pendingInput,
   )
-  const requiresConfirmation = steps.some((step) => shouldRequireConfirmation(step.action)) || requiresIntentConfirmation
+  const requiresConfirmation = steps.some((step) => doesCosCapabilityRequireConfirmation(step.capabilityId)) || requiresIntentConfirmation
   const resolutionMs = Date.now() - input.startedAt
   const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
     getWorkspaceEntity(input.workspace)

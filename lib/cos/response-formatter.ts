@@ -24,8 +24,11 @@ export async function formatCosExecutionPlanResponse(input: {
   if (input.result.status === "failed") {
     const failedStep = input.result.interruptedStep
     const completedLabels = input.result.completedSteps.map((step) => step.plan.capability.title)
+    const safeFailureResponse = failedStep?.result?.status === "error"
+      ? failedStep.result.response.trim()
+      : ""
     const lines = [
-      `Não consegui concluir ${failedStep?.plan.capability.title.toLowerCase() ?? "a operação"} agora.`,
+      safeFailureResponse || `Não consegui concluir ${failedStep?.plan.capability.title.toLowerCase() ?? "a operação"} agora.`,
     ]
     if (completedLabels.length > 0) {
       lines.push(`O que já foi concluído foi preservado: ${completedLabels.join(", ")}.`)

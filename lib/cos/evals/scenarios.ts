@@ -952,10 +952,10 @@ function buildScenarioLibrary() {
         },
       ],
       expected: {
-        intentAction: "LIST_DOCUMENTS",
+        intentAction: "LIST_PROPOSALS",
         workflowDecision: "start_new",
         capabilityId: "proposal.summary",
-        workflowActions: ["LIST_DOCUMENTS"],
+        workflowActions: ["LIST_PROPOSALS"],
         minConfidence: 0.72,
         requiresConfirmation: false,
         maxProjectedQuestions: 0,

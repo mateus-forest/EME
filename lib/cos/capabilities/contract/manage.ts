@@ -9,10 +9,11 @@ import {
   parseContractContent,
   stringifyContractContent,
 } from "@/lib/contract-template"
+import { createCosSuccessResult } from "@/lib/cos/action-result"
 import { resolveContractEntity } from "@/lib/cos/entity-resolver"
 import { prisma } from "@/lib/prisma"
 
-import { cleanText, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
+import { cleanText, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function contractWhere(brokerId: string, documentId: string) {
@@ -24,6 +25,8 @@ function contractWhere(brokerId: string, documentId: string) {
 }
 
 async function resolveContract(brokerId: string, payload: Record<string, unknown>) {
+  const contractId = getEntityIdFromPayload(payload, "contract") || getEntityIdFromPayload(payload, "document")
+  if (!contractId) return null
   const resolution = await resolveContractEntity({
     brokerId,
     payload,
@@ -58,10 +61,14 @@ function serializeContractSummary(document: {
 export const previewContractCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
   const contract = await resolveContract(brokerId, payloadRecord)
-  if (!contract) return requiredSelectionResponse("contrato", "contractId")
+  if (!contract) return requiredSelectionResponse("contrato", "contractId", undefined, {
+    action: "UPDATE_CONTRACT",
+    entity: "contract",
+    capabilityId: "contract.update",
+  })
 
   const summary = serializeContractSummary(contract)
-  return {
+  return createCosSuccessResult({
     response: `Preview do contrato:\n\n${summary.title}\nStatus: ${summary.status}\n\n${summary.preview || "Preview ainda não disponível."}`,
     metadata: {
       documentId: contract.id,
@@ -70,7 +77,7 @@ export const previewContractCapability: CosCapabilityHandler = async ({ brokerId
       propertyId: contract.propertyId,
       contractStatus: summary.status,
     },
-  }
+  })
 }
 
 export const updateContractCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {
@@ -126,9 +133,15 @@ async function updateContractStatus(input: {
   status: string
   responseLabel: string
   metadataExtra?: Prisma.InputJsonObject
+  action: "SEND_CONTRACT" | "SIGN_CONTRACT" | "CANCEL_CONTRACT"
+  capabilityId: "contract.send" | "contract.sign" | "contract.cancel"
 }) {
   const contract = await resolveContract(input.brokerId, input.payload)
-  if (!contract) return requiredSelectionResponse("contrato", "contractId")
+  if (!contract) return requiredSelectionResponse("contrato", "contractId", undefined, {
+    action: input.action,
+    entity: "contract",
+    capabilityId: input.capabilityId,
+  })
 
   const parsed = parseContractContent(contract.content)
   const nextContent = {
@@ -145,7 +158,7 @@ async function updateContractStatus(input: {
     },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `${input.responseLabel}\n\n${updated.title}`,
     metadata: {
       documentId: updated.id,
@@ -155,7 +168,7 @@ async function updateContractStatus(input: {
       propertyId: updated.propertyId,
       ...(input.metadataExtra ?? {}),
     },
-  }
+  })
 }
 
 export const sendContractCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
@@ -164,6 +177,8 @@ export const sendContractCapability: CosCapabilityHandler = async ({ brokerId, p
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     status: "awaiting_signature",
     responseLabel: "Contrato enviado para assinatura.",
+    action: "SEND_CONTRACT",
+    capabilityId: "contract.send",
   })
 
 export const signContractCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
@@ -172,6 +187,8 @@ export const signContractCapability: CosCapabilityHandler = async ({ brokerId, p
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     status: "signed",
     responseLabel: "Contrato marcado como assinado.",
+    action: "SIGN_CONTRACT",
+    capabilityId: "contract.sign",
   })
 
 export const cancelContractCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
@@ -180,6 +197,8 @@ export const cancelContractCapability: CosCapabilityHandler = async ({ brokerId,
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     status: "cancelled",
     responseLabel: "Contrato cancelado com histórico preservado.",
+    action: "CANCEL_CONTRACT",
+    capabilityId: "contract.cancel",
   })
 
 export const downloadContractCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {

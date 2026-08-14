@@ -199,11 +199,7 @@ export async function resolveAgendaEntity(input: {
     return { record: event, parsedData: {} } satisfies CosEntityResolution<typeof event>
   }
 
-  const event = await prisma.agendaEvent.findFirst({
-    where: { brokerId: input.brokerId },
-    orderBy: { date: "desc" },
-  })
-  return { record: event, parsedData: {} } satisfies CosEntityResolution<typeof event>
+  return { record: null, parsedData: {} } satisfies CosEntityResolution<null>
 }
 
 export async function resolveCampaignEntity(input: {

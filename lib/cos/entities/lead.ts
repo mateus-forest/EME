@@ -19,7 +19,7 @@ export const leadEntityModule: CosEntityModule = {
         responseMode: "raw",
         source: "modular",
         mutatesData: true,
-        requiresConfirmation: true,
+        requiresConfirmation: false,
         requiresSelection: false,
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Posso cadastrar ou atualizar este cliente agora. Deseja confirmar?",
@@ -71,7 +71,7 @@ export const leadEntityModule: CosEntityModule = {
         responseMode: "raw",
         source: "modular",
         mutatesData: true,
-        requiresConfirmation: true,
+        requiresConfirmation: false,
         requiresSelection: true,
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Posso atualizar este cliente agora. Deseja confirmar?",
@@ -89,12 +89,7 @@ export const leadEntityModule: CosEntityModule = {
         responseMode: "raw",
         source: "modular",
         mutatesData: true,
-        // false, not true: confirmation is handled manually inside the handler (same as
-        // lead.attach_document below) so it can show the actually-resolved client's name and
-        // handle 0/1/>1 matches — the plan-level auto-confirmation this would otherwise trigger
-        // (execution-planner.ts) runs before the handler ever executes, so it can only show a
-        // generic "deseja confirmar?" with no name at all.
-        requiresConfirmation: false,
+        requiresConfirmation: true,
         requiresSelection: false,
         surfaces: ["portal", "cos_home", "whatsapp"],
       },

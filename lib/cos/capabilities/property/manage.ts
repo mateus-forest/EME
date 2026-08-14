@@ -2,6 +2,7 @@ import "server-only"
 
 import { PropertyStatus } from "@/lib/prisma-enums"
 
+import { createCosSuccessResult } from "@/lib/cos/action-result"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
@@ -10,6 +11,7 @@ import { prisma } from "@/lib/prisma"
 import {
   cleanText,
   extractPriceFromMessage,
+  getEntityIdFromPayload,
   getPayloadRecord,
   requiredSelectionResponse,
 } from "@/lib/cos/capabilities/shared"
@@ -36,9 +38,16 @@ async function updatePropertyPublication(input: {
   published: boolean
   status: PropertyStatus
   responseLabel: string
+  action: "PUBLISH_PROPERTY" | "UNPUBLISH_PROPERTY"
+  capabilityId: "property.publish" | "property.unpublish"
 }) {
-  const property = await resolveProperty(input)
-  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
+  const propertyId = getEntityIdFromPayload(input.payload, "property")
+  const property = propertyId ? await prisma.property.findFirst({ where: { id: propertyId, brokerId: input.brokerId } }) : null
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId", undefined, {
+    action: input.action,
+    entity: "property",
+    capabilityId: input.capabilityId,
+  })
 
   const updated = await prisma.property.update({
     where: { id: property.id },
@@ -48,7 +57,7 @@ async function updatePropertyPublication(input: {
     },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `${input.responseLabel}\n\n${updated.title}`,
     metadata: {
       propertyId: updated.id,
@@ -57,7 +66,7 @@ async function updatePropertyPublication(input: {
       propertyTitle: updated.title,
     },
     propertyId: updated.id,
-  }
+  })
 }
 
 export const publishPropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
@@ -67,6 +76,8 @@ export const publishPropertyCapability: CosCapabilityHandler = async ({ brokerId
     published: true,
     status: PropertyStatus.PUBLISHED,
     responseLabel: "Imóvel publicado com sucesso.",
+    action: "PUBLISH_PROPERTY",
+    capabilityId: "property.publish",
   })
 
 export const unpublishPropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) =>
@@ -76,12 +87,19 @@ export const unpublishPropertyCapability: CosCapabilityHandler = async ({ broker
     published: false,
     status: PropertyStatus.PAUSED,
     responseLabel: "Imóvel pausado com sucesso.",
+    action: "UNPUBLISH_PROPERTY",
+    capabilityId: "property.unpublish",
   })
 
 export const updatePropertyMediaCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
-  const property = await resolveProperty({ brokerId, payload: payloadRecord })
-  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
+  const propertyId = getEntityIdFromPayload(payloadRecord, "property")
+  const property = propertyId ? await prisma.property.findFirst({ where: { id: propertyId, brokerId } }) : null
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId", undefined, {
+    action: "UPDATE_PROPERTY_MEDIA",
+    entity: "property",
+    capabilityId: "property.media.update",
+  })
 
   const providedImages = Array.isArray(payloadRecord.imageUrls)
     ? payloadRecord.imageUrls.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
@@ -161,8 +179,13 @@ export const suggestPropertyPriceCapability: CosCapabilityHandler = async ({ bro
 
 export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId, payload }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload })
-  const property = await resolveProperty({ brokerId, payload: payloadRecord })
-  if (!property) return requiredSelectionResponse("imóvel", "propertyId")
+  const propertyId = getEntityIdFromPayload(payloadRecord, "property")
+  const property = propertyId ? await prisma.property.findFirst({ where: { id: propertyId, brokerId } }) : null
+  if (!property) return requiredSelectionResponse("imóvel", "propertyId", undefined, {
+    action: "ARCHIVE_PROPERTY",
+    entity: "property",
+    capabilityId: "property.archive",
+  })
 
   const propertyTitle = cleanText(property.title, 160)
 
@@ -170,7 +193,7 @@ export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId
     where: { id: property.id },
   })
 
-  return {
+  return createCosSuccessResult({
     response: `Imóvel excluído com sucesso.\n\n${propertyTitle}`,
     metadata: {
       propertyId: property.id,
@@ -179,5 +202,5 @@ export const archivePropertyCapability: CosCapabilityHandler = async ({ brokerId
       published: false,
     },
     propertyId: property.id,
-  }
+  })
 }

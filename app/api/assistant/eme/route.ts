@@ -14,6 +14,7 @@ import {
 } from "@/lib/eme-backend"
 import {
   cancelWorkflow,
+  classifyCosPendingReply,
   createCosNormalizedContext,
   createWorkflowFromExecutionPlan,
   formatCosExecutionPlanResponse,
@@ -696,7 +697,7 @@ export async function POST(request: NextRequest) {
   const conversationIdFromBody = cleanText(body?.conversationId, 80)
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
   const selectedOptionId = cleanText(body?.selectedOptionId, 160)
-  const isCancellation = Boolean(body?.cancel)
+  let isCancellation = Boolean(body?.cancel)
   const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
   const isWorkflowDetailsRequest = requestedAction === "workflow_details"
   const attachments = sanitizeIncomingAttachments(body?.attachments)
@@ -752,6 +753,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
+    const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
+    const pendingReply = activeWorkflow?.pendingInput ? classifyCosPendingReply(message) : "answer"
+    if (pendingReply === "cancel" || pendingReply === "reject") {
+      isCancellation = true
+      creditsUsed = 0
+    }
+
     const brokerState = await prisma.broker.findUnique({
       where: { id: user.broker.id },
       select: { aiAssistantEnabled: true, aiCreditsBalance: true },
@@ -779,8 +788,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
-    const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
     const structuredSelectionMessage = resolveStructuredSelectionMessage(activeWorkflow, selectedOptionId)
     const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
     const normalizedContext = createCosNormalizedContext({
@@ -1502,9 +1509,15 @@ export async function POST(request: NextRequest) {
           : updatedWorkflow.status === "failed"
             ? "error"
             : "success"
+      if (updatedWorkflow.status === "failed") {
+        errorMessage = executionResult.interruptedStep?.result?.status === "error"
+          ? executionResult.interruptedStep.result.errorCode
+          : executionResult.interruptedStep?.errorMessage ?? "COS_EXECUTION_FAILED"
+      }
 
       finalCreditsUsed = getCosInteractionCreditCost(
         executionResult.executedSteps
+          .filter((step) => step.status === "completed")
           .filter((step) => (step.result?.metadata as { noCharge?: boolean } | undefined)?.noCharge !== true)
           .map((step) => step.action),
       )

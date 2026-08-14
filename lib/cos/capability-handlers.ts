@@ -22,6 +22,7 @@ import {
   cancelContractCapability,
 } from "@/lib/cos/capabilities/contract/manage"
 import { financialSummaryCapability } from "@/lib/cos/capabilities/finance/summary"
+import { getDocumentCapability, listDocumentsCapability } from "@/lib/cos/capabilities/document/manage"
 import { generalChatCapability } from "@/lib/cos/capabilities/general/chat"
 import {
   helpContractsProposalsCapability,
@@ -115,6 +116,8 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "contract.cancel": cancelContractCapability,
   "contract.download": downloadContractCapability,
   "contract.history": contractHistoryCapability,
+  "document.list": listDocumentsCapability,
+  "document.get": getDocumentCapability,
   "property.publish": publishPropertyCapability,
   "property.unpublish": unpublishPropertyCapability,
   "property.media.update": updatePropertyMediaCapability,

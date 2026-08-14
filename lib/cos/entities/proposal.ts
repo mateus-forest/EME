@@ -10,7 +10,7 @@ export const proposalEntityModule: CosEntityModule = {
     {
       descriptor: {
         id: "proposal.summary",
-        action: "LIST_DOCUMENTS",
+        action: "LIST_PROPOSALS",
         title: "Resumo de propostas",
         description: "Resume propostas existentes, rascunhos e pendências atuais.",
         domain: "proposal",
@@ -36,7 +36,7 @@ export const proposalEntityModule: CosEntityModule = {
         responseMode: "raw",
         source: "modular",
         mutatesData: true,
-        requiresConfirmation: true,
+        requiresConfirmation: false,
         requiresSelection: true,
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Posso gerar esta proposta agora e salvar em Documentos. Deseja confirmar?",

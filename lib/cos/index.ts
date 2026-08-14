@@ -21,10 +21,12 @@ export { buildCosConversationResponse, classifyCosSocialIntent, getSafeFirstName
 export { resolveAgendaEntity, resolveCampaignEntity, resolveContractEntity, resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 export { planCosCapability } from "@/lib/cos/planner"
 export {
+  classifyCosPendingReply,
   createPendingInput,
   createPendingInputMetadata,
   extractPendingInputFromMetadata,
   isAwaitingInputResult,
+  isCosPendingInputExpired,
   normalizeWorkflowStatus,
 } from "@/lib/cos/pending-input"
 export { formatCosCapabilityResponse, formatCosExecutionPlanResponse } from "@/lib/cos/response-formatter"

@@ -19,7 +19,7 @@ export const propertyEntityModule: CosEntityModule = {
         responseMode: "raw",
         source: "modular",
         mutatesData: true,
-        requiresConfirmation: true,
+        requiresConfirmation: false,
         requiresSelection: false,
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Encontrei um pedido para cadastrar um imóvel em rascunho. Deseja confirmar?",

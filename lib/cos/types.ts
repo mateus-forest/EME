@@ -77,12 +77,42 @@ export type CosCapabilityId =
   | "help.marketing_studio"
   | "help.general_question"
 
-export type CosActionResult = {
+export type CosActionResultBase = {
   response: string
   metadata: Prisma.InputJsonObject
   leadId?: string
   propertyId?: string
 }
+
+export type CosActionSuccessResult = CosActionResultBase & {
+  status: "success"
+}
+
+export type CosActionAwaitingInputResult = CosActionResultBase & {
+  status: "awaiting_input"
+  pendingInput: CosPendingInput
+}
+
+export type CosActionErrorResult = CosActionResultBase & {
+  status: "error"
+  errorCode: string
+}
+
+export type CosRuntimeActionResult =
+  | CosActionSuccessResult
+  | CosActionAwaitingInputResult
+  | CosActionErrorResult
+
+/**
+ * Contrato temporário para handlers ainda não migrados. A normalização acontece
+ * uma única vez no executor e nunca infere estado a partir do texto da resposta.
+ */
+export type CosLegacyActionResult = CosActionResultBase & {
+  status?: never
+}
+
+export type CosActionResult = CosRuntimeActionResult | CosLegacyActionResult
+export type CosCapabilityHandlerResult = CosActionResult
 
 export type CosAttachmentCategory = "image" | "document" | "video" | "files"
 
@@ -136,7 +166,7 @@ export type CosCapabilityExecutionInput = {
   pendingInput?: CosPendingInput | null
 }
 
-export type CosCapabilityHandler = (input: CosCapabilityExecutionInput) => Promise<CosActionResult>
+export type CosCapabilityHandler = (input: CosCapabilityExecutionInput) => Promise<CosCapabilityHandlerResult>
 
 export type CosCapabilityDefinition = {
   id: CosCapabilityId
@@ -282,7 +312,7 @@ export type CosExecutionStep = {
   status: CosExecutionStepStatus
   dependsOn: string[]
   durationMs: number | null
-  result: CosActionResult | null
+  result: CosRuntimeActionResult | null
   errorMessage: string | null
   plan: CosCapabilityPlan
 }
@@ -365,6 +395,12 @@ export type CosPendingInputOption = {
 }
 
 export type CosPendingInput = {
+  schemaVersion?: 2
+  createdAt?: string
+  expiresAt?: string
+  source?: "handler" | "confirmation" | "legacy_adapter"
+  reason?: string
+  capabilityId?: CosCapabilityId
   field: string
   label: string
   type: CosPendingInputType
@@ -397,6 +433,8 @@ export type CosWorkflowStepState = {
   errorMessage: string | null
   resultResponse: string | null
   resultMetadata: Prisma.InputJsonObject | null
+  resultStatus?: CosRuntimeActionResult["status"] | null
+  resultErrorCode?: string | null
   leadId?: string
   propertyId?: string
 }

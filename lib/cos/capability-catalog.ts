@@ -15,7 +15,9 @@ export function listCosCapabilityCatalog(): CosCapabilityDescriptor[] {
 }
 
 export function getCosCapabilityDescriptorByAction(action: AssessorAction) {
-  return descriptors.find((capability) => capability.action === action) ?? descriptors[0]
+  const descriptor = descriptors.find((capability) => capability.action === action)
+  if (!descriptor) throw new Error(`COS_CAPABILITY_NOT_FOUND:${action}`)
+  return descriptor
 }
 
 export function getCosCapabilityDescriptorByAliasOrAction(value: string | null | undefined) {
@@ -52,6 +54,10 @@ export function isCosCapabilityAvailableOnSurface(action: AssessorAction, surfac
 
 export function doesCosCapabilityMutateData(action: AssessorAction) {
   return getCosCapabilityDescriptorByAction(action).mutatesData
+}
+
+export function doesCosCapabilityRequireConfirmation(id: CosCapabilityId) {
+  return getCosCapabilityDescriptorById(id)?.requiresConfirmation ?? false
 }
 
 export function getCosCapabilityConfirmationMessage(action: AssessorAction) {
