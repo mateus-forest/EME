@@ -10,7 +10,6 @@ type StageConfig = {
   archLift: number
   baseScale: number
   onlyPriority: boolean
-  isMobile: boolean
 }
 
 function useStageConfig(): StageConfig {
@@ -20,27 +19,17 @@ function useStageConfig(): StageConfig {
     archLift: 250,
     baseScale: 1,
     onlyPriority: false,
-    isMobile: false,
   })
 
   useEffect(() => {
     const compute = () => {
       const w = window.innerWidth
-      if (w < 768) {
-        // Mobile: the SAME elliptical orbit as desktop, scaled to the phone. The
-        // horizontal radius is wide enough that only the front card and its two
-        // neighbours read at once (the rest sweep off the sides / tuck behind the
-        // logo), so nothing ever collides. Flat arch + strong depth match the
-        // desktop's "ring seen in perspective" look. Threshold matches the
-        // device switcher in eme-experience.tsx (max-width: 767px), since this
-        // branch is what EmeMobileExperience actually renders through now.
-        setConfig({ radiusX: 222, radiusZ: 150, archLift: 184, baseScale: 0.66, onlyPriority: false, isMobile: true })
-      } else if (w < 1024) {
-        setConfig({ radiusX: 320, radiusZ: 140, archLift: 118, baseScale: 0.68, onlyPriority: false, isMobile: false })
+      if (w < 1024) {
+        setConfig({ radiusX: 320, radiusZ: 140, archLift: 118, baseScale: 0.68, onlyPriority: false })
       } else if (w < 1440) {
-        setConfig({ radiusX: 465, radiusZ: 160, archLift: 132, baseScale: 0.74, onlyPriority: false, isMobile: false })
+        setConfig({ radiusX: 465, radiusZ: 160, archLift: 132, baseScale: 0.74, onlyPriority: false })
       } else {
-        setConfig({ radiusX: 560, radiusZ: 178, archLift: 146, baseScale: 0.82, onlyPriority: false, isMobile: false })
+        setConfig({ radiusX: 560, radiusZ: 178, archLift: 146, baseScale: 0.82, onlyPriority: false })
       }
     }
     compute()

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import { Fingerprint, KeyRound, LockKeyhole, X } from "lucide-react"
@@ -33,6 +33,7 @@ export function AuthPanel({
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   const {
     trustedDevice,
@@ -66,6 +67,26 @@ export function AuthPanel({
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
+
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflow = html.style.overflow
+    const previousBodyOverflow = body.style.overflow
+    const previousBodyOverscroll = body.style.overscrollBehavior
+    const focusFrame = requestAnimationFrame(() => closeButtonRef.current?.focus({ preventScroll: true }))
+
+    html.style.overflow = "hidden"
+    body.style.overflow = "hidden"
+    body.style.overscrollBehavior = "none"
+
+    return () => {
+      cancelAnimationFrame(focusFrame)
+      html.style.overflow = previousHtmlOverflow
+      body.style.overflow = previousBodyOverflow
+      body.style.overscrollBehavior = previousBodyOverscroll
+    }
+  }, [])
 
   useEffect(() => {
     setError("")
@@ -142,11 +163,11 @@ export function AuthPanel({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[70]">
+    <div className="pointer-events-none fixed inset-0 z-[90]">
       <motion.button
         type="button"
         aria-label="Fechar autenticação"
-        className="pointer-events-auto absolute inset-0 cursor-default"
+        className="pointer-events-auto absolute inset-0 z-0 cursor-default"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -154,30 +175,42 @@ export function AuthPanel({
       />
 
       <div
-        className="absolute top-1/2 flex w-full -translate-y-1/2 justify-center px-3 sm:inset-x-auto sm:right-8 sm:w-auto sm:justify-end sm:px-0 lg:right-14"
+        className="absolute inset-0 z-10 flex items-end justify-center px-2 pb-2 pt-2 sm:items-center sm:justify-end sm:px-8 sm:py-6 lg:px-14"
         style={{
-          paddingLeft: "max(1rem, env(safe-area-inset-left))",
-          paddingRight: "max(1rem, env(safe-area-inset-right))",
+          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
         }}
       >
         <motion.div
           className="pointer-events-auto w-full max-w-[420px] sm:w-[88vw]"
-          initial={{ x: 72, opacity: 0, filter: "blur(10px)" }}
-          animate={{ x: 0, opacity: 1, filter: "blur(0px)" }}
-          exit={{ x: 72, opacity: 0, filter: "blur(10px)" }}
+          initial={{ x: 72, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 72, opacity: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="relative overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.94)] px-5 py-6 shadow-[0_26px_70px_-54px_rgba(20,52,36,0.4)] backdrop-blur-xl sm:rounded-[30px] sm:bg-[rgba(255,255,255,0.9)] sm:px-12 sm:py-9">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={isLogin ? "Entrar no EME" : "Criar conta no EME"}
+            className="relative flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.96)] shadow-[0_26px_70px_-40px_rgba(20,52,36,0.46)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[30px] sm:bg-[rgba(255,255,255,0.92)] sm:backdrop-blur-xl"
+          >
             <button
+              ref={closeButtonRef}
               type="button"
               aria-label="Fechar"
               onClick={onClose}
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-foreground/10 bg-white/80 text-foreground/70 shadow-sm transition-colors hover:border-foreground/20 hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/40"
+              className="absolute right-3 top-3 z-30 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full border border-foreground/10 bg-white/95 text-foreground/70 shadow-sm transition-colors hover:border-foreground/20 hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/40 sm:right-4 sm:top-4"
             >
               <X className="h-[18px] w-[18px]" strokeWidth={2} />
             </button>
 
-            <AnimatePresence mode="wait" initial={false}>
+            <div
+              data-auth-scroll
+              className="eme-hidden-scrollbar min-h-0 overflow-y-auto overscroll-contain px-5 py-6 sm:px-12 sm:py-9"
+            >
+              <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={mode}
                 initial={{ opacity: 0, y: 10 }}
@@ -347,7 +380,8 @@ export function AuthPanel({
                   </button>
                 </p>
               </motion.div>
-            </AnimatePresence>
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       </div>

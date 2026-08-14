@@ -1,22 +1,18 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { AnimatePresence, useMotionValue, useMotionValueEvent, useSpring } from "motion/react"
+import { useEffect, useRef, useState } from "react"
+import { AnimatePresence, useMotionValue, useSpring } from "motion/react"
 
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
-import { OrbitStage } from "@/components/eme/orbit-stage"
+import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 /**
- * Mobile / PWA experience — a faithful port of the desktop scene, not a
- * separate concept: it renders the very same OrbitStage (and, through it,
- * the same EmeLogoSculpture and ModuleCard), just driven by a horizontal
- * touch-drag (with inertia) instead of the mouse wheel, using the same
- * spring so the motion feels identical. This used to be a second,
- * hand-rolled orbit-placement implementation that inevitably drifted from
- * desktop's; sharing OrbitStage removes that drift at the source.
+ * Mobile / PWA experience. The phone composition has its own geometry,
+ * physical card sizing, depth and gesture tuning; it intentionally does not
+ * scale the approved desktop ring down.
  */
 export function EmeMobileExperience({
   authMode,
@@ -31,11 +27,12 @@ export function EmeMobileExperience({
   const movedRef = useRef(0)
   const selectedRef = useRef<string | null>(null)
   const authOpenRef = useRef(false)
+  const interactingRef = useRef(false)
+  const resumeAutoAtRef = useRef(0)
   const orbitTarget = useMotionValue(0)
-  const orbitAngle = useSpring(orbitTarget, { stiffness: 55, damping: 18, mass: 1.1 })
-  const [angle, setAngle] = useState(0)
+  const orbitAngle = useSpring(orbitTarget, { stiffness: 82, damping: 24, mass: 0.82 })
+  const [activeIndex, setActiveIndex] = useState(0)
   const [mounted, setMounted] = useState(false)
-  useMotionValueEvent(orbitAngle, "change", (value) => setAngle(value))
 
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
   const selectedModule = selected
@@ -51,108 +48,116 @@ export function EmeMobileExperience({
     setMounted(true)
   }, [])
 
-  const handleSelect = (id: string, el: HTMLElement) => {
-    if (movedRef.current > 8) return // that was a swipe, not a tap
-    setSelected({ id, el })
+  const handleSelect = (id: string, element: HTMLElement) => {
+    if (movedRef.current > 8) return
+    setSelected({ id, el: element })
+  }
+
+  const openAuth = (mode: AuthMode) => {
+    setSelected(null)
+    onAuthModeChange(mode)
   }
 
   useEffect(() => {
-    const stageEl = stageRef.current
-    if (!stageEl) return
+    const stageElement = stageRef.current
+    if (!stageElement) return
 
-    const sensitivity = 0.3
-    const inertiaProjection = 160
-
+    const sensitivity = 0.2
+    const inertiaProjection = 120
     let dragging = false
+    let pointerId: number | null = null
     let startX = 0
     let baseAngle = 0
     let lastX = 0
     let lastTime = 0
     let velocityX = 0
 
-    const handleStart = (event: TouchEvent) => {
-      if (selectedRef.current || authOpenRef.current) return
+    const handleStart = (event: PointerEvent) => {
+      if (selectedRef.current || authOpenRef.current || !event.isPrimary) return
       dragging = true
-      startX = lastX = event.touches[0].clientX
+      interactingRef.current = true
+      pointerId = event.pointerId
+      startX = lastX = event.clientX
       lastTime = performance.now()
       baseAngle = orbitTarget.get()
       velocityX = 0
       movedRef.current = 0
     }
 
-    const handleMove = (event: TouchEvent) => {
-      if (!dragging) return
+    const handleMove = (event: PointerEvent) => {
+      if (!dragging || event.pointerId !== pointerId) return
       event.preventDefault()
 
-      const pointerX = event.touches[0].clientX
-      const dragged = startX - pointerX
+      const dragged = startX - event.clientX
       movedRef.current = Math.max(movedRef.current, Math.abs(dragged))
+      if (Math.abs(dragged) > 4 && !stageElement.hasPointerCapture(event.pointerId)) {
+        stageElement.setPointerCapture(event.pointerId)
+      }
       orbitTarget.set(baseAngle + dragged * sensitivity)
 
       const now = performance.now()
-      const deltaTime = now - lastTime
-      if (deltaTime > 0) {
-        velocityX = (pointerX - lastX) / deltaTime
-      }
-
-      lastX = pointerX
+      const elapsed = now - lastTime
+      if (elapsed > 0) velocityX = (event.clientX - lastX) / elapsed
+      lastX = event.clientX
       lastTime = now
     }
 
-    const handleEnd = () => {
-      if (!dragging) return
+    const handleEnd = (event: PointerEvent) => {
+      if (!dragging || event.pointerId !== pointerId) return
       dragging = false
-      orbitTarget.set(orbitTarget.get() + -velocityX * sensitivity * inertiaProjection)
+
+      const projectedDegrees = Math.max(
+        -18,
+        Math.min(18, -velocityX * sensitivity * inertiaProjection),
+      )
+      orbitTarget.set(orbitTarget.get() + projectedDegrees)
+      interactingRef.current = false
+      resumeAutoAtRef.current = performance.now() + 650
+
+      if (stageElement.hasPointerCapture(event.pointerId)) {
+        stageElement.releasePointerCapture(event.pointerId)
+      }
+      pointerId = null
     }
 
-    stageEl.addEventListener("touchstart", handleStart, { passive: true })
-    stageEl.addEventListener("touchmove", handleMove, { passive: false })
-    stageEl.addEventListener("touchend", handleEnd)
-    stageEl.addEventListener("touchcancel", handleEnd)
+    stageElement.addEventListener("pointerdown", handleStart)
+    stageElement.addEventListener("pointermove", handleMove)
+    stageElement.addEventListener("pointerup", handleEnd)
+    stageElement.addEventListener("pointercancel", handleEnd)
 
     return () => {
-      stageEl.removeEventListener("touchstart", handleStart)
-      stageEl.removeEventListener("touchmove", handleMove)
-      stageEl.removeEventListener("touchend", handleEnd)
-      stageEl.removeEventListener("touchcancel", handleEnd)
+      stageElement.removeEventListener("pointerdown", handleStart)
+      stageElement.removeEventListener("pointermove", handleMove)
+      stageElement.removeEventListener("pointerup", handleEnd)
+      stageElement.removeEventListener("pointercancel", handleEnd)
     }
   }, [orbitTarget])
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
 
-    let raf = 0
+    let animationFrame = 0
     let previous = performance.now()
 
     const advanceOrbit = (now: number) => {
-      const elapsed = Math.min(now - previous, 64)
+      const elapsed = Math.min(now - previous, 34)
       previous = now
-      if (!selectedRef.current && !authOpenRef.current) {
-        orbitTarget.set(orbitTarget.get() + elapsed * 0.002)
+
+      if (
+        !document.hidden &&
+        !selectedRef.current &&
+        !authOpenRef.current &&
+        !interactingRef.current &&
+        now >= resumeAutoAtRef.current
+      ) {
+        orbitTarget.set(orbitTarget.get() + elapsed * 0.0028)
       }
-      raf = requestAnimationFrame(advanceOrbit)
+      animationFrame = requestAnimationFrame(advanceOrbit)
     }
 
-    raf = requestAnimationFrame(advanceOrbit)
-    return () => cancelAnimationFrame(raf)
+    animationFrame = requestAnimationFrame(advanceOrbit)
+    return () => cancelAnimationFrame(animationFrame)
   }, [orbitTarget])
-
-  // Which module currently reads as "front-facing", for the progress dots below —
-  // OrbitStage computes this internally for its own placement, but doesn't expose
-  // it, so it's re-derived here from the same angle this component already tracks.
-  const activeIndex = useMemo(() => {
-    let bestIndex = 0
-    let bestFront = -Infinity
-    emeModules.forEach((module, index) => {
-      const rad = ((module.angle + angle) * Math.PI) / 180
-      const front = -Math.cos(rad)
-      if (front > bestFront) {
-        bestFront = front
-        bestIndex = index
-      }
-    })
-    return bestIndex
-  }, [angle])
 
   return (
     <main className="fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background">
@@ -160,32 +165,31 @@ export function EmeMobileExperience({
 
       <MobileHeader
         authOpen={authOpen}
-        onEntrar={() => onAuthModeChange("login")}
-        onComecar={() => onAuthModeChange("signup")}
+        onEntrar={() => openAuth("login")}
+        onComecar={() => openAuth("signup")}
       />
 
       <div
         ref={stageRef}
-        className="absolute inset-0 flex touch-none items-center justify-center -translate-y-[28px] transition-opacity duration-700 ease-out"
+        className="absolute inset-0 flex touch-none items-center justify-center -translate-y-[18px] transition-opacity duration-700 ease-out"
         style={{ opacity: mounted ? 1 : 0 }}
       >
-        {mounted && (
-          <OrbitStage
-            orbitAngle={angle}
-            activeId={null}
+        {mounted ? (
+          <MobileOrbitStage
+            orbitAngle={orbitAngle}
             selectedId={selected?.id ?? null}
             onSelect={handleSelect}
+            onActiveIndexChange={setActiveIndex}
             authOpen={authOpen}
           />
-        )}
+        ) : null}
       </div>
 
-      {/* Ambient light — same soft-light drift as desktop. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
         <div
-          className="eme-ambient-light absolute left-1/2 top-[40%] h-[80vh] w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          className="eme-ambient-light absolute left-1/2 top-[40%] h-[76vh] w-[86vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
-            background: "radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 62%)",
+            background: "radial-gradient(circle, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0) 64%)",
             mixBlendMode: "soft-light",
           }}
         />
@@ -201,11 +205,13 @@ export function EmeMobileExperience({
             return (
               <span
                 key={module.id}
-                className="block rounded-full transition-all duration-300"
+                className="block rounded-full transition-[width,background-color] duration-500 ease-out"
                 style={{
                   width: active ? 22 : 6,
                   height: 6,
-                  backgroundColor: active ? "var(--eme)" : "color-mix(in oklab, var(--graphite) 40%, transparent)",
+                  backgroundColor: active
+                    ? "var(--eme)"
+                    : "color-mix(in oklab, var(--graphite) 40%, transparent)",
                 }}
               />
             )
@@ -218,25 +224,27 @@ export function EmeMobileExperience({
           className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
           aria-hidden
         >
-          <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/20 backdrop-blur-sm">
+          <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/45">
             <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
           </div>
         </div>
       ) : null}
 
       <AnimatePresence>
-        {selected && selectedModule && (
+        {selected && selectedModule ? (
           <ExpandedModulePanel
             key={selected.id}
             module={selectedModule}
             originEl={selected.el}
             onClose={() => setSelected(null)}
           />
-        )}
+        ) : null}
       </AnimatePresence>
 
       <AnimatePresence>
-        {authMode && <AuthPanel mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />}
+        {authMode ? (
+          <AuthPanel mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
+        ) : null}
       </AnimatePresence>
     </main>
   )
@@ -265,7 +273,7 @@ function MobileHeader({
             type="button"
             onClick={onEntrar}
             tabIndex={authOpen ? -1 : 0}
-            className="rounded-full border border-eme/25 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium tracking-tight text-eme-dark backdrop-blur-sm transition-[opacity,background-color,color] duration-500 hover:bg-eme/10"
+            className="rounded-full border border-eme/25 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium tracking-tight text-eme-dark transition-[opacity,background-color,color] duration-500 hover:bg-eme/10"
             style={{ opacity: authOpen ? 0 : 1, pointerEvents: authOpen ? "none" : undefined }}
             aria-hidden={authOpen}
           >

@@ -373,6 +373,13 @@
     animation: landing-float 7s ease-in-out infinite;
   }
 
+  .eme-marketplace-mobile-float {
+    animation: eme-marketplace-mobile-float 9s ease-in-out infinite;
+    transform: translate3d(0, 0, 0) scale(0.88);
+    transform-origin: center center;
+    will-change: transform, opacity;
+  }
+
   .landing-glow {
     position: relative;
   }
@@ -526,10 +533,23 @@
   }
 }
 
+@keyframes eme-marketplace-mobile-float {
+  0%,
+  100% {
+    transform: translate3d(0, 1px, 0) scale(0.88);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(0, -2px, 0) scale(0.885);
+    opacity: 0.88;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   body,
   .eme-shimmer::after,
   .landing-float,
+  .eme-marketplace-mobile-float,
   .eme-ambient-light,
   .eme-loader-mark-logo,
   .eme-loader-mark-halo,

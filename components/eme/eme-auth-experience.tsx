@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { EmeExperience } from "@/components/eme/eme-experience"
@@ -20,12 +20,19 @@ function getAuthHref(mode: AuthMode) {
 export function EmeAuthExperience() {
   const pathname = usePathname()
   const router = useRouter()
+  const [dismissedPath, setDismissedPath] = useState<string | null>(null)
 
-  const authMode = resolveAuthMode(pathname)
+  const routeAuthMode = resolveAuthMode(pathname)
+  const authMode = dismissedPath === pathname ? null : routeAuthMode
+
+  useEffect(() => {
+    if (dismissedPath && dismissedPath !== pathname) setDismissedPath(null)
+  }, [dismissedPath, pathname])
 
   const handleAuthModeChange = useCallback(
     (mode: AuthMode) => {
       const href = getAuthHref(mode)
+      setDismissedPath(null)
 
       if (pathname !== href) {
         router.push(href)
@@ -35,9 +42,8 @@ export function EmeAuthExperience() {
   )
 
   const handleAuthClose = useCallback(() => {
-    if (pathname !== "/") {
-      router.push("/")
-    }
+    setDismissedPath(pathname)
+    if (pathname !== "/") router.replace("/", { scroll: false })
   }, [pathname, router])
 
   return (

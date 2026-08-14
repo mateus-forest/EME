@@ -1,18 +1,14 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { motion } from "motion/react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import Image from "next/image"
+import { motion } from "motion/react"
+import { Check, X } from "lucide-react"
+
 import type { EmeModule } from "@/lib/eme-modules"
 
 type Rect = { left: number; top: number; width: number; height: number }
 
-/**
- * Intrinsic aspect ratio (width / height) of each approved modal artwork AFTER
- * it was cropped to the real card (the surrounding white frame was trimmed and
- * the corners rounded to transparency). The panel is sized to the exact ratio
- * of the module's artwork so the image fills it with no crop and no margins.
- */
 const MODAL_AR: Record<string, number> = {
   cos: 1448 / 932,
   clientes: 1486 / 972,
@@ -26,34 +22,62 @@ const MODAL_AR: Record<string, number> = {
 }
 const DEFAULT_AR = 1480 / 962
 
-/**
- * The centred resting size the card grows into, locked to the artwork's own
- * aspect ratio and fit inside the viewport on BOTH axes so it never needs an
- * internal scrollbar on any device.
- */
-function computeTarget(ar: number): Rect {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const isNarrow = vw < 768
-  const maxW = vw * (isNarrow ? 0.94 : 0.9)
-  const maxH = vh * (isNarrow ? 0.9 : 0.92)
-  const width = Math.min(maxW, maxH * ar)
-  const height = width / ar
-  return { left: (vw - width) / 2, top: (vh - height) / 2, width, height }
+const MOBILE_MOCKUP_OFFSET: Partial<Record<string, string>> = {
+  contratos: "-44%",
+  "studio-ia": "-30%",
 }
 
-/**
- * Phase 4 — the selected card literally becomes its own presentation panel.
- *
- * Using a FLIP technique, we measure the clicked card's exact on-screen
- * rectangle and animate a single slab from that rectangle to the centred panel.
- * The panel's only content is the approved modal artwork for the module — a
- * pre-cropped, transparent-cornered PNG of the real modal card (scene, copy,
- * benefits and the close mark are all part of the image), shown exactly as
- * delivered with a soft drop-shadow that follows its rounded shape. There is no
- * extra white frame around it. A transparent hit-area over the artwork's close
- * mark, plus outside-click and Escape, dismiss the panel.
- */
+function computeTarget(aspectRatio: number): Rect {
+  const visualViewport = window.visualViewport
+  const viewportWidth = visualViewport?.width ?? window.innerWidth
+  const viewportHeight = visualViewport?.height ?? window.innerHeight
+  const viewportLeft = visualViewport?.offsetLeft ?? 0
+  const viewportTop = visualViewport?.offsetTop ?? 0
+  const isNarrow = viewportWidth < 768
+
+  if (isNarrow) {
+    const gutter = 8
+    return {
+      left: viewportLeft + gutter,
+      top: viewportTop + gutter,
+      width: viewportWidth - gutter * 2,
+      height: viewportHeight - gutter * 2,
+    }
+  }
+
+  const maxWidth = viewportWidth * 0.9
+  const maxHeight = viewportHeight * 0.92
+  const width = Math.min(maxWidth, maxHeight * aspectRatio)
+  const height = width / aspectRatio
+
+  return {
+    left: viewportLeft + (viewportWidth - width) / 2,
+    top: viewportTop + (viewportHeight - height) / 2,
+    width,
+    height,
+  }
+}
+
+function useModalScrollLock() {
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflow = html.style.overflow
+    const previousBodyOverflow = body.style.overflow
+    const previousBodyOverscroll = body.style.overscrollBehavior
+
+    html.style.overflow = "hidden"
+    body.style.overflow = "hidden"
+    body.style.overscrollBehavior = "none"
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow
+      body.style.overflow = previousBodyOverflow
+      body.style.overscrollBehavior = previousBodyOverscroll
+    }
+  }, [])
+}
+
 export function ExpandedModulePanel({
   module,
   originEl,
@@ -63,47 +87,52 @@ export function ExpandedModulePanel({
   originEl: HTMLElement
   onClose: () => void
 }) {
-  const ar = MODAL_AR[module.id] ?? DEFAULT_AR
+  const aspectRatio = MODAL_AR[module.id] ?? DEFAULT_AR
   const [start, setStart] = useState<Rect | null>(null)
   const [target, setTarget] = useState<Rect | null>(null)
-  const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
   const closingRef = useRef(false)
   const closeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Measure the card and kick off the growth on the next frame.
+  useModalScrollLock()
+
   useLayoutEffect(() => {
-    const r = originEl.getBoundingClientRect()
-    setStart({ left: r.left, top: r.top, width: r.width, height: r.height })
-    setTarget(computeTarget(ar))
-    const id = requestAnimationFrame(() => setOpen(true))
-    return () => cancelAnimationFrame(id)
-  }, [originEl, ar])
+    const rect = originEl.getBoundingClientRect()
+    setStart({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
+    setTarget(computeTarget(aspectRatio))
+  }, [aspectRatio, originEl])
 
   useEffect(() => {
-    const onResize = () => setTarget(computeTarget(ar))
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [ar])
+    const updateTarget = () => setTarget(computeTarget(aspectRatio))
+    const visualViewport = window.visualViewport
 
-  const handleClose = () => {
+    window.addEventListener("resize", updateTarget)
+    visualViewport?.addEventListener("resize", updateTarget)
+    visualViewport?.addEventListener("scroll", updateTarget)
+    return () => {
+      window.removeEventListener("resize", updateTarget)
+      visualViewport?.removeEventListener("resize", updateTarget)
+      visualViewport?.removeEventListener("scroll", updateTarget)
+    }
+  }, [aspectRatio])
+
+  const handleClose = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
-    // Re-measure the origin in case the orbit drifted, so the card returns to
-    // its true current position.
-    const r = originEl.getBoundingClientRect()
-    setStart({ left: r.left, top: r.top, width: r.width, height: r.height })
-    setOpen(false)
-    if (module.id === "marketplace") closeFallbackRef.current = setTimeout(onClose, 700)
-  }
+
+    const rect = originEl.getBoundingClientRect()
+    setStart({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
+    setClosing(true)
+    closeFallbackRef.current = setTimeout(onClose, 750)
+  }, [onClose, originEl])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose()
     }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [handleClose])
 
   useEffect(
     () => () => {
@@ -114,54 +143,60 @@ export function ExpandedModulePanel({
 
   if (!start || !target) return null
 
-  const geo = open ? target : start
+  const geometry = closing ? start : target
+  const isMobilePanel = target.height / target.width > 1.7
+  const ModuleIcon = module.icon
 
   return (
     <>
-      {/* Transparent click-catcher — closes on outside click. No visual scrim,
-          so the dimmed orbit and logo stay fully visible behind. Sits above the
-          landing header so the header never overlaps the panel. */}
-      <div className="fixed inset-0 z-[80]" onClick={handleClose} aria-hidden />
+      <button
+        type="button"
+        aria-label="Fechar módulo"
+        className="fixed inset-0 z-[80] cursor-default bg-graphite/10 md:bg-transparent"
+        onClick={handleClose}
+      />
 
       <motion.section
         role="dialog"
         aria-label={module.name}
-        aria-modal={false}
-        className="fixed z-[82] cursor-default"
-        initial={false}
-        animate={{
-          left: geo.left,
-          top: geo.top,
-          width: geo.width,
-          height: geo.height,
+        aria-modal="true"
+        data-module-dialog={module.id}
+        className="fixed z-[82] cursor-default overflow-hidden rounded-[26px] border border-white/70 bg-white text-foreground shadow-[0_26px_70px_-36px_rgba(20,52,36,0.48)] md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:[filter:drop-shadow(0_40px_80px_rgba(28,52,40,0.34))]"
+        initial={{
+          left: isMobilePanel ? target.left : start.left,
+          top: isMobilePanel ? target.top : start.top,
+          width: isMobilePanel ? target.width : start.width,
+          height: isMobilePanel ? target.height : start.height,
         }}
-        transition={{ type: "spring", stiffness: 200, damping: 30, mass: 0.9 }}
+        animate={{
+          left: geometry.left,
+          top: geometry.top,
+          width: geometry.width,
+          height: geometry.height,
+        }}
+        transition={
+          isMobilePanel
+            ? { duration: 0.34, ease: [0.22, 1, 0.36, 1] }
+            : { type: "spring", stiffness: 200, damping: 30, mass: 0.9 }
+        }
         onAnimationComplete={() => {
-          if (!open && closingRef.current) {
+          if (closing && closingRef.current) {
             if (closeFallbackRef.current) clearTimeout(closeFallbackRef.current)
             onClose()
           }
         }}
-        // A soft drop-shadow that hugs the artwork's rounded, transparent shape,
-        // so the modal lifts off the page without any added white frame.
-        style={{
-          filter: "drop-shadow(0 40px 80px rgba(28,52,40,0.34))",
-          pointerEvents: module.id === "marketplace" && !open ? "none" : "auto",
-        }}
       >
-        {/* The approved, pre-cropped modal artwork — shown exactly as delivered.
-            The box is locked to the artwork's own ratio, so `fill` covers it
-            perfectly with no crop and no empty margins. */}
         <motion.div
-          className="absolute inset-0"
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={{ duration: open ? 0.4 : 0.18, delay: open ? 0.16 : 0 }}
+          className="absolute inset-0 hidden md:block"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: closing ? 0 : 1 }}
+          transition={{ duration: closing ? 0.18 : 0.4, delay: closing ? 0 : 0.16 }}
         >
           <Image
             src={module.mockup || "/placeholder.svg"}
             alt={`Módulo ${module.name}`}
             fill
-            sizes="(max-width: 768px) 94vw, 90vw"
+            sizes="90vw"
             className="object-contain"
             priority
           />
@@ -177,15 +212,103 @@ export function ExpandedModulePanel({
           ) : null}
         </motion.div>
 
-        {/* Transparent close hit-area, placed over the artwork's own close mark
-            (top-right). Generous enough to cover its slight per-artwork offset. */}
+        <motion.div
+          className="absolute inset-0 flex flex-col md:hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: closing ? 0 : 1 }}
+          transition={{ duration: closing ? 0.16 : 0.32, delay: closing ? 0 : 0.12 }}
+        >
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Fechar"
+            className="absolute right-[max(12px,env(safe-area-inset-right))] top-[max(12px,env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full border border-foreground/10 bg-white/95 text-foreground/75 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/50"
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+
+          <div
+            data-mobile-module-scroll
+            className="eme-hidden-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-5"
+            style={{
+              paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
+              paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))",
+            }}
+          >
+            <div className="flex items-center gap-2.5 text-eme-dark">
+              <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
+                <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">{module.name}</span>
+            </div>
+
+            <h2 className="mt-5 text-balance text-[27px] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
+              {module.tagline}
+            </h2>
+            <p className="mt-3 text-pretty text-[14px] leading-relaxed text-foreground/68">
+              {module.longDescription}
+            </p>
+
+            <div className="mt-5 aspect-[16/10] overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]">
+              <div
+                className="relative h-full w-[178%]"
+                style={{ transform: `translate3d(${MOBILE_MOCKUP_OFFSET[module.id] ?? "0"}, 0, 0)` }}
+              >
+                <Image
+                  src={module.mockup || "/placeholder.svg"}
+                  alt={`Prévia visual do módulo ${module.name}`}
+                  fill
+                  sizes="680px"
+                  className="object-cover object-left"
+                  priority
+                />
+              </div>
+            </div>
+
+            <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>
+              {module.benefits.map((benefit) => {
+                const title = typeof benefit === "string" ? benefit : benefit.title
+                const description = typeof benefit === "string" ? null : benefit.description
+
+                return (
+                  <li key={title} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-eme/12 text-eme-dark">
+                      <Check className="size-3.5" strokeWidth={2.2} aria-hidden />
+                    </span>
+                    <span className="min-w-0 text-[13px] leading-snug text-foreground/82">
+                      <span className="font-medium">{title}</span>
+                      {description ? (
+                        <span className="mt-0.5 block text-[12.5px] leading-snug text-foreground/55">
+                          {description}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+
+            {module.id === "marketplace" && module.demoHref ? (
+              <a
+                href={module.demoHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="eme-gradient mt-6 flex min-h-12 w-full items-center justify-center rounded-full px-5 text-center text-[14px] font-medium text-primary-foreground shadow-[0_14px_28px_-16px_rgba(28,120,60,0.58)]"
+              >
+                {module.cta}
+              </a>
+            ) : null}
+          </div>
+        </motion.div>
+
         <motion.button
           type="button"
           onClick={handleClose}
           aria-label="Fechar"
-          className="absolute right-0 top-0 z-10 h-[14%] w-[12%] cursor-pointer"
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={{ duration: 0.2, delay: open ? 0.15 : 0 }}
+          className="absolute right-0 top-0 z-10 hidden h-[14%] w-[12%] cursor-pointer md:block"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: closing ? 0 : 1 }}
+          transition={{ duration: 0.2, delay: closing ? 0 : 0.15 }}
         />
       </motion.section>
     </>
