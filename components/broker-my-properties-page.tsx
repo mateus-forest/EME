@@ -10,12 +10,11 @@ import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties, type BrokerProperty as Property } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
-import { formatCep, lookupCep } from "@/lib/cep"
+import { lookupCep } from "@/lib/cep"
 import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { getPropertyImage } from "@/lib/property-media"
-import { formatCurrencyInput } from "@/lib/currency"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -767,7 +767,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       <h3 className="text-lg font-semibold text-[#050505]">Informações</h3>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         <Field label="Título"><Input value={editingProperty.title} onChange={(event) => updateField("title", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Preço"><Input value={editingProperty.price} onChange={(event) => updateField("price", formatCurrencyInput(event.target.value))} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Preço"><StructuredInput kind="currency" value={editingProperty.price} onValueChange={(value) => updateField("price", value)} aria-label="Preço" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Tipo">
                           <Select value={editingProperty.type} onValueChange={(value) => updateField("type", value as EditableProperty["type"])}>
                             <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"><SelectValue /></SelectTrigger>
@@ -815,7 +815,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       <div className="grid gap-3 md:grid-cols-[180px_auto]">
                         <Field label="CEP">
                           <div className="flex gap-2">
-                            <Input value={editingProperty.legal.cep} onChange={(event) => updateLegalField("cep", formatCep(event.target.value))} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                            <StructuredInput kind="cep" value={editingProperty.legal.cep} onValueChange={(value) => updateLegalField("cep", value)} aria-label="CEP" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                             <Button type="button" variant="ghost" onClick={() => void applyPropertyCep()} disabled={isLoadingCep} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563]">
                               {isLoadingCep ? "Buscando..." : "Buscar CEP"}
                             </Button>
@@ -837,8 +837,8 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <Field label="Cadastro municipal"><Input value={editingProperty.legal.municipalRegistration} onChange={(event) => updateLegalField("municipalRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Inscrição imobiliária"><Input value={editingProperty.legal.taxRegistration} onChange={(event) => updateLegalField("taxRegistration", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="IPTU"><Input value={editingProperty.legal.iptuValue} onChange={(event) => updateLegalField("iptuValue", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Área privativa"><Input value={editingProperty.legal.privateArea} onChange={(event) => updateLegalField("privateArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
-                        <Field label="Área total"><Input value={editingProperty.legal.totalArea} onChange={(event) => updateLegalField("totalArea", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Área privativa"><StructuredInput kind="decimal" value={editingProperty.legal.privateArea} onValueChange={(value) => updateLegalField("privateArea", value)} aria-label="Área privativa em metros quadrados" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Área total"><StructuredInput kind="decimal" value={editingProperty.legal.totalArea} onValueChange={(value) => updateLegalField("totalArea", value)} aria-label="Área total em metros quadrados" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Fração ideal"><Input value={editingProperty.legal.idealFraction} onChange={(event) => updateLegalField("idealFraction", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Condomínio"><Input value={editingProperty.legal.condominiumName} onChange={(event) => updateLegalField("condominiumName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Taxa de condomínio"><Input value={editingProperty.legal.condominiumFee} onChange={(event) => updateLegalField("condominiumFee", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>

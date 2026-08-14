@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Textarea } from "@/components/ui/textarea"
 import { proposalHtmlToText } from "@/lib/proposal-template"
+import { formatPhone } from "@/lib/structured-fields"
 
 type BrokerDocument = {
   id: string
@@ -346,12 +348,12 @@ export function BrokerDocumentsPage() {
                 <select value={draft.leadId} onChange={(event) => selectLead(event.target.value)} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505]">
                   <option value="" className="bg-white">Lead cadastrado ou preenchimento manual</option>
                   {leads.map((lead) => (
-                    <option key={lead.id} value={lead.id} className="bg-white">{lead.name || lead.phone || "Lead sem nome"}</option>
+                    <option key={lead.id} value={lead.id} className="bg-white">{lead.name || formatPhone(lead.phone) || "Lead sem nome"}</option>
                   ))}
                 </select>
                 <div className="grid gap-3 md:grid-cols-3">
                   <Input value={draft.clientName} onChange={(event) => setDraft({ ...draft, clientName: event.target.value })} placeholder="Nome cliente" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.clientPhone} onChange={(event) => setDraft({ ...draft, clientPhone: event.target.value })} placeholder="Telefone" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                  <StructuredInput kind="phone" value={draft.clientPhone} onValueChange={(value) => setDraft({ ...draft, clientPhone: value })} placeholder="Telefone" aria-label="Telefone do cliente" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                   <Input value={draft.clientEmail} onChange={(event) => setDraft({ ...draft, clientEmail: event.target.value })} placeholder="E-mail" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                 </div>
               </div>
@@ -366,14 +368,14 @@ export function BrokerDocumentsPage() {
                 </select>
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input value={draft.propertyTitle} onChange={(event) => setDraft({ ...draft, propertyTitle: event.target.value })} placeholder="Imóvel" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyPrice} onChange={(event) => setDraft({ ...draft, propertyPrice: event.target.value })} placeholder="Valor" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                  <StructuredInput kind="currency" value={draft.propertyPrice} onValueChange={(value) => setDraft({ ...draft, propertyPrice: value })} placeholder="Valor" aria-label="Valor do imóvel" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                   <Input value={draft.propertyCode} onChange={(event) => setDraft({ ...draft, propertyCode: event.target.value })} placeholder="Código/ID" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                   <Input value={draft.propertyNeighborhood} onChange={(event) => setDraft({ ...draft, propertyNeighborhood: event.target.value })} placeholder="Bairro" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                   <Input value={draft.propertyCity} onChange={(event) => setDraft({ ...draft, propertyCity: event.target.value })} placeholder="Cidade" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                   <Input value={draft.propertyType} onChange={(event) => setDraft({ ...draft, propertyType: event.target.value })} placeholder="Tipo" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyArea} onChange={(event) => setDraft({ ...draft, propertyArea: event.target.value })} placeholder="Metragem" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyBedrooms} onChange={(event) => setDraft({ ...draft, propertyBedrooms: event.target.value })} placeholder="Dormitórios" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyParkingSpots} onChange={(event) => setDraft({ ...draft, propertyParkingSpots: event.target.value })} placeholder="Vagas" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                  <StructuredInput kind="decimal" value={draft.propertyArea} onValueChange={(value) => setDraft({ ...draft, propertyArea: value })} placeholder="Metragem" aria-label="Área do imóvel" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                  <StructuredInput kind="quantity" value={draft.propertyBedrooms} onValueChange={(value) => setDraft({ ...draft, propertyBedrooms: value })} placeholder="Dormitórios" aria-label="Dormitórios" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                  <StructuredInput kind="quantity" value={draft.propertyParkingSpots} onValueChange={(value) => setDraft({ ...draft, propertyParkingSpots: value })} placeholder="Vagas" aria-label="Vagas" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
                   <select value={draft.propertyPurpose} onChange={(event) => setDraft({ ...draft, propertyPurpose: event.target.value })} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505]">
                     <option value="venda" className="bg-white">Venda</option>
                     <option value="locação" className="bg-white">Locação</option>

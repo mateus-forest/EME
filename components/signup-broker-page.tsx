@@ -7,6 +7,8 @@ import { AuthShell } from "@/components/auth-shell"
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
+import { normalizePhone } from "@/lib/structured-fields"
 
 export function SignupBrokerPage() {
   const router = useRouter()
@@ -36,7 +38,7 @@ export function SignupBrokerPage() {
           role: "BROKER",
           name,
           email,
-          phone,
+          phone: normalizePhone(phone),
           creci,
           password,
         }),
@@ -98,11 +100,11 @@ export function SignupBrokerPage() {
           <label htmlFor="whatsapp" className="text-sm font-medium text-[#374151]">
             WhatsApp
           </label>
-          <Input
+          <StructuredInput
+            kind="phone"
             id="whatsapp"
-            type="tel"
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onValueChange={(value) => setPhone(value)}
             placeholder="(11) 99999-9999"
             required
             className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"

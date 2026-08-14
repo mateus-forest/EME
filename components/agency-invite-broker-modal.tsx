@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { formatPhone, normalizePhone } from "@/lib/structured-fields"
 
 type AgencyInviteBrokerModalProps = {
   open: boolean
@@ -84,18 +85,6 @@ export function AgencyInviteBrokerModal({
     if (!nextOpen) resetState()
   }
 
-  function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, "").slice(0, 11)
-
-    if (digits.length <= 2) return digits ? `(${digits}` : ""
-    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-    if (digits.length <= 10) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-    }
-
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextErrors = validate()
@@ -110,7 +99,7 @@ export function AgencyInviteBrokerModal({
       await onInvite({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
-        whatsApp: form.whatsApp.trim(),
+        whatsApp: normalizePhone(form.whatsApp),
         creci: form.creci.trim(),
         note: form.note.trim(),
       })

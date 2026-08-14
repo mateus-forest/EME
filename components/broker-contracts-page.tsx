@@ -36,9 +36,11 @@ import {
 } from "@/components/ui/dialog"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
-import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
+import { parseCurrencyInputToCents } from "@/lib/currency"
+import { formatDateBR, formatPercentInput, parseBrazilianDate, parsePercentInput } from "@/lib/structured-fields"
 import { subscribeEntitySync } from "@/lib/entity-sync"
 import {
   createContractContent,
@@ -260,50 +262,6 @@ function buildAmendmentReference(lead?: LeadRecord | null, property?: PropertyAp
   return tokens.join(" • ")
 }
 
-function parsePercentInput(value: string) {
-  const normalized = value.replace(",", ".").replace(/[^\d.]/g, "")
-  const parsed = Number(normalized)
-  if (!Number.isFinite(parsed)) return null
-  return Math.min(100, Math.max(0, parsed))
-}
-
-function formatPercentInput(value: string) {
-  const parsed = parsePercentInput(value)
-  if (parsed === null) return ""
-  const integer = Number.isInteger(parsed)
-  return integer ? String(parsed) : parsed.toLocaleString("pt-BR", { maximumFractionDigits: 2 })
-}
-
-function maskDateInput(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8)
-  if (digits.length <= 2) return digits
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
-}
-
-function parsePtBrDate(value: string) {
-  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (!match) return null
-  const [, dayRaw, monthRaw, yearRaw] = match
-  const day = Number(dayRaw)
-  const month = Number(monthRaw)
-  const year = Number(yearRaw)
-  const date = new Date(year, month - 1, day)
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return null
-  }
-  return date
-}
-
-function formatPtBrDate(value: Date) {
-  return new Intl.DateTimeFormat("pt-BR").format(value)
-}
-
 function resolveLeaseTerm(startDate: string, endDate: string, fallback: string) {
   if (fallback.trim()) return fallback
   if (startDate.trim() && endDate.trim()) return `${startDate} a ${endDate}`
@@ -341,7 +299,7 @@ function buildPlaceholderMap(input: {
 }) {
   const { lead, property, broker, draft } = input
   const amount = draft.amount || property?.formattedPrice || ""
-  const commission = draft.commissionPercent ? `${formatPercentInput(draft.commissionPercent)}%` : ""
+  const commission = draft.commissionPercent ? `${formatPercentInput(draft.commissionPercent, { suffix: false })}%` : ""
   const propertyAddress = [property?.legal.street, property?.legal.number, property?.legal.district, property?.legal.city]
     .filter(Boolean)
     .join(", ")
@@ -1678,19 +1636,20 @@ function CommercialDateField({
   placeholder: string
   onChange: (value: string) => void
 }) {
-  const selectedDate = parsePtBrDate(value)
+  const selectedDate = parseBrazilianDate(value)
 
   return (
     <label className="grid gap-2 text-sm text-[#5F6B7A]">
       <span>{label}</span>
       <Popover>
         <div className="flex gap-2">
-          <Input
+          <StructuredInput
+            kind="date"
             value={value}
-            onChange={(event) => onChange(maskDateInput(event.target.value))}
+            onValueChange={(nextValue) => onChange(nextValue)}
             placeholder={placeholder}
-            inputMode="numeric"
             autoComplete="bday"
+            aria-label={label}
             className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
           />
           <PopoverTrigger asChild>
@@ -1707,7 +1666,7 @@ function CommercialDateField({
           <Calendar
             mode="single"
             selected={selectedDate ?? undefined}
-            onSelect={(date) => onChange(date ? formatPtBrDate(date) : "")}
+            onSelect={(date) => onChange(date ? formatDateBR(date) : "")}
             locale={ptBR}
           />
         </PopoverContent>
@@ -2798,7 +2757,7 @@ export function BrokerContractsPage({
         label: "Comissão",
         detail:
           parsePercentInput(draft.commissionPercent) !== null
-            ? `${formatPercentInput(draft.commissionPercent)}%`
+            ? `${formatPercentInput(draft.commissionPercent, { suffix: false })}%`
             : "Defina a comissão",
         done: parsePercentInput(draft.commissionPercent) !== null,
       },
@@ -2947,7 +2906,7 @@ export function BrokerContractsPage({
       const payload: ContractDraft = {
         ...draft,
         title: draft.title.trim() || normalizeTitle(draft.kind, selectedLead, selectedProperty),
-        commissionPercent: formatPercentInput(draft.commissionPercent),
+        commissionPercent: formatPercentInput(draft.commissionPercent, { suffix: false }),
       }
       const contract = editingId ? await contracts.update(editingId, payload) : await contracts.create(payload)
       setFeedback(editingId ? "Contrato atualizado com sucesso." : "Contrato criado com sucesso.")
@@ -3657,14 +3616,15 @@ export function BrokerContractsPage({
                       return (
                         <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
                           <span>{field.label}</span>
-                          <Input
+                          <StructuredInput
+                            kind="currency"
                             value={value}
-                            onChange={(event) => {
+                            onValueChange={(nextValue) => {
                               setAmountCustomized(true)
-                              updateDraftField(field.key, event.target.value)
+                              updateDraftField(field.key, nextValue)
                             }}
-                            onBlur={() => updateDraftField(field.key, value ? formatCurrencyBRLFromCents(parseCurrencyInputToCents(value) ?? 0) : "")}
                             placeholder={field.placeholder}
+                            aria-label={field.label}
                             className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
                           />
                           <p className="text-xs text-[#8B95A1]">{valueSourceLabel}</p>
@@ -3676,14 +3636,15 @@ export function BrokerContractsPage({
                       return (
                         <label key={field.id} className="grid gap-2 text-sm text-[#5F6B7A]">
                           <span>{field.label}</span>
-                          <Input
+                          <StructuredInput
+                            kind="percent"
                             value={value}
-                            onChange={(event) => {
+                            onValueChange={(nextValue) => {
                               setCommissionCustomized(true)
-                              updateDraftField(field.key, event.target.value)
+                              updateDraftField(field.key, nextValue)
                             }}
-                            onBlur={() => updateDraftField(field.key, formatPercentInput(value))}
                             placeholder={field.placeholder}
+                            aria-label={field.label}
                             className="h-11 rounded-xl border-black/[0.08] bg-white text-[#050505]"
                           />
                           <p className="text-xs text-[#8B95A1]">{commissionSourceLabel}</p>

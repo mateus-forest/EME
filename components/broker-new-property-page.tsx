@@ -10,12 +10,12 @@ import { extractPropertyAd } from "@/lib/property-ad-import-client"
 import { confirmPropertyXmlImport, previewPropertyXml, type XmlImportReport, type XmlImportSummary } from "@/lib/property-xml-import-client"
 import type { ParsedXmlProperty } from "@/lib/property-xml-import"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
-import { formatCurrencyInput } from "@/lib/currency"
 import { useBrokerProperties, type BrokerPropertyPurpose } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
@@ -831,10 +831,12 @@ export function BrokerNewPropertyPage() {
                     />
                   </Field>
                   <Field label="Valor">
-                    <Input
+                    <StructuredInput
+                      kind="currency"
                       value={price}
-                      onChange={(event) => setPrice(formatCurrencyInput(event.target.value))}
+                      onValueChange={(value) => setPrice(value)}
                       placeholder="R$ 500.000,00"
+                      aria-label="Valor"
                       className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
                   </Field>

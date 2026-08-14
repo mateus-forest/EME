@@ -9,6 +9,8 @@ import { formatPrice } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'
 import { createWhatsAppUrl } from '@/lib/whatsapp'
 import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
+import { StructuredInput } from '@/components/ui/structured-input'
+import { normalizePhone } from '@/lib/structured-fields'
 
 type InterestContextValue = {
   open: (origin: LeadOrigin) => void
@@ -85,7 +87,7 @@ export function InterestProvider({
     setSubmitting(true)
     setSubmitError('')
     try {
-      await registerLead({ name, whatsapp, propertyId: property.propertyId, propertySlug: property.slug, propertyTitle: property.title, propertyCode: property.code, origin, qualification, createdAt: new Date().toISOString() })
+      await registerLead({ name, whatsapp: normalizePhone(whatsapp), propertyId: property.propertyId, propertySlug: property.slug, propertyTitle: property.title, propertyCode: property.code, origin, qualification, createdAt: new Date().toISOString() })
       setSubmitted(true)
     } catch (caughtError) {
       setSubmitError(caughtError instanceof Error ? caughtError.message : 'Não foi possível registrar seu interesse agora.')
@@ -167,12 +169,11 @@ export function InterestProvider({
                 </label>
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
                   WhatsApp
-                  <input
+                  <StructuredInput
+                    kind="phone"
                     required
-                    type="tel"
-                    inputMode="tel"
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onValueChange={(value) => setWhatsapp(value)}
                     placeholder="(54) 90000-0000"
                     className="rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none transition-colors focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   />

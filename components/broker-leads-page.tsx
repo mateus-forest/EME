@@ -6,6 +6,7 @@ import { Clock3, Eye, MessageCircle, Sparkles, Trophy, UsersRound } from "lucide
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import type { LeadRecord } from "@/lib/lead-contract"
+import { formatDateBR, formatPhone } from "@/lib/structured-fields"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -32,17 +33,6 @@ const leadStages = [
     icon: Clock3,
   },
 ]
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Data não disponível"
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date)
-}
 
 export function BrokerLeadsPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([])
@@ -162,7 +152,7 @@ export function BrokerLeadsPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-[#7B8491]">
-                      {lead.propertyTitle || "Catálogo"} · {formatLeadSource(lead.source)} · {formatDate(lead.createdAt)}
+                      {lead.propertyTitle || "Catálogo"} · {formatLeadSource(lead.source)} · {formatDateBR(lead.createdAt, "Data não disponível")}
                     </p>
                     {lead.message ? <p className="mt-2 line-clamp-2 text-sm text-[#5F6B7A]">{lead.message}</p> : null}
                   </div>
@@ -204,10 +194,10 @@ export function BrokerLeadsPage() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <LeadInfo label="Telefone" value={selectedLead.phone || "Não informado"} />
+                <LeadInfo label="Telefone" value={formatPhone(selectedLead.phone) || "Não informado"} />
                 <LeadInfo label="Imóvel de interesse" value={selectedLead.propertyTitle || "Catálogo"} />
                 <LeadInfo label="Origem" value={formatLeadSource(selectedLead.source)} />
-                <LeadInfo label="Data" value={formatDate(selectedLead.createdAt)} />
+                <LeadInfo label="Data" value={formatDateBR(selectedLead.createdAt, "Data não disponível")} />
                 <LeadInfo label="Busca" value={selectedLead.searchTerm || "Sem busca registrada"} />
                 <LeadInfo label="Intenção" value={selectedLead.intent || "Sem intenção registrada"} />
               </div>

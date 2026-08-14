@@ -39,6 +39,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
+import { normalizePhone } from "@/lib/structured-fields"
 import { Textarea } from "@/components/ui/textarea"
 
 type CatalogKind = "broker" | "agency"
@@ -235,7 +237,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
         catalogType: kind,
         source: "catalog",
         name,
-        phone: leadDraft.phone,
+        phone: normalizePhone(leadDraft.phone),
         message: leadDraft.message,
         searchTerm: search.trim(),
         intent: searchAnalysis.intent,
@@ -721,7 +723,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                 </label>
                 <label className="grid gap-2">
                   <span className="text-sm font-medium text-[#374151]">Telefone</span>
-                  <Input value={leadDraft.phone} onChange={(event) => setLeadDraft((current) => current ? { ...current, phone: event.target.value } : current)} className="h-11 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
+                  <StructuredInput kind="phone" value={leadDraft.phone} onValueChange={(value) => setLeadDraft((current) => current ? { ...current, phone: value } : current)} aria-label="Telefone" className="h-11 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
                 </label>
                 <label className="grid gap-2">
                   <span className="text-sm font-medium text-[#374151]">Mensagem</span>

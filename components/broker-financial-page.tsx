@@ -9,15 +9,13 @@ import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsibl
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StructuredInput } from "@/components/ui/structured-input"
+import { formatCurrencyBRLFromCents } from "@/lib/structured-fields"
 
 const COMMISSION_RATE = 0.06
 const statusFilters = ["Todos", "Publicado", "Rascunho"] as const
 const viewModes = ["Geral", "Por imóvel"] as const
 const calculationTypes = ["Todos os imóveis", "Apenas com valor"] as const
-
-function formatBRLFromCents(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value / 100)
-}
 
 function countBy(items: string[]) {
   return items.reduce<Record<string, number>>((acc, item) => {
@@ -147,8 +145,8 @@ export function BrokerFinancialPage() {
           ) : (
             <>
               <MetricCard icon={Building2} label="Imóveis cadastrados" value={String(totalProperties)} />
-              <MetricCard icon={CircleDollarSign} label="Valor da carteira" value={formatBRLFromCents(totalPortfolioValue)} />
-              <MetricCard icon={ChartColumn} label="Ticket médio" value={formatBRLFromCents(averageTicket)} />
+              <MetricCard icon={CircleDollarSign} label="Valor da carteira" value={formatCurrencyBRLFromCents(totalPortfolioValue)} />
+              <MetricCard icon={ChartColumn} label="Ticket médio" value={formatCurrencyBRLFromCents(averageTicket)} />
               <MetricCard icon={Home} label="Imóveis ativos" value={String(activeProperties)} />
               <MetricCard icon={ArrowUpRight} label="Inativos/rascunhos" value={String(draftProperties)} />
             </>
@@ -166,10 +164,10 @@ export function BrokerFinancialPage() {
               <p className="text-sm text-[#6B7280]">Cálculo estimado com a taxa configurada sobre a base filtrada.</p>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0 md:grid-cols-2">
-              <InfoBlock label="Comissão potencial total" value={formatBRLFromCents(totalPotentialCommission)} />
-              <InfoBlock label="Comissão média por imóvel" value={formatBRLFromCents(averageCommission)} />
-              <InfoBlock label="Maior comissão potencial" value={formatBRLFromCents(highestCommission)} />
-              <InfoBlock label="Menor comissão potencial" value={formatBRLFromCents(lowestCommission)} />
+              <InfoBlock label="Comissão potencial total" value={formatCurrencyBRLFromCents(totalPotentialCommission)} />
+              <InfoBlock label="Comissão média por imóvel" value={formatCurrencyBRLFromCents(averageCommission)} />
+              <InfoBlock label="Maior comissão potencial" value={formatCurrencyBRLFromCents(highestCommission)} />
+              <InfoBlock label="Menor comissão potencial" value={formatCurrencyBRLFromCents(lowestCommission)} />
             </CardContent>
           </Card>
           </ResponsiveCollapsibleSection>
@@ -186,12 +184,11 @@ export function BrokerFinancialPage() {
               <InfoBlock label="Imóveis com valor informado" value={`${pricedValues.length} de ${totalProperties}`} />
               <label className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                 <span className="text-sm text-[#6B7280]">Percentual de comissão</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
+                <StructuredInput
+                  kind="percent"
                   value={commissionPercent}
-                  onChange={(event) => setCommissionPercent(Number(event.target.value) || 0)}
+                  onValueChange={(_, normalized) => setCommissionPercent(typeof normalized === "number" ? normalized : 0)}
+                  aria-label="Percentual de comissão"
                   className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm font-semibold text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/35"
                 />
               </label>
@@ -239,7 +236,7 @@ export function BrokerFinancialPage() {
                       <p className="truncate font-medium text-[#050505]">{property.title}</p>
                       <span className="break-words text-[#5F6B7A]">{property.priceValue > 0 ? property.price : "Sem valor"}</span>
                       <span className="text-[#5F6B7A]">{commissionPercent.toLocaleString("pt-BR")}%</span>
-                      <span className="break-words font-semibold text-[#009b3a]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+                      <span className="break-words font-semibold text-[#009b3a]">{formatCurrencyBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
                       <span className="text-[#5F6B7A]">{property.status}</span>
                     </div>
                   ))}
@@ -249,7 +246,7 @@ export function BrokerFinancialPage() {
                   <div key={property.id} className="grid min-w-0 gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
                     <p className="truncate text-sm font-medium text-[#050505]">{property.title}</p>
                     <span className="break-words text-sm text-[#5F6B7A]">{property.price}</span>
-                    <span className="break-words text-sm text-[#009b3a]">{formatBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
+                    <span className="break-words text-sm text-[#009b3a]">{formatCurrencyBRLFromCents(Math.round((property.priceValue || 0) * commissionRate))}</span>
                   </div>
                 ))
               )

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
+import { normalizePhone } from "@/lib/structured-fields"
 
 type NotificationRecipient = {
   id: string
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const source = marketplaceSource ? "marketplace" : requestedSource
     const name = cleanText(body?.name, 120)
     const email = cleanText(body?.email, 160).toLowerCase()
-    const phone = cleanText(body?.phone, 40)
+    const phone = normalizePhone(body?.phone)
     const message = cleanText(body?.message, 800)
     const searchTerm = cleanText(body?.searchTerm, 240)
     const intent = cleanText(body?.intent, 160)

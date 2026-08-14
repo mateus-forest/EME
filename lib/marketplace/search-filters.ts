@@ -115,10 +115,6 @@ export function hasActiveFilters(filters: MarketplaceFilters) {
   return Boolean(filters.purpose || filters.propertyType || filters.location || filters.priceMin || filters.priceMax || filters.bedrooms || filters.bathrooms || filters.parking || filters.areaMin || filters.features.length || filters.intentions.length)
 }
 
-export function formatBRLInput(value?: number) {
-  return value ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value) : ''
-}
-
 export function filtersToSearchParams(filters: MarketplaceFilters) {
   const params = new URLSearchParams()
   if (filters.purpose) params.set('finalidade', filters.purpose)

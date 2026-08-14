@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
+import { formatPhone } from "@/lib/structured-fields"
 import { Label } from "@/components/ui/label"
 
 export function AdminAccountPage() {
@@ -195,16 +196,6 @@ function AccountForm() {
       </div>
     </form>
   )
-}
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11)
-
-  if (digits.length <= 2) return digits ? `(${digits}` : ""
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
 }
 
 type FieldProps = {

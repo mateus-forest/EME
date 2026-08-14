@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { DEFAULT_STUDIO_ACCENT_COLOR } from "@/lib/studio-creative-renderer"
+import { normalizePhone, type StructuredInputKind } from "@/lib/structured-fields"
 
 export function BrokerAccountPage() {
   return (
@@ -162,7 +164,7 @@ function AccountForm() {
         fullName,
         email,
         creci,
-        whatsApp,
+        whatsApp: normalizePhone(whatsApp),
         photoUrl,
         description,
         brandColor,
@@ -327,8 +329,9 @@ function AccountForm() {
                 id="whatsApp"
                 label="WhatsApp"
                 type="tel"
+                kind="phone"
                 value={whatsApp}
-                onChange={(value) => setWhatsApp(formatPhone(value))}
+                onChange={setWhatsApp}
                 error={errors.whatsApp}
                 placeholder="(11) 99999-9999"
               />
@@ -492,18 +495,6 @@ function AccountForm() {
   )
 }
 
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11)
-
-  if (digits.length <= 2) return digits ? `(${digits}` : ""
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-  }
-
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-}
-
 type FieldProps = {
   id: string
   label: string
@@ -512,22 +503,20 @@ type FieldProps = {
   error?: string
   placeholder?: string
   type?: string
+  kind?: StructuredInputKind
 }
 
-function Field({ id, label, value, onChange, error, placeholder, type = "text" }: FieldProps) {
+function Field({ id, label, value, onChange, error, placeholder, type = "text", kind }: FieldProps) {
   return (
     <div className="grid gap-2">
       <Label htmlFor={id} className="text-sm font-medium text-[#5F6B7A]">
         {label}
       </Label>
-      <Input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35"
-      />
+      {kind ? (
+        <StructuredInput kind={kind} id={id} value={value} onValueChange={(nextValue) => onChange(nextValue)} placeholder={placeholder} aria-label={label} className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35" />
+      ) : (
+        <Input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35" />
+      )}
       {error && <p className="text-xs text-[#ff8a80]">{error}</p>}
     </div>
   )

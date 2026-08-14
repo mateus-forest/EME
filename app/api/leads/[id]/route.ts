@@ -10,6 +10,7 @@ import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
 import { canAccessLead, leadInclude, parseLeadStatus, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
+import { normalizeCep, normalizeCpfCnpj, normalizePhone, parseBrazilianDateToIso } from "@/lib/structured-fields"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
@@ -49,8 +50,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ...(status ? { status } : {}),
         ...(typeof body?.name === "string" ? { name: cleanText(body.name, 120) || null } : {}),
         ...(typeof body?.email === "string" ? { email: cleanText(body.email, 160).toLowerCase() || null } : {}),
-        ...(typeof body?.phone === "string" ? { phone: cleanText(body.phone, 40) || null } : {}),
-        ...(typeof body?.whatsApp === "string" ? { whatsapp: cleanText(body.whatsApp, 40) || null } : {}),
+        ...(typeof body?.phone === "string" ? { phone: normalizePhone(body.phone) || null } : {}),
+        ...(typeof body?.whatsApp === "string" ? { whatsapp: normalizePhone(body.whatsApp) || null } : {}),
         ...(typeof body?.message === "string" ? { message: cleanText(body.message, 1200) || null } : {}),
         ...(typeof body?.searchTerm === "string" ? { searchTerm: cleanText(body.searchTerm, 240) || null } : {}),
         ...(typeof body?.intent === "string" ? { intent: cleanText(body.intent, 120) || null } : {}),
@@ -148,10 +149,10 @@ function cleanText(value: unknown, maxLength: number) {
 function normalizeLeadIdentification(value: unknown) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
   return {
-    cpfCnpj: cleanText(source.cpfCnpj, 32),
+    cpfCnpj: normalizeCpfCnpj(source.cpfCnpj),
     rg: cleanText(source.rg, 32),
     issuingAuthority: cleanText(source.issuingAuthority, 64),
-    issueDate: cleanText(source.issueDate, 32),
+    issueDate: parseBrazilianDateToIso(source.issueDate) ?? cleanText(source.issueDate, 32),
     nationality: cleanText(source.nationality, 64),
     birthPlace: cleanText(source.birthPlace, 64),
     maritalStatus: cleanText(source.maritalStatus, 64),
@@ -163,7 +164,7 @@ function normalizeLeadIdentification(value: unknown) {
 function normalizeLeadAddress(value: unknown) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
   return {
-    cep: cleanText(source.cep, 16),
+    cep: normalizeCep(source.cep),
     street: cleanText(source.street, 160),
     number: cleanText(source.number, 24),
     complement: cleanText(source.complement, 120),

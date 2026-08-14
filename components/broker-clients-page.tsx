@@ -21,10 +21,21 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { formatCep, lookupCep } from "@/lib/cep"
+import {
+  formatCpfCnpj,
+  formatDateBR,
+  formatPhone,
+  formatRg,
+  normalizeCep,
+  normalizeCpfCnpj,
+  normalizePhone,
+  parseBrazilianDateToIso,
+} from "@/lib/structured-fields"
 import { openClientDocumentPreview } from "@/lib/client-document-preview"
 import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
 import type { EntityDocumentRecord } from "@/lib/legal-entities"
@@ -691,14 +702,14 @@ export function BrokerClientsPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-[#7B8491]">
-                      {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDate(client.createdAt)}
+                      {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "Data não disponível")}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#5F6B7A]">
                       <span className="inline-flex items-center gap-1.5">
                         <Phone className="size-3.5 text-[#009b3a]" />
-                        {client.whatsApp || client.phone || "Telefone não informado"}
+                        {formatPhone(client.whatsApp || client.phone) || "Telefone não informado"}
                       </span>
-                      <span>{client.identification.cpfCnpj || "CPF pendente"}</span>
+                      <span>{formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}</span>
                     </div>
                     {client.completion.pending.length ? (
                       <p className="mt-2 text-sm text-[#8B95A1]">Pendências: {client.completion.pending.slice(0, 3).join(", ")}</p>
@@ -772,10 +783,10 @@ export function BrokerClientsPage() {
                     <SectionTitle title="Identificação" subtitle="Dados civis e documentais usados diretamente no contrato." />
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       <Field label="Nome completo"><Input value={selectedClientDraft.name} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 rounded-xl" /></Field>
-                      <Field label="CPF/CNPJ"><Input value={selectedClientDraft.identification.cpfCnpj} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, cpfCnpj: event.target.value } }))} className="h-11 rounded-xl" /></Field>
-                      <Field label="RG"><Input value={selectedClientDraft.identification.rg} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, rg: event.target.value } }))} className="h-11 rounded-xl" /></Field>
+                      <Field label="CPF/CNPJ"><StructuredInput kind="cpf-cnpj" value={selectedClientDraft.identification.cpfCnpj} onValueChange={(value) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, cpfCnpj: value } }))} className="h-11 rounded-xl" aria-label="CPF ou CNPJ" /></Field>
+                      <Field label="RG"><Input value={selectedClientDraft.identification.rg} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, rg: formatRg(event.target.value) } }))} className="h-11 rounded-xl" /></Field>
                       <Field label="Órgão emissor"><Input value={selectedClientDraft.identification.issuingAuthority} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, issuingAuthority: event.target.value } }))} className="h-11 rounded-xl" /></Field>
-                      <Field label="Data de emissão"><Input value={selectedClientDraft.identification.issueDate} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, issueDate: event.target.value } }))} placeholder="dd/mm/aaaa" className="h-11 rounded-xl" /></Field>
+                      <Field label="Data de emissão"><StructuredInput kind="date" value={selectedClientDraft.identification.issueDate} onValueChange={(value) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, issueDate: value } }))} placeholder="DD/MM/AAAA" className="h-11 rounded-xl" aria-label="Data de emissão" /></Field>
                       <Field label="Nacionalidade"><Input value={selectedClientDraft.identification.nationality} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, nationality: event.target.value } }))} className="h-11 rounded-xl" /></Field>
                       <Field label="Naturalidade"><Input value={selectedClientDraft.identification.birthPlace} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, birthPlace: event.target.value } }))} className="h-11 rounded-xl" /></Field>
                       <Field label="Estado civil"><Input value={selectedClientDraft.identification.maritalStatus} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, maritalStatus: event.target.value } }))} className="h-11 rounded-xl" /></Field>
@@ -787,8 +798,8 @@ export function BrokerClientsPage() {
                   <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
                     <SectionTitle title="Contato" subtitle="WhatsApp, telefone e email para operação e assinatura futura." />
                     <div className="grid gap-3 md:grid-cols-3">
-                      <Field label="Telefone"><Input value={selectedClientDraft.phone} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, phone: event.target.value }))} className="h-11 rounded-xl" /></Field>
-                      <Field label="WhatsApp"><Input value={selectedClientDraft.whatsApp} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, whatsApp: event.target.value }))} className="h-11 rounded-xl" /></Field>
+                      <Field label="Telefone"><StructuredInput kind="phone" value={selectedClientDraft.phone} onValueChange={(value) => setSelectedClientDraft((current) => ({ ...current, phone: value }))} className="h-11 rounded-xl" aria-label="Telefone" /></Field>
+                      <Field label="WhatsApp"><StructuredInput kind="phone" value={selectedClientDraft.whatsApp} onValueChange={(value) => setSelectedClientDraft((current) => ({ ...current, whatsApp: value }))} className="h-11 rounded-xl" aria-label="WhatsApp" /></Field>
                       <Field label="Email"><Input value={selectedClientDraft.email} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, email: event.target.value }))} className="h-11 rounded-xl" /></Field>
                     </div>
                   </section>
@@ -798,7 +809,7 @@ export function BrokerClientsPage() {
                     <div className="grid gap-3 md:grid-cols-[180px_auto]">
                       <Field label="CEP">
                         <div className="flex gap-2">
-                          <Input value={selectedClientDraft.address.cep} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, address: { ...current.address, cep: formatCep(event.target.value) } }))} className="h-11 rounded-xl" />
+                          <StructuredInput kind="cep" value={selectedClientDraft.address.cep} onValueChange={(value) => setSelectedClientDraft((current) => ({ ...current, address: { ...current.address, cep: value } }))} className="h-11 rounded-xl" aria-label="CEP" />
                           <Button type="button" variant="ghost" onClick={() => void applyCep("edit")} disabled={isLoadingCep} className="h-11 rounded-xl border border-black/[0.06] bg-white px-4">
                             {isLoadingCep ? "Buscando..." : "Buscar CEP"}
                           </Button>
@@ -937,10 +948,10 @@ export function BrokerClientsPage() {
                 <SectionTitle title="Identificação" subtitle="Base civil do cadastro." />
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <Field label="Nome completo"><Input value={clientDraft.name} onChange={(event) => setClientDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 rounded-xl" /></Field>
-                  <Field label="CPF/CNPJ"><Input value={clientDraft.identification.cpfCnpj} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, cpfCnpj: event.target.value } }))} className="h-11 rounded-xl" /></Field>
-                  <Field label="RG"><Input value={clientDraft.identification.rg} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, rg: event.target.value } }))} className="h-11 rounded-xl" /></Field>
+                  <Field label="CPF/CNPJ"><StructuredInput kind="cpf-cnpj" value={clientDraft.identification.cpfCnpj} onValueChange={(value) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, cpfCnpj: value } }))} className="h-11 rounded-xl" aria-label="CPF ou CNPJ" /></Field>
+                  <Field label="RG"><Input value={clientDraft.identification.rg} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, rg: formatRg(event.target.value) } }))} className="h-11 rounded-xl" /></Field>
                   <Field label="Órgão emissor"><Input value={clientDraft.identification.issuingAuthority} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, issuingAuthority: event.target.value } }))} className="h-11 rounded-xl" /></Field>
-                  <Field label="Data de emissão"><Input value={clientDraft.identification.issueDate} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, issueDate: event.target.value } }))} className="h-11 rounded-xl" placeholder="dd/mm/aaaa" /></Field>
+                  <Field label="Data de emissão"><StructuredInput kind="date" value={clientDraft.identification.issueDate} onValueChange={(value) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, issueDate: value } }))} className="h-11 rounded-xl" placeholder="DD/MM/AAAA" aria-label="Data de emissão" /></Field>
                   <Field label="Nacionalidade"><Input value={clientDraft.identification.nationality} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, nationality: event.target.value } }))} className="h-11 rounded-xl" /></Field>
                   <Field label="Naturalidade"><Input value={clientDraft.identification.birthPlace} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, birthPlace: event.target.value } }))} className="h-11 rounded-xl" /></Field>
                   <Field label="Estado civil"><Input value={clientDraft.identification.maritalStatus} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, maritalStatus: event.target.value } }))} className="h-11 rounded-xl" /></Field>
@@ -952,14 +963,14 @@ export function BrokerClientsPage() {
               <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
                 <SectionTitle title="Contato e endereço" subtitle="CEP com preenchimento automático." />
                 <div className="grid gap-3 md:grid-cols-3">
-                  <Field label="Telefone"><Input value={clientDraft.phone} onChange={(event) => setClientDraft((current) => ({ ...current, phone: event.target.value }))} className="h-11 rounded-xl" /></Field>
-                  <Field label="WhatsApp"><Input value={clientDraft.whatsApp} onChange={(event) => setClientDraft((current) => ({ ...current, whatsApp: event.target.value }))} className="h-11 rounded-xl" /></Field>
+                  <Field label="Telefone"><StructuredInput kind="phone" value={clientDraft.phone} onValueChange={(value) => setClientDraft((current) => ({ ...current, phone: value }))} className="h-11 rounded-xl" aria-label="Telefone" /></Field>
+                  <Field label="WhatsApp"><StructuredInput kind="phone" value={clientDraft.whatsApp} onValueChange={(value) => setClientDraft((current) => ({ ...current, whatsApp: value }))} className="h-11 rounded-xl" aria-label="WhatsApp" /></Field>
                   <Field label="Email"><Input value={clientDraft.email} onChange={(event) => setClientDraft((current) => ({ ...current, email: event.target.value }))} className="h-11 rounded-xl" /></Field>
                 </div>
                 <div className="grid gap-3 md:grid-cols-[180px_auto]">
                   <Field label="CEP">
                     <div className="flex gap-2">
-                      <Input value={clientDraft.address.cep} onChange={(event) => setClientDraft((current) => ({ ...current, address: { ...current.address, cep: formatCep(event.target.value) } }))} className="h-11 rounded-xl" />
+                      <StructuredInput kind="cep" value={clientDraft.address.cep} onValueChange={(value) => setClientDraft((current) => ({ ...current, address: { ...current.address, cep: value } }))} className="h-11 rounded-xl" aria-label="CEP" />
                       <Button type="button" variant="ghost" onClick={() => void applyCep("create")} disabled={isLoadingCep} className="h-11 rounded-xl border border-black/[0.06] bg-white px-4">
                         {isLoadingCep ? "Buscando..." : "Buscar CEP"}
                       </Button>
@@ -1108,14 +1119,18 @@ function mapLeadToForm(lead: LeadRecord): ClientForm {
     id: lead.id,
     name: lead.name,
     email: lead.email,
-    phone: lead.phone,
-    whatsApp: lead.whatsApp,
+    phone: formatPhone(lead.phone),
+    whatsApp: formatPhone(lead.whatsApp),
     propertyId: lead.propertyId ?? "none",
     searchTerm: lead.searchTerm,
     intent: lead.intent,
     message: lead.message,
-    identification: lead.identification,
-    address: lead.address,
+    identification: {
+      ...lead.identification,
+      cpfCnpj: formatCpfCnpj(lead.identification.cpfCnpj),
+      issueDate: formatDateBR(lead.identification.issueDate, lead.identification.issueDate),
+    },
+    address: { ...lead.address, cep: formatCep(lead.address.cep) },
     legal: lead.legal,
     documents: lead.documents,
   }
@@ -1125,14 +1140,18 @@ function serializeClientForm(form: ClientForm) {
   return {
     name: form.name,
     email: form.email,
-    phone: form.phone,
-    whatsApp: form.whatsApp,
+    phone: normalizePhone(form.phone),
+    whatsApp: normalizePhone(form.whatsApp),
     propertyId: form.propertyId === "none" ? "" : form.propertyId,
     searchTerm: form.searchTerm,
     intent: form.intent,
     message: form.message,
-    identification: form.identification,
-    address: form.address,
+    identification: {
+      ...form.identification,
+      cpfCnpj: normalizeCpfCnpj(form.identification.cpfCnpj),
+      issueDate: parseBrazilianDateToIso(form.identification.issueDate) ?? form.identification.issueDate,
+    },
+    address: { ...form.address, cep: normalizeCep(form.address.cep) },
     legal: form.legal,
     documents: form.documents,
   }
@@ -1151,17 +1170,6 @@ function previewCompletion(form: ClientForm) {
     score: Math.max(0, 100 - pending.length * 8),
     pending,
   }
-}
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Data não disponível"
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date)
 }
 
 function formatLeadSource(source: string) {

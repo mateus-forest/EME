@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Label } from "@/components/ui/label"
 import { DEFAULT_STUDIO_ACCENT_COLOR } from "@/lib/studio-creative-renderer"
+import { normalizeCpfCnpj, normalizePhone, type StructuredInputKind } from "@/lib/structured-fields"
 
 // Restricted to formats the Studio IA server-side renderer can reliably composite (librsvg here
 // has no WebP/AVIF decoder for embedded data URIs — an agency logo saved in one of those formats
@@ -110,8 +112,8 @@ function AccountForm() {
         companyName,
         ownerName,
         email,
-        cnpj,
-        whatsApp,
+        cnpj: normalizeCpfCnpj(cnpj),
+        whatsApp: normalizePhone(whatsApp),
         logoUrl,
         brandColor,
         currentPassword,
@@ -224,9 +226,9 @@ function AccountForm() {
               <Field id="email" label="Email" type="email" value={email} onChange={setEmail} error={errors.email} placeholder="contato@imobiliaria.com" />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field id="cnpj" label="CNPJ" value={cnpj} onChange={setCnpj} error={errors.cnpj} placeholder="00.000.000/0000-00" />
+              <Field id="cnpj" label="CNPJ" kind="cnpj" value={cnpj} onChange={setCnpj} error={errors.cnpj} placeholder="00.000.000/0000-00" />
               <div className="grid gap-2">
-                <Field id="whatsApp" label="WhatsApp" type="tel" value={whatsApp} onChange={(value) => setWhatsApp(formatPhone(value))} error={errors.whatsApp} placeholder="(11) 99999-9999" />
+                <Field id="whatsApp" label="WhatsApp" type="tel" kind="phone" value={whatsApp} onChange={setWhatsApp} error={errors.whatsApp} placeholder="(11) 99999-9999" />
                 <p className="-mt-1 text-xs leading-5 text-white/45">
                   Este número será utilizado para receber contatos, leads e interações relacionadas ao catálogo e aos anúncios da imobiliária.
                 </p>
@@ -304,14 +306,6 @@ function AccountForm() {
   )
 }
 
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11)
-  if (digits.length <= 2) return digits ? `(${digits}` : ""
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-}
-
 type FieldProps = {
   id: string
   label: string
@@ -320,22 +314,20 @@ type FieldProps = {
   error?: string
   placeholder?: string
   type?: string
+  kind?: StructuredInputKind
 }
 
-function Field({ id, label, value, onChange, error, placeholder, type = "text" }: FieldProps) {
+function Field({ id, label, value, onChange, error, placeholder, type = "text", kind }: FieldProps) {
   return (
     <div className="grid gap-2">
       <Label htmlFor={id} className="text-sm font-medium text-white/70">
         {label}
       </Label>
-      <Input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25 focus-visible:ring-[#00C853]/35"
-      />
+      {kind ? (
+        <StructuredInput kind={kind} id={id} value={value} onValueChange={(nextValue) => onChange(nextValue)} placeholder={placeholder} aria-label={label} className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25 focus-visible:ring-[#00C853]/35" />
+      ) : (
+        <Input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-11 rounded-xl border-white/[0.08] bg-white/[0.04] text-white placeholder:text-white/25 focus-visible:ring-[#00C853]/35" />
+      )}
       {error && <p className="text-xs text-[#ff8a80]">{error}</p>}
     </div>
   )

@@ -9,6 +9,8 @@ import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsibl
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
+import { normalizePhone } from "@/lib/structured-fields"
 import { Textarea } from "@/components/ui/textarea"
 
 const howItWorks = [
@@ -111,7 +113,7 @@ export function BrokerCorretorEmePage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         cache: "no-store",
-        body: JSON.stringify({ ...request, requestActivation }),
+        body: JSON.stringify({ ...request, whatsApp: normalizePhone(request.whatsApp), requestActivation }),
       })
       const data = (await response.json().catch(() => null)) as { error?: string } | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível salvar a configuração.")
@@ -150,7 +152,7 @@ export function BrokerCorretorEmePage() {
           </CardHeader>
           <CardContent className="grid gap-4 p-6 pt-0 md:grid-cols-2">
             <Field label="Número do WhatsApp">
-              <Input value={request.whatsApp} onChange={(event) => setRequest({ ...request, whatsApp: event.target.value })} placeholder="Informe o número que deseja integrar" className="border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
+              <StructuredInput kind="phone" value={request.whatsApp} onValueChange={(value) => setRequest({ ...request, whatsApp: value })} aria-label="Número do WhatsApp" placeholder="Informe o número que deseja integrar" className="border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
             </Field>
             <Field label="Nome de exibição">
               <Input value={request.displayName} onChange={(event) => setRequest({ ...request, displayName: event.target.value })} placeholder="Ex: Mateus Corretor" className="border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />

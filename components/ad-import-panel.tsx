@@ -6,9 +6,9 @@ import { FileCode2, ImagePlus, LinkIcon, Sparkles, Upload } from "lucide-react"
 import { confirmPropertyAdImport, extractPropertyAd, getPropertyImportCapabilities } from "@/lib/property-ad-import-client"
 import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import-shared"
 import { previewPropertyXml } from "@/lib/property-xml-import-client"
-import { formatCurrencyInput } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -403,9 +403,11 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               />
             </DraftField>
             <DraftField label="Preço">
-              <Input
+              <StructuredInput
+                kind="currency"
                 value={currentDraft.price}
-                onChange={(event) => updateDraft("price", formatCurrencyInput(event.target.value))}
+                onValueChange={(value) => updateDraft("price", value)}
+                aria-label="Preço"
                 className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
               />
             </DraftField>
@@ -438,9 +440,11 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
               />
             </DraftField>
             <DraftField label="Área">
-              <Input
+              <StructuredInput
+                kind="decimal"
                 value={currentDraft.area}
-                onChange={(event) => updateDraft("area", event.target.value)}
+                onValueChange={(value) => updateDraft("area", value)}
+                aria-label="Área em metros quadrados"
                 className="h-10 rounded-xl border-black/[0.06] bg-white text-[#111111]"
               />
             </DraftField>

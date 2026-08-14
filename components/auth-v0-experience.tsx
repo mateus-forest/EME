@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { StructuredInput } from "@/components/ui/structured-input"
+import type { StructuredInputKind } from "@/lib/structured-fields"
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
 
 const easeOut = [0.16, 1, 0.3, 1] as const
@@ -295,6 +297,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
                     <Field
                       label="WhatsApp"
                       type="tel"
+                      kind="phone"
                       value={phone}
                       onChange={setPhone}
                       placeholder="(11) 99999-9999"
@@ -459,6 +462,7 @@ function Field({
   onChange,
   placeholder,
   autoComplete,
+  kind,
 }: {
   label: string
   type: string
@@ -466,18 +470,31 @@ function Field({
   onChange: (value: string) => void
   placeholder: string
   autoComplete?: string
+  kind?: StructuredInputKind
 }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-medium text-[var(--muted-foreground)]">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        className="rounded-xl border border-[color:var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none transition-all duration-300 placeholder:text-[color:rgba(110,119,132,0.6)] focus:border-[color:rgba(24,162,73,0.6)] focus:ring-2 focus:ring-[var(--ring)]"
-      />
+      {kind ? (
+        <StructuredInput
+          kind={kind}
+          value={value}
+          onValueChange={(nextValue) => onChange(nextValue)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          aria-label={label}
+          className="rounded-xl border border-[color:var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none transition-all duration-300 placeholder:text-[color:rgba(110,119,132,0.6)] focus:border-[color:rgba(24,162,73,0.6)] focus:ring-2 focus:ring-[var(--ring)]"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className="rounded-xl border border-[color:var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none transition-all duration-300 placeholder:text-[color:rgba(110,119,132,0.6)] focus:border-[color:rgba(24,162,73,0.6)] focus:ring-2 focus:ring-[var(--ring)]"
+        />
+      )}
     </label>
   )
 }

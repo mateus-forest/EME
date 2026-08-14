@@ -10,6 +10,8 @@ import type { PropertyDetail } from '@/lib/marketplace/property-detail'
 import { cn } from '@/lib/utils'
 import { createWhatsAppUrl } from '@/lib/whatsapp'
 import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
+import { StructuredInput } from '@/components/ui/structured-input'
+import { normalizePhone } from '@/lib/structured-fields'
 
 const options: { key: keyof LeadQualification; label: string }[] = [
   { key: 'financiamento', label: 'Financiamento' },
@@ -41,7 +43,7 @@ export function PropertyContact({
     setSubmitting(true)
     setSubmitError('')
     try {
-      await registerLead({ name, whatsapp, propertyId: property.propertyId, propertySlug: property.slug, propertyTitle: property.title, propertyCode: property.code, origin: 'contato-rapido', qualification, createdAt: new Date().toISOString() })
+      await registerLead({ name, whatsapp: normalizePhone(whatsapp), propertyId: property.propertyId, propertySlug: property.slug, propertyTitle: property.title, propertyCode: property.code, origin: 'contato-rapido', qualification, createdAt: new Date().toISOString() })
       setSubmitted(true)
     } catch (caughtError) {
       setSubmitError(caughtError instanceof Error ? caughtError.message : 'Não foi possível registrar seu interesse agora.')
@@ -117,12 +119,11 @@ export function PropertyContact({
                 aria-label="Seu nome"
                 className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
               />
-              <input
+              <StructuredInput
+                kind="phone"
                 required
-                type="tel"
-                inputMode="tel"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onValueChange={(value) => setWhatsapp(value)}
                 placeholder="WhatsApp"
                 aria-label="Seu WhatsApp"
                 className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary/40 focus:ring-4 focus:ring-primary/10"

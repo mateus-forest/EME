@@ -5,9 +5,9 @@ import { createPortal } from 'react-dom'
 import { Check, X } from 'lucide-react'
 import {
   emptyMarketplaceFilters,
-  formatBRLInput,
   type MarketplaceFilters,
 } from '@/lib/marketplace/search-filters'
+import { StructuredInput } from '@/components/ui/structured-input'
 import { searchIntents } from '@/lib/marketplace/search-intents'
 import { cn } from '@/lib/utils'
 
@@ -24,11 +24,6 @@ const featureOptions = [
   { value: 'mobiliado', label: 'Mobiliado' },
   { value: 'novo', label: 'Imóvel novo' },
 ]
-
-function numberValue(value: string) {
-  const parsed = Number(value.replace(/[^\d]/g, ''))
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
-}
 
 export function MarketplaceFiltersDialog({
   open,
@@ -179,21 +174,23 @@ export function MarketplaceFiltersDialog({
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-2 text-xs text-muted-foreground">
                   Mínimo
-                  <input
-                    value={formatBRLInput(draft.priceMin)}
-                    onChange={(event) => setDraft((current) => ({ ...current, priceMin: numberValue(event.target.value) }))}
-                    inputMode="numeric"
+                  <StructuredInput
+                    kind="currency"
+                    value={draft.priceMin || ''}
+                    onValueChange={(_, normalized) => setDraft((current) => ({ ...current, priceMin: typeof normalized === 'number' && normalized > 0 ? normalized / 100 : undefined }))}
                     placeholder="R$ 0"
+                    aria-label="Preço mínimo"
                     className={fieldClass}
                   />
                 </label>
                 <label className="space-y-2 text-xs text-muted-foreground">
                   Máximo
-                  <input
-                    value={formatBRLInput(draft.priceMax)}
-                    onChange={(event) => setDraft((current) => ({ ...current, priceMax: numberValue(event.target.value) }))}
-                    inputMode="numeric"
+                  <StructuredInput
+                    kind="currency"
+                    value={draft.priceMax || ''}
+                    onValueChange={(_, normalized) => setDraft((current) => ({ ...current, priceMax: typeof normalized === 'number' && normalized > 0 ? normalized / 100 : undefined }))}
                     placeholder="R$ 750.000"
+                    aria-label="Preço máximo"
                     className={fieldClass}
                   />
                 </label>
@@ -209,14 +206,15 @@ export function MarketplaceFiltersDialog({
               ].map((field) => (
                 <label key={field.key} className="space-y-2 text-xs text-muted-foreground sm:first:col-span-1">
                   {field.label}
-                  <input
+                  <StructuredInput
+                    kind={field.key === 'areaMin' ? 'decimal' : 'quantity'}
                     value={draft[field.key as keyof MarketplaceFilters] as number | undefined || ''}
-                    onChange={(event) => setDraft((current) => ({
+                    onValueChange={(_, normalized) => setDraft((current) => ({
                       ...current,
-                      [field.key]: numberValue(event.target.value),
+                      [field.key]: typeof normalized === 'number' && normalized > 0 ? normalized : undefined,
                     }))}
-                    inputMode="numeric"
                     placeholder={field.placeholder}
+                    aria-label={field.label}
                     className={fieldClass}
                   />
                 </label>
