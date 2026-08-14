@@ -17,6 +17,7 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  Store,
   UserRound,
   type LucideIcon,
 } from "lucide-react"
@@ -60,6 +61,7 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
   {
     label: "VENDER",
     items: [
+      { label: "Marketplace", icon: Store, href: "/corretor/marketplace" },
       { label: "Catálogo", icon: BookOpenText, href: "/corretor/catalogo" },
       { label: "Studio IA", icon: Bot, href: "/corretor/studio-ia" },
     ],

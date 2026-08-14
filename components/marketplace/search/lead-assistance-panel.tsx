@@ -1,191 +1,42 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { CheckCircle2, MessageCircle, X } from 'lucide-react'
-import { OrganicLines } from '@/components/marketplace/organic-lines'
+import { FormEvent, useEffect, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { MapPin, MessageCircle, Search, Star, X } from 'lucide-react'
+import { MarketplaceChatLauncher } from '@/components/marketplace/chat/marketplace-chat-launcher'
+import { StructuredInput } from '@/components/ui/structured-input'
+import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 
-export function LeadAssistancePanel({
-  open,
-  onOpenChange,
-  searchSummary,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  searchSummary: string
-}) {
-  const [submitted, setSubmitted] = useState(false)
+type Match = { broker: BrokerProfile; score: number; reasons: string[]; compatibleListings: number }
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onOpenChange(false)
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [open, onOpenChange])
+export function LeadAssistancePanel({ open, onOpenChange, searchSummary, availableLocations }: { open: boolean; onOpenChange: (open: boolean) => void; searchSummary: string; availableLocations: string[] }) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [location, setLocation] = useState('')
+  const [summary, setSummary] = useState(searchSummary)
+  const [deadline, setDeadline] = useState('')
+  const [financing, setFinancing] = useState('')
+  const [matches, setMatches] = useState<Match[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  // Ao fechar, reinicia o estado de confirmação para o próximo uso.
-  useEffect(() => {
-    if (!open) {
-      const t = setTimeout(() => setSubmitted(false), 200)
-      return () => clearTimeout(t)
-    }
-  }, [open])
+  useEffect(() => { if (open) setSummary((current) => current || searchSummary) }, [open, searchSummary])
+  useEffect(() => { if (!open) return; const previous = document.body.style.overflow; document.body.style.overflow = 'hidden'; const keydown = (event: KeyboardEvent) => event.key === 'Escape' && onOpenChange(false); document.addEventListener('keydown', keydown); return () => { document.body.style.overflow = previous; document.removeEventListener('keydown', keydown) } }, [onOpenChange, open])
 
-  return (
-    <>
-      {/* Painel de chamada no fim da página */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
-        <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-surface p-8 shadow-[var(--shadow-soft)] md:p-12">
-          <OrganicLines className="opacity-70" count={5} />
-          <div className="relative flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-xl">
-              <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Ainda não encontrou o imóvel certo?
-              </h2>
-              <p className="mt-3 text-pretty leading-relaxed text-muted-foreground">
-                Envie o que procura e conectamos você a um profissional da região.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(true)}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-[0_6px_20px_rgba(35,120,55,0.35)] transition-transform hover:scale-[1.02] active:scale-95"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              Quero ajuda para encontrar
-            </button>
-          </div>
-        </div>
-      </section>
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setLoading(true); setError('')
+    const response = await fetch('/api/marketplace/broker-matches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, summary, deadline, financing }) })
+    const payload = await response.json().catch(() => null)
+    setLoading(false)
+    if (!response.ok) return setError(payload?.error || 'Não foi possível pesquisar corretores agora.')
+    setMatches(payload.matches)
+  }
 
-      {/* Modal do formulário */}
-      {open && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={() => onOpenChange(false)}
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-[2px] motion-safe:animate-in motion-safe:fade-in-0"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Pedir ajuda para encontrar"
-            className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-background shadow-[var(--shadow-float)] sm:max-w-lg sm:rounded-3xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300"
-          >
-            <div className="flex items-center justify-between border-b border-border/70 px-6 py-5">
-              <h2 className="text-lg font-semibold text-foreground">Ajuda para encontrar</h2>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                aria-label="Fechar"
-                className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-
-            {submitted ? (
-              <div className="flex flex-col items-center px-6 py-12 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-eme-50 text-primary">
-                  <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
-                </span>
-                <h3 className="mt-5 text-lg font-semibold text-foreground">Recebemos o seu pedido</h3>
-                <p className="mt-2 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">
-                  Um profissional da região vai entrar em contato com base no que você procura. (Demonstrativo)
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onOpenChange(false)}
-                  className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] active:scale-95"
-                >
-                  Fechar
-                </button>
-              </div>
-            ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  setSubmitted(true)
-                }}
-                className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6"
-              >
-                <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                  Nome
-                  <input
-                    required
-                    type="text"
-                    placeholder="Seu nome"
-                    className="rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                  WhatsApp
-                  <input
-                    required
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="(54) 90000-0000"
-                    className="rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                  Resumo da busca
-                  <textarea
-                    defaultValue={searchSummary}
-                    rows={2}
-                    className="resize-none rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                  />
-                </label>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                    Prazo
-                    <select className="rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10">
-                      <option value="">Opcional</option>
-                      <option>Sem pressa</option>
-                      <option>Até 30 dias</option>
-                      <option>Até 90 dias</option>
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                    Financiamento
-                    <select className="rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10">
-                      <option value="">Opcional</option>
-                      <option>Vou financiar</option>
-                      <option>À vista</option>
-                      <option>Ainda não sei</option>
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                    Contato
-                    <select className="rounded-xl border border-border bg-card px-3 py-2.5 font-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10">
-                      <option value="">Opcional</option>
-                      <option>Manhã</option>
-                      <option>Tarde</option>
-                      <option>Noite</option>
-                    </select>
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-[0_6px_20px_rgba(35,120,55,0.35)] transition-transform hover:scale-[1.02] active:scale-95"
-                >
-                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                  Enviar pedido
-                </button>
-                <p className="text-center text-xs text-muted-foreground">
-                  Demonstrativo — nenhum dado é enviado nesta etapa.
-                </p>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-    </>
-  )
+  return <>
+    <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20"><div className="rounded-[2rem] border border-border/70 bg-surface p-8 shadow-[var(--shadow-soft)] md:flex md:items-center md:justify-between md:gap-8 md:p-12"><div className="max-w-xl"><h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Ainda não encontrou o imóvel certo?</h2><p className="mt-3 text-pretty leading-relaxed text-muted-foreground">Pesquise profissionais por região, carteira ativa e desempenho real.</p></div><button type="button" onClick={() => onOpenChange(true)} className="mt-6 inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground md:mt-0"><Search className="h-4 w-4" />Quero ajuda para encontrar</button></div></section>
+    {open ? <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6"><button type="button" aria-label="Fechar" onClick={() => onOpenChange(false)} className="absolute inset-0 bg-foreground/40 backdrop-blur-[2px]" /><div role="dialog" aria-modal="true" aria-label="Pesquisar corretores" className="relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-background shadow-[var(--shadow-float)] sm:max-w-2xl sm:rounded-3xl"><header className="flex items-center justify-between border-b border-border px-6 py-4"><div><h2 className="font-semibold text-foreground">Quero ajuda para encontrar</h2><p className="text-xs text-muted-foreground">Matching com os dados reais do Marketplace</p></div><button onClick={() => onOpenChange(false)} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary" aria-label="Fechar"><X className="h-5 w-5" /></button></header><div className="overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">
+      {!matches ? <form onSubmit={submit} className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-foreground">Nome<input required value={name} onChange={(event) => setName(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-card px-3 font-normal outline-none focus:border-primary/40" /></label><label className="text-sm font-medium text-foreground">Telefone/WhatsApp<StructuredInput kind="phone" required value={phone} onValueChange={setPhone} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-card px-3 font-normal outline-none focus:border-primary/40" /></label></div><label className="block text-sm font-medium text-foreground">Localização<input required list="marketplace-locations" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Cidade ou bairro disponível" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-card px-3 font-normal outline-none focus:border-primary/40" /><datalist id="marketplace-locations">{availableLocations.map((item) => <option value={item} key={item} />)}</datalist></label><label className="block text-sm font-medium text-foreground">Resumo da busca<textarea required minLength={3} rows={3} value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Ex.: apartamento de 2 quartos para comprar" className="mt-1.5 w-full resize-none rounded-xl border border-border bg-card px-3 py-2.5 font-normal outline-none focus:border-primary/40" /></label><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Prazo<select value={deadline} onChange={(event) => setDeadline(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-card px-3 font-normal"><option value="">Opcional</option><option>Até 30 dias</option><option>Até 90 dias</option><option>Sem pressa</option></select></label><label className="text-sm font-medium">Financiamento<select value={financing} onChange={(event) => setFinancing(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-card px-3 font-normal"><option value="">Opcional</option><option>Preciso financiar</option><option>À vista</option><option>Ainda não sei</option></select></label></div><button disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"><Search className="h-4 w-4" />{loading ? 'Pesquisando...' : 'Pesquisar corretores'}</button>{error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}</form> : <div><div className="flex items-center justify-between"><div><h3 className="font-semibold text-foreground">Corretores mais aderentes</h3><p className="mt-1 text-sm text-muted-foreground">Ordem por região, carteira compatível e avaliações aprovadas.</p></div><button onClick={() => setMatches(null)} className="text-sm font-medium text-primary">Refazer</button></div>{matches.length ? <div className="mt-5 space-y-4">{matches.map(({ broker, reasons }) => <article key={broker.slug} className="rounded-2xl border border-border bg-card p-4"><div className="flex items-center gap-3"><div className="relative h-12 w-12 overflow-hidden rounded-xl"><Image src={broker.image} alt="" fill className="object-cover" sizes="48px" /></div><div className="min-w-0 flex-1"><p className="truncate font-semibold text-foreground">{broker.name}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{broker.region}{broker.reviewCount ? <><Star className="ml-2 h-3 w-3 fill-amber-400 text-amber-400" />{broker.rating.toFixed(1)}</> : null}</p></div></div><div className="mt-3 flex flex-wrap gap-2">{reasons.slice(0,3).map((reason) => <span key={reason} className="rounded-full bg-eme-50 px-2.5 py-1 text-xs text-eme-700">{reason}</span>)}</div><div className="mt-4 grid grid-cols-2 gap-2"><Link href={`/imoveis/corretores/${broker.slug}`} className="inline-flex h-10 items-center justify-center rounded-full border border-border text-sm font-semibold">Ver perfil</Link><MarketplaceChatLauncher brokerSlug={broker.slug} brokerName={broker.name} brokerPhone={broker.phone} prefill={`${summary} Localização: ${location}. Prazo: ${deadline || 'não informado'}. Financiamento: ${financing || 'não informado'}. Meu nome é ${name} e meu telefone é ${phone}.`} className="h-10 px-4" /></div></article>)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center"><MessageCircle className="mx-auto h-6 w-6 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">Nenhum corretor com carteira aderente foi encontrado nessa localidade.</p></div>}</div>}
+    </div></div></div> : null}
+  </>
 }

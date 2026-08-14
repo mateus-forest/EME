@@ -18,7 +18,6 @@ const propertyTypes = [
   { value: 'sobrado', label: 'Sobrado' },
 ] as const
 
-const locations = ['Vacaria', 'Serra Gaúcha', 'Campos de Cima da Serra']
 const featureOptions = [
   { value: 'patio', label: 'Pátio' },
   { value: 'mobiliado', label: 'Mobiliado' },
@@ -39,6 +38,15 @@ export function MarketplaceFiltersDialog({
   title?: string
 }) {
   const [draft, setDraft] = useState<MarketplaceFilters>(filters)
+  const [locations, setLocations] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!open || locations.length) return
+    void fetch('/api/marketplace/locations')
+      .then((response) => response.ok ? response.json() : { locations: [] })
+      .then((payload) => setLocations(Array.isArray(payload.locations) ? payload.locations : []))
+      .catch(() => setLocations([]))
+  }, [locations.length, open])
 
   useEffect(() => {
     if (open) setDraft({ ...filters, features: [...filters.features], intentions: [...filters.intentions] })

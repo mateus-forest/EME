@@ -131,6 +131,11 @@ export function SearchResults({
     )
   }, [brokers, filtered])
 
+  const availableLocations = useMemo(
+    () => [...new Set(results.flatMap((property) => [property.city, property.neighborhood, property.region]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [results],
+  )
+
   function toggleFavorite(slug: string) {
     setFavorites((prev) => {
       const next = new Set(prev)
@@ -397,7 +402,7 @@ export function SearchResults({
       </section>
 
       {/* Ajuda para encontrar */}
-      <LeadAssistancePanel open={leadOpen} onOpenChange={setLeadOpen} searchSummary={query} />
+      <LeadAssistancePanel open={leadOpen} onOpenChange={setLeadOpen} searchSummary={query} availableLocations={availableLocations} />
 
       {/* Sobreposições */}
       <CompareTray

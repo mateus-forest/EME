@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { parsePropertyLegalData } from '@/lib/legal-entities'
 import type { Property } from '@/lib/marketplace/data'
-import type { BrokerProfile, Rental } from '@/lib/marketplace/pages-data'
+import type { BrokerProfile, MarketplaceRegion, Rental } from '@/lib/marketplace/pages-data'
 import type { PropertyDetail, SimilarProperty } from '@/lib/marketplace/property-detail'
 import type { SearchResult } from '@/lib/marketplace/search-data'
 
@@ -195,9 +195,19 @@ function brokerTransaction(record: MarketplacePropertyRecord['broker'], purposes
   return hasSale && hasRent ? 'ambos' as const : hasRent ? 'aluguel' as const : 'compra' as const
 }
 
-type BrokerWithMarketplaceCount = Prisma.BrokerGetPayload<{
-  include: { user: true; properties: { select: { purpose: true } }; _count: { select: { properties: true } } }
-}>
+const marketplaceBrokerInclude = {
+  user: true,
+  properties: { where: { marketplacePublished: true }, select: { purpose: true } },
+  marketplaceReviews: {
+    where: { status: 'APPROVED' as const },
+    orderBy: { createdAt: 'desc' as const },
+    take: 6,
+    select: { id: true, authorName: true, rating: true, comment: true, createdAt: true },
+  },
+  _count: { select: { properties: { where: { marketplacePublished: true } } } },
+} satisfies Prisma.BrokerInclude
+
+type BrokerWithMarketplaceCount = Prisma.BrokerGetPayload<{ include: typeof marketplaceBrokerInclude }>
 
 export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): BrokerProfile {
   const hasVerifiedRating = record.marketplaceReviewCount > 0 && Boolean(record.marketplaceRating)
@@ -217,7 +227,14 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
     activeListings: record._count.properties,
     rating: hasVerifiedRating ? Number(record.marketplaceRating) : 0,
     reviewCount: hasVerifiedRating ? record.marketplaceReviewCount : 0,
-    reviews: [],
+    reviews: record.marketplaceReviews.map((review) => ({
+      id: review.id,
+      authorName: review.authorName,
+      rating: review.rating,
+      comment: review.comment,
+      publishedAtLabel: review.createdAt.toLocaleDateString('pt-BR'),
+      verified: true,
+    })),
     featured: record.marketplaceFeatured,
     verified: Boolean(record.creci),
     transaction: brokerTransaction(record, record.properties.map((property) => property.purpose)),
@@ -231,11 +248,7 @@ export async function getMarketplaceBrokers() {
       status: 'ACTIVE',
       properties: { some: { marketplacePublished: true } },
     },
-    include: {
-      user: true,
-      properties: { where: { marketplacePublished: true }, select: { purpose: true } },
-      _count: { select: { properties: { where: { marketplacePublished: true } } } },
-    },
+    include: marketplaceBrokerInclude,
     orderBy: [{ marketplaceFeatured: 'desc' }, { createdAt: 'asc' }],
   })
   return records.map(mapMarketplaceBroker)
@@ -244,11 +257,7 @@ export async function getMarketplaceBrokers() {
 export async function getMarketplaceBroker(slug: string) {
   const record = await prisma.broker.findFirst({
     where: { catalogSlug: slug, status: 'ACTIVE', properties: { some: { marketplacePublished: true } } },
-    include: {
-      user: true,
-      properties: { where: { marketplacePublished: true }, select: { purpose: true } },
-      _count: { select: { properties: { where: { marketplacePublished: true } } } },
-    },
+    include: marketplaceBrokerInclude,
   })
   return record ? mapMarketplaceBroker(record) : null
 }
@@ -346,11 +355,7 @@ export async function getMarketplacePropertyDetail(slug: string) {
   const result = mapMarketplaceProperty(record)
   const brokerRecords = await prisma.broker.findMany({
     where: { id: record.brokerId },
-    include: {
-      user: true,
-      properties: { where: { marketplacePublished: true }, select: { purpose: true } },
-      _count: { select: { properties: { where: { marketplacePublished: true } } } },
-    },
+    include: marketplaceBrokerInclude,
   })
   const similarRecords = await prisma.property.findMany({
     where: { ...marketplacePropertyWhere(), id: { not: record.id }, purpose: record.purpose },
@@ -377,4 +382,55 @@ export async function getMarketplacePropertyDetail(slug: string) {
     broker: brokerRecords[0] ? mapMarketplaceBroker(brokerRecords[0]) : null,
     similar,
   }
+}
+
+export function marketplaceRegionSlug(value: string) {
+  return normalizeText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
+  const [properties, events] = await Promise.all([
+    getMarketplaceProperties(),
+    prisma.searchEvent.findMany({
+      where: { source: 'marketplace' },
+      select: { query: true, filters: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    }),
+  ])
+  const groups = new Map<string, MarketplaceRegion>()
+
+  for (const property of properties) {
+    const name = property.city.trim()
+    if (!name) continue
+    const slug = marketplaceRegionSlug(name)
+    const current = groups.get(slug) || {
+      slug,
+      name,
+      description: `Inventário publicado em ${name}, atualizado diretamente pelos corretores da rede EME.`,
+      image: '',
+      properties: 0,
+      forSale: 0,
+      forRent: 0,
+      areas: [],
+      tags: [],
+      searchVolume: 0,
+    }
+    current.properties += 1
+    if (property.purpose === 'compra') current.forSale += 1
+    else current.forRent += 1
+    if (property.neighborhood && !current.areas.includes(property.neighborhood)) current.areas.push(property.neighborhood)
+    groups.set(slug, current)
+  }
+
+  for (const event of events) {
+    const searchable = normalizeText(`${event.query || ''} ${JSON.stringify(event.filters || {})}`)
+    for (const region of groups.values()) {
+      if (searchable.includes(normalizeText(region.name))) region.searchVolume += 1
+    }
+  }
+
+  return [...groups.values()]
+    .map((region) => ({ ...region, areas: region.areas.sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 12) }))
+    .sort((a, b) => b.properties - a.properties || a.name.localeCompare(b.name, 'pt-BR'))
 }

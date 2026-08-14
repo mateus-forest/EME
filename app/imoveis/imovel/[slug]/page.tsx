@@ -69,7 +69,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ slug: s
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.15fr_1fr_0.95fr] lg:gap-6">
               <PropertyEssentials property={property} />
               <PropertyCompatibility property={property} />
-              <BrokerPanel broker={broker} creci={property.brokerCreci} />
+              <BrokerPanel broker={broker} creci={property.brokerCreci} propertyId={property.propertyId} propertyTitle={property.title} />
             </div>
           </section>
 

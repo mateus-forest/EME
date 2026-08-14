@@ -3,112 +3,21 @@ import Link from 'next/link'
 import { PageShell } from '@/components/marketplace/pages/page-shell'
 import { PageHero } from '@/components/marketplace/pages/page-hero'
 import { RegionsDirectory } from '@/components/marketplace/pages/regions-directory'
-import { IntentGrid } from '@/components/marketplace/pages/intent-grid'
-import { HelpCta } from '@/components/marketplace/pages/help-cta'
 import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
-import { popularAreas, regionDetails, regionLifestyles } from '@/lib/marketplace/pages-data'
-import { getMarketplaceBrokers, getMarketplaceProperties } from '@/lib/marketplace/server-data'
+import { getMarketplaceBrokers, getMarketplaceRegions } from '@/lib/marketplace/server-data'
 
-export const metadata: Metadata = {
-  title: 'Regiões | EME Imóveis',
-  description:
-    'Descubra onde sua próxima história pode acontecer. Explore cidades e regiões, conheça suas características e encontre imóveis disponíveis.',
-}
-
+export const metadata: Metadata = { title: 'Regiões | EME Imóveis', description: 'Explore somente localidades que possuem imóveis publicados no Marketplace EME.' }
 export const dynamic = 'force-dynamic'
 
 export default async function RegioesPage() {
-  const [brokers, properties] = await Promise.all([getMarketplaceBrokers(), getMarketplaceProperties()])
-  const regions = regionDetails.map((region) => {
-    const terms = [region.name, ...region.areas].map((value) => value.toLocaleLowerCase('pt-BR'))
-    const matching = properties.filter((property) => terms.some((term) => `${property.city} ${property.neighborhood} ${property.region}`.toLocaleLowerCase('pt-BR').includes(term)))
-    return { ...region, properties: matching.length, forSale: matching.filter((property) => property.purpose === 'compra').length, forRent: matching.filter((property) => property.purpose === 'aluguel').length }
-  })
-  return (
-    <PageShell>
-      <PageHero
-        eyebrow="Regiões"
-        title="Descubra onde sua próxima história pode acontecer."
-        text="Explore cidades e regiões, conheça suas características e encontre imóveis disponíveis."
-        align="center"
-      />
-
-      {/* Regiões principais + busca */}
-      <section className="mx-auto w-full max-w-6xl px-5 pb-4 md:px-8">
-        <RegionsDirectory regions={regions} />
-      </section>
-
-      {/* Regiões mais procuradas */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-12 md:px-8 md:py-16">
-        <Reveal>
-          <SectionHeading
-            title="Mais procuradas"
-            support="Lugares que as pessoas mais exploram por aqui."
-          />
-        </Reveal>
-        <Reveal>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {popularAreas.map((area) => (
-              <Link
-                key={area}
-                href={`/imoveis/busca?local=${encodeURIComponent(area)}`}
-                className="inline-flex items-center rounded-full border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground shadow-[var(--shadow-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground"
-              >
-                {area}
-              </Link>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* Descubra pelo estilo de vida */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-12 md:px-8 md:py-16">
-        <Reveal>
-          <SectionHeading
-            title="Descubra pelo estilo de vida"
-            support="Um jeito diferente de escolher onde morar: pelo tipo de rotina que você quer."
-          />
-        </Reveal>
-        <div className="mt-8">
-          <IntentGrid items={regionLifestyles} purpose="compra" />
-        </div>
-      </section>
-
-      {/* Profissionais que atuam em cada região */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-12 md:px-8 md:py-16">
-        <Reveal>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <SectionHeading
-              title="Quem conhece cada região"
-              support="Profissionais verificados que acompanham imóveis nessas localidades."
-              className="sm:flex-1"
-            />
-            <Link
-              href="/imoveis/corretores"
-              className="inline-flex w-fit items-center gap-2 whitespace-nowrap text-sm font-medium text-primary transition-colors hover:text-eme-600"
-            >
-              Ver todos os corretores
-            </Link>
-          </div>
-        </Reveal>
-        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {brokers.slice(0, 3).map((broker, i) => (
-            <Reveal key={broker.slug} delay={i * 80}>
-              <BrokerCard broker={broker} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      <HelpCta
-        title="Ainda decidindo onde morar?"
-        text="Descreva o tipo de lugar que você imagina e receba sugestões de regiões e imóveis que combinam com isso."
-        placeholder="Quero um lugar tranquilo, perto da natureza, mas com comércio por perto..."
-        purpose="compra"
-        secondaryLabel="Falar com um especialista de região"
-      />
-    </PageShell>
-  )
+  const [brokers, regions] = await Promise.all([getMarketplaceBrokers(), getMarketplaceRegions()])
+  const popular = [...regions].sort((a, b) => b.searchVolume - a.searchVolume || b.properties - a.properties).slice(0, 8)
+  return <PageShell>
+    <PageHero eyebrow="Regiões" title="Descubra onde sua próxima história pode acontecer." text="Localidades e bairros apresentados a partir do inventário realmente publicado." align="center" />
+    <section className="mx-auto w-full max-w-6xl px-5 pb-4 md:px-8"><RegionsDirectory regions={regions} /></section>
+    {popular.length ? <section className="mx-auto w-full max-w-6xl px-5 py-12 md:px-8 md:py-16"><Reveal><SectionHeading title={popular.some((region) => region.searchVolume > 0) ? 'Mais procuradas' : 'Regiões disponíveis'} support={popular.some((region) => region.searchVolume > 0) ? 'Popularidade calculada com buscas reais do Marketplace.' : 'Ainda não há volume de busca suficiente; mostramos o inventário disponível.'} /></Reveal><div className="mt-8 flex flex-wrap gap-3">{popular.map((region) => <Link key={region.slug} href={`/imoveis/busca?cidade=${region.slug}`} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground shadow-[var(--shadow-soft)] transition-colors hover:border-primary/40 hover:text-foreground">{region.name} · {region.properties}</Link>)}</div></section> : null}
+    {brokers.length ? <section className="mx-auto w-full max-w-6xl px-5 py-12 md:px-8 md:py-16"><Reveal><SectionHeading title="Quem conhece cada região" support="Profissionais com imóveis publicados nessas localidades." /></Reveal><div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">{brokers.slice(0, 3).map((broker, index) => <Reveal key={broker.slug} delay={index * 80}><BrokerCard broker={broker} /></Reveal>)}</div></section> : null}
+  </PageShell>
 }

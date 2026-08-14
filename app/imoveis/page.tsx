@@ -9,15 +9,16 @@ import { RegionsSection } from '@/components/marketplace/sections/regions'
 import { BrokersSection } from '@/components/marketplace/sections/brokers'
 import { FeaturesSection } from '@/components/marketplace/sections/features'
 import { ClosingCta } from '@/components/marketplace/sections/closing-cta'
-import { getMarketplaceBrokers, getMarketplaceProperties, getMarketplacePropertyCards } from '@/lib/marketplace/server-data'
+import { getMarketplaceBrokers, getMarketplaceProperties, getMarketplacePropertyCards, getMarketplaceRegions } from '@/lib/marketplace/server-data'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const [properties, searchResults, brokers] = await Promise.all([
+  const [properties, searchResults, brokers, regions] = await Promise.all([
     getMarketplacePropertyCards(3),
     getMarketplaceProperties(),
     getMarketplaceBrokers(),
+    getMarketplaceRegions(),
   ])
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
@@ -28,7 +29,7 @@ export default async function HomePage() {
         <PropertiesSection properties={properties} />
         <ComparisonSection results={searchResults.slice(0, 2)} />
         <EnvironmentExplorer />
-        <RegionsSection results={searchResults} />
+        <RegionsSection regions={regions} />
         <BrokersSection brokers={brokers} />
         <FeaturesSection />
         <ClosingCta />

@@ -13,7 +13,7 @@ import { RentalCard } from '@/components/marketplace/rental-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { rentTypes, rentIntents } from '@/lib/marketplace/pages-data'
-import { getMarketplaceProperties, getMarketplaceRentals } from '@/lib/marketplace/server-data'
+import { getMarketplaceProperties, getMarketplaceRegions, getMarketplaceRentals } from '@/lib/marketplace/server-data'
 
 export const metadata: Metadata = {
   title: 'Alugar imóveis | EME Imóveis',
@@ -34,7 +34,7 @@ const quickFilters = [
 export const dynamic = 'force-dynamic'
 
 export default async function AlugarPage() {
-  const [rentals, searchResults] = await Promise.all([getMarketplaceRentals(5), getMarketplaceProperties()])
+  const [rentals, searchResults, regions] = await Promise.all([getMarketplaceRentals(5), getMarketplaceProperties(), getMarketplaceRegions()])
   const [featured, ...rest] = rentals
   const rentResults = searchResults.filter((property) => property.purpose === 'aluguel')
   const realRentTypes = rentTypes.map((type) => ({ ...type, count: type.slug === 'mobiliado' ? rentResults.filter((property) => property.furnished).length : rentResults.filter((property) => property.propertyType === type.slug).length }))
@@ -138,7 +138,7 @@ export default async function AlugarPage() {
           </div>
         </Reveal>
         <div className="mt-8">
-          <RegionHighlights metric="forRent" results={rentResults} />
+          <RegionHighlights metric="forRent" regions={regions} />
         </div>
       </section>
 
