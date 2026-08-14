@@ -48,11 +48,12 @@ function propertyIntentTags(record: MarketplacePropertyRecord, area: number) {
   const tags: string[] = []
   if (area >= 130 || /ampl|espac|terreno|patio/.test(text)) tags.push('mais-espaco', 'espaco-familia')
   if (/centro|central/.test(text)) tags.push('perto-do-centro', 'perto-de-tudo', 'perto-do-trabalho')
-  if (/invest|renda|comercial|loca/.test(text)) tags.push('para-investir')
-  if (/novo|pronto|mobiliado|reformado/.test(text)) tags.push('pronto-para-morar', 'pronto-para-entrar')
+  if (/invest|renda|liquidez|condominio|academia|lavanderia/.test(text) || (record.bedrooms > 0 && record.bedrooms <= 2 && area > 0 && area <= 90)) tags.push('para-investir')
+  if (/novo|pronto|mobiliad|reformad|acabamento|chaves/.test(text)) tags.push('pronto-para-morar', 'pronto-para-entrar')
   if (/campo|rural|sitio|chacara/.test(text)) tags.push('vida-no-campo', 'natureza-e-lazer')
-  if (record.bedrooms <= 1) tags.push('morar-sozinho')
-  if (record.price <= 60000000) tags.push('primeiro-imovel')
+  if (record.bedrooms <= 2 && area > 0 && area <= 75) tags.push('morar-sozinho')
+  if (record.purpose === 'SALE' && record.price <= 60000000) tags.push('primeiro-imovel')
+  if (marketplacePropertyType(record) === 'comercial') tags.push('para-o-negocio')
   return [...new Set(tags)]
 }
 
@@ -95,9 +96,9 @@ export function mapMarketplaceProperty(record: MarketplacePropertyRecord): Searc
     bathrooms: record.bathrooms,
     area,
     parking: record.parkingSpots,
-    patio: /patio|quintal|terreno/.test(text),
-    furnished: /mobiliado/.test(text),
-    isNew: /novo|lancamento/.test(text),
+    patio: /patio|quintal|area externa|terreno amplo/.test(text),
+    furnished: /mobiliad|moveis planejados/.test(text),
+    isNew: /novo|lancamento|recem construido/.test(text),
     neighborhood: record.neighborhood || legal.district || '',
     region: record.broker.marketplaceRegion || '',
     brokerSlug: record.broker.catalogSlug,
@@ -216,6 +217,7 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
     activeListings: record._count.properties,
     rating: hasVerifiedRating ? Number(record.marketplaceRating) : 0,
     reviewCount: hasVerifiedRating ? record.marketplaceReviewCount : 0,
+    reviews: [],
     featured: record.marketplaceFeatured,
     verified: Boolean(record.creci),
     transaction: brokerTransaction(record, record.properties.map((property) => property.purpose)),
@@ -285,10 +287,23 @@ function mapPropertyDetail(record: MarketplacePropertyRecord, result: SearchResu
     result.isNew ? 'Imóvel novo' : '',
   ].filter(Boolean)
   const confirmedInfo = [
-    legal.registryNumber ? 'Matrícula informada' : '',
+    legal.registryNumber ? 'Matrícula informada no cadastro' : '',
     legal.condominiumName ? `Condomínio ${legal.condominiumName}` : '',
-    legal.privateArea ? 'Área privativa cadastrada' : '',
+    legal.privateArea ? `Área privativa cadastrada: ${legal.privateArea}` : '',
+    result.bedrooms ? `${result.bedrooms} ${result.bedrooms === 1 ? 'quarto cadastrado' : 'quartos cadastrados'}` : '',
+    result.bathrooms ? `${result.bathrooms} ${result.bathrooms === 1 ? 'banheiro cadastrado' : 'banheiros cadastrados'}` : '',
+    result.parking ? `${result.parking} ${result.parking === 1 ? 'vaga cadastrada' : 'vagas cadastradas'}` : '',
   ].filter(Boolean)
+  const central = /\b(centro|central|regiao central)\b/.test(result.searchableText)
+  const routine = [
+    result.neighborhood
+      ? { key: 'bairro', label: 'Bairro informado', detail: result.neighborhood, icon: 'center' as const }
+      : null,
+    central
+      ? { key: 'perfil-regiao', label: 'Perfil da região', detail: 'Região central indicada no anúncio', icon: 'market' as const }
+      : null,
+    { key: 'cidade', label: 'Referência urbana', detail: [result.city, result.state].filter(Boolean).join(' · '), icon: 'school' as const },
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item))
   return {
     slug: result.slug,
     code: record.publicCode ? `EME ${record.publicCode}` : `EME ${record.id.slice(-6).toUpperCase()}`,
@@ -296,6 +311,7 @@ function mapPropertyDetail(record: MarketplacePropertyRecord, result: SearchResu
     title: result.title,
     city: result.city,
     state: result.state,
+    neighborhood: result.neighborhood,
     price: result.price,
     updatedLabel: `Atualizado em ${record.updatedAt.toLocaleDateString('pt-BR')}`,
     bedrooms: result.bedrooms,
@@ -312,7 +328,7 @@ function mapPropertyDetail(record: MarketplacePropertyRecord, result: SearchResu
     highlights,
     confirmedInfo,
     toConfirm: ['Disponibilidade para visita', 'Condições de negociação'],
-    routine: [],
+    routine,
     gallery,
     environments: gallery.map((image, index) => ({ key: `foto-${index + 1}`, label: `Foto ${index + 1}`, image })),
     brokerSlug: record.broker.catalogSlug,

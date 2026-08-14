@@ -22,6 +22,10 @@ import {
   type ReactNode,
 } from 'react'
 import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
+import {
+  filterSearchResults,
+  inferMarketplaceFilters,
+} from '@/lib/marketplace/search-filters'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { AssistantMark } from '@/components/marketplace/assistant/assistant-mark'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
@@ -45,17 +49,7 @@ const initialMessages: ChatMessage[] = [
   {
     id: 1,
     from: 'assistant',
-    text: 'Olá. Vou ajudar você a encontrar um imóvel que realmente combine com o que procura.',
-  },
-  {
-    id: 2,
-    from: 'user',
-    text: 'Procuro uma casa em Vacaria, até R$ 750 mil, com 3 quartos e pátio.',
-  },
-  {
-    id: 3,
-    from: 'assistant',
-    text: 'Encontrei algumas possibilidades. Antes de mostrar, o que pesa mais para você?',
+    text: 'Olá. Conte o que procura e eu vou analisar os imóveis publicados no Marketplace EME.',
   },
 ]
 
@@ -160,6 +154,7 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
+  const [matchedProperties, setMatchedProperties] = useState<SearchResult[]>([])
   const [handoff, setHandoff] = useState<SearchResult | null>(null)
   const handoffBroker = handoff ? brokers.find((broker) => broker.slug === handoff.brokerSlug) : null
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -174,18 +169,36 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, thinking, handoff])
 
-  function answer(text: string) {
+  function runAssistantSearch(text: string) {
     append('user', text)
+    setHandoff(null)
     setThinking(true)
+    const broadSearch = text === 'Ainda estou pesquisando'
+    const inferred = inferMarketplaceFilters(broadSearch ? '' : text, properties)
+    const matches = filterSearchResults(properties, inferred, broadSearch ? '' : text).slice(0, 3)
+    setMatchedProperties(matches)
     window.setTimeout(() => {
-      append(
-        'assistant',
-        text.includes('alugar')
-          ? 'Entendi. Posso considerar valor mensal, localização e o que precisa estar pronto para a mudança.'
-          : 'Perfeito. Vou considerar isso junto com localização, espaço e faixa de valor.',
-      )
+      if (!matches.length) {
+        append('assistant', 'Não encontrei um imóvel publicado que atenda a esses sinais agora. Tente ampliar a localização ou retirar um dos critérios para eu buscar novamente.')
+      } else {
+        const refinement = !inferred.purpose
+          ? ' Diga se pretende comprar ou alugar para eu refinar.'
+          : !inferred.priceMin && !inferred.priceMax
+            ? ' Se informar sua faixa de valor, o ranking fica ainda mais preciso.'
+            : !inferred.location
+              ? ' Você também pode indicar cidade ou bairro.'
+              : ''
+        append(
+          'assistant',
+          `Encontrei ${matches.length} ${matches.length === 1 ? 'imóvel publicado' : 'imóveis publicados'} com melhor aderência. A ordem considera os atributos cadastrados e os motivos aparecem em cada opção.${refinement}`,
+        )
+      }
       setThinking(false)
-    }, 650)
+    }, 420)
+  }
+
+  function answer(text: string) {
+    runAssistantSearch(text)
   }
 
   function submit(event: FormEvent) {
@@ -193,28 +206,16 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
     const value = input.trim()
     if (!value || thinking) return
     setInput('')
-    append('user', value)
-    setThinking(true)
-    window.setTimeout(() => {
-      append(
-        'assistant',
-        'Entendi sua busca. Estes dois imóveis são os mais compatíveis agora. Você pode abrir os detalhes ou pedir que eu encaminhe a conversa ao corretor responsável.',
-      )
-      setThinking(false)
-    }, 750)
+    runAssistantSearch(value)
   }
 
   function requestBroker(property: SearchResult) {
     setHandoff(property)
     append('user', `Quero falar com o corretor sobre ${property.title}.`)
-    setThinking(true)
-    window.setTimeout(() => {
-      append(
-        'assistant',
-        `Certo. ${brokers.find((broker) => broker.slug === property.brokerSlug)?.name || 'O corretor responsável'} receberá o contexto desta conversa.`,
-      )
-      setThinking(false)
-    }, 650)
+    append(
+      'assistant',
+      `Certo. Abra o perfil de ${brokers.find((broker) => broker.slug === property.brokerSlug)?.name || 'quem atende este imóvel'} para continuar pelo canal de contato disponível.`,
+    )
   }
 
   return (
@@ -255,19 +256,21 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
 
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto px-4 py-5 md:px-5">
         <div className="flex flex-col gap-3.5">
-          <Bubble message={messages[0]} />
-          <QuickChoices options={intentOptions} onChoose={answer} />
-          {messages.slice(1, 2).map((message) => <Bubble key={message.id} message={message} />)}
-          {messages.slice(2, 3).map((message) => <Bubble key={message.id} message={message} />)}
-          <QuickChoices options={priorityOptions} onChoose={answer} />
+          {messages.map((message) => <Bubble key={message.id} message={message} />)}
+          {messages.length === 1 && (
+            <>
+              <QuickChoices options={intentOptions} onChoose={answer} />
+              <QuickChoices options={priorityOptions} onChoose={answer} />
+            </>
+          )}
 
-          <div className="ml-0 flex gap-3 overflow-x-auto pb-1 pl-9 no-scrollbar sm:pl-9">
-            {properties.map((property) => (
-              <PropertySuggestion key={property.slug} property={property} onBroker={requestBroker} />
-            ))}
-          </div>
-
-          {messages.slice(3).map((message) => <Bubble key={message.id} message={message} />)}
+          {matchedProperties.length > 0 && (
+            <div className="ml-0 flex gap-3 overflow-x-auto pb-1 pl-9 no-scrollbar sm:pl-9" aria-label="Imóveis sugeridos pelo Assistente EME">
+              {matchedProperties.map((property) => (
+                <PropertySuggestion key={property.slug} property={property} onBroker={requestBroker} />
+              ))}
+            </div>
+          )}
 
           {thinking && (
             <div className="ml-9 flex items-center gap-2 text-xs text-muted-foreground">
@@ -294,15 +297,14 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
                   <p className="text-xs text-muted-foreground">{handoffBroker.specialty}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => append('assistant', 'Encaminhamento demonstrativo confirmado. Nenhuma mensagem real foi enviada nesta etapa.')}
+              <Link
+                href={`/imoveis/corretores/${handoffBroker.slug}#contato-corretor`}
                 className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                Confirmar encaminhamento
-              </button>
+                Continuar com o corretor
+              </Link>
               <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
-                Demonstração local: nenhum dado ou mensagem será enviado.
+                Você revisa seus dados antes de enviar qualquer mensagem.
               </p>
             </div>
           )}
@@ -310,7 +312,7 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
       </div>
 
       <form onSubmit={submit} className="border-t border-border/60 bg-background p-3.5 md:p-4">
-        <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card p-2 shadow-[var(--shadow-soft)] focus-within:border-primary/35 focus-within:ring-4 focus-within:ring-primary/10">
+        <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card p-2 shadow-[var(--shadow-soft)] focus-within:border-primary/25 focus-within:ring-2 focus-within:ring-primary/5">
           <button
             type="button"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

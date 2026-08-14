@@ -12,8 +12,7 @@ import {
 import {
   emptyMarketplaceFilters,
   filterSearchResults,
-  inferMarketplaceFilters,
-  mergeMarketplaceFilters,
+  replaceInferredMarketplaceFilters,
   filtersToCriteria,
   filtersToSearchParams,
   removeFilterCriterion,
@@ -86,7 +85,7 @@ export function SearchResults({
   function runSearch(nextQuery?: string) {
     const resolvedQuery = nextQuery?.trim() || query
     if (nextQuery) setQuery(resolvedQuery)
-    const nextFilters = mergeMarketplaceFilters(filters, inferMarketplaceFilters(resolvedQuery, results))
+    const nextFilters = replaceInferredMarketplaceFilters(filters, query, resolvedQuery, results)
     setFilters(nextFilters)
     const params = filtersToSearchParams(nextFilters)
     if (resolvedQuery) params.set('q', resolvedQuery)
@@ -103,7 +102,7 @@ export function SearchResults({
 
   const filtered = useMemo(() => {
     if (forceEmpty) return []
-    let list = filterSearchResults(results, filters, query)
+    let list: SearchResult[] = filterSearchResults(results, filters, query)
     list = sortResults(list, sort)
     return list
   }, [filters, forceEmpty, query, results, sort])
@@ -121,6 +120,16 @@ export function SearchResults({
     () => compare.map((slug) => results.find((r) => r.slug === slug)).filter(Boolean) as SearchResult[],
     [compare, results],
   )
+
+  const rankedBrokers = useMemo(() => {
+    const position = new Map<string, number>()
+    filtered.forEach((property, index) => {
+      if (!position.has(property.brokerSlug)) position.set(property.brokerSlug, index)
+    })
+    return [...brokers].sort((a, b) =>
+      (position.get(a.slug) ?? Number.MAX_SAFE_INTEGER) - (position.get(b.slug) ?? Number.MAX_SAFE_INTEGER),
+    )
+  }, [brokers, filtered])
 
   function toggleFavorite(slug: string) {
     setFavorites((prev) => {
@@ -369,16 +378,16 @@ export function SearchResults({
         <Reveal>
           <SectionHeading
             title="Quem conhece a região que você procura"
-            support="Profissionais locais prontos para ajudar na sua busca em Vacaria e região."
+            support="Profissionais da rede EME que atendem o contexto da sua busca."
           />
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {brokers.slice(0, 3).map((broker, i) => (
+          {rankedBrokers.slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 90} className="flex flex-col gap-2">
-              {i === 0 && (
+              {i === 0 && filtered.some((property) => property.brokerSlug === broker.slug) && (
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-eme-50 px-3 py-1 text-xs font-medium text-eme-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-                  Mais perto da sua busca
+                  Atende o imóvel mais compatível
                 </span>
               )}
               <BrokerCard broker={broker} />

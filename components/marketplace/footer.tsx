@@ -28,7 +28,10 @@ export function Footer() {
     <footer id="rodape" className="border-t border-border bg-surface/60">
       <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-x-8 gap-y-10 px-5 py-16 md:grid-cols-4 md:px-8">
         <div className="col-span-2 md:col-span-1">
-          <Logo size="md" />
+          <div className="inline-flex items-center gap-3">
+            <Logo size="md" markOnly />
+            <span className="text-xs font-medium tracking-wide text-muted-foreground">Tecnologia imobiliária</span>
+          </div>
           <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
             Tecnologia e pessoas para conectar você ao imóvel certo.
           </p>

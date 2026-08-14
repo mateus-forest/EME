@@ -26,6 +26,7 @@ export type SearchResult = {
   searchableText: string
   image: string
   compatibility: Compatibility
+  relevanceScore?: number
   reasons: string[]
   map: { x: number; y: number }
 }
@@ -92,6 +93,10 @@ export function sortResults(list: SearchResult[], sort: SortValue): SearchResult
     case 'maior-preco': return copy.sort((a, b) => b.price - a.price)
     case 'area': return copy.sort((a, b) => b.area - a.area)
     case 'recentes': return copy.sort((a, b) => Number(b.isNew) - Number(a.isNew))
-    default: return copy.sort((a, b) => compatibilityRank[a.compatibility] - compatibilityRank[b.compatibility])
+    default: return copy.sort((a, b) =>
+      (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0)
+      || compatibilityRank[a.compatibility] - compatibilityRank[b.compatibility]
+      || Number(b.isNew) - Number(a.isNew)
+    )
   }
 }

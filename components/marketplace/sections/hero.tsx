@@ -11,10 +11,10 @@ const chips = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pt-24 md:pt-28">
+    <section className="relative overflow-hidden pt-28 sm:pt-32 md:pt-36">
       <OrganicLines className="opacity-70" count={7} />
 
-      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-5 pb-10 md:grid-cols-[1fr_1.05fr] md:gap-6 md:px-8 md:pb-20 lg:gap-10 lg:pb-24">
+      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-5 pb-12 md:grid-cols-[1fr_1.05fr] md:gap-8 md:px-8 md:pb-20 lg:gap-12 lg:pb-24">
         {/* Coluna de texto */}
         <div className="animate-rise">
           <h1 className="text-pretty text-[2.1rem] font-semibold leading-[1.06] tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]">

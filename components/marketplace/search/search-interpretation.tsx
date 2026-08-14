@@ -46,7 +46,7 @@ export function SearchInterpretation({
         className={cn(
           'group flex items-center gap-3 rounded-2xl border bg-card p-2 pl-4 shadow-[var(--shadow-soft)] transition-all duration-300',
           editing
-            ? 'border-primary/40 shadow-[var(--shadow-float)] ring-4 ring-primary/10'
+            ? 'border-primary/25 shadow-[0_8px_26px_rgba(16,24,20,0.08)] ring-2 ring-primary/5'
             : 'border-border',
         )}
       >

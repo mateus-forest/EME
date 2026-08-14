@@ -20,14 +20,22 @@ export function BeforeDeciding({
             <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden="true" />
             <h3 className="text-sm font-semibold text-foreground">Informações confirmadas</h3>
           </div>
-          <ul className="mt-4 space-y-2.5">
-            {confirmedInfo.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm text-foreground">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
+          {confirmedInfo.length ? (
+            <ul className="mt-4 space-y-2.5">
+              {confirmedInfo.map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-sm text-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-4 rounded-2xl bg-eme-50/70 p-4">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Ainda não há informações documentais marcadas como confirmadas neste anúncio.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* A confirmar */}
@@ -48,7 +56,7 @@ export function BeforeDeciding({
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Mostramos apenas o que foi verificado. Os demais detalhes são confirmados com o profissional responsável.
+        Mostramos o que consta no anúncio e separamos os pontos que ainda precisam ser confirmados com o profissional responsável.
       </p>
     </div>
   )

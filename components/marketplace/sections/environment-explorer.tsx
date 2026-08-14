@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { BadgeCheck, ChevronLeft, ChevronRight } from 'lucide-react'
-import { environments, environmentHighlights } from '@/lib/marketplace/data'
+import { environments } from '@/lib/marketplace/data'
 import { Reveal } from '@/components/marketplace/reveal'
 import { cn } from '@/lib/utils'
 
@@ -29,18 +29,18 @@ export function EnvironmentExplorer() {
           <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
             {environments.map((env, i) => (
               <button
-                key={env}
+                key={env.label}
                 type="button"
                 onClick={() => setIndex(i)}
-                aria-pressed={active === env}
+                aria-pressed={active.label === env.label}
                 className={cn(
                   'rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200',
-                  active === env
+                  active.label === env.label
                     ? 'border-primary bg-primary text-primary-foreground shadow-[0_4px_14px_rgba(35,120,55,0.3)]'
                     : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
                 )}
               >
-                {env}
+                {env.label}
               </button>
             ))}
           </div>
@@ -50,11 +50,12 @@ export function EnvironmentExplorer() {
           <div className="relative overflow-hidden rounded-[2rem] shadow-[var(--shadow-glass)]">
             <div className="relative aspect-[16/11] sm:aspect-[16/9]">
               <Image
-                src="/marketplace/images/environment-living.png"
-                alt={`Ambiente: ${active}`}
+                key={active.image}
+                src={active.image}
+                alt={`Ambiente ilustrativo: ${active.label}`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 64vw"
-                className="object-cover"
+                className="animate-in fade-in object-cover duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
             </div>
@@ -63,18 +64,18 @@ export function EnvironmentExplorer() {
             <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 lg:hidden">
               {environments.map((env, i) => (
                 <button
-                  key={env}
+                  key={env.label}
                   type="button"
                   onClick={() => setIndex(i)}
-                  aria-pressed={active === env}
+                  aria-pressed={active.label === env.label}
                   className={cn(
                     'rounded-full border px-3.5 py-1.5 text-xs font-medium backdrop-blur-xl transition-colors',
-                    active === env
+                    active.label === env.label
                       ? 'border-white/60 bg-white text-foreground'
                       : 'border-white/40 bg-white/25 text-white hover:bg-white/40',
                   )}
                 >
-                  {env}
+                  {env.label}
                 </button>
               ))}
             </div>
@@ -82,7 +83,7 @@ export function EnvironmentExplorer() {
             {/* Nome do ambiente ativo + setas delicadas (desktop) */}
             <div className="absolute bottom-5 left-5 hidden items-center gap-3 lg:flex">
               <span className="glass-strong rounded-full px-4 py-1.5 text-sm font-medium text-foreground shadow-[var(--shadow-soft)]">
-                {active}
+                {active.label}
               </span>
             </div>
             <div className="absolute bottom-5 right-5 hidden items-center gap-2 lg:flex">
@@ -108,10 +109,10 @@ export function EnvironmentExplorer() {
             <div className="glass-strong absolute right-4 top-4 hidden w-56 rounded-2xl p-4 shadow-[var(--shadow-glass)] sm:block">
               <p className="text-sm font-semibold text-foreground">O que se destaca</p>
               <ul className="mt-3 space-y-2.5">
-                {environmentHighlights.map((h) => (
-                  <li key={h.title} className="flex items-start gap-2">
+                {active.highlights.map((highlight) => (
+                  <li key={highlight} className="flex items-start gap-2">
                     <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                    <span className="text-xs leading-snug text-foreground">{h.title}</span>
+                    <span className="text-xs leading-snug text-foreground">{highlight}</span>
                   </li>
                 ))}
               </ul>
@@ -120,13 +121,13 @@ export function EnvironmentExplorer() {
 
           {/* Destaques em mobile */}
           <ul className="mt-4 flex flex-wrap gap-2 sm:hidden">
-            {environmentHighlights.map((h) => (
+            {active.highlights.map((highlight) => (
               <li
-                key={h.title}
+                key={highlight}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs text-foreground"
               >
                 <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                {h.title}
+                {highlight}
               </li>
             ))}
           </ul>

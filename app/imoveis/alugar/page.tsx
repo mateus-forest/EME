@@ -47,7 +47,7 @@ export default async function AlugarPage() {
         text="Encontre imóveis para alugar de forma simples, visual e direta."
         action={
           <ConversationalSearch
-            placeholder="Procuro um apartamento para alugar em Vacaria, perto do centro..."
+            placeholder="Procuro um apartamento para alugar perto do centro"
             purpose="aluguel"
             size="lg"
           />

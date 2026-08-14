@@ -36,7 +36,7 @@ export default async function CorretoresPage() {
       <HelpCta
         title="Não sabe por quem começar?"
         text="Conte o que você procura e conectamos você ao especialista certo para a sua região e o seu momento."
-        placeholder="Ex.: procuro uma casa com pátio em Vacaria"
+        placeholder="Ex.: procuro uma casa com pátio perto do centro"
         purpose="compra"
         secondaryLabel="Ver todos os imóveis"
         secondaryHref="/imoveis/busca"

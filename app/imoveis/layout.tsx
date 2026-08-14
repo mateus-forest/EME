@@ -15,7 +15,7 @@ export default async function MarketplaceLayout({ children }: { children: ReactN
   const [properties, brokers] = await Promise.all([getMarketplaceProperties(), getMarketplaceBrokers()])
   return (
     <div className="marketplace-shell">
-      <AssistantProvider properties={properties.slice(0, 2)} brokers={brokers}>{children}</AssistantProvider>
+      <AssistantProvider properties={properties} brokers={brokers}>{children}</AssistantProvider>
     </div>
   )
 }

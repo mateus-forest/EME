@@ -10,6 +10,7 @@ import { BrokerContactForm } from '@/components/marketplace/pages/broker-contact
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { BrokerProfileTracker } from '@/components/marketplace/broker-profile-tracker'
+import { BrokerReviews } from '@/components/marketplace/pages/broker-reviews'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,6 +132,8 @@ export default async function BrokerProfilePage({
               <BrokerContactForm brokerName={broker.name} brokerSlug={broker.slug} brokerPhone={broker.phone} />
             </aside>
           </section>
+
+          <BrokerReviews broker={broker} />
 
           {/* Imóveis do corretor */}
           <section className="mt-16">

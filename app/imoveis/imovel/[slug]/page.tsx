@@ -78,7 +78,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ slug: s
           <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
             <div className="grid grid-cols-1 gap-x-10 gap-y-14 lg:grid-cols-2">
               <BeforeDeciding confirmedInfo={property.confirmedInfo} toConfirm={property.toConfirm} />
-              <PropertyLocation city={property.city} state={property.state} routine={property.routine} />
+              <PropertyLocation city={property.city} state={property.state} neighborhood={property.neighborhood} routine={property.routine} />
             </div>
           </section>
 

@@ -47,7 +47,7 @@ export default async function ComprarPage() {
         text="Descreva o que procura ou explore possibilidades para comprar na sua região."
         action={
           <ConversationalSearch
-            placeholder="Quero comprar uma casa em Vacaria, com 3 quartos e pátio..."
+            placeholder="Procuro uma casa para comprar com 3 quartos e pátio"
             purpose="compra"
             size="lg"
           />
@@ -145,7 +145,7 @@ export default async function ComprarPage() {
       <HelpCta
         title="Não encontrou o que procura?"
         text="Conte o que você precisa e conecte-se a um profissional que conhece a região para ajudar na sua compra."
-        placeholder="Procuro uma casa com pátio em Vacaria, até R$ 700 mil..."
+        placeholder="Procuro uma casa com pátio até R$ 700 mil"
         purpose="compra"
       />
     </PageShell>

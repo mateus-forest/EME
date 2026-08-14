@@ -60,8 +60,8 @@ export function ConversationalSearch({
         submit()
       }}
       className={cn(
-        'group flex items-center gap-2 rounded-full border border-border bg-card shadow-[var(--shadow-soft)] transition-all duration-300',
-        'focus-within:border-primary/40 focus-within:shadow-[var(--shadow-float)] focus-within:ring-4 focus-within:ring-primary/10',
+        'group flex items-center gap-2 rounded-full border border-border/80 bg-card shadow-[var(--shadow-soft)] transition-[border-color,box-shadow] duration-200',
+        'focus-within:border-primary/25 focus-within:shadow-[0_8px_26px_rgba(16,24,20,0.08)] focus-within:ring-2 focus-within:ring-primary/5',
         lg ? 'p-2.5 pl-5' : 'p-2 pl-4',
         className,
       )}
@@ -88,15 +88,15 @@ export function ConversationalSearch({
         placeholder={placeholder}
         aria-label={placeholder}
         className={cn(
-          'min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground',
-          lg ? 'py-2.5 text-base' : 'py-2 text-[15px]',
+          'min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/80',
+          lg ? 'py-2.5 text-[15px] placeholder:text-sm' : 'py-2 text-sm',
         )}
       />
       <button
         type="submit"
         aria-label="Buscar imóveis"
         className={cn(
-          'flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_14px_rgba(35,120,55,0.35)] transition-all duration-200 hover:scale-105 hover:bg-eme-600 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+          'flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_12px_rgba(35,120,55,0.22)] transition-[background-color,transform] duration-200 hover:scale-[1.03] hover:bg-eme-600 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
           lg ? 'h-12 w-12' : 'h-11 w-11',
         )}
       >

@@ -109,4 +109,74 @@ test.describe('Marketplace público', () => {
     await expect(page.getByRole('button', { name: /perfil público ainda indisponível/ })).toBeDisabled()
     await expectNoHorizontalOverflow(page)
   })
+
+  test('home refina busca, rodapé e ambientes sem conteúdo repetido', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 960 })
+    await page.goto('/imoveis')
+
+    await expect(page.getByPlaceholder('Procuro um apartamento para alugar perto do centro')).toBeVisible()
+    await expect(page.getByText('Tecnologia imobiliária', { exact: true })).toBeAttached()
+
+    const explorer = page.getByRole('heading', { name: 'Explore cada detalhe' }).locator('..').locator('..')
+    await explorer.getByRole('button', { name: 'Cozinha' }).click()
+    await expect(page.getByAltText('Ambiente ilustrativo: Cozinha')).toBeVisible()
+    await explorer.getByRole('button', { name: 'Suíte' }).click()
+    await expect(page.getByAltText('Ambiente ilustrativo: Suíte')).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('Assistente EME abre limpo e usa a busca publicada', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 960 })
+    await page.goto('/imoveis')
+    await page.getByRole('button', { name: /Assistente EME/ }).first().click()
+
+    const dialog = page.getByRole('dialog', { name: 'Assistente EME' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText(/Procuro uma casa em Vacaria/)).toHaveCount(0)
+    await dialog.getByLabel('Conte o que você procura').fill('apartamento para investir')
+    await dialog.getByRole('button', { name: 'Enviar mensagem' }).click()
+    await expect(dialog.getByText('apartamento para investir', { exact: true })).toBeVisible()
+    await expect(dialog.getByText(/imóvel publicado|imóveis publicados|Não encontrei um imóvel publicado/)).toBeVisible()
+    await dialog.getByRole('button', { name: 'Fechar Assistente EME' }).click()
+    await expect(dialog).toBeHidden()
+  })
+
+  test('mobile mantém hero, assistente e scroll sem overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/imoveis')
+    const hero = await page.getByRole('heading', { name: /Seu próximo imóvel/ }).boundingBox()
+    expect(hero!.y).toBeGreaterThan(95)
+
+    await page.getByRole('button', { name: 'Abrir menu' }).click()
+    await page.getByRole('button', { name: /Assistente EME/ }).click()
+    await expect(page.getByRole('dialog', { name: 'Assistente EME' })).toBeVisible()
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
+    await expectNoHorizontalOverflow(page)
+    await page.getByRole('button', { name: 'Fechar Assistente EME' }).click()
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('detalhe usa informações reais/fallback e mapa aproximado funcional', async ({ page }) => {
+    await page.goto('/imoveis/busca')
+    const propertyLink = page.locator('a[href^="/imoveis/imovel/"]').first()
+    await expect(propertyLink).toBeVisible({ timeout: 20_000 })
+    await propertyLink.click()
+
+    await expect(page).toHaveURL(/\/imoveis\/imovel\//)
+    await expect(page.getByRole('heading', { name: 'Antes de decidir' })).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('heading', { name: 'Antes de decidir' }).scrollIntoViewIfNeeded()
+    await expect(page.getByRole('heading', { name: 'Informações confirmadas' })).toBeVisible()
+    await expect(page.getByTitle(/Mapa aproximado de/)).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Abrir mapa' })).toHaveAttribute('href', /google\.com\/maps\/search/)
+  })
+
+  test('perfil de corretor sustenta avaliações com dados reais ou estado vazio', async ({ page }) => {
+    await page.goto('/imoveis/corretores')
+    const brokerLink = page.locator('a[href^="/imoveis/corretores/"]').first()
+    await expect(brokerLink).toBeVisible({ timeout: 20_000 })
+    await brokerLink.click()
+
+    await expect(page.getByRole('heading', { name: 'Avaliações de clientes' })).toBeVisible()
+    await expect(page.getByText(/Nenhuma avaliação publicada|Resumo disponível/)).toBeVisible()
+  })
 })

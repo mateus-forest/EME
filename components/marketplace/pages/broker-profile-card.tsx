@@ -55,7 +55,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
       <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-4">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
           <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden="true" />
-          {broker.reviewCount > 0 ? `${broker.rating.toFixed(1).replace('.', ',')} · ${broker.reviewCount} avaliações` : 'Sem avaliações ainda'}
+          {broker.reviewCount > 0 ? `${broker.rating.toFixed(1).replace('.', ',')} · ${broker.reviewCount} avaliações` : 'Perfil novo · sem avaliações'}
         </span>
         <span className="text-sm font-medium text-primary transition-transform duration-300 group-hover:translate-x-0.5">
           Ver perfil &rarr;

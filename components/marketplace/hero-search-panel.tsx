@@ -28,7 +28,7 @@ export function HeroSearchPanel() {
     <>
       <ConversationalSearch
         size="lg"
-        placeholder="Quero uma casa com pátio em Vacaria, até R$ 750 mil..."
+        placeholder="Procuro um apartamento para alugar perto do centro"
         value={query}
         onValueChange={setQuery}
         onSubmitQuery={(value) => runSearch(value)}

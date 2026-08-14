@@ -113,11 +113,11 @@ export function Header() {
           onClick={openAssistant}
           aria-expanded={assistantOpen}
           aria-haspopup="dialog"
-          className="group flex items-center gap-1.5 rounded-full border border-border/70 bg-background/85 py-1 pl-1.5 pr-2.5 text-xs font-medium text-foreground shadow-[var(--shadow-soft)] outline-none transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus-visible:ring-4 focus-visible:ring-primary/15"
+          className="group flex items-center gap-1.5 rounded-full border border-border/60 bg-background/85 py-1 pl-1 pr-2.5 text-[11px] font-medium text-foreground shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[var(--shadow-soft)] focus-visible:ring-2 focus-visible:ring-primary/15"
         >
-          <AssistantMark size="sm" className="h-7 w-7" />
+          <AssistantMark size="sm" className="h-6 w-6" />
           <span>Assistente EME</span>
-          <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_4px_rgba(43,167,94,.10)]" aria-label="Online" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_3px_rgba(43,167,94,.08)]" aria-label="Online" />
         </button>
 
         <a

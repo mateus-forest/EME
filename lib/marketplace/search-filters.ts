@@ -86,6 +86,27 @@ export function mergeMarketplaceFilters(base: MarketplaceFilters, inferred: Mark
   }
 }
 
+export function replaceInferredMarketplaceFilters(
+  current: MarketplaceFilters,
+  previousQuery: string,
+  nextQuery: string,
+  results: SearchResult[] = [],
+) {
+  const previous = inferMarketplaceFilters(previousQuery, results)
+  const next: MarketplaceFilters = {
+    ...current,
+    features: current.features.filter((feature) => !previous.features.includes(feature)),
+    intentions: current.intentions.filter((intent) => !previous.intentions.includes(intent)),
+  }
+  const fields: Array<keyof Omit<MarketplaceFilters, 'features' | 'intentions'>> = [
+    'purpose', 'propertyType', 'location', 'priceMin', 'priceMax', 'bedrooms', 'bathrooms', 'parking', 'areaMin',
+  ]
+  fields.forEach((field) => {
+    if (previous[field] !== undefined && current[field] === previous[field]) delete next[field]
+  })
+  return mergeMarketplaceFilters(next, inferMarketplaceFilters(nextQuery, results))
+}
+
 export function filtersFromSearchParams(source: SearchParamSource, results: SearchResult[] = []): MarketplaceFilters {
   const rawPurpose = readParam(source, 'finalidade')
   const rawType = readParam(source, 'tipo')
@@ -180,14 +201,31 @@ export function removeFilterCriterion(filters: MarketplaceFilters, key: Criteria
   return next
 }
 
-const textStopWords = new Set(['a', 'o', 'as', 'os', 'de', 'do', 'da', 'em', 'com', 'para', 'por', 'ate', 'no', 'na', 'mais', 'menos', 'r', 'mil', 'milhao', 'milhoes', 'comprar', 'compra', 'venda', 'alugar', 'aluguel', 'locacao', 'casa', 'apartamento', 'apto', 'sobrado', 'terreno', 'lote', 'comercial', 'quarto', 'quartos', 'banheiro', 'banheiros', 'vaga', 'vagas', 'm2', 'metros', 'quadrados'])
+const textStopWords = new Set(['a', 'o', 'as', 'os', 'um', 'uma', 'de', 'do', 'da', 'em', 'com', 'para', 'por', 'ate', 'no', 'na', 'mais', 'menos', 'quero', 'procuro', 'busco', 'algo', 'opcao', 'imovel', 'imoveis', 'minha', 'meu', 'faixa', 'valor', 'orcamento', 'r', 'mil', 'milhao', 'milhoes', 'comprar', 'compra', 'venda', 'alugar', 'aluguel', 'locacao', 'casa', 'apartamento', 'apto', 'sobrado', 'terreno', 'lote', 'comercial', 'quarto', 'quartos', 'banheiro', 'banheiros', 'vaga', 'vagas', 'm2', 'metros', 'quadrados'])
 function queryTokens(query: string) {
   return normalizeMarketplaceText(query).split(/[^a-z0-9]+/).filter((token) => token.length > 1 && !textStopWords.has(token) && !/^\d+$/.test(token))
 }
 
+function queryTextScore(result: SearchResult, tokens: string[]) {
+  const title = normalizeMarketplaceText(result.title)
+  const location = normalizeMarketplaceText(`${result.neighborhood} ${result.city} ${result.state} ${result.region}`)
+  return tokens.reduce((score, token) => {
+    if (title.includes(token)) return score + 4
+    if (location.includes(token)) return score + 3
+    if (result.searchableText.includes(token)) return score + 1
+    return score
+  }, 0)
+}
+
 export function filterSearchResults(results: SearchResult[], filters: MarketplaceFilters, query = '') {
   const location = normalizeMarketplaceText(filters.location)
-  const tokens = filters.intentions.length ? [] : queryTokens(query)
+  const tokens = queryTokens(query)
+  const hasObjectiveFilters = Boolean(
+    filters.purpose || filters.propertyType || filters.location || filters.priceMin || filters.priceMax
+    || filters.bedrooms || filters.bathrooms || filters.parking || filters.areaMin || filters.features.length,
+  )
+  const purchasePrices = results.filter((result) => result.purpose === 'compra' && result.price > 0).map((result) => result.price).sort((a, b) => a - b)
+  const affordableThreshold = purchasePrices[Math.max(0, Math.ceil(purchasePrices.length * 0.4) - 1)]
   const filtered = results.filter((result) => {
     if (filters.purpose && result.purpose !== filters.purpose) return false
     if (filters.propertyType && result.propertyType !== filters.propertyType) return false
@@ -201,12 +239,39 @@ export function filterSearchResults(results: SearchResult[], filters: Marketplac
     if (filters.features.includes('patio') && !result.patio) return false
     if (filters.features.includes('mobiliado') && !result.furnished) return false
     if (filters.features.includes('novo') && !result.isNew) return false
-    return tokens.every((token) => result.searchableText.includes(token))
+    return true
   })
-  if (!filters.intentions.length) return filtered
-  return filtered.map((result) => {
+  const ranked = filtered.map((result) => {
     const score = intentScore(result, filters.intentions)
     const reasons = intentReasons(result, filters.intentions)
-    return { ...result, compatibility: score >= 6 ? 'muito' as const : score >= 3 ? 'boa' as const : 'considerar' as const, reasons: reasons.length ? [...reasons, ...result.reasons].slice(0, 3) : result.reasons, intentCompatibilityScore: score }
-  }).sort((a, b) => b.intentCompatibilityScore - a.intentCompatibilityScore)
+    const relativeFirstHomeScore = filters.intentions.includes('primeiro-imovel')
+      && affordableThreshold
+      && result.purpose === 'compra'
+      && result.price <= affordableThreshold
+      ? 3
+      : 0
+    const relevanceScore = score + queryTextScore(result, tokens) + relativeFirstHomeScore + (hasObjectiveFilters ? 3 : 0)
+    const rankedReasons = relativeFirstHomeScore
+      ? ['Entre as faixas mais acessíveis da carteira publicada', ...reasons]
+      : reasons
+    return {
+      ...result,
+      relevanceScore,
+      compatibility: relevanceScore >= 8
+        ? 'muito' as const
+        : relevanceScore >= 3
+          ? 'boa' as const
+          : result.compatibility,
+      reasons: rankedReasons.length ? [...rankedReasons, ...result.reasons].slice(0, 3) : result.reasons,
+    }
+  })
+  const hasSemanticIntent = filters.intentions.length > 0
+  const meaningfulQuery = tokens.length > 0
+  const intentMatches = hasSemanticIntent
+    ? ranked.filter((result) => intentScore(result, filters.intentions) > 0)
+    : ranked
+  const eligible = hasSemanticIntent && intentMatches.length ? intentMatches : ranked
+  return eligible
+    .filter((result) => hasSemanticIntent || !meaningfulQuery || (result.relevanceScore ?? 0) > 0)
+    .sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))
 }

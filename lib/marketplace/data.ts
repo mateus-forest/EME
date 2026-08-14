@@ -21,9 +21,25 @@ export const features: Feature[] = [
 ]
 
 // Conteúdo visual editorial da exploração; não representa dados de um imóvel publicado.
-export const environments = ['Sala', 'Cozinha', 'Suíte', 'Área externa'] as const
-export const environmentHighlights = [
-  { title: 'Área social integrada', verified: true },
-  { title: 'Boa iluminação natural', verified: true },
-  { title: 'Pátio amplo', verified: true },
-]
+export const environments = [
+  {
+    label: 'Sala',
+    image: '/marketplace/images/imovel-1842-sala.png',
+    highlights: ['Área social integrada', 'Boa iluminação natural'],
+  },
+  {
+    label: 'Cozinha',
+    image: '/marketplace/images/imovel-1842-cozinha.png',
+    highlights: ['Bancada de apoio', 'Circulação bem resolvida'],
+  },
+  {
+    label: 'Suíte',
+    image: '/marketplace/images/imovel-1842-suite.png',
+    highlights: ['Ambiente reservado', 'Luz natural'],
+  },
+  {
+    label: 'Área externa',
+    image: '/marketplace/images/imovel-1842-area-externa.png',
+    highlights: ['Espaço ao ar livre', 'Integração com a área social'],
+  },
+] as const
