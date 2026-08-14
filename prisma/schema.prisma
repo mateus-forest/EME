@@ -125,10 +125,21 @@ enum MarketplaceMessageSender {
   BROKER
 }
 
+enum MarketplaceMessageKind {
+  TEXT
+  PROPERTY
+  PROPOSAL
+}
+
 enum MarketplaceReviewStatus {
   PENDING_REVIEW
   APPROVED
   REJECTED
+}
+
+enum MarketplaceReviewOrigin {
+  POST_CHAT
+  PUBLIC_PROFILE
 }
 
 model User {
@@ -780,6 +791,7 @@ model Lead {
   documents                 BrokerDocument[]
   contractTemplateInstances ContractTemplateInstance[]
   marketplaceConversations  MarketplaceConversation[]
+  marketplaceReviews        MarketplaceReview[]
 
   @@index([propertyId])
   @@index([brokerId])
@@ -803,7 +815,7 @@ model MarketplaceConversation {
   reviewRequestedAt DateTime?
   createdAt         DateTime                      @default(now())
   updatedAt         DateTime                      @updatedAt
-  broker            Broker                       @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  broker            Broker                        @relation(fields: [brokerId], references: [id], onDelete: Cascade)
   property          Property?                     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   lead              Lead?                         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   messages          MarketplaceMessage[]
@@ -819,7 +831,9 @@ model MarketplaceMessage {
   id             String                   @id @default(cuid())
   conversationId String
   sender         MarketplaceMessageSender
+  kind           MarketplaceMessageKind   @default(TEXT)
   body           String
+  metadata       Json?
   readAt         DateTime?
   createdAt      DateTime                 @default(now())
   conversation   MarketplaceConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -828,20 +842,37 @@ model MarketplaceMessage {
 }
 
 model MarketplaceReview {
-  id               String                   @id @default(cuid())
-  conversationId   String                   @unique
-  brokerId         String
-  authorName       String
-  rating           Int
-  comment          String
-  status           MarketplaceReviewStatus  @default(PENDING_REVIEW)
-  moderatedAt      DateTime?
-  moderatorUserId  String?
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-  conversation     MarketplaceConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  broker           Broker                   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  id                  String                   @id @default(cuid())
+  conversationId      String?                  @unique
+  brokerId            String
+  leadId              String?
+  authorName          String
+  authorPhone         String?
+  rating              Int
+  comment             String
+  origin              MarketplaceReviewOrigin  @default(PUBLIC_PROFILE)
+  verified            Boolean                  @default(false)
+  attendanceConfirmed Boolean                  @default(false)
+  status              MarketplaceReviewStatus  @default(PENDING_REVIEW)
+  moderatedAt         DateTime?
+  moderatorUserId     String?
+  rejectionReason     String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  conversation        MarketplaceConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  broker              Broker                   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead                Lead?                    @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@index([brokerId, status, createdAt])
+  @@index([brokerId, authorPhone, createdAt])
+  @@index([leadId])
   @@index([status, createdAt])
+}
+
+model MarketplaceRegionMedia {
+  slug        String   @id
+  displayName String?
+  imageUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

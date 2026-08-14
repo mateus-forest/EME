@@ -14,7 +14,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   try {
     const { id } = await params
-    const review = await moderateMarketplaceReview(id, body.status, user.id)
+    const review = await moderateMarketplaceReview(
+      id,
+      body.status,
+      user.id,
+      typeof body?.reason === 'string' ? body.reason : undefined,
+    )
     return NextResponse.json({ review })
   } catch {
     return NextResponse.json({ error: 'Avaliação não encontrada.' }, { status: 404 })

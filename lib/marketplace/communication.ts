@@ -29,7 +29,7 @@ export function serializeMarketplaceConversation(conversation: {
   createdAt: Date
   property: { id: string; title: string; marketplaceSlug: string | null } | null
   broker: { id: string; catalogSlug: string; phone: string; user: { name: string; photoUrl: string | null } }
-  messages: Array<{ id: string; sender: string; body: string; readAt: Date | null; createdAt: Date }>
+  messages: Array<{ id: string; sender: string; kind: string; body: string; metadata: unknown; readAt: Date | null; createdAt: Date }>
   review: { id: string; rating: number; comment: string; status: string; createdAt: Date } | null
 }) {
   return {
@@ -55,7 +55,9 @@ export function serializeMarketplaceConversation(conversation: {
     messages: conversation.messages.map((message) => ({
       id: message.id,
       sender: message.sender,
+      kind: message.kind,
       body: message.body,
+      metadata: message.metadata,
       readAt: message.readAt?.toISOString() ?? null,
       createdAt: message.createdAt.toISOString(),
     })),
@@ -219,6 +221,138 @@ export async function addBrokerMarketplaceMessage(brokerId: string, conversation
   if (conversation.status !== 'OPEN') throw new Error('CONVERSATION_CLOSED')
   await prisma.$transaction([
     prisma.marketplaceMessage.create({ data: { conversationId, sender: 'BROKER', body } }),
+    prisma.marketplaceConversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } }),
+    ...(conversation.leadId
+      ? [prisma.lead.update({ where: { id: conversation.leadId }, data: { status: 'CONTACTED' } })]
+      : []),
+  ])
+}
+
+function firstImage(value: unknown) {
+  return Array.isArray(value) ? value.find((item): item is string => typeof item === 'string' && item.length > 0) ?? '' : ''
+}
+
+export async function getBrokerMarketplaceShareOptions(brokerId: string, conversationId: string) {
+  const conversation = await prisma.marketplaceConversation.findFirst({
+    where: { id: conversationId, brokerId },
+    select: { id: true, leadId: true, propertyId: true },
+  })
+  if (!conversation) throw new Error('CONVERSATION_NOT_FOUND')
+
+  const compatibility = [
+    ...(conversation.leadId ? [{ leadId: conversation.leadId }] : []),
+    ...(conversation.propertyId ? [{ propertyId: conversation.propertyId }] : []),
+  ]
+  const [properties, proposals] = await Promise.all([
+    prisma.property.findMany({
+      where: { brokerId, marketplacePublished: true },
+      select: {
+        id: true,
+        title: true,
+        city: true,
+        neighborhood: true,
+        price: true,
+        imageUrls: true,
+        marketplaceSlug: true,
+      },
+      orderBy: { marketplacePublishedAt: 'desc' },
+      take: 40,
+    }),
+    compatibility.length
+      ? prisma.brokerDocument.findMany({
+          where: { brokerId, type: 'proposal', status: { not: 'archived' }, OR: compatibility },
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            leadId: true,
+            propertyId: true,
+            updatedAt: true,
+            property: { select: { title: true } },
+          },
+          orderBy: { updatedAt: 'desc' },
+          take: 30,
+        })
+      : Promise.resolve([]),
+  ])
+
+  return {
+    properties: properties.map((property) => ({
+      id: property.id,
+      title: property.title,
+      location: [property.neighborhood, property.city].filter(Boolean).join(', '),
+      price: property.price,
+      image: firstImage(property.imageUrls),
+      slug: property.marketplaceSlug,
+    })),
+    proposals: proposals.map((proposal) => ({
+      id: proposal.id,
+      title: proposal.title,
+      status: proposal.status,
+      propertyTitle: proposal.property?.title ?? '',
+      updatedAt: proposal.updatedAt.toISOString(),
+    })),
+  }
+}
+
+export async function addBrokerMarketplaceShare(
+  brokerId: string,
+  conversationId: string,
+  kind: 'PROPERTY' | 'PROPOSAL',
+  referenceId: string,
+) {
+  const conversation = await prisma.marketplaceConversation.findFirst({
+    where: { id: conversationId, brokerId },
+    select: { id: true, status: true, leadId: true, propertyId: true },
+  })
+  if (!conversation) throw new Error('CONVERSATION_NOT_FOUND')
+  if (conversation.status !== 'OPEN') throw new Error('CONVERSATION_CLOSED')
+
+  let body: string
+  let metadata: Record<string, string | number>
+  if (kind === 'PROPERTY') {
+    const property = await prisma.property.findFirst({
+      where: { id: referenceId, brokerId, marketplacePublished: true },
+      select: { id: true, title: true, city: true, neighborhood: true, price: true, imageUrls: true, marketplaceSlug: true },
+    })
+    if (!property) throw new Error('PROPERTY_NOT_FOUND')
+    body = `Imóvel compartilhado: ${property.title}`
+    metadata = {
+      propertyId: property.id,
+      title: property.title,
+      location: [property.neighborhood, property.city].filter(Boolean).join(', '),
+      price: property.price,
+      image: firstImage(property.imageUrls),
+      slug: property.marketplaceSlug ?? '',
+    }
+  } else {
+    const compatibleReferences = [
+      ...(conversation.leadId ? [{ leadId: conversation.leadId }] : []),
+      ...(conversation.propertyId ? [{ propertyId: conversation.propertyId }] : []),
+    ]
+    if (!compatibleReferences.length) throw new Error('PROPOSAL_NOT_COMPATIBLE')
+    const proposal = await prisma.brokerDocument.findFirst({
+      where: {
+        id: referenceId,
+        brokerId,
+        type: 'proposal',
+        status: { not: 'archived' },
+        OR: compatibleReferences,
+      },
+      select: { id: true, title: true, status: true, property: { select: { title: true } } },
+    })
+    if (!proposal) throw new Error('PROPOSAL_NOT_COMPATIBLE')
+    body = `Proposta compartilhada: ${proposal.title}`
+    metadata = {
+      proposalId: proposal.id,
+      title: proposal.title,
+      status: proposal.status,
+      propertyTitle: proposal.property?.title ?? '',
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.marketplaceMessage.create({ data: { conversationId, sender: 'BROKER', kind, body, metadata } }),
     prisma.marketplaceConversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } }),
     ...(conversation.leadId
       ? [prisma.lead.update({ where: { id: conversation.leadId }, data: { status: 'CONTACTED' } })]

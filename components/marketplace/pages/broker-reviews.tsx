@@ -1,5 +1,6 @@
 import { MessageSquareText, ShieldCheck, Star } from 'lucide-react'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
+import { PublicBrokerReviewButton } from '@/components/marketplace/pages/public-broker-review-button'
 
 export function BrokerReviews({ broker }: { broker: BrokerProfile }) {
   const hasAggregate = broker.reviewCount > 0 && broker.rating > 0
@@ -15,12 +16,15 @@ export function BrokerReviews({ broker }: { broker: BrokerProfile }) {
             Apenas avaliações registradas no EME entram na nota pública do perfil.
           </p>
         </div>
-        {hasAggregate ? (
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-eme-50 px-4 py-2 text-sm font-semibold text-foreground">
-            <Star className="h-4 w-4 fill-primary text-primary" aria-hidden="true" />
-            {broker.rating.toFixed(1).replace('.', ',')} · {broker.reviewCount} {broker.reviewCount === 1 ? 'avaliação' : 'avaliações'}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {hasAggregate ? (
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-eme-50 px-4 py-2 text-sm font-semibold text-foreground">
+              <Star className="h-4 w-4 fill-primary text-primary" aria-hidden="true" />
+              {broker.rating.toFixed(1).replace('.', ',')} · {broker.reviewCount} {broker.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+            </div>
+          ) : null}
+          <PublicBrokerReviewButton brokerSlug={broker.slug} brokerName={broker.name} />
+        </div>
       </div>
 
       {broker.reviews.length ? (

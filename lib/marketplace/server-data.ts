@@ -202,7 +202,7 @@ const marketplaceBrokerInclude = {
     where: { status: 'APPROVED' as const },
     orderBy: { createdAt: 'desc' as const },
     take: 6,
-    select: { id: true, authorName: true, rating: true, comment: true, createdAt: true },
+    select: { id: true, authorName: true, rating: true, comment: true, verified: true, createdAt: true },
   },
   _count: { select: { properties: { where: { marketplacePublished: true } } } },
 } satisfies Prisma.BrokerInclude
@@ -233,7 +233,7 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
       rating: review.rating,
       comment: review.comment,
       publishedAtLabel: review.createdAt.toLocaleDateString('pt-BR'),
-      verified: true,
+      verified: review.verified,
     })),
     featured: record.marketplaceFeatured,
     verified: Boolean(record.creci),
@@ -389,7 +389,7 @@ export function marketplaceRegionSlug(value: string) {
 }
 
 export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
-  const [properties, events] = await Promise.all([
+  const [properties, events, regionMedia] = await Promise.all([
     getMarketplaceProperties(),
     prisma.searchEvent.findMany({
       where: { source: 'marketplace' },
@@ -397,7 +397,9 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
       orderBy: { createdAt: 'desc' },
       take: 500,
     }),
+    prisma.marketplaceRegionMedia.findMany({ select: { slug: true, imageUrl: true } }),
   ])
+  const imageBySlug = new Map(regionMedia.map((item) => [item.slug, item.imageUrl]))
   const groups = new Map<string, MarketplaceRegion>()
 
   for (const property of properties) {
@@ -408,7 +410,7 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
       slug,
       name,
       description: `Inventário publicado em ${name}, atualizado diretamente pelos corretores da rede EME.`,
-      image: '',
+      image: imageBySlug.get(slug) || '',
       properties: 0,
       forSale: 0,
       forRent: 0,

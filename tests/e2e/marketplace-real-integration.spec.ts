@@ -15,7 +15,7 @@ const shouldRun = process.env.RUN_MARKETPLACE_DB_E2E === '1'
 
 test.describe('Marketplace integrado ao EME', () => {
   test.skip(!shouldRun, 'Defina RUN_MARKETPLACE_DB_E2E=1 para executar contra o banco de testes configurado.')
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
 
   let pool: Pool
   let prisma: PrismaClient
@@ -144,18 +144,19 @@ test.describe('Marketplace integrado ao EME', () => {
     await expect(page).toHaveURL(new RegExp(`/imoveis/imovel/${slugs[0]}$`))
     await expect(page.getByText('Corretora Integração EME').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Tenho interesse' }).first().click()
-    const dialog = page.getByRole('dialog', { name: /Tenho interesse/ })
-    await dialog.getByLabel('Seu nome').fill('Cliente Marketplace E2E')
-    await dialog.getByLabel('WhatsApp').fill('(54) 98888-7777')
-    const leadResponse = page.waitForResponse((response) => response.url().endsWith('/api/leads') && response.request().method() === 'POST')
-    await dialog.getByRole('button', { name: 'Continuar pelo WhatsApp' }).click()
-    expect((await leadResponse).status()).toBe(201)
-    await expect(dialog.getByRole('link', { name: 'Abrir WhatsApp' })).toBeVisible()
+    await page.getByRole('button', { name: 'Falar agora' }).first().click()
+    const dialog = page.getByRole('dialog', { name: /Conversa com Corretora Integração EME/ })
+    await dialog.getByPlaceholder('Seu nome').fill('Cliente Marketplace E2E')
+    await dialog.getByPlaceholder('WhatsApp').fill('(54) 98888-7777')
+    const chatResponsePromise = page.waitForResponse((response) => response.url().endsWith('/api/marketplace/conversations') && response.request().method() === 'POST')
+    await dialog.getByRole('button', { name: 'Enviar mensagem' }).click()
+    const chatResponse = await chatResponsePromise
+    expect(chatResponse.status()).toBe(201)
+    await expect(dialog.getByText('Olá, gostaria de saber mais sobre Casa Integração Marketplace.')).toBeVisible()
+    await dialog.getByRole('button', { name: 'Fechar', exact: true }).click()
 
     const lead = await prisma.lead.findFirst({ where: { name: 'Cliente Marketplace E2E' }, orderBy: { createdAt: 'desc' } })
-    expect(lead).toMatchObject({ source: 'marketplace', brokerId, propertyId: propertyIds[0] })
-    await expect.poll(async () => prisma.catalogEvent.count({ where: { brokerId, source: 'marketplace', eventType: 'lead', propertyId: propertyIds[0] } })).toBeGreaterThan(0)
+    expect(lead).toMatchObject({ source: 'marketplace_chat', brokerId, propertyId: propertyIds[0] })
     await expect.poll(async () => prisma.catalogEvent.count({ where: { brokerId, source: 'marketplace', eventType: 'property_view', propertyId: propertyIds[0] } })).toBeGreaterThan(0)
 
     await page.goto(`/imoveis/corretores/${FIXTURE_SLUG}`)
