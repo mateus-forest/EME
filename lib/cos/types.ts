@@ -143,6 +143,75 @@ export type CosCapabilityDomain =
   | "operation"
   | "document"
 
+export type CosDialogueAct =
+  | "execute"
+  | "query"
+  | "explain"
+  | "capability_question"
+  | "correct"
+  | "confirm"
+  | "reject"
+  | "cancel"
+  | "select"
+  | "switch_topic"
+  | "return_topic"
+  | "provide_input"
+  | "social"
+  | "unknown"
+
+export type CosConversationDomain =
+  | "lead"
+  | "property"
+  | "proposal"
+  | "contract"
+  | "agenda"
+  | "catalog"
+  | "marketplace"
+  | "finance"
+  | "analytics"
+  | "studio"
+  | "help"
+  | "general"
+
+export type CosDialogueDecisionCandidate = {
+  capabilityId: CosCapabilityId
+  action: AssessorAction
+  title: string
+  domain: CosConversationDomain
+  score: number
+  confidence: number
+  evidence: string[]
+  mutatesData: boolean
+}
+
+export type CosDialogueDecision = {
+  schemaVersion: 1
+  dialogueAct: CosDialogueAct
+  dialogueActConfidence: number
+  dialogueActEvidence: string[]
+  primaryDomain: CosConversationDomain
+  secondaryDomains: CosConversationDomain[]
+  objective: {
+    mode: "execute" | "query" | "explain" | "respond" | "continue" | "clarify"
+    summary: string
+    targetCapabilityId: CosCapabilityId | null
+  }
+  reference: {
+    type: CosConversationEntityType | null
+    id: string | null
+    label: string | null
+    reason: string
+    ambiguousIds: string[]
+  }
+  selectedCapabilityId: CosCapabilityId | null
+  selectedAction: AssessorAction | null
+  candidateCapabilities: CosDialogueDecisionCandidate[]
+  workflowDecision: "continue_workflow" | "start_new" | "none"
+  needsClarification: boolean
+  clarificationReason: string | null
+  source: "explicit_interface" | "dialogue_rules" | "snapshot_context" | "registry" | "fallback"
+}
+
 export type CosCapabilityEntity =
   | "conversation"
   | "property"
@@ -478,6 +547,7 @@ export type CosNormalizedContext = {
   workflow: CosWorkflow | null
   memory: CosConversationMemory | null
   snapshot: CosConversationSnapshot | null
+  decision: CosDialogueDecision | null
   attachments: CosAttachmentInput[]
   selectedEntityIds: Partial<Record<CosWorkspaceEntity, string>>
 }

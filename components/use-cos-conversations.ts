@@ -657,6 +657,7 @@ export function useCosConversations({
               workflow: null,
               memory: null,
               snapshot: null,
+              decision: null,
               attachments: options?.attachments ?? [],
               selectedEntityIds: {},
             },

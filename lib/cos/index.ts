@@ -55,6 +55,11 @@ export {
   updateCosConversationSnapshot,
   COS_RECENT_MESSAGE_LIMIT,
 } from "@/lib/cos/conversation-snapshot"
+export {
+  COS_DECISION_CONFIDENCE,
+  listCosRoutableCapabilityDescriptors,
+  resolveCosDialogueDecision,
+} from "@/lib/cos/conversation-decision"
 export { deriveWorkspaceContextFromPathname, sanitizeWorkspaceContext } from "@/lib/cos/workspace-context"
 export { cosEntityModules } from "@/lib/cos/entities"
 export type {
@@ -74,6 +79,9 @@ export type {
   CosCapabilitySurface,
   CosConversationMemory,
   CosConversationSnapshot,
+  CosConversationDomain,
+  CosDialogueAct,
+  CosDialogueDecision,
   CosExecutionPlan,
   CosExecutionPlanGap,
   CosExecutionPlanResult,

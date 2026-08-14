@@ -10,7 +10,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
-import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosExecutionPlanGap, CosNormalizedContext, CosPendingInput, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
+import type { CosCapabilityDescriptor, CosCapabilityId, CosCapabilitySurface, CosConversationDomain, CosDialogueDecision, CosExecutionPlanGap, CosNormalizedContext, CosPendingInput, CosPlannerKind, CosWorkspaceContext } from "@/lib/cos/types"
 
 const aiPlanStepSchema = z.object({
   id: z.string().trim().min(1).max(40),
@@ -83,9 +83,29 @@ function normalizeText(value: string) {
     .trim()
 }
 
-function summarizeCapabilities(surface: CosCapabilitySurface) {
+function capabilityConversationDomain(capability: CosCapabilityDescriptor): CosConversationDomain {
+  if (capability.id.startsWith("help.")) return "help"
+  if (capability.domain === "analytics" || capability.domain === "operation") return "analytics"
+  if (capability.domain === "studio") return "studio"
+  if (["lead", "property", "proposal", "contract", "agenda", "catalog", "finance", "general"].includes(capability.domain)) {
+    return capability.domain as CosConversationDomain
+  }
+  return "general"
+}
+
+function filterCapabilities(surface: CosCapabilitySurface, decision?: CosDialogueDecision | null) {
+  const domains = new Set(decision ? [decision.primaryDomain, ...decision.secondaryDomains] : [])
+  const candidateIds = new Set(decision?.candidateCapabilities.map((candidate) => candidate.capabilityId) ?? [])
   return listCosCapabilityCatalog()
-    .filter((capability) => capability.surfaces.includes(surface))
+    .filter((capability) => {
+      if (!capability.surfaces.includes(surface)) return false
+      if (!decision) return true
+      return capability.id === decision.selectedCapabilityId || candidateIds.has(capability.id) || domains.has(capabilityConversationDomain(capability))
+    })
+}
+
+function summarizeCapabilities(surface: CosCapabilitySurface, decision?: CosDialogueDecision | null) {
+  return filterCapabilities(surface, decision)
     .map((capability) => ({
       id: capability.id,
       title: capability.title,
@@ -124,6 +144,37 @@ function buildPendingSummary(pendingInput: CosPendingInput | null | undefined) {
   }
 }
 
+function buildDecisionSummary(decision: CosDialogueDecision | null | undefined) {
+  if (!decision) return null
+  return {
+    dialogueAct: decision.dialogueAct,
+    confidence: decision.dialogueActConfidence,
+    primaryDomain: decision.primaryDomain,
+    secondaryDomains: decision.secondaryDomains,
+    objective: decision.objective,
+    selectedCapabilityId: decision.selectedCapabilityId,
+    candidateCapabilityIds: decision.candidateCapabilities.map((candidate) => candidate.capabilityId),
+    reference: decision.reference.type && decision.reference.id
+      ? { type: decision.reference.type, id: decision.reference.id, reason: decision.reference.reason }
+      : null,
+  }
+}
+
+function buildSnapshotSummary(context: CosNormalizedContext | null | undefined) {
+  const snapshot = context?.snapshot
+  if (!snapshot) return null
+  return {
+    currentTopic: snapshot.currentTopic?.domain ?? null,
+    recentTopics: snapshot.recentTopics.map((topic) => topic.domain),
+    activeEntityTypes: Object.keys(snapshot.activeEntities),
+    selectionSetTypes: snapshot.selectionSets.map((selection) => selection.type),
+    lastAction: snapshot.lastAction,
+    lastExecution: snapshot.lastExecution
+      ? { capabilityId: snapshot.lastExecution.capabilityId, status: snapshot.lastExecution.status }
+      : null,
+  }
+}
+
 function buildPlannerPrompt(input: {
   message: string
   surface: CosCapabilitySurface
@@ -131,6 +182,8 @@ function buildPlannerPrompt(input: {
   pendingInput: CosPendingInput | null
   activeWorkflowSummary?: Record<string, unknown> | null
   capabilities: ReturnType<typeof summarizeCapabilities>
+  decision?: CosDialogueDecision | null
+  context?: CosNormalizedContext | null
 }) {
   return [
     "Planeje um Execution Plan para o COS.",
@@ -145,6 +198,8 @@ function buildPlannerPrompt(input: {
     `Workspace Context: ${JSON.stringify(buildWorkspaceSummary(input.workspace))}`,
     `Pending Input: ${JSON.stringify(buildPendingSummary(input.pendingInput))}`,
     `Workflow ativo: ${JSON.stringify(input.activeWorkflowSummary ?? null)}`,
+    `Dialogue Decision: ${JSON.stringify(buildDecisionSummary(input.decision))}`,
+    `Conversation Snapshot resumido: ${JSON.stringify(buildSnapshotSummary(input.context))}`,
     "",
     "Capabilities disponiveis:",
     JSON.stringify(input.capabilities),
@@ -243,6 +298,9 @@ function shouldTryAiOrchestrator(input: {
   if (input.pendingInput) return { shouldTry: false, triggerReason: null }
   if (input.recipeMatched) return { shouldTry: false, triggerReason: null }
   if (input.requestedAction) return { shouldTry: false, triggerReason: null }
+  if (input.context?.decision && !["execute", "query"].includes(input.context.decision.dialogueAct)) {
+    return { shouldTry: false, triggerReason: null }
+  }
 
   const normalized = normalizeText(input.message)
   const strategySignals = [
@@ -283,10 +341,12 @@ export async function generateCosAiExecutionPlan(input: {
   activeWorkflowSummary?: Record<string, unknown> | null
   triggerReason: string
   responseOverride?: unknown
+  decision?: CosDialogueDecision | null
 }) : Promise<CosAiOrchestratorResult> {
   const startedAt = Date.now()
   const { enabled, model } = getOpenAIEnv()
-  const capabilities = summarizeCapabilities(input.surface)
+  const capabilityDescriptors = filterCapabilities(input.surface, input.decision)
+  const capabilities = summarizeCapabilities(input.surface, input.decision)
   const prompt = buildPlannerPrompt({
     message: input.message,
     surface: input.surface,
@@ -294,6 +354,8 @@ export async function generateCosAiExecutionPlan(input: {
     pendingInput: input.pendingInput,
     activeWorkflowSummary: input.activeWorkflowSummary,
     capabilities,
+    decision: input.decision,
+    context: input.context,
   })
 
   const buildAudit = (overrides: Partial<CosAiOrchestratorAudit>): CosAiOrchestratorAudit => ({
@@ -372,7 +434,7 @@ export async function generateCosAiExecutionPlan(input: {
     const parsed = aiPlanSchema.parse(parsedRaw)
     const validationErrors = validatePlan({
       parsed,
-      capabilities: listCosCapabilityCatalog().filter((capability) => capability.surfaces.includes(input.surface)),
+      capabilities: capabilityDescriptors,
       surface: input.surface,
     })
     const usage = getUsageMetrics(response as { usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } })

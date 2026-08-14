@@ -1,0 +1,355 @@
+import { expect, test } from "@playwright/test"
+
+import { listCosRoutableCapabilityDescriptors, resolveCosDialogueDecision } from "@/lib/cos/conversation-decision"
+import { findCosExecutionRecipe } from "@/lib/cos/execution-recipes"
+import { createPendingInput } from "@/lib/cos/pending-input"
+import type {
+  CosConversationEntityReference,
+  CosConversationSnapshot,
+  CosPendingInput,
+  CosWorkflow,
+} from "@/lib/cos/types"
+
+const NOW = "2026-08-14T12:00:00.000Z"
+
+function entity(type: CosConversationEntityReference["type"], id: string, label: string): CosConversationEntityReference {
+  return {
+    type,
+    id,
+    label,
+    source: "execution",
+    lastMentionedAt: NOW,
+    confidence: 1,
+    evidence: "decision-test",
+  }
+}
+
+function snapshot(overrides: Partial<CosConversationSnapshot> = {}): CosConversationSnapshot {
+  return {
+    schemaVersion: 1,
+    conversationId: "conversation",
+    recentMessages: [],
+    activeWorkflow: null,
+    pendingInput: null,
+    currentTopic: null,
+    recentTopics: [],
+    activeEntities: {},
+    recentEntities: [],
+    recentResults: [],
+    selectionSets: [],
+    lastAction: null,
+    lastExecution: null,
+    temporalContext: { today: "2026-08-14", references: {} },
+    workspace: null,
+    updatedAt: NOW,
+    ...overrides,
+  }
+}
+
+function workflow(action: CosWorkflow["steps"][number]["action"], capabilityId: CosWorkflow["steps"][number]["capabilityId"], pendingInput: CosPendingInput): CosWorkflow {
+  return {
+    id: `workflow-${capabilityId}`,
+    conversationId: "conversation",
+    status: "awaiting_input",
+    executionPlan: {
+      id: `plan-${capabilityId}`,
+      source: "single",
+      reason: "decision-test",
+      message: "",
+      surface: "portal",
+      workspace: null,
+      unresolvedGoals: [],
+    },
+    currentStep: 0,
+    steps: [{
+      id: "step-1",
+      order: 0,
+      entity: pendingInput.entity,
+      capabilityId,
+      action,
+      status: "awaiting_input",
+      dependsOn: [],
+      durationMs: null,
+      errorMessage: null,
+      resultResponse: null,
+      resultMetadata: null,
+    }],
+    pendingInput,
+    startedAt: NOW,
+    updatedAt: NOW,
+    completedAt: null,
+    pausedAt: NOW,
+    totalPausedMs: 0,
+  }
+}
+
+function decide(message: string, input: {
+  snapshot?: CosConversationSnapshot | null
+  workflow?: CosWorkflow | null
+} = {}) {
+  return resolveCosDialogueDecision({
+    message,
+    requestedAction: null,
+    surface: "portal",
+    workspace: null,
+    snapshot: input.snapshot ?? null,
+    activeWorkflow: input.workflow ?? null,
+    memory: null,
+    attachments: [],
+  })
+}
+
+function proposalWorkflow() {
+  const pending = createPendingInput({
+    field: "lead",
+    type: "selection",
+    action: "CREATE_PROPOSAL",
+    entity: "proposal",
+    capabilityId: "proposal.create",
+    parsedData: { price: 90_000_000 },
+    options: [{ id: "lead-1", label: "João" }],
+    now: new Date(NOW),
+  })
+  return workflow("CREATE_PROPOSAL", "proposal.create", pending)
+}
+
+function phoneWorkflow() {
+  const pending = createPendingInput({
+    field: "phone",
+    type: "phone",
+    action: "createLead",
+    entity: "lead",
+    capabilityId: "lead.create",
+    parsedData: { extractedName: "Marina" },
+    now: new Date(NOW),
+  })
+  return workflow("createLead", "lead.create", pending)
+}
+
+function propertySelectionSnapshot() {
+  const propertyTopic = {
+    id: "topic-properties",
+    domain: "property" as const,
+    label: "Imóveis em Porto Alegre",
+    entityType: "property" as const,
+    selectionSetId: "selection-properties",
+    startedAt: NOW,
+    lastMentionedAt: NOW,
+  }
+  return snapshot({
+    currentTopic: propertyTopic,
+    selectionSets: [{
+      id: "selection-properties",
+      type: "property",
+      items: [
+        { index: 1, entity: entity("property", "property-1", "Apartamento Centro") },
+        { index: 2, entity: entity("property", "property-2", "Casa Moinhos") },
+      ],
+      query: "imóveis em Porto Alegre",
+      topicId: propertyTopic.id,
+      createdAt: NOW,
+      expiresAt: "2026-08-20T12:00:00.000Z",
+    }],
+  })
+}
+
+test.describe("COS — Decision Layer da Etapa 2C", () => {
+  test("A — execução explícita", () => {
+    const result = decide("Cadastre o cliente João da Silva.")
+    expect(result.dialogueAct).toBe("execute")
+    expect(result.primaryDomain).toBe("lead")
+    expect(result.selectedAction).toBe("createLead")
+  })
+
+  test("B — pergunta de capacidade não executa cadastro", () => {
+    const result = decide("Você consegue cadastrar um cliente?")
+    expect(result.dialogueAct).toBe("capability_question")
+    expect(result.primaryDomain).toBe("lead")
+    expect(result.objective.targetCapabilityId).toBe("lead.create")
+    expect(result.selectedAction).toBe("general")
+  })
+
+  test("C — agenda query usa consulta", () => {
+    const result = decide("Tenho compromisso amanhã?")
+    expect(result.dialogueAct).toBe("query")
+    expect(result.primaryDomain).toBe("agenda")
+    expect(result.selectedAction).toBe("LIST_AGENDA_EVENTS")
+  })
+
+  test("D — agenda execute usa criação", () => {
+    const result = decide("Crie um compromisso amanhã às 15h.")
+    expect(result.dialogueAct).toBe("execute")
+    expect(result.primaryDomain).toBe("agenda")
+    expect(result.selectedAction).toBe("CREATE_AGENDA_EVENT")
+  })
+
+  test("E — correção preserva a proposta atual", () => {
+    const active = proposalWorkflow()
+    const result = decide("Na verdade coloca 850 mil.", { workflow: active, snapshot: snapshot({ activeWorkflow: active, pendingInput: active.pendingInput }) })
+    expect(result.dialogueAct).toBe("correct")
+    expect(result.primaryDomain).toBe("proposal")
+    expect(result.selectedAction).toBe("CREATE_PROPOSAL")
+    expect(result.workflowDecision).toBe("continue_workflow")
+  })
+
+  test("F — pronome consulta o imóvel ativo, não analytics", () => {
+    const property = entity("property", "property-2", "Casa B")
+    const result = decide("Quantos metros ele tem?", { snapshot: snapshot({ activeEntities: { property }, recentEntities: [property] }) })
+    expect(result.dialogueAct).toBe("query")
+    expect(result.primaryDomain).toBe("property")
+    expect(result.reference.id).toBe("property-2")
+    expect(result.selectedAction).toBe("GET_PROPERTY")
+  })
+
+  test("G — explicação não compartilha catálogo", () => {
+    const result = decide("Qual a diferença entre catálogo e Marketplace?")
+    expect(result.dialogueAct).toBe("explain")
+    expect(result.primaryDomain).toBe("catalog")
+    expect(result.secondaryDomains).toContain("marketplace")
+    expect(result.selectedAction).toBe("help_general_question")
+    expect(result.selectedAction).not.toBe("SHARE_CATALOG")
+  })
+
+  test("H — retorno usa tópico e selection set anteriores", () => {
+    const properties = propertySelectionSnapshot()
+    const leadTopic = {
+      id: "topic-leads",
+      domain: "lead" as const,
+      label: "Clientes",
+      entityType: "lead" as const,
+      selectionSetId: null,
+      startedAt: NOW,
+      lastMentionedAt: NOW,
+    }
+    const result = decide("Voltando aos imóveis, abre o primeiro.", {
+      snapshot: { ...properties, currentTopic: leadTopic, recentTopics: [properties.currentTopic!] },
+    })
+    expect(result.dialogueAct).toBe("return_topic")
+    expect(result.primaryDomain).toBe("property")
+    expect(result.reference.id).toBe("property-1")
+    expect(result.selectedAction).toBe("GET_PROPERTY")
+  })
+
+  test("I — telefone responde ao pending", () => {
+    const active = phoneWorkflow()
+    const result = decide("54 99999-9999", { workflow: active, snapshot: snapshot({ activeWorkflow: active, pendingInput: active.pendingInput }) })
+    expect(result.dialogueAct).toBe("provide_input")
+    expect(result.selectedAction).toBe("createLead")
+  })
+
+  test("J — pergunta de imóvel interrompe pending de telefone", () => {
+    const active = phoneWorkflow()
+    const result = decide("Quantos imóveis tenho publicados?", {
+      workflow: active,
+      snapshot: snapshot({
+        activeWorkflow: active,
+        pendingInput: active.pendingInput,
+        currentTopic: {
+          id: "topic-lead",
+          domain: "lead",
+          label: "Cadastro da Marina",
+          entityType: "lead",
+          selectionSetId: null,
+          startedAt: NOW,
+          lastMentionedAt: NOW,
+        },
+      }),
+    })
+    expect(result.dialogueAct).toBe("switch_topic")
+    expect([result.primaryDomain, ...result.secondaryDomains]).toContain("property")
+    expect(result.selectedAction).not.toBe("createLead")
+    expect(result.workflowDecision).toBe("start_new")
+  })
+
+  test("K — não isolado rejeita confirmação pendente", () => {
+    const pending = createPendingInput({
+      field: "confirmation",
+      type: "confirmation",
+      action: "DELETE_LEAD",
+      entity: "lead",
+      capabilityId: "lead.delete",
+      now: new Date(NOW),
+    })
+    const active = workflow("DELETE_LEAD", "lead.delete", pending)
+    expect(decide("não", { workflow: active }).dialogueAct).toBe("reject")
+  })
+
+  test("L — não com novo valor é correção", () => {
+    const active = proposalWorkflow()
+    expect(decide("não, o valor é 850 mil", { workflow: active }).dialogueAct).toBe("correct")
+  })
+
+  test("M — ordinal seleciona item da lista", () => {
+    const result = decide("o segundo", { snapshot: propertySelectionSnapshot() })
+    expect(result.dialogueAct).toBe("select")
+    expect(result.reference.id).toBe("property-2")
+    expect(result.selectedAction).toBe("GET_PROPERTY")
+  })
+
+  test("N — telefone consulta cliente ativo", () => {
+    const lead = entity("lead", "lead-joao", "João")
+    const result = decide("qual o telefone dela?", { snapshot: snapshot({ activeEntities: { lead }, recentEntities: [lead] }) })
+    expect(result.dialogueAct).toBe("query")
+    expect(result.primaryDomain).toBe("lead")
+    expect(result.reference.id).toBe("lead-joao")
+    expect(result.selectedAction).toBe("FIND_LEAD")
+  })
+
+  test("O — objetivo multi-step permite recipe dependente", () => {
+    const message = "Cadastre a Ana e depois crie uma proposta para o imóvel da Rua X."
+    const decision = decide(message)
+    const recipe = findCosExecutionRecipe({ message, workspace: null, decision })
+    expect(decision.dialogueAct).toBe("execute")
+    expect(decision.primaryDomain).toBe("lead")
+    expect(decision.selectedAction).toBe("createLead")
+    expect(recipe?.id).toBe("lead_create_then_proposal")
+  })
+})
+
+test.describe("COS — decisão de agenda", () => {
+  for (const scenario of [
+    ["Quais compromissos tenho hoje?", "query", "LIST_AGENDA_TODAY"],
+    ["Mostre meus compromissos de amanhã.", "query", "LIST_AGENDA_EVENTS"],
+    ["Como está minha agenda da semana?", "query", "LIST_AGENDA_WEEK"],
+    ["Qual é meu próximo compromisso?", "query", "LIST_AGENDA_EVENTS"],
+    ["Crie um compromisso amanhã às 15h.", "execute", "CREATE_AGENDA_EVENT"],
+    ["Altere o compromisso para amanhã às 16h.", "execute", "UPDATE_AGENDA_EVENT"],
+    ["Cancele o compromisso de amanhã.", "execute", "CANCEL_AGENDA_EVENT"],
+    ["Conclua o compromisso de hoje.", "execute", "MARK_AGENDA_DONE"],
+  ] as const) {
+    test(`${scenario[0]} → ${scenario[2]}`, () => {
+      const result = decide(scenario[0])
+      expect(result.dialogueAct).toBe(scenario[1])
+      expect(result.primaryDomain).toBe("agenda")
+      expect(result.selectedAction).toBe(scenario[2])
+    })
+  }
+})
+
+test.describe("COS — cobertura do Registry e perguntas de capacidade", () => {
+  test("deriva 73 actions roteáveis do Registry do portal", () => {
+    const descriptors = listCosRoutableCapabilityDescriptors("portal")
+    const actions = new Set(descriptors.map((descriptor) => descriptor.action))
+    expect(descriptors).toHaveLength(73)
+    expect(actions.size).toBe(73)
+    for (const action of ["LIST_AGENDA_TODAY", "LIST_AGENDA_WEEK", "GET_FINANCE_CASHFLOW", "CONTRACT_PREVIEW", "GET_PROPERTY"]) {
+      expect(actions.has(action as never)).toBe(true)
+    }
+  })
+
+  for (const scenario of [
+    ["Você consegue cadastrar um imóvel?", "property", "property.create"],
+    ["Dá para criar uma proposta por aqui?", "proposal", "proposal.create"],
+    ["Você consegue criar um contrato?", "contract", "contract.create"],
+    ["Você consegue marcar um compromisso?", "agenda", "agenda.create"],
+    ["Dá para gerar um vídeo no Studio IA?", "studio", "studio.generateVideo"],
+  ] as const) {
+    test(`${scenario[0]} não executa`, () => {
+      const result = decide(scenario[0])
+      expect(result.dialogueAct).toBe("capability_question")
+      expect(result.primaryDomain).toBe(scenario[1])
+      expect(result.objective.targetCapabilityId).toBe(scenario[2])
+      expect(result.selectedAction).toBe("general")
+    })
+  }
+})

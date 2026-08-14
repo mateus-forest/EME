@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
+import { createCosNormalizedContext } from "@/lib/cos/context"
 import type {
   CosCapabilityId,
   CosConversationMemory,
+  CosConversationSnapshot,
   CosEntityModuleId,
   CosPendingInput,
   CosWorkflow,
@@ -61,7 +63,22 @@ function buildWorkflow(input: {
 function resolve(message: string, input?: {
   activeWorkflow?: CosWorkflow | null
   memory?: CosConversationMemory | null
+  snapshot?: CosConversationSnapshot | null
 }) {
+  const context = input?.snapshot
+    ? createCosNormalizedContext({
+        brokerId: "broker",
+        userId: "user",
+        actor: { firstName: "Teste" },
+        surface: "portal",
+        message,
+        workspace: null,
+        workflow: input?.activeWorkflow ?? null,
+        memory: input?.memory ?? null,
+        snapshot: input.snapshot,
+        attachments: [],
+      })
+    : null
   return resolveCosIntent({
     message,
     requestedAction: null,
@@ -69,10 +86,11 @@ function resolve(message: string, input?: {
     workspace: null,
     activeWorkflow: input?.activeWorkflow ?? null,
     memory: input?.memory ?? null,
+    context,
   })
 }
 
-test.describe("COS — diagnóstico da arquitetura conversacional atual", () => {
+test.describe("COS — diagnóstico A–J após a Decision Layer", () => {
   test("A — criação simples é classificada como cadastro de lead", () => {
     const result = resolve("Cadastre o cliente João da Silva.")
 
@@ -80,7 +98,7 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
     expect(result.workflowDecision).toBe("start_new")
   })
 
-  test("B — telefone continua o fluxo, mas e-mail posterior perde a edição da entidade criada", () => {
+  test("B — telefone e e-mail preservam a Marina como entidade ativa", () => {
     const workflow = buildWorkflow({
       action: "createLead",
       capabilityId: "lead.create",
@@ -110,11 +128,10 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
         updatedAt: NOW,
       },
     })
-    expect(email.requestedAction).toBe("CREATE_PROPOSAL")
-    expect(email.requestedAction).not.toBe("UPDATE_LEAD")
+    expect(email.requestedAction).toBe("UPDATE_LEAD")
   })
 
-  test("C — correção de valor abandona o fluxo de proposta em vez de alterar o dado pendente", () => {
+  test("C — correção de valor preserva o workflow de proposta", () => {
     const workflow = buildWorkflow({
       action: "CREATE_PROPOSAL",
       capabilityId: "proposal.create",
@@ -133,11 +150,11 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
 
     const result = resolve("Na verdade coloca R$ 850 mil.", { activeWorkflow: workflow })
 
-    expect(result.requestedAction).toBe("LIST_PROPOSALS")
-    expect(result.workflowDecision).toBe("start_new")
+    expect(result.requestedAction).toBe("CREATE_PROPOSAL")
+    expect(result.workflowDecision).toBe("continue_workflow")
   })
 
-  test("D — ordinal funciona apenas no pending; pronome posterior vira analytics", () => {
+  test("D — ordinal e pronome permanecem no domínio do imóvel", () => {
     const workflow = buildWorkflow({
       action: "searchProperties",
       capabilityId: "property.search",
@@ -171,12 +188,12 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
         updatedAt: NOW,
       },
     })
-    expect(pronoun.requestedAction).toBe("GET_ANALYTICS_PROPERTIES")
+    expect(pronoun.requestedAction).toBe("GET_PROPERTY")
   })
 
-  test("E — consulta de agenda é classificada como criação; troca para leads inicia novo fluxo", () => {
+  test("E — consulta de agenda não vira criação; troca para leads inicia novo fluxo", () => {
     const agenda = resolve("Tenho compromisso amanhã?")
-    expect(agenda.requestedAction).toBe("CREATE_AGENDA_EVENT")
+    expect(agenda.requestedAction).toBe("LIST_AGENDA_EVENTS")
 
     const workflow = buildWorkflow({
       action: "CREATE_AGENDA_EVENT",
@@ -197,7 +214,58 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
     expect(leads.workflowDecision).toBe("start_new")
   })
 
-  test("F — retorno aos imóveis não recupera a lista ou o primeiro item anterior", () => {
+  test("F — retorno aos imóveis recupera a lista e o primeiro item anterior", () => {
+    const propertyEntity = {
+      type: "property" as const,
+      id: "property-1",
+      label: "Apartamento Centro",
+      source: "selection" as const,
+      lastMentionedAt: NOW,
+      confidence: 1,
+      evidence: "diagnostic-selection",
+    }
+    const snapshot: CosConversationSnapshot = {
+      schemaVersion: 1,
+      conversationId: "diagnostic-conversation",
+      recentMessages: [],
+      activeWorkflow: null,
+      pendingInput: null,
+      currentTopic: {
+        id: "topic-leads",
+        domain: "lead",
+        label: "Clientes",
+        entityType: "lead",
+        selectionSetId: null,
+        startedAt: NOW,
+        lastMentionedAt: NOW,
+      },
+      recentTopics: [{
+        id: "topic-properties",
+        domain: "property",
+        label: "Imóveis em Porto Alegre",
+        entityType: "property",
+        selectionSetId: "selection-properties",
+        startedAt: NOW,
+        lastMentionedAt: NOW,
+      }],
+      activeEntities: {},
+      recentEntities: [propertyEntity],
+      recentResults: [],
+      selectionSets: [{
+        id: "selection-properties",
+        type: "property",
+        items: [{ index: 1, entity: propertyEntity }],
+        query: "Porto Alegre",
+        topicId: "topic-properties",
+        createdAt: NOW,
+        expiresAt: "2026-08-20T12:00:00.000Z",
+      }],
+      lastAction: "FIND_LEAD",
+      lastExecution: null,
+      temporalContext: { today: "2026-08-14", references: {} },
+      workspace: null,
+      updatedAt: NOW,
+    }
     const result = resolve("Voltando aos imóveis, abre o primeiro.", {
       memory: {
         leadId: "lead-1",
@@ -207,23 +275,24 @@ test.describe("COS — diagnóstico da arquitetura conversacional atual", () => 
         lastResult: "Clientes encontrados.",
         updatedAt: NOW,
       },
+      snapshot,
     })
 
-    expect(result.requestedAction).toBe("GET_ANALYTICS_PROPERTIES")
-    expect(result.requestedAction).not.toBe("searchProperties")
+    expect(result.requestedAction).toBe("GET_PROPERTY")
   })
 
-  test("G — pergunta sobre Catálogo e Marketplace é tratada como compartilhamento", () => {
+  test("G — pergunta sobre Catálogo e Marketplace vira explicação", () => {
     const result = resolve("Qual a diferença entre catálogo e Marketplace?")
 
-    expect(result.requestedAction).toBe("SHARE_CATALOG")
+    expect(result.requestedAction).toBe("help_general_question")
     expect(result.workflowDecision).toBe("start_new")
   })
 
-  test("H — pergunta de capacidade é interpretada como ordem de execução", () => {
+  test("H — pergunta de capacidade não inicia execução", () => {
     const result = resolve("Você consegue cadastrar um cliente para mim?")
 
-    expect(result.requestedAction).toBe("createLead")
+    expect(result.requestedAction).toBe("general")
+    expect(result.dialogueDecision.dialogueAct).toBe("capability_question")
     expect(result.workflowDecision).toBe("start_new")
   })
 

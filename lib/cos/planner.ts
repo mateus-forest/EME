@@ -1,6 +1,7 @@
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
 import {
   getCosCapabilityDescriptorByAliasOrAction,
+  getCosCapabilityDescriptorById,
   getCosEntityModuleIdByCapabilityId,
   listCosCapabilityCatalog,
 } from "@/lib/cos/capability-catalog"
@@ -460,6 +461,25 @@ function getPendingCatalogCandidate(input: {
   }
 }
 
+function getDialogueDecisionCandidate(input: {
+  context?: CosNormalizedContext | null
+  surface: CosCapabilitySurface
+}) {
+  const decision = input.context?.decision
+  if (!decision?.selectedCapabilityId) return null
+  const descriptor = getCosCapabilityDescriptorById(decision.selectedCapabilityId)
+  if (!descriptor || !descriptor.surfaces.includes(input.surface)) return null
+  const selectedCandidate = decision.candidateCapabilities.find((candidate) => candidate.capabilityId === descriptor.id)
+
+  return {
+    descriptor,
+    confidence: selectedCandidate?.confidence ?? decision.dialogueActConfidence,
+    workspaceEntityUsed: null as CosWorkspaceEntity | null,
+    workspaceEntityIdUsed: null as string | null,
+    reason: `Decision Layer selecionou ${descriptor.id} (${decision.dialogueAct}/${decision.primaryDomain})`,
+  }
+}
+
 function pickCatalogCandidate(input: {
   message: string
   requestedAction?: string
@@ -558,7 +578,11 @@ export function planCosCapability(input: {
     workspace,
     context: input.context ?? null,
   })
-  const catalogCandidate = directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
+  const decisionCandidate = getDialogueDecisionCandidate({
+    context: input.context ?? null,
+    surface,
+  })
+  const catalogCandidate = decisionCandidate ?? directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
   const usePendingContext = Boolean(pendingCatalogCandidate)
   const resolvedSource: CosCapabilityPlanSource = "catalog"
   const resolvedAction = catalogCandidate?.descriptor.action ?? "general"

@@ -18,6 +18,7 @@ import {
   classifyCosPendingReply,
   createCosNormalizedContext,
   createWorkflowFromExecutionPlan,
+  doesCosCapabilityMutateData,
   formatCosExecutionPlanResponse,
   formatWorkflowOperationDetails,
   getActiveWorkflow,
@@ -29,6 +30,7 @@ import {
   normalizeCosAttachments,
   planCosExecution,
   rebuildExecutionPlanFromWorkflow,
+  resolveCosDialogueDecision,
   resolveCosContextualTurn,
   resumeWorkflowExecution,
   resumeWorkflowState,
@@ -41,6 +43,7 @@ import {
   updateCosConversationSnapshot,
   COS_RECENT_MESSAGE_LIMIT,
   type CosAttachmentInput as CosIncomingAttachment,
+  type CosDialogueDecision,
   type CosWorkflow,
 } from "@/lib/cos"
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
@@ -339,6 +342,7 @@ function buildDecisionAudit(input: {
     capabilityId: string
     plannerTelemetry: Prisma.InputJsonObject | null
   } | null
+  dialogueDecision?: CosDialogueDecision | null
 }) {
   return {
     fastAction:
@@ -356,6 +360,34 @@ function buildDecisionAudit(input: {
     requestedAction: input.requestedAction,
     effectiveRequestedAction: input.effectiveRequestedAction,
     resolvedRequestedAction: input.resolvedRequestedAction,
+    dialogue:
+      input.dialogueDecision
+        ? {
+            act: input.dialogueDecision.dialogueAct,
+            confidence: input.dialogueDecision.dialogueActConfidence,
+            evidence: input.dialogueDecision.dialogueActEvidence,
+            primaryDomain: input.dialogueDecision.primaryDomain,
+            secondaryDomains: input.dialogueDecision.secondaryDomains,
+            reference: {
+              type: input.dialogueDecision.reference.type,
+              id: input.dialogueDecision.reference.id,
+              reason: input.dialogueDecision.reference.reason,
+              ambiguousIds: input.dialogueDecision.reference.ambiguousIds,
+            },
+            objective: input.dialogueDecision.objective,
+            selectedCapability: input.dialogueDecision.selectedCapabilityId,
+            selectedAction: input.dialogueDecision.selectedAction,
+            candidateCapabilities: input.dialogueDecision.candidateCapabilities.map((candidate) => ({
+              capabilityId: candidate.capabilityId,
+              action: candidate.action,
+              confidence: candidate.confidence,
+              evidence: candidate.evidence,
+            })),
+            workflowDecision: input.dialogueDecision.workflowDecision,
+            clarificationReason: input.dialogueDecision.clarificationReason,
+            source: input.dialogueDecision.source,
+          }
+        : null,
     intent:
       input.intentResolution
         ? {
@@ -766,6 +798,19 @@ export async function POST(request: NextRequest) {
       isCancellation = true
       creditsUsed = 0
     }
+    const preflightDialogueDecision = resolveCosDialogueDecision({
+      message,
+      requestedAction,
+      surface,
+      workspace,
+      snapshot: getConversationSnapshot(conversationDocument?.content),
+      activeWorkflow,
+      memory: conversationMemory,
+      attachments,
+    })
+    if (["social", "explain", "capability_question"].includes(preflightDialogueDecision.dialogueAct)) {
+      creditsUsed = 0
+    }
 
     const brokerState = await prisma.broker.findUnique({
       where: { id: user.broker.id },
@@ -833,7 +878,7 @@ export async function POST(request: NextRequest) {
     const contextualActiveWorkflow = contextualTurn.workflow
     const structuredSelectionMessage = resolveStructuredSelectionMessage(contextualActiveWorkflow, selectedOptionId)
     const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
-    const normalizedContext = createCosNormalizedContext({
+    const baseNormalizedContext = createCosNormalizedContext({
       brokerId: user.broker.id,
       userId: user.id,
       actor: {
@@ -847,8 +892,26 @@ export async function POST(request: NextRequest) {
       snapshot: conversationSnapshot,
       attachments: effectiveAttachments,
     })
+    let dialogueDecision = resolveCosDialogueDecision({
+      message: structuredSelectionMessage ?? message,
+      requestedAction,
+      surface,
+      workspace,
+      snapshot: conversationSnapshot,
+      activeWorkflow: contextualActiveWorkflow,
+      memory: conversationMemory,
+      attachments: effectiveAttachments,
+    })
+    const normalizedContext = {
+      ...baseNormalizedContext,
+      decision: dialogueDecision,
+    }
     const fastAction =
-      !requestedAction && !contextualTurn.requestedAction && !isCancellation && !socialIntent
+      !requestedAction &&
+      !contextualTurn.requestedAction &&
+      !isCancellation &&
+      !socialIntent &&
+      !["explain", "capability_question", "correct", "confirm", "reject", "cancel", "provide_input"].includes(dialogueDecision.dialogueAct)
         ? resolveFastCosAction({
             message,
             workspace,
@@ -858,8 +921,9 @@ export async function POST(request: NextRequest) {
     const effectiveRequestedAction =
       requestedAction ||
       contextualTurn.requestedAction ||
-      (socialIntent ? "general" : null) ||
-      (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null)
+      (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null) ||
+      dialogueDecision.selectedAction ||
+      (socialIntent ? "general" : null)
 
     if (fastAction.kind === "clarify") {
       const brokerCredits = await getBrokerCredits(user.broker.id)
@@ -881,6 +945,7 @@ export async function POST(request: NextRequest) {
           requestedAction,
           effectiveRequestedAction,
           resolvedRequestedAction: null,
+          dialogueDecision,
           intentResolution: null,
           executionPlan: null,
         }),
@@ -940,7 +1005,14 @@ export async function POST(request: NextRequest) {
       activeWorkflow: contextualActiveWorkflow,
       memory: conversationMemory,
       context: normalizedContext,
+      decision: dialogueDecision,
+      isExplicitAction: Boolean(requestedAction),
     })
+    dialogueDecision = intentResolution.dialogueDecision
+    const decisionContext = {
+      ...normalizedContext,
+      decision: dialogueDecision,
+    }
     const resolvedRequestedAction = intentResolution.requestedAction ?? effectiveRequestedAction
     const activeWorkflowAction =
       contextualActiveWorkflow?.steps[contextualActiveWorkflow.currentStep]?.action ??
@@ -961,11 +1033,17 @@ export async function POST(request: NextRequest) {
         ? contextualActiveWorkflow
         : null
 
-    if (intentResolution.confidence < 0.6) {
+    if (intentResolution.confidence < 0.6 || dialogueDecision.needsClarification) {
       const clarificationOptions = buildIntentClarificationOptions(intentResolution.candidates)
-      if (clarificationOptions) {
+      if (clarificationOptions || dialogueDecision.needsClarification) {
         const brokerCredits = await getBrokerCredits(user.broker.id)
-        const clarificationResponse = "Quero ter certeza antes de seguir.\n\nVoce quis dizer uma destas acoes?"
+        const clarificationResponse = clarificationOptions
+          ? "Quero ter certeza antes de seguir.\n\nVocê quis dizer uma destas ações?"
+          : dialogueDecision.clarificationReason === "selection_context_missing"
+            ? "Preciso saber a qual item você está se referindo. Mostre a lista novamente ou informe o nome do cliente, imóvel, proposta ou contrato."
+            : dialogueDecision.clarificationReason === "return_topic_not_found"
+              ? "Não encontrei esse assunto entre os tópicos recentes. Diga qual cliente, imóvel, proposta ou contrato você quer retomar."
+              : `Entendi que você quer ${dialogueDecision.objective.mode === "query" ? "consultar" : "executar algo em"} ${dialogueDecision.primaryDomain}, mas preciso de um detalhe a mais para escolher a operação correta.`
         const interactionMetadata = {
           source: metadataSource,
           parsedIntent: "general",
@@ -981,6 +1059,7 @@ export async function POST(request: NextRequest) {
             requestedAction,
             effectiveRequestedAction,
             resolvedRequestedAction,
+            dialogueDecision,
             intentResolution: {
               requestedAction: intentResolution.requestedAction,
               confidence: intentResolution.confidence,
@@ -1068,6 +1147,7 @@ export async function POST(request: NextRequest) {
           requestedAction,
           effectiveRequestedAction,
           resolvedRequestedAction,
+          dialogueDecision,
           intentResolution: {
             requestedAction: intentResolution.requestedAction,
             confidence: intentResolution.confidence,
@@ -1146,7 +1226,7 @@ export async function POST(request: NextRequest) {
       ...(conversationSnapshot.activeEntities.agenda?.id ? { agendaEventId: conversationSnapshot.activeEntities.agenda.id } : {}),
       ...contextualTurn.payload,
       ...(effectiveAttachments.length > 0 ? { attachments: effectiveAttachments } : {}),
-      context: normalizedContext,
+      context: decisionContext,
     }
     const attachmentAnalysis = resumableWorkflow
       ? {
@@ -1179,12 +1259,16 @@ export async function POST(request: NextRequest) {
               planCosExecution({
                 message: executionMessage,
                 requestedAction: resolvedRequestedAction ?? undefined,
-                isExplicitAction: Boolean(effectiveRequestedAction),
+                isExplicitAction: Boolean(
+                  requestedAction ||
+                  fastAction.kind === "workflow_action" ||
+                  fastAction.kind === "workflow_details"
+                ),
                 pendingInput,
                 context: {
-                ...normalizedContext,
-                message: executionMessage,
-              },
+                  ...decisionContext,
+                  message: executionMessage,
+                },
               intentConfidence: intentResolution.confidence,
               intentReason: intentResolution.reason,
               surface,
@@ -1220,6 +1304,7 @@ export async function POST(request: NextRequest) {
           requestedAction,
           effectiveRequestedAction,
           resolvedRequestedAction,
+          dialogueDecision,
           intentResolution: {
             requestedAction: intentResolution.requestedAction,
             confidence: intentResolution.confidence,
@@ -1336,6 +1421,7 @@ export async function POST(request: NextRequest) {
           requestedAction,
           effectiveRequestedAction,
           resolvedRequestedAction,
+          dialogueDecision,
           intentResolution: {
             requestedAction: intentResolution.requestedAction,
             confidence: intentResolution.confidence,
@@ -1559,7 +1645,7 @@ export async function POST(request: NextRequest) {
             payload: {
               ...executionPayload,
               context: {
-                ...normalizedContext,
+                ...decisionContext,
                 message: executionMessage,
                 workflow,
               },
@@ -1649,10 +1735,16 @@ export async function POST(request: NextRequest) {
     }
 
     const actionMetadata = (executionResult?.metadata ?? {}) as Prisma.InputJsonObject
-    // Uma interação social não deve apagar um workflow operacional que já estava em andamento.
-    // O general.chat responde normalmente, mas a sessão preserva o estado anterior para a próxima
-    // mensagem do corretor.
-    const workflowToPersist = socialIntent && activeWorkflow ? activeWorkflow : updatedWorkflow
+    // Consultas e explicações podem interromper um pending sem destruir a operação transacional.
+    // O resultado consultado entra no snapshot/topic stack, enquanto o workflow mutável permanece
+    // disponível para uma retomada explícita e segura.
+    const preservesActiveWorkflow = Boolean(
+      activeWorkflow &&
+      dialogueDecision.workflowDecision === "start_new" &&
+      ["query", "explain", "capability_question", "switch_topic", "return_topic"].includes(dialogueDecision.dialogueAct) &&
+      !doesCosCapabilityMutateData(action),
+    )
+    const workflowToPersist = (socialIntent || preservesActiveWorkflow) && activeWorkflow ? activeWorkflow : updatedWorkflow
     const nextConversationMemory = buildConversationMemory({
       current: conversationMemory,
       workflow: workflowToPersist,
@@ -1736,6 +1828,7 @@ export async function POST(request: NextRequest) {
         requestedAction,
         effectiveRequestedAction,
         resolvedRequestedAction,
+        dialogueDecision,
         intentResolution: {
           requestedAction: intentResolution.requestedAction,
           confidence: intentResolution.confidence,

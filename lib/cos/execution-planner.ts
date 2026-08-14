@@ -530,6 +530,7 @@ export async function planCosExecution(input: {
     message: input.message,
     workspace,
     isExplicitAction: input.isExplicitAction,
+    decision: input.context?.decision ?? null,
   })
   if (matchedRecipe) {
     return buildRecipeExecutionPlan({
@@ -584,6 +585,7 @@ export async function planCosExecution(input: {
     activeWorkflowSummary: summarizeActiveWorkflow(input.activeWorkflow ?? null),
     triggerReason: aiTrigger.triggerReason ?? "deterministic_fallback",
     responseOverride: input.aiOrchestratorOverride,
+    decision: input.context?.decision ?? null,
   })
 
   if (aiPlan.accepted) {
