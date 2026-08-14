@@ -6,6 +6,7 @@ import { createPendingInput, extractPendingInputFromMetadata, isCosPendingInputE
 import type { Prisma } from "@prisma/client"
 import type {
   CosConversationMemory,
+  CosConversationSnapshot,
   CosExecutionPlan,
   CosExecutionPlanResult,
   CosExecutionStep,
@@ -18,10 +19,11 @@ import type {
 type ConversationEnvelope = {
   workflow: CosWorkflow | null
   memory?: CosConversationMemory | null
+  snapshot?: CosConversationSnapshot | null
 }
 
 function emptyEnvelope(): ConversationEnvelope {
-  return { workflow: null, memory: null }
+  return { workflow: null, memory: null, snapshot: null }
 }
 
 function recordValue(value: unknown) {
@@ -210,14 +212,19 @@ export function parseConversationWorkflowContent(content: string | null | undefi
       : null
     const workflow = rawWorkflow ? { ...rawWorkflow, pendingInput: normalizedPending } : null
     const memory = parsed?.memory && typeof parsed.memory === "object" ? (parsed.memory as CosConversationMemory) : null
-    return { workflow, memory }
+    const snapshot = parsed?.snapshot && typeof parsed.snapshot === "object" ? (parsed.snapshot as CosConversationSnapshot) : null
+    return { workflow, memory, snapshot }
   } catch {
     return emptyEnvelope()
   }
 }
 
-export function stringifyConversationWorkflowContent(workflow: CosWorkflow | null, memory?: CosConversationMemory | null) {
-  return JSON.stringify({ workflow, memory: memory ?? null })
+export function stringifyConversationWorkflowContent(
+  workflow: CosWorkflow | null,
+  memory?: CosConversationMemory | null,
+  snapshot?: CosConversationSnapshot | null,
+) {
+  return JSON.stringify({ workflow, memory: memory ?? null, snapshot: snapshot ?? null })
 }
 
 export function getActiveWorkflow(content: string | null | undefined) {
@@ -234,6 +241,10 @@ export function getActiveWorkflow(content: string | null | undefined) {
 
 export function getConversationMemory(content: string | null | undefined) {
   return parseConversationWorkflowContent(content).memory ?? null
+}
+
+export function getConversationSnapshot(content: string | null | undefined) {
+  return parseConversationWorkflowContent(content).snapshot ?? null
 }
 
 export function createWorkflowFromExecutionPlan(input: {

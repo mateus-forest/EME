@@ -13,6 +13,7 @@ import {
   type AssessorAction,
 } from "@/lib/eme-backend"
 import {
+  buildCosConversationSnapshot,
   cancelWorkflow,
   classifyCosPendingReply,
   createCosNormalizedContext,
@@ -21,12 +22,14 @@ import {
   formatWorkflowOperationDetails,
   getActiveWorkflow,
   getConversationMemory,
+  getConversationSnapshot,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
   isCosCapabilityAvailableOnSurface,
   normalizeCosAttachments,
   planCosExecution,
   rebuildExecutionPlanFromWorkflow,
+  resolveCosContextualTurn,
   resumeWorkflowExecution,
   resumeWorkflowState,
   runCosAttachmentPipeline,
@@ -35,6 +38,8 @@ import {
   shouldResumeWorkflow,
   stringifyConversationWorkflowContent,
   updateWorkflowFromExecutionResult,
+  updateCosConversationSnapshot,
+  COS_RECENT_MESSAGE_LIMIT,
   type CosAttachmentInput as CosIncomingAttachment,
   type CosWorkflow,
 } from "@/lib/cos"
@@ -162,10 +167,11 @@ async function persistConversationWorkflow(
   conversationId: string,
   workflow: CosWorkflow | null,
   memory?: import("@/lib/cos").CosConversationMemory | null,
+  snapshot?: import("@/lib/cos").CosConversationSnapshot | null,
 ) {
   return prisma.brokerDocument.update({
     where: { id: conversationId },
-    data: { content: stringifyConversationWorkflowContent(workflow, memory) },
+    data: { content: stringifyConversationWorkflowContent(workflow, memory, snapshot) },
     select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
   })
 }
@@ -788,7 +794,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const structuredSelectionMessage = resolveStructuredSelectionMessage(activeWorkflow, selectedOptionId)
+    const recentMessageRows = conversationDocument
+      ? await prisma.emeMessage.findMany({
+          where: {
+            brokerId: user.broker.id,
+            channel: "assessor_eme",
+            metadata: { path: ["conversationId"], equals: conversationDocument.id },
+          },
+          orderBy: { createdAt: "desc" },
+          take: COS_RECENT_MESSAGE_LIMIT,
+          select: {
+            id: true,
+            message: true,
+            response: true,
+            actionType: true,
+            actionStatus: true,
+            leadId: true,
+            propertyId: true,
+            metadata: true,
+            createdAt: true,
+          },
+        }).then((messages) => messages.reverse())
+      : []
+    const conversationSnapshot = buildCosConversationSnapshot({
+      conversationId: conversationDocument?.id ?? conversationIdFromBody,
+      message,
+      recentMessages: recentMessageRows,
+      activeWorkflow,
+      memory: conversationMemory,
+      persistedSnapshot: getConversationSnapshot(conversationDocument?.content),
+      workspace,
+    })
+    const contextualTurn = resolveCosContextualTurn({
+      message,
+      snapshot: conversationSnapshot,
+      activeWorkflow,
+    })
+    const contextualActiveWorkflow = contextualTurn.workflow
+    const structuredSelectionMessage = resolveStructuredSelectionMessage(contextualActiveWorkflow, selectedOptionId)
     const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
     const normalizedContext = createCosNormalizedContext({
       brokerId: user.broker.id,
@@ -799,12 +842,13 @@ export async function POST(request: NextRequest) {
       surface,
       message: structuredSelectionMessage ?? message,
       workspace,
-      workflow: activeWorkflow,
+      workflow: contextualActiveWorkflow,
       memory: conversationMemory,
+      snapshot: conversationSnapshot,
       attachments: effectiveAttachments,
     })
     const fastAction =
-      !requestedAction && !isCancellation && !socialIntent
+      !requestedAction && !contextualTurn.requestedAction && !isCancellation && !socialIntent
         ? resolveFastCosAction({
             message,
             workspace,
@@ -813,6 +857,7 @@ export async function POST(request: NextRequest) {
         : { kind: "none" as const, confidence: 0 }
     const effectiveRequestedAction =
       requestedAction ||
+      contextualTurn.requestedAction ||
       (socialIntent ? "general" : null) ||
       (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null)
 
@@ -892,14 +937,14 @@ export async function POST(request: NextRequest) {
       requestedAction: effectiveRequestedAction,
       attachments: effectiveAttachments,
       workspace,
-      activeWorkflow,
+      activeWorkflow: contextualActiveWorkflow,
       memory: conversationMemory,
       context: normalizedContext,
     })
     const resolvedRequestedAction = intentResolution.requestedAction ?? effectiveRequestedAction
     const activeWorkflowAction =
-      activeWorkflow?.steps[activeWorkflow.currentStep]?.action ??
-      activeWorkflow?.executionPlan.requestedAction ??
+      contextualActiveWorkflow?.steps[contextualActiveWorkflow.currentStep]?.action ??
+      contextualActiveWorkflow?.executionPlan.requestedAction ??
       null
     const hasExplicitNewAction =
       Boolean(effectiveRequestedAction) &&
@@ -910,10 +955,10 @@ export async function POST(request: NextRequest) {
       !activeWorkflowAction ||
       getCosActionDomain(activeWorkflowAction) === getCosActionDomain(effectiveRequestedAction)
     const resumableWorkflow =
-      shouldResumeWorkflow(activeWorkflow, message) &&
+      shouldResumeWorkflow(contextualActiveWorkflow, message) &&
       intentResolution.workflowDecision !== "start_new" &&
       workflowDomainsCompatible
-        ? activeWorkflow
+        ? contextualActiveWorkflow
         : null
 
     if (intentResolution.confidence < 0.6) {
@@ -1094,6 +1139,12 @@ export async function POST(request: NextRequest) {
       ...(conversationMemory?.leadId ? { leadId: conversationMemory.leadId } : {}),
       ...(conversationMemory?.propertyId ? { propertyId: conversationMemory.propertyId } : {}),
       ...(conversationMemory?.documentId ? { documentId: conversationMemory.documentId } : {}),
+      ...(conversationSnapshot.activeEntities.lead?.id ? { leadId: conversationSnapshot.activeEntities.lead.id } : {}),
+      ...(conversationSnapshot.activeEntities.property?.id ? { propertyId: conversationSnapshot.activeEntities.property.id } : {}),
+      ...(conversationSnapshot.activeEntities.contract?.id ? { contractId: conversationSnapshot.activeEntities.contract.id } : {}),
+      ...(conversationSnapshot.activeEntities.proposal?.id ? { documentId: conversationSnapshot.activeEntities.proposal.id } : {}),
+      ...(conversationSnapshot.activeEntities.agenda?.id ? { agendaEventId: conversationSnapshot.activeEntities.agenda.id } : {}),
+      ...contextualTurn.payload,
       ...(effectiveAttachments.length > 0 ? { attachments: effectiveAttachments } : {}),
       context: normalizedContext,
     }
@@ -1138,7 +1189,7 @@ export async function POST(request: NextRequest) {
               intentReason: intentResolution.reason,
               surface,
               workspace,
-              activeWorkflow: activeWorkflow ?? null,
+              activeWorkflow: contextualActiveWorkflow ?? null,
             }),
         )
     const executionPlan =
@@ -1192,7 +1243,18 @@ export async function POST(request: NextRequest) {
       const [updatedBroker, persistedConversation, touchedConversation] = await Promise.all([
         getBrokerCredits(user.broker.id),
         cancelledWorkflow && conversationDocument
-          ? persistConversationWorkflow(conversationDocument.id, cancelledWorkflow, conversationMemory)
+          ? persistConversationWorkflow(
+              conversationDocument.id,
+              cancelledWorkflow,
+              conversationMemory,
+              updateCosConversationSnapshot({
+                snapshot: conversationSnapshot,
+                message,
+                workflow: cancelledWorkflow,
+                result: null,
+                status: "cancelled",
+              }),
+            )
           : Promise.resolve(conversationDocument),
         touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
         prisma.aiAssistantInteraction.create({
@@ -1387,6 +1449,13 @@ export async function POST(request: NextRequest) {
                 action,
                 message: displayMessage || message,
                 attachments: effectiveAttachments,
+              }),
+              updateCosConversationSnapshot({
+                snapshot: conversationSnapshot,
+                message,
+                workflow: pendingWorkflow,
+                result: null,
+                status: "awaiting_input",
               }),
             )
           : Promise.resolve(conversationDocument),
@@ -1600,6 +1669,19 @@ export async function POST(request: NextRequest) {
           : null,
       attachments: effectiveAttachments,
     })
+    const nextConversationSnapshot = socialIntent
+      ? {
+          ...conversationSnapshot,
+          activeWorkflow: workflowToPersist,
+          pendingInput: workflowToPersist.pendingInput,
+        }
+      : updateCosConversationSnapshot({
+          snapshot: conversationSnapshot,
+          message: displayMessage || message,
+          workflow: workflowToPersist,
+          result: executionResult,
+          status: actionStatus === "error" ? "error" : workflowToPersist.status === "awaiting_input" ? "awaiting_input" : "success",
+        })
     // actionMetadata (executionResult.metadata) e um resumo agregado do plano inteiro — nao
     // carrega o metadata.options que a proria capability devolveu (ex: os topicos guiados de
     // lib/cos/capabilities/help/manage.ts). Esse fica aninhado no resultado de cada step
@@ -1639,6 +1721,12 @@ export async function POST(request: NextRequest) {
           }
         : null,
       workflow: workflowMetadata(workflowToPersist),
+      conversationSnapshot: {
+        schemaVersion: nextConversationSnapshot.schemaVersion,
+        currentTopic: nextConversationSnapshot.currentTopic,
+        activeEntities: nextConversationSnapshot.activeEntities,
+        selectionSetIds: nextConversationSnapshot.selectionSets.map((set) => set.id),
+      },
       conversationId: conversationDocument?.id ?? conversationIdFromBody,
       displayMessage,
       attachments: effectiveAttachments,
@@ -1668,7 +1756,9 @@ export async function POST(request: NextRequest) {
 
     const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([
       getBrokerCredits(user.broker.id),
-      conversationDocument ? persistConversationWorkflow(conversationDocument.id, workflowToPersist, nextConversationMemory) : Promise.resolve(conversationDocument),
+      conversationDocument
+        ? persistConversationWorkflow(conversationDocument.id, workflowToPersist, nextConversationMemory, nextConversationSnapshot)
+        : Promise.resolve(conversationDocument),
       touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
       prisma.aiAssistantInteraction.create({
         data: {

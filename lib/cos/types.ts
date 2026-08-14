@@ -6,6 +6,7 @@ export type CosCapabilityId =
   | "general.chat"
   | "property.create"
   | "property.search"
+  | "property.get"
   | "property.description.improve"
   | "property.publish"
   | "property.unpublish"
@@ -476,6 +477,7 @@ export type CosNormalizedContext = {
   workspace: CosWorkspaceContext | null
   workflow: CosWorkflow | null
   memory: CosConversationMemory | null
+  snapshot: CosConversationSnapshot | null
   attachments: CosAttachmentInput[]
   selectedEntityIds: Partial<Record<CosWorkspaceEntity, string>>
 }
@@ -507,5 +509,92 @@ export type CosConversationMemory = {
   uploadedDocuments?: CosConversationMemoryAttachment[]
   uploadedVideos?: CosConversationMemoryAttachment[]
   extractedEntities?: Record<string, unknown>
+  updatedAt: string
+}
+
+export type CosConversationEntityType = "lead" | "property" | "proposal" | "contract" | "agenda"
+
+export type CosConversationEntityReference = {
+  type: CosConversationEntityType
+  id: string
+  label: string | null
+  source: "workspace" | "workflow" | "execution" | "message" | "legacy_memory" | "selection"
+  lastMentionedAt: string
+  confidence: number
+  evidence: string
+}
+
+export type CosConversationSelectionItem = {
+  index: number
+  entity: CosConversationEntityReference
+  description?: string
+}
+
+export type CosConversationSelectionSet = {
+  id: string
+  type: CosConversationEntityType
+  items: CosConversationSelectionItem[]
+  query: string | null
+  topicId: string | null
+  createdAt: string
+  expiresAt: string
+}
+
+export type CosConversationTopic = {
+  id: string
+  domain: CosCapabilityDomain
+  label: string
+  entityType: CosConversationEntityType | null
+  selectionSetId: string | null
+  startedAt: string
+  lastMentionedAt: string
+}
+
+export type CosConversationRecentMessage = {
+  id: string
+  userMessage: string
+  assistantResponse: string | null
+  action: AssessorAction | null
+  status: string | null
+  leadId: string | null
+  propertyId: string | null
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
+export type CosConversationExecutionReference = {
+  capabilityId: CosCapabilityId
+  action: AssessorAction
+  status: "success" | "awaiting_input" | "error" | "cancelled"
+  entities: CosConversationEntityReference[]
+  selectionSetId: string | null
+  metadata: Record<string, unknown>
+  executedAt: string
+}
+
+export type CosTemporalContext = {
+  today: string
+  references: Partial<Record<"today" | "tomorrow" | "yesterday" | "this_week" | "last_week" | "next_month", {
+    from: string
+    to: string
+  }>>
+}
+
+export type CosConversationSnapshot = {
+  schemaVersion: 1
+  conversationId: string
+  recentMessages: CosConversationRecentMessage[]
+  activeWorkflow: CosWorkflow | null
+  pendingInput: CosPendingInput | null
+  currentTopic: CosConversationTopic | null
+  recentTopics: CosConversationTopic[]
+  activeEntities: Partial<Record<CosConversationEntityType, CosConversationEntityReference>>
+  recentEntities: CosConversationEntityReference[]
+  recentResults: CosConversationExecutionReference[]
+  selectionSets: CosConversationSelectionSet[]
+  lastAction: AssessorAction | null
+  lastExecution: CosConversationExecutionReference | null
+  temporalContext: CosTemporalContext
+  workspace: CosWorkspaceContext | null
   updatedAt: string
 }

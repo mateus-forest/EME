@@ -58,7 +58,7 @@ import {
   updateLeadCapability,
 } from "@/lib/cos/capabilities/lead/manage"
 import { operationSummaryCapability } from "@/lib/cos/capabilities/operation/summary"
-import { createPropertyDraftCapability, improvePropertyDescriptionCapability, searchPropertiesCapability } from "@/lib/cos/capabilities/property/core"
+import { createPropertyDraftCapability, getPropertyCapability, improvePropertyDescriptionCapability, searchPropertiesCapability } from "@/lib/cos/capabilities/property/core"
 import {
   archivePropertyCapability,
   publishPropertyCapability,
@@ -108,6 +108,7 @@ export const capabilityHandlers: Partial<Record<CosCapabilityId, CosCapabilityHa
   "contract.get": getContractCapability,
   "property.create": createPropertyDraftCapability,
   "property.search": searchPropertiesCapability,
+  "property.get": getPropertyCapability,
   "property.description.improve": improvePropertyDescriptionCapability,
   "contract.preview": previewContractCapability,
   "contract.update": updateContractCapability,

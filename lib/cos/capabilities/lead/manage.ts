@@ -3,9 +3,9 @@ import "server-only"
 import { LeadStatus } from "@/lib/prisma-enums"
 
 import { prisma } from "@/lib/prisma"
-import { createCosErrorResult, createCosSuccessResult } from "@/lib/cos/action-result"
+import { createCosAwaitingInputResult, createCosErrorResult, createCosSuccessResult } from "@/lib/cos/action-result"
 import { detectNamedClientReference, detectNamedClientReferenceForDeletion } from "@/lib/cos/entity-extraction"
-import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { createPendingInput, createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
 import { parseEntityDocuments, type EntityDocumentRecord } from "@/lib/legal-entities"
 
@@ -20,7 +20,7 @@ async function resolveLead(brokerId: string, payload: Record<string, unknown>, m
 
   const query = normalizeText(message ?? "").replace(/\b(cliente|lead|leads|atualizar|editar|timeline|historico|converter)\b/g, "").trim()
   if (query) {
-    return prisma.lead.findFirst({
+    const matches = await prisma.lead.findMany({
       where: {
         brokerId,
         OR: [
@@ -31,7 +31,9 @@ async function resolveLead(brokerId: string, payload: Record<string, unknown>, m
         ],
       },
       orderBy: { updatedAt: "desc" },
+      take: 2,
     })
+    return matches.length === 1 ? matches[0] : null
   }
 
   return null
@@ -222,10 +224,17 @@ export const deleteLeadCapability: CosCapabilityHandler = async ({ brokerId, mes
   }
 }
 
-export const findLeadCapability: CosCapabilityHandler = async ({ brokerId, message }) => {
+export const findLeadCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingInput }) => {
+  const payloadRecord = getPayloadRecord({ brokerId, userId: "", message, action: "general", payload })
+  const directLeadId = getEntityIdFromPayload(payloadRecord, "lead")
+  const selectedPendingId = pendingInput?.action === "FIND_LEAD" && pendingInput.type === "selection"
+    ? resolveLeadDocumentCandidateChoice(message, (pendingInput.options ?? []).map((option) => ({ id: option.id, name: option.label })))?.id
+    : null
   const query = normalizeText(message).replace(/\b(buscar|encontrar|localizar|cliente|lead)\b/g, "").trim()
   const leads = await prisma.lead.findMany({
-    where: query
+    where: directLeadId || selectedPendingId
+      ? { brokerId, id: directLeadId ?? selectedPendingId ?? undefined }
+      : query
       ? {
           brokerId,
           OR: [
@@ -240,16 +249,42 @@ export const findLeadCapability: CosCapabilityHandler = async ({ brokerId, messa
     take: 5,
   })
 
-  return {
-    response: leads.length
-      ? `Encontrei ${leads.length} cliente${leads.length === 1 ? "" : "s"}:\n\n${leads.map((lead) => `- ${lead.name ?? "Sem nome"} (${lead.status})`).join("\n")}`
+  if (leads.length > 1) {
+    const pending = createPendingInput({
+      field: "lead",
+      action: "FIND_LEAD",
+      entity: "lead",
+      capabilityId: "lead.find",
+      reason: "lead_ambiguous",
+      options: leads.map((lead) => ({
+        id: lead.id,
+        label: lead.name ?? "Sem nome",
+        description: lead.phone ?? lead.email ?? undefined,
+      })),
+    })
+    return createCosAwaitingInputResult({
+      response: `Encontrei ${leads.length} clientes. Qual deles você quer consultar?`,
+      pendingInput: pending,
+      metadata: { leadIds: leads.map((lead) => lead.id) },
+    })
+  }
+
+  const lead = leads[0]
+
+  return createCosSuccessResult({
+    response: lead
+      ? `${lead.name ?? "Cliente sem nome"}\nStatus: ${lead.status}${lead.phone ? `\nTelefone: ${lead.phone}` : ""}${lead.email ? `\nEmail: ${lead.email}` : ""}`
       : "Não encontrei clientes com esse filtro.",
     metadata: {
       leadIds: leads.map((lead) => lead.id),
       resultCount: leads.length,
+      leadId: lead?.id ?? null,
+      leadName: lead?.name ?? null,
+      phone: lead?.phone ?? null,
+      email: lead?.email ?? null,
     },
-    leadId: leads[0]?.id,
-  }
+    leadId: lead?.id,
+  })
 }
 
 export const leadTimelineCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {

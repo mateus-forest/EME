@@ -656,6 +656,7 @@ export function useCosConversations({
               workspace: messageWorkspaceContext,
               workflow: null,
               memory: null,
+              snapshot: null,
               attachments: options?.attachments ?? [],
               selectedEntityIds: {},
             },

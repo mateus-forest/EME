@@ -1,4 +1,4 @@
-import type { CosAttachmentInput, CosConversationMemory, CosNormalizedContext, CosWorkflow, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
+import type { CosAttachmentInput, CosConversationMemory, CosConversationSnapshot, CosNormalizedContext, CosWorkflow, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
 
 function cleanId(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null
@@ -7,6 +7,7 @@ function cleanId(value: unknown) {
 function collectSelectedEntityIds(input: {
   workspace: CosWorkspaceContext | null
   memory: CosConversationMemory | null
+  snapshot: CosConversationSnapshot | null
 }) {
   const selected: Partial<Record<CosWorkspaceEntity, string>> = {}
   const workspaceSelection = input.workspace?.selection ?? []
@@ -26,6 +27,18 @@ function collectSelectedEntityIds(input: {
     ["document", cleanId(input.memory?.documentId)],
   ]
 
+  const snapshotPairs: Array<[CosWorkspaceEntity, string | null]> = [
+    ["lead", cleanId(input.snapshot?.activeEntities.lead?.id)],
+    ["property", cleanId(input.snapshot?.activeEntities.property?.id)],
+    ["contract", cleanId(input.snapshot?.activeEntities.contract?.id ?? input.snapshot?.activeEntities.proposal?.id)],
+    ["document", cleanId(input.snapshot?.activeEntities.contract?.id ?? input.snapshot?.activeEntities.proposal?.id)],
+    ["agenda", cleanId(input.snapshot?.activeEntities.agenda?.id)],
+  ]
+
+  for (const [entity, entityId] of snapshotPairs) {
+    if (entityId && !selected[entity]) selected[entity] = entityId
+  }
+
   for (const [entity, entityId] of memoryPairs) {
     if (entityId && !selected[entity]) selected[entity] = entityId
   }
@@ -44,6 +57,7 @@ export function createCosNormalizedContext(input: {
   workspace: CosWorkspaceContext | null
   workflow: CosWorkflow | null
   memory: CosConversationMemory | null
+  snapshot?: CosConversationSnapshot | null
   attachments?: CosAttachmentInput[]
 }) {
   return {
@@ -57,10 +71,12 @@ export function createCosNormalizedContext(input: {
     workspace: input.workspace,
     workflow: input.workflow,
     memory: input.memory,
+    snapshot: input.snapshot ?? null,
     attachments: input.attachments ?? [],
     selectedEntityIds: collectSelectedEntityIds({
       workspace: input.workspace,
       memory: input.memory,
+      snapshot: input.snapshot ?? null,
     }),
   } satisfies CosNormalizedContext
 }

@@ -37,6 +37,7 @@ export {
   formatWorkflowProgress,
   getActiveWorkflow,
   getConversationMemory,
+  getConversationSnapshot,
   parseConversationWorkflowContent,
   rebuildExecutionPlanFromWorkflow,
   resumeWorkflowExecution,
@@ -46,6 +47,14 @@ export {
   stringifyConversationWorkflowContent,
   updateWorkflowFromExecutionResult,
 } from "@/lib/cos/workflow-engine"
+export {
+  buildCosConversationSnapshot,
+  buildCosTemporalContext,
+  resolveCosContextualTurn,
+  resolveCosConversationReference,
+  updateCosConversationSnapshot,
+  COS_RECENT_MESSAGE_LIMIT,
+} from "@/lib/cos/conversation-snapshot"
 export { deriveWorkspaceContextFromPathname, sanitizeWorkspaceContext } from "@/lib/cos/workspace-context"
 export { cosEntityModules } from "@/lib/cos/entities"
 export type {
@@ -64,6 +73,7 @@ export type {
   CosCapabilityPlanTelemetry,
   CosCapabilitySurface,
   CosConversationMemory,
+  CosConversationSnapshot,
   CosExecutionPlan,
   CosExecutionPlanGap,
   CosExecutionPlanResult,

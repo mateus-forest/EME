@@ -63,6 +63,23 @@ export const propertyEntityModule: CosEntityModule = {
     },
     {
       descriptor: {
+        id: "property.get",
+        action: "GET_PROPERTY",
+        title: "Consulta de imóvel",
+        description: "Consulta os dados de um imóvel já resolvido no contexto da conversa.",
+        domain: "property",
+        entity: "property",
+        aliases: ["abrir imovel", "ver detalhes do imovel", "consultar imovel"],
+        responseMode: "raw",
+        source: "modular",
+        mutatesData: false,
+        requiresConfirmation: false,
+        requiresSelection: true,
+        surfaces: ["portal", "cos_home"],
+      },
+    },
+    {
+      descriptor: {
         id: "property.description.improve",
         action: "improvePropertyDescription",
         title: "Melhoria de descrição",

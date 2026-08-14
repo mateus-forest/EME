@@ -1,9 +1,11 @@
 import type { Prisma } from "@prisma/client"
 
-import { createCosErrorResult, normalizeCosActionResult } from "@/lib/cos/action-result"
+import { createCosErrorResult, createCosSuccessResult, normalizeCosActionResult } from "@/lib/cos/action-result"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
 import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 import { createPropertyDraftRecord, formatAssessorPropertyPrice, searchBrokerProperties } from "@/lib/cos/runtime-helpers"
+import { prisma } from "@/lib/prisma"
+import { parsePropertyLegalData } from "@/lib/legal-entities"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function json(value: Record<string, unknown>): Prisma.InputJsonObject {
@@ -137,6 +139,52 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
       },
     }),
   }
+}
+
+export const getPropertyCapability: CosCapabilityHandler = async ({ brokerId, payload, context }) => {
+  const propertyId = typeof payload?.propertyId === "string"
+    ? payload.propertyId
+    : context?.selectedEntityIds.property
+  if (!propertyId) {
+    return createCosErrorResult({
+      errorCode: "COS_PROPERTY_REFERENCE_REQUIRED",
+      response: "Preciso saber qual imóvel você quer consultar.",
+      metadata: { noCharge: true },
+    })
+  }
+  const property = await prisma.property.findFirst({
+    where: { id: propertyId, brokerId },
+  })
+  if (!property) {
+    return createCosErrorResult({
+      errorCode: "COS_PROPERTY_NOT_FOUND",
+      response: "Não encontrei esse imóvel na sua carteira.",
+      metadata: { propertyId, noCharge: true },
+    })
+  }
+  const legal = parsePropertyLegalData(property.legalData)
+  const area = legal.privateArea || legal.totalArea || null
+
+  const details = [
+    area ? (/m[²2]/i.test(area) ? area : `${area} m²`) : null,
+    property.bedrooms ? `${property.bedrooms} quarto${property.bedrooms === 1 ? "" : "s"}` : null,
+    property.bathrooms ? `${property.bathrooms} banheiro${property.bathrooms === 1 ? "" : "s"}` : null,
+    property.parkingSpots ? `${property.parkingSpots} vaga${property.parkingSpots === 1 ? "" : "s"}` : null,
+  ].filter(Boolean)
+  return createCosSuccessResult({
+    response: `${property.title}\n${formatPropertyLocationLabel(property.city, property.neighborhood)}\n${formatAssessorPropertyPrice(property.price)}${details.length ? `\n${details.join(" • ")}` : ""}`,
+    metadata: {
+      propertyId: property.id,
+      publicCode: property.publicCode,
+      area,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      parkingSpots: property.parkingSpots,
+      city: property.city,
+      neighborhood: property.neighborhood,
+    },
+    propertyId: property.id,
+  })
 }
 
 export const improvePropertyDescriptionCapability: CosCapabilityHandler = async ({ brokerId, message, payload }) => {

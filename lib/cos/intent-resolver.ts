@@ -516,6 +516,22 @@ export function resolveCosIntent(input: {
   const workspace = context?.workspace ?? input.workspace
   const activeWorkflow = context?.workflow ?? input.activeWorkflow
   const memory = context?.memory ?? input.memory
+  const snapshot = context?.snapshot ?? null
+  const contextualMemory: CosConversationMemory | null = snapshot
+    ? {
+        ...(memory ?? { updatedAt: snapshot.updatedAt }),
+        leadId: snapshot.activeEntities.lead?.id ?? memory?.leadId,
+        propertyId: snapshot.activeEntities.property?.id ?? memory?.propertyId,
+        contractId: snapshot.activeEntities.contract?.id ?? memory?.contractId,
+        proposalId: snapshot.activeEntities.proposal?.id ?? memory?.proposalId,
+        selectedClient: snapshot.activeEntities.lead
+          ? { id: snapshot.activeEntities.lead.id, label: snapshot.activeEntities.lead.label }
+          : memory?.selectedClient,
+        selectedProperty: snapshot.activeEntities.property
+          ? { id: snapshot.activeEntities.property.id, label: snapshot.activeEntities.property.label }
+          : memory?.selectedProperty,
+      }
+    : memory
   const normalizedMessage = normalizeText(message)
   const indicatesWorkflowSwitch = hasAny(normalizedMessage, ["mudar para", "trocar para", "agora", "quero criar"])
   const securityAudit = evaluateCosDecisionSecurity({
@@ -567,7 +583,7 @@ export function resolveCosIntent(input: {
   const decision = buildIntentCandidates({
     normalizedMessage,
     workspace,
-    memory,
+    memory: contextualMemory,
     attachments,
     activeWorkflow,
   })
