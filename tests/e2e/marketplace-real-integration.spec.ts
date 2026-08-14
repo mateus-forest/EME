@@ -94,19 +94,21 @@ test.describe('Marketplace integrado ao EME', () => {
       data: {
         slug: FIXTURE_SLUG,
         displayName: 'Corretora Integração EME',
-        specialty: 'Residencial e primeiro imóvel',
-        region: 'Vacaria e região',
-        transactions: 'BOTH',
-        about: 'Atendimento consultivo para encontrar o imóvel adequado.',
       },
     })
     expect(configured.ok()).toBe(true)
 
+    const marketplaceConfigured = await page.request.patch('/api/brokers/marketplace', {
+      data: { specialty: 'Residencial e primeiro imóvel', region: 'Vacaria e região', transactions: 'BOTH', about: 'Atendimento consultivo para encontrar o imóvel adequado.' },
+    })
+    expect(marketplaceConfigured.ok()).toBe(true)
+
     const unavailableCatalog = await page.request.get('/api/brokers/catalog')
     const unavailableSettings = await unavailableCatalog.json()
-    expect(unavailableSettings.settings.marketplaceProfileAvailable).toBe(false)
+    expect(unavailableSettings.settings.specialty).toBeUndefined()
     await page.goto('/corretor/catalogo')
-    await expect(page.getByRole('button', { name: /Ver no Marketplace/ })).toBeDisabled()
+    await expect(page.getByRole('heading', { name: 'Preview do catálogo' })).toBeVisible()
+    await expect(page.getByText('Preview no Marketplace')).toHaveCount(0)
 
     const slugs: string[] = []
     for (const propertyId of propertyIds) {
@@ -120,14 +122,11 @@ test.describe('Marketplace integrado ao EME', () => {
 
     const catalogResponse = await page.request.get('/api/brokers/catalog')
     const catalog = await catalogResponse.json()
-    expect(catalog.settings.activeListings).toBe(3)
-    expect(catalog.settings.specialty).toBe('Residencial e primeiro imóvel')
-    expect(catalog.settings.marketplaceProfileAvailable).toBe(true)
+    expect(catalog.settings.slug).toBe(FIXTURE_SLUG)
+    expect(catalog.settings.specialty).toBeUndefined()
 
     await page.goto('/corretor/catalogo')
-    const marketplaceProfileLink = page.getByRole('link', { name: /Ver no Marketplace/ })
-    await expect(marketplaceProfileLink).toHaveAttribute('href', `/imoveis/corretores/${FIXTURE_SLUG}`)
-    await expect(marketplaceProfileLink).toHaveAttribute('target', '_blank')
+    await expect(page.getByRole('link', { name: 'Abrir link' })).toHaveAttribute('href', `/catalogo/${FIXTURE_SLUG}`)
 
     await page.goto('/imoveis/busca?finalidade=compra')
     await expect(page.getByText('Casa Integração Marketplace').first()).toBeVisible({ timeout: 30_000 })

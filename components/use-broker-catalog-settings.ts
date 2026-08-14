@@ -7,15 +7,6 @@ export type BrokerCatalogSettings = {
   displayName: string
   photoUrl: string
   description: string
-  specialty: string
-  region: string
-  transactions: 'SALE' | 'RENT' | 'BOTH'
-  about: string
-  featured: boolean
-  rating: number
-  reviewCount: number
-  activeListings: number
-  marketplaceProfileAvailable: boolean
 }
 
 const STORAGE_KEY = "eme-broker-catalog-settings"
@@ -26,15 +17,6 @@ const defaultSettings: BrokerCatalogSettings = {
   displayName: "",
   photoUrl: "",
   description: "",
-  specialty: "",
-  region: "",
-  transactions: "BOTH",
-  about: "",
-  featured: false,
-  rating: 0,
-  reviewCount: 0,
-  activeListings: 0,
-  marketplaceProfileAvailable: false,
 }
 
 function clearLegacyCatalogStorage() {
@@ -110,10 +92,6 @@ export function useBrokerCatalogSettings() {
         slug: nextSettings.slug,
         photoUrl: nextSettings.photoUrl,
         description: nextSettings.description,
-        specialty: nextSettings.specialty,
-        region: nextSettings.region,
-        transactions: nextSettings.transactions,
-        about: nextSettings.about,
       }),
     })
 

@@ -84,29 +84,30 @@ test.describe('Marketplace público', () => {
     await expectNoHorizontalOverflow(page)
   })
 
-  test('CTA do preview usa o perfil real e trata indisponibilidade no mobile', async ({ page }) => {
+  test('catálogo mantém preview e URL próprios, sem configurações de Marketplace', async ({ page }) => {
     await loginAsBroker(page)
     await page.route('**/api/brokers/me', (route) => route.fulfill({
       json: { profile: { id: 'user-cta', brokerId: 'broker-cta', agencyId: null, agencyName: '', accountType: 'BROKER_INDEPENDENT', name: 'Corretor CTA', email: 'cta@eme.test', phone: '5554999999999', photoUrl: '', creci: '12345-F', description: '', brandColor: '', logoUrl: '', showAgencyWatermark: true, pinConfigured: false } },
     }))
     await page.route('**/api/properties/me', (route) => route.fulfill({ json: { properties: [] } }))
     await page.route('**/api/brokers/catalog', (route) => route.fulfill({
-      json: { settings: { slug: 'corretor-cta-real', displayName: 'Corretor CTA', photoUrl: '', description: '', specialty: 'Residencial', region: 'Vacaria', transactions: 'BOTH', about: '', featured: false, rating: 0, reviewCount: 0, activeListings: 1, marketplaceProfileAvailable: true } },
+      json: { settings: { slug: 'corretor-cta-real', displayName: 'Corretor CTA', photoUrl: '', description: 'Catálogo real' } },
     }))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/corretor/catalogo')
-    const link = page.getByRole('link', { name: /Ver no Marketplace/ })
-    await expect(link).toHaveAttribute('href', '/imoveis/corretores/corretor-cta-real')
+    const link = page.getByRole('link', { name: 'Abrir link' })
+    await expect(link).toHaveAttribute('href', '/catalogo/corretor-cta-real')
     await expect(link).toHaveAttribute('target', '_blank')
+    await expect(page.getByRole('heading', { name: 'Preview do catálogo' })).toBeVisible()
+    await expect(page.getByText(/Preview no Marketplace|Ver no Marketplace/)).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
 
-    await page.unroute('**/api/brokers/catalog')
-    await page.route('**/api/brokers/catalog', (route) => route.fulfill({
-      json: { settings: { slug: 'corretor-cta-real', displayName: 'Corretor CTA', photoUrl: '', description: '', specialty: '', region: '', transactions: 'BOTH', about: '', featured: false, rating: 0, reviewCount: 0, activeListings: 0, marketplaceProfileAvailable: false } },
-    }))
+    await page.setViewportSize({ width: 1440, height: 960 })
     await page.reload()
-    await expect(page.getByRole('button', { name: /perfil público ainda indisponível/ })).toBeDisabled()
+    const configuration = await page.getByRole('heading', { name: 'Configuração' }).boundingBox()
+    const preview = await page.getByRole('heading', { name: 'Preview do catálogo' }).boundingBox()
+    expect(preview!.x).toBeGreaterThan(configuration!.x)
     await expectNoHorizontalOverflow(page)
   })
 

@@ -1,236 +1,52 @@
-import { BrokerAccountStatus, CatalogOwnerType, UserRole } from "@/lib/prisma-enums"
-import {
-  NextRequest,
-  NextResponse } from "next/server"
+import { CatalogOwnerType, UserRole } from '@/lib/prisma-enums'
+import { NextRequest, NextResponse } from 'next/server'
+import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from '@/lib/auth-route'
+import { slugify } from '@/lib/catalog-slug'
+import { prisma, type PrismaTransaction } from '@/lib/prisma'
 
-import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { slugify } from "@/lib/catalog-slug"
-import { prisma, type PrismaTransaction } from "@/lib/prisma"
-
-function serializeBrokerCatalog(user: {
-  name: string
-  photoUrl: string | null
-  broker: {
-    catalogSlug: string
-    description: string | null
-    marketplaceSpecialty: string | null
-    marketplaceRegion: string | null
-    marketplaceTransactions: string | null
-    marketplaceAbout: string | null
-    marketplaceFeatured: boolean
-    marketplaceRating: unknown
-    marketplaceReviewCount: number
-  } | null
-}, activeListings = 0, marketplaceProfileAvailable = false) {
-  return {
-    settings: {
-      slug: user.broker?.catalogSlug ?? "",
-      displayName: user.name,
-      photoUrl: user.photoUrl ?? "",
-      description: user.broker?.description ?? "",
-      specialty: user.broker?.marketplaceSpecialty ?? "",
-      region: user.broker?.marketplaceRegion ?? "",
-      transactions: user.broker?.marketplaceTransactions ?? "BOTH",
-      about: user.broker?.marketplaceAbout ?? "",
-      featured: user.broker?.marketplaceFeatured ?? false,
-      rating: user.broker?.marketplaceRating ? Number(user.broker.marketplaceRating) : 0,
-      reviewCount: user.broker?.marketplaceReviewCount ?? 0,
-      activeListings,
-      marketplaceProfileAvailable,
-    },
-  }
+function serialize(user: { name: string; photoUrl: string | null; broker: { catalogSlug: string; description: string | null } | null }) {
+  return { settings: { slug: user.broker?.catalogSlug ?? '', displayName: user.name, photoUrl: user.photoUrl ?? '', description: user.broker?.description ?? '' } }
 }
 
-export const dynamic = "force-dynamic"
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const { error, user } = await getAuthenticatedUser()
-
-  if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
-  }
-
-  const forbidden = ensureRole(user.role, [UserRole.BROKER])
-  if (forbidden) return forbidden
-
-  if (!user.broker) {
-    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
-  }
-
-  const [activeListings, publicProfile] = await Promise.all([
-    prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } }),
-    prisma.broker.findFirst({
-      where: {
-        id: user.broker.id,
-        status: BrokerAccountStatus.ACTIVE,
-        properties: { some: { marketplacePublished: true } },
-      },
-      select: { id: true },
-    }),
-  ])
-  const response = NextResponse.json(serializeBrokerCatalog(user, activeListings, Boolean(publicProfile)))
-  response.headers.set("Cache-Control", "no-store, max-age=0")
-  return response
+  if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+  const forbidden = ensureRole(user.role, [UserRole.BROKER]); if (forbidden) return forbidden
+  if (!user.broker) return NextResponse.json({ error: 'Corretor não encontrado para esta conta.' }, { status: 404 })
+  const response = NextResponse.json(serialize(user)); response.headers.set('Cache-Control', 'no-store, max-age=0'); return response
 }
 
 export async function PATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
-
-  if (error || !user) {
-    return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
-  }
-
-  const forbidden = ensureRole(user.role, [UserRole.BROKER])
-  if (forbidden) return forbidden
-
-  if (!user.broker) {
-    return NextResponse.json({ error: "Corretor não encontrado para esta conta." }, { status: 404 })
-  }
-
+  if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+  const forbidden = ensureRole(user.role, [UserRole.BROKER]); if (forbidden) return forbidden
+  if (!user.broker) return NextResponse.json({ error: 'Corretor não encontrado para esta conta.' }, { status: 404 })
   try {
     const body = await request.json().catch(() => null)
-    const data = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
-    const displayName = typeof data.displayName === "string" ? data.displayName.trim() : user.name
-    const requestedSlug =
-      typeof data.slug === "string" && data.slug.trim() ? slugify(data.slug) : user.broker.catalogSlug
-    const photoUrl = typeof data.photoUrl === "string" ? data.photoUrl.trim() : user.photoUrl ?? ""
-    const description = typeof data.description === "string" ? data.description.trim() : user.broker.description ?? ""
-    const specialty = typeof data.specialty === 'string' ? data.specialty.trim() : user.broker.marketplaceSpecialty ?? ''
-    const region = typeof data.region === 'string' ? data.region.trim() : user.broker.marketplaceRegion ?? ''
-    const transactions = ['SALE', 'RENT', 'BOTH'].includes(String(data.transactions)) ? String(data.transactions) : user.broker.marketplaceTransactions ?? 'BOTH'
-    const about = typeof data.about === 'string' ? data.about.trim() : user.broker.marketplaceAbout ?? ''
-
-    if (!displayName) {
-      return NextResponse.json({ error: "Nome do corretor e obrigatorio." }, { status: 400 })
-    }
-
-    if (!requestedSlug) {
-      return NextResponse.json({ error: "Link do catálogo é obrigatório." }, { status: 400 })
-    }
-
-    if (displayName.length > 120) {
-      return NextResponse.json({ error: "Nome do corretor deve ter no maximo 120 caracteres." }, { status: 400 })
-    }
-
-    if (photoUrl.length > 800_000) {
-      return NextResponse.json({ error: "Foto muito grande. Use uma imagem menor ou tente enviar novamente." }, { status: 400 })
-    }
-
-    if (description.length > 600) {
-      return NextResponse.json({ error: "Descrição do catálogo deve ter no máximo 600 caracteres." }, { status: 400 })
-    }
-    if (specialty.length > 120 || region.length > 120) {
-      return NextResponse.json({ error: 'Especialidade e região devem ter no máximo 120 caracteres.' }, { status: 400 })
-    }
-    if (about.length > 900) {
-      return NextResponse.json({ error: 'Sobre o atendimento deve ter no máximo 900 caracteres.' }, { status: 400 })
-    }
-
+    const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : user.name
+    const requestedSlug = typeof body?.slug === 'string' && body.slug.trim() ? slugify(body.slug) : user.broker.catalogSlug
+    const photoUrl = typeof body?.photoUrl === 'string' ? body.photoUrl.trim() : user.photoUrl ?? ''
+    const description = typeof body?.description === 'string' ? body.description.trim() : user.broker.description ?? ''
+    if (!displayName || !requestedSlug) return NextResponse.json({ error: 'Nome e endereço do catálogo são obrigatórios.' }, { status: 400 })
+    if (displayName.length > 120 || description.length > 600 || photoUrl.length > 800_000) return NextResponse.json({ error: 'Revise o tamanho dos dados informados.' }, { status: 400 })
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
-      const slugInUseByBroker = await tx.broker.findFirst({
-        where: {
-          catalogSlug: requestedSlug,
-          NOT: {
-            id: user.broker!.id,
-          },
-        },
-        select: {
-          id: true,
-        },
-      })
-
-      const slugInUseByCatalog = await tx.catalog.findFirst({
-        where: {
-          slug: requestedSlug,
-        },
-        select: {
-          ownerType: true,
-          ownerId: true,
-        },
-      })
-
-      const isOwnCatalog =
-        slugInUseByCatalog?.ownerType === CatalogOwnerType.BROKER && slugInUseByCatalog.ownerId === user.broker!.id
-
-      if (slugInUseByBroker || (slugInUseByCatalog && !isOwnCatalog)) {
-        throw new Error("CATALOG_SLUG_IN_USE")
-      }
-
-      await tx.broker.update({
-        where: {
-          id: user.broker!.id,
-        },
-        data: {
-          catalogSlug: requestedSlug,
-          description: description || null,
-          marketplaceSpecialty: specialty || null,
-          marketplaceRegion: region || null,
-          marketplaceTransactions: transactions,
-          marketplaceAbout: about || null,
-        },
-      })
-
-      await tx.catalog.upsert({
-        where: {
-          slug: user.broker!.catalogSlug,
-        },
-        update: {
-          slug: requestedSlug,
-          ownerType: CatalogOwnerType.BROKER,
-          ownerId: user.broker!.id,
-        },
-        create: {
-          slug: requestedSlug,
-          ownerType: CatalogOwnerType.BROKER,
-          ownerId: user.broker!.id,
-        },
-      })
-
-      return tx.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          name: displayName,
-          photoUrl: photoUrl || null,
-        },
-        include: {
-          broker: true,
-          ownedAgency: true,
-        },
-      })
+      const [brokerConflict, catalogConflict] = await Promise.all([
+        tx.broker.findFirst({ where: { catalogSlug: requestedSlug, NOT: { id: user.broker!.id } }, select: { id: true } }),
+        tx.catalog.findFirst({ where: { slug: requestedSlug }, select: { ownerType: true, ownerId: true } }),
+      ])
+      const ownCatalog = catalogConflict?.ownerType === CatalogOwnerType.BROKER && catalogConflict.ownerId === user.broker!.id
+      if (brokerConflict || (catalogConflict && !ownCatalog)) throw new Error('CATALOG_SLUG_IN_USE')
+      await tx.broker.update({ where: { id: user.broker!.id }, data: { catalogSlug: requestedSlug, description: description || null } })
+      await tx.catalog.upsert({ where: { slug: user.broker!.catalogSlug }, update: { slug: requestedSlug, ownerType: CatalogOwnerType.BROKER, ownerId: user.broker!.id }, create: { slug: requestedSlug, ownerType: CatalogOwnerType.BROKER, ownerId: user.broker!.id } })
+      return tx.user.update({ where: { id: user.id }, data: { name: displayName, photoUrl: photoUrl || null }, include: { broker: true, ownedAgency: true } })
     })
-
-    const [activeListings, publicProfile] = await Promise.all([
-      prisma.property.count({ where: { brokerId: user.broker.id, marketplacePublished: true } }),
-      prisma.broker.findFirst({
-        where: {
-          id: user.broker.id,
-          status: BrokerAccountStatus.ACTIVE,
-          properties: { some: { marketplacePublished: true } },
-        },
-        select: { id: true },
-      }),
-    ])
-    const response = NextResponse.json(serializeBrokerCatalog(updated, activeListings, Boolean(publicProfile)))
-    response.headers.set("Cache-Control", "no-store, max-age=0")
-    return response
-  } catch (caughtError) {
-    console.error("[api][brokers][catalog] update failed", {
-      message: caughtError instanceof Error ? caughtError.message : "unknown",
-    })
-
-    if (caughtError instanceof Error && caughtError.message === "CATALOG_SLUG_IN_USE") {
-      return NextResponse.json({ error: "Este link de catálogo já está em uso." }, { status: 409 })
-    }
-
-    if (isPrismaUnavailable(caughtError)) {
-      return NextResponse.json(
-        { error: "O serviço de catálogo está indisponível no momento. Verifique a conexão com o banco de dados." },
-        { status: 503 },
-      )
-    }
-
-    return NextResponse.json({ error: "Erro interno ao atualizar catálogo do corretor." }, { status: 500 })
+    const response = NextResponse.json(serialize(updated)); response.headers.set('Cache-Control', 'no-store, max-age=0'); return response
+  } catch (caught) {
+    if (caught instanceof Error && caught.message === 'CATALOG_SLUG_IN_USE') return NextResponse.json({ error: 'Este endereço de catálogo já está em uso.' }, { status: 409 })
+    if (isPrismaUnavailable(caught)) return NextResponse.json({ error: 'O serviço de catálogo está indisponível.' }, { status: 503 })
+    console.error('[api][brokers][catalog] update failed', { message: caught instanceof Error ? caught.message : 'unknown' })
+    return NextResponse.json({ error: 'Erro interno ao atualizar o catálogo.' }, { status: 500 })
   }
 }
