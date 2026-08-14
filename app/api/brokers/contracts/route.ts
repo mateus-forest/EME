@@ -24,6 +24,10 @@ import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
 import { parseEntityDocuments, parseLeadAddress, parseLeadIdentification, parsePropertyLegalData } from "@/lib/legal-entities"
 import { buildLinkedContractDocument, upsertLinkedContractDocument } from "@/lib/linked-contract-document"
 import { buildInstanceSnapshot, parseStoredTemplateStructure } from "@/lib/contract-template-server"
+import {
+  hasUsableStoredContractTemplate,
+  recoverStoredContractTemplateVersion,
+} from "@/lib/contract-template-recovery.server"
 
 function buildAddressLine(parts: {
   street?: string
@@ -87,7 +91,27 @@ function serializeContract(document: {
     templateVersion: { structure: unknown; originalText: string }
   } | null
 }) {
-  const content = parseContractContent(document.content)
+  let content: ContractContent
+  try {
+    content = parseContractContent(document.content)
+  } catch {
+    // A malformed legacy row must not make the entire contracts page fail. Keep
+    // it visible and actionable so the broker can remove or replace it.
+    const now = document.updatedAt.toISOString()
+    content = createContractContent({
+      kind: "Modelo próprio",
+      title: document.title || "Contrato importado",
+      status: normalizeContractStatus(document.status) ?? "draft",
+      authorName: "EME",
+      createdAt: document.createdAt.toISOString(),
+      updatedAt: now,
+      lead: null,
+      property: null,
+      financial: {},
+    })
+    content.reviewNotes = ["O registro legado não possui conteúdo estruturado válido. Substitua ou exclua este contrato."]
+    content.html = buildContractHtml(content)
+  }
   if (document.templateInstance && !isExternalContractContent(content)) {
     try {
       const structure = parseStoredTemplateStructure(
@@ -465,7 +489,20 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: "desc" },
     })
 
-    const allContracts = documents.map(serializeContract)
+    await Promise.allSettled(documents.flatMap((document) => {
+      const version = document.templateInstance?.templateVersion
+      return version && !hasUsableStoredContractTemplate(version)
+        ? [recoverStoredContractTemplateVersion(version, { templateTitle: document.templateInstance?.title })]
+        : []
+    }))
+    const refreshedDocuments = documents.some((document) => document.templateInstance && !hasUsableStoredContractTemplate(document.templateInstance.templateVersion))
+      ? await prisma.brokerDocument.findMany({
+          where: { id: { in: documents.map((document) => document.id) }, brokerId: auth.broker!.id, type: "contract" },
+          include: { templateInstance: { include: { templateVersion: true } } },
+          orderBy: { updatedAt: "desc" },
+        })
+      : documents
+    const allContracts = refreshedDocuments.map(serializeContract)
     const contracts = allContracts.filter((item) => (kind && kind !== "all" ? item.kind === kind : true))
 
     // O filtro "Todos os modelos" nunca deve oferecer uma opcao que garantidamente retorna lista

@@ -5,6 +5,7 @@ import {
   classifyCosSocialIntent,
   getSafeFirstName,
 } from "@/lib/cos/conversation"
+import { resolveCosConversationCategory } from "@/lib/cos-conversations"
 import { EME_FREE_COS_ACTIONS } from "@/lib/eme-plans"
 
 const socialMessages = [
@@ -56,5 +57,13 @@ test.describe("COS — conversa social", () => {
     expect(getSafeFirstName("  Ana Maria  ")).toBe("Ana")
     expect(getSafeFirstName("mateus@example.com")).toBeNull()
     expect(EME_FREE_COS_ACTIONS.has("general")).toBeTruthy()
+  })
+
+  test("categoriza histórico pela metadata real e usa o título apenas como compatibilidade", () => {
+    expect(resolveCosConversationCategory({ entity: "lead", action: "UPDATE_LEAD", title: "Assunto genérico" })).toBe("clients")
+    expect(resolveCosConversationCategory({ capabilityId: "property.search", title: "Assunto genérico" })).toBe("properties")
+    expect(resolveCosConversationCategory({ action: "CREATE_CONTRACT", title: "Assunto genérico" })).toBe("contracts")
+    expect(resolveCosConversationCategory({ title: "Agendar visita amanhã" })).toBe("agenda")
+    expect(resolveCosConversationCategory({ title: "Olá, tudo bem?" })).toBe("general")
   })
 })

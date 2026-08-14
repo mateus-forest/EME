@@ -8,6 +8,7 @@ import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
 import type { CosWorkspaceContext } from "@/lib/cos/types"
+import { resolveCosConversationCategory, type CosConversationCategoryId } from "@/lib/cos-conversations"
 import { dispatchEntitySync } from "@/lib/entity-sync"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 
@@ -19,6 +20,7 @@ export type AssistantCredits = {
 export type CosConversationSummary = {
   id: string
   title: string
+  category?: CosConversationCategoryId
   createdAt: string
   updatedAt: string
   lastInteractionAt: string
@@ -290,9 +292,12 @@ function buildPendingConfirmationLabels(input: { action: string; content: string
 }
 
 function normalizeConversationSummary(item: CosConversationSummary): CosConversationSummary {
+  const title = repairCosText(item.title)
+
   return {
     ...item,
-    title: repairCosText(item.title),
+    title,
+    category: item.category ?? resolveCosConversationCategory({ title }),
   }
 }
 
@@ -438,8 +443,6 @@ export function useCosConversations({
 
     return () => {
       isMountedRef.current = false
-      conversationListRequestIdRef.current += 1
-      openConversationRequestIdRef.current += 1
     }
   }, [])
 

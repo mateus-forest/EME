@@ -12,6 +12,12 @@ import {
   CosConversationSummary,
   useCosConversations,
 } from "@/components/use-cos-conversations"
+import {
+  COS_CONVERSATION_CATEGORIES,
+  getCosConversationCategoryLabel,
+  resolveCosConversationCategory,
+  type CosConversationCategoryId,
+} from "@/lib/cos-conversations"
 
 type AssistantBootstrapResponse = {
   credits?: AssistantCredits
@@ -20,13 +26,15 @@ type AssistantBootstrapResponse = {
 }
 
 const CONVERSATION_GROUP_ORDER = ["Hoje", "Ontem", "Últimos 7 dias", "Este mês", "Anteriores"] as const
-const MAX_VISIBLE_CONVERSATIONS_PER_GROUP = 12
+const MAX_VISIBLE_CONVERSATIONS_PER_GROUP = 8
+type ConversationCategoryFilter = "all" | CosConversationCategoryId
 
 export function BrokerCosHistoryPage() {
   const [prompt, setPrompt] = useState("")
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
   const [search, setSearch] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<ConversationCategoryFilter>("all")
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const chatViewportRef = useRef<HTMLDivElement>(null)
 
@@ -88,23 +96,47 @@ export function BrokerCosHistoryPage() {
 
   const filteredConversations = useMemo(() => {
     const normalized = normalizeSearchText(search)
-    if (!normalized) return conversations
-    return conversations.filter((item) => normalizeSearchText(item.title).includes(normalized))
-  }, [conversations, search])
+    return conversations.filter((item) => {
+      const category = getConversationCategory(item)
+      const matchesCategory = categoryFilter === "all" || category === categoryFilter
+      const matchesSearch =
+        !normalized ||
+        normalizeSearchText(item.title).includes(normalized) ||
+        normalizeSearchText(getCosConversationCategoryLabel(category)).includes(normalized)
+
+      return matchesCategory && matchesSearch
+    })
+  }, [categoryFilter, conversations, search])
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<CosConversationCategoryId, number>()
+    for (const item of conversations) {
+      const category = getConversationCategory(item)
+      counts.set(category, (counts.get(category) ?? 0) + 1)
+    }
+    return counts
+  }, [conversations])
 
   const groupedConversations = useMemo(() => {
-    const groups = new Map<string, CosConversationSummary[]>()
+    return COS_CONVERSATION_CATEGORIES.map((category) => {
+      const categoryItems = filteredConversations.filter((item) => getConversationCategory(item) === category.id)
+      const temporalGroups = new Map<string, CosConversationSummary[]>()
 
-    for (const item of filteredConversations) {
-      const label = getConversationGroupLabel(item.lastInteractionAt)
-      const bucket = groups.get(label) ?? []
-      bucket.push(item)
-      groups.set(label, bucket)
-    }
+      for (const item of categoryItems) {
+        const label = getConversationGroupLabel(item.lastInteractionAt)
+        const bucket = temporalGroups.get(label) ?? []
+        bucket.push(item)
+        temporalGroups.set(label, bucket)
+      }
 
-    return CONVERSATION_GROUP_ORDER
-      .map((label) => ({ label, items: groups.get(label) ?? [] }))
-      .filter((group) => group.items.length > 0)
+      return {
+        ...category,
+        items: categoryItems,
+        temporalGroups: CONVERSATION_GROUP_ORDER
+          .map((label) => ({ label, items: temporalGroups.get(label) ?? [] }))
+          .filter((group) => group.items.length > 0),
+      }
+    }).filter((group) => group.items.length > 0)
   }, [filteredConversations])
 
   async function handleSubmit(input?: { promptOverride?: string; attachments?: import("@/components/cos-prompt-composer").CosComposerAttachment[] }) {
@@ -149,84 +181,139 @@ export function BrokerCosHistoryPage() {
       primaryActionOnClick={() => void createConversation()}
     >
       <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <div className="min-w-0 rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+        <div className="eme-subtle-scrollbar min-w-0 rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-4 xl:max-h-[calc(100svh-9.5rem)] xl:overflow-y-auto">
+          <div className="mb-5 border-b border-black/[0.05] pb-4" data-testid="cos-history-category-filters">
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#97A3B6]">
+              Organizar por intenção
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={categoryFilter === "all"}
+                data-testid="cos-history-category-all"
+                onClick={() => setCategoryFilter("all")}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  categoryFilter === "all"
+                    ? "border-[#009b3a]/20 bg-[#edf8f1] text-[#087331]"
+                    : "border-black/[0.06] bg-white text-[#667085] hover:text-[#111111]"
+                }`}
+              >
+                Todas <span className="ml-1 text-[10px] opacity-70">{conversations.length}</span>
+              </button>
+              {COS_CONVERSATION_CATEGORIES.filter((category) => (categoryCounts.get(category.id) ?? 0) > 0).map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  aria-pressed={categoryFilter === category.id}
+                  data-testid={`cos-history-category-${category.id}`}
+                  onClick={() => setCategoryFilter(category.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    categoryFilter === category.id
+                      ? "border-[#009b3a]/20 bg-[#edf8f1] text-[#087331]"
+                      : "border-black/[0.06] bg-white text-[#667085] hover:text-[#111111]"
+                  }`}
+                >
+                  {category.label} <span className="ml-1 text-[10px] opacity-70">{categoryCounts.get(category.id)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {groupedConversations.length === 0 ? (
             <div className="rounded-[1.25rem] border border-dashed border-black/[0.08] bg-white px-4 py-4 text-sm text-[#7B8491]">
               {search.trim()
                 ? "Nenhuma conversa encontrada."
-                : "As conversas do COS aparecerão aqui por corretor, com título e última interação."}
+                : categoryFilter !== "all"
+                  ? "Nenhuma conversa nesta categoria."
+                  : "As conversas do COS aparecerão aqui por intenção e data da última interação."}
             </div>
           ) : (
-            groupedConversations.map((group) => {
-              const visibleItems = expandedGroups[group.label]
-                ? group.items
-                : group.items.slice(0, MAX_VISIBLE_CONVERSATIONS_PER_GROUP)
-
-              return (
-                <div key={group.label} className="mb-5 last:mb-0">
-                  <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#97A3B6]">
-                    {group.label}
-                  </p>
-                  <div className="space-y-2">
-                    {visibleItems.map((item) => {
-                      const isActive = item.id === activeConversationId
-
-                      return (
-                        <div
-                          key={item.id}
-                          className={`rounded-[1.25rem] border p-3 transition ${
-                            isActive
-                              ? "border-[#009b3a]/18 bg-[#effaf3]"
-                              : "border-black/[0.06] bg-white hover:bg-[#f8f9fb]"
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => void openConversation(item.id)}
-                            className="w-full text-left"
-                          >
-                            <p className={`line-clamp-2 text-sm ${isActive ? "font-semibold text-[#111111]" : "text-[#334155]"}`}>
-                              {item.title}
-                            </p>
-                            <p className="mt-1 text-xs text-[#8A97A8]">{formatConversationTimestamp(item.lastInteractionAt)}</p>
-                          </button>
-                          <div className="mt-3 flex items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void handleRename(item.id, item.title)}
-                              className="h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
-                            >
-                              <Pencil className="mr-1.5 size-3.5" />
-                              Renomear
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => void handleDelete(item.id)}
-                              className="h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
-                            >
-                              <Trash2 className="mr-1.5 size-3.5" />
-                              Excluir
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {group.items.length > MAX_VISIBLE_CONVERSATIONS_PER_GROUP && !expandedGroups[group.label] ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setExpandedGroups((current) => ({ ...current, [group.label]: true }))}
-                      className="mt-3 h-9 rounded-full border border-black/[0.06] bg-white px-4 text-xs text-[#4B5563] hover:bg-white"
-                    >
-                      Mostrar mais
-                    </Button>
-                  ) : null}
+            groupedConversations.map((categoryGroup) => (
+              <section key={categoryGroup.id} className="mb-6 last:mb-0" data-category={categoryGroup.id}>
+                <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                  <h2 className="text-sm font-semibold text-[#111111]">{categoryGroup.label}</h2>
+                  <span className="rounded-full bg-white px-2 py-1 text-[11px] text-[#7B8491]">{categoryGroup.items.length}</span>
                 </div>
-              )
-            })
+
+                <div className="space-y-4">
+                  {categoryGroup.temporalGroups.map((temporalGroup) => {
+                    const expansionKey = `${categoryGroup.id}:${temporalGroup.label}`
+                    const visibleItems = expandedGroups[expansionKey]
+                      ? temporalGroup.items
+                      : temporalGroup.items.slice(0, MAX_VISIBLE_CONVERSATIONS_PER_GROUP)
+
+                    return (
+                      <div key={expansionKey}>
+                        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#97A3B6]">
+                          {temporalGroup.label}
+                        </p>
+                        <div className="space-y-2">
+                          {visibleItems.map((item) => {
+                            const isActive = item.id === activeConversationId
+
+                            return (
+                              <div
+                                key={item.id}
+                                className={`rounded-[1.15rem] border px-3 py-2.5 transition ${
+                                  isActive
+                                    ? "border-[#009b3a]/18 bg-[#effaf3]"
+                                    : "border-black/[0.06] bg-white hover:bg-[#f8f9fb]"
+                                }`}
+                              >
+                                <div className="flex min-w-0 items-start gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => void openConversation(item.id)}
+                                    className="min-w-0 flex-1 text-left"
+                                  >
+                                    <p className={`line-clamp-2 break-words text-sm ${isActive ? "font-semibold text-[#111111]" : "text-[#334155]"}`}>
+                                      {item.title}
+                                    </p>
+                                    <p className="mt-1 text-xs text-[#8A97A8]">{formatConversationTimestamp(item.lastInteractionAt)}</p>
+                                  </button>
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      aria-label={`Renomear ${item.title}`}
+                                      onClick={() => void handleRename(item.id, item.title)}
+                                      className="size-8 rounded-full text-[#667085] hover:bg-white hover:text-[#111111]"
+                                    >
+                                      <Pencil className="size-3.5" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      aria-label={`Excluir ${item.title}`}
+                                      onClick={() => void handleDelete(item.id)}
+                                      className="size-8 rounded-full text-[#667085] hover:bg-white hover:text-red-600"
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {temporalGroup.items.length > MAX_VISIBLE_CONVERSATIONS_PER_GROUP && !expandedGroups[expansionKey] ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setExpandedGroups((current) => ({ ...current, [expansionKey]: true }))}
+                            className="mt-2 h-8 rounded-full border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white"
+                          >
+                            Mostrar mais
+                          </Button>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            ))
           )}
 
           {hasMoreConversations ? (
@@ -264,7 +351,7 @@ export function BrokerCosHistoryPage() {
             </div>
           </div>
 
-          <div ref={chatViewportRef} className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div ref={chatViewportRef} className="eme-hidden-scrollbar min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
             {isConversationLoading ? (
               <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
                 Carregando conversa...
@@ -333,6 +420,10 @@ export function BrokerCosHistoryPage() {
 
 function normalizeSearchText(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
+}
+
+function getConversationCategory(conversation: CosConversationSummary) {
+  return conversation.category ?? resolveCosConversationCategory({ title: conversation.title })
 }
 
 function getConversationGroupLabel(isoDate: string) {

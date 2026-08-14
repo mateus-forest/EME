@@ -88,6 +88,13 @@ export const contractTemplates = {
     })
     return parseResponse<{ template: ContractTemplateRecord; reused: boolean }>(response)
   },
+  async delete(id: string) {
+    const response = await fetch(`/api/brokers/contract-templates/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    })
+    return parseResponse<{ success: boolean }>(response)
+  },
 }
 
 export const templateContracts = {
@@ -133,5 +140,21 @@ export const templateContracts = {
       body: JSON.stringify({ action: "sign", ...payload }),
     })
     return parseResponse<{ instance: ContractTemplateInstanceRecord }>(response)
+  },
+  async cancel(id: string) {
+    const response = await fetch(`/api/brokers/contract-instances/${encodeURIComponent(id)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ action: "cancel" }),
+    })
+    return parseResponse<{ instance: ContractTemplateInstanceRecord }>(response)
+  },
+  async delete(id: string) {
+    const response = await fetch(`/api/brokers/contract-instances/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    })
+    return parseResponse<{ success: boolean }>(response)
   },
 }

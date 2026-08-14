@@ -15,9 +15,10 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   const { id } = await context.params
   const template = await prisma.contractTemplate.findFirst({
     where: { id, brokerId: user.broker.id },
-    include: { versions: { orderBy: { version: "desc" }, take: 1 } },
+    include: { versions: { orderBy: { version: "desc" } } },
   })
-  const version = template?.versions[0]
+  const version = template?.versions.find((item) => item.version === template.currentVersion)
+    ?? template?.versions.find((item) => Boolean(item.sourceStoragePath))
   if (!template || !version?.sourceStoragePath) {
     return NextResponse.json({ error: "Arquivo original não encontrado." }, { status: 404 })
   }

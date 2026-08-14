@@ -37,7 +37,11 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
 
     const current = template.versions.find((version) => version.version === template.currentVersion)
     const lastValid = template.versions.find((version) => ["READY", "REVIEW_REQUIRED"].includes(version.status))
-    const sourceVersion = current?.sourceStoragePath ? current : lastValid
+    const sourceVersion = current?.sourceStoragePath
+      ? current
+      : lastValid?.sourceStoragePath
+        ? lastValid
+        : template.versions.find((version) => Boolean(version.sourceStoragePath))
     if (!sourceVersion?.sourceStoragePath) {
       return NextResponse.json({ error: "O arquivo original deste modelo não está disponível." }, { status: 409 })
     }

@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
+import { parseConversationWorkflowContent } from "@/lib/cos/workflow-engine"
+import { DEFAULT_COS_CONVERSATION_TITLE, resolveCosConversationCategory } from "@/lib/cos-conversations"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
-function serializeConversation(document: { id: string; title: string; createdAt: Date; updatedAt: Date }) {
+function serializeConversation(document: { id: string; title: string; content?: string | null; createdAt: Date; updatedAt: Date }) {
   const lastInteractionAt = document.updatedAt.toISOString()
+  const { workflow, memory } = parseConversationWorkflowContent(document.content)
+  const activeStep = workflow?.steps[workflow.currentStep] ?? workflow?.steps.at(-1) ?? null
 
   return {
     id: document.id,
     title: document.title,
+    category: resolveCosConversationCategory({
+      action: memory?.pendingAction ?? activeStep?.action ?? memory?.lastAction,
+      capabilityId: activeStep?.capabilityId,
+      entity: memory?.pendingEntity ?? activeStep?.entity,
+      title: document.title,
+    }),
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
     lastInteractionAt,
@@ -44,6 +53,7 @@ export async function GET(request: Request) {
         select: {
           id: true,
           title: true,
+          content: true,
           createdAt: true,
           updatedAt: true,
         },

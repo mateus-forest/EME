@@ -20,17 +20,9 @@ export const studioInstagramGoals = [
   "Aluguel",
 ] as const
 
-export const studioInstagramIdentities = [
-  "Moderna",
-  "Luxo",
-  "Minimalista",
-  "Comercial",
-] as const
-
 export const studioInstagramRequestSchema = z.object({
   propertyId: z.string().trim().min(1).max(191),
   goal: z.enum(studioInstagramGoals),
-  identity: z.enum(studioInstagramIdentities),
   provider: z.enum(["openai", "xai"]).default("openai"),
   version: z.number().int().min(1).max(20).default(1),
 })
@@ -75,7 +67,6 @@ export function buildInstagramPrompt(input: StudioInstagramRequest, property: St
   return [
     "Crie uma campanha imobiliaria pronta para Instagram em portugues do Brasil.",
     `Objetivo da campanha: ${input.goal}.`,
-    `Identidade visual da campanha: ${input.identity}.`,
     `Versao solicitada: ${input.version}. Gere uma abordagem nova e coerente com o contexto do imovel.`,
     "",
     "Contexto do imovel:",
@@ -132,7 +123,6 @@ async function generateInstagramCampaignWithOpenAI(
     metadata: {
       propertyId: property.id,
       goal: input.goal,
-      identity: input.identity,
       version: input.version,
     },
     request: {
@@ -191,7 +181,6 @@ async function generateInstagramCampaignWithXAI(
     metadata: {
       propertyId: property.id,
       goal: input.goal,
-      identity: input.identity,
       version: input.version,
     },
   })

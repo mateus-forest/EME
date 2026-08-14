@@ -60,6 +60,7 @@ import {
 } from "@/lib/contracts-client"
 import type { LeadRecord } from "@/lib/lead-contract"
 import type { PropertyApiItem } from "@/lib/property-contract"
+import { templateContracts } from "@/lib/contract-template-client"
 
 type BrokerProfile = {
   id: string
@@ -2964,6 +2965,21 @@ export function BrokerContractsPage({
   async function updateContractStatus(nextStatus: ContractStatus) {
     if (!selectedContract) return
     if (selectedContract.content.source === "template" && selectedContract.content.templateInstanceId && onOpenTemplateContract) {
+      if (nextStatus === "cancelled") {
+        if (!window.confirm("Cancelar este contrato?")) return
+        setIsStatusSaving(true)
+        setFeedback("")
+        try {
+          await templateContracts.cancel(selectedContract.content.templateInstanceId)
+          setFeedback("Contrato cancelado.")
+          await loadContracts(selectedContract.id)
+        } catch (error) {
+          setFeedback(error instanceof Error ? error.message : "Não foi possível cancelar o contrato.")
+        } finally {
+          setIsStatusSaving(false)
+        }
+        return
+      }
       onOpenTemplateContract(selectedContract.content.templateInstanceId)
       return
     }
@@ -3007,8 +3023,14 @@ export function BrokerContractsPage({
   async function deleteContract(contractId: string) {
     const contractToDelete = contractsList.find((contract) => contract.id === contractId)
     if (contractToDelete?.content.source === "template" && contractToDelete.content.templateInstanceId && onOpenTemplateContract) {
-      setFeedback("Abra o contrato para revisar suas ações e o histórico do modelo.")
-      onOpenTemplateContract(contractToDelete.content.templateInstanceId)
+      if (!window.confirm("Excluir este contrato?")) return
+      try {
+        await templateContracts.delete(contractToDelete.content.templateInstanceId)
+        setFeedback("Contrato excluído.")
+        await loadContracts(selectedId === contractId ? null : selectedId)
+      } catch (error) {
+        setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o contrato.")
+      }
       return
     }
     if (!window.confirm("Excluir este contrato?")) return

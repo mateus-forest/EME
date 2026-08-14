@@ -230,6 +230,34 @@
     backdrop-filter: blur(10px);
   }
 
+  .eme-hidden-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .eme-hidden-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .eme-subtle-scrollbar {
+    scrollbar-color: rgba(100, 116, 139, 0.24) transparent;
+    scrollbar-width: thin;
+  }
+
+  .eme-subtle-scrollbar::-webkit-scrollbar {
+    height: 4px;
+    width: 4px;
+  }
+
+  .eme-subtle-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .eme-subtle-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(100, 116, 139, 0.24);
+  }
+
   .studio-step-grid {
     display: grid;
     gap: 0.5rem;

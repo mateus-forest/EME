@@ -197,50 +197,44 @@ export function BrokerClientsPage() {
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [clientDraft, setClientDraft] = useState<ClientForm>(emptyClientForm)
   const clientsRequestIdRef = useRef(0)
-  const ignoredLeadSyncEventsRef = useRef(0)
+  const leadSyncSourceIdRef = useRef("")
+  const dismissedRouteClientIdRef = useRef<string | null>(null)
+  const pendingRouteClientIdRef = useRef<string | null>(null)
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastDismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openClient = useCallback((client: LeadRecord) => {
-    router.push(`/corretor/clientes/${client.id}`)
+    dismissedRouteClientIdRef.current = null
     setSelectedClient(client)
     setSelectedClientDraft(mapLeadToForm(client))
-  }, [router])
-
-  const applyClientsState = useCallback((nextClients: LeadRecord[], options?: { removedClientId?: string }) => {
-    setClients(nextClients)
-
-    const removedClientId = options?.removedClientId
-    const nextSelectedClientId =
-      removedClientId && selectedClient?.id === removedClientId ? null : (routeClientId ?? selectedClient?.id ?? null)
-
-    if (!nextSelectedClientId) {
-      if (removedClientId && selectedClient?.id === removedClientId) {
-        setSelectedClient(null)
-        setSelectedClientDraft(emptyClientForm)
-      }
-      return
+    if (routeClientId !== client.id) {
+      pendingRouteClientIdRef.current = client.id
+      router.push(`/corretor/clientes/${client.id}`, { scroll: false })
+    } else {
+      pendingRouteClientIdRef.current = null
     }
+  }, [routeClientId, router])
 
-    const nextSelectedClient = nextClients.find((item) => item.id === nextSelectedClientId) ?? null
-
-    if (!nextSelectedClient) {
-      setSelectedClient(null)
-      setSelectedClientDraft(emptyClientForm)
-      if (routeClientId === nextSelectedClientId) {
-        router.push("/corretor/clientes")
-      }
-      return
+  const closeClient = useCallback(() => {
+    dismissedRouteClientIdRef.current = selectedClient?.id ?? routeClientId ?? null
+    pendingRouteClientIdRef.current = null
+    setSelectedClient(null)
+    setSelectedClientDraft(emptyClientForm)
+    if (routeClientId || selectedClient) {
+      router.replace("/corretor/clientes", { scroll: false })
     }
+  }, [routeClientId, router, selectedClient])
 
-    setSelectedClient(nextSelectedClient)
-    setSelectedClientDraft(mapLeadToForm(nextSelectedClient))
-  }, [routeClientId, router, selectedClient?.id])
+  const getLeadSyncSourceId = useCallback(() => {
+    if (!leadSyncSourceIdRef.current) {
+      leadSyncSourceIdRef.current = `broker-clients:${crypto.randomUUID()}`
+    }
+    return leadSyncSourceIdRef.current
+  }, [])
 
   const broadcastLeadSync = useCallback((entityId: string) => {
-    ignoredLeadSyncEventsRef.current += 1
-    dispatchEntitySync({ type: "lead", entityId })
-  }, [])
+    dispatchEntitySync({ type: "lead", entityId, sourceId: getLeadSyncSourceId() })
+  }, [getLeadSyncSourceId])
 
   const showToast = useCallback((message: string, tone: FeedbackTone) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
@@ -265,14 +259,39 @@ export function BrokerClientsPage() {
   }, [])
 
   useEffect(() => {
-    if (!routeClientId || !clients.length) return
-    if (selectedClient?.id === routeClientId) return
-    const client = clients.find((item) => item.id === routeClientId)
-    if (client) {
-      setSelectedClient(client)
-      setSelectedClientDraft(mapLeadToForm(client))
+    if (!routeClientId) {
+      if (pendingRouteClientIdRef.current && pendingRouteClientIdRef.current === selectedClient?.id) return
+      dismissedRouteClientIdRef.current = null
+      if (selectedClient) {
+        setSelectedClient(null)
+        setSelectedClientDraft(emptyClientForm)
+      }
+      return
     }
-  }, [clients, routeClientId, selectedClient])
+
+    if (pendingRouteClientIdRef.current === routeClientId) pendingRouteClientIdRef.current = null
+    if (dismissedRouteClientIdRef.current === routeClientId) return
+    if (!clients.length) {
+      if (hasLoadedClients) router.replace("/corretor/clientes", { scroll: false })
+      return
+    }
+
+    const routeClient = clients.find((item) => item.id === routeClientId) ?? null
+    if (!routeClient) {
+      if (hasLoadedClients) router.replace("/corretor/clientes", { scroll: false })
+      return
+    }
+
+    if (selectedClient?.id !== routeClientId) {
+      setSelectedClient(routeClient)
+      setSelectedClientDraft(mapLeadToForm(routeClient))
+      return
+    }
+
+    if (selectedClient !== routeClient) {
+      setSelectedClient(routeClient)
+    }
+  }, [clients, hasLoadedClients, routeClientId, router, selectedClient])
 
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -305,7 +324,7 @@ export function BrokerClientsPage() {
     [clients],
   )
 
-  const loadClients = useCallback(async (options?: { suppressErrorFeedback?: boolean; removedClientId?: string }) => {
+  const loadClients = useCallback(async (options?: { suppressErrorFeedback?: boolean }) => {
     const requestId = ++clientsRequestIdRef.current
     const response = await fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
     const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[]; error?: string } | null
@@ -320,25 +339,23 @@ export function BrokerClientsPage() {
       return null
     }
     const nextClients = data?.leads ?? []
-    applyClientsState(nextClients, { removedClientId: options?.removedClientId })
+    setClients(nextClients)
     setHasLoadedClients(true)
     return nextClients
-  }, [applyClientsState, showToast])
+  }, [showToast])
 
   useEffect(() => {
     void loadClients()
+    const syncSourceId = getLeadSyncSourceId()
     const unsubscribe = subscribeEntitySync((message) => {
       if (message.type === "lead") {
-        if (ignoredLeadSyncEventsRef.current > 0) {
-          ignoredLeadSyncEventsRef.current -= 1
-          return
-        }
+        if (message.sourceId === syncSourceId) return
         void loadClients()
       }
     })
 
     return unsubscribe
-  }, [loadClients])
+  }, [getLeadSyncSourceId, loadClients])
 
   async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
     setIsUpdatingStatus(true)
@@ -408,11 +425,19 @@ export function BrokerClientsPage() {
       }
 
       const deletedClientId = data.id || client.id
-      const nextClients = await loadClients({ suppressErrorFeedback: true, removedClientId: deletedClientId })
+      const deletedOpenClient = selectedClient?.id === deletedClientId || routeClientId === deletedClientId
+      if (deletedOpenClient) dismissedRouteClientIdRef.current = deletedClientId
+
+      const nextClients = await loadClients({ suppressErrorFeedback: true })
       if (!nextClients || nextClients.some((item) => item.id === deletedClientId)) {
         throw new Error("Não foi possível excluir o cliente.")
       }
 
+      if (deletedOpenClient) {
+        setSelectedClient(null)
+        setSelectedClientDraft(emptyClientForm)
+        router.replace("/corretor/clientes", { scroll: false })
+      }
       broadcastLeadSync(deletedClientId)
       showToast("Cliente removido da carteira.", "success")
     } catch (caughtError) {
@@ -725,10 +750,7 @@ export function BrokerClientsPage() {
       <Dialog
         open={!!selectedClient}
         onOpenChange={(open) => {
-          if (!open) {
-            setSelectedClient(null)
-            router.push("/corretor/clientes")
-          }
+          if (!open) closeClient()
         }}
       >
         <DialogContent className="max-h-[94vh] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[1.75rem] border-black/[0.06] bg-white/95 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:max-w-5xl">

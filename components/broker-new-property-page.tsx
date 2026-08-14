@@ -169,7 +169,6 @@ export function BrokerNewPropertyPage() {
       `Dormitórios informados: ${snapshot.bedrooms}`,
       `Banheiros informados: ${snapshot.bathrooms}`,
       `Garagens informadas: ${snapshot.parking}`,
-      snapshot.context.trim() ? `Contexto adicional em texto/áudio: ${snapshot.context.trim()}` : "",
       snapshot.image ? "Existe uma imagem do imóvel anexada para análise visual." : "",
       "Se algum dado estiver ausente, mantenha a prévia mesmo assim e marque os campos faltantes.",
     ]
@@ -227,6 +226,7 @@ export function BrokerNewPropertyPage() {
       const generated = await extractPropertyAd({
         adText: snapshot.context.trim(),
         notes: buildAiNotes(snapshot),
+        workflow: "new_property",
         image: snapshot.image,
       })
 
@@ -697,7 +697,7 @@ export function BrokerNewPropertyPage() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 p-5 pt-0">
-            <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#009b3a]/28 bg-[#009b3a]/[0.05] px-6 text-center transition-colors hover:bg-[#009b3a]/[0.08]">
+            <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#009b3a]/28 bg-[#009b3a]/[0.05] px-6 py-5 text-center transition-colors hover:bg-[#009b3a]/[0.08]">
               <input
                 type="file"
                 multiple
@@ -735,7 +735,7 @@ export function BrokerNewPropertyPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex min-h-28 flex-col items-center justify-center rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 text-center">
+              <div className="flex flex-col items-center justify-center rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-5 text-center">
                 <Images className="size-8 text-[#8B95A1]" />
                 <p className="mt-3 text-sm font-medium text-[#4B5563]">Nenhuma foto selecionada</p>
                 <p className="mt-1 text-sm text-[#7B8491]">As imagens reais aparecerão aqui antes da publicação.</p>
@@ -744,7 +744,7 @@ export function BrokerNewPropertyPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid gap-5">
           <div className="grid gap-6">
             {creationMode === "ai" ? (
             <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
@@ -916,20 +916,10 @@ export function BrokerNewPropertyPage() {
             </Card>
             ) : null}
 
-          </div>
-
-          <div className="grid gap-6">
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <CardContent className="p-6">
-                <p className="text-sm leading-7 text-[#5F6B7A]">
-                  {creationMode === "ai"
-                    ? "Fluxo rápido: envie contexto, gere com IA e ajuste os dados antes de publicar."
-                    : "Fluxo manual: preencha informações, descrição e fotos com controle total sobre o anúncio."}
-                </p>
-              </CardContent>
-            </Card>
             {publishFeedback && !hasGenerated ? (
-              <p className="text-center text-sm text-[#009b3a]">{publishFeedback}</p>
+              <p className="rounded-xl border border-[#009b3a]/15 bg-[#eef9f1] px-4 py-3 text-sm text-[#08752f]">
+                {publishFeedback}
+              </p>
             ) : null}
           </div>
         </div>

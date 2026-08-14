@@ -26,6 +26,12 @@ export type ContractTemplateAnalysisResult = {
   }
 }
 
+type ExtractedContractTemplate = {
+  text: string
+  mimeType: string | null
+  fileSize: number
+}
+
 export function describeContractTemplateAnalysisError(error: unknown) {
   const message = error instanceof Error ? error.message : ""
   if (/^(Envie um arquivo|O arquivo)/.test(message)) {
@@ -55,6 +61,9 @@ REGRAS OBRIGATÓRIAS:
 - occurrenceIndex começa em 0 e identifica qual ocorrência literal dentro do bloco.
 - Se houver dúvida entre texto fixo e variável, preserve como texto fixo, adicione um warning e não crie o campo.
 - Identifique partes pela função existente no documento, sem limitar a locador/locatário/comprador/vendedor.
+- Priorize os campos centrais que realmente variam: nome e identificação das partes, CPF/CNPJ, RG, endereço, imóvel, matrícula e cartório, valores, datas, prazo, vencimento, pagamento, garantia, comissão e local de assinatura.
+- Não classifique rótulos, títulos de cláusula ou frases inteiras como campo. exactText deve conter somente o valor variável presente no documento.
+- Quando o mesmo dado aparecer mais de uma vez, registre cada ocorrência literal com occurrenceIndex correto para que todas possam ser preenchidas.
 - Use partyKey vazio quando o campo não pertencer a uma parte.
 - Use binding "none" quando não existir binding conhecido seguro.
 - Marque needsReview quando a classificação não for inequívoca.
@@ -64,8 +73,8 @@ DOCUMENTO INDEXADO:
 ${indexed}`
 }
 
-export async function analyzeContractTemplate(file: File): Promise<ContractTemplateAnalysisResult> {
-  const { text } = await extractContractTemplateText(file)
+export async function analyzeExtractedContractTemplate(input: ExtractedContractTemplate): Promise<ContractTemplateAnalysisResult> {
+  const { text } = input
   const blocks = splitContractTextIntoBlocks(text)
   if (blocks.length === 0) throw new Error("Não foi possível identificar a estrutura textual do documento.")
 
@@ -77,10 +86,10 @@ export async function analyzeContractTemplate(file: File): Promise<ContractTempl
     client,
     operationKey: "contracts.template_analysis",
     options: { timeout: 90_000, maxRetries: 0 },
-    metadata: { blockCount: blocks.length, fileType: detectContractTemplateMime(file), fileSize: file.size },
+    metadata: { blockCount: blocks.length, fileType: input.mimeType, fileSize: input.fileSize },
     request: {
       model,
-      max_output_tokens: 8000,
+      max_output_tokens: 16_000,
       reasoning: { effort: "minimal" },
       instructions:
         "Você prepara modelos contratuais sem atuar como advogado. Extraia somente estrutura e campos variáveis, preserve literalmente o documento e responda no schema solicitado em português do Brasil.",
@@ -118,4 +127,13 @@ export async function analyzeContractTemplate(file: File): Promise<ContractTempl
       creditsConsumed: null,
     },
   }
+}
+
+export async function analyzeContractTemplate(file: File): Promise<ContractTemplateAnalysisResult> {
+  const extracted = await extractContractTemplateText(file)
+  return analyzeExtractedContractTemplate({
+    text: extracted.text,
+    mimeType: detectContractTemplateMime(file),
+    fileSize: file.size,
+  })
 }

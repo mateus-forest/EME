@@ -31,6 +31,16 @@ const propertyInclude = {
   agency: true,
 } as const
 
+function getRealPropertyImages(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
+    .map((image) => image.trim())
+    .filter((image) => !image.toLowerCase().includes("placeholder"))
+    .filter((image) => image.startsWith("data:image/") || /^https?:\/\//i.test(image) || image.startsWith("/"))
+}
+
 async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
   const property = await prisma.property.findUnique({
     where: { id },
@@ -87,6 +97,16 @@ export async function POST(request: NextRequest) {
     }
 
     const property = accessible.property
+    const propertyImages = getRealPropertyImages(property.imageUrls)
+    if (propertyImages.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Adicione ao menos uma fotografia real ao imóvel antes de gerar a campanha.",
+          code: "PROPERTY_IMAGE_REQUIRED",
+        },
+        { status: 422 },
+      )
+    }
     const actionType = "studio_instagram_campaign"
     const creditsUsed = 10
 
@@ -168,7 +188,7 @@ export async function POST(request: NextRequest) {
       kind: "INSTAGRAM",
       status: "PENDING_REVIEW",
       goal: payload.goal,
-      visualIdentity: payload.identity,
+      visualIdentity: null,
       version: payload.version,
       provider,
       model,
@@ -179,9 +199,8 @@ export async function POST(request: NextRequest) {
         propertyTitle: property.title,
         city: property.city,
         neighborhood: property.neighborhood,
-        propertyImageUrl: Array.isArray(property.imageUrls)
-          ? property.imageUrls.find((image): image is string => typeof image === "string" && image.trim().length > 0) ?? null
-          : null,
+        propertyImageUrl: propertyImages[0] ?? null,
+        propertyImageCount: propertyImages.length,
         capability: generated.capability,
         externalRequestId: generated.externalRequestId ?? null,
         durationMs: generated.durationMs,
@@ -200,7 +219,6 @@ export async function POST(request: NextRequest) {
           metadata: {
             format: "instagram_post_feed",
             goal: payload.goal,
-            identity: payload.identity,
           } as Prisma.InputJsonValue,
         },
         {
@@ -214,7 +232,6 @@ export async function POST(request: NextRequest) {
           metadata: {
             format: "instagram_story",
             goal: payload.goal,
-            identity: payload.identity,
           } as Prisma.InputJsonValue,
         },
         {

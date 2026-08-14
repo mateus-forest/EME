@@ -3,6 +3,7 @@ import "server-only"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import {
   calculateContractReadiness,
+  buildTextOnlyContractTemplateStructure,
   contractTemplateStructureSchema,
   renderContractTemplateHtml,
   splitContractTextIntoBlocks,
@@ -161,22 +162,17 @@ export function parseTemplateStructure(value: unknown) {
 }
 
 export function parseStoredTemplateStructure(value: unknown, originalText: string) {
-  const parsed = contractTemplateStructureSchema.parse(value)
-  if (parsed.blocks.length > 0) return parsed
+  const parsed = contractTemplateStructureSchema.safeParse(value)
+  if (parsed.success && parsed.data.blocks.length > 0) return parsed.data
 
-  const blocks = splitContractTextIntoBlocks(originalText)
-  if (blocks.length === 0) {
+  if (splitContractTextIntoBlocks(originalText).length === 0) {
     throw new Error("A versão deste modelo não possui conteúdo textual preservado.")
   }
 
-  return contractTemplateStructureSchema.parse({
-    ...parsed,
-    title: parsed.title || blocks[0]?.text || "Contrato",
-    blocks,
-    sections: [],
-    fields: [],
-    warnings: [...parsed.warnings, "Estrutura textual restaurada a partir do arquivo original preservado."],
-    partiallyRecognized: true,
+  return buildTextOnlyContractTemplateStructure({
+    text: originalText,
+    title: parsed.success ? parsed.data.title : undefined,
+    warning: "Estrutura textual restaurada a partir do arquivo original preservado.",
   })
 }
 

@@ -20,12 +20,14 @@ export async function extractPropertyAd(input: {
   adText?: string
   sourceUrl?: string
   notes?: string
+  workflow?: "import" | "new_property"
   image: File | null
 }) {
   const formData = new FormData()
   if (input.adText) formData.append("adText", input.adText)
   if (input.sourceUrl) formData.append("sourceUrl", input.sourceUrl)
   if (input.notes) formData.append("notes", input.notes)
+  if (input.workflow) formData.append("workflow", input.workflow)
   if (input.image) formData.append("image", input.image)
 
   return parseAdImportResponse<{ drafts: AdImportDraft[] }>(

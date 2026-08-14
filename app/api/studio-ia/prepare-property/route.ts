@@ -834,6 +834,14 @@ export async function POST(request: NextRequest) {
       providerDurationMs: generated.durationMs,
       externalRequestId: generated.externalRequestId ?? null,
       externalCostUsd: generated.costUsd ?? null,
+      providerInputMimeType: generated.metadata?.providerInputMimeType ?? null,
+      providerInputBytes: generated.metadata?.providerInputBytes ?? null,
+      sourceMimeType: generated.metadata?.sourceMimeType ?? null,
+      sourceBytes: generated.metadata?.sourceBytes ?? null,
+      sourceWidth: generated.metadata?.sourceWidth ?? null,
+      sourceHeight: generated.metadata?.sourceHeight ?? null,
+      maskIncluded: generated.metadata?.maskIncluded ?? Boolean(maskMetadata),
+      maskBytesSent: generated.metadata?.maskBytes ?? null,
     }
 
     try {
@@ -888,7 +896,11 @@ export async function POST(request: NextRequest) {
         })
         await transaction.studioCampaign.update({
           where: { id: campaignId! },
-          data: { status: "PENDING_REVIEW", metadata: completedMetadata as Prisma.InputJsonValue },
+          data: {
+            status: "PENDING_REVIEW",
+            model: generated.model,
+            metadata: completedMetadata as Prisma.InputJsonValue,
+          },
         })
       })
     } catch {
@@ -949,10 +961,29 @@ export async function POST(request: NextRequest) {
         errorCode,
         sourceType,
         providerRequestStarted,
+        providerHttpStatus:
+          caughtError instanceof OpenAIImageProviderError
+            ? caughtError.providerStatus ?? undefined
+            : caughtError instanceof PedraApiError
+              ? caughtError.status
+              : caughtError instanceof XAIProviderError
+                ? caughtError.status
+                : undefined,
+        externalRequestId:
+          caughtError instanceof OpenAIImageProviderError
+            ? caughtError.requestId
+            : null,
       })
     }
 
-    console.error("[api][studio-ia][prepare-property] generation failed", { errorCode })
+    console.error("[api][studio-ia][prepare-property] generation failed", {
+      errorCode,
+      provider,
+      providerStatus: caughtError instanceof OpenAIImageProviderError ? caughtError.providerStatus : null,
+      providerCode: caughtError instanceof OpenAIImageProviderError ? caughtError.providerCode : null,
+      providerParam: caughtError instanceof OpenAIImageProviderError ? caughtError.providerParam : null,
+      providerRequestId: caughtError instanceof OpenAIImageProviderError ? caughtError.requestId : null,
+    })
 
     if (
       caughtError instanceof PedraApiError

@@ -5,6 +5,11 @@ import { contractTemplateStructureSchema, validateContractTemplateOccurrences } 
 import { serializeContractTemplate } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { deleteBrokerContractTemplateFile } from "@/lib/broker-document-storage"
+import {
+  hasUsableStoredContractTemplate,
+  recoverStoredContractTemplateVersion,
+} from "@/lib/contract-template-recovery.server"
 
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
@@ -27,10 +32,47 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       include,
     })
     if (!template) return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404 })
+    const current = template.versions.find((version) => version.version === template.currentVersion) ?? template.versions[0]
+    if (current && !hasUsableStoredContractTemplate(current)) {
+      await recoverStoredContractTemplateVersion(current, { templateTitle: template.name })
+      const recovered = await prisma.contractTemplate.findFirst({ where: { id, brokerId: auth.user.broker!.id }, include })
+      if (!recovered) return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404 })
+      return NextResponse.json({ template: serializeContractTemplate(recovered) })
+    }
     return NextResponse.json({ template: serializeContractTemplate(template) })
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Modelos indisponíveis no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível carregar o modelo." }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireBroker()
+  if ("response" in auth) return auth.response
+  const brokerId = auth.user.broker!.id
+  const { id } = await context.params
+  try {
+    const template = await prisma.contractTemplate.findFirst({ where: { id, brokerId }, include })
+    if (!template) return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404 })
+    const instanceCount = await prisma.contractTemplateInstance.count({ where: { templateId: template.id } })
+    if (instanceCount > 0) {
+      return NextResponse.json(
+        { error: `Este modelo possui ${instanceCount} contrato(s) vinculado(s). Exclua os contratos antes de remover o modelo.` },
+        { status: 409 },
+      )
+    }
+    const storagePaths = [...new Set(template.versions.map((version) => version.sourceStoragePath).filter(Boolean))]
+    await prisma.contractTemplate.delete({ where: { id: template.id } })
+    await Promise.all(storagePaths.map((storagePath) => deleteBrokerContractTemplateFile(storagePath)))
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[contracts][templates] deletion failed", {
+      templateId: id,
+      brokerId,
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Modelos indisponíveis no momento." }, { status: 503 })
+    return NextResponse.json({ error: "Não foi possível excluir o modelo." }, { status: 500 })
   }
 }
 

@@ -6,20 +6,36 @@ import { getSupabaseStorageEnv } from "@/lib/env.server"
 
 function getStorageConfig() {
   const env = getSupabaseStorageEnv()
-  const supabaseUrl = (env.publicSupabaseUrl || env.supabaseUrl || "").replace(/\/+$/, "")
-  const anonKey = env.anonKey
+  const configuredUrl = env.publicSupabaseUrl || env.supabaseUrl || ""
+  let supabaseUrl = ""
+  try {
+    // SUPABASE_URL is sometimes configured with /rest/v1. Storage endpoints always
+    // live at the project origin, so keeping that path produces /rest/v1/storage/...
+    // and every upload/read fails with PGRST125.
+    supabaseUrl = new URL(configuredUrl).origin
+  } catch {
+    // The validation below keeps the public error stable for missing/invalid config.
+  }
   const serviceRoleKey = env.serviceRoleKey
   const bucket = env.bucket || "properties"
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !bucket) {
+  if (!supabaseUrl || !serviceRoleKey || !bucket) {
     throw new Error("Upload de contratos indisponivel: configure o Supabase Storage.")
   }
 
   return {
     supabaseUrl,
-    anonKey,
     serviceRoleKey,
     bucket,
+  }
+}
+
+function getStorageAuthHeaders(serviceRoleKey: string) {
+  return {
+    // New Supabase sb_secret_* keys are opaque API keys, not JWTs. Sending one as
+    // Bearer makes Storage reject it with PGRST301 before authorizing the request.
+    apikey: serviceRoleKey,
+    ...(serviceRoleKey.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${serviceRoleKey}` }),
   }
 }
 
@@ -42,8 +58,7 @@ export async function saveBrokerContractFile(input: {
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
       "Content-Type": input.file.type || "application/octet-stream",
       "x-upsert": "false",
     },
@@ -74,8 +89,7 @@ export async function saveBrokerContractTemplateFile(input: {
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
       "Content-Type": input.file.type || "application/octet-stream",
       "x-upsert": "false",
     },
@@ -103,8 +117,7 @@ export async function readBrokerContractTemplateFile(storagePath: string) {
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${storagePath}`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
     },
     cache: "no-store",
   })
@@ -129,8 +142,7 @@ export async function deleteBrokerContractTemplateFile(storagePath: string | nul
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${storagePath}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
     },
   }).catch(() => null)
   if (response && !response.ok) {
@@ -153,8 +165,7 @@ export async function readBrokerContractFile(fileUrl: string) {
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
     },
     cache: "no-store",
   })
@@ -190,8 +201,7 @@ export async function deleteBrokerContractFile(fileUrl: string) {
   const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${objectPath}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      apikey: config.anonKey,
+      ...getStorageAuthHeaders(config.serviceRoleKey),
     },
   }).catch(() => null)
 

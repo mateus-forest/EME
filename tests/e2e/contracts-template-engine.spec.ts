@@ -6,11 +6,13 @@ import { extractContractTemplateText } from "../../lib/contract-document-parser.
 import { generateContractPdf } from "../../lib/contract-pdf.server"
 import {
   buildContractTemplateStructure,
+  buildTextOnlyContractTemplateStructure,
   calculateContractReadiness,
   contractBindingOptions,
   contractFieldBindingSchema,
   renderContractTemplateHtml,
   splitContractTextIntoBlocks,
+  validateContractTemplateOccurrences,
 } from "../../lib/contract-template-engine"
 import { loginAsBroker } from "./helpers/auth"
 
@@ -120,6 +122,9 @@ async function mockContracts(page: Page, initialReady = false) {
     return route.fulfill({ status: 201, json: { instance: { id: "instance-1", brokerDocumentId: "document-1" } } })
   })
   await page.route("**/api/brokers/contract-instances/instance-1", async (route) => {
+    if (route.request().method() === "DELETE") {
+      return route.fulfill({ json: { success: true } })
+    }
     if (route.request().method() === "PATCH") {
       const payload = route.request().postDataJSON()
       currentInstance = { ...currentInstance, ...payload, readiness: calculateContractReadiness(structure, payload.values ?? currentInstance.values) }
@@ -128,6 +133,9 @@ async function mockContracts(page: Page, initialReady = false) {
       const payload = route.request().postDataJSON()
       if (payload.action === "sign") {
         currentInstance = { ...currentInstance, status: "signed", signedAt: payload.signedAt, signatureNote: payload.note }
+      }
+      if (payload.action === "cancel") {
+        currentInstance = { ...currentInstance, status: "cancelled", signedAt: null, signatureNote: null }
       }
     }
     return route.fulfill({ json: { instance: currentInstance } })
@@ -143,6 +151,22 @@ test("engine preserva texto fixo, substitui apenas ocorrências e calcula pronti
   expect(html).not.toContain("TEMPLATE OFICIAL EME")
   expect(calculateContractReadiness(structure, values).score).toBe(100)
   expect(calculateContractReadiness(structure, {}).missing).toHaveLength(4)
+})
+
+test("recuperação textual nunca produz folha vazia e divide blocos excessivos sem perder conteúdo", () => {
+  const longClause = Array.from({ length: 180 }, (_, index) => `Obrigação ${index + 1} preservada integralmente.`).join(" ")
+  const recovered = buildTextOnlyContractTemplateStructure({
+    text: `CONTRATO PARTICULAR\n\nCLÁUSULA PRIMEIRA — DO OBJETO. ${longClause}\n\nASSINATURAS`,
+    title: "Contrato recuperado",
+    warning: "Conteúdo recuperado do original.",
+  })
+  const html = renderContractTemplateHtml({ structure: recovered, values: {}, draft: true })
+  expect(recovered.blocks.length).toBeGreaterThan(3)
+  expect(Math.max(...recovered.blocks.map((block) => block.text.length))).toBeLessThanOrEqual(1800)
+  expect(recovered.blocks.map((block) => block.text).join(" ")).toContain("Obrigação 180 preservada integralmente.")
+  expect(html).toContain("CLÁUSULA PRIMEIRA")
+  expect(html).toContain("ASSINATURAS")
+  expect(validateContractTemplateOccurrences(recovered)).toEqual([])
 })
 
 test("catálogo de bindings permite revisar todas as origens aceitas pelo schema", () => {

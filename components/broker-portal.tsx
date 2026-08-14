@@ -527,7 +527,7 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} data-testid="cos-conversation-scroll" className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-2 pb-28 sm:pb-32">
+                  <div ref={chatViewportRef} data-testid="cos-conversation-scroll" className="eme-hidden-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-2 pb-28 sm:pb-32">
                     {hasVisibleConversation &&
                       conversation.map((item) => (
                         <div
@@ -597,8 +597,8 @@ export function BrokerPortal() {
               </div>
             </div>
 
-            <aside data-testid="cos-operation-health" className="hidden min-h-0 overflow-hidden lg:flex lg:flex-col lg:justify-end">
-              <div className="ml-auto w-full max-w-[17rem] rounded-[1.6rem] border border-black/[0.06] bg-white/82 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl transition-all duration-200">
+            <aside data-testid="cos-operation-health" className="hidden min-h-0 overflow-hidden lg:flex lg:flex-col lg:items-end lg:justify-end lg:py-2">
+              <div className={`flex w-full max-w-[17rem] flex-col overflow-hidden rounded-[1.6rem] border border-black/[0.06] bg-white/82 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl transition-all duration-200 ${isOperationHealthExpanded ? "h-full max-h-[42rem]" : ""}`}>
                 <button
                   type="button"
                   onClick={() => setIsOperationHealthExpanded((current) => !current)}
@@ -636,7 +636,9 @@ export function BrokerPortal() {
                 <div
                   id="operation-health-panel"
                   className={`overflow-hidden transition-all duration-300 ease-out ${
-                    isOperationHealthExpanded ? "mt-4 max-h-[36rem] overflow-y-auto pr-1 opacity-100" : "max-h-0 opacity-0"
+                    isOperationHealthExpanded
+                      ? "eme-subtle-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 opacity-100"
+                      : "max-h-0 opacity-0"
                   }`}
                 >
                   <OperationHealthDetails
@@ -681,7 +683,7 @@ export function BrokerPortal() {
             </div>
           </DrawerHeader>
 
-          <div className="max-h-[72vh] overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-4">
+          <div className="eme-subtle-scrollbar max-h-[72vh] overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-4">
             <div className="rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.035)]">
               <div className="flex items-center justify-between gap-3">
                 <div>

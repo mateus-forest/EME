@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { cleanCosConversationTitle, DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
+import { parseConversationWorkflowContent } from "@/lib/cos/workflow-engine"
+import { cleanCosConversationTitle, DEFAULT_COS_CONVERSATION_TITLE, resolveCosConversationCategory } from "@/lib/cos-conversations"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -102,10 +103,19 @@ function metadataOptions(metadata: Record<string, unknown>) {
     .filter((item) => item.id && item.label)
 }
 
-function serializeConversation(document: { id: string; title: string; createdAt: Date; updatedAt: Date }) {
+function serializeConversation(document: { id: string; title: string; content?: string | null; createdAt: Date; updatedAt: Date }) {
+  const { workflow, memory } = parseConversationWorkflowContent(document.content)
+  const activeStep = workflow?.steps[workflow.currentStep] ?? workflow?.steps.at(-1) ?? null
+
   return {
     id: document.id,
     title: document.title,
+    category: resolveCosConversationCategory({
+      action: memory?.pendingAction ?? activeStep?.action ?? memory?.lastAction,
+      capabilityId: activeStep?.capabilityId,
+      entity: memory?.pendingEntity ?? activeStep?.entity,
+      title: document.title,
+    }),
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
     lastInteractionAt: document.updatedAt.toISOString(),
@@ -207,7 +217,7 @@ async function getConversationOrError(id: string) {
       type: "cos_conversation",
       status: { not: "archived" },
     },
-    select: { id: true, title: true, createdAt: true, updatedAt: true },
+    select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
   })
 
   if (!conversation) {
@@ -283,7 +293,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const conversation = await prisma.brokerDocument.update({
       where: { id: resolved.conversation.id },
       data: { title: title || DEFAULT_COS_CONVERSATION_TITLE },
-      select: { id: true, title: true, createdAt: true, updatedAt: true },
+      select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
     })
 
     return NextResponse.json({ conversation: serializeConversation(conversation) })

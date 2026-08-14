@@ -8,6 +8,10 @@ import { saveBrokerContractTemplateFile } from "@/lib/broker-document-storage"
 import { validateContractTemplateFile } from "@/lib/contract-document-parser.server"
 import { analyzeContractTemplate, describeContractTemplateAnalysisError } from "@/lib/contract-template-analysis.server"
 import { serializeContractTemplate } from "@/lib/contract-template-server"
+import {
+  hasUsableStoredContractTemplate,
+  recoverStoredContractTemplateVersion,
+} from "@/lib/contract-template-recovery.server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -41,11 +45,27 @@ export async function GET() {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   try {
-    const templates = await prisma.contractTemplate.findMany({
+    let templates = await prisma.contractTemplate.findMany({
       where: { brokerId: auth.user.broker!.id },
       include: templateInclude,
       orderBy: { updatedAt: "desc" },
     })
+    const recoverable = templates.flatMap((template) => {
+      const current = template.versions.find((version) => version.version === template.currentVersion) ?? template.versions[0]
+      return current && current.sourceStoragePath && !hasUsableStoredContractTemplate(current)
+        ? [{ template, current }]
+        : []
+    })
+    if (recoverable.length > 0) {
+      await Promise.allSettled(recoverable.map(({ template, current }) =>
+        recoverStoredContractTemplateVersion(current, { templateTitle: template.name }),
+      ))
+      templates = await prisma.contractTemplate.findMany({
+        where: { brokerId: auth.user.broker!.id },
+        include: templateInclude,
+        orderBy: { updatedAt: "desc" },
+      })
+    }
     return NextResponse.json({ templates: templates.map(serializeContractTemplate) })
   } catch (error) {
     if (isPrismaUnavailable(error)) {

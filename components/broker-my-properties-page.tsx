@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
@@ -11,7 +11,6 @@ import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties, type BrokerProperty as Property } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { formatCep, lookupCep } from "@/lib/cep"
-import { subscribeEntitySync } from "@/lib/entity-sync"
 import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { requestPropertyAi } from "@/lib/property-ai-client"
@@ -52,6 +51,29 @@ const propertyDocumentLabels = ["Matrícula", "Escritura", "IPTU", "Planta", "Co
 
 const propertyStatuses = ["Publicado", "Rascunho", "Pausado"] as const
 
+function mapPropertyToEditable(property: Property): EditableProperty {
+  return {
+    id: property.id,
+    title: property.title,
+    city: property.city,
+    neighborhood: property.neighborhood,
+    ownerName: property.ownerName,
+    price: property.price,
+    images: [...property.images],
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
+    parking: property.parking,
+    status: property.status,
+    type: property.type,
+    purpose: property.purpose,
+    description: property.description,
+    audioUrl: property.audioUrl,
+    legal: property.legal,
+    documents: property.documents,
+    completion: property.completion,
+  }
+}
+
 function getPlanDisplayName(planName: string | null | undefined) {
   if (!planName) return "seu plano atual"
   return planName.replace(/^Plano EME\s+/i, "").replace(/^Plano\s+/i, "").trim()
@@ -59,6 +81,8 @@ function getPlanDisplayName(planName: string | null | undefined) {
 
 export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyId?: string }) {
   const router = useRouter()
+  const params = useParams<{ id?: string }>()
+  const routePropertyId = initialPropertyId ?? (typeof params?.id === "string" ? params.id : undefined)
   const { profile } = useBrokerProfile()
   const {
     properties,
@@ -70,6 +94,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     deletePropertyImage,
     uploadPropertyAudio,
     deletePropertyAudio,
+    isLoading: isLoadingProperties,
   } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
   const [search, setSearch] = useState("")
@@ -85,6 +110,8 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
+  const dismissedRoutePropertyIdRef = useRef<string | null>(null)
+  const pendingRoutePropertyIdRef = useRef<string | null>(null)
   const activePropertiesCount = useMemo(
     () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
     [properties],
@@ -119,48 +146,51 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     normalizedSearch.length > 0 || statusFilters.length < 3 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
 
   const openEditModal = useCallback((property: Property) => {
-    router.push(`/corretor/imoveis/${property.id}`)
-    setEditingProperty({
-      id: property.id,
-      title: property.title,
-      city: property.city,
-      neighborhood: property.neighborhood,
-      ownerName: property.ownerName,
-      price: property.price,
-      images: [...property.images],
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      parking: property.parking,
-      status: property.status,
-      type: property.type,
-      purpose: property.purpose,
-      description: property.description,
-      audioUrl: property.audioUrl,
-      legal: property.legal,
-      documents: property.documents,
-      completion: property.completion,
-    })
+    dismissedRoutePropertyIdRef.current = null
+    setEditingProperty(mapPropertyToEditable(property))
     setSaveFeedback("")
     setAiHighlights([])
     setIsEditModalOpen(true)
-  }, [router])
+    if (routePropertyId !== property.id) {
+      pendingRoutePropertyIdRef.current = property.id
+      router.push(`/corretor/imoveis/${property.id}`, { scroll: false })
+    } else {
+      pendingRoutePropertyIdRef.current = null
+    }
+  }, [routePropertyId, router])
 
   useEffect(() => {
-    if (!initialPropertyId || !properties.length) return
-    const property = properties.find((item) => item.id === initialPropertyId)
-    if (property) openEditModal(property)
-  }, [initialPropertyId, openEditModal, properties])
-
-  useEffect(() => {
-    const unsubscribe = subscribeEntitySync((message) => {
-      if (message.type === "property" && initialPropertyId && editingProperty?.id === initialPropertyId) {
-        const nextProperty = properties.find((item) => item.id === initialPropertyId)
-        if (nextProperty) openEditModal(nextProperty)
+    if (!routePropertyId) {
+      if (pendingRoutePropertyIdRef.current && pendingRoutePropertyIdRef.current === editingProperty?.id) return
+      dismissedRoutePropertyIdRef.current = null
+      if (editingProperty || isEditModalOpen) {
+        setIsEditModalOpen(false)
+        setEditingProperty(null)
+        setSaveFeedback("")
+        setAiHighlights([])
       }
-    })
+      return
+    }
 
-    return unsubscribe
-  }, [editingProperty?.id, initialPropertyId, openEditModal, properties])
+    if (pendingRoutePropertyIdRef.current === routePropertyId) pendingRoutePropertyIdRef.current = null
+    if (dismissedRoutePropertyIdRef.current === routePropertyId) return
+
+    const routeProperty = properties.find((item) => item.id === routePropertyId) ?? null
+    if (!routeProperty) {
+      if (!isLoadingProperties) {
+        dismissedRoutePropertyIdRef.current = routePropertyId
+        router.replace("/corretor/imoveis", { scroll: false })
+      }
+      return
+    }
+
+    if (editingProperty?.id !== routePropertyId) {
+      setEditingProperty(mapPropertyToEditable(routeProperty))
+      setSaveFeedback("")
+      setAiHighlights([])
+    }
+    if (!isEditModalOpen) setIsEditModalOpen(true)
+  }, [editingProperty, isEditModalOpen, isLoadingProperties, properties, routePropertyId, router])
 
   function clearFilters() {
     setSearch("")
@@ -176,7 +206,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   function closeEditModal(open: boolean) {
     setIsEditModalOpen(open)
     if (!open) {
-      router.push("/corretor/imoveis")
+      dismissedRoutePropertyIdRef.current = editingProperty?.id ?? routePropertyId ?? null
+      pendingRoutePropertyIdRef.current = null
+      if (routePropertyId || editingProperty) {
+        router.replace("/corretor/imoveis", { scroll: false })
+      }
       setEditingProperty(null)
       setSaveFeedback("")
       setAiHighlights([])
@@ -246,26 +280,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     if (!editingProperty) return
     try {
       const updatedProperty = await updateProperty(editingProperty.id, editingProperty)
-      setEditingProperty({
-        id: updatedProperty.id,
-        title: updatedProperty.title,
-        city: updatedProperty.city,
-        neighborhood: updatedProperty.neighborhood,
-        ownerName: updatedProperty.ownerName,
-        price: updatedProperty.price,
-        images: [...updatedProperty.images],
-        bedrooms: updatedProperty.bedrooms,
-        bathrooms: updatedProperty.bathrooms,
-        parking: updatedProperty.parking,
-        status: updatedProperty.status,
-        type: updatedProperty.type,
-        purpose: updatedProperty.purpose,
-        description: updatedProperty.description,
-        audioUrl: updatedProperty.audioUrl,
-        legal: updatedProperty.legal,
-        documents: updatedProperty.documents,
-        completion: updatedProperty.completion,
-      })
+      setEditingProperty(mapPropertyToEditable(updatedProperty))
       setSaveFeedback("Alterações salvas com sucesso")
     } catch (caughtError) {
       setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar as alterações.")

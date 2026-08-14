@@ -50,13 +50,16 @@ test.describe("COS Core E2E", () => {
     const operationHealth = page.getByTestId("cos-operation-health")
     await expect(composer).toBeVisible()
     await expect(operationHealth).toBeVisible()
+    await operationHealth.getByRole("button", { name: /Saúde da operação/i }).click()
+    await expect(page.locator("#operation-health-panel")).toBeVisible()
 
     const layout = await page.evaluate(() => {
       const conversation = document.querySelector<HTMLElement>('[data-testid="cos-conversation-scroll"]')
       const composerDock = document.querySelector<HTMLElement>('[data-testid="cos-composer-dock"]')
       const health = document.querySelector<HTMLElement>('[data-testid="cos-operation-health"]')
+      const healthPanel = document.querySelector<HTMLElement>("#operation-health-panel")
       const sidebar = document.querySelector<HTMLElement>('aside:not([data-testid="cos-operation-health"])')
-      if (!composerDock || !health || !sidebar) return null
+      if (!composerDock || !health || !healthPanel || !sidebar) return null
 
       const before = {
         composerTop: composerDock.getBoundingClientRect().top,
@@ -71,6 +74,10 @@ test.describe("COS Core E2E", () => {
         viewportHeight: window.innerHeight,
         pageScroll: window.scrollY,
         conversationOverflowY: conversation ? getComputedStyle(conversation).overflowY : null,
+        conversationScrollbarWidth: conversation ? getComputedStyle(conversation).scrollbarWidth : null,
+        healthPanelOverflowY: getComputedStyle(healthPanel).overflowY,
+        healthPanelTop: healthPanel.getBoundingClientRect().top,
+        healthTop: health.getBoundingClientRect().top,
         composerDelta: composerDock.getBoundingClientRect().top - before.composerTop,
         healthDelta: health.getBoundingClientRect().top - before.healthTop,
         sidebarDelta: sidebar.getBoundingClientRect().top - before.sidebarTop,
@@ -81,6 +88,9 @@ test.describe("COS Core E2E", () => {
     expect(layout!.pageHeight).toBeLessThanOrEqual(layout!.viewportHeight + 1)
     expect(layout!.pageScroll).toBe(0)
     expect(layout!.conversationOverflowY).toBe("auto")
+    expect(layout!.conversationScrollbarWidth).toBe("none")
+    expect(layout!.healthPanelOverflowY).toBe("auto")
+    expect(layout!.healthPanelTop).toBeGreaterThanOrEqual(layout!.healthTop)
     expect(Math.abs(layout!.composerDelta)).toBeLessThan(1)
     expect(Math.abs(layout!.healthDelta)).toBeLessThan(1)
     expect(Math.abs(layout!.sidebarDelta)).toBeLessThan(1)

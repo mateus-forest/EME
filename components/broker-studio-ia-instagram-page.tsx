@@ -28,7 +28,6 @@ import type { StudioProviderId } from "@/lib/studio-providers/types"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type CampaignGoal = "Venda" | "Captacao" | "Lancamento" | "Alto padrao" | "Investimento" | "Aluguel"
-type VisualIdentity = "Moderna" | "Luxo" | "Minimalista" | "Comercial"
 type CampaignProvider = Extract<StudioProviderId, "openai" | "xai">
 type CampaignItemKey = "postFeed" | "story" | "carousel" | "caption" | "cta" | "hashtags"
 
@@ -58,7 +57,6 @@ type CreditBlockState = {
 } | null
 
 const goalOptions: CampaignGoal[] = ["Venda", "Captacao", "Lancamento", "Alto padrao", "Investimento", "Aluguel"]
-const identityOptions: VisualIdentity[] = ["Moderna", "Luxo", "Minimalista", "Comercial"]
 const campaignProviderOptions = getStudioCapabilityProviders("campaign.structured_content", ["active"])
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
@@ -91,7 +89,6 @@ export function BrokerStudioIaInstagramPage() {
   const { properties, isLoading } = useBrokerProperties()
   const [selectedPropertyId, setSelectedPropertyId] = useState("")
   const [selectedGoal, setSelectedGoal] = useState<CampaignGoal>("Venda")
-  const [selectedIdentity, setSelectedIdentity] = useState<VisualIdentity>("Moderna")
   const [selectedProvider, setSelectedProvider] = useState<CampaignProvider>("openai")
   const [currentStep, setCurrentStep] = useState<StudioStep>("selection")
   const [resultVersion, setResultVersion] = useState(0)
@@ -140,8 +137,8 @@ export function BrokerStudioIaInstagramPage() {
     }
   }, [selectedPropertyId])
 
-  const canAdvanceToConfiguration = Boolean(selectedProperty)
-  const canProcess = Boolean(selectedProperty) && !isSubmitting
+  const canAdvanceToConfiguration = Boolean(selectedProperty?.images.length)
+  const canProcess = Boolean(selectedProperty?.images.length) && !isSubmitting
   const approvedItemsCount = Object.values(approvedItems).filter(Boolean).length
 
   function buildApprovalMap(storedCampaign: StudioCampaignRecord) {
@@ -170,9 +167,6 @@ export function BrokerStudioIaInstagramPage() {
     setCampaign(storedCampaign)
     if (storedCampaign.goal) {
       setSelectedGoal(storedCampaign.goal as CampaignGoal)
-    }
-    if (storedCampaign.visualIdentity) {
-      setSelectedIdentity(storedCampaign.visualIdentity as VisualIdentity)
     }
     if (storedCampaign.provider === "openai" || storedCampaign.provider === "xai") {
       setSelectedProvider(storedCampaign.provider)
@@ -219,7 +213,6 @@ export function BrokerStudioIaInstagramPage() {
         body: JSON.stringify({
           propertyId: selectedProperty.id,
           goal: selectedGoal,
-          identity: selectedIdentity,
           provider: selectedProvider,
           version: nextVersion,
         }),
@@ -332,17 +325,17 @@ export function BrokerStudioIaInstagramPage() {
     setIsSubmitting(false)
   }
 
+  const coverImage = selectedProperty?.images[0] ?? ""
   const visualSummary = useMemo(
     () => [
       { label: "Objetivo", value: selectedGoal },
-      { label: "Identidade", value: selectedIdentity },
+      { label: "Imagem", value: coverImage ? "Foto real do imóvel" : "Foto necessária" },
       { label: "Conteúdo", value: STUDIO_PROVIDER_LABELS[selectedProvider] },
       { label: "Versão", value: resultVersion > 0 ? `${resultVersion}` : "Ainda não gerada" },
     ],
-    [resultVersion, selectedGoal, selectedIdentity, selectedProvider],
+    [coverImage, resultVersion, selectedGoal, selectedProvider],
   )
 
-  const coverImage = selectedProperty?.images[0] ?? ""
   const postFeedAsset = useMemo(
     () => campaign?.assets.find((asset) => asset.assetKey === "post_feed") ?? null,
     [campaign],
@@ -405,7 +398,7 @@ export function BrokerStudioIaInstagramPage() {
           })}
         </section>
 
-        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_24rem]">
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_20rem]">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Fluxo visual</CardTitle>
@@ -452,12 +445,23 @@ export function BrokerStudioIaInstagramPage() {
                       </select>
 
                       {selectedProperty ? (
-                        <div className="rounded-[1.15rem] border border-black/[0.06] bg-white p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
+                        <div className="flex min-w-0 items-center gap-3 rounded-[1.15rem] border border-black/[0.06] bg-white p-3">
+                          {coverImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={coverImage} alt="Fotografia selecionada do imóvel" className="size-20 shrink-0 rounded-xl object-cover" />
+                          ) : (
+                            <span className="flex size-20 shrink-0 items-center justify-center rounded-xl bg-[#f4f6f8] text-[#8B95A1]">
+                              <ImagePlus className="size-5" />
+                            </span>
+                          )}
+                          <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                            <div className="min-w-0">
                               <p className="font-semibold text-[#050505]">{selectedProperty.title}</p>
-                              <p className="mt-1 text-sm text-[#6B7280]">
+                              <p className="mt-1 truncate text-sm text-[#6B7280]">
                                 {selectedProperty.neighborhood}, {selectedProperty.city}
+                              </p>
+                              <p className={`mt-2 text-xs ${coverImage ? "text-[#08752f]" : "text-[#b45309]"}`}>
+                                {coverImage ? "Esta foto será usada no Feed e Story." : "Adicione uma foto real para gerar as peças."}
                               </p>
                             </div>
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${selectedProperty.status === "Publicado" ? "bg-[#eef9f1] text-[#009b3a]" : "bg-[#f2f4f7] text-[#667085]"}`}>
@@ -498,22 +502,6 @@ export function BrokerStudioIaInstagramPage() {
                               className={`rounded-full border px-4 py-2 text-sm transition-colors ${selectedGoal === goal ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
                             >
                               {goal}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-[#050505]">Escolha a identidade visual</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {identityOptions.map((identity) => (
-                            <button
-                              key={identity}
-                              type="button"
-                              onClick={() => setSelectedIdentity(identity)}
-                              className={`rounded-full border px-4 py-2 text-sm transition-colors ${selectedIdentity === identity ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
-                            >
-                              {identity}
                             </button>
                           ))}
                         </div>
@@ -594,7 +582,7 @@ export function BrokerStudioIaInstagramPage() {
           </Card>
         </section>
 
-        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
+        <section className="grid min-w-0 gap-4">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Resultado e aprovação</CardTitle>
@@ -606,12 +594,12 @@ export function BrokerStudioIaInstagramPage() {
               {currentStep === "processing" ? (
                 <EmeLoading
                   message="Gerando campanha com IA"
-                  description={`Montando a campanha para Instagram com foco em ${selectedGoal.toLowerCase()} e identidade ${selectedIdentity.toLowerCase()}.`}
-                  className="min-h-[22rem] border border-[#009b3a]/18 bg-[#eef9f1]"
+                  description={`Montando a campanha para Instagram com foco em ${selectedGoal.toLowerCase()} e usando a fotografia real do imóvel.`}
+                  className="min-h-64 border border-[#009b3a]/18 bg-[#eef9f1]"
                 />
               ) : currentStep === "result" || currentStep === "approval" ? (
                 <div className="grid gap-4">
-                  <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+                  <div className="grid min-w-0 items-start gap-4 lg:grid-cols-2">
                     <PreviewCard
                       title="Post Feed"
                       approved={approvedItems.postFeed}
@@ -771,7 +759,7 @@ export function BrokerStudioIaInstagramPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-6 text-center">
+                <div className="flex min-h-64 flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-black/[0.08] bg-[#fbfbf8] px-6 text-center">
                   <ImagePlus className="size-8 text-[#8B95A1]" />
                   <p className="mt-4 text-lg font-semibold text-[#050505]">Nenhuma campanha gerada ainda</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
@@ -786,7 +774,7 @@ export function BrokerStudioIaInstagramPage() {
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-xl text-[#050505]">Estado atual</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 p-5 pt-0">
+            <CardContent className="grid gap-3 p-5 pt-0 sm:grid-cols-2 xl:grid-cols-4">
               {buildStatusItems(currentStep).map((item) => (
                 <div key={item.title} className="rounded-[1.15rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">{item.title}</p>
@@ -799,7 +787,7 @@ export function BrokerStudioIaInstagramPage() {
                 type="button"
                 variant="ghost"
                 onClick={restartFlow}
-                className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                className="h-10 self-end rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
               >
                 Reiniciar fluxo
               </Button>
@@ -823,7 +811,7 @@ function PreviewCard({
   content: ReactNode
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+    <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-black/[0.06] bg-[#fbfbf8] p-4 [overflow-wrap:anywhere]">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-[#050505]">{title}</p>
         <Button

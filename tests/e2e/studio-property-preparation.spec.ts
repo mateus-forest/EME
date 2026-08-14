@@ -248,6 +248,63 @@ test.describe("Studio IA — Preparar imóvel", () => {
     await expect(missingPrompt.json()).resolves.toMatchObject({ code: "INPUT_INVALID" })
   })
 
+  test("real OpenAI normaliza JPEG, edita e persiste o resultado", async ({ page }) => {
+    test.skip(process.env.RUN_OPENAI_IMAGE_REAL_TEST !== "1", "Executado manualmente para controlar custo externo e Créditos EME.")
+    test.setTimeout(150_000)
+
+    const sharp = (await import("sharp")).default
+    const sourceBuffer = await sharp({
+      create: {
+        width: 512,
+        height: 512,
+        channels: 3,
+        background: { r: 221, g: 215, b: 202 },
+      },
+    })
+      .composite([
+        {
+          input: Buffer.from(
+            '<svg width="512" height="512"><rect y="330" width="512" height="182" fill="#9f8d76"/><rect x="45" y="70" width="180" height="210" fill="#dce9ed" stroke="#ffffff" stroke-width="12"/><rect x="285" y="270" width="170" height="70" rx="14" fill="#8a725c"/></svg>',
+          ),
+        },
+      ])
+      .jpeg({ quality: 86 })
+      .toBuffer()
+
+    await page.goto("/corretor/studio-ia/preparar-imovel")
+    await page.getByRole("button", { name: /Enviar imagem/ }).click()
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "ambiente-controlado.jpg",
+      mimeType: "image/jpeg",
+      buffer: sourceBuffer,
+    })
+    await page.getByRole("button", { name: /Melhorar foto/ }).click()
+    await page.getByTestId("preparation-provider-options").getByRole("button", { name: /OpenAI/ }).click()
+    await page.getByRole("button", { name: "Melhorar fotografia", exact: true }).click()
+
+    await expect(page.getByText("Imagem gerada e salva na Biblioteca para sua revisão.")).toBeVisible({ timeout: 130_000 })
+    const campaignsResponse = await page.request.get("/api/studio-ia/campaigns?kind=PROPERTY_PREPARATION&limit=1")
+    expect(campaignsResponse.ok()).toBeTruthy()
+    const campaignsPayload = await campaignsResponse.json() as {
+      campaigns: Array<{
+        provider: string
+        model: string | null
+        metadata: Record<string, unknown>
+        assets: Array<{ fileUrl: string | null }>
+      }>
+    }
+    const campaign = campaignsPayload.campaigns[0]
+    expect(campaign).toMatchObject({ provider: "openai", model: "gpt-image-2" })
+    expect(campaign?.metadata).toMatchObject({
+      sourceMimeType: "image/jpeg",
+      providerInputMimeType: "image/png",
+      sourceWidth: 512,
+      sourceHeight: 512,
+    })
+    expect(campaign?.metadata.externalRequestId).toEqual(expect.any(String))
+    expect(campaign?.assets[0]?.fileUrl).toMatch(/^https:\/\//)
+  })
+
   test("melhora uma foto uma vez e reutiliza a geração concorrente", async ({ page }) => {
     test.skip(process.env.RUN_PEDRA_REAL_TEST !== "1", "Executado manualmente para controlar créditos externos.")
     test.setTimeout(120_000)

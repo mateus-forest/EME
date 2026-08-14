@@ -168,6 +168,53 @@ function inferBlockType(text: string, index: number): ContractTemplateStructure[
   return "PARAGRAPH"
 }
 
+const MAX_CONTRACT_BLOCK_CHARS = 1_800
+
+function splitOversizedContractParagraph(paragraph: string) {
+  const compact = paragraph.replace(/\n+/g, " ").trim()
+  if (compact.length <= MAX_CONTRACT_BLOCK_CHARS) return [compact]
+
+  // PDF extractors commonly return a whole page (or several pages) as one
+  // paragraph. Smaller semantic blocks keep the preview readable and give the
+  // field classifier enough local context without changing the legal text.
+  const sentences = compact.match(/[^.!?;:]+[.!?;:]*(?:\s+|$)/g)?.map((item) => item.trim()).filter(Boolean) ?? [compact]
+  const chunks: string[] = []
+  let current = ""
+
+  function flush() {
+    if (!current) return
+    chunks.push(current)
+    current = ""
+  }
+
+  for (const sentence of sentences) {
+    if (sentence.length <= MAX_CONTRACT_BLOCK_CHARS) {
+      const candidate = current ? `${current} ${sentence}` : sentence
+      if (candidate.length <= MAX_CONTRACT_BLOCK_CHARS) {
+        current = candidate
+      } else {
+        flush()
+        current = sentence
+      }
+      continue
+    }
+
+    flush()
+    let remaining = sentence
+    while (remaining.length > MAX_CONTRACT_BLOCK_CHARS) {
+      const boundary = remaining.lastIndexOf(" ", MAX_CONTRACT_BLOCK_CHARS)
+      const splitAt = boundary >= Math.floor(MAX_CONTRACT_BLOCK_CHARS * 0.6)
+        ? boundary
+        : MAX_CONTRACT_BLOCK_CHARS
+      chunks.push(remaining.slice(0, splitAt).trim())
+      remaining = remaining.slice(splitAt).trim()
+    }
+    current = remaining
+  }
+  flush()
+  return chunks.filter(Boolean)
+}
+
 export function splitContractTextIntoBlocks(text: string) {
   const normalized = text
     .split("\u0000").join("")
@@ -178,7 +225,7 @@ export function splitContractTextIntoBlocks(text: string) {
 
   const paragraphs = normalized
     .split(/\n\s*\n|(?=\n(?:CL[ÁA]USULA|CAP[ÍI]TULO|SE[CÇ][ÃA]O)\b)/i)
-    .map((paragraph) => paragraph.replace(/\n+/g, " ").trim())
+    .flatMap(splitOversizedContractParagraph)
     .filter(Boolean)
 
   return paragraphs.map((paragraph, index) => ({
@@ -187,6 +234,26 @@ export function splitContractTextIntoBlocks(text: string) {
     type: inferBlockType(paragraph, index),
     text: paragraph,
   }))
+}
+
+export function buildTextOnlyContractTemplateStructure(input: {
+  text: string
+  title?: string
+  warning?: string
+}): ContractTemplateStructure {
+  const blocks = splitContractTextIntoBlocks(input.text)
+  if (blocks.length === 0) throw new Error("O documento não possui conteúdo textual preservado.")
+  const inferredTitle = blocks.find((block) => block.type === "TITLE")?.text || blocks[0].text
+  return contractTemplateStructureSchema.parse({
+    schemaVersion: 1,
+    title: input.title?.trim() || inferredTitle.slice(0, 180) || "Contrato",
+    blocks,
+    sections: [],
+    parties: [],
+    fields: [],
+    warnings: input.warning ? [input.warning] : [],
+    partiallyRecognized: true,
+  })
 }
 
 function countOccurrences(haystack: string, needle: string) {
@@ -370,8 +437,9 @@ export function renderContractTemplateHtml(input: {
   .contract-missing { border-bottom: 1px dotted #8a6a13; color: #8a6a13; padding: 0 2px; }
   .draft-watermark { position: fixed; inset: 42% 0 auto; z-index: -1; transform: rotate(-28deg); text-align: center; color: rgba(40,40,40,.08); font: 700 72pt Arial,sans-serif; letter-spacing: .08em; }
   @media screen {
-    html, body { min-height: 100%; }
-    body { min-height: 100vh; padding: 7.4vh 9.52vw; font-size: clamp(7px, 1.93vw, 11.5pt); }
+    html, body { min-height: 100%; overflow-x: hidden; }
+    body { min-height: 100vh; padding: 7.4% 9.52%; font-size: clamp(7.5px, 1.7vw, 11.5pt); }
+    main { min-width: 0; }
     .block { margin-bottom: .95em; }
     .title { margin-bottom: 1.7em; font-size: 1.22em; }
     .heading, .clause { margin-top: 1.45em; }

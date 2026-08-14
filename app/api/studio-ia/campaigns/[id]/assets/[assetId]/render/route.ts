@@ -51,7 +51,11 @@ export async function GET(
     const sharp = (await import("sharp")).default
 
     const [propertyImageDataUri, brokerPhotoDataUri, brokerLogoDataUri, agencyLogoDataUri] = await Promise.all([
-      toImageDataUri(campaign.property?.imageUrls?.[0]),
+      toPropertyImageDataUri(
+        sharp,
+        getPropertyImageCandidates(campaign.metadata, campaign.property?.imageUrls ?? []),
+        request.nextUrl.origin,
+      ),
       toAvatarDataUri(sharp, campaign.branding.brokerPhotoUrl),
       toAvatarDataUri(sharp, campaign.branding.brokerLogoUrl),
       toAvatarDataUri(sharp, campaign.branding.agencyLogoUrl),
@@ -106,24 +110,85 @@ export async function GET(
 // User/Agency row (the account-settings upload flow — see components/broker-account-page.tsx /
 // agency-account-page.tsx) or, for property photos, as a real remote Supabase Storage URL — this
 // covers both without the caller needing to know which one it's dealing with.
-async function toImageDataUri(imageUrl: string | null | undefined) {
-  const normalized = imageUrl?.trim()
-  if (!normalized) return null
+const PROPERTY_RENDER_SOURCE_MAX_BYTES = 25 * 1024 * 1024
+const PROPERTY_RENDER_MAX_DIMENSION = 2560
 
-  if (normalized.startsWith("data:")) return normalized
+function getPropertyImageCandidates(metadata: unknown, propertyImages: string[]) {
+  const campaignMetadata = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? metadata as Record<string, unknown>
+    : {}
+  const selectedImage = typeof campaignMetadata.propertyImageUrl === "string"
+    ? campaignMetadata.propertyImageUrl
+    : null
 
+  return Array.from(new Set([selectedImage, ...propertyImages]
+    .map((image) => image?.trim())
+    .filter((image): image is string => Boolean(image))
+    .filter((image) => !image.toLowerCase().includes("placeholder"))))
+}
+
+async function readPropertyImageBuffer(imageUrl: string, appOrigin: string) {
+  if (imageUrl.startsWith("data:")) {
+    const commaIndex = imageUrl.indexOf(",")
+    if (commaIndex < 0 || !/;base64$/i.test(imageUrl.slice(0, commaIndex))) return null
+    const buffer = Buffer.from(imageUrl.slice(commaIndex + 1), "base64")
+    return buffer.byteLength > 0 && buffer.byteLength <= PROPERTY_RENDER_SOURCE_MAX_BYTES ? buffer : null
+  }
+
+  let resolvedUrl: string
   try {
-    const response = await fetch(normalized, { cache: "no-store" })
-    if (!response.ok) return null
-
-    const contentType = response.headers.get("content-type") || "image/jpeg"
-    const buffer = Buffer.from(await response.arrayBuffer())
-    if (!buffer.length) return null
-
-    return `data:${contentType};base64,${buffer.toString("base64")}`
+    resolvedUrl = new URL(imageUrl, appOrigin).toString()
   } catch {
     return null
   }
+
+  try {
+    const response = await fetch(resolvedUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!response.ok) return null
+
+    const contentLength = Number(response.headers.get("content-length") || 0)
+    if (contentLength > PROPERTY_RENDER_SOURCE_MAX_BYTES) return null
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+    return buffer.byteLength > 0 && buffer.byteLength <= PROPERTY_RENDER_SOURCE_MAX_BYTES ? buffer : null
+  } catch {
+    return null
+  }
+}
+
+// librsvg does not reliably decode embedded WebP data URIs. Decode and re-encode each property
+// photo as PNG, falling through to the next candidate when an imported remote URL is unavailable.
+async function toPropertyImageDataUri(
+  sharp: SharpFactory,
+  imageUrls: string[],
+  appOrigin: string,
+) {
+  for (const imageUrl of imageUrls) {
+    const inputBuffer = await readPropertyImageBuffer(imageUrl, appOrigin)
+    if (!inputBuffer) continue
+
+    try {
+      const pngBuffer = await sharp(inputBuffer)
+        .rotate()
+        .resize({
+          width: PROPERTY_RENDER_MAX_DIMENSION,
+          height: PROPERTY_RENDER_MAX_DIMENSION,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .png({ compressionLevel: 9 })
+        .toBuffer()
+      if (!pngBuffer.length) continue
+      return `data:image/png;base64,${pngBuffer.toString("base64")}`
+    } catch {
+      continue
+    }
+  }
+
+  return null
 }
 
 // Broker photo / agency logo need to render inside the server-side SVG creative regardless of

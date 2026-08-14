@@ -9,6 +9,7 @@ import {
 } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { recoverStoredContractTemplateVersion } from "@/lib/contract-template-recovery.server"
 
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
@@ -74,7 +75,8 @@ export async function POST(request: NextRequest) {
     if (!version || version.status !== "READY") {
       return NextResponse.json({ error: "Revise e confirme este modelo antes de utilizá-lo." }, { status: 409 })
     }
-    const structure = parseStoredTemplateStructure(version.structure, version.originalText)
+    const recoveredVersion = await recoverStoredContractTemplateVersion(version, { templateTitle: template.name })
+    const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
     const values = mergeKnownContractValues({
       structure,
       context: { lead, property, broker },
@@ -126,7 +128,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ instance: { id: instance.id, brokerDocumentId: instance.brokerDocumentId } }, { status: 201 })
   } catch (error) {
+    console.error("[contracts][instances] creation failed", {
+      brokerId,
+      message: error instanceof Error ? error.message : "unknown",
+      code: error && typeof error === "object" && "code" in error ? (error as { code?: string }).code : undefined,
+    })
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Contratos indisponíveis no momento." }, { status: 503 })
+    if (error instanceof Error && /arquivo original|conteúdo textual|conteúdo real|ler este (PDF|DOCX)/i.test(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: 409 })
+    }
     return NextResponse.json({ error: "Não foi possível criar o contrato com este modelo." }, { status: 500 })
   }
 }

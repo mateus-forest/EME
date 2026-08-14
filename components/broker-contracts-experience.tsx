@@ -93,15 +93,25 @@ function ImportTemplatePanel({
     return JSON.stringify(template.version.structure.blocks) !== JSON.stringify(structure.blocks)
   }, [structure, template])
 
-  function beginReview(next: ContractTemplateRecord) {
-    if (!next.version?.structure) {
-      setFeedback("A estrutura deste modelo ainda não está disponível para revisão.")
-      return
-    }
-    setTemplate(next)
-    setName(next.name)
-    setStructure(next.version.structure)
+  async function beginReview(next: ContractTemplateRecord) {
+    setIsBusy(true)
     setFeedback("")
+    try {
+      const detailed = next.version?.structure?.blocks?.length
+        ? next
+        : (await contractTemplates.get(next.id)).template
+      if (!detailed.version?.structure?.blocks?.length) {
+        setFeedback("O conteúdo deste modelo não pôde ser recuperado. Reanalise o arquivo original ou exclua o modelo.")
+        return
+      }
+      setTemplate(detailed)
+      setName(detailed.name)
+      setStructure(detailed.version.structure)
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível carregar o modelo.")
+    } finally {
+      setIsBusy(false)
+    }
   }
 
   async function importFile() {
@@ -111,7 +121,7 @@ function ImportTemplatePanel({
     try {
       const result = await contractTemplates.import(file)
       await onTemplatesChanged()
-      if (result.template.status === "REVIEW_REQUIRED") beginReview(result.template)
+      if (result.template.status === "REVIEW_REQUIRED") await beginReview(result.template)
       else if (result.template.status === "READY") {
         setFeedback("Este arquivo já foi analisado e o modelo pronto foi reutilizado.")
       } else if (result.template.status === "ANALYZING") {
@@ -166,10 +176,29 @@ function ImportTemplatePanel({
     try {
       const result = await contractTemplates.reanalyze(item.id)
       await onTemplatesChanged()
-      if (result.template.status === "REVIEW_REQUIRED") beginReview(result.template)
+      if (result.template.status === "REVIEW_REQUIRED") await beginReview(result.template)
       else setFeedback("A preparação deste modelo já está em andamento.")
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível reanalisar o modelo.")
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  async function deleteTemplate(item: ContractTemplateRecord) {
+    if (!window.confirm(`Excluir o modelo “${item.name}”?`)) return
+    setIsBusy(true)
+    setFeedback("")
+    try {
+      await contractTemplates.delete(item.id)
+      if (template?.id === item.id) {
+        setTemplate(null)
+        setStructure(null)
+      }
+      await onTemplatesChanged()
+      setFeedback("Modelo excluído.")
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o modelo.")
     } finally {
       setIsBusy(false)
     }
@@ -376,10 +405,13 @@ function ImportTemplatePanel({
           <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Aguardando revisão</p>
           <div className="mt-3 grid gap-2">
             {templates.filter((item) => item.status === "REVIEW_REQUIRED").map((item) => (
-              <button key={item.id} type="button" onClick={() => beginReview(item)} className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-white p-4 text-left">
-                <span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Revisar campos antes de utilizar</span></span>
-                <PenLine className="size-4 text-[#009b3a]" />
-              </button>
+              <div key={item.id} className="flex min-w-0 items-center gap-2 rounded-xl border border-black/[0.06] bg-white p-2">
+                <button type="button" onClick={() => void beginReview(item)} className="flex min-w-0 flex-1 items-center justify-between p-2 text-left">
+                  <span className="min-w-0"><strong className="block truncate text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Revisar campos antes de utilizar</span></span>
+                  <PenLine className="size-4 shrink-0 text-[#009b3a]" />
+                </button>
+                <Button type="button" variant="ghost" aria-label={`Excluir modelo ${item.name}`} onClick={() => void deleteTemplate(item)} className="size-9 shrink-0 rounded-lg p-0 text-[#b54747]"><Trash2 className="size-4" /></Button>
+              </div>
             ))}
           </div>
         </section>
@@ -402,7 +434,7 @@ function ImportTemplatePanel({
           <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Seus modelos</p>
           <div className="mt-3 grid gap-2">
             {templates.filter((item) => item.status === "READY").map((item) => (
-              <button key={item.id} type="button" onClick={() => beginReview(item)} className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-white p-4 text-left">
+              <button key={item.id} type="button" onClick={() => void beginReview(item)} className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-white p-4 text-left">
                 <span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">Versão {item.currentVersion} · editar estrutura</span></span>
                 <PenLine className="size-4 text-[#5f6b7a]" />
               </button>
@@ -417,7 +449,7 @@ function ImportTemplatePanel({
             {templates.filter((item) => item.status === "FAILED").map((item) => (
               <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ead5a0] bg-[#fffdf7] p-4">
                 <span><strong className="block text-sm text-[#111]">{item.name}</strong><span className="text-xs text-[#7b8491]">O arquivo original está preservado.</span></span>
-                <Button variant="outline" disabled={isBusy} onClick={() => void reanalyze(item)} className="rounded-xl">Reanalisar modelo</Button>
+                <span className="flex gap-2"><Button variant="outline" disabled={isBusy} onClick={() => void reanalyze(item)} className="rounded-xl">Reanalisar modelo</Button><Button variant="ghost" aria-label={`Excluir modelo ${item.name}`} disabled={isBusy} onClick={() => void deleteTemplate(item)} className="rounded-xl text-[#b54747]"><Trash2 className="size-4" /> Excluir</Button></span>
               </div>
             ))}
           </div>
@@ -435,6 +467,7 @@ function TemplateLibrary({
   onImport,
   onInspect,
   onUse,
+  onDelete,
 }: {
   templates: ContractTemplateRecord[]
   loading: boolean
@@ -442,6 +475,7 @@ function TemplateLibrary({
   onImport: () => void
   onInspect: (template: ContractTemplateRecord) => void
   onUse: (templateId: string) => Promise<void>
+  onDelete: (template: ContractTemplateRecord) => Promise<void>
 }) {
   const ready = templates.filter((template) => template.status === "READY")
   const pending = templates.filter((template) => template.status !== "READY")
@@ -475,6 +509,7 @@ function TemplateLibrary({
               <div className="flex gap-2 border-t border-black/[0.05] pt-4">
                 <Button variant="outline" onClick={() => onInspect(template)} className="flex-1 rounded-xl">Consultar</Button>
                 <Button disabled={loading} onClick={() => void onUse(template.id)} className="flex-1 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]"><Plus className="size-4" /> Usar modelo</Button>
+                <Button variant="ghost" disabled={loading} aria-label={`Excluir modelo ${template.name}`} onClick={() => void onDelete(template)} className="size-10 shrink-0 rounded-xl p-0 text-[#b54747]"><Trash2 className="size-4" /></Button>
               </div>
             </article>
           ))}
@@ -495,10 +530,13 @@ function TemplateLibrary({
           <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Em preparação ou revisão</p>
           <div className="mt-3 grid gap-2">
             {pending.map((template) => (
-              <button key={template.id} type="button" onClick={() => onInspect(template)} className="flex items-center justify-between rounded-xl bg-[#fbfbf8] p-4 text-left">
-                <span><strong className="block text-sm text-[#111]">{template.name}</strong><span className="text-xs text-[#7b8491]">{template.status === "ANALYZING" ? "Em preparação" : template.status === "FAILED" ? "Precisa de atenção" : "Aguardando revisão"}</span></span>
-                {template.status === "ANALYZING" ? <Spinner className="size-4 text-[#009b3a]" /> : <PenLine className="size-4 text-[#5f6b7a]" />}
-              </button>
+              <div key={template.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-[#fbfbf8] p-2">
+                <button type="button" onClick={() => onInspect(template)} className="flex min-w-0 flex-1 items-center justify-between p-2 text-left">
+                  <span className="min-w-0"><strong className="block truncate text-sm text-[#111]">{template.name}</strong><span className="text-xs text-[#7b8491]">{template.status === "ANALYZING" ? "Em preparação" : template.status === "FAILED" ? "Precisa de atenção" : "Aguardando revisão"}</span></span>
+                  {template.status === "ANALYZING" ? <Spinner className="size-4 shrink-0 text-[#009b3a]" /> : <PenLine className="size-4 shrink-0 text-[#5f6b7a]" />}
+                </button>
+                <Button variant="ghost" disabled={loading} aria-label={`Excluir modelo ${template.name}`} onClick={() => void onDelete(template)} className="size-9 shrink-0 rounded-lg p-0 text-[#b54747]"><Trash2 className="size-4" /></Button>
+              </div>
             ))}
           </div>
         </section>
@@ -630,6 +668,37 @@ function InstanceEditor({
     } finally { setIsBusy(false) }
   }
 
+  async function cancel() {
+    if (!instance || !window.confirm("Cancelar este contrato?")) return
+    setIsBusy(true)
+    setFeedback("")
+    try {
+      const result = await templateContracts.cancel(instance.id)
+      applyInstance(result.instance)
+      onChanged()
+      setFeedback("Contrato cancelado.")
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível cancelar o contrato.")
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  async function deleteInstance() {
+    if (!instance || !window.confirm("Excluir este contrato? Esta ação não pode ser desfeita.")) return
+    setIsBusy(true)
+    setFeedback("")
+    try {
+      await templateContracts.delete(instance.id)
+      onChanged()
+      onChangeTemplate()
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o contrato.")
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   function fieldState(field: ContractTemplateField) {
     if (!values[field.id]?.trim() && field.required) return { label: "Precisa completar", tone: "text-[#a06e0f]" }
     const knownEntity = ["CLIENT", "PROPERTY", "BROKER"].includes(field.source)
@@ -661,10 +730,12 @@ function InstanceEditor({
           >
             <Check className="size-4" /> {instance.status === "signed" ? "Assinatura registrada" : "Registrar assinatura"}
           </Button>
+          {instance.status !== "signed" && instance.status !== "cancelled" ? <Button variant="ghost" onClick={() => void cancel()} disabled={isBusy} className="rounded-xl text-[#b54747]">Cancelar</Button> : null}
+          <Button variant="ghost" onClick={() => void deleteInstance()} disabled={isBusy} className="rounded-xl text-[#b54747]"><Trash2 className="size-4" /> Excluir</Button>
         </div>
       </div>
 
-      <div className="grid min-h-0 min-w-0 flex-1 gap-5 overflow-x-hidden overflow-y-auto pt-4 lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)] lg:items-start">
+      <div className="grid min-h-0 min-w-0 flex-1 gap-4 overflow-x-hidden overflow-y-auto pt-4 lg:grid-cols-[minmax(300px,0.64fr)_minmax(0,1.36fr)] lg:items-start">
         <aside data-testid="contract-editor-form" className="grid min-w-0 gap-5 lg:col-start-1 lg:row-start-1">
           <section className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Modelo</p>
@@ -724,9 +795,9 @@ function InstanceEditor({
           <Button onClick={() => void save()} disabled={isBusy} className="rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">{isBusy ? <Spinner className="size-4" /> : <Check className="size-4" />} Salvar alterações</Button>
         </aside>
 
-        <main data-testid="contract-editor-preview" className="min-w-0 rounded-2xl bg-[#f3f2ee] p-3 sm:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        <main data-testid="contract-editor-preview" className="min-w-0 rounded-2xl bg-[#f3f2ee] p-3 sm:p-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <p className="mb-3 text-center text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Preview A4 sincronizado</p>
-          <div className="mx-auto aspect-[210/297] w-full max-w-[760px] overflow-hidden rounded-lg bg-white shadow-[0_12px_35px_rgba(15,23,42,.08)]">
+          <div className="mx-auto aspect-[210/297] w-full max-w-[820px] overflow-hidden rounded-lg bg-white shadow-[0_12px_35px_rgba(15,23,42,.08)]">
             <iframe title="Preview do contrato" srcDoc={previewHtml} className="h-full w-full bg-white" />
           </div>
         </main>
@@ -818,6 +889,22 @@ export function BrokerContractsExperience() {
     } finally { setIsLoadingTemplates(false) }
   }
 
+  async function deleteTemplate(template: ContractTemplateRecord) {
+    if (!window.confirm(`Excluir o modelo “${template.name}”?`)) return
+    setIsLoadingTemplates(true)
+    setFeedback("")
+    try {
+      await contractTemplates.delete(template.id)
+      if (selectedTemplate?.id === template.id) setSelectedTemplate(null)
+      await loadTemplates()
+      setFeedback("Modelo excluído.")
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível excluir o modelo.")
+    } finally {
+      setIsLoadingTemplates(false)
+    }
+  }
+
   function openInstance(id: string) {
     setInstanceId(id)
     setMode("editor")
@@ -829,10 +916,20 @@ export function BrokerContractsExperience() {
     if (view === "templates") void loadTemplates()
   }, [loadTemplates, view])
 
-  function inspectTemplate(template: ContractTemplateRecord) {
-    setSelectedTemplate(template)
-    setMode("import")
+  async function inspectTemplate(template: ContractTemplateRecord) {
+    setIsLoadingTemplates(true)
     setFeedback("")
+    try {
+      const detailed = template.version?.structure?.blocks?.length
+        ? template
+        : (await contractTemplates.get(template.id)).template
+      setSelectedTemplate(detailed)
+      setMode("import")
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível consultar o modelo.")
+    } finally {
+      setIsLoadingTemplates(false)
+    }
   }
 
   return (
@@ -855,8 +952,9 @@ export function BrokerContractsExperience() {
           loading={isLoadingTemplates}
           feedback={feedback}
           onImport={() => openMode("import")}
-          onInspect={inspectTemplate}
+          onInspect={(template) => { void inspectTemplate(template) }}
           onUse={createFromTemplate}
+          onDelete={deleteTemplate}
         />
       )}
 

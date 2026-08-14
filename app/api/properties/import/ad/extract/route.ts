@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     const adText = typeof formData.get("adText") === "string" ? String(formData.get("adText")).trim() : ""
     const sourceUrl = typeof formData.get("sourceUrl") === "string" ? String(formData.get("sourceUrl")).trim() : ""
     const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
+    const workflow = formData.get("workflow") === "new_property" ? "new_property" : "import"
     const image = formData.get("image")
     const hasImage = image instanceof File && image.size > 0
     actionType = hasImage ? "smart_import_image" : sourceUrl ? "smart_import_url" : "smart_import_text"
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
           adText,
           sourceUrl,
           notes,
+          workflow,
           imageDataUrl: hasImage ? await fileToDataUrl(image) : "",
         }),
     )
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
           hasImage,
           hasSourceUrl: Boolean(sourceUrl),
           hasNotes: Boolean(notes),
+          workflow,
         },
       })
       creditsConsumed = true
@@ -195,6 +198,16 @@ export async function POST(request: NextRequest) {
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
       return NextResponse.json(
         { error: "A IA nao retornou conteudo suficiente para a previa do imovel. Tente novamente em instantes." },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("PROPERTY_DESCRIPTION_TOO_SIMILAR")) {
+      return NextResponse.json(
+        {
+          error: "A IA nao conseguiu produzir uma descricao comercial suficientemente nova. Tente novamente com mais detalhes do imovel.",
+          code: "PROPERTY_DESCRIPTION_TOO_SIMILAR",
+        },
         { status: 502 },
       )
     }

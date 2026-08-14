@@ -9,6 +9,17 @@ test.describe("Studio IA — providers de Criar campanha", () => {
 
   test("envia o provider escolhido sem alterar o renderer da campanha", async ({ page }) => {
     let requestedProvider: string | null = null
+    let requestedIdentity = false
+
+    await page.route("**/api/properties/me", async (route) => {
+      if (route.request().method() !== "GET") return route.continue()
+      const response = await route.fetch()
+      const payload = await response.json() as { properties?: Array<{ images?: string[] }> }
+      if (payload.properties?.[0]) {
+        payload.properties[0].images = ["https://images.example.com/property.jpg"]
+      }
+      await route.fulfill({ response, json: payload })
+    })
 
     await page.route("**/api/studio-ia/instagram", async (route) => {
       const request = route.request()
@@ -17,7 +28,9 @@ test.describe("Studio IA — providers de Criar campanha", () => {
         return
       }
 
-      requestedProvider = (request.postDataJSON() as { provider?: string }).provider ?? null
+      const payload = request.postDataJSON() as { provider?: string; identity?: unknown }
+      requestedProvider = payload.provider ?? null
+      requestedIdentity = Object.hasOwn(payload, "identity")
       await route.fulfill({
         status: 503,
         contentType: "application/json",
@@ -31,6 +44,7 @@ test.describe("Studio IA — providers de Criar campanha", () => {
     await expect(page.getByText("Sem alterar banco", { exact: true })).toHaveCount(0)
     await page.getByRole("button", { name: "Reiniciar fluxo", exact: true }).click()
     await page.getByRole("button", { name: "Avançar para configuração", exact: true }).click()
+    await expect(page.getByText("Escolha a identidade visual", { exact: true })).toHaveCount(0)
 
     const openai = page.getByTestId("campaign-provider-openai")
     const grok = page.getByTestId("campaign-provider-xai")
@@ -42,6 +56,7 @@ test.describe("Studio IA — providers de Criar campanha", () => {
     await page.getByRole("button", { name: "Gerar campanha", exact: true }).click()
 
     await expect.poll(() => requestedProvider).toBe("xai")
+    expect(requestedIdentity).toBeFalsy()
     await expect(page.getByText("Resposta controlada do teste.", { exact: true })).toBeVisible()
     await expect(page.locator("[data-testid='campaign-provider-options']")).toBeVisible()
   })

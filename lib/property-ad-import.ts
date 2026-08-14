@@ -5,6 +5,10 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import {
+  buildCommercialDescriptionPrompt,
+  isDescriptionTooSimilarToSource,
+} from "@/lib/property-new-ai"
+import {
   AD_IMPORT_MAX_IMAGE_BYTES,
   AD_IMPORT_MAX_TEXT_LENGTH,
   adImportDraftSchema,
@@ -25,6 +29,7 @@ export type AdImportInput = {
   adText: string
   sourceUrl: string
   notes: string
+  workflow?: "import" | "new_property"
   imageDataUrl?: string
 }
 
@@ -72,6 +77,10 @@ const adImportModelResponseListSchema = z
     drafts: z.array(adImportModelResponseSchema).default([]),
   })
   .passthrough()
+
+const propertyCommercialDescriptionSchema = z.object({
+  description: z.string().trim().min(40).max(1800),
+})
 
 function sanitizeInput(value: string, maxLength: number) {
   return value.replace(/\s+/g, " ").trim().slice(0, maxLength)
@@ -276,7 +285,11 @@ async function resolveSourceUrlContext(sourceUrl: string, canFallbackWithoutLink
   }
 }
 
-function buildPrompt(input: AdImportInput, sourceContext: SourceUrlContext | null, sourceWarningCode: string) {
+export function buildPropertyAdPrompt(
+  input: AdImportInput,
+  sourceContext: SourceUrlContext | null = null,
+  sourceWarningCode = "",
+) {
   const sourceWarning =
     sourceWarningCode === "SOURCE_URL_BLOCKED"
       ? "A leitura automatica do link foi bloqueada. Use o texto, as observacoes e a imagem enviada como base principal."
@@ -286,6 +299,19 @@ function buildPrompt(input: AdImportInput, sourceContext: SourceUrlContext | nul
           ? "O link informado parece invalido. Ignore o link e use apenas os outros materiais."
           : "Nao informado"
 
+  const newPropertyDescriptionGuidance = input.workflow === "new_property"
+    ? [
+        "Este material esta sendo usado para criar um novo anuncio, nao para copiar um anuncio existente.",
+        "Primeiro identifique e organize somente os dados factuais presentes no material.",
+        "Depois escreva o campo description como um texto comercial novo, natural e coeso em portugues do Brasil.",
+        "Nao copie nem apenas reorganize a fala, transcricao, texto livre ou observacoes do usuario.",
+        "Nao mencione o processo de extracao, o usuario, a transcricao, a imagem ou campos ausentes.",
+        "Use de 80 a 140 palavras quando houver contexto suficiente; com poucos fatos, seja mais breve em vez de preencher lacunas.",
+        "Inclua apenas caracteristicas, localizacao, medidas, valores e diferenciais efetivamente informados.",
+        "Nao invente vista, acabamento, lazer, seguranca, proximidades, estado de conservacao ou qualquer outro atributo ausente.",
+      ]
+    : []
+
   return [
     "Extraia imoveis do material fornecido.",
     "Cada item de drafts deve representar um unico imovel identificado.",
@@ -293,6 +319,7 @@ function buildPrompt(input: AdImportInput, sourceContext: SourceUrlContext | nul
     "Nao invente dados ausentes. Quando houver duvida, deixe o campo vazio.",
     "Use lowConfidenceFields e missingFields para sinalizar incerteza ou ausencia.",
     "Se houver pouco contexto, ainda assim retorne drafts parciais com status needs_review.",
+    ...newPropertyDescriptionGuidance,
     "",
     `Texto do anuncio: ${input.adText || "Nao informado"}`,
     `Link informado: ${input.sourceUrl || "Nao informado"}`,
@@ -753,6 +780,63 @@ export function mapXmlPropertyToAdImportDraft(property: ParsedXmlProperty) {
   })
 }
 
+async function generateCommercialPropertyDescription(input: {
+  client: NonNullable<ReturnType<typeof getOpenAIClient>>
+  model: string
+  draft: AdImportDraft
+  rawSource: string
+}) {
+  const comparisonSource = [input.rawSource, input.draft.description].filter(Boolean).join("\n")
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await createOpenAIResponse({
+      client: input.client,
+      operationKey: attempt === 0 ? "property.new_description" : "property.new_description.retry",
+      metadata: {
+        propertyType: input.draft.type,
+        city: input.draft.city || null,
+        neighborhood: input.draft.neighborhood || null,
+        retry: attempt > 0,
+      },
+      request: {
+        model: input.model,
+        max_output_tokens: 700,
+        reasoning: { effort: "minimal" },
+        instructions:
+          "Voce redige anuncios imobiliarios comerciais com base estrita nos fatos fornecidos. Produza texto original, nao copie o material de origem e nunca invente informacoes. Responda apenas no schema solicitado.",
+        input: buildCommercialDescriptionPrompt(input.draft, attempt > 0),
+        text: {
+          verbosity: "low",
+          format: {
+            type: "json_schema",
+            name: "property_commercial_description",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                description: {
+                  type: "string",
+                  description: "Descricao comercial original, fiel somente aos fatos fornecidos.",
+                },
+              },
+              required: ["description"],
+            },
+          },
+        },
+      },
+    })
+
+    const parsedPayload = extractStructuredResponsePayload(response)
+    const parsed = propertyCommercialDescriptionSchema.parse(parsedPayload)
+    if (!isDescriptionTooSimilarToSource(comparisonSource, parsed.description)) {
+      return parsed.description
+    }
+  }
+
+  throw new Error("PROPERTY_DESCRIPTION_TOO_SIMILAR")
+}
+
 export async function extractPropertyFromAd(input: AdImportInput) {
   const client = getOpenAIClient()
 
@@ -764,6 +848,7 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     adText: sanitizeInput(input.adText, AD_IMPORT_MAX_TEXT_LENGTH),
     sourceUrl: sanitizeInput(input.sourceUrl, 500),
     notes: sanitizeInput(input.notes, 1000),
+    workflow: input.workflow === "new_property" ? "new_property" as const : "import" as const,
     imageDataUrl: input.imageDataUrl?.trim() || "",
   }
 
@@ -789,7 +874,7 @@ export async function extractPropertyFromAd(input: AdImportInput) {
   > = [
     {
       type: "input_text",
-      text: buildPrompt(sanitizedInput, sourceContext, sourceLookup.warningCode),
+      text: buildPropertyAdPrompt(sanitizedInput, sourceContext, sourceLookup.warningCode),
     },
   ]
 
@@ -803,11 +888,16 @@ export async function extractPropertyFromAd(input: AdImportInput) {
 
   const response = await createOpenAIResponse({
     client,
-    operationKey: sanitizedInput.imageDataUrl ? "property.import_image" : "property.import_text",
+    operationKey: sanitizedInput.workflow === "new_property"
+      ? "property.new_ai_draft"
+      : sanitizedInput.imageDataUrl
+        ? "property.import_image"
+        : "property.import_text",
     metadata: {
       hasImage: Boolean(sanitizedInput.imageDataUrl),
       hasSourceUrl: Boolean(sanitizedInput.sourceUrl),
       sourceWarningCode: sourceLookup.warningCode || null,
+      workflow: sanitizedInput.workflow,
     },
     request: {
       model,
@@ -815,8 +905,9 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       reasoning: {
         effort: "minimal",
       },
-      instructions:
-        "Extraia dados de anuncios imobiliarios no Brasil e responda apenas com o JSON do schema solicitado, sem texto adicional.",
+      instructions: sanitizedInput.workflow === "new_property"
+        ? "Extraia os fatos de um imovel e produza uma descricao comercial original baseada somente neles. Nao copie a entrada e nao invente informacoes. Responda apenas com o JSON do schema solicitado, sem texto adicional."
+        : "Extraia dados de anuncios imobiliarios no Brasil e responda apenas com o JSON do schema solicitado, sem texto adicional.",
       input: [
         {
           role: "user",
@@ -926,7 +1017,31 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       throw new Error("AD_IMPORT_PREVIEW_EMPTY")
     }
 
-    return normalizedDrafts
+    if (sanitizedInput.workflow !== "new_property") {
+      return normalizedDrafts
+    }
+
+    const rawSource = [
+      sanitizedInput.adText,
+      sanitizedInput.notes,
+      sourceContext?.title,
+      sourceContext?.description,
+      sourceContext?.text,
+    ]
+      .filter(Boolean)
+      .join("\n")
+
+    return Promise.all(
+      normalizedDrafts.map(async (draft) => ({
+        ...draft,
+        description: await generateCommercialPropertyDescription({
+          client,
+          model,
+          draft,
+          rawSource,
+        }),
+      })),
+    )
   } catch (error) {
     console.error("[property-ad-import][parse-failed]", {
       message: error instanceof Error ? error.message : "unknown",

@@ -24,6 +24,10 @@ import {
   upsertLinkedContractDocument,
 } from "@/lib/linked-contract-document"
 import { buildInstanceSnapshot, parseStoredTemplateStructure } from "@/lib/contract-template-server"
+import {
+  hasUsableStoredContractTemplate,
+  recoverStoredContractTemplateVersion,
+} from "@/lib/contract-template-recovery.server"
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
@@ -66,7 +70,24 @@ function serializeContract(document: {
     templateVersion: { structure: unknown; originalText: string }
   } | null
 }) {
-  const content = parseContractContent(document.content)
+  let content: ReturnType<typeof parseContractContent>
+  try {
+    content = parseContractContent(document.content)
+  } catch {
+    content = createContractContent({
+      kind: "Modelo próprio",
+      title: document.title || "Contrato importado",
+      status: normalizeContractStatus(document.status) ?? "draft",
+      authorName: "EME",
+      createdAt: document.createdAt.toISOString(),
+      updatedAt: document.updatedAt.toISOString(),
+      lead: null,
+      property: null,
+      financial: {},
+    })
+    content.reviewNotes = ["O registro legado não possui conteúdo estruturado válido. Substitua ou exclua este contrato."]
+    content.html = buildContractHtml(content)
+  }
   if (document.templateInstance && !isExternalContractContent(content)) {
     try {
       const structure = parseStoredTemplateStructure(
@@ -196,6 +217,14 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const { id } = await context.params
     const found = await getContractOr404(id, auth.broker!.id)
     if (found instanceof NextResponse) return found
+    if (found.templateInstance && !hasUsableStoredContractTemplate(found.templateInstance.templateVersion)) {
+      await recoverStoredContractTemplateVersion(found.templateInstance.templateVersion, {
+        templateTitle: found.templateInstance.title,
+      })
+      const recovered = await getContractOr404(id, auth.broker!.id)
+      if (recovered instanceof NextResponse) return recovered
+      return NextResponse.json({ contract: serializeContract(recovered) })
+    }
     return NextResponse.json({ contract: serializeContract(found) })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {

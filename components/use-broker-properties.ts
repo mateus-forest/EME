@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
 import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
@@ -80,8 +80,6 @@ type PropertyApiItem = {
   completion: CompletionSummary
 }
 
-const PROPERTIES_UPDATED_EVENT = "eme-broker-properties-updated"
-
 function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
   const normalizedStatus = isEmeActivePropertyLabel(property.status) ? property.status : "Rascunho"
 
@@ -154,6 +152,18 @@ async function parsePropertyResponse(response: Response) {
 export function useBrokerProperties() {
   const [properties, setProperties] = useState<BrokerProperty[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const propertySyncSourceIdRef = useRef("")
+
+  const getPropertySyncSourceId = useCallback(() => {
+    if (!propertySyncSourceIdRef.current) {
+      propertySyncSourceIdRef.current = `broker-properties:${crypto.randomUUID()}`
+    }
+    return propertySyncSourceIdRef.current
+  }, [])
+
+  const broadcastPropertySync = useCallback((entityId: string) => {
+    dispatchEntitySync({ type: "property", entityId, sourceId: getPropertySyncSourceId() })
+  }, [getPropertySyncSourceId])
 
   const refreshProperties = useCallback(async () => {
     setIsLoading(true)
@@ -182,22 +192,18 @@ export function useBrokerProperties() {
       setIsLoading(false)
     })
 
-    function syncProperties() {
-      refreshProperties().catch(() => null)
-    }
-
+    const syncSourceId = getPropertySyncSourceId()
     const unsubscribeEntitySync = subscribeEntitySync((message) => {
       if (message.type === "property") {
+        if (message.sourceId === syncSourceId) return
         refreshProperties().catch(() => null)
       }
     })
 
-    window.addEventListener(PROPERTIES_UPDATED_EVENT, syncProperties)
     return () => {
-      window.removeEventListener(PROPERTIES_UPDATED_EVENT, syncProperties)
       unsubscribeEntitySync()
     }
-  }, [refreshProperties])
+  }, [getPropertySyncSourceId, refreshProperties])
 
   async function addProperty(property: BrokerPropertyInput) {
     const response = await fetch("/api/properties", {
@@ -230,8 +236,7 @@ export function useBrokerProperties() {
     }
 
     setProperties((current) => [created, ...current])
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: created }))
-    dispatchEntitySync({ type: "property", entityId: created.id })
+    broadcastPropertySync(created.id)
     return created
   }
 
@@ -248,8 +253,7 @@ export function useBrokerProperties() {
 
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 
@@ -262,8 +266,7 @@ export function useBrokerProperties() {
 
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 
@@ -297,8 +300,7 @@ export function useBrokerProperties() {
     }
 
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 
@@ -316,8 +318,7 @@ export function useBrokerProperties() {
     }
 
     setProperties((current) => current.filter((property) => property.id !== id))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: { id } }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
   }
 
   async function uploadPropertyAudio(id: string, file: File) {
@@ -333,8 +334,7 @@ export function useBrokerProperties() {
 
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 
@@ -347,8 +347,7 @@ export function useBrokerProperties() {
 
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 
@@ -372,8 +371,7 @@ export function useBrokerProperties() {
     }
 
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: "property", entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 
@@ -387,8 +385,7 @@ export function useBrokerProperties() {
     })
     const updated = await parsePropertyResponse(response)
     setProperties((current) => current.map((property) => (property.id === id ? updated : property)))
-    window.dispatchEvent(new CustomEvent(PROPERTIES_UPDATED_EVENT, { detail: updated }))
-    dispatchEntitySync({ type: 'property', entityId: id })
+    broadcastPropertySync(id)
     return updated
   }
 

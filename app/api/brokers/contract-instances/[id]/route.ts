@@ -10,6 +10,7 @@ import {
 import { parseLeadAddress, parseLeadIdentification } from "@/lib/legal-entities"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { recoverStoredContractTemplateVersion } from "@/lib/contract-template-recovery.server"
 
 async function requireBroker() {
   const { error, user } = await getAuthenticatedUser()
@@ -114,9 +115,12 @@ async function applyAdditionalPartyBindings(input: {
   return input.values
 }
 
-function serializeInstance(instance: Awaited<ReturnType<typeof loadInstance>>) {
+async function serializeInstance(instance: Awaited<ReturnType<typeof loadInstance>>) {
   if (!instance) return null
-  const structure = parseStoredTemplateStructure(instance.templateVersion.structure, instance.templateVersion.originalText)
+  const recoveredVersion = await recoverStoredContractTemplateVersion(instance.templateVersion, {
+    templateTitle: instance.template.name,
+  })
+  const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
   const values = stringRecord(instance.values)
   const snapshot = buildInstanceSnapshot({ structure, values, title: instance.title, draft: instance.status === "draft" })
   return {
@@ -150,7 +154,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   try {
     const instance = await loadInstance(id, auth.user.broker!.id)
     if (!instance) return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
-    return NextResponse.json({ instance: serializeInstance(instance) })
+    return NextResponse.json({ instance: await serializeInstance(instance) })
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Contrato indisponível no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível carregar o contrato." }, { status: 500 })
@@ -189,7 +193,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (leadId && !lead) return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 })
     if (propertyId && !property) return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 })
 
-    const structure = parseStoredTemplateStructure(current.templateVersion.structure, current.templateVersion.originalText)
+    const recoveredVersion = await recoverStoredContractTemplateVersion(current.templateVersion, {
+      templateTitle: current.template.name,
+    })
+    const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
     const incomingValues = body?.values ? stringRecord(body.values) : stringRecord(current.values)
     const refreshSources: Array<"CLIENT" | "PROPERTY" | "BROKER"> = []
     if (leadId !== current.leadId) refreshSources.push("CLIENT")
@@ -238,7 +245,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     ])
 
     const updated = await loadInstance(current.id, brokerId)
-    return NextResponse.json({ instance: serializeInstance(updated) })
+    return NextResponse.json({ instance: await serializeInstance(updated) })
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Contrato indisponível no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível salvar o contrato." }, { status: 500 })
@@ -260,7 +267,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       const signedAt = typeof body?.signedAt === "string" ? new Date(body.signedAt) : new Date()
       if (Number.isNaN(signedAt.getTime())) return NextResponse.json({ error: "Informe uma data de assinatura válida." }, { status: 400 })
       const note = typeof body?.note === "string" ? body.note.trim().slice(0, 1000) : null
-      const structure = parseStoredTemplateStructure(current.templateVersion.structure, current.templateVersion.originalText)
+      const recoveredVersion = await recoverStoredContractTemplateVersion(current.templateVersion, {
+        templateTitle: current.template.name,
+      })
+      const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
       const values = stringRecord(current.values)
       const snapshot = buildInstanceSnapshot({ structure, values, title: current.title, draft: false })
       if (snapshot.readiness.score < 100) {
@@ -289,11 +299,47 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           data: { status: "signed", content },
         })] : []),
       ])
-      return NextResponse.json({ instance: serializeInstance(await loadInstance(current.id, brokerId)) })
+      return NextResponse.json({ instance: await serializeInstance(await loadInstance(current.id, brokerId)) })
+    }
+
+    if (action === "cancel") {
+      if (current.status === "signed") {
+        return NextResponse.json({ error: "Um contrato assinado não pode ser cancelado por este fluxo." }, { status: 409 })
+      }
+      const recoveredVersion = await recoverStoredContractTemplateVersion(current.templateVersion, {
+        templateTitle: current.template.name,
+      })
+      const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
+      const values = stringRecord(current.values)
+      const snapshot = buildInstanceSnapshot({ structure, values, title: current.title, draft: false })
+      const content = createTemplateContractContent({
+        instanceId: current.id,
+        title: current.title,
+        status: "cancelled",
+        html: snapshot.html,
+        author: current.broker,
+        lead: current.lead,
+        property: current.property,
+        createdAt: current.createdAt,
+      })
+      await prisma.$transaction([
+        prisma.contractTemplateInstance.update({
+          where: { id: current.id },
+          data: { status: "cancelled", signedAt: null, signatureNote: null },
+        }),
+        ...(current.brokerDocumentId ? [prisma.brokerDocument.update({
+          where: { id: current.brokerDocumentId },
+          data: { status: "cancelled", content },
+        })] : []),
+      ])
+      return NextResponse.json({ instance: await serializeInstance(await loadInstance(current.id, brokerId)) })
     }
 
     if (action === "duplicate") {
-      const structure = parseStoredTemplateStructure(current.templateVersion.structure, current.templateVersion.originalText)
+      const recoveredVersion = await recoverStoredContractTemplateVersion(current.templateVersion, {
+        templateTitle: current.template.name,
+      })
+      const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
       const values = stringRecord(current.values)
       const title = `${current.title} — cópia`.slice(0, 180)
       const snapshot = buildInstanceSnapshot({ structure, values, title, draft: true })
@@ -341,5 +387,33 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Contrato indisponível no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível concluir esta ação." }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireBroker()
+  if ("response" in auth) return auth.response
+  const brokerId = auth.user.broker!.id
+  const { id } = await context.params
+  try {
+    const current = await loadInstance(id, brokerId)
+    if (!current) return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
+
+    await prisma.$transaction(async (tx) => {
+      await tx.contractTemplateInstance.delete({ where: { id: current.id } })
+      if (current.brokerDocumentId) {
+        await tx.brokerDocument.deleteMany({ where: { id: current.brokerDocumentId, brokerId } })
+      }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[contracts][instances] deletion failed", {
+      instanceId: id,
+      brokerId,
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Contrato indisponível no momento." }, { status: 503 })
+    return NextResponse.json({ error: "Não foi possível excluir o contrato." }, { status: 500 })
   }
 }

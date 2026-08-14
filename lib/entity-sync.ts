@@ -5,6 +5,7 @@ type EntitySyncType = "lead" | "property" | "broker"
 export type EntitySyncMessage = {
   type: EntitySyncType
   entityId?: string
+  sourceId?: string
   updatedAt: string
 }
 

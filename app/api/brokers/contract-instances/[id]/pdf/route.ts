@@ -6,6 +6,7 @@ import { generateContractPdf } from "@/lib/contract-pdf.server"
 import { createTemplateContractContent, parseStoredTemplateStructure } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { recoverStoredContractTemplateVersion } from "@/lib/contract-template-recovery.server"
 
 function stringRecord(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {}
@@ -32,7 +33,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       },
     })
     if (!instance) return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
-    const structure = parseStoredTemplateStructure(instance.templateVersion.structure, instance.templateVersion.originalText)
+    const recoveredVersion = await recoverStoredContractTemplateVersion(instance.templateVersion)
+    const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
     const values = stringRecord(instance.values)
     const readiness = calculateContractReadiness(structure, values)
     if (!draft && readiness.score < 100) {
@@ -75,7 +77,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         "Cache-Control": "private, no-store",
       },
     })
-  } catch {
+  } catch (error) {
+    console.error(`[contracts][instances] PDF generation failed (${id}): ${error instanceof Error ? `${error.name}: ${error.message}` : "unknown"}`)
     return NextResponse.json({ error: "Não foi possível gerar o PDF deste contrato." }, { status: 500 })
   }
 }
