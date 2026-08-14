@@ -67,12 +67,16 @@ test.describe("Landing EME mobile e autenticação", () => {
       return {
         willChange: cardStyle.willChange,
         filter: cardStyle.filter,
+        zIndex: cardStyle.zIndex,
+        backfaceVisibility: cardStyle.backfaceVisibility,
         backdropFilter: glassStyle?.backdropFilter ?? "",
       }
     })
     expect(compositorStyles.willChange).toContain("transform")
     expect(compositorStyles.willChange).toContain("opacity")
     expect(compositorStyles.filter).toBe("none")
+    expect(compositorStyles.zIndex).toBe("auto")
+    expect(compositorStyles.backfaceVisibility).toBe("hidden")
     expect(compositorStyles.backdropFilter).toBe("none")
   })
 
@@ -96,6 +100,15 @@ test.describe("Landing EME mobile e autenticação", () => {
 
     const scrollArea = dialog.locator("[data-mobile-module-scroll]")
     await expect(scrollArea).toHaveCSS("overflow-y", "auto")
+    const mockup = dialog.locator("[data-mobile-module-mockup]")
+    const mockupImage = mockup.getByAltText("Prévia visual do módulo Contratos")
+    await expect(mockupImage).toHaveCSS("object-fit", "contain")
+    const mockupBox = await mockup.boundingBox()
+    const mockupImageBox = await mockupImage.boundingBox()
+    expect(mockupImageBox!.x).toBeGreaterThanOrEqual(mockupBox!.x)
+    expect(mockupImageBox!.y).toBeGreaterThanOrEqual(mockupBox!.y)
+    expect(mockupImageBox!.x + mockupImageBox!.width).toBeLessThanOrEqual(mockupBox!.x + mockupBox!.width)
+    expect(mockupImageBox!.y + mockupImageBox!.height).toBeLessThanOrEqual(mockupBox!.y + mockupBox!.height)
     await scrollArea.evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
     await expect(dialog.getByRole("button", { name: "Fechar" })).toBeVisible()
 

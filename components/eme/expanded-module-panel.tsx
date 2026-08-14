@@ -22,11 +22,6 @@ const MODAL_AR: Record<string, number> = {
 }
 const DEFAULT_AR = 1480 / 962
 
-const MOBILE_MOCKUP_OFFSET: Partial<Record<string, string>> = {
-  contratos: "-44%",
-  "studio-ia": "-30%",
-}
-
 function computeTarget(aspectRatio: number): Rect {
   const visualViewport = window.visualViewport
   const viewportWidth = visualViewport?.width ?? window.innerWidth
@@ -249,20 +244,19 @@ export function ExpandedModulePanel({
               {module.longDescription}
             </p>
 
-            <div className="mt-5 aspect-[16/10] overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]">
-              <div
-                className="relative h-full w-[178%]"
-                style={{ transform: `translate3d(${MOBILE_MOCKUP_OFFSET[module.id] ?? "0"}, 0, 0)` }}
-              >
-                <Image
-                  src={module.mockup || "/placeholder.svg"}
-                  alt={`Prévia visual do módulo ${module.name}`}
-                  fill
-                  sizes="680px"
-                  className="object-cover object-left"
-                  priority
-                />
-              </div>
+            <div
+              data-mobile-module-mockup
+              className="relative mt-5 w-full overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
+              style={{ aspectRatio }}
+            >
+              <Image
+                src={module.mockup || "/placeholder.svg"}
+                alt={`Prévia visual do módulo ${module.name}`}
+                fill
+                sizes="(max-width: 767px) calc(100vw - 58px), 680px"
+                className="object-contain p-2"
+                priority
+              />
             </div>
 
             <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>

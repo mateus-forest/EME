@@ -76,8 +76,6 @@ export function MobileOrbitStage({
 
         element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, ${round(z)}px) rotateY(${round(-lateral * 7)}deg) scale(${round(scale, 4)})`
         element.style.opacity = round(opacity, 4).toString()
-        element.style.zIndex = Math.round(front * 100).toString()
-
         if (front > activeDepth) {
           activeDepth = front
           activeIndex = index
@@ -180,12 +178,14 @@ export function MobileOrbitStage({
               cardRefs.current[index] = element
             }}
             data-mobile-orbit-card={module.id}
-            className="absolute left-1/2 top-1/2 [contain:layout_paint]"
+            className="absolute left-1/2 top-1/2 [contain:layout_style]"
             style={{
               opacity: 0,
               pointerEvents: frozen ? "none" : undefined,
               transformStyle: "preserve-3d",
-              transition: "opacity 420ms cubic-bezier(0.22, 1, 0.36, 1)",
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden",
+              transition: frozen ? "opacity 240ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
               willChange: "transform, opacity",
             }}
           >

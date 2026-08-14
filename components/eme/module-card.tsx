@@ -27,6 +27,9 @@ export function ModuleCard({
       data-module-card={mobile ? "mobile" : "desktop"}
       className={`relative select-none ${frameClass}`}
       style={{
+        backfaceVisibility: mobile ? "hidden" : undefined,
+        WebkitBackfaceVisibility: mobile ? "hidden" : undefined,
+        transform: mobile ? "translateZ(0)" : undefined,
         boxShadow: mobile
           ? "0 18px 38px -22px rgba(28,52,40,0.38), 0 8px 18px -14px rgba(28,52,40,0.2), inset 0 1px 0 rgba(255,255,255,0.94)"
           : "0 30px 64px -26px rgba(28,52,40,0.34), 0 12px 28px -18px rgba(28,52,40,0.2), inset 0 1px 0 rgba(255,255,255,0.95)",
