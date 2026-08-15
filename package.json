@@ -13,6 +13,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "cos:evals": "node --experimental-strip-types scripts/run-cos-evals.mjs",
+    "cos:knowledge:sync": "node --experimental-strip-types scripts/validate-eme-knowledge.mjs --write",
+    "cos:knowledge:validate": "node --experimental-strip-types scripts/validate-eme-knowledge.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev --name init",
     "db:seed": "node prisma/seed.js",
