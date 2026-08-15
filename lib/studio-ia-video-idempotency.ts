@@ -89,7 +89,7 @@ export async function linkStudioVideoGenerationLock(input: {
   requestId: string
   requestSignature: string
 }) {
-  await prisma.brokerDocument.updateMany({
+  const linked = await prisma.brokerDocument.updateMany({
     where: {
       id: input.lockId,
       brokerId: input.brokerId,
@@ -103,6 +103,8 @@ export async function linkStudioVideoGenerationLock(input: {
       }),
     },
   })
+
+  return linked.count === 1
 }
 
 export async function getStudioVideoGenerationLockRequestId(input: {

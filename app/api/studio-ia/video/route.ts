@@ -41,6 +41,7 @@ import {
   linkStudioVideoGenerationLock,
   releaseStudioVideoGenerationLock,
 } from "@/lib/studio-ia-video-idempotency"
+import { shouldReleaseStudioVideoGenerationLock } from "@/lib/studio-ia-video-lock-lifecycle"
 
 export const dynamic = "force-dynamic"
 
@@ -641,7 +642,8 @@ export async function POST(request: NextRequest) {
   }
 
   let generationLockId: string | null = null
-  let providerRequestStarted = false
+  let jobPersisted = false
+  let lockLinked = false
 
   try {
     const contentType = request.headers.get("content-type") || ""
@@ -741,7 +743,6 @@ export async function POST(request: NextRequest) {
         throw new Error("LUMAAI_API_KEY_NOT_CONFIGURED")
       }
 
-      providerRequestStarted = true
       const created = await runWithAiOperationContext(
         {
           route: "/api/studio-ia/video",
@@ -825,7 +826,8 @@ export async function POST(request: NextRequest) {
           status: "draft",
         },
       })
-      await linkStudioVideoGenerationLock({
+      jobPersisted = true
+      lockLinked = await linkStudioVideoGenerationLock({
         brokerId: user.broker.id,
         lockId: generationLock.lockId,
         requestId: document.id,
@@ -1105,10 +1107,14 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     )
   } finally {
-    if (generationLockId && !providerRequestStarted) {
+    if (shouldReleaseStudioVideoGenerationLock({
+      generationLockId,
+      jobPersisted,
+      lockLinked,
+    })) {
       await releaseStudioVideoGenerationLock({
         brokerId: user.broker.id,
-        lockId: generationLockId,
+        lockId: generationLockId!,
       }).catch(() => undefined)
     }
   }
