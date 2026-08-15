@@ -3,10 +3,9 @@ import "server-only"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 
-// Server-only: docs/help/*.md is the official knowledge base the COS help capabilities read from
-// (see docs/help/README.md). Updating a .md file is enough to change what the COS answers — no
-// code change needed — because these are read from disk per request (with an in-memory cache so
-// repeated questions in the same server lifetime don't re-hit the filesystem every time).
+// Adapter legado mantido para superfícies que ainda não recebem CosKnowledgeContext. No portal e
+// no COS Home, knowledge/eme é a fonte oficial. Este caminho permanece isolado para não alterar o
+// runtime do WhatsApp nesta etapa.
 const HELP_DOCS_DIR = path.join(process.cwd(), "docs", "help")
 
 export type HelpTopic =

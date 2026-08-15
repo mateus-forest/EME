@@ -173,6 +173,45 @@ export type CosConversationDomain =
   | "help"
   | "general"
 
+export type CosKnowledgeType = "module" | "rule" | "glossary" | "procedure" | "capability"
+
+export type CosKnowledgeDocumentRef = {
+  id: string
+  title: string
+  version: string
+}
+
+export type CosKnowledgeChunk = {
+  id: string
+  sourceId: string
+  documentTitle: string
+  heading: string
+  domains: CosConversationDomain[]
+  knowledgeTypes: CosKnowledgeType[]
+  version: string
+  order: number
+  text: string
+  score: number
+  reason: string[]
+}
+
+export type CosKnowledgeContext = {
+  schemaVersion: 1
+  required: boolean
+  query: string
+  reason: string[]
+  selectedDocuments: CosKnowledgeDocumentRef[]
+  chunks: CosKnowledgeChunk[]
+  knowledgeMiss: boolean
+  sourceVersion: string
+  limits: {
+    maxChunks: number
+    maxChunkChars: number
+    maxContextChars: number
+    selectedChars: number
+  }
+}
+
 export type CosDialogueDecisionCandidate = {
   capabilityId: CosCapabilityId
   action: AssessorAction
@@ -548,6 +587,7 @@ export type CosNormalizedContext = {
   memory: CosConversationMemory | null
   snapshot: CosConversationSnapshot | null
   decision: CosDialogueDecision | null
+  knowledge: CosKnowledgeContext | null
   attachments: CosAttachmentInput[]
   selectedEntityIds: Partial<Record<CosWorkspaceEntity, string>>
 }

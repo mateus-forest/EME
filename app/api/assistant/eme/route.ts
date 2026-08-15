@@ -44,12 +44,14 @@ import {
   COS_RECENT_MESSAGE_LIMIT,
   type CosAttachmentInput as CosIncomingAttachment,
   type CosDialogueDecision,
+  type CosKnowledgeContext,
   type CosWorkflow,
 } from "@/lib/cos"
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
 import { classifyCosSocialIntent, getSafeFirstName } from "@/lib/cos/conversation"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
+import { buildCosKnowledgeAudit, retrieveCosKnowledge } from "@/lib/cos/knowledge/retrieval"
 import type { FastActionResolution } from "@/lib/cos/fast-action-resolver"
 import {
   consumeBrokerAiCredits,
@@ -343,6 +345,7 @@ function buildDecisionAudit(input: {
     plannerTelemetry: Prisma.InputJsonObject | null
   } | null
   dialogueDecision?: CosDialogueDecision | null
+  knowledgeContext?: CosKnowledgeContext | null
 }) {
   return {
     fastAction:
@@ -388,6 +391,7 @@ function buildDecisionAudit(input: {
             source: input.dialogueDecision.source,
           }
         : null,
+    knowledge: buildCosKnowledgeAudit(input.knowledgeContext),
     intent:
       input.intentResolution
         ? {
@@ -1009,9 +1013,14 @@ export async function POST(request: NextRequest) {
       isExplicitAction: Boolean(requestedAction),
     })
     dialogueDecision = intentResolution.dialogueDecision
+    const knowledgeContext = await retrieveCosKnowledge({
+      message: structuredSelectionMessage ?? message,
+      decision: dialogueDecision,
+    })
     const decisionContext = {
       ...normalizedContext,
       decision: dialogueDecision,
+      knowledge: knowledgeContext,
     }
     const resolvedRequestedAction = intentResolution.requestedAction ?? effectiveRequestedAction
     const activeWorkflowAction =
@@ -1060,6 +1069,7 @@ export async function POST(request: NextRequest) {
             effectiveRequestedAction,
             resolvedRequestedAction,
             dialogueDecision,
+            knowledgeContext,
             intentResolution: {
               requestedAction: intentResolution.requestedAction,
               confidence: intentResolution.confidence,
@@ -1148,6 +1158,7 @@ export async function POST(request: NextRequest) {
           effectiveRequestedAction,
           resolvedRequestedAction,
           dialogueDecision,
+          knowledgeContext,
           intentResolution: {
             requestedAction: intentResolution.requestedAction,
             confidence: intentResolution.confidence,
@@ -1305,6 +1316,7 @@ export async function POST(request: NextRequest) {
           effectiveRequestedAction,
           resolvedRequestedAction,
           dialogueDecision,
+          knowledgeContext,
           intentResolution: {
             requestedAction: intentResolution.requestedAction,
             confidence: intentResolution.confidence,
@@ -1422,6 +1434,7 @@ export async function POST(request: NextRequest) {
           effectiveRequestedAction,
           resolvedRequestedAction,
           dialogueDecision,
+          knowledgeContext,
           intentResolution: {
             requestedAction: intentResolution.requestedAction,
             confidence: intentResolution.confidence,
@@ -1829,6 +1842,7 @@ export async function POST(request: NextRequest) {
         effectiveRequestedAction,
         resolvedRequestedAction,
         dialogueDecision,
+        knowledgeContext,
         intentResolution: {
           requestedAction: intentResolution.requestedAction,
           confidence: intentResolution.confidence,

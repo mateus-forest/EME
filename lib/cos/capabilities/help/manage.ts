@@ -7,6 +7,7 @@ import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 import { loadHelpManualContext, type HelpTopic } from "@/lib/cos/capabilities/help/manual"
+import { formatCosKnowledgeContext } from "@/lib/cos/knowledge/retrieval"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 const HELP_SYSTEM_PROMPT = [
@@ -14,6 +15,13 @@ const HELP_SYSTEM_PROMPT = [
   "Use o manual oficial do EME fornecido abaixo como fonte de verdade sobre o sistema e não invente funcionalidades.",
   "Responda em português, de forma clara, direta e orientada à ação.",
   "Quando o manual não cobrir algo, admita isso com honestidade e aponte o caminho mais próximo disponível.",
+].join(" ")
+
+const KNOWLEDGE_SYSTEM_PROMPT = [
+  "Você é o assistente de suporte e orientação do EME, o Sistema Operacional do Corretor.",
+  "Use somente os trechos selecionados do Livro do EME como fonte factual e não invente funcionalidades.",
+  "Responda em português, de forma clara, direta e orientada à ação.",
+  "Quando os trechos não cobrirem algo, admita isso com honestidade.",
 ].join(" ")
 
 const HELP_FALLBACK_EXCERPT_LENGTH = 1400
@@ -89,9 +97,16 @@ function buildHelpFallbackResponse(manualContext: string) {
 }
 
 function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
-  return async ({ message, action }) => {
+  return async ({ message, action, context }) => {
+    const usesKnowledgeLayer = Boolean(
+      context?.knowledge && (context.surface === "portal" || context.surface === "cos_home"),
+    )
     const guidedResponse = GUIDED_HELP_RESPONSES[topic]
-    const showGuidedMenu = Boolean(guidedResponse) && (topic !== "general_question" || isGeneralQuestionMenuTrigger(message))
+    const showGuidedMenu = Boolean(guidedResponse) && (
+      usesKnowledgeLayer
+        ? context?.decision?.source === "explicit_interface" || (topic === "general_question" && isGeneralQuestionMenuTrigger(message))
+        : topic !== "general_question" || isGeneralQuestionMenuTrigger(message)
+    )
     if (showGuidedMenu && guidedResponse) {
       return {
         response: guidedResponse,
@@ -104,45 +119,104 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
       }
     }
 
-    const manualContext = await loadHelpManualContext(topic)
+    const knowledge = usesKnowledgeLayer ? context?.knowledge ?? null : null
+    if (knowledge?.knowledgeMiss) {
+      return {
+        response: "Não encontrei informação suficiente no Livro do EME para responder com segurança. Posso ajudar a localizar uma função existente ou reformular a dúvida com você.",
+        metadata: {
+          noCharge: true,
+          topic,
+          source: "knowledge_miss",
+          knowledgeVersion: knowledge.sourceVersion,
+          knowledgeDocumentIds: [],
+          knowledgeChunkIds: [],
+        },
+      }
+    }
+
+    const manualContext = knowledge ? formatCosKnowledgeContext(knowledge) : await loadHelpManualContext(topic)
+    const knowledgeMetadata = knowledge
+      ? {
+          knowledgeVersion: knowledge.sourceVersion,
+          knowledgeDocumentIds: knowledge.selectedDocuments.map((document) => document.id),
+          knowledgeChunkIds: knowledge.chunks.map((chunk) => chunk.id),
+        }
+      : {}
     const client = getOpenAIClient()
 
     if (!client) {
       return {
         response: buildHelpFallbackResponse(manualContext),
-        metadata: { noCharge: true, topic, source: "manual_fallback" },
+        metadata: {
+          noCharge: true,
+          topic,
+          source: knowledge ? "knowledge_fallback" : "manual_fallback",
+          ...knowledgeMetadata,
+        },
       }
     }
 
     const { model } = getOpenAIEnv()
-    const response = await createOpenAIResponse({
-      client,
-      operationKey: "cos.help.reply",
-      metadata: { topic, action },
-      request: {
-        model,
-        max_output_tokens: 1800,
-        reasoning: {
-          effort: "minimal",
+    try {
+      const response = await createOpenAIResponse({
+        client,
+        operationKey: "cos.help.reply",
+        metadata: { topic, action, ...knowledgeMetadata },
+        request: {
+          model,
+          max_output_tokens: 1800,
+          reasoning: {
+            effort: "minimal",
+          },
+          instructions: knowledge ? KNOWLEDGE_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT,
+          input: [
+            `${knowledge ? "Trechos relevantes do Livro do EME" : "Manual oficial do EME"}:\n\n${manualContext}`,
+            `Pergunta do corretor: ${message}`,
+          ].join("\n\n"),
         },
-        instructions: HELP_SYSTEM_PROMPT,
-        input: [`Manual oficial do EME:\n\n${manualContext}`, `Pergunta do corretor: ${message}`].join("\n\n"),
-      },
-    })
+      })
 
-    if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
-      console.error("[cos][help][openai-response-truncated]", { topic, status: response.status })
+      if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
+        console.error("[cos][help][openai-response-truncated]", { topic, status: response.status })
+        return {
+          response: buildHelpFallbackResponse(manualContext),
+          metadata: {
+            noCharge: true,
+            topic,
+            source: knowledge ? "knowledge_fallback_truncated" : "manual_fallback_truncated",
+            ...knowledgeMetadata,
+          },
+        }
+      }
+
+      const answer = response.output_text.trim()
+
+      return {
+        response: answer || buildHelpFallbackResponse(manualContext),
+        metadata: knowledge
+          ? {
+              noCharge: true,
+              topic,
+              source: "knowledge",
+              ...knowledgeMetadata,
+            }
+          : { noCharge: true, topic },
+      }
+    } catch (caughtError) {
+      if (!knowledge) throw caughtError
+      console.error("[cos][help][provider-error]", {
+        topic,
+        error: caughtError instanceof Error ? caughtError.message : "unknown",
+      })
       return {
         response: buildHelpFallbackResponse(manualContext),
-        metadata: { noCharge: true, topic, source: "manual_fallback_truncated" },
+        metadata: {
+          noCharge: true,
+          topic,
+          source: knowledge ? "knowledge_fallback_provider_error" : "manual_fallback_provider_error",
+          ...knowledgeMetadata,
+        },
       }
-    }
-
-    const answer = response.output_text.trim()
-
-    return {
-      response: answer || buildHelpFallbackResponse(manualContext),
-      metadata: { noCharge: true, topic },
     }
   }
 }

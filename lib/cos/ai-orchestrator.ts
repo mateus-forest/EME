@@ -1,6 +1,6 @@
 import "server-only"
 
-import { randomUUID } from "crypto"
+import { createHash, randomUUID } from "crypto"
 
 import { zodTextFormat } from "openai/helpers/zod"
 import { z } from "zod"
@@ -54,6 +54,9 @@ export type CosAiOrchestratorAudit = {
   }
   finishReason: string | null
   prompt: string | null
+  promptHash: string
+  promptLength: number
+  knowledgeChunkIds: string[]
   structuredResponse: Record<string, unknown> | null
   validationErrors: string[]
   suggestedCapabilities: string[]
@@ -175,6 +178,28 @@ function buildSnapshotSummary(context: CosNormalizedContext | null | undefined) 
   }
 }
 
+function buildKnowledgeSummary(context: CosNormalizedContext | null | undefined) {
+  const knowledge = context?.knowledge
+  if (!knowledge?.required || knowledge.knowledgeMiss) return null
+
+  const eligible = knowledge.chunks
+    .filter((chunk) => chunk.knowledgeTypes.some((type) => type === "rule" || type === "procedure"))
+    .slice(0, 2)
+  if (eligible.length === 0) return null
+
+  let remaining = 3_000
+  return eligible
+    .map((chunk) => {
+      const prefix = `[${chunk.id}] ${chunk.heading}\n`
+      const available = Math.max(0, remaining - prefix.length)
+      const text = chunk.text.slice(0, available)
+      remaining -= prefix.length + text.length
+      return `${prefix}${text}`
+    })
+    .filter((value) => value.trim().length > 0)
+    .join("\n\n")
+}
+
 function buildPlannerPrompt(input: {
   message: string
   surface: CosCapabilitySurface
@@ -200,6 +225,7 @@ function buildPlannerPrompt(input: {
     `Workflow ativo: ${JSON.stringify(input.activeWorkflowSummary ?? null)}`,
     `Dialogue Decision: ${JSON.stringify(buildDecisionSummary(input.decision))}`,
     `Conversation Snapshot resumido: ${JSON.stringify(buildSnapshotSummary(input.context))}`,
+    `Regras/procedimentos relevantes do Livro do EME: ${buildKnowledgeSummary(input.context) ?? "nenhum"}`,
     "",
     "Capabilities disponiveis:",
     JSON.stringify(input.capabilities),
@@ -209,6 +235,7 @@ function buildPlannerPrompt(input: {
     "- goal deve ser curto e objetivo.",
     "- confidence deve ficar entre 0 e 1.",
     "- steps deve conter apenas capabilities reais da lista.",
+    "- O Livro fornece contexto factual; Registry, confirmação, seleção, permissões e validações continuam soberanos.",
     "- Nao crie campos extras.",
   ].join("\n")
 }
@@ -370,7 +397,10 @@ export async function generateCosAiExecutionPlan(input: {
     estimatedCostUsd: null,
     tokens: { input: null, output: null, total: null },
     finishReason: null,
-    prompt,
+    prompt: null,
+    promptHash: createHash("sha256").update(prompt).digest("hex"),
+    promptLength: prompt.length,
+    knowledgeChunkIds: input.context?.knowledge?.chunks.map((chunk) => chunk.id) ?? [],
     structuredResponse: null,
     validationErrors: [],
     suggestedCapabilities: [],

@@ -1,4 +1,4 @@
-import type { CosAttachmentInput, CosConversationMemory, CosConversationSnapshot, CosDialogueDecision, CosNormalizedContext, CosWorkflow, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
+import type { CosAttachmentInput, CosConversationMemory, CosConversationSnapshot, CosDialogueDecision, CosKnowledgeContext, CosNormalizedContext, CosWorkflow, CosWorkspaceContext, CosWorkspaceEntity } from "@/lib/cos/types"
 
 function cleanId(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null
@@ -59,6 +59,7 @@ export function createCosNormalizedContext(input: {
   memory: CosConversationMemory | null
   snapshot?: CosConversationSnapshot | null
   decision?: CosDialogueDecision | null
+  knowledge?: CosKnowledgeContext | null
   attachments?: CosAttachmentInput[]
 }) {
   return {
@@ -74,6 +75,7 @@ export function createCosNormalizedContext(input: {
     memory: input.memory,
     snapshot: input.snapshot ?? null,
     decision: input.decision ?? null,
+    knowledge: input.knowledge ?? null,
     attachments: input.attachments ?? [],
     selectedEntityIds: collectSelectedEntityIds({
       workspace: input.workspace,
