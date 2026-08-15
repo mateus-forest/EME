@@ -17,6 +17,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 
 type BrokerPageShellProps = {
   title: string
+  eyebrow?: string
+  subtitle?: ReactNode
   variant?: "default" | "cos"
   searchPlaceholder?: string
   searchValue?: string
@@ -32,6 +34,8 @@ type BrokerPageShellProps = {
 
 export function BrokerPageShell({
   title,
+  eyebrow = "Portal do corretor",
+  subtitle,
   variant = "default",
   searchPlaceholder,
   searchValue,
@@ -71,33 +75,37 @@ export function BrokerPageShell({
       className={isCosVariant ? "h-[100dvh] min-h-0 overflow-hidden" : undefined}
       style={
         {
-          "--sidebar-width": isCosVariant ? "17rem" : "15rem",
-          "--sidebar-width-icon": "4.5rem",
+          "--sidebar-width": isCosVariant ? "15.5rem" : "14rem",
+          "--sidebar-width-icon": "4rem",
         } as CSSProperties
       }
     >
-      <div className={`pwa-safe-shell relative w-full overflow-hidden text-[#050505] ${isCosVariant ? "h-full min-h-0 bg-[#f4f1eb]" : "min-h-svh bg-[#f6f2eb] sm:bg-[#fbfbf8]"}`}>
-        {!isCosVariant ? (
-          <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(0,200,83,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(0,230,118,0.08),transparent_30%)]" />
-        ) : null}
-
+      <div
+        className={`broker-portal-scope pwa-safe-shell relative w-full overflow-hidden text-[var(--broker-ink)] ${
+          isCosVariant
+            ? "h-full min-h-0 bg-[#f4f1eb]"
+            : "min-h-svh bg-[var(--broker-canvas)]"
+        }`}
+      >
         <div className={`relative z-0 flex w-full flex-col ${isCosVariant ? "h-full min-h-0" : "min-h-svh"}`}>
           {!isCosVariant ? (
-            <header className="sticky top-0 z-20 border-b border-transparent bg-[#f6f2eb]/96 backdrop-blur-2xl sm:border-black/[0.06] sm:bg-white/86">
-              <div className="px-4 py-3 sm:px-6 lg:px-8">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
-                  <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+            <header className="sticky top-0 z-20 border-b border-[var(--broker-border)] bg-white/92 backdrop-blur-xl">
+              <div className="px-3.5 py-2.5 sm:px-4 lg:px-5">
+                <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-2.5 md:flex-row md:items-center md:gap-5">
                     <div className="flex items-center gap-3">
-                      <SidebarTrigger className="h-8.5 w-8.5 rounded-xl border border-black/[0.06] bg-white/80 text-[#5F6B7A] hover:bg-white hover:text-[#050505] md:hidden" />
+                      <SidebarTrigger className="size-9 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-white text-[var(--broker-muted)] shadow-[var(--broker-shadow-xs)] hover:bg-white hover:text-[var(--broker-ink)] md:hidden" />
                       <div className="flex items-center gap-3">
                         <div className="min-w-0">
-                          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">
-                            Portal do corretor
+                          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--broker-muted-soft)]">
+                            {eyebrow}
                           </p>
-                          <h1 className="text-xl font-semibold leading-none text-[#050505]">{title}</h1>
-                          {profile.fullName ? (
-                            <p className="mt-1 max-w-[16rem] truncate text-sm text-[#6B7280] sm:max-w-[22rem]">
-                              {profile.fullName}
+                          <h1 className="mt-0.5 text-[1.2rem] font-semibold leading-tight tracking-[-0.025em] text-[var(--broker-ink)]">
+                            {title}
+                          </h1>
+                          {subtitle || profile.fullName ? (
+                            <p className="mt-0.5 max-w-[16rem] truncate text-xs text-[var(--broker-muted)] sm:max-w-[22rem]">
+                              {subtitle ?? profile.fullName}
                             </p>
                           ) : null}
                         </div>
@@ -105,15 +113,15 @@ export function BrokerPageShell({
                     </div>
 
                     {hasSearchArea && (
-                      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
                         {searchPlaceholder && (
-                          <div className="relative w-full max-w-[18rem] lg:max-w-[19rem] xl:max-w-[20rem]">
-                            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#8B95A1]" />
+                          <div className="relative w-full max-w-[22rem]">
+                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--broker-muted-soft)]" />
                             <Input
                               placeholder={searchPlaceholder}
                               value={searchValue}
                               onChange={(event) => onSearchChange?.(event.target.value)}
-                              className="h-8.5 rounded-xl border-black/[0.06] bg-white/80 pl-10 text-[#050505] placeholder:text-[#8B95A1] focus-visible:ring-[#009b3a]/35"
+                              className="h-9 rounded-[var(--broker-radius-sm)] border-[var(--broker-border)] bg-white pl-9 text-sm text-[var(--broker-ink)] shadow-[var(--broker-shadow-xs)] placeholder:text-[var(--broker-muted-soft)] focus-visible:border-[var(--broker-accent-border)] focus-visible:ring-[var(--broker-accent)]/10"
                             />
                           </div>
                         )}
@@ -124,7 +132,7 @@ export function BrokerPageShell({
                   </div>
 
                   {(resolvedNotificationCenter || hasPrimaryAction) && (
-                    <div className="flex max-w-full flex-wrap items-center gap-2 self-start xl:self-center">
+                    <div className="flex max-w-full flex-wrap items-center gap-1.5 self-start lg:self-center">
                       <BrokerSupportQuickAccess
                         tone="light"
                         brokerName={profile.fullName}
@@ -134,7 +142,7 @@ export function BrokerPageShell({
                       {hasPrimaryAction && (
                         <Button
                           asChild
-                          className="h-8.5 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+                          className="h-9 rounded-[var(--broker-radius-sm)] bg-[var(--broker-accent)] px-3.5 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(0,155,58,0.16)] transition-colors hover:bg-[#008633]"
                         >
                           {primaryActionOnClick ? (
                             <button type="button" onClick={primaryActionOnClick}>
@@ -155,23 +163,31 @@ export function BrokerPageShell({
               </div>
             </header>
           ) : (
-            <div className="shrink-0 px-3 pt-3 pb-2 md:hidden">
-              <SidebarTrigger className="h-9 w-9 rounded-xl border border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-white hover:text-[#050505]" />
+            <div className="shrink-0 px-3 pb-1.5 pt-2.5 md:hidden">
+              <SidebarTrigger className="size-9 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-white text-[var(--broker-muted)] shadow-[var(--broker-shadow-xs)] hover:bg-white hover:text-[var(--broker-ink)]" />
             </div>
           )}
 
-          <div className={`flex min-h-0 flex-1 overflow-hidden ${isCosVariant ? "gap-0 px-0 py-0" : "gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5"}`}>
+          <div
+            className={`flex min-h-0 flex-1 overflow-hidden ${
+              isCosVariant ? "gap-0 px-0 py-0" : "gap-0 px-0 py-0 sm:gap-2.5 sm:px-3 sm:py-2.5 lg:px-4"
+            }`}
+          >
             <BrokerSidebar variant={isCosVariant ? "cos" : "default"} />
 
             <main
               className={
                 isCosVariant
-                  ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-none border-y-0 border-r border-l border-black/[0.06] bg-transparent shadow-none"
-                  : "min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none md:rounded-[1.75rem] md:border md:border-black/[0.06] md:bg-white/86 md:shadow-[0_18px_60px_rgba(15,23,42,0.06)]"
+                  ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-none border-y-0 border-r border-l border-[var(--broker-border)] bg-transparent shadow-none"
+                  : "min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none md:rounded-[var(--broker-radius-lg)] md:border md:border-[var(--broker-border)] md:bg-white/82 md:shadow-[var(--broker-shadow-sm)]"
               }
             >
               <div
-                className={`h-full max-w-full overflow-x-hidden ${isCosVariant ? "overflow-y-hidden px-0 py-0" : "overflow-y-auto px-0 py-0 sm:px-6 sm:py-5 lg:px-8"} ${contentClassName ?? ""}`}
+                className={`h-full max-w-full overflow-x-hidden ${
+                  isCosVariant
+                    ? "overflow-y-hidden px-0 py-0"
+                    : "eme-subtle-scrollbar overflow-y-auto px-0 py-0 sm:px-4 sm:py-4 lg:px-5"
+                } ${contentClassName ?? ""}`}
               >
                 {children}
               </div>

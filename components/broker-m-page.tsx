@@ -249,7 +249,7 @@ export function BrokerMPage() {
         </section>
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <ResponsiveCollapsibleSection title="Créditos disponíveis" defaultMobileOpen>
+          <ResponsiveCollapsibleSection title="Créditos disponíveis" defaultMobileOpen variant="broker">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-lg text-[#050505]">Créditos disponíveis</CardTitle>
@@ -276,7 +276,7 @@ export function BrokerMPage() {
           </Card>
           </ResponsiveCollapsibleSection>
 
-          <ResponsiveCollapsibleSection title="Ações rápidas">
+          <ResponsiveCollapsibleSection title="Ações rápidas" variant="broker">
           <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-5 py-5">
               <CardTitle className="text-lg text-[#050505]">Ações rápidas</CardTitle>
@@ -299,7 +299,7 @@ export function BrokerMPage() {
           </ResponsiveCollapsibleSection>
         </section>
 
-        <ResponsiveCollapsibleSection title="Comando rápido">
+        <ResponsiveCollapsibleSection title="Comando rápido" variant="broker">
         <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-5 py-5">
             <CardTitle className="text-lg text-[#050505]">Enviar comando</CardTitle>
@@ -335,7 +335,7 @@ export function BrokerMPage() {
         </Card>
         </ResponsiveCollapsibleSection>
 
-        <ResponsiveCollapsibleSection title="Histórico operacional">
+        <ResponsiveCollapsibleSection title="Histórico operacional" variant="broker">
         <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardContent className="grid gap-3 p-5">
             {history.length > 0 ? (
@@ -346,7 +346,7 @@ export function BrokerMPage() {
                       <p className="truncate text-sm font-semibold text-[#050505]">{formatAssistantAction(item.actionType || item.detectedIntent)}</p>
                       <p className="mt-1 text-xs text-[#7B8491]">{formatAssistantTime(item.createdAt)}</p>
                     </div>
-                    <span className={item.actionStatus === "error" ? "rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200" : item.actionStatus === "processing" ? "rounded-full border border-[#ffd54f]/20 bg-[#ffd54f]/10 px-2 py-0.5 text-[10px] text-[#ffe082]" : "rounded-full border border-[#009b3a]/16 bg-[#009b3a]/10 px-2 py-0.5 text-[10px] text-[#009b3a]"}>
+                    <span className={item.actionStatus === "error" ? "rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] text-red-700" : item.actionStatus === "processing" ? "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700" : "rounded-full border border-[#009b3a]/16 bg-[#009b3a]/10 px-2 py-0.5 text-[10px] text-[#009b3a]"}>
                       {item.actionStatus === "error" ? "Atenção" : item.actionStatus === "processing" ? "Em andamento" : "Concluído"}
                     </span>
                   </div>

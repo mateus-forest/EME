@@ -7,6 +7,7 @@ import { EME_SUPPORT_WHATSAPP_NUMBER } from "@/lib/support"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerPageIntro, BrokerSurface, BrokerToolbar } from "@/components/broker-portal-ui"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -66,25 +67,26 @@ export function BrokerSupportPage() {
 
   return (
     <BrokerPageShell title="Suporte">
-      <div className="grid gap-6">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 px-6 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Suporte</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">
-            Precisa de ajuda? Resolva rápido ou fale com a gente
-          </h2>
+      <div className="grid gap-4">
+        <BrokerPageIntro
+          eyebrow="Central de ajuda"
+          title="Precisa de ajuda?"
+          description="Encontre respostas rápidas ou fale com a equipe EME."
+        />
 
-          <div className="mt-5 max-w-xl">
-            <div className="relative">
+        <BrokerToolbar
+          start={
+            <div className="relative w-full max-w-xl">
               <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-[#8B95A1]" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar ajuda..."
-                className="h-11 w-full rounded-xl border border-black/[0.06] bg-white/80 pl-11 pr-4 text-sm text-[#050505] outline-none placeholder:text-[#8B95A1]"
+                className="h-10 w-full rounded-xl border border-black/[0.06] bg-white pl-11 pr-4 text-sm text-[#050505] outline-none placeholder:text-[#8B95A1] focus:border-[#009b3a]/25 focus:ring-2 focus:ring-[#009b3a]/10"
               />
             </div>
-          </div>
-        </section>
+          }
+        />
 
         {normalizedSearch && (
           <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 text-sm text-[#5F6B7A]">
@@ -92,12 +94,12 @@ export function BrokerSupportPage() {
           </div>
         )}
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <Card className="rounded-[var(--broker-radius-lg)] border-black/[0.06] bg-white py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-5 py-4">
               <CardTitle className="text-xl text-[#050505]">Principais dúvidas</CardTitle>
             </CardHeader>
-            <CardContent className="px-6 pb-4 pt-0">
+            <CardContent className="px-5 pb-3 pt-0">
               <Accordion type="single" collapsible className="w-full">
                 {filteredFaqItems.map((item) => (
                   <AccordionItem key={item.question} value={item.question} className="border-black/[0.06]">
@@ -116,12 +118,12 @@ export function BrokerSupportPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6">
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <CardHeader className="px-6 py-5">
+          <div className="grid content-start gap-4">
+            <Card className="rounded-[var(--broker-radius-lg)] border-black/[0.06] bg-white py-0 shadow-[var(--broker-shadow-xs)]">
+              <CardHeader className="px-5 py-4">
                 <CardTitle className="text-xl text-[#050505]">Falar com suporte</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3 p-6 pt-0">
+              <CardContent className="grid gap-3 p-5 pt-0">
                 <p className="text-sm text-[#6B7280]">Respondemos o mais rápido possível.</p>
                 <Button
                   asChild
@@ -145,8 +147,8 @@ export function BrokerSupportPage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-              <CardContent className="flex items-center gap-3 p-5">
+            <BrokerSurface padding="compact">
+              <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                   <CheckCircle2 className="size-5" />
                 </div>
@@ -154,8 +156,8 @@ export function BrokerSupportPage() {
                   <p className="text-sm text-[#6B7280]">Status do sistema</p>
                   <p className="mt-1 text-base font-semibold text-[#050505]">Tudo funcionando normalmente</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </BrokerSurface>
           </div>
         </section>
 
@@ -163,13 +165,13 @@ export function BrokerSupportPage() {
           {filteredQuickTips.map((tip) => (
             <Card
               key={tip}
-              className="rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]"
+              className="rounded-[var(--broker-radius-lg)] border-black/[0.06] bg-white py-0 shadow-[var(--broker-shadow-xs)]"
             >
-              <CardContent className="p-5">
+              <CardContent className="p-4">
                 <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                   <Lightbulb className="size-4.5" />
                 </div>
-                <p className="mt-4 text-sm leading-7 text-[#5F6B7A]">{tip}</p>
+                <p className="mt-3 text-sm leading-6 text-[#5F6B7A]">{tip}</p>
               </CardContent>
             </Card>
           ))}

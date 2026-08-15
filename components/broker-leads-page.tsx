@@ -137,7 +137,7 @@ export function BrokerLeadsPage() {
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-6">
           {feedback ? (
-            <div className="rounded-[1.25rem] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            <div className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {feedback}
             </div>
           ) : leads.length > 0 ? (

@@ -1,6 +1,30 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@font-face {
+  font-family: 'EME Broker Geist';
+  src: url('/fonts/geist/Geist-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'EME Broker Geist';
+  src: url('/fonts/geist/Geist-Medium.ttf') format('truetype');
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'EME Broker Geist';
+  src: url('/fonts/geist/Geist-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -120,6 +144,94 @@
 }
 
 @layer base {
+  .broker-portal-scope {
+    --broker-canvas: #f5f7f3;
+    --broker-surface: rgba(255, 255, 255, 0.96);
+    --broker-surface-subtle: #fbfcfa;
+    --broker-surface-inset: #f3f6f2;
+    --broker-surface-muted: var(--broker-surface-inset);
+    --broker-ink: #111714;
+    --broker-muted: #667085;
+    --broker-muted-soft: #8a94a1;
+    --broker-border: rgba(17, 24, 39, 0.065);
+    --broker-border-strong: rgba(17, 24, 39, 0.11);
+    --broker-accent: #009b3a;
+    --broker-accent-strong: #087331;
+    --broker-accent-soft: #edf8f1;
+    --broker-accent-border: rgba(0, 155, 58, 0.18);
+    --broker-radius-sm: 0.875rem;
+    --broker-radius-md: 1rem;
+    --broker-radius-lg: 1.25rem;
+    --broker-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.025), 0 6px 18px rgba(15, 23, 42, 0.025);
+    --broker-shadow-sm: 0 12px 32px rgba(15, 23, 42, 0.045);
+    --broker-shadow: var(--broker-shadow-xs);
+    --background: var(--broker-canvas);
+    --foreground: var(--broker-ink);
+    --card: #ffffff;
+    --card-foreground: var(--broker-ink);
+    --popover: #ffffff;
+    --popover-foreground: var(--broker-ink);
+    --primary: var(--broker-accent);
+    --primary-foreground: #ffffff;
+    --secondary: var(--broker-surface-inset);
+    --secondary-foreground: var(--broker-ink);
+    --muted: var(--broker-surface-inset);
+    --muted-foreground: var(--broker-muted);
+    --accent: var(--broker-accent-soft);
+    --accent-foreground: var(--broker-accent-strong);
+    --border: var(--broker-border);
+    --input: var(--broker-surface-inset);
+    --ring: var(--broker-accent);
+    --sidebar: #ffffff;
+    --sidebar-foreground: var(--broker-ink);
+    --sidebar-primary: var(--broker-accent);
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: var(--broker-accent-soft);
+    --sidebar-accent-foreground: var(--broker-ink);
+    --sidebar-border: var(--broker-border);
+    --sidebar-ring: var(--broker-accent);
+    color-scheme: light;
+    color: var(--broker-ink);
+    background: var(--broker-canvas);
+    font-family: 'EME Broker Geist', 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    font-synthesis: none;
+  }
+
+  .broker-portal-scope :where(button, input, textarea, select) {
+    font: inherit;
+  }
+
+  /* Radix overlays are rendered under <body>, outside the broker subtree. */
+  body:has(.broker-portal-scope) :where(
+    [data-slot='alert-dialog-content'],
+    [data-slot='context-menu-content'],
+    [data-slot='context-menu-sub-content'],
+    [data-slot='dialog-content'],
+    [data-slot='drawer-content'],
+    [data-slot='dropdown-menu-content'],
+    [data-slot='dropdown-menu-sub-content'],
+    [data-slot='hover-card-content'],
+    [data-slot='menubar-content'],
+    [data-slot='menubar-sub-content'],
+    [data-slot='popover-content'],
+    [data-slot='select-content'],
+    [data-slot='sheet-content']
+  ) {
+    --background: #ffffff;
+    --foreground: #111714;
+    --popover: #ffffff;
+    --popover-foreground: #111714;
+    --accent: #edf8f1;
+    --accent-foreground: #087331;
+    --muted: #f3f6f2;
+    --muted-foreground: #667085;
+    --border: rgba(17, 24, 39, 0.065);
+    --ring: #009b3a;
+    color-scheme: light;
+    font-family: 'EME Broker Geist', 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }

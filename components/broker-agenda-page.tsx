@@ -179,14 +179,14 @@ export function BrokerAgendaPage() {
   }
 
   return (
-    <section className="grid gap-5">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0">
-          <CardHeader className="gap-4 px-5 py-5">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-start">
+    <section className="grid gap-4">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <CardHeader className="gap-3 border-b border-[var(--broker-border)] px-4 py-4">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-start">
               <div className="min-w-0">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
-                  <CalendarDays className="size-5 text-[#009b3a]" />
+                <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
+                  <CalendarDays className="size-4 text-[#009b3a]" />
                   Compromissos
                 </CardTitle>
                 <p className="mt-1 text-sm text-[#6B7280]">
@@ -198,7 +198,7 @@ export function BrokerAgendaPage() {
                 {metrics.map((item) => (
                   <div
                     key={item.label}
-                    className="min-w-0 rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-3 py-2"
+                    className="min-w-0 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-muted)] px-3 py-2"
                   >
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#7B8491]">{item.label}</p>
                     <p className={`mt-1 text-sm font-semibold ${item.tone}`}>{item.value}</p>
@@ -213,10 +213,10 @@ export function BrokerAgendaPage() {
                   key={item.value}
                   type="button"
                   onClick={() => setFilter(item.value)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                     filter === item.value
                       ? "border-[#009b3a]/25 bg-[#009b3a]/10 text-[#009b3a]"
-                      : "border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-[#f6f7f4]"
+                      : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] text-[#5F6B7A] hover:bg-[#f2f5f1]"
                   }`}
                 >
                   {item.label}
@@ -225,7 +225,7 @@ export function BrokerAgendaPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="grid gap-3 p-5 pt-0">
+          <CardContent className="grid gap-2 p-3.5">
             {feedback ? (
               <p className="rounded-[1rem] border border-[#009b3a]/16 bg-[#009b3a]/[0.06] px-4 py-3 text-sm text-[#009b3a]">
                 {feedback}
@@ -238,7 +238,7 @@ export function BrokerAgendaPage() {
               events.map((event) => (
                 <article
                   key={event.id}
-                  className="grid gap-4 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4"
+                  className="grid gap-3 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-muted)] p-3"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
@@ -251,9 +251,9 @@ export function BrokerAgendaPage() {
                         </span>
                       </div>
 
-                      <p className="mt-3 text-base font-semibold text-[#050505]">{event.title}</p>
+                      <p className="mt-2 text-sm font-semibold text-[#050505]">{event.title}</p>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#5F6B7A]">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[#5F6B7A]">
                         <span className="inline-flex items-center gap-2">
                           <Clock3 className="size-4 text-[#009b3a]" />
                           {formatAppointmentDate(event.date, event.time)}
@@ -273,7 +273,7 @@ export function BrokerAgendaPage() {
                       </div>
 
                       {event.notes ? (
-                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#6B7280]">{event.notes}</p>
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6B7280]">{event.notes}</p>
                       ) : null}
                     </div>
 
@@ -330,9 +330,9 @@ export function BrokerAgendaPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4">
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0">
-            <CardHeader className="px-5 py-5">
+        <div className="grid content-start gap-3">
+          <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+            <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
               <CardTitle className="text-lg text-[#050505]">{isEditing ? "Editar compromisso" : "Novo compromisso"}</CardTitle>
               <p className="text-sm text-[#6B7280]">
                 {isEditing
@@ -340,7 +340,7 @@ export function BrokerAgendaPage() {
                   : "Crie um compromisso em poucos campos e siga com a operação."}
               </p>
             </CardHeader>
-            <CardContent className="grid gap-3 p-5 pt-0">
+            <CardContent className="grid gap-3 p-4">
               <Input
                 value={draft.title}
                 onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
@@ -407,16 +407,16 @@ export function BrokerAgendaPage() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-[#fbfbf8] py-0">
-            <CardHeader className="px-5 py-5">
+          <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface-muted)] py-0 shadow-[var(--broker-shadow)]">
+            <CardHeader className="border-b border-[var(--broker-border)] px-4 py-3.5">
               <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <Sparkles className="size-5 text-[#009b3a]" />
                 Próximo foco
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-5 pt-0">
+            <CardContent className="p-4">
               {nextUpcoming ? (
-                <div className="rounded-[1.25rem] border border-black/[0.06] bg-white/75 p-4">
+                <div className="rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white/75 p-3.5">
                   <p className="text-sm font-semibold text-[#050505]">{nextUpcoming.title}</p>
                   <p className="mt-2 text-sm text-[#6B7280]">{formatAppointmentDate(nextUpcoming.date, nextUpcoming.time)}</p>
                   {nextUpcoming.notes ? (

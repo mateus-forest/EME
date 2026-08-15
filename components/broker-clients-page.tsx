@@ -7,6 +7,7 @@ import {
   Clock3,
   FileText,
   MessageCircle,
+  MoreHorizontal,
   Phone,
   Search,
   ShieldCheck,
@@ -17,9 +18,15 @@ import {
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerEmptyState, BrokerStatItem, BrokerStatStrip } from "@/components/broker-portal-ui"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -593,7 +600,7 @@ export function BrokerClientsPage() {
 
   return (
     <BrokerPageShell title="Clientes" primaryActionLabel="Novo cliente" primaryActionOnClick={openCreateClientModal}>
-      <div className="grid gap-5">
+      <div className="grid gap-4">
         {toast ? (
           <div className="pointer-events-none fixed inset-x-0 top-24 z-50 flex justify-center px-4">
             <div
@@ -611,149 +618,152 @@ export function BrokerClientsPage() {
             </div>
           </div>
         ) : null}
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="text-3xl font-semibold tracking-tight text-[#050505]">Clientes</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">
-                Sua carteira de clientes organizada em um único lugar.
-              </p>
-            </div>
-          </div>
-        </section>
-        <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
+        <BrokerStatStrip>
             {clientStages.map((stage, index) => (
-              <Card key={stage.title} className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
-                <CardHeader className="px-4 py-4 sm:px-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-                      <stage.icon className="size-4.5" />
-                    </div>
-                    {hasLoadedClients ? (
-                      <p className="break-words text-2xl font-semibold text-[#050505] sm:text-3xl">{values[index]}</p>
-                    ) : (
-                      <div className="h-8 w-10 animate-pulse rounded-full bg-[#eef1ec]" />
-                    )}
-                  </div>
-                  <CardTitle className="pt-3 text-base text-[#050505]">{stage.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4 pt-0 sm:px-5">
-                  <p className="text-sm leading-6 text-[#6B7280]">{stage.description}</p>
-                </CardContent>
-              </Card>
+              <BrokerStatItem
+                key={stage.title}
+                title={stage.description}
+                icon={<stage.icon className="size-4.5" />}
+                label={stage.title}
+                value={hasLoadedClients ? values[index] : <span className="block h-5 w-8 animate-pulse rounded-full bg-[#eef1ec]" />}
+              />
             ))}
-          </div>
+        </BrokerStatStrip>
 
-          <div className="rounded-[1.5rem] border border-black/[0.06] bg-white/90 p-4">
-            <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">Buscar cliente</span>
-              <div className="relative">
+        <section className="rounded-[1.35rem] border border-black/[0.06] bg-white/92 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.035)]">
+          <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
+            <label className="relative block min-w-0 flex-1 xl:max-w-[21rem]">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Nome, CPF, telefone ou imóvel"
-                  className="h-11 rounded-xl pl-10"
+                  aria-label="Buscar cliente"
+                  className="h-10 rounded-xl border-black/[0.07] bg-[#fcfcfb] pl-10"
                 />
-              </div>
             </label>
+
+            <div className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 xl:ml-auto xl:overflow-visible xl:pb-0">
+              {clientFilters.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.id)}
+                  aria-pressed={activeFilter === filter.id}
+                  className={`h-9 shrink-0 rounded-lg border px-3 text-xs font-medium transition-colors ${activeFilter === filter.id ? "border-[#009b3a]/20 bg-[#eef9f1] text-[#008633]" : "border-transparent bg-transparent text-[#667085] hover:border-black/[0.06] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className="flex flex-wrap gap-2">
-          {clientFilters.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              onClick={() => setActiveFilter(filter.id)}
-              className={`rounded-full border px-4 py-2 text-sm transition-colors ${activeFilter === filter.id ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white/90 text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </section>
-
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
+        <section className="overflow-hidden rounded-[1.35rem] border border-black/[0.06] bg-white/92 shadow-[0_12px_36px_rgba(15,23,42,0.04)]">
           {!hasLoadedClients ? (
-            <div className="grid gap-3">
+            <div className="grid divide-y divide-black/[0.05]">
               {[0, 1, 2].map((index) => (
                 <div
                   key={index}
-                  className="h-24 animate-pulse rounded-[1.25rem] border border-black/[0.06] bg-white/60"
+                  className="h-[5.25rem] animate-pulse bg-[#fbfbf8]"
                 />
               ))}
             </div>
           ) : filteredClients.length > 0 ? (
-            <div className="grid gap-3">
+            <div className="grid divide-y divide-black/[0.055]">
               {filteredClients.map((client) => (
                 <div
                   key={client.id}
-                  className="grid gap-4 rounded-[1.25rem] border border-black/[0.06] bg-white/92 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+                  className="grid min-w-0 gap-3 px-3 py-3 transition-colors hover:bg-[#fbfcfa] sm:px-4 md:grid-cols-[minmax(13rem,1.35fr)_10rem_minmax(10rem,1fr)_auto] md:items-center md:gap-3 xl:grid-cols-[minmax(12rem,1.35fr)_7.5rem_10.5rem_minmax(10rem,1fr)_8rem_auto] xl:gap-4"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-[#050505]">{client.name || "Cliente sem nome"}</p>
-                      <span className="rounded-full border border-[#009b3a]/18 bg-[#eef9f1] px-2.5 py-1 text-xs text-[#009b3a]">
-                        {statusLabelOverrides[client.status]}
-                      </span>
-                      <span className="rounded-full border border-black/[0.06] bg-[#fbfbf8] px-2.5 py-1 text-xs text-[#5F6B7A]">
-                        Cadastro {client.completion.score}%
-                      </span>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#eaf7ee] text-sm font-semibold text-[#008633]">
+                      {(client.name || "C").trim().charAt(0).toUpperCase()}
                     </div>
-                    <p className="mt-1 text-sm text-[#7B8491]">
-                      {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "Data não disponível")}
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <p className="truncate font-semibold text-[#111827]">{client.name || "Cliente sem nome"}</p>
+                        <span className="rounded-full border border-[#009b3a]/14 bg-[#eef9f1] px-2 py-0.5 text-[11px] font-medium text-[#008633]">
+                          {statusLabelOverrides[client.status]}
+                        </span>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-[#7B8491]">
+                        {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "—")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="hidden min-w-0 text-xs text-[#667085] xl:block">
+                    <p className="font-medium text-[#344054]">{formatDateBR(client.createdAt, "—")}</p>
+                    <p className="mt-1">Cadastro</p>
+                  </div>
+
+                  <div className="min-w-0 text-xs text-[#667085]">
+                    <p className="flex items-center gap-1.5 truncate font-medium text-[#344054]">
+                      <Phone className="size-3.5 shrink-0 text-[#009b3a]" />
+                      {formatPhone(client.whatsApp || client.phone) || "Não informado"}
                     </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#5F6B7A]">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Phone className="size-3.5 text-[#009b3a]" />
-                        {formatPhone(client.whatsApp || client.phone) || "Telefone não informado"}
-                      </span>
-                      <span>{formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}</span>
+                    <p className="mt-1 truncate">{formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}</p>
+                  </div>
+
+                  <div className="min-w-0 text-xs text-[#667085]">
+                    <p className="truncate font-medium text-[#344054]">{client.propertyTitle || "Sem imóvel vinculado"}</p>
+                    <p className="mt-1 truncate text-[#008633]">{client.searchTerm || client.message || "Interesse em qualificação"}</p>
+                  </div>
+
+                  <div className="hidden min-w-0 xl:block">
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-[#667085]">
+                      <span>Perfil</span>
+                      <span>{client.completion.score}%</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#e8ece8]">
+                      <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${client.completion.score}%` }} />
                     </div>
                     {client.completion.pending.length ? (
-                      <p className="mt-2 text-sm text-[#8B95A1]">Pendências: {client.completion.pending.slice(0, 3).join(", ")}</p>
+                      <p className="mt-1 truncate text-[10px] text-[#b26a00]">{client.completion.pending.length} pendência{client.completion.pending.length === 1 ? "" : "s"}</p>
                     ) : null}
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+
+                  <div className="flex items-center justify-end gap-2">
                     <Button
                       type="button"
                       variant="ghost"
                       onClick={() => openClient(client)}
-                      className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
+                      className="h-8.5 rounded-lg border border-black/[0.07] bg-white px-3 text-xs font-semibold text-[#008633] hover:bg-[#f7fbf8] hover:text-[#006b2b]"
                     >
                       Ver cliente
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={isDeletingClient}
-                      onClick={() => void deleteClient(client)}
-                      className="h-10 rounded-xl border border-red-200 bg-white px-4 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
-                    >
-                      <Trash2 className="size-4" />
-                      Excluir
-                    </Button>
-                    <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
-                      <Link href="/corretor/documentos">
-                        <FileText className="size-4" />
-                        Propostas
-                      </Link>
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" className="size-8.5 rounded-lg border border-black/[0.07] bg-white text-[#667085] hover:bg-[#f7f8f5] hover:text-[#050505]">
+                          <MoreHorizontal className="size-4" />
+                          <span className="sr-only">Mais ações para {client.name || "cliente"}</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
+                        <DropdownMenuItem asChild className="rounded-lg">
+                          <Link href="/corretor/documentos"><FileText className="size-4" />Propostas</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={isDeletingClient}
+                          onSelect={() => void deleteClient(client)}
+                          className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700"
+                        >
+                          <Trash2 className="size-4" />Excluir cliente
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="py-10 text-center">
-              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#eef9f1] text-[#009b3a]">
-                <UsersRound className="size-6" />
-              </div>
-              <h3 className="text-xl font-semibold text-[#050505]">Nenhum cliente encontrado.</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#6B7280]">
-                {normalizedSearch ? "Ajuste sua busca para localizar o cliente." : "Seus clientes aparecerão aqui conforme o funil começar a receber contatos."}
-              </p>
-            </div>
+            <BrokerEmptyState
+              className="rounded-none border-0 bg-transparent py-12"
+              icon={<UsersRound className="size-5" />}
+              title="Nenhum cliente encontrado."
+              description={normalizedSearch ? "Ajuste sua busca para localizar o cliente." : "Seus clientes aparecerão aqui conforme o funil começar a receber contatos."}
+            />
           )}
         </section>
       </div>

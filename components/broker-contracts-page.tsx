@@ -3041,13 +3041,13 @@ export function BrokerContractsPage({
   }
 
   return (
-    <div className="grid gap-5">
-      <Card className="overflow-hidden rounded-[2rem] border-black/[0.05] bg-white/92 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.04)]">
-        <CardHeader className="border-b border-black/[0.05] px-6 py-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+    <div className="grid gap-4">
+      <Card className="overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+        <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-[42rem]">
               <p className="text-[11px] uppercase tracking-[0.24em] text-[#9AA4B2]">Workspace de documentos</p>
-              <CardTitle className="mt-2 flex items-center gap-2 text-[2rem] tracking-[-0.05em] text-[#050505]">
+              <CardTitle className="mt-1.5 flex items-center gap-2 text-[1.65rem] tracking-[-0.04em] text-[#050505]">
                 <FileSignature className="size-5 text-[#009b3a]" />
                 Contratos
               </CardTitle>
@@ -3056,24 +3056,24 @@ export function BrokerContractsPage({
               </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[360px]">
-              <div className="rounded-[1.15rem] bg-[#f8f8f5] px-4 py-3.5">
+            <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[340px]">
+              <div className="rounded-[var(--broker-radius-md)] bg-[var(--broker-surface-muted)] px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Rascunhos</p>
-                <p className="mt-1.5 text-[1.6rem] font-semibold tracking-[-0.05em] text-[#050505]">{overview.drafts}</p>
+                <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-[#050505]">{overview.drafts}</p>
               </div>
-              <div className="rounded-[1.15rem] bg-[#f8f8f5] px-4 py-3.5">
+              <div className="rounded-[var(--broker-radius-md)] bg-[var(--broker-surface-muted)] px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Em andamento</p>
-                <p className="mt-1.5 text-[1.6rem] font-semibold tracking-[-0.05em] text-[#050505]">{overview.awaiting}</p>
+                <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-[#050505]">{overview.awaiting}</p>
               </div>
-              <div className="rounded-[1.15rem] bg-[#f8f8f5] px-4 py-3.5">
+              <div className="rounded-[var(--broker-radius-md)] bg-[var(--broker-surface-muted)] px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Assinados</p>
-                <p className="mt-1.5 text-[1.6rem] font-semibold tracking-[-0.05em] text-[#050505]">{overview.signed}</p>
+                <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-[#050505]">{overview.signed}</p>
               </div>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="grid gap-5 p-6">
+        <CardContent className="grid gap-4 p-4 sm:p-5">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="relative">
@@ -3138,7 +3138,7 @@ export function BrokerContractsPage({
                 key={item.value}
                 type="button"
                 onClick={() => setStatus(item.value)}
-                className={`rounded-full border px-3 py-2 text-sm transition ${
+                className={`rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
                   status === item.value
                     ? "border-[#009b3a]/20 bg-[#edf8f1] text-[#009b3a]"
                     : "border-black/[0.05] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-[#f6f7f4]"
@@ -3155,7 +3155,7 @@ export function BrokerContractsPage({
             </p>
           ) : null}
 
-          <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_248px] xl:gap-6">
+          <div className="grid gap-4 xl:grid-cols-[13rem_minmax(0,1fr)_15rem] xl:gap-4">
             <div className="min-h-0">
               {isLoading ? (
                 <Card className="rounded-[1.5rem] border-black/[0.06] bg-white/90">
@@ -3213,10 +3213,10 @@ export function BrokerContractsPage({
             </div>
 
             <div className="min-w-0">
-              <div className="grid gap-5">
-                <div className="flex flex-col gap-4 rounded-[1.45rem] border border-black/[0.045] bg-[#fcfcfa] px-4 py-4 sm:px-5 xl:flex-row xl:items-center xl:justify-between">
+              <div className="grid gap-4">
+                <div className="flex flex-col gap-3 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-muted)] px-4 py-3.5 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
-                    <CardTitle className="text-[1.7rem] tracking-[-0.05em] text-[#050505]">
+                    <CardTitle className="text-[1.4rem] tracking-[-0.04em] text-[#050505]">
                       {selectedContract?.title ?? "Selecione um contrato"}
                     </CardTitle>
                     {selectedContract ? (
@@ -3268,7 +3268,7 @@ export function BrokerContractsPage({
                 </div>
               </div>
 
-              <div className="grid gap-5">
+              <div className="grid gap-4">
                 {selectedContract ? (
                   <>
                     <div className="grid gap-2 border-b border-black/[0.045] pb-4 sm:grid-cols-2 xl:grid-cols-5">

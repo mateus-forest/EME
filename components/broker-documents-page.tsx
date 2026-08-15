@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { CheckCircle2, Copy, Download, ExternalLink, FileText, Plus } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { CheckCircle2, Copy, Download, ExternalLink, FileText, Plus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -119,7 +119,20 @@ export function BrokerDocumentsPage() {
   const [feedback, setFeedback] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [draft, setDraft] = useState(emptyDraft)
+  const composerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!isComposerOpen) return
+
+    const frame = window.requestAnimationFrame(() => {
+      composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      composerRef.current?.focus({ preventScroll: true })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [isComposerOpen])
 
   const loadDocuments = useCallback(async (nextStatus = status) => {
     setIsLoading(true)
@@ -208,6 +221,7 @@ export function BrokerDocumentsPage() {
       setFeedback("Proposta gerada e pronta para baixar.")
       await loadDocuments()
       if (data?.document) setSelectedDocument(data.document)
+      setIsComposerOpen(false)
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível gerar a proposta.")
     } finally {
@@ -294,36 +308,42 @@ export function BrokerDocumentsPage() {
   }
 
   return (
-    <div className="grid min-w-0 gap-5">
-      <section className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0">
-          <CardHeader className="px-5 py-5">
-            <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
-              <FileText className="size-5 text-[#009b3a]" />
-              Propostas
-            </CardTitle>
-            <div className="flex flex-wrap gap-2 pt-3">
+    <div className="grid min-w-0 gap-4">
+      <section className="grid gap-3 xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <CardHeader className="gap-3 border-b border-[var(--broker-border)] px-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
+                <FileText className="size-4 text-[#009b3a]" />
+                Propostas
+              </CardTitle>
+              <Button type="button" onClick={() => setIsComposerOpen(true)} className="h-9 rounded-xl bg-[#009b3a] px-3 text-xs font-semibold text-white hover:bg-[#008633]">
+                <Plus className="size-4" />
+                Nova
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {statuses.map((item) => (
                 <button
                   key={item.value}
                   type="button"
                   onClick={() => setStatus(item.value)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition ${status === item.value ? "border-[#009b3a]/25 bg-[#009b3a]/10 text-[#009b3a]" : "border-black/[0.06] bg-[#fbfbf8] text-[#5F6B7A] hover:bg-[#f6f7f4]"}`}
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${status === item.value ? "border-[#009b3a]/25 bg-[#009b3a]/10 text-[#007f31]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] text-[#5F6B7A] hover:bg-[#f2f5f1]"}`}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
           </CardHeader>
-          <CardContent className="grid gap-3 p-5 pt-0">
+          <CardContent className="grid max-h-[32rem] gap-2 overflow-y-auto p-3.5">
             {feedback ? <p className="rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#009b3a]">{feedback}</p> : null}
             {isLoading ? (
               <EmeLoading compact message="Carregando documentos..." />
             ) : documents.length > 0 ? (
               documents.map((document) => (
-                <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`rounded-[1.25rem] border p-4 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/10" : "border-black/[0.06] bg-[#fbfbf8] hover:bg-[#f6f7f4]"}`}>
-                  <p className="truncate font-semibold text-[#050505]">{document.title}</p>
-                  <p className="mt-1 text-sm text-[#6B7280]">{typeLabel(document.type)} · {statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
+                <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`rounded-[var(--broker-radius-md)] border p-3 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}>
+                  <p className="truncate text-sm font-semibold text-[#050505]">{document.title}</p>
+                  <p className="mt-1 truncate text-xs text-[#6B7280]">{typeLabel(document.type)} · {statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
                 </button>
               ))
             ) : (
@@ -332,15 +352,25 @@ export function BrokerDocumentsPage() {
           </CardContent>
         </Card>
 
-        <div className="grid min-w-0 gap-4">
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0">
-            <CardHeader className="px-5 py-5">
-              <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
-                <Plus className="size-5 text-[#009b3a]" />
-                Gerar proposta
-              </CardTitle>
+        <div className="grid min-w-0 gap-3">
+          <Card
+            ref={composerRef}
+            tabIndex={-1}
+            className={`${isComposerOpen ? "grid" : "hidden"} min-w-0 scroll-mt-4 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)] outline-none`}
+          >
+            <CardHeader className="flex-row items-center justify-between gap-3 border-b border-[var(--broker-border)] px-4 py-4">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
+                  <Plus className="size-4 text-[#009b3a]" />
+                  Gerar proposta
+                </CardTitle>
+                <p className="mt-1 text-xs text-[#667085]">Preencha apenas os dados necessários para criar uma nova proposta.</p>
+              </div>
+              <Button type="button" variant="ghost" size="icon" onClick={() => setIsComposerOpen(false)} aria-label="Fechar formulário de proposta" className="size-9 rounded-full border border-[var(--broker-border)] text-[#475467] hover:bg-[var(--broker-surface-muted)]">
+                <X className="size-4" />
+              </Button>
             </CardHeader>
-            <CardContent className="grid gap-3 p-5 pt-0">
+            <CardContent className="grid gap-3 p-4">
               <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Título da proposta" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
 
               <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
@@ -400,24 +430,25 @@ export function BrokerDocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0">
-            <CardHeader className="px-5 py-5">
-              <CardTitle className="text-lg text-[#050505]">{selectedDocument?.title ?? "Documento"}</CardTitle>
+          <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+            <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
+              <CardTitle className="text-lg text-[#050505]">{selectedDocument?.title ?? "Prévia da proposta"}</CardTitle>
+              <p className="text-xs text-[#667085]">Revise o documento selecionado antes de baixar ou marcar como assinado.</p>
             </CardHeader>
-            <CardContent className="grid gap-4 p-5 pt-0">
+            <CardContent className="grid gap-3 p-4">
               {selectedDocument ? (
                 <>
                   {isVideoDocument(selectedDocument) ? (
                     <video
                       controls
                       src={parseVideoDocumentContent(selectedDocument.content)}
-                      className="h-[520px] w-full rounded-[1.25rem] border border-black/[0.06] bg-black"
+                      className="h-[min(34rem,64vh)] min-h-[24rem] w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-black"
                     />
                   ) : isHtmlDocument(selectedDocument.content) ? (
                     <iframe
                       title={selectedDocument.title}
                       srcDoc={selectedDocument.content}
-                      className="h-[520px] w-full rounded-[1.25rem] border border-black/[0.06] bg-white"
+                      className="h-[min(34rem,64vh)] min-h-[24rem] w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white"
                     />
                   ) : (
                     <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A]">{selectedDocument.content}</pre>

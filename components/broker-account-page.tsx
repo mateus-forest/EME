@@ -251,39 +251,29 @@ function AccountForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-6">
+    <form onSubmit={handleSubmit} className="grid gap-4">
       {isLoading && (
         <EmeLoading compact message="Carregando conta..." />
       )}
 
-      <section className="grid gap-3">
-        <p className="text-sm uppercase tracking-[0.24em] text-[#7B8491]">Portal do corretor</p>
-        <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-[#050505]">Gerencie suas informações e acesso</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6B7280]">
-            Atualize seus dados pessoais e mantenha a segurança da sua conta sem sair do portal.
-          </p>
-        </div>
-      </section>
-
       {feedback && (
-        <div className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-3 text-sm ${feedbackTone === "success" ? "border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]" : "border-[#ff6b6b]/20 bg-[#ff6b6b]/10 text-[#ffb3b3]"}`}>
+        <div className={`flex items-center gap-3 rounded-[var(--broker-radius-md)] border px-4 py-3 text-sm ${feedbackTone === "success" ? "border-[#009b3a]/20 bg-[#009b3a]/10 text-[#007f31]" : "border-red-200 bg-red-50 text-red-700"}`}>
           <CheckCircle2 className="size-4 shrink-0" />
           <span>{feedback}</span>
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
+        <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)] xl:row-span-2">
+          <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
+            <CardTitle className="flex items-center gap-2.5 text-lg text-[#050505]">
+              <span className="flex size-9 items-center justify-center rounded-xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <UserRound className="size-4.5" />
               </span>
               Dados pessoais
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 p-6 pt-0">
+          <CardContent className="grid gap-4 p-4">
             <div className="grid gap-3">
               <Label className="text-sm font-medium text-[#5F6B7A]">Foto do perfil</Label>
               <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
@@ -355,16 +345,16 @@ function AccountForm() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+        <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
+            <CardTitle className="flex items-center gap-2.5 text-lg text-[#050505]">
+              <span className="flex size-9 items-center justify-center rounded-xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <Palette className="size-4.5" />
               </span>
               Identidade visual do Studio IA
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 p-6 pt-0">
+          <CardContent className="grid gap-4 p-4">
             <div className="grid gap-2">
               <Label htmlFor="brandColor" className="text-sm font-medium text-[#5F6B7A]">
                 Cor de destaque
@@ -460,16 +450,16 @@ function AccountForm() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-3 text-xl text-[#050505]">
-              <span className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+        <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
+            <CardTitle className="flex items-center gap-2.5 text-lg text-[#050505]">
+              <span className="flex size-9 items-center justify-center rounded-xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <ShieldCheck className="size-4.5" />
               </span>
               Alterar senha
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 p-6 pt-0">
+          <CardContent className="grid gap-4 p-4">
             <Field id="currentPassword" label="Senha atual" type="password" value={currentPassword} onChange={setCurrentPassword} error={errors.currentPassword} placeholder="Digite sua senha atual" />
             <Field id="newPassword" label="Nova senha" type="password" value={newPassword} onChange={setNewPassword} error={errors.newPassword} placeholder="Digite a nova senha" />
             <Field id="confirmPassword" label="Confirmar nova senha" type="password" value={confirmPassword} onChange={setConfirmPassword} error={errors.confirmPassword} placeholder="Repita a nova senha" />
@@ -479,7 +469,7 @@ function AccountForm() {
 
       <AccountSecuritySection />
 
-      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-4 shadow-[var(--broker-shadow)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 text-sm text-[#6B7280]">
           <span className="flex size-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white/80 text-[#5F6B7A]">
             <LockKeyhole className="size-4" />
@@ -517,7 +507,7 @@ function Field({ id, label, value, onChange, error, placeholder, type = "text", 
       ) : (
         <Input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35" />
       )}
-      {error && <p className="text-xs text-[#ff8a80]">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )
 }

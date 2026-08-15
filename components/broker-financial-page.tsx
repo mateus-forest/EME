@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, Building2, ChartColumn, CircleDollarSign, Home, MapPin, Percent, SlidersHorizontal } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerStatItem, BrokerStatStrip } from "@/components/broker-portal-ui"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
@@ -123,7 +124,7 @@ export function BrokerFinancialPage() {
 
   return (
     <BrokerPageShell title="Financeiro">
-      <div className="grid gap-5">
+      <div className="grid gap-4">
         {!hasProperties && !isLoading ? (
           <section className="rounded-[1.75rem] border border-[#009b3a]/20 bg-[#009b3a]/10 p-6 text-center shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
@@ -139,7 +140,7 @@ export function BrokerFinancialPage() {
           </section>
         ) : null}
 
-        <section className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <BrokerStatStrip className="sm:grid-cols-2 xl:grid-cols-5">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, index) => <MetricSkeleton key={index} />)
           ) : (
@@ -151,19 +152,19 @@ export function BrokerFinancialPage() {
               <MetricCard icon={ArrowUpRight} label="Inativos/rascunhos" value={String(draftProperties)} />
             </>
           )}
-        </section>
+        </BrokerStatStrip>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <ResponsiveCollapsibleSection title="Comissão estimada" defaultMobileOpen>
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <ResponsiveCollapsibleSection title="Comissão estimada" defaultMobileOpen variant="broker">
+          <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-4 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <Percent className="size-5 text-[#009b3a]" />
                 Comissões estimadas
               </CardTitle>
               <p className="text-sm text-[#6B7280]">Cálculo estimado com a taxa configurada sobre a base filtrada.</p>
             </CardHeader>
-            <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0 md:grid-cols-2">
+            <CardContent className="grid min-w-0 gap-3 px-4 pb-4 pt-0 sm:px-5 md:grid-cols-2">
               <InfoBlock label="Comissão potencial total" value={formatCurrencyBRLFromCents(totalPotentialCommission)} />
               <InfoBlock label="Comissão média por imóvel" value={formatCurrencyBRLFromCents(averageCommission)} />
               <InfoBlock label="Maior comissão potencial" value={formatCurrencyBRLFromCents(highestCommission)} />
@@ -172,17 +173,17 @@ export function BrokerFinancialPage() {
           </Card>
           </ResponsiveCollapsibleSection>
 
-          <ResponsiveCollapsibleSection title="Filtros e base">
-          <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+          <ResponsiveCollapsibleSection title="Filtros e base" variant="broker">
+          <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-4 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <SlidersHorizontal className="size-5 text-[#009b3a]" />
                 Filtros e base
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0">
+            <CardContent className="grid min-w-0 gap-2.5 px-4 pb-4 pt-0 sm:px-5">
               <InfoBlock label="Imóveis com valor informado" value={`${pricedValues.length} de ${totalProperties}`} />
-              <label className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+              <label className="grid gap-1.5 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3">
                 <span className="text-sm text-[#6B7280]">Percentual de comissão</span>
                 <StructuredInput
                   kind="percent"
@@ -206,21 +207,21 @@ export function BrokerFinancialPage() {
           </ResponsiveCollapsibleSection>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
-          <ResponsiveCollapsibleSection title="Imóveis por tipo">
+        <section className="grid gap-4 xl:grid-cols-2">
+          <ResponsiveCollapsibleSection title="Imóveis por tipo" variant="broker">
             <BreakdownCard icon={Home} title="Imóveis por tipo" entries={propertiesByType} />
           </ResponsiveCollapsibleSection>
-          <ResponsiveCollapsibleSection title="Imóveis por cidade">
+          <ResponsiveCollapsibleSection title="Imóveis por cidade" variant="broker">
             <BreakdownCard icon={MapPin} title="Imóveis por cidade" entries={propertiesByCity} />
           </ResponsiveCollapsibleSection>
         </section>
 
-        <ResponsiveCollapsibleSection title={viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}>
-        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-[#050505]">{viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}</CardTitle>
+        <ResponsiveCollapsibleSection title={viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"} variant="broker">
+        <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+          <CardHeader className="px-4 py-4 sm:px-5">
+            <CardTitle className="text-lg text-[#050505]">{viewMode === "Por imóvel" ? "Comissão por imóvel" : "Histórico financeiro"}</CardTitle>
           </CardHeader>
-          <CardContent className="grid min-w-0 gap-3 p-4 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="grid min-w-0 gap-3 px-4 pb-4 pt-0 sm:px-5">
             {filteredProperties.length > 0 ? (
               viewMode === "Por imóvel" ? (
                 <div className="overflow-x-auto rounded-[1.25rem] border border-black/[0.06]">
@@ -265,35 +266,24 @@ export function BrokerFinancialPage() {
 
 function MetricCard({ icon: Icon, label, value }: { icon: typeof Building2; label: string; value: string }) {
   return (
-    <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-      <CardContent className="min-w-0 p-4 sm:p-5">
-        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
-          <Icon className="size-4.5" />
-        </div>
-        <p className="mt-4 text-sm text-[#6B7280]">{label}</p>
-        <p className="mt-2 min-w-0 break-words text-xl font-semibold leading-tight text-[#050505] sm:text-2xl">{value}</p>
-      </CardContent>
-    </Card>
+    <BrokerStatItem icon={<Icon className="size-4" />} label={label} value={value} />
   )
 }
 
 function MetricSkeleton() {
   return (
-    <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-[#fbfbf8] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-      <CardContent className="p-5">
-        <div className="eme-shimmer size-10 rounded-2xl bg-white" />
-        <div className="eme-shimmer mt-4 h-3 w-2/3 rounded-full bg-[#f6f7f4]" />
-        <div className="eme-shimmer mt-3 h-6 w-1/2 rounded-full bg-white" />
-      </CardContent>
-    </Card>
+    <div className="flex min-w-0 items-center gap-3 border-r border-b border-[var(--broker-border)] px-4 py-3.5">
+      <div className="eme-shimmer size-9 shrink-0 rounded-xl bg-[var(--broker-surface-inset)]" />
+      <div className="min-w-0 flex-1"><div className="eme-shimmer h-3 w-2/3 rounded-full bg-[var(--broker-surface-inset)]" /><div className="eme-shimmer mt-2 h-5 w-1/2 rounded-full bg-[var(--broker-surface-inset)]" /></div>
+    </div>
   )
 }
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-      <p className="text-sm text-[#6B7280]">{label}</p>
-      <p className="mt-2 break-words text-base font-semibold leading-tight text-[#050505]">{value}</p>
+    <div className="min-w-0 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3.5">
+      <p className="text-xs text-[#6B7280]">{label}</p>
+      <p className="mt-1.5 break-words text-sm font-semibold leading-tight text-[#050505]">{value}</p>
     </div>
   )
 }
@@ -310,7 +300,7 @@ function SelectBlock({
   options: readonly string[]
 }) {
   return (
-    <label className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
+    <label className="grid gap-1.5 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3">
       <span className="text-sm text-[#6B7280]">{label}</span>
       <select
         value={value}
@@ -329,16 +319,16 @@ function SelectBlock({
 
 function BreakdownCard({ icon: Icon, title, entries }: { icon: typeof Home; title: string; entries: [string, number][] }) {
   return (
-    <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-      <CardHeader className="px-6 py-5">
-        <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+    <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+      <CardHeader className="px-4 py-4 sm:px-5">
+        <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
           <Icon className="size-5 text-[#009b3a]" />
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-3 p-6 pt-0">
+      <CardContent className="grid gap-2 px-4 pb-4 pt-0 sm:px-5">
         {entries.length > 0 ? entries.map(([label, count]) => (
-          <div key={label} className="flex items-center justify-between rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3">
+          <div key={label} className="flex items-center justify-between rounded-xl border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3.5 py-2.5">
             <span className="text-sm text-[#5F6B7A]">{label}</span>
             <span className="text-sm font-semibold text-[#050505]">{count}</span>
           </div>

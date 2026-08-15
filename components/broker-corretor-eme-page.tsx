@@ -144,7 +144,7 @@ export function BrokerCorretorEmePage() {
           {feedback ? <p className="mt-4 text-sm text-[#009b3a]">{feedback}</p> : null}
         </section>
 
-        <ResponsiveCollapsibleSection title="Configuração desejada" defaultMobileOpen>
+        <ResponsiveCollapsibleSection title="Configuração desejada" defaultMobileOpen variant="broker">
         <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-xl text-[#050505]">Configuração desejada</CardTitle>
@@ -188,7 +188,7 @@ export function BrokerCorretorEmePage() {
         </ResponsiveCollapsibleSection>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <ResponsiveCollapsibleSection title="Como funciona">
+          <ResponsiveCollapsibleSection title="Como funciona" variant="broker">
           <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
@@ -221,7 +221,7 @@ export function BrokerCorretorEmePage() {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-2">
-          <ResponsiveCollapsibleSection title="O que ele faz">
+          <ResponsiveCollapsibleSection title="O que ele faz" variant="broker">
           <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
@@ -235,7 +235,7 @@ export function BrokerCorretorEmePage() {
           </Card>
           </ResponsiveCollapsibleSection>
 
-          <ResponsiveCollapsibleSection title="Corretor EME ou Assessor EME?">
+          <ResponsiveCollapsibleSection title="Corretor EME ou Assessor EME?" variant="broker">
           <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <CardHeader className="px-6 py-5">
               <CardTitle className="text-xl text-[#050505]">Corretor EME ou Assessor EME?</CardTitle>

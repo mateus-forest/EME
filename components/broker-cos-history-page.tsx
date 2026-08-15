@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from "lucide-react"
 import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerSurface } from "@/components/broker-portal-ui"
 import { Button } from "@/components/ui/button"
 import {
   AssistantCredits,
@@ -180,9 +181,13 @@ export function BrokerCosHistoryPage() {
       primaryActionLabel="Nova conversa"
       primaryActionOnClick={() => void createConversation()}
     >
-      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <div className="eme-subtle-scrollbar min-w-0 rounded-[1.75rem] border border-black/[0.06] bg-[#fbfbf8] p-4 xl:max-h-[calc(100svh-9.5rem)] xl:overflow-y-auto">
-          <div className="mb-5 border-b border-black/[0.05] pb-4" data-testid="cos-history-category-filters">
+      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <BrokerSurface
+          tone="subtle"
+          padding="compact"
+          className="eme-subtle-scrollbar max-h-[25rem] overflow-y-auto xl:max-h-[calc(100svh-9rem)]"
+        >
+          <div className="mb-4 border-b border-[var(--broker-border)] pb-3" data-testid="cos-history-category-filters">
             <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#97A3B6]">
               Organizar por intenção
             </p>
@@ -235,7 +240,7 @@ export function BrokerCosHistoryPage() {
                   <span className="rounded-full bg-white px-2 py-1 text-[11px] text-[#7B8491]">{categoryGroup.items.length}</span>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {categoryGroup.temporalGroups.map((temporalGroup) => {
                     const expansionKey = `${categoryGroup.id}:${temporalGroup.label}`
                     const visibleItems = expandedGroups[expansionKey]
@@ -254,7 +259,7 @@ export function BrokerCosHistoryPage() {
                             return (
                               <div
                                 key={item.id}
-                                className={`rounded-[1.15rem] border px-3 py-2.5 transition ${
+                                className={`rounded-xl border px-3 py-2 transition ${
                                   isActive
                                     ? "border-[#009b3a]/18 bg-[#effaf3]"
                                     : "border-black/[0.06] bg-white hover:bg-[#f8f9fb]"
@@ -327,10 +332,10 @@ export function BrokerCosHistoryPage() {
               {isLoadingMoreConversations ? "Carregando..." : "Ver histórico completo"}
             </Button>
           ) : null}
-        </div>
+        </BrokerSurface>
 
-        <div className="flex min-h-[calc(100svh-9.5rem)] min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.06)] md:min-h-[42rem]">
-          <div className="border-b border-black/[0.05] px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex min-h-[36rem] min-w-0 flex-col overflow-hidden rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] shadow-[var(--broker-shadow-xs)] xl:min-h-[calc(100svh-9rem)] xl:max-h-[calc(100svh-9rem)]">
+          <div className="border-b border-[var(--broker-border)] px-4 py-3.5 sm:px-5 sm:py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[1.05rem] font-semibold text-[#111111]">
@@ -351,7 +356,7 @@ export function BrokerCosHistoryPage() {
             </div>
           </div>
 
-          <div ref={chatViewportRef} className="eme-hidden-scrollbar min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+          <div ref={chatViewportRef} className="eme-hidden-scrollbar min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
             {isConversationLoading ? (
               <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] px-5 py-4 text-sm leading-7 text-[#6f7f97]">
                 Carregando conversa...

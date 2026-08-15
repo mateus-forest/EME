@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
-import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
+import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -359,17 +359,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     }
   }
 
-  async function changePropertyStatus(property: Property, nextStatus: Property["status"]) {
-    try {
-      await publishProperty(property.id, nextStatus)
-      setListFeedback(nextStatus === "Publicado" ? "Imóvel publicado com sucesso." : "Imóvel movido para rascunho.")
-      window.setTimeout(() => setListFeedback(""), 2500)
-    } catch (caughtError) {
-      setListFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
-      window.setTimeout(() => setListFeedback(""), 2500)
-    }
-  }
-
   async function toggleEditingPropertyStatus() {
     if (!editingProperty) return
     const nextStatus = editingProperty.status === "Publicado" ? "Rascunho" : "Publicado"
@@ -556,14 +545,14 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
         )}
 
         {hasProperties ? (
-          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+          <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1380px]:grid-cols-4">
             {filteredProperties.map((property) => (
               <Card
                 key={property.id}
-                className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/92 py-0 shadow-[0_16px_48px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_58px_rgba(15,23,42,0.08)]"
+                className="flex h-full min-w-0 flex-col overflow-hidden rounded-[1.15rem] border-black/[0.065] bg-white/94 py-0 shadow-[0_10px_30px_rgba(15,23,42,0.045)] transition-all hover:-translate-y-0.5 hover:border-[#009b3a]/14 hover:shadow-[0_16px_38px_rgba(15,23,42,0.07)]"
               >
-                <CardContent className="flex h-full flex-col gap-3.5 p-3 sm:p-4">
-                  <div className={`relative min-h-0 w-full overflow-hidden rounded-[1.2rem] border border-black/[0.06] ${getPropertyImage(property.images?.[0] ?? null, property.id) ? "aspect-[16/10] max-h-[210px] bg-[#fbfbf8]" : "aspect-[16/9] max-h-[168px] bg-[linear-gradient(180deg,#f8faf8_0%,#f3f5f2_100%)]"}`}>
+                <CardContent className="flex h-full min-w-0 flex-col gap-3 p-2.5 sm:p-3">
+                  <div className={`relative min-h-0 w-full overflow-hidden rounded-[0.9rem] border border-black/[0.055] ${getPropertyImage(property.images?.[0] ?? null, property.id) ? "aspect-[16/9] bg-[#fbfbf8]" : "aspect-[16/9] bg-[linear-gradient(180deg,#f8faf8_0%,#f3f5f2_100%)]"}`}>
                     {getPropertyImage(property.images?.[0] ?? null, property.id) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={getPropertyImage(property.images?.[0] ?? null, property.id)} alt={property.title} className="h-full w-full object-cover" />
@@ -572,93 +561,54 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <div className="flex size-12 items-center justify-center rounded-2xl border border-black/[0.05] bg-white/70">
                           <ImagePlus className="size-5 text-[#8B95A1]" />
                         </div>
-                        <p className="mt-3 text-sm font-medium text-[#5F6B7A]">Sem imagem cadastrada</p>
+                        <p className="mt-2 text-xs font-medium text-[#5F6B7A]">Sem imagem cadastrada</p>
                       </div>
                     )}
                     {getPropertyImage(property.images?.[0] ?? null, property.id) ? <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" /> : null}
-                    <div className="absolute top-3 left-3">
-                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#009b3a]/16 bg-white/88 px-2.5 py-1 text-[11px] font-medium text-[#009b3a] backdrop-blur-md" : "rounded-full border border-black/[0.05] bg-white/88 px-2.5 py-1 text-[11px] font-medium text-[#050505]/75 backdrop-blur-md"}>
+                    <div className="absolute top-2 left-2">
+                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#009b3a]/16 bg-white/92 px-2 py-0.5 text-[10px] font-semibold text-[#008633] backdrop-blur-md" : "rounded-full border border-black/[0.05] bg-white/92 px-2 py-0.5 text-[10px] font-medium text-[#344054] backdrop-blur-md"}>
                         {property.status}
                       </Badge>
                     </div>
                     {property.marketplacePublished ? (
-                      <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#009b3a] backdrop-blur-md">
+                      <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-white/92 px-2 py-0.5 text-[10px] font-medium text-[#008633] backdrop-blur-md">
                         <Store className="size-3" /> Marketplace
                       </span>
                     ) : null}
                   </div>
 
-                  <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-2.5 px-0.5">
                     <div className="min-w-0">
                       {property.publicCode ? (
-                        <span className="mb-2 inline-flex rounded-full border border-[#009b3a]/16 bg-[#009b3a]/8 px-2.5 py-1 text-[11px] font-semibold text-[#009b3a]">
+                        <span className="mb-1.5 inline-flex rounded-full border border-[#009b3a]/14 bg-[#009b3a]/7 px-2 py-0.5 text-[10px] font-semibold text-[#008633]">
                           Imóvel {property.publicCode}
                         </span>
                       ) : null}
-                      <h2 className="line-clamp-2 text-lg font-semibold leading-tight text-[#050505] sm:text-xl">{property.title}</h2>
-                      <div className="mt-2 flex items-center gap-2 text-sm text-[#6B7280]">
-                        <MapPin className="size-4 shrink-0 text-[#009b3a]" />
+                      <h2 className="line-clamp-1 text-base font-semibold leading-tight text-[#111827]">{property.title}</h2>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#667085]">
+                        <MapPin className="size-3.5 shrink-0 text-[#009b3a]" />
                         <span className="truncate">{property.location}</span>
                       </div>
-                      <p className="mt-2.5 text-xl font-semibold tracking-tight text-[#050505] sm:text-[1.7rem]">{property.price}</p>
+                      <p className="mt-2 text-xl font-semibold tracking-tight text-[#111827]">{property.price}</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2.5 text-sm text-[#5F6B7A]">
+                    <div className="flex flex-wrap gap-1.5 text-xs text-[#667085]">
                       <Spec icon={BedDouble} value={`${property.bedrooms} quartos`} />
                       <Spec icon={Bath} value={`${property.bathrooms} banheiros`} />
                       <Spec icon={CarFront} value={`${property.parking} vagas`} />
                     </div>
                   </div>
 
-                  <div className="mt-auto flex flex-col gap-3.5">
-                    <div className="grid grid-cols-2 gap-2.5">
+                  <div className="mt-auto flex min-w-0 flex-col gap-2.5 px-0.5 pb-0.5">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <MetricCard label="Visualizações" value={property.views} />
                       <MetricCard label="Leads" value={property.leads} />
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => void toggleMarketplace(property)}
-                      className={property.marketplacePublished
-                        ? "h-10 rounded-xl border border-[#009b3a]/18 bg-[#009b3a]/8 px-4 text-sm text-[#008633] hover:bg-[#009b3a]/12"
-                        : "h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]"}
-                    >
-                      <Store className="size-4" />
-                      {property.marketplacePublished ? 'Remover do Marketplace' : 'Publicar no Marketplace'}
-                    </Button>
-
-                    <div className="hidden">
-                      <Button type="button" variant="ghost" onClick={() => void changePropertyStatus(property, property.status === "Publicado" ? "Rascunho" : "Publicado")} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#050505]">
-                        {property.status === "Publicado" ? "Despublicar" : "Publicar"}
-                      </Button>
-                      <Button asChild className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
-                        <a href={whatsAppUrl} target="_blank" rel="noreferrer">
-                          <MessageCircle className="size-4" />
-                          WhatsApp
-                        </a>
-                      </Button>
-                      <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
-                        <Link href="/corretor/documentos">
-                          <FileText className="size-4" />
-                          Propostas
-                        </Link>
-                      </Button>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button variant="ghost" onClick={() => openEditModal(property)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#5F6B7A] hover:bg-white hover:text-[#050505]">
-                          <PencilLine className="size-4" />
-                          Editar
-                        </Button>
-                        <Button variant="ghost" onClick={() => handleDeleteProperty(property.id)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#6B7280] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
-                          <Trash2 className="size-4" />
-                          Excluir
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid gap-2.5">
-                      <div className="grid gap-2 sm:grid-cols-[128px_minmax(0,1fr)]">
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
+                      <div className="grid min-w-0 grid-cols-[6.7rem_minmax(0,1fr)] gap-2">
                         <Select value={property.status} onValueChange={(value) => void applyCardStatus(property, value as Property["status"])}>
-                          <SelectTrigger className="h-9 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
+                          <SelectTrigger className="h-8 min-w-0 rounded-lg border-black/[0.07] bg-white px-2 text-xs text-[#344054]">
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                           <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
@@ -669,29 +619,28 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button asChild className="h-9 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
-                          <a href={whatsAppUrl} target="_blank" rel="noreferrer">
-                            <MessageCircle className="size-4" />
-                            WhatsApp
-                          </a>
+                        <Button asChild className="h-8 min-w-0 rounded-lg bg-[#009b3a] px-3 text-xs font-semibold text-white shadow-none hover:bg-[#008633]">
+                          <Link href={`/corretor/imoveis/${property.id}`} scroll={false}>
+                            Ver imóvel
+                          </Link>
                         </Button>
                       </div>
-                      <Button asChild variant="ghost" className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
-                        <Link href="/corretor/documentos">
-                          <FileText className="size-4" />
-                          Propostas
-                        </Link>
-                      </Button>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button variant="ghost" onClick={() => openEditModal(property)} className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#5F6B7A] hover:bg-white hover:text-[#050505]">
-                          <PencilLine className="size-4" />
-                          Editar
-                        </Button>
-                        <Button variant="ghost" onClick={() => handleDeleteProperty(property.id)} className="h-9 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#6B7280] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
-                          <Trash2 className="size-4" />
-                          Excluir
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="size-8 rounded-lg border border-black/[0.07] bg-white text-[#667085] hover:bg-[#f7f8f5] hover:text-[#111827]">
+                            <MoreHorizontal className="size-4" />
+                            <span className="sr-only">Mais ações para {property.title}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
+                          <DropdownMenuItem onSelect={() => openEditModal(property)} className="rounded-lg"><PencilLine className="size-4" />Editar imóvel</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => void toggleMarketplace(property)} className="rounded-lg"><Store className="size-4" />{property.marketplacePublished ? "Remover do Marketplace" : "Publicar no Marketplace"}</DropdownMenuItem>
+                          <DropdownMenuItem asChild className="rounded-lg"><a href={whatsAppUrl} target="_blank" rel="noreferrer"><MessageCircle className="size-4" />WhatsApp</a></DropdownMenuItem>
+                          <DropdownMenuItem asChild className="rounded-lg"><Link href="/corretor/documentos"><FileText className="size-4" />Propostas</Link></DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-black/[0.06]" />
+                          <DropdownMenuItem onSelect={() => handleDeleteProperty(property.id)} className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700"><Trash2 className="size-4" />Excluir imóvel</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
@@ -751,11 +700,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                                 </div>
                               )}
                             </div>
-                            <button type="button" onClick={() => removePhoto(index)} className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-[#050505]/80 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100">
+                            <button type="button" onClick={() => removePhoto(index)} className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#344054] opacity-100 shadow-sm transition-opacity hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100">
                               <X className="size-4" />
                               <span className="sr-only">Remover foto</span>
                             </button>
-                            <button type="button" onClick={() => void makeCover(index)} className="absolute bottom-2 left-2 rounded-full bg-white/85 px-3 py-1 text-xs text-[#050505]/80 opacity-0 transition-opacity hover:bg-white group-hover:opacity-100">
+                            <button type="button" onClick={() => void makeCover(index)} className="absolute bottom-2 left-2 rounded-full bg-white/90 px-3 py-1 text-xs text-[#344054] opacity-100 shadow-sm transition-opacity hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100">
                               {index === 0 ? "Capa" : "Usar capa"}
                             </button>
                           </div>
@@ -771,7 +720,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <Field label="Tipo">
                           <Select value={editingProperty.type} onValueChange={(value) => updateField("type", value as EditableProperty["type"])}>
                             <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"><SelectValue /></SelectTrigger>
-                            <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
+                            <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
                               <SelectItem value="Apartamento">Apartamento</SelectItem>
                               <SelectItem value="Casa">Casa</SelectItem>
                               <SelectItem value="Comercial">Comercial</SelectItem>
@@ -785,7 +734,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <Field label="Finalidade">
                           <Select value={editingProperty.purpose} onValueChange={(value) => updateField("purpose", value as EditableProperty["purpose"])}>
                             <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]"><SelectValue /></SelectTrigger>
-                            <SelectContent className="border-black/[0.06] bg-[#121212] text-[#050505]">
+                            <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
                               <SelectItem value="Venda">Venda</SelectItem>
                               <SelectItem value="Locação">Locação</SelectItem>
                             </SelectContent>
@@ -958,7 +907,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                   </div>
                 </div>
                 <DialogFooter className="sticky bottom-0 border-t border-black/[0.06] bg-white/90 px-6 py-4 sm:justify-between">
-                  <Button variant="ghost" onClick={() => handleDeleteProperty(editingProperty.id)} className="h-10 rounded-xl border border-red-500/12 bg-red-500/5 px-4 text-red-200 hover:bg-red-500/10 hover:text-red-100">
+                  <Button variant="ghost" onClick={() => handleDeleteProperty(editingProperty.id)} className="h-10 rounded-xl border border-red-200 bg-red-50 px-4 text-red-600 hover:bg-red-100 hover:text-red-700">
                     <Trash2 className="size-4" />
                     Excluir imóvel
                   </Button>
@@ -978,11 +927,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] px-3 py-3"><p className="text-xs text-[#7B8491]">{label}</p><p className="mt-1.5 text-sm font-semibold text-[#050505]">{value}</p></div>
+  return <div className="rounded-lg border border-black/[0.055] bg-[#fbfbf8] px-2.5 py-2"><p className="text-[10px] text-[#7B8491]">{label}</p><p className="mt-0.5 text-xs font-semibold text-[#111827]">{value}</p></div>
 }
 
 function Spec({ icon: Icon, value }: { icon: typeof BedDouble; value: string }) {
-  return <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fbfbf8] px-3 py-1.5"><Icon className="size-4 text-[#009b3a]" /><span>{value}</span></div>
+  return <div className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.055] bg-[#fbfbf8] px-2 py-1"><Icon className="size-3.5 text-[#009b3a]" /><span>{value}</span></div>
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

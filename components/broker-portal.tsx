@@ -5,12 +5,14 @@ import {
   AlertCircle,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   CheckCircle2,
   Circle,
   Grip,
   FileText,
   Home,
+  Sparkles,
   X,
   UsersRound,
 } from "lucide-react"
@@ -20,6 +22,7 @@ import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } f
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerSurface } from "@/components/broker-portal-ui"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
@@ -230,6 +233,17 @@ export function BrokerPortal() {
           { id: "help_general_question", label: "Tirar uma dúvida" },
         ],
       },
+    ],
+    [],
+  )
+
+  const emptyStateActions = useMemo<CosPromptComposerMenuAction[]>(
+    () => [
+      { id: "register_client", label: "Cadastrar cliente" },
+      { id: "search_property", label: "Buscar imóveis" },
+      { id: "generate_proposal", label: "Criar proposta" },
+      { id: "attach_contract", label: "Anexar contrato" },
+      { id: "today_agenda", label: "Agenda de hoje" },
     ],
     [],
   )
@@ -463,9 +477,9 @@ export function BrokerPortal() {
             <div className="relative flex min-h-0 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
-                  <div className="flex flex-1 flex-col">
-                    <div className="mx-auto flex h-full w-full max-w-[48rem] flex-col items-center px-1 text-center">
-                      <div className="pt-8 sm:pt-10">
+                  <div className="flex min-h-0 flex-1 flex-col justify-center py-4 sm:py-6">
+                    <div className="mx-auto flex w-full max-w-[48rem] flex-col items-center px-1 text-center">
+                      <div>
                         {hasResolvedBrokerName ? (
                           <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
                             {greetingLabel}
@@ -479,7 +493,46 @@ export function BrokerPortal() {
                         )}
                       </div>
 
-                      <div className="mt-16 w-full pt-16 sm:mt-20 sm:pt-20" />
+                      <BrokerSurface
+                        tone="default"
+                        padding="compact"
+                        className="mt-7 w-full max-w-[34rem] text-left sm:mt-9"
+                      >
+                        <div className="flex items-center gap-3 border-b border-[var(--broker-border)] pb-3">
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--broker-accent-soft)] text-[var(--broker-accent)]">
+                            <Sparkles className="size-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--broker-accent)]">
+                              Comece por aqui
+                            </p>
+                            <p className="mt-0.5 text-sm text-[var(--broker-muted)]">
+                              Escolha uma ação ou escreva seu pedido abaixo.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {emptyStateActions.map((action, index) => {
+                            const actionIcons = [UsersRound, Home, FileText, FileText, CalendarDays]
+                            const Icon = actionIcons[index] ?? Sparkles
+
+                            return (
+                              <button
+                                key={action.id}
+                                type="button"
+                                onClick={() => void handleMenuAction(action)}
+                                className={`flex min-h-11 items-center gap-3 rounded-xl border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3.5 py-2.5 text-left text-sm font-medium text-[var(--broker-ink)] transition-colors hover:border-[var(--broker-border-strong)] hover:bg-white ${index === emptyStateActions.length - 1 ? "sm:col-span-2" : ""}`}
+                              >
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--broker-accent-soft)] text-[var(--broker-accent)]">
+                                  <Icon className="size-4" />
+                                </span>
+                                <span className="min-w-0 flex-1 truncate">{action.label}</span>
+                                <ChevronRight className="size-4 shrink-0 text-[var(--broker-muted-soft)]" />
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </BrokerSurface>
                     </div>
                   </div>
 

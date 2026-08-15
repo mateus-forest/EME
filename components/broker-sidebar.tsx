@@ -91,21 +91,37 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
 ]
 
 function buildOpenSections(pathname: string) {
+  const activeHref = resolveActiveMenuHref(pathname)
+
   return Object.fromEntries(
     menuSections.map((section) => [
       section.label,
-      section.items.some((item) => item.href === pathname),
+      section.items.some((item) => item.href === activeHref),
     ]),
   )
 }
 
-export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "default" | "cos" }) {
+function resolveActiveMenuHref(pathname: string) {
+  return (
+    menuSections
+      .flatMap((section) => section.items)
+      .filter((item) =>
+        item.href === "/corretor"
+          ? pathname === item.href
+          : pathname === item.href || pathname.startsWith(`${item.href}/`),
+      )
+      .sort((left, right) => right.href.length - left.href.length)[0]?.href ?? null
+  )
+}
+
+export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "cos" }) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useBrokerProfile()
   const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar()
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => buildOpenSections(pathname))
   const collapsed = state === "collapsed"
+  const activeHref = resolveActiveMenuHref(pathname)
   const initials = profile.fullName
     .split(" ")
     .filter(Boolean)
@@ -146,18 +162,24 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
   }, [pathname])
 
   const sidebarInner = (
-    <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.25rem] border border-black/[0.05] bg-white/92 shadow-[0_10px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-      <div className="flex items-center justify-between border-b border-black/[0.05] px-3 py-3">
+    <div
+      className={`flex h-full min-w-0 max-w-full flex-col overflow-hidden border border-[var(--broker-border)] bg-[var(--broker-surface)] shadow-[var(--broker-shadow-sm)] backdrop-blur-xl ${
+        variant === "cos"
+          ? "rounded-[var(--broker-radius-lg)] md:rounded-l-none md:rounded-r-[var(--broker-radius-lg)]"
+          : "rounded-[var(--broker-radius-lg)]"
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-[var(--broker-border)] px-2.5 py-2.5">
         <Link
           href="/"
-          className={`flex min-w-0 items-center rounded-xl bg-transparent transition-colors hover:bg-[#f7f8f5] ${collapsed && !isMobile ? "h-10 w-10 justify-center px-0" : "h-10 flex-1 px-2.5"}`}
+          className={`flex min-w-0 items-center rounded-[var(--broker-radius-sm)] bg-transparent transition-colors hover:bg-[var(--broker-surface-inset)] ${collapsed && !isMobile ? "size-9 justify-center px-0" : "h-9 flex-1 px-2"}`}
         >
           <Image
             src="/images/eme-logo-official.png"
             alt="EME"
             width={96}
             height={36}
-            className={`${collapsed && !isMobile ? "h-7 w-7" : "h-8 w-8"} object-contain`}
+            className={`${collapsed && !isMobile ? "size-6" : "size-7"} object-contain`}
             priority
           />
         </Link>
@@ -166,25 +188,25 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          className={`ml-2 rounded-xl text-[#5F6B7A] transition-colors hover:bg-[#f7f8f5] hover:text-[#050505] ${collapsed && !isMobile ? "h-9 w-9 bg-transparent" : "h-8 w-8 bg-transparent"}`}
+          className={`ml-1.5 rounded-[var(--broker-radius-sm)] text-[var(--broker-muted)] transition-colors hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)] ${collapsed && !isMobile ? "size-9 bg-transparent" : "size-8 bg-transparent"}`}
         >
           <ChevronLeft className={`size-[15px] transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`} />
           <span className="sr-only">Recolher ou expandir menu</span>
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2.5 py-3">
-        <div className="grid gap-2.5">
+      <div className="eme-subtle-scrollbar flex-1 overflow-y-auto px-2 py-2.5">
+        <div className="grid gap-1.5">
           {menuSections.map((section) => {
             const sectionOpen = collapsed && !isMobile ? true : openSections[section.label]
 
             return (
-              <div key={section.label} className="grid gap-1">
+              <div key={section.label} className="grid gap-0.5">
                 {(!collapsed || isMobile) && (
                   <button
                     type="button"
                     onClick={() => toggleSection(section.label)}
-                    className="flex h-6 items-center justify-between rounded-lg px-3 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8B95A1] transition-colors hover:bg-[#f7f8f5] hover:text-[#050505]"
+                    className="flex h-5.5 items-center justify-between rounded-lg px-2.5 text-left text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--broker-muted-soft)] transition-colors hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)]"
                     aria-expanded={sectionOpen}
                   >
                     <span>{section.label}</span>
@@ -193,20 +215,21 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
                 )}
 
                 {sectionOpen && (
-                  <SidebarMenu className="gap-1">
+                  <SidebarMenu className="gap-0.5">
                     {section.items.map((item) => (
                       <SidebarMenuItem key={`${section.label}-${item.label}`}>
                         <SidebarMenuButton
                           asChild
-                          isActive={item.href !== "#" && pathname === item.href}
+                          isActive={item.href !== "#" && item.href === activeHref}
                           tooltip={item.label}
-                          className={`h-10 rounded-xl border border-transparent text-[15px] font-medium text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505] data-[active=true]:border-[#009b3a]/12 data-[active=true]:bg-[#f2fbf5] data-[active=true]:text-[#050505] ${collapsed && !isMobile ? "px-0" : "px-3"}`}
+                          className={`h-9 rounded-[var(--broker-radius-sm)] border border-transparent text-[13px] font-medium text-[var(--broker-muted)] hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)] data-[active=true]:border-[var(--broker-accent-border)] data-[active=true]:bg-[var(--broker-accent-soft)] data-[active=true]:text-[var(--broker-accent-strong)] ${collapsed && !isMobile ? "px-0" : "px-2.5"}`}
                         >
                           <Link
                             href={item.href}
-                            className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-3"}`}
+                            aria-current={item.href === activeHref ? "page" : undefined}
+                            className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-2.5"}`}
                           >
-                            <item.icon className="size-[18px] shrink-0" />
+                            <item.icon className="size-4 shrink-0" />
                             <span className={collapsed && !isMobile ? "hidden" : "min-w-0 truncate"}>{item.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -220,10 +243,10 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
         </div>
       </div>
 
-      <div className="mt-auto px-3 pb-3">
-        <div className={`rounded-xl border border-black/[0.05] bg-[#fcfcfa] p-2 ${collapsed && !isMobile ? "px-1.5" : ""}`}>
-          <div className={`flex items-center gap-3 ${collapsed && !isMobile ? "justify-center" : ""}`}>
-            <Avatar className={`${collapsed && !isMobile ? "size-7" : "size-10"} shrink-0 border border-black/[0.08] transition-all`}>
+      <div className="mt-auto px-2.5 pb-2.5">
+        <div className={`rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-1.5 ${collapsed && !isMobile ? "px-1" : ""}`}>
+          <div className={`flex items-center gap-2.5 ${collapsed && !isMobile ? "justify-center" : ""}`}>
+            <Avatar className={`${collapsed && !isMobile ? "size-7" : "size-9"} shrink-0 border border-[var(--broker-border-strong)] transition-all`}>
               <AvatarImage src={profile.photoUrl} alt={profile.fullName} />
               <AvatarFallback className="bg-[#009b3a]/10 font-semibold text-[#009b3a]">
                 {initials || "EM"}
@@ -232,7 +255,7 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
 
             {(!collapsed || isMobile) && (
               <div className="min-w-0 max-w-[8.25rem] flex-1 overflow-hidden">
-                <p className="truncate text-sm font-semibold text-[#050505]">{profile.fullName || "Corretor"}</p>
+                <p className="truncate text-[13px] font-semibold text-[var(--broker-ink)]">{profile.fullName || "Corretor"}</p>
               </div>
             )}
 
@@ -241,7 +264,7 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
-                className="size-9 shrink-0 rounded-xl text-[#5F6B7A] hover:bg-white hover:text-[#050505]"
+                className="size-8 shrink-0 rounded-[var(--broker-radius-sm)] text-[var(--broker-muted)] hover:bg-white hover:text-[var(--broker-ink)]"
               >
                 <LogOut className="size-4" />
                 <span className="sr-only">Logout</span>
@@ -258,7 +281,7 @@ export function BrokerSidebar({ variant: _variant = "default" }: { variant?: "de
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent
           side="left"
-          className="w-[18rem] border-black/[0.06] bg-[#fbfbf8] p-3 text-[#050505] [&>button]:hidden"
+          className="broker-portal-scope w-[17rem] border-[var(--broker-border)] bg-[var(--broker-canvas)] px-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.625rem)] pt-[max(env(safe-area-inset-top,0px),0.625rem)] text-[var(--broker-ink)] [&>button]:hidden"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Portal do corretor</SheetTitle>

@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   BookOpen,
   Check,
+  ChevronLeft,
   Copy,
   Download,
   Eye,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerPageIntro, BrokerStatusPill, BrokerSurface } from "@/components/broker-portal-ui"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -259,45 +261,32 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
   return (
     <BrokerPageShell title="Biblioteca">
       <div className="grid gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/92 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button asChild variant="ghost" className="h-8 rounded-full border border-black/[0.06] px-3 text-[#667085]">
-                  <Link href="/corretor/studio-ia/biblioteca">Voltar para Biblioteca</Link>
-                </Button>
-                {campaign ? <StatusPill status={campaign.status} /> : null}
-              </div>
+        <BrokerPageIntro
+          eyebrow="Biblioteca"
+          title={isLoading ? "Carregando campanha..." : error ? "Campanha indisponível" : campaign?.title ?? "Campanha"}
+          description={campaign
+            ? `${formatStudioCampaignKind(campaign.kind)} · ${getCampaignPropertyLabel(campaign)}`
+            : error ?? "Conteúdos, revisões e arquivos desta geração."}
+          actions={(
+            <>
+              <Button asChild variant="outline" className="h-8 rounded-lg border-[var(--broker-border)] px-3 text-xs text-[var(--broker-muted)]">
+                <Link href="/corretor/studio-ia/biblioteca">
+                  <ChevronLeft className="size-3.5" />
+                  Voltar
+                </Link>
+              </Button>
+              {campaign ? <StatusPill status={campaign.status} /> : null}
+            </>
+          )}
+        />
 
-              {isLoading ? (
-                <div className="mt-5 grid gap-3">
-                  <div className="h-8 w-56 animate-pulse rounded-full bg-[#eef1f5]" />
-                  <div className="h-4 w-80 animate-pulse rounded-full bg-[#f4f6f8]" />
-                </div>
-              ) : error ? (
-                <div className="mt-5">
-                  <h2 className="text-2xl font-semibold tracking-tight text-[#050505]">Campanha indisponível</h2>
-                  <p className="mt-3 text-sm leading-6 text-[#c24141]">{error}</p>
-                </div>
-              ) : campaign ? (
-                <>
-                  <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[#050505]">{campaign.title}</h2>
-                  <p className="mt-3 text-sm leading-6 text-[#667085]">
-                    {formatStudioCampaignKind(campaign.kind)} | {getCampaignPropertyLabel(campaign)}
-                  </p>
-                </>
-              ) : null}
-            </div>
-
-            {campaign ? (
-              <div className="grid gap-2 text-sm text-[#667085] sm:grid-cols-3">
-                <Metric label="Itens" value={String(campaign.assets.length)} />
-                <Metric label="Criada em" value={formatStudioCampaignDate(campaign.createdAt)} />
-                <Metric label="IA" value={formatStudioProvider(campaign.provider)} />
-              </div>
-            ) : null}
+        {campaign ? (
+          <div className="flex min-w-0 flex-wrap gap-2">
+            <BrokerStatusPill tone="positive">{campaign.assets.length} itens</BrokerStatusPill>
+            <BrokerStatusPill>Criada em {formatStudioCampaignDate(campaign.createdAt)}</BrokerStatusPill>
+            <BrokerStatusPill>IA · {formatStudioProvider(campaign.provider)}</BrokerStatusPill>
           </div>
-        </section>
+        ) : null}
 
         {notice ? (
           <section className="rounded-[1.25rem] border border-[#009b3a]/16 bg-[#eef9f1] px-4 py-3 text-sm text-[#0a8f3d]">
@@ -313,18 +302,18 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
 
         {campaign ? (
           <>
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <Card className="overflow-hidden rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
-                <div className="relative aspect-[1.85/1] overflow-hidden border-b border-black/[0.05] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
+            <section className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+              <Card className="overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+                <div className="relative aspect-[4/3] overflow-hidden border-b border-[var(--broker-border)] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)] sm:aspect-[1.85/1]">
                   <img src={getCampaignCoverUrl(campaign)} alt={campaign.title} className="h-full w-full object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-6 py-6 text-white">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/78">{formatStudioCampaignKind(campaign.kind)}</p>
-                    <h3 className="mt-2 text-2xl font-semibold tracking-tight">{campaign.title}</h3>
-                    <p className="mt-2 max-w-2xl text-sm text-white/82">{getCampaignPropertyLabel(campaign)}</p>
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 py-4 text-white sm:px-5 sm:py-5">
+                    <p className="text-[9px] uppercase tracking-[0.16em] text-white/78">{formatStudioCampaignKind(campaign.kind)}</p>
+                    <h3 className="mt-1.5 line-clamp-2 text-lg font-semibold tracking-tight sm:text-xl">{campaign.title}</h3>
+                    <p className="mt-1.5 line-clamp-1 text-xs text-white/82">{getCampaignPropertyLabel(campaign)}</p>
                   </div>
                 </div>
-                <CardContent className="grid gap-4 p-5">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <CardContent className="grid gap-3 p-3.5 sm:p-4">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <InfoBlock label="Tipo" value={formatStudioCampaignKind(campaign.kind)} />
                     <InfoBlock label="Status" value={formatStudioCampaignStatus(campaign.status)} />
                     <InfoBlock label="Imóvel" value={getCampaignPropertyLabel(campaign)} />
@@ -333,28 +322,24 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                 </CardContent>
               </Card>
 
-              <div className="grid gap-4">
-                <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
-                  <CardContent className="grid gap-4 p-5">
+              <div className="grid content-start gap-3">
+                <BrokerSurface padding="compact">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">Orientação da criação</p>
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#44505f]">{campaignPrompt}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--broker-muted-soft)]">Orientação da criação</p>
+                      <p className="eme-subtle-scrollbar mt-2 max-h-72 overflow-y-auto whitespace-pre-wrap pr-2 text-sm leading-6 text-[var(--broker-muted)]">{campaignPrompt}</p>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/92 py-0">
-                  <CardContent className="grid gap-3 p-5">
-                    <InfoBlock label="IA" value={formatStudioProvider(campaign.provider)} />
-                  </CardContent>
-                </Card>
+                </BrokerSurface>
+                <BrokerSurface padding="compact">
+                  <InfoBlock label="IA utilizada" value={formatStudioProvider(campaign.provider)} />
+                </BrokerSurface>
               </div>
             </section>
 
             <section className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-2xl font-semibold tracking-tight text-[#050505]">Conteúdos da campanha</h3>
-                  <p className="mt-2 text-sm text-[#667085]">Conteúdos organizados para visualização, download, revisão e próximas ações.</p>
+                  <h3 className="text-xl font-semibold tracking-tight text-[var(--broker-ink)]">Conteúdos da campanha</h3>
+                  <p className="mt-1 text-sm text-[var(--broker-muted)]">Visualize, revise, baixe ou reaproveite cada material.</p>
                 </div>
               </div>
 
@@ -369,7 +354,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1600px]:grid-cols-4">
                   {campaign.assets.map((asset) => (
                     <AssetCard
                       key={asset.id}
@@ -493,20 +478,11 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fcfcfb] px-4 py-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-[#050505]">{value}</p>
-    </div>
-  )
-}
-
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fcfcfb] px-4 py-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-[#7b8491]">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-[#44505f]">{value}</p>
+    <div className="rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3 py-2.5">
+      <p className="text-[9px] uppercase tracking-[0.15em] text-[var(--broker-muted-soft)]">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-[var(--broker-muted)]">{value}</p>
     </div>
   )
 }
@@ -558,8 +534,8 @@ function AssetCard({
   const illustrative = isProjectVisualization(campaign, asset)
 
   return (
-    <Card className="overflow-hidden rounded-[1.5rem] border-black/[0.06] bg-white/92 py-0">
-      <div className="border-b border-black/[0.05] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)] p-5">
+    <Card className="overflow-hidden rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+      <div className="border-b border-[var(--broker-border)] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)] p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -568,31 +544,31 @@ function AssetCard({
               </span>
               <StatusPill status={asset.status} />
             </div>
-            <h4 className="mt-3 text-lg font-semibold tracking-tight text-[#050505]">
+            <h4 className="mt-2 line-clamp-2 text-sm font-semibold leading-5 tracking-tight text-[var(--broker-ink)] sm:text-[15px]">
               {asset.label || formatStudioCampaignAssetType(asset.type)}
             </h4>
-            <p className="mt-2 text-sm leading-6 text-[#667085]">{formatStudioCampaignDate(asset.createdAt)}</p>
+            <p className="mt-1 text-[10px] leading-5 text-[var(--broker-muted-soft)]">{formatStudioCampaignDate(asset.createdAt)}</p>
           </div>
 
-          <div className="flex size-11 items-center justify-center rounded-2xl border border-[#009b3a]/12 bg-white/80 text-[#009b3a]">
-            {asset.type === "VIDEO" ? <Film className="size-5" /> : <ImageIcon className="size-5" />}
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#009b3a]/12 bg-white/80 text-[#009b3a]">
+            {asset.type === "VIDEO" ? <Film className="size-4" /> : <ImageIcon className="size-4" />}
           </div>
         </div>
       </div>
 
-      <CardContent className="grid gap-4 p-5">
+      <CardContent className="grid gap-3 p-3.5">
         {illustrative ? <div className="rounded-xl border border-[#009b3a]/14 bg-[#f4fbf6] px-3 py-2 text-xs text-[#356047]">Representação ilustrativa gerada por IA</div> : null}
         {isVisualAsset(campaign, asset) && previewSrc ? (
           <button
             type="button"
             onClick={onPreview}
             className={cn(
-              "overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f9faf9] text-left",
-              isPortrait && "mx-auto w-full max-w-[18rem]",
+              "overflow-hidden rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[#f9faf9] text-left",
+              isPortrait && "mx-auto w-full max-w-[13rem]",
             )}
           >
             {asset.type === "VIDEO" && asset.fileUrl ? (
-              <div className="relative flex aspect-[1.5/1] items-center justify-center bg-[#111111] text-white">
+                <div className="relative flex aspect-[4/3] items-center justify-center bg-[#111111] text-white">
                 {asset.thumbnailUrl ? (
                   <img src={asset.thumbnailUrl} alt={asset.label || "Preview do asset"} className="absolute inset-0 h-full w-full object-cover opacity-80" />
                 ) : null}
@@ -606,15 +582,15 @@ function AssetCard({
                 alt={asset.label || "Preview do asset"}
                 className={cn(
                   "w-full bg-[#f8faf8]",
-                  isPortrait ? "aspect-[9/16] object-contain" : "aspect-[1.5/1] object-cover",
+                  isPortrait ? "aspect-[9/16] object-contain" : "aspect-[4/3] object-cover",
                 )}
               />
             )}
           </button>
         ) : (
           <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbfa] p-4 text-sm leading-6 whitespace-pre-wrap text-[#44505f]">
-            {textPreview.slice(0, 420)}
-            {textPreview.length > 420 ? "..." : ""}
+            {textPreview.slice(0, 280)}
+            {textPreview.length > 280 ? "..." : ""}
           </div>
         )}
 
@@ -670,7 +646,7 @@ function AssetCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-black/[0.06] pt-3">
+        <div className="flex flex-wrap gap-1.5 border-t border-[var(--broker-border)] pt-3">
           <Button
             type="button"
             onClick={onApprove}
@@ -739,4 +715,3 @@ function ActionButton({
     </Button>
   )
 }
-

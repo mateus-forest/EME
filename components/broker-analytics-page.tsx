@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { BarChart3, Eye, MessageCircle, MousePointerClick, Search, SlidersHorizontal, TrendingUp, UsersRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { BrokerStatItem, BrokerStatStrip } from "@/components/broker-portal-ui"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { Button } from "@/components/ui/button"
@@ -87,7 +88,7 @@ export function BrokerAnalyticsPage() {
       searchValue={search}
       onSearchChange={setSearch}
     >
-      <div className="grid gap-5">
+      <div className="grid gap-4">
         {!hasProperties && !isLoading ? (
           <section className="rounded-[1.75rem] border border-[#009b3a]/20 bg-[#009b3a]/10 p-6 text-center shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
@@ -103,7 +104,7 @@ export function BrokerAnalyticsPage() {
           </section>
         ) : null}
 
-        <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <BrokerStatStrip>
           {isAnalyticsLoading && !analytics ? (
             Array.from({ length: 4 }).map((_, index) => <MetricSkeleton key={index} />)
           ) : (
@@ -114,10 +115,10 @@ export function BrokerAnalyticsPage() {
               <MetricCard icon={TrendingUp} label="Imóveis monitorados" value={String(analytics?.monitoredProperties ?? properties.length)} />
             </>
           )}
-        </section>
+        </BrokerStatStrip>
 
-        <ResponsiveCollapsibleSection title="Período" defaultMobileOpen>
-        <section className="grid gap-3 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4 md:grid-cols-3">
+        <ResponsiveCollapsibleSection title="Período" defaultMobileOpen variant="broker">
+        <section className="grid gap-3 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3 md:grid-cols-3">
           <SelectFilter label="Período" value={period} onChange={(value) => setPeriod(value as (typeof periodOptions)[number]["value"])} options={periodOptions.map((item) => item)} />
           <SelectFilter
             label="Imóvel"
@@ -134,23 +135,28 @@ export function BrokerAnalyticsPage() {
         </section>
         </ResponsiveCollapsibleSection>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <ResponsiveCollapsibleSection title="Imóveis mais acessados" defaultMobileOpen>
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <ResponsiveCollapsibleSection title="Imóveis mais acessados" defaultMobileOpen variant="broker">
+          <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-4 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <BarChart3 className="size-5 text-[#009b3a]" />
                 Imóveis mais acessados
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 p-6 pt-0">
-              {mostAccessed.length > 0 ? mostAccessed.map((property) => (
-                <div key={property.id} className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
-                  <p className="truncate text-sm font-medium text-[#050505]">{property.title}</p>
-                  <span className="text-sm text-[#5F6B7A]">{typeof property.views === "number" ? property.views : toNumber(property.views)} visualizações</span>
-                  <span className="text-sm text-[#009b3a]">{typeof property.leads === "number" ? property.leads : toNumber(property.leads)} leads</span>
+            <CardContent className="px-4 pb-4 pt-0 sm:px-5">
+              {mostAccessed.length > 0 ? (
+                <div className="divide-y divide-[var(--broker-border)] overflow-hidden rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)]">
+                  {mostAccessed.map((property, index) => (
+                    <div key={property.id} className="grid gap-2 px-3.5 py-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto_auto] sm:items-center">
+                      <span className="hidden size-7 items-center justify-center rounded-full bg-[var(--broker-accent-soft)] text-xs font-semibold text-[var(--broker-accent)] sm:flex">{index + 1}</span>
+                      <p className="truncate text-sm font-medium text-[#050505]">{property.title}</p>
+                      <span className="text-xs text-[#5F6B7A] sm:text-sm">{typeof property.views === "number" ? property.views : toNumber(property.views)} visualizações</span>
+                      <span className="text-xs font-medium text-[#009b3a] sm:text-sm">{typeof property.leads === "number" ? property.leads : toNumber(property.leads)} leads</span>
+                    </div>
+                  ))}
                 </div>
-              )) : (
+              ) : (
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">
                   Nenhum imóvel cadastrado para ranquear.
                 </div>
@@ -159,15 +165,15 @@ export function BrokerAnalyticsPage() {
           </Card>
           </ResponsiveCollapsibleSection>
 
-          <ResponsiveCollapsibleSection title="Filtros e origem">
-          <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-            <CardHeader className="px-6 py-5">
-              <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+          <ResponsiveCollapsibleSection title="Filtros e origem" variant="broker">
+          <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-4 py-4 sm:px-5">
+              <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <SlidersHorizontal className="size-5 text-[#009b3a]" />
                 Filtros e origem
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 p-6 pt-0">
+            <CardContent className="grid gap-2.5 px-4 pb-4 pt-0 sm:px-5">
               <InfoBlock label="Filtro atual" value="Todos os imóveis" />
               <InfoBlock label="Origem dos leads" value={analytics?.leadOrigins.length ? analytics.leadOrigins.map((item) => `${formatSourceLabel(item.source)}: ${item.count}`).join(" · ") : "Sem origem registrada"} />
               <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
@@ -176,43 +182,47 @@ export function BrokerAnalyticsPage() {
           </ResponsiveCollapsibleSection>
         </section>
 
-        <ResponsiveCollapsibleSection title="Origem dos resultados">
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+        <ResponsiveCollapsibleSection title="Origem dos resultados" variant="broker">
+        <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+          <CardHeader className="px-4 py-4 sm:px-5">
+            <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
               <MessageCircle className="size-5 text-[#009b3a]" />
               Origem dos resultados
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-4">
-            <InfoBlock label="Catálogo" value={`${analytics?.catalogViews ?? 0} visualizações`} />
-            <InfoBlock label="Marketplace" value={`${analytics?.marketplaceViews ?? 0} visualizações`} />
-            <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} />
-            <InfoBlock label="Leads" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} />
+          <CardContent className="grid gap-3 px-4 pb-4 pt-0 sm:px-5 md:grid-cols-4">
+            <InfoBlock label="Catálogo" value={`${analytics?.catalogViews ?? 0} visualizações`} progress={percentage(analytics?.catalogViews ?? 0, totalViews)} />
+            <InfoBlock label="Marketplace" value={`${analytics?.marketplaceViews ?? 0} visualizações`} progress={percentage(analytics?.marketplaceViews ?? 0, totalViews)} />
+            <InfoBlock label="WhatsApp" value={`${whatsappClicks} cliques registrados`} progress={percentage(whatsappClicks, Math.max(totalViews, whatsappClicks))} />
+            <InfoBlock label="Leads" value={totalLeads > 0 ? `${totalLeads} leads` : "0 leads"} progress={percentage(totalLeads, Math.max(totalViews, totalLeads))} />
           </CardContent>
         </Card>
         </ResponsiveCollapsibleSection>
 
-        <ResponsiveCollapsibleSection title="Buscas recentes">
-        <Card className="rounded-[1.75rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="flex items-center gap-2 text-xl text-[#050505]">
+        <ResponsiveCollapsibleSection title="Buscas recentes" variant="broker">
+        <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+          <CardHeader className="px-4 py-4 sm:px-5">
+            <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
               <Search className="size-5 text-[#009b3a]" />
               Buscas recentes
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 p-6 pt-0">
-            {analytics?.recentSearches?.length ? analytics.recentSearches.map((item) => (
-              <div key={item.id} className="grid gap-2 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#050505]">{item.query}</p>
-                  <p className="mt-1 text-xs text-[#7B8491]">{formatSearchTime(item.createdAt)} · {formatSourceLabel(item.source)}</p>
-                </div>
-                <span className="rounded-full border border-[#009b3a]/16 bg-[#009b3a]/10 px-3 py-1 text-xs text-[#009b3a]">
-                  {item.resultCount} resultado{item.resultCount === 1 ? "" : "s"}
-                </span>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-5">
+            {analytics?.recentSearches?.length ? (
+              <div className="divide-y divide-[var(--broker-border)] overflow-hidden rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)]">
+                {analytics.recentSearches.map((item) => (
+                  <div key={item.id} className="grid gap-2 px-3.5 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[#050505]">{item.query}</p>
+                      <p className="mt-0.5 text-xs text-[#7B8491]">{formatSearchTime(item.createdAt)} · {formatSourceLabel(item.source)}</p>
+                    </div>
+                    <span className="rounded-full border border-[#009b3a]/16 bg-[#009b3a]/10 px-3 py-1 text-xs text-[#009b3a]">
+                      {item.resultCount} resultado{item.resultCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                ))}
               </div>
-            )) : (
+            ) : (
               <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#6B7280]">
                 As buscas feitas no catálogo público aparecerão aqui.
               </div>
@@ -270,35 +280,34 @@ function SelectFilter({
 
 function MetricCard({ icon: Icon, label, value }: { icon: typeof BarChart3; label: string; value: string }) {
   return (
-    <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-      <CardContent className="min-w-0 p-4 sm:p-5">
-        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
-          <Icon className="size-4.5" />
-        </div>
-        <p className="mt-4 text-sm text-[#6B7280]">{label}</p>
-        <p className="mt-2 min-w-0 break-words text-xl font-semibold leading-tight text-[#050505] sm:text-2xl">{value}</p>
-      </CardContent>
-    </Card>
+    <BrokerStatItem icon={<Icon className="size-4" />} label={label} value={value} />
   )
 }
 
 function MetricSkeleton() {
   return (
-    <Card className="rounded-[1.5rem] border-black/[0.06] bg-[#fbfbf8] py-0 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-      <CardContent className="p-4 sm:p-5">
-        <div className="eme-shimmer size-10 rounded-2xl bg-white" />
-        <div className="eme-shimmer mt-4 h-3 w-2/3 rounded-full bg-[#f6f7f4]" />
-        <div className="eme-shimmer mt-3 h-6 w-1/2 rounded-full bg-white" />
-      </CardContent>
-    </Card>
+    <div className="flex min-w-0 items-center gap-3 border-r border-b border-[var(--broker-border)] px-4 py-3.5">
+      <div className="eme-shimmer size-9 shrink-0 rounded-xl bg-[var(--broker-surface-inset)]" />
+      <div className="min-w-0 flex-1"><div className="eme-shimmer h-3 w-2/3 rounded-full bg-[var(--broker-surface-inset)]" /><div className="eme-shimmer mt-2 h-5 w-1/2 rounded-full bg-[var(--broker-surface-inset)]" /></div>
+    </div>
   )
 }
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
+function InfoBlock({ label, value, progress }: { label: string; value: string; progress?: number }) {
   return (
-    <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-      <p className="text-sm text-[#6B7280]">{label}</p>
-      <p className="mt-2 text-base font-semibold text-[#050505]">{value}</p>
+    <div className="rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3.5">
+      <p className="text-xs text-[#6B7280]">{label}</p>
+      <p className="mt-1.5 text-sm font-semibold text-[#050505]">{value}</p>
+      {typeof progress === "number" ? (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+          <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${progress}%` }} />
+        </div>
+      ) : null}
     </div>
   )
+}
+
+function percentage(value: number, total: number) {
+  if (total <= 0) return 0
+  return Math.max(0, Math.min(100, Math.round((value / total) * 100)))
 }

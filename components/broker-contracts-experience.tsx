@@ -726,12 +726,12 @@ function TemplateLibrary({
   const pending = templates.filter((template) => template.status !== "READY")
 
   return (
-    <div className="grid gap-5">
-      <section className="rounded-[2rem] border border-black/[0.05] bg-white px-6 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.04)]">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="grid gap-4">
+      <section className="rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] px-4 py-4 shadow-[var(--broker-shadow)] sm:px-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <p className="text-[11px] uppercase tracking-[0.24em] text-[#9aa4b2]">Biblioteca reutilizável</p>
-            <h2 className="mt-2 flex items-center gap-2 text-[2rem] font-semibold tracking-[-0.05em] text-[#050505]"><LayoutTemplate className="size-5 text-[#009b3a]" /> Modelos</h2>
+            <h2 className="mt-1.5 flex items-center gap-2 text-[1.65rem] font-semibold tracking-[-0.04em] text-[#050505]"><LayoutTemplate className="size-5 text-[#009b3a]" /> Modelos</h2>
             <p className="mt-2 text-sm leading-6 text-[#6b7280]">Consulte a estrutura dos seus modelos próprios e use-os em novas operações sem uma nova análise.</p>
           </div>
           <Button onClick={onImport} className="h-11 rounded-xl bg-[#009b3a] px-4 text-white hover:bg-[#008633]"><FileUp className="size-4" /> Importar modelo</Button>
@@ -1184,7 +1184,7 @@ export function BrokerContractsExperience() {
 
   return (
     <>
-      <div className="mb-5 flex w-fit rounded-xl border border-black/[0.06] bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
+      <div className="mb-3 flex w-fit rounded-xl border border-[var(--broker-border)] bg-[var(--broker-surface)] p-1 shadow-[var(--broker-shadow)]">
         <button type="button" onClick={() => setView("contracts")} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${view === "contracts" ? "bg-[#edf8f1] text-[#17733a]" : "text-[#687386]"}`}>Contratos</button>
         <button type="button" onClick={() => setView("templates")} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${view === "templates" ? "bg-[#edf8f1] text-[#17733a]" : "text-[#687386]"}`}>Modelos</button>
       </div>

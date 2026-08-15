@@ -5,6 +5,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Building2, ChevronLeft, ExternalLink, FileText, MessageCircle, PencilLine, Plus, Send, Star, Users, X } from 'lucide-react'
 import { BrokerPageShell } from '@/components/broker-page-shell'
+import {
+  BrokerEmptyState,
+  BrokerPageIntro,
+  BrokerStatItem,
+  BrokerStatStrip,
+  BrokerStatusPill,
+  BrokerSurface,
+} from '@/components/broker-portal-ui'
 import { MarketplaceMessageCard } from '@/components/marketplace/chat/marketplace-message-card'
 import { formatCurrencyBRLFromCents } from '@/lib/structured-fields'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
@@ -94,21 +102,85 @@ export function BrokerMarketplacePage() {
   if (!data) return <BrokerPageShell title="Marketplace"><div className="p-8 text-sm text-[#6b7280]">Carregando Marketplace...</div></BrokerPageShell>
   const profile = data.profile
 
-  return <BrokerPageShell title="Marketplace" contentClassName="pb-10"><div className="space-y-6 p-4 sm:p-0">
-    <section className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#009b3a]">Visão geral</p><h2 className="mt-2 text-2xl font-semibold">Seu atendimento público em um só lugar</h2><p className="mt-2 text-sm text-[#667085]">Perfil, conversas, leads e imóveis publicados usam os dados reais do Marketplace.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => setEditing((value) => !value)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 px-4 text-sm font-semibold"><PencilLine className="h-4 w-4" />Editar perfil</button>{data.publicPath ? <Link href={data.publicPath} target="_blank" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white">Ver perfil público<ExternalLink className="h-4 w-4" /></Link> : null}</div></div>
-      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">{[['Conversas abertas', data.counts.conversations], ['Leads Marketplace', data.counts.leads], ['Imóveis publicados', data.counts.properties], ['Avaliações pendentes', data.counts.reviews.PENDING_REVIEW || 0]].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-[#f7f8f5] p-4"><p className="text-2xl font-semibold">{value}</p><p className="mt-1 text-xs text-[#667085]">{label}</p></div>)}</div>
-    </section>
+  return (
+    <BrokerPageShell title="Marketplace" contentClassName="pb-10">
+      <div className="grid gap-4 p-3 sm:p-0">
+        <BrokerPageIntro
+          eyebrow="Visão geral"
+          title="Seu atendimento público em um só lugar"
+          description="Perfil, conversas, leads e imóveis publicados usam os dados reais do Marketplace."
+          actions={
+            <>
+              <button onClick={() => setEditing((value) => !value)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/[0.08] bg-white px-3 text-xs font-semibold text-[#344054] hover:bg-[#f7f8f5]">
+                <PencilLine className="h-4 w-4" />Editar perfil
+              </button>
+              {data.publicPath ? <Link href={data.publicPath} target="_blank" className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#009b3a] px-3 text-xs font-semibold text-white hover:bg-[#008633]">Ver perfil público<ExternalLink className="h-4 w-4" /></Link> : null}
+            </>
+          }
+        />
 
-    {editing ? <form onSubmit={saveProfile} className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm"><div className="grid gap-4 md:grid-cols-3"><label className="text-sm font-medium">Região<input value={draft.region} onChange={(event) => setDraft({ ...draft, region: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-black/10 px-3 font-normal outline-none focus:border-[#009b3a]/50" /></label><label className="text-sm font-medium">Especialidade<input value={draft.specialty} onChange={(event) => setDraft({ ...draft, specialty: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-black/10 px-3 font-normal outline-none focus:border-[#009b3a]/50" /></label><label className="text-sm font-medium">Atuação<select value={draft.transactions} onChange={(event) => setDraft({ ...draft, transactions: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-black/10 px-3 font-normal"><option value="BOTH">Compra e aluguel</option><option value="SALE">Compra</option><option value="RENT">Aluguel</option></select></label></div><label className="mt-4 block text-sm font-medium">Sobre o atendimento<textarea rows={3} value={draft.about} onChange={(event) => setDraft({ ...draft, about: event.target.value })} className="mt-1.5 w-full resize-none rounded-xl border border-black/10 px-3 py-2 font-normal outline-none focus:border-[#009b3a]/50" /></label><button className="mt-4 rounded-xl bg-[#009b3a] px-5 py-2.5 text-sm font-semibold text-white">Salvar perfil</button>{feedback ? <span className="ml-3 text-sm text-[#667085]">{feedback}</span> : null}</form> : null}
+        <BrokerStatStrip>
+          <BrokerStatItem icon={<MessageCircle className="size-4" />} label="Conversas abertas" value={data.counts.conversations} />
+          <BrokerStatItem icon={<Users className="size-4" />} label="Leads Marketplace" value={data.counts.leads} />
+          <BrokerStatItem icon={<Building2 className="size-4" />} label="Imóveis publicados" value={data.counts.properties} />
+          <BrokerStatItem icon={<Star className="size-4" />} label="Avaliações pendentes" value={data.counts.reviews.PENDING_REVIEW || 0} />
+        </BrokerStatStrip>
 
-    <section className="grid gap-6 xl:grid-cols-[.8fr_1.2fr]">
-      <div className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><h3 className="font-semibold">Preview do perfil público</h3><div className="rounded-full bg-[#f2fbf5] px-3 py-1 text-xs font-medium text-[#007d32]">Card | Perfil</div></div>{profile ? <div className="mt-5 rounded-2xl border border-black/[0.06] p-4"><div className="flex items-center gap-4"><div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-[#f3f4f2]">{profile.image ? <Image src={profile.image} alt="" fill sizes="64px" className="object-cover" /> : null}</div><div><p className="font-semibold">{profile.name}</p><p className="text-sm text-[#667085]">{profile.creci}</p><p className="mt-1 text-xs text-[#009b3a]">{profile.specialty}</p></div></div><p className="mt-4 text-sm leading-relaxed text-[#667085]">{profile.about || 'Complete o texto do perfil para apresentar seu atendimento.'}</p><div className="mt-4 flex gap-2 text-xs text-[#667085]"><span>{profile.activeListings} imóveis</span>{profile.reviewCount ? <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{profile.rating.toFixed(1)} ({profile.reviewCount})</span> : null}</div></div> : <div className="mt-5 rounded-2xl border border-dashed border-black/10 p-6 text-sm text-[#667085]">O perfil público será ativado quando houver ao menos um imóvel publicado no Marketplace.</div>}</div>
-      <ConversationPanel conversations={conversations} selected={selected} selectedId={selectedId} reply={reply} setReply={setReply} setSelectedId={setSelectedId} sendReply={sendReply} closeConversation={closeConversation} reload={load} />
-    </section>
+        {editing ? (
+          <form onSubmit={saveProfile}>
+            <BrokerSurface padding="compact">
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="text-sm font-medium text-[#344054]">Região<input value={draft.region} onChange={(event) => setDraft({ ...draft, region: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] px-3 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
+                <label className="text-sm font-medium text-[#344054]">Especialidade<input value={draft.specialty} onChange={(event) => setDraft({ ...draft, specialty: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] px-3 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
+                <label className="text-sm font-medium text-[#344054]">Atuação<select value={draft.transactions} onChange={(event) => setDraft({ ...draft, transactions: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 font-normal"><option value="BOTH">Compra e aluguel</option><option value="SALE">Compra</option><option value="RENT">Aluguel</option></select></label>
+              </div>
+              <label className="mt-3 block text-sm font-medium text-[#344054]">Sobre o atendimento<textarea rows={2} value={draft.about} onChange={(event) => setDraft({ ...draft, about: event.target.value })} className="mt-1.5 w-full resize-none rounded-lg border border-black/[0.08] px-3 py-2 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
+              <div className="mt-3 flex flex-wrap items-center gap-3"><button className="h-9 rounded-lg bg-[#009b3a] px-4 text-xs font-semibold text-white hover:bg-[#008633]">Salvar perfil</button>{feedback ? <span className="text-sm text-[#667085]">{feedback}</span> : null}</div>
+            </BrokerSurface>
+          </form>
+        ) : null}
 
-    <section className="grid gap-6 lg:grid-cols-2"><div className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm"><h3 className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-[#009b3a]" />Leads</h3><div className="mt-4 space-y-2">{data.leads.slice(0, 6).map((lead) => <div key={lead.id} className="flex items-center justify-between rounded-xl bg-[#f7f8f5] p-3"><div><p className="text-sm font-semibold">{lead.name || 'Contato Marketplace'}</p><p className="text-xs text-[#667085]">{lead.intent || lead.phone}</p></div><span className="text-[11px] font-medium text-[#009b3a]">{lead.status}</span></div>)}{!data.leads.length ? <p className="text-sm text-[#667085]">Novos contatos aparecerão aqui.</p> : null}</div></div><div className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm"><h3 className="font-semibold">Imóveis publicados</h3><div className="mt-4 space-y-2">{data.properties.slice(0, 6).map((property) => <Link href={`/imoveis/imovel/${property.marketplaceSlug}`} target="_blank" key={property.id} className="flex items-center gap-3 rounded-xl bg-[#f7f8f5] p-3"><div className="relative h-12 w-14 shrink-0 overflow-hidden rounded-lg bg-[#e8ece8]">{property.image ? <Image src={property.image} alt="" fill sizes="56px" className="object-cover" /> : null}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{property.title}</p><p className="text-xs text-[#667085]">{property.city} · {formatCurrencyBRLFromCents(property.price * 100)}</p></div><ExternalLink className="h-4 w-4 text-[#667085]" /></Link>)}{!data.properties.length ? <p className="text-sm text-[#667085]">Nenhum imóvel publicado.</p> : null}</div></div></section>
-  </div></BrokerPageShell>
+        <section className="grid gap-4 xl:grid-cols-[minmax(17rem,.72fr)_minmax(0,1.28fr)]">
+          <BrokerSurface padding="compact">
+            <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-[#111827]">Preview do perfil público</h3><BrokerStatusPill tone="positive">Card | Perfil</BrokerStatusPill></div>
+            {profile ? (
+              <div className="mt-4 rounded-xl border border-black/[0.06] bg-[#fcfcfb] p-4">
+                <div className="flex items-center gap-3"><div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#f3f4f2]">{profile.image ? <Image src={profile.image} alt="" fill sizes="56px" className="object-cover" /> : null}</div><div className="min-w-0"><p className="truncate font-semibold text-[#111827]">{profile.name}</p><p className="truncate text-xs text-[#667085]">{profile.creci}</p><p className="mt-1 truncate text-xs text-[#008633]">{profile.specialty}</p></div></div>
+                <p className="mt-3 line-clamp-4 text-sm leading-5 text-[#667085]">{profile.about || 'Complete o texto do perfil para apresentar seu atendimento.'}</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#667085]"><span>{profile.activeListings} imóveis</span>{profile.reviewCount ? <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{profile.rating.toFixed(1)} ({profile.reviewCount})</span> : null}</div>
+              </div>
+            ) : <BrokerEmptyState className="mt-4 min-h-36" title="Perfil público ainda indisponível" description="O perfil será ativado quando houver ao menos um imóvel publicado no Marketplace." />}
+          </BrokerSurface>
+          <ConversationPanel conversations={conversations} selected={selected} selectedId={selectedId} reply={reply} setReply={setReply} setSelectedId={setSelectedId} sendReply={sendReply} closeConversation={closeConversation} reload={load} />
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <BrokerSurface padding="compact">
+            <h3 className="flex items-center gap-2 font-semibold text-[#111827]"><Users className="h-4 w-4 text-[#009b3a]" />Leads</h3>
+            <div className="mt-3 grid divide-y divide-black/[0.055]">{data.leads.slice(0, 6).map((lead) => <div key={lead.id} className="flex min-w-0 items-center justify-between gap-3 py-2.5"><div className="min-w-0"><p className="truncate text-sm font-semibold text-[#111827]">{lead.name || 'Contato Marketplace'}</p><p className="truncate text-xs text-[#667085]">{lead.intent || lead.phone}</p></div><BrokerStatusPill tone={lead.status === 'OPEN' || lead.status === 'NEW' ? 'positive' : 'neutral'}>{formatMarketplaceLeadStatus(lead.status)}</BrokerStatusPill></div>)}{!data.leads.length ? <p className="py-5 text-sm text-[#667085]">Novos contatos aparecerão aqui.</p> : null}</div>
+          </BrokerSurface>
+          <BrokerSurface padding="compact">
+            <h3 className="font-semibold text-[#111827]">Imóveis publicados</h3>
+            <div className="mt-3 grid divide-y divide-black/[0.055]">{data.properties.slice(0, 6).map((property) => <Link href={`/imoveis/imovel/${property.marketplaceSlug}`} target="_blank" key={property.id} className="flex min-w-0 items-center gap-3 py-2.5"><div className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-[#e8ece8]">{property.image ? <Image src={property.image} alt="" fill sizes="56px" className="object-cover" /> : null}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-[#111827]">{property.title}</p><p className="truncate text-xs text-[#667085]">{property.city} · {formatCurrencyBRLFromCents(property.price * 100)}</p></div><ExternalLink className="h-4 w-4 shrink-0 text-[#667085]" /></Link>)}{!data.properties.length ? <p className="py-5 text-sm text-[#667085]">Nenhum imóvel publicado.</p> : null}</div>
+          </BrokerSurface>
+        </section>
+      </div>
+    </BrokerPageShell>
+  )
+}
+
+function formatMarketplaceLeadStatus(status: string) {
+  const labels: Record<string, string> = {
+    NEW: 'Novo',
+    OPEN: 'Em atendimento',
+    CONTACTED: 'Em atendimento',
+    NEGOTIATING: 'Negociação',
+    WON: 'Convertido',
+    CLOSED: 'Encerrado',
+    LOST: 'Encerrado',
+    ARCHIVED: 'Arquivado',
+  }
+  return labels[status] ?? status
 }
 
 type ConversationPanelProps = {
@@ -178,12 +250,12 @@ function ConversationPanel({ conversations, selected, selectedId, reply, setRepl
   }
 
   const items = shareMode === 'PROPERTY' ? shareOptions?.properties : shareOptions?.proposals
-  return <div className="overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-sm">
-    <div className="border-b border-black/[0.06] p-5"><h3 className="font-semibold">Conversas</h3><p className="mt-1 text-sm text-[#667085]">Atendimento persistido dentro do EME.</p></div>
-    <div className="grid min-h-[390px] md:grid-cols-[210px_1fr]">
-      <aside className="border-b border-black/[0.06] md:border-b-0 md:border-r"><div className="max-h-[390px] overflow-y-auto p-2">{conversations.length ? conversations.map((conversation) => <button key={conversation.id} onClick={() => setSelectedId(conversation.id)} className={cn('w-full rounded-xl p-3 text-left', selectedId === conversation.id ? 'bg-[#f2fbf5]' : 'hover:bg-[#f7f8f5]')}><p className="truncate text-sm font-semibold">{conversation.customerName}</p><p className="mt-1 truncate text-xs text-[#667085]">{conversation.property?.title || conversation.messages.at(-1)?.body}</p></button>) : <p className="p-4 text-sm text-[#667085]">Nenhuma conversa ainda.</p>}</div></aside>
+  return <div className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] shadow-[var(--broker-shadow-xs)]">
+    <div className="border-b border-[var(--broker-border)] px-4 py-3.5"><h3 className="font-semibold text-[#111827]">Conversas</h3><p className="mt-0.5 text-xs text-[#667085]">Atendimento persistido dentro do EME.</p></div>
+    <div className="grid min-h-[360px] md:grid-cols-[12rem_minmax(0,1fr)]">
+      <aside className="border-b border-black/[0.06] md:border-r md:border-b-0"><div className="max-h-36 overflow-y-auto p-1.5 md:max-h-[360px]">{conversations.length ? conversations.map((conversation) => <button key={conversation.id} onClick={() => setSelectedId(conversation.id)} className={cn('w-full rounded-lg px-2.5 py-2.5 text-left', selectedId === conversation.id ? 'bg-[#f2fbf5]' : 'hover:bg-[#f7f8f5]')}><p className="truncate text-sm font-semibold">{conversation.customerName}</p><p className="mt-0.5 truncate text-xs text-[#667085]">{conversation.property?.title || conversation.messages.at(-1)?.body}</p></button>) : <p className="p-4 text-sm text-[#667085]">Nenhuma conversa ainda.</p>}</div></aside>
       <div className="flex min-w-0 flex-col">{selected ? <>
-        <div className="flex max-h-[310px] min-h-[250px] flex-1 flex-col gap-2 overflow-y-auto p-4">{selected.messages.map((message) => <div key={message.id} className={cn('flex', message.sender === 'BROKER' ? 'justify-end' : '')}>{message.kind && message.kind !== 'TEXT' ? <MarketplaceMessageCard kind={message.kind} body={message.body} metadata={message.metadata} brokerView /> : <p className={cn('max-w-[85%] rounded-xl px-3 py-2 text-sm', message.sender === 'BROKER' ? 'bg-[#009b3a] text-white' : 'bg-[#f3f4f2]')}>{message.body}</p>}</div>)}</div>
+        <div className="flex max-h-[285px] min-h-[220px] flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-3">{selected.messages.map((message) => <div key={message.id} className={cn('flex', message.sender === 'BROKER' ? 'justify-end' : '')}>{message.kind && message.kind !== 'TEXT' ? <MarketplaceMessageCard kind={message.kind} body={message.body} metadata={message.metadata} brokerView /> : <p className={cn('max-w-[88%] rounded-xl px-3 py-2 text-sm', message.sender === 'BROKER' ? 'bg-[#009b3a] text-white' : 'bg-[#f3f4f2]')}>{message.body}</p>}</div>)}</div>
         {selected.status === 'OPEN' ? <form onSubmit={sendReply} className="relative border-t border-black/[0.06] p-3">
           {shareMenuOpen ? <div className="absolute bottom-[4.1rem] left-3 z-20 w-[min(320px,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-[0_18px_45px_rgba(15,23,42,.16)]">
             <div className="flex items-center justify-between border-b border-black/[0.06] px-3 py-2.5"><button type="button" aria-label="Voltar" onClick={() => setShareMode(null)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#f5f7f5]', !shareMode && 'invisible')}><ChevronLeft className="h-4 w-4" /></button><p className="text-sm font-semibold">{shareMode === 'PROPERTY' ? 'Enviar imóvel' : shareMode === 'PROPOSAL' ? 'Enviar proposta' : 'Compartilhar'}</p><button type="button" aria-label="Fechar opções" onClick={() => setShareMenuOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#f5f7f5]"><X className="h-4 w-4" /></button></div>
