@@ -7,26 +7,25 @@ export const studioVideoFormats = [
   "Quadrado 1:1",
 ] as const
 
-export const studioVideoLegacyDurations = ["15 segundos", "30 segundos", "45 segundos", "60 segundos"] as const
+export const studioVideoLegacyDurations = ["9s", "15 segundos", "30 segundos", "45 segundos", "60 segundos"] as const
 
 export const studioVideoSelectableDurationOptions = [
   {
-    value: "9s",
-    label: "9 segundos",
+    value: "5s",
+    label: "5 segundos",
     baseCredits: 22,
   },
 ] as const
 
-export const studioVideoSelectableDurations = studioVideoSelectableDurationOptions.map((item) => item.value) as ["9s"]
-export const studioVideoDefaultDuration = "9s" as const
+export const studioVideoSelectableDurations = studioVideoSelectableDurationOptions.map((item) => item.value) as ["5s"]
+export const studioVideoDefaultDuration = "5s" as const
 export const studioVideoDurationAdjustedMessage =
-  "A duracao foi ajustada para 9 segundos, compativel com o modelo atual."
+  "A duracao foi ajustada para 5 segundos, compativel com o modelo atual."
 export const studioVideoInvalidDurationMessage =
   "A duracao escolhida nao e compativel com o gerador atual. Selecione uma opcao disponivel."
 
 const studioVideoProviderAcceptedDurationsByModel = {
-  "ray-2": ["5s", "9s"],
-  "ray-flash-2": ["9s"],
+  "ray-3.2": ["5s"],
 } as const
 
 export const studioVideoObjectiveGroups = ["Comercial", "Transformacao", "Institucional"] as const
@@ -109,9 +108,9 @@ export const studioVideoJobStages = [
   "failed",
 ] as const
 
-export const studioVideoPreviewImageModel = "photon-flash-1" as const
-export const studioVideoFallbackPreviewImageModel = "photon-1" as const
-export const studioVideoPreviewVideoModel = "ray-flash-2" as const
+export const studioVideoPreviewImageModel = "uni-1" as const
+export const studioVideoFallbackPreviewImageModel = "uni-1-max" as const
+export const studioVideoPreviewVideoModel = "ray-3.2" as const
 
 export const studioVideoTechnicalSpendLimits = {
   dailyCredits: 180,
@@ -728,7 +727,7 @@ export type StudioVideoResult = z.infer<typeof studioVideoResultSchema>
 export type StudioVideoJobContent = z.infer<typeof studioVideoJobContentSchema>
 
 export function getStudioVideoDurationLabel(duration: StudioVideoDuration) {
-  return studioVideoSelectableDurationOptions.find((item) => item.value === duration)?.label ?? "9 segundos"
+  return studioVideoSelectableDurationOptions.find((item) => item.value === duration)?.label ?? "5 segundos"
 }
 
 export function requiresTransformationPreview(transformation: StudioVideoTransformation) {

@@ -1035,6 +1035,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_INSUFFICIENT_BALANCE") {
+      return NextResponse.json(
+        {
+          error: "A conta de geração de vídeo da Luma está sem saldo disponível.",
+          providerConfigured: true,
+        },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_API_ACCESS_DENIED") {
+      return NextResponse.json(
+        {
+          error: "A conta de geração de vídeo da Luma não está autorizada para esta operação.",
+          providerConfigured: true,
+        },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message === "LUMAAI_RATE_LIMITED") {
+      return NextResponse.json(
+        { error: "A geração de vídeo está temporariamente ocupada. Tente novamente em instantes." },
+        { status: 503 },
+      )
+    }
+
     if (isDurationValidationError(caughtError)) {
       return NextResponse.json({ error: studioVideoInvalidDurationMessage }, { status: 400 })
     }

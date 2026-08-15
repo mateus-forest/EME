@@ -4,6 +4,17 @@ import { createHash, randomUUID } from "node:crypto"
 
 import { getLumaAIEnv } from "@/lib/env.server"
 import { recordEstimatedCatalogTelemetry } from "@/lib/ai-operation-telemetry"
+import {
+  buildLumaAgentsImageEditRequest,
+  buildLumaAgentsVideoGenerationRequest,
+  getLumaAgentsOutputUrl,
+  lumaAgentsApiBaseUrl,
+  lumaAgentsImageModel,
+  lumaAgentsVideoModel,
+  type LumaAgentsGeneration,
+  type LumaAgentsImageEditInput,
+  type LumaAgentsVideoGenerationInput,
+} from "@/lib/luma-agents-contract"
 import { savePropertyGeneratedImage, savePropertyGeneratedVideo, saveStudioVideoReferenceImage } from "@/lib/property-storage"
 import {
   studioVideoActionType,
@@ -28,7 +39,6 @@ import {
   studioVideoObjectives,
   getStudioVideoPreviewCredits,
   studioVideoPreviewActionType,
-  studioVideoPreviewImageModel,
   studioVideoPreviewRegenerationActionType,
   studioVideoPreviewVideoModel,
   studioVideoRequestKinds,
@@ -105,52 +115,6 @@ export type StudioVideoPropertyContext = {
 
 type ReferenceInput = { kind: "url"; url: string } | { kind: "file"; file: File }
 
-type LumaVideoGenerationCreateRequest = {
-  prompt: string
-  model: string
-  resolution: "540p" | "720p" | "1080p"
-  duration: "5s" | "9s"
-  aspect_ratio: "9:16" | "16:9" | "1:1"
-  loop?: boolean
-  keyframes?: {
-    frame0?: {
-      type: "image"
-      url: string
-    }
-    frame1?: {
-      type: "image"
-      url: string
-    }
-  }
-}
-
-type LumaImageGenerationCreateRequest = {
-  prompt: string
-  model: string
-  aspect_ratio: "9:16" | "16:9" | "1:1"
-  modify_image_ref: {
-    url: string
-    weight: number
-  }
-}
-
-type LumaGeneration = {
-  id: string
-  state: string
-  failure_reason: string | null
-  created_at?: string
-  assets?: {
-    video?: string | null
-    image?: string | null
-  }
-  version?: string
-  request?: {
-    prompt?: string
-    aspect_ratio?: string
-    loop?: boolean
-  }
-}
-
 type StudioVideoStageCostSummary = {
   estimatedCredits: number
   stageEstimatedCredits: number
@@ -163,17 +127,16 @@ type StudioVideoPromptInput = Pick<
   "format" | "duration" | "objective" | "style" | "transformation" | "rhythm" | "cameraMovement" | "additionalInstructions"
 >
 
-const LUMA_API_BASE_URL = "https://api.lumalabs.ai/dream-machine/v1"
 const PREVIEW_QUALITY_DIFF_THRESHOLD = 0.065
 
-const formatAspectRatioMap: Record<(typeof studioVideoFormats)[number], LumaVideoGenerationCreateRequest["aspect_ratio"]> = {
+const formatAspectRatioMap: Record<(typeof studioVideoFormats)[number], LumaAgentsVideoGenerationInput["aspectRatio"]> = {
   "Reel vertical 9:16": "9:16",
   "Story vertical 9:16": "9:16",
   "Paisagem 16:9": "16:9",
   "Quadrado 1:1": "1:1",
 }
 
-const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaVideoGenerationCreateRequest["resolution"]> = {
+const formatResolutionMap: Record<(typeof studioVideoFormats)[number], LumaAgentsVideoGenerationInput["resolution"]> = {
   "Reel vertical 9:16": "720p",
   "Story vertical 9:16": "720p",
   "Paisagem 16:9": "720p",
@@ -206,7 +169,7 @@ function clipText(value: string, maxLength: number) {
 
 function sanitizeStudioVideoErrorMessage(message?: string | null) {
   if (!message) return undefined
-  if (/(duration|9s|5s|seconds|segundos)/i.test(message)) {
+  if (/(duration|10s|9s|5s|seconds|segundos)/i.test(message)) {
     return studioVideoInvalidDurationMessage
   }
 
@@ -226,26 +189,26 @@ function getLumaAuthHeaders() {
   }
 }
 
+function readLumaErrorDetail(data: unknown) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return ""
+  const record = data as Record<string, unknown>
+  const value = record.detail ?? record.error ?? record.message
+  if (typeof value === "string") return value
+  return value ? JSON.stringify(value).slice(0, 500) : ""
+}
+
 async function parseLumaJsonResponse<T>(response: Response) {
-  const data = (await response.json().catch(() => null)) as T | { error?: string; detail?: string; message?: string } | null
+  const data = (await response.json().catch(() => null)) as T | unknown
 
   if (!response.ok) {
-    const detail =
-      data && typeof data === "object"
-        ? "error" in data
-          ? data.error
-          : "detail" in data
-            ? data.detail
-            : "message" in data
-              ? data.message
-              : ""
-        : ""
+    const detail = readLumaErrorDetail(data)
 
-    if (response.status === 401 || response.status === 403) {
-      throw new Error(detail || "LUMAAI_API_KEY_INVALID")
-    }
+    if (response.status === 401) throw new Error("LUMAAI_API_KEY_INVALID")
+    if (response.status === 402) throw new Error("LUMAAI_INSUFFICIENT_BALANCE")
+    if (response.status === 403) throw new Error("LUMAAI_API_ACCESS_DENIED")
+    if (response.status === 429) throw new Error("LUMAAI_RATE_LIMITED")
 
-    if (detail && /(duration|9s|5s|seconds|segundos)/i.test(detail)) {
+    if (detail && /(duration|10s|5s|seconds|segundos)/i.test(detail)) {
       throw new Error("LUMA_DURATION_NOT_SUPPORTED")
     }
 
@@ -259,32 +222,32 @@ async function parseLumaJsonResponse<T>(response: Response) {
   return data as T
 }
 
-async function createLumaVideoGeneration(payload: LumaVideoGenerationCreateRequest) {
-  const response = await fetch(`${LUMA_API_BASE_URL}/generations`, {
+async function createLumaVideoGeneration(payload: LumaAgentsVideoGenerationInput) {
+  const response = await fetch(`${lumaAgentsApiBaseUrl}/generations`, {
     method: "POST",
     headers: {
       ...getLumaAuthHeaders(),
       "content-type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(buildLumaAgentsVideoGenerationRequest(payload)),
     cache: "no-store",
   })
 
-  return parseLumaJsonResponse<LumaGeneration>(response)
+  return parseLumaJsonResponse<LumaAgentsGeneration>(response)
 }
 
-async function createLumaImageGeneration(payload: LumaImageGenerationCreateRequest) {
-  const response = await fetch(`${LUMA_API_BASE_URL}/generations/image`, {
+async function createLumaImageGeneration(payload: LumaAgentsImageEditInput) {
+  const response = await fetch(`${lumaAgentsApiBaseUrl}/generations`, {
     method: "POST",
     headers: {
       ...getLumaAuthHeaders(),
       "content-type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(buildLumaAgentsImageEditRequest(payload)),
     cache: "no-store",
   })
 
-  return parseLumaJsonResponse<LumaGeneration>(response)
+  return parseLumaJsonResponse<LumaAgentsGeneration>(response)
 }
 
 function delay(ms: number) {
@@ -293,22 +256,13 @@ function delay(ms: number) {
 
 const LUMA_STATUS_RETRY_DELAYS_MS = [800, 1600, 3200]
 
-// A Luma tem um unico recurso "generations": a criacao usa endpoints separados
-// (POST /generations para video, POST /generations/image para imagem), mas a consulta de status
-// e sempre GET /generations/{id}, seja qual for o tipo — o corpo retornado ja diferencia via
-// assets.image/assets.video (mesmo formato que refreshStudioVideoJob ja le abaixo). Usar
-// GET /generations/image/{id} para a etapa de previa nao existe na API da Luma e sempre retornava
-// 404 "Not Found" nessa etapa — nao era uma condicao de corrida, era URL errada.
-//
-// Mesmo com a URL corrigida, um 404/5xx pontual logo apos a criacao (ou uma instabilidade
-// passageira do lado da Luma) ainda pode acontecer — mantemos um retry curto com backoff aqui
-// (nao no cliente) para nao derrubar o job inteiro por causa de uma unica consulta de status
-// transitoria. Isso e so uma checagem de status: nao dispara nova geracao nem cobra credito.
+// A Agents API usa o mesmo recurso para criar e consultar imagens e videos. O retry curto
+// absorve apenas indisponibilidade transitoria de leitura; nunca inicia outra geracao.
 async function getLumaGeneration(generationId: string) {
   let lastError: unknown = null
 
   for (let attempt = 0; attempt <= LUMA_STATUS_RETRY_DELAYS_MS.length; attempt++) {
-    const response = await fetch(`${LUMA_API_BASE_URL}/generations/${generationId}`, {
+    const response = await fetch(`${lumaAgentsApiBaseUrl}/generations/${generationId}`, {
       method: "GET",
       headers: getLumaAuthHeaders(),
       cache: "no-store",
@@ -316,11 +270,11 @@ async function getLumaGeneration(generationId: string) {
 
     const isRetryableStatus = response.status === 404 || response.status >= 500
     if (!isRetryableStatus) {
-      return parseLumaJsonResponse<LumaGeneration>(response)
+      return parseLumaJsonResponse<LumaAgentsGeneration>(response)
     }
 
     try {
-      return await parseLumaJsonResponse<LumaGeneration>(response)
+      return await parseLumaJsonResponse<LumaAgentsGeneration>(response)
     } catch (caughtError) {
       lastError = caughtError
     }
@@ -569,14 +523,14 @@ async function compareImageDifference(referenceUrl: string, candidateUrl: string
 function mapProcessingStatus(state: string): StudioVideoResult["generationStatus"] {
   if (state === "completed") return "completed"
   if (state === "failed") return "failed"
-  if (state === "dreaming") return "processing"
+  if (state === "processing" || state === "dreaming") return "processing"
   return "queued"
 }
 
 function mapProcessingProgress(state: string, activeStage: StudioVideoActiveStage) {
   if (state === "completed") return 100
   if (state === "failed") return 0
-  if (state === "dreaming") return activeStage === "preview" ? 48 : 68
+  if (state === "processing" || state === "dreaming") return activeStage === "preview" ? 48 : 68
   return activeStage === "preview" ? 18 : 28
 }
 
@@ -756,7 +710,7 @@ function baseJobContent({
       previewRegenerationCredits: 0,
       videoEstimatedCredits:
         requestKind === "transformation_pipeline"
-          ? getStudioVideoVideoStageCredits(getLumaAIEnv().videoModel || studioVideoPreviewVideoModel)
+          ? getStudioVideoVideoStageCredits(lumaAgentsVideoModel)
           : 0,
       totalCreditsConsumed: 0,
       totalCreditsRefunded: 0,
@@ -825,13 +779,13 @@ export function stringifyStudioVideoJobContent(content: StudioVideoJobContent) {
 }
 
 export function getStudioVideoProviderConfig() {
-  const { apiKey, videoModel, previewVideoModel, imageModel } = getLumaAIEnv()
+  const { apiKey } = getLumaAIEnv()
 
   return {
     provider: "lumaai",
-    model: videoModel,
-    previewVideoModel,
-    previewImageModel: imageModel || studioVideoPreviewImageModel,
+    model: lumaAgentsVideoModel,
+    previewVideoModel: lumaAgentsVideoModel,
+    previewImageModel: lumaAgentsImageModel,
     isConfigured: Boolean(apiKey),
     estimatedCredits: getStudioVideoEstimatedCredits({
       duration: studioVideoDefaultDuration,
@@ -871,12 +825,8 @@ export async function createInitialStudioVideoJob({
     const previewPrompt = buildTransformationPreviewPrompt(input, property)
     const generation = await createLumaImageGeneration({
       prompt: previewPrompt,
-      model: config.previewImageModel,
-      aspect_ratio: formatAspectRatioMap[input.format],
-      modify_image_ref: {
-        url: sourceReferenceUrl,
-        weight: 0.85,
-      },
+      aspectRatio: formatAspectRatioMap[input.format],
+      sourceUrl: sourceReferenceUrl,
     })
 
     const job = baseJobContent({
@@ -950,22 +900,11 @@ export async function createInitialStudioVideoJob({
   const prompt = buildDirectVideoPrompt(input, property)
   const generation = await createLumaVideoGeneration({
     prompt,
-    model: config.model,
     resolution: formatResolutionMap[input.format],
     duration: input.duration,
-    aspect_ratio: formatAspectRatioMap[input.format],
-    keyframes: {
-      frame0: {
-        type: "image",
-        url: sourceReferenceUrl,
-      },
-      ...(targetReferenceUrl ? {
-        frame1: {
-          type: "image" as const,
-          url: targetReferenceUrl,
-        },
-      } : {}),
-    },
+    aspectRatio: formatAspectRatioMap[input.format],
+    startFrameUrl: sourceReferenceUrl,
+    endFrameUrl: targetReferenceUrl,
   })
 
   const job = baseJobContent({
@@ -1063,12 +1002,8 @@ export async function regenerateStudioVideoPreview(job: StudioVideoJobContent) {
 
   const generation = await createLumaImageGeneration({
     prompt: previewPrompt,
-    model: config.previewImageModel,
-    aspect_ratio: formatAspectRatioMap[job.format],
-    modify_image_ref: {
-      url: job.sourceReferenceUrl,
-      weight: 0.85,
-    },
+    aspectRatio: formatAspectRatioMap[job.format],
+    sourceUrl: job.sourceReferenceUrl,
   })
 
   const nextJob: StudioVideoJobContent = {
@@ -1183,20 +1118,11 @@ export async function createApprovedStudioVideoAnimation(job: StudioVideoJobCont
 
   const generation = await createLumaVideoGeneration({
     prompt,
-    model: config.model,
     resolution: formatResolutionMap[job.format],
     duration: job.duration,
-    aspect_ratio: formatAspectRatioMap[job.format],
-    keyframes: {
-      frame0: {
-        type: "image",
-        url: job.sourceReferenceUrl,
-      },
-      frame1: {
-        type: "image",
-        url: job.previewImageUrl,
-      },
-    },
+    aspectRatio: formatAspectRatioMap[job.format],
+    startFrameUrl: job.sourceReferenceUrl,
+    endFrameUrl: job.previewImageUrl,
   })
 
   const stageEstimatedCredits = getStudioVideoEstimatedCredits({
@@ -1277,13 +1203,26 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent): Promise
       activeStage,
       providerJobId,
       failureReason: generation.failure_reason,
+      failureCode: generation.failure_code,
       requestKind: job.requestKind,
     })
   }
 
   if (activeStage === "preview") {
-    if (generation.state === "completed" && generation.assets?.image) {
-      const differenceScore = await compareImageDifference(job.sourceReferenceUrl || job.referenceImageUrls[0] || generation.assets.image, generation.assets.image)
+    const providerImageUrl = getLumaAgentsOutputUrl(generation, "image")
+    if (generation.state === "completed" && !providerImageUrl) {
+      return {
+        ...job,
+        generationStatus: "failed",
+        jobStage: "failed",
+        progress: 0,
+        previewErrorMessage: "A Luma concluiu a geracao sem retornar a imagem esperada.",
+        errorMessage: "A Luma concluiu a geracao sem retornar a imagem esperada.",
+      } satisfies StudioVideoJobContent
+    }
+
+    if (generation.state === "completed" && providerImageUrl) {
+      const differenceScore = await compareImageDifference(job.sourceReferenceUrl || job.referenceImageUrls[0] || providerImageUrl, providerImageUrl)
       if (differenceScore < PREVIEW_QUALITY_DIFF_THRESHOLD) {
         return {
           ...job,
@@ -1303,7 +1242,7 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent): Promise
         } satisfies StudioVideoJobContent
       }
 
-      const response = await fetch(generation.assets.image, { cache: "no-store" })
+      const response = await fetch(providerImageUrl, { cache: "no-store" })
       if (!response.ok) {
         throw new Error("PREVIEW_DOWNLOAD_FAILED")
       }
@@ -1340,9 +1279,20 @@ export async function refreshStudioVideoJob(job: StudioVideoJobContent): Promise
   }
 
   let videoUrl = job.videoUrl
+  const providerVideoUrl = getLumaAgentsOutputUrl(generation, "video")
 
-  if (generation.state === "completed" && generation.assets?.video && !videoUrl) {
-    const response = await fetch(generation.assets.video, { cache: "no-store" })
+  if (generation.state === "completed" && !providerVideoUrl && !videoUrl) {
+    return {
+      ...job,
+      generationStatus: "failed",
+      jobStage: "failed",
+      progress: 0,
+      errorMessage: "A Luma concluiu a geracao sem retornar o video esperado.",
+    } satisfies StudioVideoJobContent
+  }
+
+  if (generation.state === "completed" && providerVideoUrl && !videoUrl) {
+    const response = await fetch(providerVideoUrl, { cache: "no-store" })
     if (!response.ok) {
       throw new Error("VIDEO_DOWNLOAD_FAILED")
     }

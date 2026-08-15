@@ -13,7 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { getApprovedStudioPipelineAssets } from "@/lib/studio-asset-context"
 import { studioCampaignsClient } from "@/lib/studio-campaigns-client"
-import { studioVideoRequestSchema, studioVideoResultSchema, type StudioVideoResult } from "@/lib/studio-ia-video-shared"
+import {
+  studioVideoDefaultDuration,
+  studioVideoRequestSchema,
+  studioVideoResultSchema,
+  type StudioVideoResult,
+} from "@/lib/studio-ia-video-shared"
 import { cn } from "@/lib/utils"
 
 type Motion = "automatic" | "soft" | "cinematic"
@@ -92,7 +97,7 @@ export function BrokerStudioIaVideoPage() {
         referenceImageUrls: [selected.resultUrl],
         uploadedImages: [],
         format,
-        duration: "9s",
+        duration: studioVideoDefaultDuration,
         objective: "Apresentar o imovel",
         style: movement.style,
         transformation: "Nenhuma",

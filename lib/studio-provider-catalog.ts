@@ -171,16 +171,16 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     capability: "video.image_to_video",
     provider: "lumaai",
     status: "active",
-    operation: "generations.create",
-    model: "ray-2",
+    operation: "POST /v1/generations video.start_frame",
+    model: "ray-3.2",
     note: "Pipeline assíncrono atual de Criar vídeo.",
   },
   {
     capability: "video.start_end_transition",
     provider: "lumaai",
     status: "active",
-    operation: "generations.create keyframes.frame0/frame1",
-    model: "ray-2",
+    operation: "POST /v1/generations video.start_frame/end_frame",
+    model: "ray-3.2",
     note: "Contrato com frame inicial e final; não garante semântica física detalhada da transformação.",
   },
   {
@@ -237,11 +237,11 @@ export const STUDIO_CAPABILITY_CATALOG: readonly StudioCapabilityProvider[] = [
     status: "requires_validation" as const,
     operation:
       provider === "lumaai"
-        ? "generations.create"
+        ? "POST /v1/generations"
         : provider === "pedra"
           ? "/api/create_video"
           : "POST /v1/videos/generations",
-    model: provider === "lumaai" ? "ray-2" : provider === "xai" ? "grok-imagine-video-1.5" : "pedra",
+    model: provider === "lumaai" ? "ray-3.2" : provider === "xai" ? "grok-imagine-video-1.5" : "pedra",
     note: "Nenhum contrato auditado garante transformação temporal progressiva vazio → mobiliado.",
   })),
 ] satisfies readonly StudioCapabilityProvider[];

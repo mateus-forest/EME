@@ -25,9 +25,9 @@ test.describe("Studio IA — Criar vídeo", () => {
       const text = body?.toString("utf8") ?? ""
       const match = text.match(/\r\n\r\n(\{[\s\S]*?\})\r\n--/)
       payload = match ? JSON.parse(match[1]) : null
-      await route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ requestId: "video-job", provider: "lumaai", estimatedCredits: 22, stageEstimatedCredits: 22, totalCreditsConsumed: 22, generationStatus: "processing", requestKind: "direct_video", jobStage: "video_processing", activeStage: "video", requiresPreviewApproval: false, previewApproved: false, canCreateVideo: false, canRegeneratePreview: false, storyboard: ["Cena 1", "Cena 2", "Cena 3"], script: "Roteiro", shotPlan: ["Plano 1", "Plano 2", "Plano 3"], duration: "9s", promptPreview: "Prompt", fileSaved: false, progress: 10 }) })
+      await route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ requestId: "video-job", provider: "lumaai", estimatedCredits: 22, stageEstimatedCredits: 22, totalCreditsConsumed: 22, generationStatus: "processing", requestKind: "direct_video", jobStage: "video_processing", activeStage: "video", requiresPreviewApproval: false, previewApproved: false, canCreateVideo: false, canRegeneratePreview: false, storyboard: ["Cena 1", "Cena 2", "Cena 3"], script: "Roteiro", shotPlan: ["Plano 1", "Plano 2", "Plano 3"], duration: "5s", promptPreview: "Prompt", fileSaved: false, progress: 10 }) })
     })
-    await page.route("**/api/studio-ia/video?requestId=video-job", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ requestId: "video-job", provider: "lumaai", estimatedCredits: 22, stageEstimatedCredits: 22, totalCreditsConsumed: 22, generationStatus: "completed", requestKind: "direct_video", jobStage: "completed", activeStage: "video", requiresPreviewApproval: false, previewApproved: false, canCreateVideo: false, canRegeneratePreview: false, storyboard: ["Cena 1", "Cena 2", "Cena 3"], script: "Roteiro", shotPlan: ["Plano 1", "Plano 2", "Plano 3"], duration: "9s", promptPreview: "Prompt", videoUrl: "https://videos.example.com/final.mp4", fileSaved: true, progress: 100 }) }))
+    await page.route("**/api/studio-ia/video?requestId=video-job", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ requestId: "video-job", provider: "lumaai", estimatedCredits: 22, stageEstimatedCredits: 22, totalCreditsConsumed: 22, generationStatus: "completed", requestKind: "direct_video", jobStage: "completed", activeStage: "video", requiresPreviewApproval: false, previewApproved: false, canCreateVideo: false, canRegeneratePreview: false, storyboard: ["Cena 1", "Cena 2", "Cena 3"], script: "Roteiro", shotPlan: ["Plano 1", "Plano 2", "Plano 3"], duration: "5s", promptPreview: "Prompt", videoUrl: "https://videos.example.com/final.mp4", fileSaved: true, progress: 100 }) }))
 
     await page.goto("/corretor/studio-ia/criar-video-do-imovel?sourceAssetId=asset-prepared")
     await expect(page.getByRole("heading", { name: "Criar vídeo", exact: true })).toBeVisible()
@@ -43,7 +43,7 @@ test.describe("Studio IA — Criar vídeo", () => {
 
     await page.getByRole("button", { name: "Criar vídeo", exact: true }).click()
     await expect.poll(() => payload).not.toBeNull()
-    expect(payload).toMatchObject({ provider: "lumaai", sourceAssetId: "asset-prepared", referenceImageUrls: ["https://images.example.com/result.jpg"], duration: "9s", transformation: "Nenhuma" })
+    expect(payload).toMatchObject({ provider: "lumaai", sourceAssetId: "asset-prepared", referenceImageUrls: ["https://images.example.com/result.jpg"], duration: "5s", transformation: "Nenhuma" })
   })
 
   test("não cria overflow horizontal no viewport PWA", async ({ page }) => {
