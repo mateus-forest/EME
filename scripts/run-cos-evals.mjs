@@ -76,18 +76,19 @@ Module._resolveFilename = function patchedResolveFilename(request, parent, isMai
 }
 
 async function main() {
-  const runnerModule = await import(pathToFileURL(path.join(root, "lib/cos/evals/runner.ts")).href)
-  const report = await runnerModule.runDefaultCosEvalSuite()
-  const markdown = runnerModule.buildCosEvalMarkdownReport(report)
+  const runnerModule = await import(pathToFileURL(path.join(root, "lib/cos/evals/conversational-runner.ts")).href)
+  const report = await runnerModule.runCosSystemEvalSuite()
+  const markdown = runnerModule.buildCosSystemEvalMarkdownReport(report)
 
   const reportsDir = path.join(root, "reports", "cos-evals")
   await fs.mkdir(reportsDir, { recursive: true })
   await fs.writeFile(path.join(reportsDir, "latest.json"), JSON.stringify(report, null, 2), "utf8")
   await fs.writeFile(path.join(reportsDir, "latest.md"), markdown, "utf8")
+  await fs.writeFile(path.join(root, "docs/cos/COS_EVAL_REPORT.md"), markdown, "utf8")
 
   console.log(markdown)
 
-  if (process.env.COS_EVALS_STRICT === "true" && report.totals.failed > 0) {
+  if (process.env.COS_EVALS_STRICT === "true" && report.failures.length > 0) {
     process.exitCode = 1
   }
 }
