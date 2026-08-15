@@ -36,6 +36,35 @@ const structure = buildContractTemplateStructure(
   },
 )
 
+const largeFieldTokens = Array.from({ length: 36 }, (_, index) => `CAMPO_VARIAVEL_${String(index + 1).padStart(2, "0")}`)
+const largeStructure = buildContractTemplateStructure(
+  splitContractTextIntoBlocks(`CONTRATO COM MUITOS CAMPOS\n\nCONTRATANTE: ${largeFieldTokens.slice(0, 18).join(" | ")}\n\nCLÁUSULA PRIMEIRA — DADOS COMPLEMENTARES\n\n${largeFieldTokens.slice(18).join(" | ")}`),
+  {
+    title: "Contrato com muitos campos",
+    sections: [
+      { title: "Partes", startBlockIndex: 0, endBlockIndex: 1 },
+      { title: "Dados complementares", startBlockIndex: 2, endBlockIndex: 3 },
+    ],
+    parties: [{ key: "contratante", label: "Contratante", required: true, description: "Parte contratante" }],
+    fields: largeFieldTokens.map((token, index) => ({
+      label: `Campo variável ${index + 1}`,
+      type: "TEXT" as const,
+      required: index < 10,
+      blockIndex: index < 18 ? 1 : 3,
+      exactText: token,
+      occurrenceIndex: 0,
+      source: "CONTRACT" as const,
+      binding: "contract.custom" as const,
+      partyKey: index < 18 ? "contratante" : "",
+      confidence: 0.98,
+      needsReview: false,
+      rationale: "Campo variável de teste",
+    })),
+    warnings: [],
+    partiallyRecognized: false,
+  },
+)
+
 const reviewTemplate = {
   id: "template-1",
   name: "Contrato Particular de Locação",
@@ -260,8 +289,11 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.locator('[data-slot="dialog-content"][data-state="open"]')).toHaveCSS("background-color", "rgb(255, 255, 255)")
   await page.locator('input[type="file"]').setInputFiles({ name: "locacao.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: Buffer.from("fixture") })
   await page.getByRole("button", { name: "Importar modelo", exact: true }).last().click()
-  await expect(page.getByText("Modelo identificado")).toBeVisible()
+  await expect(page.getByLabel("Nome do modelo")).toBeVisible()
+  await expect(page.getByText("4 campos", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: /Campos 4/ }).click()
   await expect(page.getByLabel("Nome da parte Locatário")).toBeVisible()
+  await expect(page.getByLabel("Preencher com")).toBeVisible()
   await page.getByRole("button", { name: "Salvar modelo" }).click()
 
   await page.getByRole("button", { name: "Modelos", exact: true }).click()
@@ -270,9 +302,14 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.getByText("Contrato Particular de Locação", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Editar modelo", exact: true }).click()
   await expect(page.getByRole("heading", { name: "Editar modelo" })).toBeVisible()
-  await expect(page.getByText("Fonte preservada", { exact: true })).toBeVisible()
-  await expect(page.getByText("Editar estrutura e texto do modelo", { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: /Voltar ao upload/ }).click()
+  await expect(page.getByRole("button", { name: "Abrir original" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Documento" })).toBeVisible()
+  await page.getByLabel(/Configurar campo Nome do locatário/).click()
+  await expect(page.getByTestId("template-field-properties")).toContainText("Nome do locatário")
+  page.once("dialog", (dialog) => dialog.accept())
+  await page.getByRole("button", { name: "Reanalisar", exact: true }).click()
+  await expect.poll(() => calls.reanalyses).toBe(1)
+  await page.getByRole("button", { name: /Voltar aos modelos/ }).click()
   await page.keyboard.press("Escape")
   await page.getByRole("button", { name: "Contratos", exact: true }).click()
 
@@ -298,7 +335,80 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
   expect(calls.templateImports).toBe(1)
   expect(calls.instanceCreations).toBe(2)
-  expect(calls.reanalyses).toBe(0)
+  expect(calls.reanalyses).toBe(1)
+})
+
+test("editor amplo organiza 35+ campos e mantém seleção contextual sem sobreposição", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 960 })
+  await loginAsBroker(page)
+  await mockContracts(page, true)
+  const largeTemplate = {
+    ...reviewTemplate,
+    name: "Contrato com muitos campos",
+    status: "READY",
+    version: { ...reviewTemplate.version, status: "READY", structure: largeStructure },
+  }
+  await page.route("**/api/brokers/contract-templates", (route) => route.fulfill({ json: { templates: [largeTemplate] } }))
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Modelos", exact: true }).click()
+  await page.getByRole("button", { name: "Editar modelo", exact: true }).click()
+
+  const editor = page.getByTestId("contract-template-editor")
+  await expect(editor).toBeVisible()
+  await expect(page.getByText("36 campos", { exact: true })).toBeVisible()
+  await expect(page.getByText("1 parte", { exact: true })).toBeVisible()
+  const editorBox = await editor.boundingBox()
+  expect(editorBox?.width).toBeGreaterThan(1200)
+
+  await page.getByTestId(`template-field-highlight-${largeStructure.fields[0].id}`).click()
+  await expect(page.getByTestId("template-field-properties")).toContainText("Campo variável 1")
+  await expect(page.getByLabel("Preencher com")).toBeVisible()
+
+  await page.getByRole("button", { name: /Campos 36/ }).click()
+  await expect(page.locator('button[aria-pressed="false"], button[aria-pressed="true"]')).toHaveCount(36)
+  await page.getByRole("button", { name: /Campo variável 36/ }).click()
+  await expect(page.getByTestId("template-field-properties")).toContainText("Campo variável 36")
+
+  const layout = await page.evaluate(() => {
+    const editorElement = document.querySelector('[data-testid="contract-template-editor"]')
+    const properties = document.querySelector('[data-testid="template-field-properties"]')
+    const editorRect = editorElement?.getBoundingClientRect()
+    const propertiesRect = properties?.getBoundingClientRect()
+    return {
+      bodyOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      propertiesInsideEditor: Boolean(editorRect && propertiesRect && propertiesRect.right <= editorRect.right + 1),
+    }
+  })
+  expect(layout.bodyOverflow).toBeLessThanOrEqual(1)
+  expect(layout.propertiesInsideEditor).toBe(true)
+})
+
+test("editor de modelo com muitos campos permanece navegável no mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await loginAsBroker(page)
+  await mockContracts(page, true)
+  const largeTemplate = {
+    ...reviewTemplate,
+    name: "Contrato com muitos campos",
+    status: "READY",
+    version: { ...reviewTemplate.version, status: "READY", structure: largeStructure },
+  }
+  await page.route("**/api/brokers/contract-templates", (route) => route.fulfill({ json: { templates: [largeTemplate] } }))
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Modelos", exact: true }).click()
+  await page.getByRole("button", { name: "Editar modelo", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Documento" })).toBeVisible()
+  await page.getByRole("button", { name: /Campos 36/ }).click()
+  await page.getByRole("button", { name: /Campo variável 36/ }).click()
+  await expect(page.getByTestId("template-field-properties")).toContainText("Campo variável 36")
+
+  const mobileLayout = await page.evaluate(() => ({
+    viewportWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    editorWidth: document.querySelector('[data-testid="contract-template-editor"]')?.getBoundingClientRect().width ?? 0,
+  }))
+  expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.viewportWidth + 1)
+  expect(mobileLayout.editorWidth).toBeLessThanOrEqual(390)
 })
 
 test("contrato completo registra assinatura externa com data e observação", async ({ page }) => {

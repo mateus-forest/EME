@@ -6,12 +6,14 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  ChevronRight,
   CopyPlus,
   Download,
   ExternalLink,
   FileText,
   FileUp,
   LayoutTemplate,
+  ListChecks,
   PenLine,
   Plus,
   RefreshCw,
@@ -44,6 +46,76 @@ import type { PropertyApiItem } from "@/lib/property-contract"
 
 type WorkspaceMode = "import" | "new" | "editor" | null
 type WorkspaceView = "contracts" | "templates"
+type TemplateEditorView = "document" | "fields"
+
+const bindingSourceLabels: Record<ContractTemplateField["source"], string> = {
+  CLIENT: "Dados do cliente",
+  PROPERTY: "Dados do imóvel",
+  BROKER: "Dados do corretor",
+  CONTRACT: "Preenchimento manual",
+  ADDITIONAL_PARTY: "Dados de outra parte",
+  NONE: "Sem preenchimento automático",
+}
+
+const bindingSourceOrder: ContractTemplateField["source"][] = [
+  "CLIENT",
+  "PROPERTY",
+  "BROKER",
+  "CONTRACT",
+  "ADDITIONAL_PARTY",
+  "NONE",
+]
+
+function findTextOccurrence(text: string, needle: string, occurrenceIndex: number) {
+  let cursor = 0
+  for (let occurrence = 0; occurrence <= occurrenceIndex; occurrence += 1) {
+    const index = text.indexOf(needle, cursor)
+    if (index < 0) return -1
+    if (occurrence === occurrenceIndex) return index
+    cursor = index + needle.length
+  }
+  return -1
+}
+
+function TemplateDocumentText({
+  text,
+  fields,
+  selectedFieldId,
+  onSelectField,
+}: {
+  text: string
+  fields: ContractTemplateField[]
+  selectedFieldId: string | null
+  onSelectField: (fieldId: string) => void
+}) {
+  const occurrences = fields
+    .map((field) => ({ field, index: findTextOccurrence(text, field.exactText, field.occurrenceIndex) }))
+    .filter((item) => item.index >= 0)
+    .sort((a, b) => a.index - b.index)
+  const fragments: React.ReactNode[] = []
+  let cursor = 0
+
+  for (const occurrence of occurrences) {
+    if (occurrence.index < cursor) continue
+    if (occurrence.index > cursor) fragments.push(text.slice(cursor, occurrence.index))
+    const isSelected = occurrence.field.id === selectedFieldId
+    fragments.push(
+      <button
+        key={`${occurrence.field.id}-${occurrence.index}`}
+        type="button"
+        data-testid={`template-field-highlight-${occurrence.field.id}`}
+        aria-label={`Configurar campo ${occurrence.field.label}`}
+        onClick={() => onSelectField(occurrence.field.id)}
+        className={`mx-0.5 inline rounded px-1.5 py-0.5 text-left font-medium underline decoration-dotted underline-offset-2 transition ${isSelected ? "bg-[#009b3a] text-white" : "bg-[#e8f5ec] text-[#116b34] hover:bg-[#d8eddf]"}`}
+      >
+        {occurrence.field.exactText}
+      </button>,
+    )
+    cursor = occurrence.index + occurrence.field.exactText.length
+  }
+  if (cursor < text.length) fragments.push(text.slice(cursor))
+  return <>{fragments}</>
+}
 
 function formatBytes(value: number | null) {
   if (!value) return "Tamanho não informado"
@@ -76,11 +148,13 @@ function ImportTemplatePanel({
   initialTemplate,
   onTemplatesChanged,
   onClose,
+  onEditorStateChange,
 }: {
   templates: ContractTemplateRecord[]
   initialTemplate?: ContractTemplateRecord | null
   onTemplatesChanged: () => Promise<void>
   onClose: () => void
+  onEditorStateChange?: (active: boolean) => void
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [template, setTemplate] = useState<ContractTemplateRecord | null>(initialTemplate ?? null)
@@ -88,6 +162,9 @@ function ImportTemplatePanel({
   const [structure, setStructure] = useState<ContractTemplateStructure | null>(initialTemplate?.version?.structure ?? null)
   const [isBusy, setIsBusy] = useState(false)
   const [feedback, setFeedback] = useState("")
+  const [editorView, setEditorView] = useState<TemplateEditorView>("document")
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(initialTemplate?.version?.structure?.fields[0]?.id ?? null)
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
 
   const legalTextModified = useMemo(() => {
     if (!template?.version?.structure || !structure) return false
@@ -97,6 +174,74 @@ function ImportTemplatePanel({
     () => structure ? inspectContractTemplateStructure(structure) : null,
     [structure],
   )
+  const invalidFieldIds = useMemo(
+    () => new Set(structureInspection?.invalidOccurrences.map((field) => field.id) ?? []),
+    [structureInspection],
+  )
+  const selectedField = structure?.fields.find((field) => field.id === selectedFieldId) ?? null
+  const fieldGroups = useMemo(() => {
+    if (!structure) return []
+    const blockOrder = new Map(structure.blocks.map((block, index) => [block.id, index]))
+    const groups = new Map<string, { id: string; label: string; kind: "Parte" | "Seção"; fields: ContractTemplateField[] }>()
+
+    for (const field of structure.fields) {
+      const party = field.partyId ? structure.parties.find((item) => item.id === field.partyId) : null
+      const fieldBlockIndex = blockOrder.get(field.blockId) ?? -1
+      const section = structure.sections.find((item) => {
+        const start = blockOrder.get(item.startBlockId) ?? -1
+        const end = blockOrder.get(item.endBlockId) ?? -1
+        return fieldBlockIndex >= start && fieldBlockIndex <= end
+      })
+      const id = party ? `party:${party.id}` : `section:${section?.id ?? "other"}`
+      const existing = groups.get(id) ?? {
+        id,
+        label: party?.label || section?.title || "Outros campos",
+        kind: party ? "Parte" as const : "Seção" as const,
+        fields: [],
+      }
+      existing.fields.push(field)
+      groups.set(id, existing)
+    }
+    return [...groups.values()]
+  }, [structure])
+  const documentSections = useMemo(() => {
+    if (!structure) return []
+    const blockOrder = new Map(structure.blocks.map((block, index) => [block.id, index]))
+    const grouped = structure.sections.map((section) => {
+      const start = blockOrder.get(section.startBlockId) ?? 0
+      const end = blockOrder.get(section.endBlockId) ?? start
+      return {
+        ...section,
+        blocks: structure.blocks.slice(Math.min(start, end), Math.max(start, end) + 1),
+      }
+    })
+    const groupedBlockIds = new Set(grouped.flatMap((section) => section.blocks.map((block) => block.id)))
+    const remaining = structure.blocks.filter((block) => !groupedBlockIds.has(block.id))
+    if (remaining.length > 0) {
+      grouped.push({
+        id: "ungrouped",
+        title: "Outros trechos",
+        startBlockId: remaining[0].id,
+        endBlockId: remaining.at(-1)?.id ?? remaining[0].id,
+        blocks: remaining,
+      })
+    }
+    return grouped
+  }, [structure])
+
+  useEffect(() => {
+    onEditorStateChange?.(Boolean(template && structure))
+  }, [onEditorStateChange, structure, template])
+
+  useEffect(() => {
+    if (!structure?.fields.length) {
+      setSelectedFieldId(null)
+      return
+    }
+    if (!structure.fields.some((field) => field.id === selectedFieldId)) {
+      setSelectedFieldId(structure.fields[0].id)
+    }
+  }, [selectedFieldId, structure])
 
   async function beginReview(next: ContractTemplateRecord) {
     setIsBusy(true)
@@ -112,6 +257,8 @@ function ImportTemplatePanel({
       setTemplate(detailed)
       setName(detailed.name)
       setStructure(detailed.version.structure)
+      setSelectedFieldId(detailed.version.structure.fields[0]?.id ?? null)
+      setEditorView("document")
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível carregar o modelo.")
     } finally {
@@ -146,6 +293,15 @@ function ImportTemplatePanel({
       ...current,
       fields: current.fields.map((field) => field.id === fieldId ? { ...field, ...patch } : field),
     } : current)
+  }
+
+  function selectTemplateField(fieldId: string) {
+    setSelectedFieldId(fieldId)
+    if (window.innerWidth < 1024) {
+      window.requestAnimationFrame(() => {
+        document.querySelector('[data-testid="template-field-properties"]')?.scrollIntoView({ behavior: "smooth", block: "start" })
+      })
+    }
   }
 
   function removeField(fieldId: string) {
@@ -215,190 +371,265 @@ function ImportTemplatePanel({
 
   if (template && structure) {
     return (
-      <div className="grid max-h-[calc(100vh-7rem)] gap-5 overflow-y-auto pr-1">
-        <button type="button" onClick={() => setTemplate(null)} className="flex w-fit items-center gap-2 text-sm text-[#5f6b7a]">
-          <ArrowLeft className="size-4" /> Voltar ao upload
-        </button>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="grid gap-4">
-            <section className="rounded-2xl border border-black/[0.06] bg-white p-5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Modelo identificado</p>
-              <Input value={name} onChange={(event) => setName(event.target.value)} className="mt-3 h-12 rounded-xl border-black/[0.08] text-lg font-semibold" />
-              <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-                <div><strong className="block text-xl text-[#050505]">{structure.sections.length}</strong><span className="text-[#687386]">seções</span></div>
-                <div><strong className="block text-xl text-[#050505]">{structure.fields.length}</strong><span className="text-[#687386]">campos</span></div>
-                <div><strong className="block text-xl text-[#050505]">{structure.parties.length}</strong><span className="text-[#687386]">partes</span></div>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-black/[0.06] bg-white p-5">
-              <h3 className="font-semibold text-[#050505]">Partes identificadas</h3>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {structure.parties.length > 0 ? structure.parties.map((party) => (
-                  <label key={party.id} className="flex items-center gap-2 rounded-xl bg-[#f2f8f4] px-3 py-2 text-sm text-[#17733a]">
-                    <Check className="size-3.5 shrink-0" />
-                    <Input
-                      value={party.label}
-                      aria-label={`Nome da parte ${party.label}`}
-                      onChange={(event) => setStructure((current) => current ? {
-                        ...current,
-                        parties: current.parties.map((item) => item.id === party.id ? { ...item, label: event.target.value } : item),
-                      } : current)}
-                      className="h-8 border-0 bg-transparent px-1 text-sm text-[#17733a] shadow-none focus-visible:ring-1"
-                    />
-                  </label>
-                )) : <span className="text-sm text-[#6b7280]">Nenhuma parte inequívoca foi classificada.</span>}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-black/[0.06] bg-white p-5">
-              <div>
-                <h3 className="font-semibold text-[#050505]">Revisar campos e origens</h3>
-                <p className="mt-1 text-sm leading-6 text-[#687386]">A inteligência sugere. Você confirma antes de o modelo ficar disponível.</p>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {structure.fields.map((field) => (
-                  <div key={field.id} className="grid gap-3 rounded-xl bg-[#fafaf7] p-4 md:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_150px_auto] md:items-end">
-                    <label className="grid gap-1.5 text-xs text-[#687386]">
-                      Campo no documento
-                      <Input value={field.label} onChange={(event) => updateField(field.id, { label: event.target.value })} className="bg-white text-sm text-[#111]" />
-                    </label>
-                    <label className="grid gap-1.5 text-xs text-[#687386]">
-                      Origem confirmada
-                      <select
-                        value={field.binding}
-                        onChange={(event) => {
-                          const binding = event.target.value as ContractFieldBinding
-                          const option = contractBindingOptions.find((item) => item.value === binding)
-                          updateField(field.id, { binding, source: option?.source ?? "NONE", reviewStatus: "CONFIRMED" })
-                        }}
-                        className="h-10 rounded-lg border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
-                      >
-                        {contractBindingOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
-                    </label>
-                    <label className="grid gap-1.5 text-xs text-[#687386]">
-                      Tipo
-                      <select
-                        value={field.type}
-                        onChange={(event) => updateField(field.id, { type: event.target.value as ContractTemplateField["type"] })}
-                        className="h-10 rounded-lg border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
-                      >
-                        <option value="TEXT">Texto</option>
-                        <option value="LONG_TEXT">Texto longo</option>
-                        <option value="DATE">Data</option>
-                        <option value="CURRENCY">Valor monetário</option>
-                        <option value="NUMBER">Número</option>
-                        <option value="CPF_CNPJ">CPF ou CNPJ</option>
-                        <option value="PHONE">Telefone</option>
-                        <option value="EMAIL">E-mail</option>
-                      </select>
-                    </label>
-                    <label className="flex h-10 items-center gap-2 text-sm text-[#4b5563]">
-                      <input type="checkbox" checked={field.required} onChange={(event) => updateField(field.id, { required: event.target.checked })} className="size-4 accent-[#009b3a]" />
-                      Obrigatório
-                    </label>
-                    <button type="button" onClick={() => removeField(field.id)} className="flex h-10 items-center justify-center gap-2 rounded-lg text-xs text-[#8a4a44] hover:bg-[#fff1ef] md:col-start-4">
-                      <Trash2 className="size-3.5" /> Manter como texto fixo
-                    </button>
-                  </div>
-                ))}
-                {!structureInspection?.hasUsableExtraction ? (
-                  <div className="rounded-xl border border-[#ead5a0] bg-[#fff8e8] p-4 text-sm leading-6 text-[#765a16]">
-                    {structureInspection?.issues.find((issue) => !issue.includes("confirmação")) || "A estrutura ainda está incompleta."} Este modelo continuará aguardando revisão até uma reanálise completa.
-                  </div>
-                ) : null}
-              </div>
-            </section>
-
-            <details open className="rounded-2xl border border-black/[0.06] bg-white p-5">
-              <summary className="cursor-pointer font-semibold text-[#111]">Editar estrutura e texto do modelo</summary>
-              <p className="mt-2 text-sm leading-6 text-[#687386]">Use apenas para corrigir o documento. Alterações no texto jurídico criam uma nova versão e recomendam revisão jurídica.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {structure.sections.map((section) => (
-                  <label key={section.id} className="grid gap-1.5 text-xs uppercase tracking-[0.1em] text-[#8b95a1]">
-                    Seção
-                    <Input
-                      value={section.title}
-                      onChange={(event) => setStructure((current) => current ? {
-                        ...current,
-                        sections: current.sections.map((item) => item.id === section.id ? { ...item, title: event.target.value } : item),
-                      } : current)}
-                      className="normal-case tracking-normal text-[#111]"
-                    />
-                  </label>
-                ))}
-              </div>
-              <div className="mt-4 grid gap-3">
-                {structure.blocks.map((block) => (
-                  <label key={block.id} className="grid gap-1.5 text-xs uppercase tracking-[0.1em] text-[#8b95a1]">
-                    <select
-                      value={block.type}
-                      onChange={(event) => setStructure((current) => current ? {
-                        ...current,
-                        blocks: current.blocks.map((item) => item.id === block.id ? {
-                          ...item,
-                          type: event.target.value as ContractTemplateStructure["blocks"][number]["type"],
-                        } : item),
-                      } : current)}
-                      className="h-9 w-fit rounded-lg border border-black/[0.08] bg-white px-3 text-xs text-[#5f6b7a]"
-                    >
-                      <option value="TITLE">Título</option>
-                      <option value="HEADING">Cabeçalho</option>
-                      <option value="CLAUSE">Cláusula</option>
-                      <option value="PARAGRAPH">Parágrafo</option>
-                      <option value="SIGNATURE">Assinatura</option>
-                    </select>
-                    <Textarea
-                      value={block.text}
-                      onChange={(event) => setStructure((current) => current ? {
-                        ...current,
-                        blocks: current.blocks.map((item) => item.id === block.id ? { ...item, text: event.target.value } : item),
-                      } : current)}
-                      rows={Math.min(8, Math.max(2, Math.ceil(block.text.length / 100)))}
-                      className="normal-case tracking-normal text-[#111]"
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
-            {legalTextModified ? (
-              <p className="rounded-xl bg-[#fff8e8] p-4 text-sm leading-6 text-[#765a16]">
-                Este modelo foi alterado após a importação. Recomenda-se revisão jurídica antes do uso.
-              </p>
-            ) : null}
+      <div data-testid="contract-template-editor" className="flex h-full min-h-0 flex-col overflow-hidden">
+        <header className="shrink-0 border-b border-black/[0.06] pb-4 pr-9">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button type="button" onClick={() => setTemplate(null)} className="flex items-center gap-2 text-sm text-[#5f6b7a] hover:text-[#111]">
+              <ArrowLeft className="size-4" /> Voltar aos modelos
+            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={() => window.open(`/api/brokers/contract-templates/${template.id}/original`, "_blank")} className="rounded-xl">
+                <ExternalLink className="size-4" /> Abrir original
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (window.confirm("Reanalisar inicia uma nova leitura do arquivo original. Deseja continuar?")) void reanalyze(template)
+                }}
+                disabled={isBusy}
+                className="rounded-xl"
+              >
+                <RefreshCw className="size-4" /> Reanalisar
+              </Button>
+              <Button onClick={() => void saveReview()} disabled={isBusy || !name.trim() || !structureInspection?.hasUsableExtraction} className="rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
+                {isBusy ? <Spinner className="size-4" /> : <CheckCircle2 className="size-4" />} Salvar modelo
+              </Button>
+            </div>
           </div>
+          <div className="mt-4 flex flex-wrap items-end gap-4">
+            <label className="min-w-[min(100%,360px)] flex-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#7b8491]">
+              Nome do modelo
+              <Input value={name} onChange={(event) => setName(event.target.value)} className="mt-1.5 h-11 rounded-xl border-black/[0.08] bg-white text-base font-semibold normal-case tracking-normal text-[#111]" />
+            </label>
+            <div className="flex flex-wrap gap-2 text-xs text-[#5f6b7a]">
+              <span className="rounded-full bg-[#f3f5f3] px-3 py-2">Versão {template.currentVersion}</span>
+              <span className="rounded-full bg-[#edf8f1] px-3 py-2 text-[#17733a]">{structure.fields.length} campos</span>
+              <span className="rounded-full bg-[#f3f5f3] px-3 py-2">{structure.parties.length} {structure.parties.length === 1 ? "parte" : "partes"}</span>
+              <span className="rounded-full bg-[#f3f5f3] px-3 py-2">{structure.sections.length} {structure.sections.length === 1 ? "seção" : "seções"}</span>
+            </div>
+          </div>
+          {feedback ? <p className="mt-3 rounded-xl bg-[#fff8e8] px-4 py-2.5 text-sm text-[#765a16]">{feedback}</p> : null}
+          {structure.partiallyRecognized && structure.warnings[0] ? (
+            <p className="mt-3 flex items-center gap-2 text-xs text-[#765a16]"><AlertCircle className="size-4 shrink-0" /> {structure.warnings[0]}</p>
+          ) : null}
+          {legalTextModified ? (
+            <p className="mt-3 flex items-center gap-2 text-xs text-[#765a16]"><AlertCircle className="size-4" /> O texto jurídico foi alterado e será salvo em uma nova revisão quando necessário.</p>
+          ) : null}
+        </header>
 
-          <aside className="h-fit rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-5 lg:sticky lg:top-0">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Fonte preservada</p>
-            <p className="mt-2 font-medium text-[#111]">{template.version?.sourceFileName}</p>
-            <p className="mt-1 text-sm text-[#687386]">{formatBytes(template.version?.sourceFileSize ?? null)}</p>
-            <Button variant="outline" onClick={() => window.open(`/api/brokers/contract-templates/${template.id}/original`, "_blank")} className="mt-4 w-full rounded-xl">
-              <ExternalLink className="size-4" /> Abrir original
-            </Button>
-            {structure.partiallyRecognized || structure.warnings.length > 0 ? (
-              <div className="mt-4 rounded-xl bg-[#fff8e8] p-3 text-sm leading-5 text-[#765a16]">
-                <AlertCircle className="mb-2 size-4" />
-                {structure.warnings[0] || "Alguns trechos precisam de atenção humana."}
+        <div className="grid min-h-0 flex-1 overflow-y-auto pt-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-4 lg:overflow-hidden">
+          <section className="min-w-0 lg:overflow-y-auto lg:pr-1">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-black/[0.05] bg-white pb-3">
+              <div className="inline-flex rounded-xl bg-[#f3f5f3] p-1" aria-label="Visão do editor">
+                <button type="button" onClick={() => setEditorView("document")} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${editorView === "document" ? "bg-white text-[#111] shadow-sm" : "text-[#687386]"}`}>
+                  <FileText className="size-4" /> Documento
+                </button>
+                <button type="button" onClick={() => setEditorView("fields")} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${editorView === "fields" ? "bg-white text-[#111] shadow-sm" : "text-[#687386]"}`}>
+                  <ListChecks className="size-4" /> Campos <span className="rounded-full bg-[#edf8f1] px-1.5 py-0.5 text-[10px] text-[#17733a]">{structure.fields.length}</span>
+                </button>
               </div>
-            ) : null}
-            <p className="mt-4 text-xs leading-5 text-[#7b8491]">Salvar confirma a estrutura. O texto jurídico não será reanalisado ao criar novos contratos.</p>
-            <Button onClick={() => void saveReview()} disabled={isBusy || !name.trim() || !structureInspection?.hasUsableExtraction} className="mt-5 w-full rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
-              {isBusy ? <Spinner className="size-4" /> : <CheckCircle2 className="size-4" />} Salvar modelo
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                if (window.confirm("Reanalisar inicia uma nova leitura do arquivo original. Deseja continuar?")) void reanalyze(template)
-              }}
-              disabled={isBusy}
-              className="mt-2 w-full rounded-xl text-[#5f6b7a]"
-            >
-              <RefreshCw className="size-4" /> Reanalisar arquivo
-            </Button>
+              <p className="hidden text-xs text-[#7b8491] sm:block">Clique em um campo para configurar</p>
+            </div>
+
+            {editorView === "document" ? (
+              <div className="mx-auto mt-4 grid max-w-[920px] gap-4 pb-8">
+                {documentSections.map((section) => (
+                  <article key={section.id} className="rounded-2xl border border-black/[0.06] bg-[#fcfcfa] p-4 sm:p-5">
+                    {section.id !== "ungrouped" ? (
+                      <Input
+                        aria-label={`Nome da seção ${section.title}`}
+                        value={section.title}
+                        onChange={(event) => setStructure((current) => current ? {
+                          ...current,
+                          sections: current.sections.map((item) => item.id === section.id ? { ...item, title: event.target.value } : item),
+                        } : current)}
+                        className="mb-4 h-9 border-0 bg-transparent px-0 text-sm font-semibold text-[#111] shadow-none focus-visible:ring-1"
+                      />
+                    ) : <h3 className="mb-4 text-sm font-semibold text-[#111]">{section.title}</h3>}
+                    <div className="grid gap-3">
+                      {section.blocks.map((block) => {
+                        const blockFields = structure.fields.filter((field) => field.blockId === block.id)
+                        return (
+                          <div key={block.id} className="rounded-xl border border-black/[0.05] bg-white p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <select
+                                aria-label={`Tipo do trecho ${block.order + 1}`}
+                                value={block.type}
+                                onChange={(event) => setStructure((current) => current ? {
+                                  ...current,
+                                  blocks: current.blocks.map((item) => item.id === block.id ? { ...item, type: event.target.value as ContractTemplateStructure["blocks"][number]["type"] } : item),
+                                } : current)}
+                                className="h-8 rounded-lg border border-black/[0.07] bg-[#fafaf7] px-2 text-[11px] text-[#687386]"
+                              >
+                                <option value="TITLE">Título</option>
+                                <option value="HEADING">Cabeçalho</option>
+                                <option value="CLAUSE">Cláusula</option>
+                                <option value="PARAGRAPH">Parágrafo</option>
+                                <option value="SIGNATURE">Assinatura</option>
+                              </select>
+                              <button type="button" onClick={() => setEditingBlockId((current) => current === block.id ? null : block.id)} className="flex items-center gap-1.5 text-xs text-[#5f6b7a] hover:text-[#111]">
+                                <PenLine className="size-3.5" /> {editingBlockId === block.id ? "Concluir edição" : "Editar texto"}
+                              </button>
+                            </div>
+                            <div className={`mt-3 whitespace-pre-wrap text-sm leading-7 text-[#303740] ${block.type === "TITLE" ? "text-center font-semibold uppercase" : block.type === "HEADING" || block.type === "CLAUSE" ? "font-medium" : ""}`}>
+                              <TemplateDocumentText text={block.text} fields={blockFields} selectedFieldId={selectedFieldId} onSelectField={selectTemplateField} />
+                            </div>
+                            {editingBlockId === block.id ? (
+                              <div className="mt-3 border-t border-black/[0.05] pt-3">
+                                <p className="mb-2 text-xs leading-5 text-[#765a16]">Edite somente quando necessário. Remover um trecho destacado torna o campo inconsistente.</p>
+                                <Textarea
+                                  aria-label={`Texto do trecho ${block.order + 1}`}
+                                  value={block.text}
+                                  onChange={(event) => setStructure((current) => current ? {
+                                    ...current,
+                                    blocks: current.blocks.map((item) => item.id === block.id ? { ...item, text: event.target.value } : item),
+                                  } : current)}
+                                  rows={Math.min(12, Math.max(4, Math.ceil(block.text.length / 90)))}
+                                  className="text-sm leading-6 text-[#111]"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-5 pb-8">
+                <section className="rounded-2xl border border-black/[0.06] bg-[#fbfbf8] p-4">
+                  <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-[#111]">Partes do contrato</h3><span className="text-xs text-[#7b8491]">{structure.parties.length} identificadas</span></div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {structure.parties.length > 0 ? structure.parties.map((party) => (
+                      <label key={party.id} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm text-[#17733a]">
+                        <Check className="size-3.5 shrink-0" />
+                        <Input
+                          value={party.label}
+                          aria-label={`Nome da parte ${party.label}`}
+                          onChange={(event) => setStructure((current) => current ? {
+                            ...current,
+                            parties: current.parties.map((item) => item.id === party.id ? { ...item, label: event.target.value } : item),
+                          } : current)}
+                          className="h-8 border-0 bg-transparent px-1 text-sm text-[#17733a] shadow-none focus-visible:ring-1"
+                        />
+                      </label>
+                    )) : <p className="text-sm text-[#6b7280]">Nenhuma parte foi identificada.</p>}
+                  </div>
+                </section>
+                {fieldGroups.map((group) => (
+                  <section key={group.id} className="rounded-2xl border border-black/[0.06] bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div><p className="text-[10px] uppercase tracking-[0.14em] text-[#8b95a1]">{group.kind}</p><h3 className="mt-1 font-semibold text-[#111]">{group.label}</h3></div>
+                      <span className="text-xs text-[#7b8491]">{group.fields.length} campo{group.fields.length === 1 ? "" : "s"}</span>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {group.fields.map((field) => {
+                        const hasIssue = invalidFieldIds.has(field.id) || field.reviewStatus !== "CONFIRMED"
+                        return (
+                          <button
+                            key={field.id}
+                            type="button"
+                            onClick={() => selectTemplateField(field.id)}
+                            aria-pressed={selectedFieldId === field.id}
+                            className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition ${selectedFieldId === field.id ? "border-[#009b3a]/30 bg-[#edf8f1]" : hasIssue ? "border-[#e8cf91] bg-[#fffaf0]" : "border-black/[0.05] bg-[#fafaf7] hover:border-black/[0.12]"}`}
+                          >
+                            <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${hasIssue ? "bg-[#fff1cc] text-[#8b6614]" : "bg-white text-[#17733a]"}`}>{hasIssue ? <AlertCircle className="size-4" /> : <Check className="size-4" />}</span>
+                            <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-[#111]">{field.label}</strong><span className="mt-0.5 block truncate text-xs text-[#687386]">{bindingSourceLabels[field.source]}</span></span>
+                            <ChevronRight className="size-4 shrink-0 text-[#9aa1aa]" />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <aside className="min-w-0 border-t border-black/[0.06] bg-[#fbfbf8] p-4 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-5">
+            {selectedField ? (
+              <div data-testid="template-field-properties" className="grid gap-5">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Propriedades do campo</p>
+                  <h2 className="mt-2 text-lg font-semibold text-[#111]">{selectedField.label}</h2>
+                  <p className="mt-1 break-words text-xs leading-5 text-[#7b8491]">Trecho detectado: “{selectedField.exactText}”</p>
+                </div>
+
+                {invalidFieldIds.has(selectedField.id) ? (
+                  <p className="flex gap-2 rounded-xl border border-[#ead5a0] bg-[#fff8e8] p-3 text-sm leading-5 text-[#765a16]"><AlertCircle className="mt-0.5 size-4 shrink-0" /> Este trecho não corresponde mais ao texto do documento. Restaure o texto ou mantenha o campo como texto fixo.</p>
+                ) : selectedField.reviewStatus !== "CONFIRMED" ? (
+                  <p className="flex gap-2 rounded-xl bg-[#fff8e8] p-3 text-sm leading-5 text-[#765a16]"><AlertCircle className="mt-0.5 size-4 shrink-0" /> Confira como este campo deve ser preenchido antes de salvar.</p>
+                ) : null}
+
+                <label className="grid gap-1.5 text-xs font-medium text-[#5f6b7a]">
+                  Nome do campo
+                  <Input value={selectedField.label} onChange={(event) => updateField(selectedField.id, { label: event.target.value })} className="bg-white text-sm text-[#111]" />
+                </label>
+
+                <label className="grid gap-1.5 text-xs font-medium text-[#5f6b7a]">
+                  Preencher com
+                  <select
+                    aria-label="Preencher com"
+                    value={selectedField.binding}
+                    onChange={(event) => {
+                      const binding = event.target.value as ContractFieldBinding
+                      const option = contractBindingOptions.find((item) => item.value === binding)
+                      updateField(selectedField.id, { binding, source: option?.source ?? "NONE", reviewStatus: "CONFIRMED" })
+                    }}
+                    className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
+                  >
+                    {bindingSourceOrder.map((source) => (
+                      <optgroup key={source} label={bindingSourceLabels[source]}>
+                        {contractBindingOptions.filter((option) => option.source === source).map((option) => <option key={option.value} value={option.value}>{option.label.split(" / ").at(-1)}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="font-normal leading-5 text-[#8b95a1]">{bindingSourceLabels[selectedField.source]}</span>
+                </label>
+
+                <label className="grid gap-1.5 text-xs font-medium text-[#5f6b7a]">
+                  Parte relacionada
+                  <select
+                    value={selectedField.partyId ?? ""}
+                    onChange={(event) => updateField(selectedField.id, { partyId: event.target.value || null })}
+                    className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
+                  >
+                    <option value="">Nenhuma parte específica</option>
+                    {structure.parties.map((party) => <option key={party.id} value={party.id}>{party.label}</option>)}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5 text-xs font-medium text-[#5f6b7a]">
+                  Formato do valor
+                  <select
+                    value={selectedField.type}
+                    onChange={(event) => updateField(selectedField.id, { type: event.target.value as ContractTemplateField["type"] })}
+                    className="h-11 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
+                  >
+                    <option value="TEXT">Texto</option><option value="LONG_TEXT">Texto longo</option><option value="DATE">Data</option><option value="CURRENCY">Valor monetário</option><option value="NUMBER">Número</option><option value="CPF_CNPJ">CPF ou CNPJ</option><option value="PHONE">Telefone</option><option value="EMAIL">E-mail</option>
+                  </select>
+                </label>
+
+                <label className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-white p-3 text-sm text-[#4b5563]">
+                  Campo obrigatório
+                  <input type="checkbox" checked={selectedField.required} onChange={(event) => updateField(selectedField.id, { required: event.target.checked })} className="size-4 accent-[#009b3a]" />
+                </label>
+
+                <button type="button" onClick={() => removeField(selectedField.id)} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#eedbd8] bg-white text-sm text-[#8a4a44] hover:bg-[#fff1ef]">
+                  <Trash2 className="size-4" /> Manter como texto fixo
+                </button>
+                <p className="text-xs leading-5 text-[#7b8491]">Salvar confirma os campos revisados. O conteúdo jurídico não é reescrito automaticamente.</p>
+              </div>
+            ) : (
+              <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-black/[0.08] bg-white p-6 text-center">
+                <LayoutTemplate className="size-6 text-[#9aa1aa]" />
+                <p className="mt-3 text-sm font-medium text-[#111]">Selecione um campo</p>
+                <p className="mt-1 text-xs leading-5 text-[#7b8491]">Clique em um destaque no documento ou em um item da visão Campos.</p>
+              </div>
+            )}
           </aside>
         </div>
-        {feedback ? <p className="rounded-xl bg-[#fff8e8] p-3 text-sm text-[#765a16]">{feedback}</p> : null}
       </div>
     )
   }
@@ -868,6 +1099,7 @@ export function BrokerContractsExperience() {
   const [mode, setMode] = useState<WorkspaceMode>(null)
   const [templates, setTemplates] = useState<ContractTemplateRecord[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplateRecord | null>(null)
+  const [isTemplateEditorActive, setIsTemplateEditorActive] = useState(false)
   const [instanceId, setInstanceId] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -885,7 +1117,10 @@ export function BrokerContractsExperience() {
 
   function openMode(next: WorkspaceMode) {
     setMode(next)
-    if (next === "import") setSelectedTemplate(null)
+    if (next === "import") {
+      setSelectedTemplate(null)
+      setIsTemplateEditorActive(false)
+    }
     setFeedback("")
     if (next === "import" || next === "new") void loadTemplates()
   }
@@ -938,6 +1173,7 @@ export function BrokerContractsExperience() {
         ? template
         : (await contractTemplates.get(template.id)).template
       setSelectedTemplate(detailed)
+      setIsTemplateEditorActive(true)
       setMode("import")
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível consultar o modelo.")
@@ -972,10 +1208,28 @@ export function BrokerContractsExperience() {
         />
       )}
 
-      <Dialog open={mode === "import"} onOpenChange={(open) => !open && setMode(null)}>
-        <DialogContent className="max-h-[95vh] max-w-[min(1120px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-5 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6">
-          <DialogHeader><DialogTitle>{selectedTemplate ? "Editar modelo" : "Importar modelo"}</DialogTitle><DialogDescription>{selectedTemplate ? "Revise a estrutura, o texto jurídico, os campos variáveis e seus bindings." : "Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma."}</DialogDescription></DialogHeader>
-          <ImportTemplatePanel key={selectedTemplate?.id ?? "new-import"} templates={templates} initialTemplate={selectedTemplate} onTemplatesChanged={loadTemplates} onClose={() => setMode(null)} />
+      <Dialog open={mode === "import"} onOpenChange={(open) => {
+        if (!open) {
+          setMode(null)
+          setIsTemplateEditorActive(false)
+        }
+      }}>
+        <DialogContent className={isTemplateEditorActive
+          ? "h-[100dvh] max-h-[100dvh] w-screen max-w-none overflow-hidden rounded-none border-0 bg-white p-4 text-[#111111] shadow-none sm:h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1rem)] sm:w-[calc(100vw-1rem)] sm:max-w-[1800px] sm:rounded-2xl sm:border sm:border-black/[0.07] sm:p-5 sm:shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
+          : "max-h-[95vh] max-w-[min(1120px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-5 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6"}
+        >
+          <DialogHeader className={isTemplateEditorActive ? "sr-only" : undefined}><DialogTitle>{isTemplateEditorActive ? "Editar modelo" : "Importar modelo"}</DialogTitle><DialogDescription>{isTemplateEditorActive ? "Revise a estrutura, o texto jurídico e como cada campo será preenchido." : "Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma."}</DialogDescription></DialogHeader>
+          <ImportTemplatePanel
+            key={selectedTemplate?.id ?? "new-import"}
+            templates={templates}
+            initialTemplate={selectedTemplate}
+            onTemplatesChanged={loadTemplates}
+            onClose={() => {
+              setMode(null)
+              setIsTemplateEditorActive(false)
+            }}
+            onEditorStateChange={setIsTemplateEditorActive}
+          />
         </DialogContent>
       </Dialog>
 
