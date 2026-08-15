@@ -160,7 +160,7 @@ function buildConfirmationMessage(steps: CosExecutionStep[]) {
   if (steps.length === 1) return getCosCapabilityConfirmationMessage(steps[0].action)
 
   const labels = steps.map((step) => `• ${step.plan.capability.title}`)
-  return ["Antes de continuar, preciso da sua confirmaÃ§Ã£o para:", ...labels, "", "Confirma esta aÃ§Ã£o?"].join("\n")
+  return ["Antes de continuar, preciso da sua confirmação para:", ...labels, "", "Confirma esta ação?"].join("\n")
 }
 
 function buildIntentConfirmationMessage(input: {

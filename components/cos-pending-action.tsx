@@ -5,55 +5,14 @@ import { ChevronRight, FileText, Files, ImageIcon, Video } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
 import type { CosConversationItem, CosInteractionType, CosResponseOption, PendingConfirmation } from "@/components/use-cos-conversations"
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Rascunho",
-  signed: "Assinado",
-  awaiting_signature: "Aguardando assinatura",
-  active: "Ativo",
-  paused: "Pausado",
-  published: "Publicado",
-  archived: "Arquivado",
-  cancelled: "Cancelado",
-  completed: "Concluido",
-  processing: "Processando",
-  new: "Novo",
-  contacted: "Em contato",
-  negotiating: "Em negociacao",
-  won: "Convertido",
-  lost: "Perdido",
-}
-
-function humanizeCosText(content: string) {
-  return Object.entries(STATUS_LABELS).reduce((text, [key, label]) => {
-    return text.replace(new RegExp(`\\b${key}\\b`, "gi"), label)
-  }, content)
-}
+import { getCosInteractionLabel } from "@/lib/cos/localization"
 
 function getInteractionLabel(type: CosInteractionType | undefined) {
-  switch (type) {
-    case "confirmation":
-      return "Confirmacao"
-    case "selection":
-      return "Selecao"
-    case "navigation":
-      return "Navegacao"
-    case "wizard":
-      return "Proximo passo"
-    case "preview":
-      return "Preview"
-    case "summary":
-      return "Resumo"
-    case "result":
-      return "Resultado"
-    default:
-      return null
-  }
+  return getCosInteractionLabel(type)
 }
 
 function parseStructuredList(content: string) {
-  const normalized = humanizeCosText(content)
-  const lines = normalized.split("\n")
+  const lines = content.split("\n")
   const bulletIndexes = lines
     .map((line, index) => ({ line: line.trim(), index }))
     .filter(({ line }) => /^[-*]\s+/.test(line))
@@ -88,9 +47,9 @@ export function CosOptionButtons({ options, disabled, onSelect }: CosOptionButto
           className="h-auto justify-between rounded-[1rem] border border-black/[0.08] bg-white px-3.5 py-3 text-left text-xs text-[#111111] hover:bg-white disabled:opacity-60"
         >
           <span className="min-w-0">
-            <span className="block truncate text-[12px] font-medium text-[#111111]">{humanizeCosText(option.label)}</span>
+            <span className="block truncate text-[12px] font-medium text-[#111111]">{option.label}</span>
             {option.description ? (
-              <span className="mt-1 block whitespace-normal text-[11px] leading-5 text-[#7B8491]">{humanizeCosText(option.description)}</span>
+              <span className="mt-1 block whitespace-normal text-[11px] leading-5 text-[#7B8491]">{option.description}</span>
             ) : null}
           </span>
           <ChevronRight className="ml-3 size-4 shrink-0 text-[#9aa4b2]" />
@@ -158,7 +117,7 @@ export function CosConversationMessageBody({ item }: { item: CosConversationItem
           </div>
         </div>
       ) : (
-        <p className="whitespace-pre-wrap break-words">{humanizeCosText(item.content)}</p>
+        <p className="whitespace-pre-wrap break-words">{item.content}</p>
       )}
     </div>
   )

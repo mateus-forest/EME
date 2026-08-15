@@ -15,7 +15,7 @@ Data: 14/08/2026. Esta matriz preserva a evidência da auditoria e registra o co
 | G — Catálogo x Marketplace | `SHARE_CATALOG` | `explain`, domínios `catalog + marketplace`, `help.general_question` | Corrigido no roteamento; conhecimento completo fica para Etapas 3/4 |
 | H — “você consegue cadastrar?” | iniciava `createLead` | `capability_question`, responde via `general.chat`, sem mutação | Corrigido |
 | I — “manda aquele” sem contexto | fallback geral imprevisível | `select` sem referente, `needsClarification`, nenhuma action operacional | Corrigido de forma segura |
-| J — localização | literais corrompidos e termos internos alcançáveis | inalterado por escopo | Etapa 5 |
+| J — localização | literais corrompidos e termos internos alcançáveis | corrigido na origem; labels/status centralizados; adapter restrito apenas para histórico antigo | Etapa 5 concluída |
 
 Os testes de regressão A–J estão em `tests/e2e/cos-audit-diagnostics.spec.ts`. Os testes estruturais A–O da Decision Layer estão em `tests/e2e/cos-conversational-decision.spec.ts`.
 

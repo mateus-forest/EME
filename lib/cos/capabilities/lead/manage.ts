@@ -1,6 +1,7 @@
 import "server-only"
 
 import { LeadStatus } from "@/lib/prisma-enums"
+import { getCosStatusLabel } from "@/lib/cos/localization"
 
 import { prisma } from "@/lib/prisma"
 import { createCosAwaitingInputResult, createCosErrorResult, createCosSuccessResult } from "@/lib/cos/action-result"
@@ -273,7 +274,7 @@ export const findLeadCapability: CosCapabilityHandler = async ({ brokerId, messa
 
   return createCosSuccessResult({
     response: lead
-      ? `${lead.name ?? "Cliente sem nome"}\nStatus: ${lead.status}${lead.phone ? `\nTelefone: ${lead.phone}` : ""}${lead.email ? `\nEmail: ${lead.email}` : ""}`
+      ? `${lead.name ?? "Cliente sem nome"}\nStatus: ${getCosStatusLabel("lead", lead.status)}${lead.phone ? `\nTelefone: ${lead.phone}` : ""}${lead.email ? `\nEmail: ${lead.email}` : ""}`
       : "Não encontrei clientes com esse filtro.",
     metadata: {
       leadIds: leads.map((lead) => lead.id),

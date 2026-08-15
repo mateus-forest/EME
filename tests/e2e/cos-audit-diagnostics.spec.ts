@@ -303,9 +303,9 @@ test.describe("COS — diagnóstico A–J após a Decision Layer", () => {
     expect(result.candidates).toEqual([])
   })
 
-  test("J — o formatter de workflow ainda contém texto com codificação corrompida", () => {
+  test("J — o formatter de workflow não contém mais texto com codificação corrompida", () => {
     const source = readFileSync(join(process.cwd(), "lib/cos/workflow-engine.ts"), "utf8")
 
-    expect(source).toMatch(/Ãƒ|Ã¢/)
+    expect(source).not.toMatch(/Ãƒ|Ã¢/)
   })
 })

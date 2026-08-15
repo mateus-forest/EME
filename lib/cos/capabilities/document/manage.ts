@@ -1,6 +1,7 @@
 import { createCosAwaitingInputResult, createCosErrorResult, createCosSuccessResult } from "@/lib/cos/action-result"
 import { createPendingInput } from "@/lib/cos/pending-input"
 import { prisma } from "@/lib/prisma"
+import { getCosStatusLabel } from "@/lib/cos/localization"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -26,7 +27,7 @@ export const listDocumentsCapability: CosCapabilityHandler = async ({ brokerId }
   return createCosSuccessResult({
     response: documents.length
       ? `Encontrei ${documents.length} documento${documents.length === 1 ? "" : "s"}:\n\n${documents
-          .map((document, index) => `${index + 1}. ${document.title} — ${document.status}`)
+          .map((document, index) => `${index + 1}. ${document.title} — ${getCosStatusLabel("document", document.status)}`)
           .join("\n")}`
       : "Você ainda não possui documentos cadastrados.",
     metadata: {
@@ -93,7 +94,7 @@ export const getDocumentCapability: CosCapabilityHandler = async (input) => {
       options: documents.map((document) => ({
         id: document.id,
         label: document.title,
-        description: `${document.type} — ${document.status}`,
+        description: `${document.type === "proposal" ? "Proposta" : document.type === "contract" ? "Contrato" : "Documento"} — ${getCosStatusLabel("document", document.status)}`,
       })),
     })
     return createCosAwaitingInputResult({
@@ -106,7 +107,7 @@ export const getDocumentCapability: CosCapabilityHandler = async (input) => {
   const document = documents[0]
   const textPreview = document.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 700)
   return createCosSuccessResult({
-    response: `${document.title}\nStatus: ${document.status}${textPreview ? `\n\n${textPreview}` : ""}`,
+    response: `${document.title}\nStatus: ${getCosStatusLabel("document", document.status)}${textPreview ? `\n\n${textPreview}` : ""}`,
     metadata: {
       documentId: document.id,
       documentType: document.type,
@@ -119,4 +120,3 @@ export const getDocumentCapability: CosCapabilityHandler = async (input) => {
     propertyId: document.propertyId ?? undefined,
   })
 }
-

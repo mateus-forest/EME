@@ -3,6 +3,7 @@ import "server-only"
 import { resolveAgendaEntity } from "@/lib/cos/entity-resolver"
 import { createCosSuccessResult } from "@/lib/cos/action-result"
 import { prisma } from "@/lib/prisma"
+import { getCosStatusLabel } from "@/lib/cos/localization"
 
 import { cleanText, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
@@ -39,7 +40,7 @@ async function listAgendaWindow(brokerId: string, from: Date, to: Date, label: s
 
   return {
     response: events.length
-      ? `${label}:\n\n${events.map((event) => `- ${event.title} (${event.status})${event.time ? ` às ${event.time}` : ""}`).join("\n")}`
+      ? `${label}:\n\n${events.map((event) => `- ${event.title} (${getCosStatusLabel("agenda", event.status)})${event.time ? ` às ${event.time}` : ""}`).join("\n")}`
       : `${label}: nenhum compromisso encontrado.`,
     metadata: {
       agendaEventIds: events.map((event) => event.id),

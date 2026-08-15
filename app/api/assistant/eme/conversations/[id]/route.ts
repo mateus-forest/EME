@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { parseConversationWorkflowContent } from "@/lib/cos/workflow-engine"
+import { parseCosResponseViewModel, type CosResponseViewModel } from "@/lib/cos/response-view-model"
 import { cleanCosConversationTitle, DEFAULT_COS_CONVERSATION_TITLE, resolveCosConversationCategory } from "@/lib/cos-conversations"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -22,6 +23,7 @@ type ConversationMessage = {
   attachments?: PendingConfirmationAttachment[]
   sourceMessage?: string
   sourceInteractionId?: string
+  responseView?: CosResponseViewModel
   createdAt: string
 }
 
@@ -138,6 +140,9 @@ function mapConversationMessages(rows: Array<{
     sourceInteractionId: string
     attachments?: PendingConfirmationAttachment[]
     options?: Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
+    prompt?: string
+    confirmLabel?: string
+    cancelLabel?: string
   } | null
 } {
   const messages: ConversationMessage[] = []
@@ -147,12 +152,16 @@ function mapConversationMessages(rows: Array<{
     sourceInteractionId: string
     attachments?: PendingConfirmationAttachment[]
     options?: Array<{ id: string; actionId?: string; label: string; description?: string; action?: string; message?: string; selectedOptionId?: string; href?: string }>
+    prompt?: string
+    confirmLabel?: string
+    cancelLabel?: string
   } | null = null
 
   for (const row of rows) {
     const metadata = metadataRecord(row.metadata)
+    const responseView = parseCosResponseViewModel(metadata.responseView)
     const displayMessage = metadataText(metadata, "displayMessage") || row.message
-    const confirmRequired = metadataBoolean(metadata, "confirmationRequired") && row.actionStatus === "needs_confirmation"
+    const confirmRequired = (metadataBoolean(metadata, "confirmationRequired") || responseView?.kind === "confirmation_required") && row.actionStatus === "needs_confirmation"
     const attachments = metadataAttachments(metadata)
     const options = metadataOptions(metadata)
     const createdAt = row.createdAt.toISOString()
@@ -168,11 +177,11 @@ function mapConversationMessages(rows: Array<{
       })
     }
 
-    if (row.response) {
+    if (row.response || responseView) {
       messages.push({
         id: `${row.id}:assistant`,
         role: "assistant",
-        content: row.response,
+        content: responseView?.text ?? row.response ?? "",
         state: row.actionStatus === "error" ? "error" : "ready",
         action: row.actionType,
         actionStatus: row.actionStatus,
@@ -180,6 +189,7 @@ function mapConversationMessages(rows: Array<{
         options,
         sourceMessage: row.message,
         sourceInteractionId: row.id,
+        responseView: responseView ?? undefined,
         createdAt,
       })
     }
@@ -191,6 +201,9 @@ function mapConversationMessages(rows: Array<{
         sourceInteractionId: row.id,
         attachments,
         options,
+        prompt: responseView?.confirmation?.prompt,
+        confirmLabel: responseView?.confirmation?.confirmLabel,
+        cancelLabel: responseView?.confirmation?.cancelLabel,
       }
     }
 

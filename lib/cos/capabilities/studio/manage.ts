@@ -51,7 +51,7 @@ async function resolveStudioPropertyInput(input: {
     return {
       property: null,
       needsInput: {
-        response: `Encontrei mais de um imÃ³vel. Qual deseja usar?\n\n${resolution.options.map((candidate, index) => `${index + 1}. ${candidate.label}${candidate.description ? ` - ${candidate.description}` : ""}`).join("\n")}`,
+        response: `Encontrei mais de um imóvel. Qual deseja usar?\n\n${resolution.options.map((candidate, index) => `${index + 1}. ${candidate.label}${candidate.description ? ` - ${candidate.description}` : ""}`).join("\n")}`,
         metadata: createPendingInputMetadata({
           field: "propertyChoice",
           action: "STUDIO_GENERATE_CAMPAIGN",
@@ -68,7 +68,7 @@ async function resolveStudioPropertyInput(input: {
   return {
     property: null,
     needsInput: {
-      response: "Qual imÃ³vel devo usar nesta aÃ§Ã£o do Studio IA?",
+      response: "Qual imóvel devo usar nesta ação do Studio IA?",
       metadata: createPendingInputMetadata({
         field: "property",
         action: "STUDIO_GENERATE_CAMPAIGN",
@@ -138,14 +138,14 @@ async function createDeterministicStudioCampaign(input: {
 export const studioGenerateDescriptionCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
-  const description = `${narrative.title} em ${narrative.location}, com ${narrative.highlight.toLowerCase()} e valor de referÃªncia em R$ ${(narrative.price / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. ${narrative.description}`
+  const description = `${narrative.title} em ${narrative.location}, com ${narrative.highlight.toLowerCase()} e valor de referência em R$ ${(narrative.price / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. ${narrative.description}`
 
   return {
-    response: `DescriÃ§Ã£o sugerida:\n\n${description}`,
+    response: `Descrição sugerida:\n\n${description}`,
     metadata: {
       propertyId: property.id,
       generatedDescription: description,
@@ -168,7 +168,7 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
     }
   }
 
-  const refined = `${baseText}\n\nCTA sugerido: fale comigo para receber a apresentaÃ§Ã£o completa e agendar sua visita.`
+  const refined = `${baseText}\n\nCTA sugerido: fale comigo para receber a apresentação completa e agendar sua visita.`
 
   return {
     response: `Texto refinado:\n\n${refined}`,
@@ -181,7 +181,7 @@ export const studioImproveTextCapability: CosCapabilityHandler = async ({ broker
 export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -227,7 +227,7 @@ export const studioGenerateCampaignCapability: CosCapabilityHandler = async ({ b
 export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -276,7 +276,7 @@ export const studioGenerateInstagramCapability: CosCapabilityHandler = async ({ 
 export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
   const property = resolved.property
 
   return {
@@ -292,7 +292,7 @@ export const studioGenerateFacebookCapability: CosCapabilityHandler = async ({ b
 export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -330,7 +330,7 @@ export const studioGenerateVideoCapability: CosCapabilityHandler = async ({ brok
 export const studioGenerateStoryCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
   const payloadRecord = getPayloadRecord({ brokerId, userId, message, action: "general", payload })
   const resolved = await resolveStudioPropertyInput({ brokerId, payload: payloadRecord, message, pendingInput })
-  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!resolved.property) return resolved.needsInput ?? requiredSelectionResponse("imóvel", "propertyId")
   const property = resolved.property
 
   const narrative = buildPropertyNarrative(property)
@@ -358,7 +358,7 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
     take: 1,
   })
   const propertyId = propertyResolution.record?.id ?? null
-  if (!propertyId) return requiredSelectionResponse("imÃ³vel", "propertyId")
+  if (!propertyId) return requiredSelectionResponse("imóvel", "propertyId")
 
   const { user } = await getBrokerUserContext(brokerId, userId)
   if (!user) throw new Error("COS_STUDIO_USER_NOT_FOUND")
@@ -371,7 +371,7 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
   if (!latest) {
     const campaignResolution = await resolveCampaignEntity({ brokerId, payload: payloadRecord })
     return {
-      response: "NÃ£o encontrei campanha anterior para regenerar. Posso criar uma nova campanha de Instagram primeiro.",
+      response: "Não encontrei campanha anterior para regenerar. Posso criar uma nova campanha de Instagram primeiro.",
       metadata: createPendingInputMetadata({
         field: "campaignId",
         action: "STUDIO_REGENERATE",
@@ -408,7 +408,7 @@ export const studioRegenerateCapability: CosCapabilityHandler = async ({ brokerI
   })
 
   return {
-    response: `Campanha regenerada com sucesso.\n\nNova versÃ£o: ${regenerated.version}`,
+    response: `Campanha regenerada com sucesso.\n\nNova versão: ${regenerated.version}`,
     metadata: {
       campaignId: regenerated.id,
       propertyId,

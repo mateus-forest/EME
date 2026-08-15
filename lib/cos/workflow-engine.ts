@@ -48,11 +48,11 @@ function isAffirmativeMessage(message: string) {
 
 function getWorkflowStatusLabel(workflow: CosWorkflow) {
   const status = normalizeWorkflowStatus(workflow.status)
-  if (status === "completed") return "ConcluÃƒÂ­da"
+  if (status === "completed") return "Concluída"
   if (status === "cancelled") return "Cancelada"
   if (status === "failed") return "Erro"
-  if (workflow.pendingInput?.field === "confirmation") return "Aguardando confirmaÃƒÂ§ÃƒÂ£o"
-  if (workflow.pendingInput?.type === "selection") return "Aguardando seleÃƒÂ§ÃƒÂ£o"
+  if (workflow.pendingInput?.field === "confirmation") return "Aguardando confirmação"
+  if (workflow.pendingInput?.type === "selection") return "Aguardando seleção"
   if (status === "awaiting_input") return "Em andamento"
   if (status === "processing") return "Processando"
   return "Em andamento"
@@ -305,7 +305,7 @@ export function rebuildExecutionPlanFromWorkflow(workflow: CosWorkflow): CosExec
     steps,
     unresolvedGoals: workflow.executionPlan.unresolvedGoals,
     requiresConfirmation: workflow.pendingInput?.field === "confirmation",
-    confirmationMessage: workflow.pendingInput?.field === "confirmation" ? "Confirma esta aÃƒÂ§ÃƒÂ£o?" : null,
+    confirmationMessage: workflow.pendingInput?.field === "confirmation" ? "Confirma esta ação?" : null,
     telemetry: {
       planId: workflow.executionPlan.id,
       source: workflow.executionPlan.source,
@@ -437,25 +437,25 @@ export function formatWorkflowOperationDetails(input: {
   const operationStep = currentStep ?? workflow.steps[0]
 
   if (!operationStep) {
-    return "NÃƒÂ£o existe nenhuma operaÃƒÂ§ÃƒÂ£o em andamento no momento."
+    return "Não existe nenhuma operação em andamento no momento."
   }
 
   const lines = [
-    "OperaÃƒÂ§ÃƒÂ£o em andamento",
+    "Operação em andamento",
     "",
-    `Nome da operaÃƒÂ§ÃƒÂ£o: ${getWorkflowStepLabel(operationStep)}`,
+    `Nome da operação: ${getWorkflowStepLabel(operationStep)}`,
     `Status: ${getWorkflowStatusLabel(workflow)}`,
     "",
     "Etapas:",
     ...workflow.steps.map((step, index) => {
       const prefix =
         step.status === "completed"
-          ? "Ã¢Å“â€"
+          ? "✓"
           : step.status === "failed"
-            ? "Ã¢Å¡Â "
+            ? "⚠"
             : index === currentStepIndex || step.status === "running" || step.status === "awaiting_input"
-              ? "Ã¢ÂÂ³"
-              : "Ã¢Â¬Å“"
+              ? "⏳"
+              : "⬜"
       return `${prefix} ${getWorkflowStepLabel(step)}`
     }),
   ]
@@ -464,7 +464,7 @@ export function formatWorkflowOperationDetails(input: {
     lines.push(`Cliente selecionado: ${memory?.selectedClient?.label ?? memory?.leadId}`)
   }
   if (memory?.selectedProperty?.label || memory?.propertyId) {
-    lines.push(`ImÃƒÂ³vel selecionado: ${memory?.selectedProperty?.label ?? memory?.propertyId}`)
+    lines.push(`Imóvel selecionado: ${memory?.selectedProperty?.label ?? memory?.propertyId}`)
   }
   if ((memory?.uploadedDocuments?.length ?? 0) > 0) {
     lines.push(`Documento anexado: ${memory?.uploadedDocuments?.[0]?.name}`)
@@ -473,10 +473,10 @@ export function formatWorkflowOperationDetails(input: {
     lines.push(`Arquivos enviados: ${memory?.attachments?.map((attachment) => attachment.name).join(", ")}`)
   }
   if (creditsRequired > 0) {
-    lines.push(`CrÃƒÂ©ditos que serÃƒÂ£o consumidos: ${creditsRequired}`)
+    lines.push(`Créditos que serão consumidos: ${creditsRequired}`)
   }
   if (workflow.pendingInput?.label) {
-    lines.push(`PrÃƒÂ³xima aÃƒÂ§ÃƒÂ£o esperada: ${workflow.pendingInput.label}`)
+    lines.push(`Próxima ação esperada: ${workflow.pendingInput.label}`)
   }
 
   return lines.join("\n")

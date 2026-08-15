@@ -5,6 +5,8 @@ import type { Dispatch, SetStateAction } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import type { CosComposerAttachment } from "@/components/cos-prompt-composer"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
+import { repairLegacyCosText } from "@/lib/cos/localization"
+import { parseCosResponseViewModel, type CosResponseViewModel } from "@/lib/cos/response-view-model"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { deriveWorkspaceContextFromPathname } from "@/lib/cos/workspace-context"
 import type { CosWorkspaceContext } from "@/lib/cos/types"
@@ -52,6 +54,7 @@ export type CosConversationItem = {
   sourceMessage?: string
   sourceInteractionId?: string
   interactionType?: CosInteractionType
+  responseView?: CosResponseViewModel
   createdAt?: string
 }
 
@@ -81,9 +84,11 @@ type AssistantMessageResponse = {
   error?: string
   confirmRequired?: boolean
   interactionType?: CosInteractionType
+  responseView?: unknown
   conversation?: CosConversationSummary | null
   metadata?: {
     interactionType?: unknown
+    responseView?: unknown
     confirmationPrompt?: unknown
     confirmationConfirmLabel?: unknown
     confirmationCancelLabel?: unknown
@@ -110,10 +115,10 @@ function parseCosResponseOptions(value: unknown): CosResponseOption[] | undefine
     .map((item) => ({
       id: item.id as string,
       actionId: typeof item.actionId === "string" ? item.actionId : (item.id as string),
-      label: repairCosText(item.label as string),
-      description: typeof item.description === "string" ? repairCosText(item.description) : undefined,
+      label: repairLegacyCosText(item.label as string),
+      description: typeof item.description === "string" ? repairLegacyCosText(item.description) : undefined,
       action: typeof item.action === "string" ? item.action : null,
-      message: typeof item.message === "string" ? repairCosText(item.message) : undefined,
+      message: typeof item.message === "string" ? repairLegacyCosText(item.message) : undefined,
       selectedOptionId: typeof item.selectedOptionId === "string" ? item.selectedOptionId : undefined,
       href: typeof item.href === "string" ? item.href : undefined,
     }))
@@ -160,49 +165,6 @@ type CosConversationCache = {
 
 const COS_CONVERSATION_CACHE_KEY = "eme-cos-conversation-cache"
 const INITIAL_CONVERSATION_PAGE_SIZE = 15
-
-function repairCosText(value: string) {
-  return value
-    .replaceAll("Ã¢â‚¬â€œ", "–")
-    .replaceAll("Ã¢â‚¬â€", "—")
-    .replaceAll("NÃ£o", "Não")
-    .replaceAll("nÃ£o", "não")
-    .replaceAll("possÃ­vel", "possível")
-    .replaceAll("histÃ³rico", "histórico")
-    .replaceAll("operaÃ§Ã£o", "operação")
-    .replaceAll("operaÃ§Ãµes", "operações")
-    .replaceAll("VocÃª", "Você")
-    .replaceAll("vocÃª", "você")
-    .replaceAll("Ãšltimos", "Últimos")
-    .replaceAll("Ãºltimos", "últimos")
-    .replaceAll("tÃ­tulo", "título")
-    .replaceAll("interaÃ§Ã£o", "interação")
-    .replaceAll("crÃ©ditos", "créditos")
-    .replaceAll("crÃ©dito", "crédito")
-    .replaceAll("Alteracao", "Alteração")
-    .replaceAll("confirmacao", "confirmação")
-    .replaceAll("Disponivel", "Disponível")
-    .replaceAll("Necessario", "Necessário")
-    .replaceAll("pagina", "página")
-    .replaceAll("acao", "ação")
-    .replaceAll("credito", "crédito")
-    .replaceAll("Creditos", "Créditos")
-    .replaceAll("Nao", "Não")
-    .replaceAll("Ã§", "ç")
-    .replaceAll("Ã£", "ã")
-    .replaceAll("Ã¡", "á")
-    .replaceAll("Ã©", "é")
-    .replaceAll("Ãª", "ê")
-    .replaceAll("Ã­", "í")
-    .replaceAll("Ã³", "ó")
-    .replaceAll("Ã´", "ô")
-    .replaceAll("Ãº", "ú")
-    .replaceAll("â€¢", "•")
-    .replaceAll("âœ”", "✔")
-    .replaceAll("âš ", "⚠")
-    .replaceAll("â³", "⏳")
-    .replaceAll("â¬œ", "⬜")
-}
 
 function normalizeInteractionType(value: unknown): CosInteractionType | undefined {
   return value === "confirmation" ||
@@ -253,7 +215,7 @@ function buildFriendlyCreditsMessage(input: { availableCredits: number; required
 }
 
 function extractConfirmationSubject(content: string) {
-  const normalized = repairCosText(content)
+  const normalized = repairLegacyCosText(content)
   const patterns = [/cliente ([^.?\n]+)/i, /im[óo]vel ([^.?\n]+)/i, /contrato ([^.?\n]+)/i, /proposta ([^.?\n]+)/i, /compromisso ([^.?\n]+)/i, /documento ([^.?\n]+)/i]
 
   for (const pattern of patterns) {
@@ -283,7 +245,7 @@ function buildPendingConfirmationLabels(input: { action: string; content: string
     }
   }
 
-  const actionLabel = repairCosText(getCosCapabilityLabel(input.action)).replace(/^Ação do COS$/i, "ação")
+  const actionLabel = repairLegacyCosText(getCosCapabilityLabel(input.action)).replace(/^Ação do COS$/i, "ação")
   return {
     prompt: subject ? `Confirmar ${actionLabel.toLowerCase()} para ${subject}?` : `Confirmar ${actionLabel.toLowerCase()}?`,
     confirmLabel: `Confirmar ${actionLabel.toLowerCase()}`,
@@ -292,7 +254,7 @@ function buildPendingConfirmationLabels(input: { action: string; content: string
 }
 
 function normalizeConversationSummary(item: CosConversationSummary): CosConversationSummary {
-  const title = repairCosText(item.title)
+  const title = repairLegacyCosText(item.title)
 
   return {
     ...item,
@@ -302,10 +264,12 @@ function normalizeConversationSummary(item: CosConversationSummary): CosConversa
 }
 
 function normalizeConversationItem(item: CosConversationItem): CosConversationItem {
+  const responseView = parseCosResponseViewModel(item.responseView)
   return {
     ...item,
-    content: repairCosText(item.content),
-    interactionType: inferInteractionType({
+    content: responseView?.text ?? repairLegacyCosText(item.content),
+    responseView: responseView ?? undefined,
+    interactionType: responseView?.interactionType ?? inferInteractionType({
       action: item.action,
       actionStatus: item.actionStatus,
       confirmRequired: item.confirmRequired,
@@ -316,9 +280,9 @@ function normalizeConversationItem(item: CosConversationItem): CosConversationIt
     options: item.options?.map((option) => ({
       ...option,
       actionId: option.actionId,
-      label: repairCosText(option.label),
-      description: option.description ? repairCosText(option.description) : undefined,
-      message: option.message ? repairCosText(option.message) : undefined,
+      label: repairLegacyCosText(option.label),
+      description: option.description ? repairLegacyCosText(option.description) : undefined,
+      message: option.message ? repairLegacyCosText(option.message) : undefined,
     })),
   }
 }
@@ -343,15 +307,15 @@ function readConversationCache() {
               ...(parsed.pendingConfirmation as PendingConfirmation),
               prompt:
                 typeof (parsed.pendingConfirmation as { prompt?: unknown }).prompt === "string"
-                  ? repairCosText((parsed.pendingConfirmation as { prompt: string }).prompt)
+                  ? repairLegacyCosText((parsed.pendingConfirmation as { prompt: string }).prompt)
                   : undefined,
               confirmLabel:
                 typeof (parsed.pendingConfirmation as { confirmLabel?: unknown }).confirmLabel === "string"
-                  ? repairCosText((parsed.pendingConfirmation as { confirmLabel: string }).confirmLabel)
+                  ? repairLegacyCosText((parsed.pendingConfirmation as { confirmLabel: string }).confirmLabel)
                   : undefined,
               cancelLabel:
                 typeof (parsed.pendingConfirmation as { cancelLabel?: unknown }).cancelLabel === "string"
-                  ? repairCosText((parsed.pendingConfirmation as { cancelLabel: string }).cancelLabel)
+                  ? repairLegacyCosText((parsed.pendingConfirmation as { cancelLabel: string }).cancelLabel)
                   : undefined,
             }
           : null,
@@ -456,7 +420,7 @@ export function useCosConversations({
     })
 
     const data = (await response.json().catch(() => null)) as ConversationListResponse | null
-    if (!response.ok) throw new Error(repairCosText(data?.error || "Nao foi possivel carregar o historico do COS."))
+    if (!response.ok) throw new Error(repairLegacyCosText(data?.error || "Não foi possível carregar o histórico do COS."))
 
     const nextConversations = (data?.conversations ?? []).map(normalizeConversationSummary)
     if (!isMountedRef.current || requestId !== conversationListRequestIdRef.current) {
@@ -522,7 +486,7 @@ export function useCosConversations({
         cache: "no-store",
       })
       const data = (await response.json().catch(() => null)) as ConversationDetailResponse | null
-      if (!response.ok) throw new Error(repairCosText(data?.error || "Nao foi possivel abrir a conversa."))
+      if (!response.ok) throw new Error(repairLegacyCosText(data?.error || "Não foi possível abrir a conversa."))
 
       if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
         return
@@ -538,7 +502,7 @@ export function useCosConversations({
       if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
         return
       }
-      setChatFeedback(repairCosText(caughtError instanceof Error ? caughtError.message : "Nao foi possivel abrir a conversa."))
+      setChatFeedback(repairLegacyCosText(caughtError instanceof Error ? caughtError.message : "Não foi possível abrir a conversa."))
     } finally {
       if (isMountedRef.current && requestId === openConversationRequestIdRef.current) {
         setIsConversationLoading(false)
@@ -558,7 +522,7 @@ export function useCosConversations({
     })
     const data = (await response.json().catch(() => null)) as ConversationListResponse | null
     if (!response.ok || !data?.conversation) {
-      throw new Error(repairCosText(data?.error || "Nao foi possivel criar a conversa."))
+      throw new Error(repairLegacyCosText(data?.error || "Não foi possível criar a conversa."))
     }
 
     if (!isMountedRef.current) {
@@ -587,7 +551,7 @@ export function useCosConversations({
       body: JSON.stringify({ title }),
     })
     const data = (await response.json().catch(() => null)) as ConversationListResponse | null
-    if (!response.ok || !data?.conversation) throw new Error(repairCosText(data?.error || "Nao foi possivel renomear a conversa."))
+    if (!response.ok || !data?.conversation) throw new Error(repairLegacyCosText(data?.error || "Não foi possível renomear a conversa."))
 
     const normalizedConversation = normalizeConversationSummary(data.conversation)
     setConversations((current) => current.map((item) => (item.id === conversationId ? normalizedConversation : item)))
@@ -601,7 +565,7 @@ export function useCosConversations({
       cache: "no-store",
     })
     const data = (await response.json().catch(() => null)) as { error?: string } | null
-    if (!response.ok) throw new Error(repairCosText(data?.error || "Nao foi possivel excluir a conversa."))
+    if (!response.ok) throw new Error(repairLegacyCosText(data?.error || "Não foi possível excluir a conversa."))
 
     const nextConversations = conversations.filter((item) => item.id !== conversationId)
     setConversations(nextConversations)
@@ -813,9 +777,9 @@ export function useCosConversations({
                   {
                     id: "billing_cta",
                     actionId: "billing:open_plan",
-                    label: repairCosText(data.ctaLabel),
+                    label: repairLegacyCosText(data.ctaLabel),
                     href: data.ctaHref,
-                    message: repairCosText(data.ctaLabel),
+                    message: repairLegacyCosText(data.ctaLabel),
                   } satisfies CosResponseOption,
                 ]
               : undefined
@@ -837,14 +801,14 @@ export function useCosConversations({
           setChatFeedback(blockedMessage)
           return
           throw new Error(
-            repairCosText(
+            repairLegacyCosText(
               data?.error ||
                 `Créditos IA insuficientes. Disponível: ${availableCredits}. Necessário: ${requiredCredits}. Abra a página Plano para continuar.`,
             ),
           )
         }
 
-        throw new Error(repairCosText(data?.error || "Nao foi possivel falar com o COS agora."))
+        throw new Error(repairLegacyCosText(data?.error || "Não foi possível falar com o COS agora."))
       }
 
       if (data?.conversation) {
@@ -862,6 +826,7 @@ export function useCosConversations({
         dispatchEntitySync({ type: "lead", entityId: deletedLeadId })
       }
 
+      const responseView = parseCosResponseViewModel(data?.responseView ?? data?.metadata?.responseView)
       const responseOptions =
         parseCosResponseOptions(data?.metadata?.options) ??
         parseCosResponseOptions(data?.metadata?.workflow?.pendingInput?.options) ??
@@ -869,7 +834,7 @@ export function useCosConversations({
       const assistantMessage: CosConversationItem = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: repairCosText(data?.response || "Nao consegui responder agora."),
+        content: responseView?.text ?? data?.response ?? "Não consegui responder agora.",
         state: "ready",
         action: data?.action ?? resolvedOptions?.action ?? null,
         actionStatus: data?.actionStatus ?? "success",
@@ -877,7 +842,7 @@ export function useCosConversations({
         options: responseOptions,
         sourceMessage: normalizedMessage,
         sourceInteractionId: "",
-        interactionType: inferInteractionType({
+        interactionType: responseView?.interactionType ?? inferInteractionType({
           action: data?.action ?? resolvedOptions?.action ?? null,
           actionStatus: data?.actionStatus ?? "success",
           confirmRequired: Boolean(data?.confirmRequired),
@@ -886,6 +851,7 @@ export function useCosConversations({
           state: "ready",
           metadataType: data?.interactionType ?? data?.metadata?.interactionType,
         }),
+        responseView: responseView ?? undefined,
         createdAt: new Date().toISOString(),
       }
 
@@ -900,16 +866,16 @@ export function useCosConversations({
           sourceInteractionId: assistantMessage.id,
           prompt:
             typeof data?.metadata?.confirmationPrompt === "string"
-              ? repairCosText(data.metadata.confirmationPrompt)
-              : buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).prompt,
+              ? repairLegacyCosText(data.metadata.confirmationPrompt)
+              : responseView?.confirmation?.prompt ?? buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).prompt,
           confirmLabel:
             typeof data?.metadata?.confirmationConfirmLabel === "string"
-              ? repairCosText(data.metadata.confirmationConfirmLabel)
-              : buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).confirmLabel,
+              ? repairLegacyCosText(data.metadata.confirmationConfirmLabel)
+              : responseView?.confirmation?.confirmLabel ?? buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).confirmLabel,
           cancelLabel:
             typeof data?.metadata?.confirmationCancelLabel === "string"
-              ? repairCosText(data.metadata.confirmationCancelLabel)
-              : buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).cancelLabel,
+              ? repairLegacyCosText(data.metadata.confirmationCancelLabel)
+              : responseView?.confirmation?.cancelLabel ?? buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).cancelLabel,
           attachments: resolvedOptions?.attachments ?? [],
           options: responseOptions,
         })
@@ -928,7 +894,7 @@ export function useCosConversations({
 
       await loadConversations({ limit: loadedConversationCountRef.current })
     } catch (caughtError) {
-      const messageText = repairCosText(caughtError instanceof Error ? caughtError.message : "Nao foi possivel falar com o COS agora.")
+      const messageText = repairLegacyCosText(caughtError instanceof Error ? caughtError.message : "Não foi possível falar com o COS agora.")
 
       setConversation((current) => [
         ...current,

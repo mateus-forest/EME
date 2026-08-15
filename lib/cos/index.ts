@@ -31,6 +31,17 @@ export {
 } from "@/lib/cos/pending-input"
 export { formatCosCapabilityResponse, formatCosExecutionPlanResponse } from "@/lib/cos/response-formatter"
 export {
+  buildCosConfirmationResponseViewModel,
+  buildCosExecutionResponseViewModel,
+  buildCosSimpleResponseViewModel,
+  parseCosResponseViewModel,
+} from "@/lib/cos/response-view-model"
+export type {
+  CosResponseInteractionType,
+  CosResponseKind,
+  CosResponseViewModel,
+} from "@/lib/cos/response-view-model"
+export {
   cancelWorkflow,
   createWorkflowFromExecutionPlan,
   formatWorkflowOperationDetails,

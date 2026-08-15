@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client"
 
 import { LeadStatus } from "@/lib/prisma-enums"
+import { getCosStatusLabel } from "@/lib/cos/localization"
 import { prisma } from "@/lib/prisma"
 
 import { createCosAwaitingInputResult, createCosSuccessResult } from "@/lib/cos/action-result"
@@ -131,7 +132,7 @@ export const leadSummarizeCapability: CosCapabilityHandler = async ({ brokerId }
 
   return {
     response: leads.length
-      ? `Últimos leads: ${leads.map((lead) => `${lead.name || lead.phone || "Lead"} (${lead.status})${lead.property?.title ? ` - ${lead.property.title}` : ""}`).join("; ")}.`
+      ? `Últimos clientes: ${leads.map((lead) => `${lead.name || lead.phone || "Cliente"} (${getCosStatusLabel("lead", lead.status)})${lead.property?.title ? ` - ${lead.property.title}` : ""}`).join("; ")}.`
       : "Ainda não há leads cadastrados para resumir.",
     metadata: json({ leadIds: leads.map((lead) => lead.id) }),
     leadId: leads[0]?.id,

@@ -142,7 +142,7 @@ export function parsePropertyDraftData(rawMessage: string, payload?: Record<stri
     type === "COMMERCIAL" ? "Comercial" :
     "Apartamento"
 
-  const city = cleanText(payload?.city, 100) || cleanText(centerCityMatch?.[1], 100) || cleanText(cityMatch?.[1], 100) || "Nao informada"
+  const city = cleanText(payload?.city, 100) || cleanText(centerCityMatch?.[1], 100) || cleanText(cityMatch?.[1], 100) || "Não informada"
   const neighborhood = cleanText(payload?.neighborhood, 100) || (centerCityMatch ? "Centro" : cleanText(neighborhoodMatch?.[1], 100)) || null
   const bedrooms = Number(payload?.bedrooms) || (bedroomsMatch ? Number(bedroomsMatch[1]) : 0)
   const bathrooms = Number(payload?.bathrooms) || (bathroomsMatch ? Number(bathroomsMatch[1]) : 0)
@@ -228,7 +228,7 @@ export async function createPropertyDraftRecord(input: {
   }
 
   const missingFields = [
-    draft.city && draft.city !== "Nao informada" ? "" : "cidade",
+    draft.city && draft.city !== "Não informada" ? "" : "cidade",
     draft.neighborhood ? "" : "bairro",
     draft.area ? "" : "metragem",
     draft.parkingSpots ? "" : "vagas",
@@ -247,7 +247,7 @@ export async function createPropertyDraftRecord(input: {
     data: {
       publicCode,
       title: draft.title || "Imovel em rascunho",
-      city: draft.city || "Nao informada",
+      city: draft.city || "Não informada",
       neighborhood: draft.neighborhood || null,
       price: draft.price,
       description: draft.description,

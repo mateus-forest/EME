@@ -194,7 +194,7 @@ export const listContractsCapability: CosCapabilityHandler = async ({ brokerId, 
   return {
     response: documents.length
       ? `Encontrei ${documents.length} contrato${documents.length === 1 ? "" : "s"}:\n\n${documents.map((document) => `- ${document.title}${document.property?.title ? ` - ${document.property.title}` : ""}`).join("\n")}`
-      : "Nao encontrei contratos com esse filtro.",
+      : "Não encontrei contratos com esse filtro.",
     metadata: { documentIds: documents.map((document) => document.id), resultsCount: documents.length },
   }
 }

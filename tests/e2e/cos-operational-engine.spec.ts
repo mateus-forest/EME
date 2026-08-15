@@ -184,8 +184,9 @@ test.describe("COS — núcleo operacional", () => {
     expect(receivedLeadId).toBe("lead-123")
     expect(result.completedSteps).toHaveLength(2)
     const response = await formatCosExecutionPlanResponse({ message: "teste", plan: createPlan([first, second]), result })
-    expect(response).toContain("✓ Cadastrar cliente")
-    expect(response).toContain("✓ Criar proposta")
+    expect(response).toContain("Cliente criado")
+    expect(response).toContain("Proposta criada")
+    expect(response).not.toContain("✓")
   })
 
   test("não executa etapa cuja dependência não foi concluída", async () => {
@@ -249,7 +250,7 @@ test.describe("COS — núcleo operacional", () => {
     expect(result.steps.map((step) => step.status)).toEqual(["completed", "failed", "pending"])
     expect(calls).toEqual([1, 1, 0])
     const response = await formatCosExecutionPlanResponse({ message: "teste", plan: createPlan(steps), result })
-    expect(response).toContain("O que já foi concluído foi preservado")
+    expect(response).toContain("Concluí: Consultar clientes")
     expect(response).not.toContain("falha controlada")
   })
 

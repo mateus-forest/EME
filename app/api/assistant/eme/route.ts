@@ -16,10 +16,12 @@ import {
   buildCosConversationSnapshot,
   cancelWorkflow,
   classifyCosPendingReply,
+  buildCosConfirmationResponseViewModel,
+  buildCosExecutionResponseViewModel,
+  buildCosSimpleResponseViewModel,
   createCosNormalizedContext,
   createWorkflowFromExecutionPlan,
   doesCosCapabilityMutateData,
-  formatCosExecutionPlanResponse,
   formatWorkflowOperationDetails,
   getActiveWorkflow,
   getConversationMemory,
@@ -45,6 +47,7 @@ import {
   type CosAttachmentInput as CosIncomingAttachment,
   type CosDialogueDecision,
   type CosKnowledgeContext,
+  type CosResponseViewModel,
   type CosWorkflow,
 } from "@/lib/cos"
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
@@ -676,7 +679,7 @@ export async function GET() {
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json({ error: "O serviço do COS está indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel carregar o COS." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível carregar o COS." }, { status: 500 })
   }
 }
 
@@ -715,7 +718,7 @@ export async function PATCH(request: NextRequest) {
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json({ error: "O serviço do COS está indisponível no momento." }, { status: 503 })
     }
-    return NextResponse.json({ error: "Nao foi possivel atualizar o COS." }, { status: 500 })
+    return NextResponse.json({ error: "Não foi possível atualizar o COS." }, { status: 500 })
   }
 }
 
@@ -1298,8 +1301,13 @@ export async function POST(request: NextRequest) {
 
     if (isCancellation) {
       const cancelledWorkflow = resumableWorkflow ? cancelWorkflow(resumableWorkflow) : null
-      const responseText = cancelledWorkflow ? "Tudo bem. Nao vou continuar com isso." : "Tudo bem. Nao executei a alteracao."
+      const responseView = buildCosSimpleResponseViewModel({
+        kind: "cancelled",
+        text: cancelledWorkflow ? "Tudo bem. Não vou continuar com isso." : "Tudo bem. Não executei a alteração.",
+      })
+      const responseText = responseView.text
       const interactionMetadata = {
+        responseView: responseView as unknown as Prisma.InputJsonObject,
         source: metadataSource,
         parsedIntent: action,
         actionName: action,
@@ -1389,6 +1397,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         response: responseText,
+        responseView,
         action,
         actionStatus: "cancelled",
         metadata: interactionMetadata,
@@ -1416,8 +1425,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (resumableWorkflow?.pendingInput?.field === "confirmation" && !shouldConfirmWorkflowMessage(message, Boolean(body?.confirm))) {
-      const responseText = buildCosHomeConfirmationResponse(action)
+      const responseView = buildCosConfirmationResponseViewModel({
+        action,
+        capabilityTitle: getCosCapabilityLabel(action),
+        prompt: buildCosHomeConfirmationResponse(action),
+      })
+      const responseText = responseView.text
       const interactionMetadata = {
+        responseView: responseView as unknown as Prisma.InputJsonObject,
+        interactionType: responseView.interactionType,
+        confirmationPrompt: responseView.confirmation?.prompt,
+        confirmationConfirmLabel: responseView.confirmation?.confirmLabel,
+        confirmationCancelLabel: responseView.confirmation?.cancelLabel,
         source: metadataSource,
         parsedIntent: action,
         actionName: action,
@@ -1493,6 +1512,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         response: responseText,
+        responseView,
         action,
         actionStatus: "needs_confirmation",
         metadata: interactionMetadata,
@@ -1514,8 +1534,18 @@ export async function POST(request: NextRequest) {
           parsedData: mapAttachmentDraftToPendingPropertyData(attachmentAnalysis.primaryPropertyDraft, message, attachmentAnalysis.imageUrl),
         }
       }
-      const responseText = executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action)
+      const responseView = buildCosConfirmationResponseViewModel({
+        action,
+        capabilityTitle: getCosCapabilityLabel(action),
+        prompt: executionPlan.confirmationMessage ?? buildCosHomeConfirmationResponse(action),
+      })
+      const responseText = responseView.text
       const interactionMetadata = {
+        responseView: responseView as unknown as Prisma.InputJsonObject,
+        interactionType: responseView.interactionType,
+        confirmationPrompt: responseView.confirmation?.prompt,
+        confirmationConfirmLabel: responseView.confirmation?.confirmLabel,
+        confirmationCancelLabel: responseView.confirmation?.cancelLabel,
         source: metadataSource,
         parsedIntent: action,
         actionName: action,
@@ -1594,6 +1624,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         response: responseText,
+        responseView,
         action,
         actionStatus: "needs_confirmation",
         metadata: interactionMetadata,
@@ -1628,6 +1659,7 @@ export async function POST(request: NextRequest) {
     }
 
     let responseText = ""
+    let responseView: CosResponseViewModel | null = null
     let actionStatus = "processing"
     let errorMessage: string | null = null
     let finalCreditsUsed = 0
@@ -1709,11 +1741,13 @@ export async function POST(request: NextRequest) {
       }
 
       const planForFormatting = executionPlan ?? rebuildExecutionPlanFromWorkflow(workflow)
-      responseText = await formatCosExecutionPlanResponse({
+      responseView = buildCosExecutionResponseViewModel({
         message: executionMessage,
         plan: planForFormatting,
         result: executionResult,
+        decision: dialogueDecision,
       })
+      responseText = responseView.text
 
       console.info("[cos][workflow]", {
         workflowId: updatedWorkflow.id,
@@ -1726,8 +1760,13 @@ export async function POST(request: NextRequest) {
       })
     } catch (caughtActionError) {
       actionStatus = "error"
-      errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na acao interna."
-      responseText = getAssessorActionErrorResponse(action)
+      errorMessage = caughtActionError instanceof Error ? caughtActionError.message : "Erro na ação interna."
+      responseView = buildCosSimpleResponseViewModel({
+        kind: "error",
+        text: getAssessorActionErrorResponse(action),
+        title: "Não foi possível concluir",
+      })
+      responseText = responseView.text
       finalCreditsUsed = 0
       updatedWorkflow = {
         ...workflow,
@@ -1803,6 +1842,8 @@ export async function POST(request: NextRequest) {
     const skippedCapabilities = plannedCapabilities.filter((capabilityId) => !executedCapabilities.includes(capabilityId))
     const interactionMetadata = {
       ...actionMetadata,
+      responseView: responseView as unknown as Prisma.InputJsonObject,
+      interactionType: responseView?.interactionType ?? "result",
       source: metadataSource,
       parsedIntent: action,
       actionName: action,
@@ -1906,6 +1947,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       response: responseText,
+      responseView,
       action,
       actionStatus,
       metadata: interactionMetadata,

@@ -203,9 +203,9 @@ export function resolveFastCosAction(input: {
     return {
       kind: "navigation",
       href: "/corretor/conta",
-      label: "ConfiguraÃ§Ãµes",
+      label: "Configurações",
       confidence: 0.99,
-      reply: "Claro.\n\nAbrindo configuraÃ§Ãµes...",
+      reply: "Claro.\n\nAbrindo configurações...",
       reason: "comando direto para abrir configuracoes",
     }
   }

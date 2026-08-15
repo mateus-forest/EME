@@ -9,6 +9,7 @@ import {
   parseContractContent,
   stringifyContractContent,
 } from "@/lib/contract-template"
+import { getCosStatusLabel } from "@/lib/cos/localization"
 import { createCosSuccessResult } from "@/lib/cos/action-result"
 import { resolveContractEntity } from "@/lib/cos/entity-resolver"
 import { prisma } from "@/lib/prisma"
@@ -69,7 +70,7 @@ export const previewContractCapability: CosCapabilityHandler = async ({ brokerId
 
   const summary = serializeContractSummary(contract)
   return createCosSuccessResult({
-    response: `Preview do contrato:\n\n${summary.title}\nStatus: ${summary.status}\n\n${summary.preview || "Preview ainda não disponível."}`,
+    response: `Prévia do contrato:\n\n${summary.title}\nStatus: ${getCosStatusLabel("contract", summary.status)}\n\n${summary.preview || "Prévia ainda não disponível."}`,
     metadata: {
       documentId: contract.id,
       contractId: contract.id,
@@ -116,7 +117,7 @@ export const updateContractCapability: CosCapabilityHandler = async ({ brokerId,
   })
 
   return {
-    response: `Contrato atualizado com sucesso.\n\n${updated.title}\nStatus: ${nextStatus}`,
+    response: `Contrato atualizado com sucesso.\n\n${updated.title}\nStatus: ${getCosStatusLabel("contract", nextStatus)}`,
     metadata: {
       documentId: updated.id,
       contractId: updated.id,
@@ -239,7 +240,7 @@ export const contractHistoryCapability: CosCapabilityHandler = async ({ brokerId
   return {
     response: contracts.length
       ? `Histórico recente de contratos:\n\n${contracts
-          .map((item) => `- ${item.title} (${normalizeContractStatus(item.status) ?? "draft"})`)
+          .map((item) => `- ${item.title} (${getCosStatusLabel("contract", normalizeContractStatus(item.status) ?? "draft")})`)
           .join("\n")}`
       : "Ainda não há contratos registrados.",
     metadata: {
