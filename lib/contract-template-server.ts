@@ -5,6 +5,7 @@ import {
   calculateContractReadiness,
   buildTextOnlyContractTemplateStructure,
   contractTemplateStructureSchema,
+  inspectContractTemplateStructure,
   renderContractTemplateHtml,
   splitContractTextIntoBlocks,
   type ContractFieldBinding,
@@ -224,17 +225,26 @@ export function serializeContractTemplate(template: {
       structure = null
     }
   }
+  const structurallyReady = structure
+    ? inspectContractTemplateStructure(structure).canMarkReady
+    : false
+  const effectiveTemplateStatus = template.status === "READY" && !structurallyReady
+    ? "REVIEW_REQUIRED"
+    : template.status
+  const effectiveVersionStatus = version?.status === "READY" && !structurallyReady
+    ? "REVIEW_REQUIRED"
+    : version?.status
   return {
     id: template.id,
     name: template.name,
-    status: template.status,
+    status: effectiveTemplateStatus,
     currentVersion: template.currentVersion,
     createdAt: template.createdAt.toISOString(),
     updatedAt: template.updatedAt.toISOString(),
     version: version ? {
       id: version.id,
       number: version.version,
-      status: version.status,
+      status: effectiveVersionStatus,
       sourceFileName: version.sourceFileName,
       sourceMimeType: version.sourceMimeType,
       sourceFileSize: version.sourceFileSize,

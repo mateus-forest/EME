@@ -3243,7 +3243,7 @@ export function BrokerContractsPage({
                         className="h-[2.125rem] rounded-xl border border-black/[0.05] bg-white px-3 text-[#111111] hover:bg-white"
                       >
                         <PencilLine className="size-4" />
-                        Editar
+                        {selectedContract.content.source === "template" ? "Preencher contrato" : "Editar contrato"}
                       </Button>
                       <Button
                         type="button"

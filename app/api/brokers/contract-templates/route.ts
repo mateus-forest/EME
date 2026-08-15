@@ -7,6 +7,7 @@ import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/aut
 import { saveBrokerContractTemplateFile } from "@/lib/broker-document-storage"
 import { validateContractTemplateFile } from "@/lib/contract-document-parser.server"
 import { analyzeContractTemplate, describeContractTemplateAnalysisError } from "@/lib/contract-template-analysis.server"
+import { inspectContractTemplateStructure } from "@/lib/contract-template-engine"
 import { serializeContractTemplate } from "@/lib/contract-template-server"
 import {
   hasUsableStoredContractTemplate,
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
       },
       () => analyzeContractTemplate(fileEntry),
     )
+    const inspection = inspectContractTemplateStructure(analysis.structure)
     const finalName = requestedName || analysis.structure.title || fallbackName
     const updated = await prisma.$transaction(async (tx) => {
       await tx.contractTemplateVersion.update({
@@ -167,7 +169,12 @@ export async function POST(request: NextRequest) {
           status: "REVIEW_REQUIRED",
           originalText: analysis.originalText,
           structure: analysis.structure,
-          analysisMetadata: analysis.metadata,
+          analysisMetadata: {
+            ...analysis.metadata,
+            extractedFieldCount: inspection.validFields.length,
+            extractedPartyCount: analysis.structure.parties.length,
+            hasUsableExtraction: inspection.hasUsableExtraction,
+          },
         },
       })
       return tx.contractTemplate.update({

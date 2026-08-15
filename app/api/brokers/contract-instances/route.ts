@@ -7,6 +7,7 @@ import {
   mergeKnownContractValues,
   parseStoredTemplateStructure,
 } from "@/lib/contract-template-server"
+import { inspectContractTemplateStructure } from "@/lib/contract-template-engine"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { recoverStoredContractTemplateVersion } from "@/lib/contract-template-recovery.server"
@@ -77,6 +78,15 @@ export async function POST(request: NextRequest) {
     }
     const recoveredVersion = await recoverStoredContractTemplateVersion(version, { templateTitle: template.name })
     const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
+    const structureInspection = inspectContractTemplateStructure(structure)
+    if (!structureInspection.canMarkReady) {
+      return NextResponse.json(
+        {
+          error: "Este modelo ainda não possui campos e partes confirmados. Edite ou reanalise o modelo antes de criar o contrato.",
+        },
+        { status: 409 },
+      )
+    }
     const values = mergeKnownContractValues({
       structure,
       context: { lead, property, broker },

@@ -10,7 +10,10 @@ import {
   calculateContractReadiness,
   contractBindingOptions,
   contractFieldBindingSchema,
+  inspectContractTemplateStructure,
+  normalizeAnalyzedContractTemplateStructure,
   renderContractTemplateHtml,
+  shouldCreateContractTemplateVersion,
   splitContractTextIntoBlocks,
   validateContractTemplateOccurrences,
 } from "../../lib/contract-template-engine"
@@ -167,6 +170,33 @@ test("recuperação textual nunca produz folha vazia e divide blocos excessivos 
   expect(html).toContain("CLÁUSULA PRIMEIRA")
   expect(html).toContain("ASSINATURAS")
   expect(validateContractTemplateOccurrences(recovered)).toEqual([])
+  expect(calculateContractReadiness(recovered, {}).score).toBe(0)
+  expect(inspectContractTemplateStructure(recovered).hasUsableExtraction).toBe(false)
+})
+
+test("modelo só pode ficar READY depois de extrair e confirmar campos e partes válidos", () => {
+  const analyzed = inspectContractTemplateStructure(structure)
+  expect(analyzed.hasUsableExtraction).toBe(true)
+  expect(analyzed.canMarkReady).toBe(false)
+
+  const confirmed = {
+    ...structure,
+    fields: structure.fields.map((field) => ({ ...field, reviewStatus: "CONFIRMED" as const })),
+  }
+  expect(inspectContractTemplateStructure(confirmed).canMarkReady).toBe(true)
+
+  const incomplete = normalizeAnalyzedContractTemplateStructure({
+    ...buildTextOnlyContractTemplateStructure({ text: "CONTRATO PARTICULAR\n\nTexto jurídico preservado sem campos classificados." }),
+    partiallyRecognized: true,
+  })
+  expect(inspectContractTemplateStructure(incomplete).canMarkReady).toBe(false)
+  expect(incomplete.warnings).toContain("A análise não identificou campos variáveis válidos. Reanalise o arquivo antes de utilizar este modelo.")
+})
+
+test("alteração estrutural com instâncias cria nova versão e preserva a anterior", () => {
+  expect(shouldCreateContractTemplateVersion({ structureChanged: true, currentVersionInstanceCount: 2 })).toBe(true)
+  expect(shouldCreateContractTemplateVersion({ structureChanged: false, currentVersionInstanceCount: 2 })).toBe(false)
+  expect(shouldCreateContractTemplateVersion({ structureChanged: true, currentVersionInstanceCount: 0 })).toBe(false)
 })
 
 test("catálogo de bindings permite revisar todas as origens aceitas pelo schema", () => {
@@ -238,9 +268,10 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await expect(page.getByRole("heading", { name: "Modelos", exact: true })).toBeVisible()
   await expect(page.getByText("Biblioteca reutilizável", { exact: true })).toBeVisible()
   await expect(page.getByText("Contrato Particular de Locação", { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: "Consultar", exact: true }).click()
-  await expect(page.getByRole("heading", { name: "Estrutura do modelo" })).toBeVisible()
+  await page.getByRole("button", { name: "Editar modelo", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Editar modelo" })).toBeVisible()
   await expect(page.getByText("Fonte preservada", { exact: true })).toBeVisible()
+  await expect(page.getByText("Editar estrutura e texto do modelo", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: /Voltar ao upload/ }).click()
   await page.keyboard.press("Escape")
   await page.getByRole("button", { name: "Contratos", exact: true }).click()
@@ -248,6 +279,9 @@ test("importa, revisa e reutiliza modelo no novo contrato sem expor modelos EME"
   await page.getByRole("button", { name: "Novo contrato" }).click()
   await expect(page.getByText("Compra e venda — Modelo EME")).toHaveCount(0)
   await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
+  await expect(page.getByText(/Preencher contrato · modelo versão 1/)).toBeVisible()
+  await expect(page.getByText("Nome do locatário", { exact: true })).toBeVisible()
+  await expect(page.getByText("Valor do aluguel", { exact: true })).toBeVisible()
   await expect(page.getByText("Preview A4 sincronizado")).toBeVisible()
   const previewFrame = page.frameLocator('iframe[title="Preview do contrato"]')
   await expect(previewFrame.getByText("CONTRATO PARTICULAR DE LOCAÇÃO")).toBeVisible()

@@ -277,6 +277,65 @@ export function validateContractTemplateOccurrences(structure: ContractTemplateS
   })
 }
 
+export function inspectContractTemplateStructure(structure: ContractTemplateStructure) {
+  const invalidOccurrences = validateContractTemplateOccurrences(structure)
+  const invalidFieldIds = new Set(invalidOccurrences.map((field) => field.id))
+  const validFields = structure.fields.filter((field) => !invalidFieldIds.has(field.id))
+  const unconfirmedFields = validFields.filter((field) => field.reviewStatus !== "CONFIRMED")
+  const issues: string[] = []
+
+  if (structure.blocks.length === 0) issues.push("O modelo não possui texto estruturado.")
+  if (validFields.length === 0) issues.push("Nenhum campo variável válido foi identificado.")
+  if (structure.parties.length === 0) issues.push("Nenhuma parte contratual foi identificada.")
+  if (invalidOccurrences.length > 0) issues.push("Existem campos que não correspondem ao texto preservado.")
+  if (unconfirmedFields.length > 0) issues.push("Existem campos que ainda precisam de confirmação.")
+
+  return {
+    validFields,
+    invalidOccurrences,
+    unconfirmedFields,
+    hasUsableExtraction:
+      structure.blocks.length > 0 &&
+      validFields.length > 0 &&
+      structure.parties.length > 0 &&
+      invalidOccurrences.length === 0,
+    canMarkReady:
+      structure.blocks.length > 0 &&
+      validFields.length > 0 &&
+      structure.parties.length > 0 &&
+      invalidOccurrences.length === 0 &&
+      unconfirmedFields.length === 0,
+    issues,
+  }
+}
+
+export function normalizeAnalyzedContractTemplateStructure(
+  structure: ContractTemplateStructure,
+): ContractTemplateStructure {
+  const inspection = inspectContractTemplateStructure(structure)
+  const warnings = [...structure.warnings]
+
+  if (inspection.validFields.length === 0) {
+    warnings.push("A análise não identificou campos variáveis válidos. Reanalise o arquivo antes de utilizar este modelo.")
+  }
+  if (structure.parties.length === 0) {
+    warnings.push("A análise não identificou partes contratuais. Revise ou reanalise o arquivo antes de utilizar este modelo.")
+  }
+
+  return {
+    ...structure,
+    warnings: [...new Set(warnings)],
+    partiallyRecognized: structure.partiallyRecognized || !inspection.hasUsableExtraction,
+  }
+}
+
+export function shouldCreateContractTemplateVersion(input: {
+  structureChanged: boolean
+  currentVersionInstanceCount: number
+}) {
+  return input.structureChanged && input.currentVersionInstanceCount > 0
+}
+
 export function buildContractTemplateStructure(
   blocks: ContractTemplateStructure["blocks"],
   analysis: ContractAnalysis,
@@ -399,7 +458,17 @@ export function renderContractBlock(
 }
 
 export function calculateContractReadiness(structure: ContractTemplateStructure, values: Record<string, string>) {
-  const required = structure.fields.filter((field) => field.required)
+  const inspection = inspectContractTemplateStructure(structure)
+  if (inspection.validFields.length === 0) {
+    return {
+      score: 0,
+      missing: [],
+      completed: 0,
+      required: 0,
+    }
+  }
+
+  const required = inspection.validFields.filter((field) => field.required)
   const completed = required.filter((field) => Boolean(values[field.id]?.trim()))
   return {
     score: required.length === 0 ? 100 : Math.round((completed.length / required.length) * 100),

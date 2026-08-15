@@ -6,6 +6,7 @@ import { detectContractTemplateMime, extractContractTemplateText } from "@/lib/c
 import {
   buildContractTemplateStructure,
   contractAnalysisSchema,
+  normalizeAnalyzedContractTemplateStructure,
   splitContractTextIntoBlocks,
   type ContractTemplateStructure,
 } from "@/lib/contract-template-engine"
@@ -115,9 +116,13 @@ export async function analyzeExtractedContractTemplate(input: ExtractedContractT
   const parsed = contractAnalysisSchema.safeParse(raw)
   if (!parsed.success) throw new Error("A análise retornou campos incompatíveis com o modelo esperado.")
 
+  const structure = normalizeAnalyzedContractTemplateStructure(
+    buildContractTemplateStructure(blocks, parsed.data),
+  )
+
   return {
     originalText: text,
-    structure: buildContractTemplateStructure(blocks, parsed.data),
+    structure,
     metadata: {
       provider: "openai",
       model,

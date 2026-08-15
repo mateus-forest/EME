@@ -33,6 +33,7 @@ import {
 import {
   calculateContractReadiness,
   contractBindingOptions,
+  inspectContractTemplateStructure,
   renderContractTemplateHtml,
   type ContractFieldBinding,
   type ContractTemplateField,
@@ -92,6 +93,10 @@ function ImportTemplatePanel({
     if (!template?.version?.structure || !structure) return false
     return JSON.stringify(template.version.structure.blocks) !== JSON.stringify(structure.blocks)
   }, [structure, template])
+  const structureInspection = useMemo(
+    () => structure ? inspectContractTemplateStructure(structure) : null,
+    [structure],
+  )
 
   async function beginReview(next: ContractTemplateRecord) {
     setIsBusy(true)
@@ -152,6 +157,10 @@ function ImportTemplatePanel({
 
   async function saveReview() {
     if (!template || !structure || !name.trim()) return
+    if (!structureInspection?.hasUsableExtraction) {
+      setFeedback("Este modelo ainda não possui campos variáveis e partes válidos. Reanalise o arquivo antes de salvar como pronto.")
+      return
+    }
     if (legalTextModified && !window.confirm("O texto jurídico foi alterado. Confirme que ele deve ser salvo como uma nova revisão do seu modelo.")) return
     setIsBusy(true)
     setFeedback("")
@@ -294,11 +303,16 @@ function ImportTemplatePanel({
                     </button>
                   </div>
                 ))}
+                {!structureInspection?.hasUsableExtraction ? (
+                  <div className="rounded-xl border border-[#ead5a0] bg-[#fff8e8] p-4 text-sm leading-6 text-[#765a16]">
+                    {structureInspection?.issues.find((issue) => !issue.includes("confirmação")) || "A estrutura ainda está incompleta."} Este modelo continuará aguardando revisão até uma reanálise completa.
+                  </div>
+                ) : null}
               </div>
             </section>
 
-            <details className="rounded-2xl border border-black/[0.06] bg-white p-5">
-              <summary className="cursor-pointer font-semibold text-[#111]">Estrutura e texto do modelo</summary>
+            <details open className="rounded-2xl border border-black/[0.06] bg-white p-5">
+              <summary className="cursor-pointer font-semibold text-[#111]">Editar estrutura e texto do modelo</summary>
               <p className="mt-2 text-sm leading-6 text-[#687386]">Use apenas para corrigir o documento. Alterações no texto jurídico criam uma nova versão e recomendam revisão jurídica.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {structure.sections.map((section) => (
@@ -369,7 +383,7 @@ function ImportTemplatePanel({
               </div>
             ) : null}
             <p className="mt-4 text-xs leading-5 text-[#7b8491]">Salvar confirma a estrutura. O texto jurídico não será reanalisado ao criar novos contratos.</p>
-            <Button onClick={() => void saveReview()} disabled={isBusy || !name.trim()} className="mt-5 w-full rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
+            <Button onClick={() => void saveReview()} disabled={isBusy || !name.trim() || !structureInspection?.hasUsableExtraction} className="mt-5 w-full rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">
               {isBusy ? <Spinner className="size-4" /> : <CheckCircle2 className="size-4" />} Salvar modelo
             </Button>
             <Button
@@ -504,10 +518,10 @@ function TemplateLibrary({
                 <span className="inline-flex rounded-full bg-[#edf8f1] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#17733a]">Pronto para usar</span>
                 <strong className="mt-3 block truncate text-base text-[#111]">{template.name}</strong>
                 <span className="mt-1 block text-xs leading-5 text-[#7b8491]">Versão {template.currentVersion} · atualizado em {new Intl.DateTimeFormat("pt-BR").format(new Date(template.updatedAt))}</span>
-                <span className="mt-3 block text-sm text-[#5f6b7a]">Consultar estrutura e campos</span>
+                <span className="mt-3 block text-sm text-[#5f6b7a]">Editar estrutura, texto, campos e bindings</span>
               </button>
               <div className="flex gap-2 border-t border-black/[0.05] pt-4">
-                <Button variant="outline" onClick={() => onInspect(template)} className="flex-1 rounded-xl">Consultar</Button>
+                <Button variant="outline" onClick={() => onInspect(template)} className="flex-1 rounded-xl">Editar modelo</Button>
                 <Button disabled={loading} onClick={() => void onUse(template.id)} className="flex-1 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]"><Plus className="size-4" /> Usar modelo</Button>
                 <Button variant="ghost" disabled={loading} aria-label={`Excluir modelo ${template.name}`} onClick={() => void onDelete(template)} className="size-10 shrink-0 rounded-xl p-0 text-[#b54747]"><Trash2 className="size-4" /></Button>
               </div>
@@ -713,10 +727,10 @@ function InstanceEditor({
   if (!instance) return <p className="rounded-xl bg-[#fff8e8] p-4 text-sm text-[#765a16]">{feedback || "Contrato não encontrado."}</p>
 
   return (
-    <div data-testid="contract-instance-editor" className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <div data-testid="contract-instance-editor" className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4 pr-10">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Modelo · versão {instance.template.version}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Preencher contrato · modelo versão {instance.template.version}</p>
           <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#050505]">{instance.template.name}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -960,7 +974,7 @@ export function BrokerContractsExperience() {
 
       <Dialog open={mode === "import"} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent className="max-h-[95vh] max-w-[min(1120px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-5 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-6">
-          <DialogHeader><DialogTitle>{selectedTemplate ? "Estrutura do modelo" : "Importar modelo"}</DialogTitle><DialogDescription>{selectedTemplate ? "Consulte e revise os campos deste modelo reutilizável." : "Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma."}</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{selectedTemplate ? "Editar modelo" : "Importar modelo"}</DialogTitle><DialogDescription>{selectedTemplate ? "Revise a estrutura, o texto jurídico, os campos variáveis e seus bindings." : "Adicione o contrato que você já utiliza. O EME identifica os campos; você revisa e confirma."}</DialogDescription></DialogHeader>
           <ImportTemplatePanel key={selectedTemplate?.id ?? "new-import"} templates={templates} initialTemplate={selectedTemplate} onTemplatesChanged={loadTemplates} onClose={() => setMode(null)} />
         </DialogContent>
       </Dialog>
@@ -991,7 +1005,7 @@ export function BrokerContractsExperience() {
 
       <Dialog open={mode === "editor" && Boolean(instanceId)} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent className="h-[min(96dvh,1040px)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[1680px] overflow-hidden rounded-2xl border-black/[0.07] bg-white p-4 text-[#111111] shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:max-w-[1680px] sm:p-6">
-          <DialogHeader className="sr-only"><DialogTitle>Editor de contrato por modelo próprio</DialogTitle><DialogDescription>Preencha os dados, revise a prontidão e gere o documento.</DialogDescription></DialogHeader>
+          <DialogHeader className="sr-only"><DialogTitle>Preencher contrato</DialogTitle><DialogDescription>Selecione cliente e imóvel, complete os valores da instância e gere o documento.</DialogDescription></DialogHeader>
           {instanceId ? (
             <InstanceEditor
               instanceId={instanceId}

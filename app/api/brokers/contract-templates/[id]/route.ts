@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { contractTemplateStructureSchema, validateContractTemplateOccurrences } from "@/lib/contract-template-engine"
+import {
+  contractTemplateStructureSchema,
+  inspectContractTemplateStructure,
+  shouldCreateContractTemplateVersion,
+} from "@/lib/contract-template-engine"
 import { serializeContractTemplate } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
@@ -88,13 +92,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!parsedStructure.success) {
       return NextResponse.json({ error: "Revise os campos e mapeamentos antes de salvar." }, { status: 400 })
     }
-    const invalidOccurrences = validateContractTemplateOccurrences(parsedStructure.data)
-    if (invalidOccurrences.length > 0) {
-      return NextResponse.json(
-        { error: `O texto alterado removeu ${invalidOccurrences.length} campo(s) variável(is). Revise o trecho antes de salvar.` },
-        { status: 400 },
-      )
-    }
+    const inspection = inspectContractTemplateStructure(parsedStructure.data)
 
     const template = await prisma.contractTemplate.findFirst({
       where: { id, brokerId: auth.user.broker!.id },
@@ -117,10 +115,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     // A new immutable version is necessary only when an existing contract already
     // points at the current structure. Renaming or confirming an unchanged model
     // must not create version noise.
-    const mustVersion = structureChanged && currentVersionInstanceCount > 0
+    const mustVersion = shouldCreateContractTemplateVersion({
+      structureChanged,
+      currentVersionInstanceCount,
+    })
+    const nextStatus = inspection.canMarkReady ? "READY" : "REVIEW_REQUIRED"
 
     const updated = await prisma.$transaction(async (tx) => {
-      if (template.status === "READY" && !structureChanged) {
+      if (template.status === "READY" && !structureChanged && inspection.canMarkReady) {
         return tx.contractTemplate.update({
           where: { id: template.id },
           data: { name },
@@ -129,12 +131,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
 
       if (mustVersion) {
-        const nextVersion = template.currentVersion + 1
+        const nextVersion = Math.max(...template.versions.map((version) => version.version), 0) + 1
         await tx.contractTemplateVersion.create({
           data: {
             templateId: template.id,
             version: nextVersion,
-            status: "READY",
+            status: nextStatus,
             sourceFileName: current.sourceFileName,
             sourceStoragePath: current.sourceStoragePath,
             sourceMimeType: current.sourceMimeType,
@@ -146,14 +148,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
             analysisMetadata: {
               ...(current.analysisMetadata && typeof current.analysisMetadata === "object" ? current.analysisMetadata : {}),
               editedAfterImport: true,
+              reviewedByUser: inspection.canMarkReady,
+              structuralReviewIncomplete: !inspection.canMarkReady,
               legalTextModified: bodyChanged,
             },
-            reviewedAt: new Date(),
+            reviewedAt: inspection.canMarkReady ? new Date() : null,
           },
         })
         return tx.contractTemplate.update({
           where: { id: template.id },
-          data: { name, status: "READY", currentVersion: nextVersion },
+          data: { name, status: nextStatus, currentVersion: nextVersion },
           include,
         })
       }
@@ -161,28 +165,39 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       await tx.contractTemplateVersion.update({
         where: { id: current.id },
         data: {
-          status: "READY",
+          status: nextStatus,
           structure: parsedStructure.data,
-          reviewedAt: new Date(),
+          reviewedAt: inspection.canMarkReady ? new Date() : null,
           analysisMetadata: {
             ...(current.analysisMetadata && typeof current.analysisMetadata === "object" ? current.analysisMetadata : {}),
-            reviewedByUser: true,
+            reviewedByUser: inspection.canMarkReady,
+            structuralReviewIncomplete: !inspection.canMarkReady,
             legalTextModified: bodyChanged,
           },
         },
       })
       return tx.contractTemplate.update({
         where: { id: template.id },
-        data: { name, status: "READY" },
+        data: { name, status: nextStatus },
         include,
       })
     })
 
-    return NextResponse.json({
+    const response = {
       template: serializeContractTemplate(updated),
       legalTextModified: bodyChanged,
       versionCreated: mustVersion,
-    })
+    }
+    if (!inspection.canMarkReady) {
+      return NextResponse.json(
+        {
+          ...response,
+          error: inspection.issues[0] || "A estrutura ainda precisa de revisão antes de ser utilizada.",
+        },
+        { status: 422 },
+      )
+    }
+    return NextResponse.json(response)
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Modelos indisponíveis no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível salvar a revisão deste modelo." }, { status: 500 })

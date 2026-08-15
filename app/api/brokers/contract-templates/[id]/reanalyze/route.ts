@@ -8,13 +8,27 @@ import {
   analyzeContractTemplate,
   describeContractTemplateAnalysisError,
 } from "@/lib/contract-template-analysis.server"
-import { serializeContractTemplate } from "@/lib/contract-template-server"
+import { inspectContractTemplateStructure } from "@/lib/contract-template-engine"
+import { parseStoredTemplateStructure, serializeContractTemplate } from "@/lib/contract-template-server"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
 export const maxDuration = 120
 
 const include = { versions: { orderBy: { version: "desc" as const } } }
+
+function storedVersionCanBeReady(version: {
+  structure: unknown
+  originalText: string
+}) {
+  try {
+    return inspectContractTemplateStructure(
+      parseStoredTemplateStructure(version.structure, version.originalText),
+    ).canMarkReady
+  } catch {
+    return false
+  }
+}
 
 export async function POST(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
@@ -47,8 +61,14 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
     }
 
     const recoveringStaleAnalysis = template.status === "ANALYZING" && !candidateIsFresh
-    const previousStatus = recoveringStaleAnalysis ? (lastValid?.status ?? "FAILED") : template.status
+    const rawPreviousStatus = recoveringStaleAnalysis ? (lastValid?.status ?? "FAILED") : template.status
     const previousVersion = recoveringStaleAnalysis ? (lastValid?.version ?? template.currentVersion) : template.currentVersion
+    const previousVersionRecord = template.versions.find((version) => version.version === previousVersion)
+    const previousStatus = rawPreviousStatus === "READY" && (
+      !previousVersionRecord || !storedVersionCanBeReady(previousVersionRecord)
+    )
+      ? "REVIEW_REQUIRED"
+      : rawPreviousStatus
     const nextVersionNumber = Math.max(...template.versions.map((version) => version.version), 0) + 1
     const claimed = await prisma.$transaction(async (tx) => {
       const lock = await tx.contractTemplate.updateMany({
@@ -117,6 +137,7 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
         },
         () => analyzeContractTemplate(file),
       )
+      const inspection = inspectContractTemplateStructure(analysis.structure)
       const updated = await prisma.$transaction(async (tx) => {
         await tx.contractTemplateVersion.update({
           where: { id: claimed.id },
@@ -124,7 +145,12 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
             status: "REVIEW_REQUIRED",
             originalText: analysis.originalText,
             structure: analysis.structure,
-            analysisMetadata: analysis.metadata,
+            analysisMetadata: {
+              ...analysis.metadata,
+              extractedFieldCount: inspection.validFields.length,
+              extractedPartyCount: analysis.structure.parties.length,
+              hasUsableExtraction: inspection.hasUsableExtraction,
+            },
             reviewedAt: null,
           },
         })
