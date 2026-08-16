@@ -2,6 +2,8 @@ import type {
   BillingPlan,
   BillingUserSubscriptionStatus,
   BrokerAccountStatus,
+  CreciValidationProvider,
+  CreciValidationStatus,
   CatalogOwnerType,
   LeadStatus,
   PropertyStatus,
@@ -35,6 +37,13 @@ export type Broker = {
   catalogSlug: string
   status: BrokerAccountStatus
   creci: string | null
+  creciUf: string | null
+  creciValidationStatus: CreciValidationStatus
+  creciValidatedAt: Date | null
+  creciOfficialName: string | null
+  creciProviderStatus: string | null
+  creciValidationProvider: CreciValidationProvider | null
+  creciNameMismatch: boolean
   description: string | null
   brandColor: string | null
   logoUrl: string | null

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { DEFAULT_STUDIO_ACCENT_COLOR } from "@/lib/studio-creative-renderer"
 import { normalizePhone, type StructuredInputKind } from "@/lib/structured-fields"
+import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 
 export function BrokerAccountPage() {
   return (
@@ -87,6 +88,7 @@ function AccountForm() {
   const [fullName, setFullName] = useState(profile.fullName)
   const [email, setEmail] = useState(profile.email)
   const [creci, setCreci] = useState(profile.creci)
+  const [creciUf, setCreciUf] = useState(profile.creciUf)
   const [whatsApp, setWhatsApp] = useState(profile.whatsApp)
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl)
   const [description, setDescription] = useState(profile.description)
@@ -107,6 +109,7 @@ function AccountForm() {
     setFullName(profile.fullName)
     setEmail(profile.email)
     setCreci(profile.creci)
+    setCreciUf(profile.creciUf)
     setWhatsApp(profile.whatsApp)
     setPhotoUrl(profile.photoUrl)
     setDescription(profile.description)
@@ -125,6 +128,9 @@ function AccountForm() {
       nextErrors.email = "Informe um e-mail válido."
     }
     if (!creci.trim()) nextErrors.creci = "Informe seu CRECI."
+    if ((creci.trim() !== profile.creci || creciUf !== profile.creciUf) && !creciUf) {
+      nextErrors.creciUf = "Informe a UF do CRECI."
+    }
     if (!whatsApp.trim()) {
       nextErrors.whatsApp = "Informe seu WhatsApp."
     } else if (whatsApp.replace(/\D/g, "").length < 10) {
@@ -164,6 +170,7 @@ function AccountForm() {
         fullName,
         email,
         creci,
+        creciUf,
         whatsApp: normalizePhone(whatsApp),
         photoUrl,
         description,
@@ -311,7 +318,39 @@ function AccountForm() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field id="email" label="Email" type="email" value={email} onChange={setEmail} error={errors.email} placeholder="voce@exemplo.com" />
-              <Field id="creci" label="CRECI" value={creci} onChange={setCreci} error={errors.creci} placeholder="000000-F" />
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="creci" className="text-sm font-medium text-[#5F6B7A]">CRECI</Label>
+                  {profile.creciValidationStatus === "VERIFIED" && creci === profile.creci && creciUf === profile.creciUf ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-2 py-1 text-[11px] font-semibold text-[#007f31]">
+                      <ShieldCheck className="size-3.5" />
+                      CRECI verificado
+                    </span>
+                  ) : null}
+                </div>
+                <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2">
+                  <select
+                    id="creciUf"
+                    aria-label="UF do CRECI"
+                    value={creciUf}
+                    onChange={(event) => setCreciUf(event.target.value)}
+                    className="h-11 rounded-[1rem] border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505] outline-none focus:border-[#009b3a] focus:ring-2 focus:ring-[#009b3a]/15"
+                  >
+                    <option value="">UF</option>
+                    {CRECI_UF_OPTIONS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                  <Input
+                    id="creci"
+                    value={creci}
+                    onChange={(event) => setCreci(event.target.value.replace(/\D/g, ""))}
+                    inputMode="numeric"
+                    pattern="[0-9]+"
+                    placeholder="000000"
+                    className="h-11 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF]"
+                  />
+                </div>
+                {(errors.creciUf || errors.creci) ? <p className="text-xs text-red-600">{errors.creciUf || errors.creci}</p> : null}
+              </div>
             </div>
 
             <div className="grid gap-2">

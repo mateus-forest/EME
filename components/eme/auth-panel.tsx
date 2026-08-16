@@ -8,6 +8,7 @@ import { Fingerprint, KeyRound, LockKeyhole, X } from "lucide-react"
 import { usePremiumLogin } from "@/components/use-premium-login"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
 import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 import { cn } from "@/lib/utils"
 
 export type AuthMode = "login" | "signup"
@@ -29,6 +30,7 @@ export function AuthPanel({
   const [name, setName] = useState("")
   const [signupEmail, setSignupEmail] = useState("")
   const [creci, setCreci] = useState("")
+  const [creciUf, setCreciUf] = useState("")
   const [signupPassword, setSignupPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
@@ -121,8 +123,8 @@ export function AuthPanel({
     const trimmedName = name.trim()
     const normalizedEmail = signupEmail.trim().toLowerCase()
 
-    if (!trimmedName || !normalizedEmail || !signupPassword) {
-      setError("Nome, email e senha são obrigatórios.")
+    if (!trimmedName || !normalizedEmail || !signupPassword || !creciUf || !creci.trim()) {
+      setError("Nome, email, senha, UF e CRECI são obrigatórios.")
       return
     }
 
@@ -145,6 +147,7 @@ export function AuthPanel({
           name: trimmedName,
           email: normalizedEmail,
           creci: creci.trim(),
+          creciUf,
           password: signupPassword,
         }),
       })
@@ -238,14 +241,31 @@ export function AuthPanel({
                         value={name}
                         onChange={(event) => setName(event.target.value)}
                       />
-                      <Field
-                        label="CRECI"
-                        type="text"
-                        autoComplete="off"
-                        placeholder="000000-F"
-                        value={creci}
-                        onChange={(event) => setCreci(event.target.value)}
-                      />
+                      <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2">
+                        <label className="flex flex-col gap-1.5">
+                          <span className="text-[12.5px] font-medium tracking-tight text-foreground/70">UF</span>
+                          <select
+                            value={creciUf}
+                            onChange={(event) => setCreciUf(event.target.value)}
+                            required
+                            aria-label="UF do CRECI"
+                            className="w-full rounded-2xl border border-foreground/15 bg-white px-3 py-2.5 text-[14px] text-foreground outline-none transition-[border-color,box-shadow] duration-300 ease-out focus:border-eme focus:shadow-[0_0_0_3px_rgba(31,143,78,0.12)]"
+                          >
+                            <option value="">UF</option>
+                            {CRECI_UF_OPTIONS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                          </select>
+                        </label>
+                        <Field
+                          label="Número do CRECI"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]+"
+                          autoComplete="off"
+                          placeholder="123456"
+                          value={creci}
+                          onChange={(event) => setCreci(event.target.value.replace(/\D/g, ""))}
+                        />
+                      </div>
                       <Field
                         label="Email"
                         type="email"

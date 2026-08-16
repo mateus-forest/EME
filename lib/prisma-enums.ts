@@ -7,6 +7,8 @@ export type SubscriptionStatus = "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED"
 export type BillingPlan = "NONE" | "BROKER" | "AGENCY"
 export type BillingUserSubscriptionStatus = "INACTIVE" | "ACTIVE"
 export type BrokerAccountStatus = "PENDING" | "ACTIVE" | "INACTIVE"
+export type CreciValidationStatus = "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
+export type CreciValidationProvider = "IMOBISEC"
 export type LeadStatus = "NEW" | "CONTACTED" | "NEGOTIATING" | "WON" | "LOST" | "ARCHIVED"
 
 export const USER_ROLE = {
@@ -65,6 +67,17 @@ export const BROKER_ACCOUNT_STATUS = {
   INACTIVE: "INACTIVE",
 } as const satisfies Record<BrokerAccountStatus, BrokerAccountStatus>
 
+export const CRECI_VALIDATION_STATUS = {
+  VERIFIED: "VERIFIED",
+  REJECTED: "REJECTED",
+  REVIEW_REQUIRED: "REVIEW_REQUIRED",
+  PENDING: "PENDING",
+} as const satisfies Record<CreciValidationStatus, CreciValidationStatus>
+
+export const CRECI_VALIDATION_PROVIDER = {
+  IMOBISEC: "IMOBISEC",
+} as const satisfies Record<CreciValidationProvider, CreciValidationProvider>
+
 export const LEAD_STATUS = {
   NEW: "NEW",
   CONTACTED: "CONTACTED",
@@ -83,4 +96,6 @@ export const SubscriptionStatus = SUBSCRIPTION_STATUS
 export const BillingPlan = BILLING_PLAN
 export const BillingUserSubscriptionStatus = BILLING_USER_SUBSCRIPTION_STATUS
 export const BrokerAccountStatus = BROKER_ACCOUNT_STATUS
+export const CreciValidationStatus = CRECI_VALIDATION_STATUS
+export const CreciValidationProvider = CRECI_VALIDATION_PROVIDER
 export const LeadStatus = LEAD_STATUS

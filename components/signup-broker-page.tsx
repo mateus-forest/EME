@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { normalizePhone } from "@/lib/structured-fields"
+import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 
 export function SignupBrokerPage() {
   const router = useRouter()
@@ -17,6 +18,7 @@ export function SignupBrokerPage() {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [creci, setCreci] = useState("")
+  const [creciUf, setCreciUf] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
 
@@ -40,6 +42,7 @@ export function SignupBrokerPage() {
           email,
           phone: normalizePhone(phone),
           creci,
+          creciUf,
           password,
         }),
       })
@@ -111,18 +114,33 @@ export function SignupBrokerPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="creci" className="text-sm font-medium text-[#374151]">
-            CRECI
-          </label>
-          <Input
-            id="creci"
-            value={creci}
-            onChange={(event) => setCreci(event.target.value)}
-            placeholder="123456"
-            required
-            className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
-          />
+        <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3">
+          <div className="space-y-2">
+            <label htmlFor="creciUf" className="text-sm font-medium text-[#374151]">UF</label>
+            <select
+              id="creciUf"
+              value={creciUf}
+              onChange={(event) => setCreciUf(event.target.value)}
+              required
+              className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-[#111111] outline-none focus:border-[#00C853] focus:ring-2 focus:ring-[#00C853]/25"
+            >
+              <option value="">UF</option>
+              {CRECI_UF_OPTIONS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="creci" className="text-sm font-medium text-[#374151]">Número do CRECI</label>
+            <Input
+              id="creci"
+              value={creci}
+              onChange={(event) => setCreci(event.target.value.replace(/\D/g, ""))}
+              placeholder="123456"
+              inputMode="numeric"
+              pattern="[0-9]+"
+              required
+              className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
+            />
+          </div>
         </div>
 
         <div className="space-y-2">

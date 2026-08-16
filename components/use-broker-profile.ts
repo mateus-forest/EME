@@ -13,6 +13,8 @@ export type BrokerProfile = {
   fullName: string
   email: string
   creci: string
+  creciUf: string
+  creciValidationStatus: "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
   whatsApp: string
   photoUrl: string
   description: string
@@ -33,6 +35,8 @@ const defaultProfile: BrokerProfile = {
   fullName: "",
   email: "",
   creci: "",
+  creciUf: "",
+  creciValidationStatus: "PENDING",
   whatsApp: "",
   photoUrl: "",
   description: "",
@@ -76,6 +80,8 @@ export function useBrokerProfile() {
               phone: string
               photoUrl: string
               creci: string
+              creciUf?: string
+              creciValidationStatus?: "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
               description: string
               brandColor?: string
               logoUrl?: string
@@ -104,6 +110,8 @@ export function useBrokerProfile() {
           fullName: data.profile.name,
           email: data.profile.email,
           creci: data.profile.creci,
+          creciUf: data.profile.creciUf ?? "",
+          creciValidationStatus: data.profile.creciValidationStatus ?? "PENDING",
           whatsApp: data.profile.phone,
           photoUrl: data.profile.photoUrl,
           description: data.profile.description,
@@ -160,6 +168,7 @@ export function useBrokerProfile() {
         email: updates.email,
         phone: updates.whatsApp,
         creci: updates.creci,
+        creciUf: updates.creciUf,
         description: updates.description,
         photoUrl: updates.photoUrl,
         brandColor: updates.brandColor,
@@ -186,6 +195,8 @@ export function useBrokerProfile() {
             email: string
             phone: string
             creci: string
+            creciUf?: string
+            creciValidationStatus?: "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
             description: string
             photoUrl: string
             brandColor?: string
@@ -215,6 +226,8 @@ export function useBrokerProfile() {
       email: data.profile.email,
       whatsApp: data.profile.phone,
       creci: data.profile.creci,
+      creciUf: data.profile.creciUf ?? "",
+      creciValidationStatus: data.profile.creciValidationStatus ?? "PENDING",
       description: data.profile.description,
       photoUrl: data.profile.photoUrl,
       brandColor: data.profile.brandColor ?? "",

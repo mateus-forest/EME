@@ -5,12 +5,13 @@ import { ensureRole, getAuthenticatedUserWithSensitiveFields, isPrismaSchemaMism
 import { comparePin, hashPin, isValidPin, normalizePin } from "@/lib/pin-auth"
 import type { Broker, User } from "@/lib/prisma-model-types"
 import { UserRole } from "@/lib/prisma-enums"
+import { validateBrokerCreci } from "@/lib/imobisec.server"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 type BrokerProfileUser = Pick<User, "id" | "name" | "email" | "phone" | "photoUrl" | "passwordHash" | "pinHash"> & {
   pinSchemaAvailable?: boolean
   broker:
-    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "description" | "brandColor" | "logoUrl" | "showAgencyWatermark"> & {
+    | (Pick<Broker, "id" | "agencyId" | "phone" | "creci" | "creciUf" | "creciValidationStatus" | "description" | "brandColor" | "logoUrl" | "showAgencyWatermark"> & {
         agency?: {
           id: string
           name: string
@@ -35,6 +36,8 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
     agencyName: user.broker.agency?.name ?? "",
     accountType: user.broker.agencyId ? "BROKER_AGENCY" : "BROKER_INDEPENDENT",
     creci: user.broker.creci ?? "",
+    creciUf: user.broker.creciUf ?? "",
+    creciValidationStatus: user.broker.creciValidationStatus,
     description: user.broker.description ?? "",
     brandColor: user.broker.brandColor ?? "",
     logoUrl: user.broker.logoUrl ?? "",
@@ -87,6 +90,10 @@ export async function PATCH(request: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const phone = typeof body?.phone === "string" ? body.phone.trim() : ""
     const creci = typeof body?.creci === "string" ? body.creci.trim() : ""
+    const creciUf =
+      typeof body?.creciUf === "string"
+        ? body.creciUf.trim().toUpperCase()
+        : (user.broker.creciUf ?? "")
     const description = typeof body?.description === "string" ? body.description.trim() : ""
     const photoUrl = typeof body?.photoUrl === "string" ? body.photoUrl.trim() : ""
     const brandColorInput = typeof body?.brandColor === "string" ? body.brandColor.trim() : ""
@@ -102,6 +109,12 @@ export async function PATCH(request: NextRequest) {
     if (!name || !email || !phone || !creci) {
       return NextResponse.json({ error: "Nome, email, telefone e CRECI são obrigatórios." }, { status: 400 })
     }
+
+    const creciChanged = creci !== (user.broker.creci ?? "") || creciUf !== (user.broker.creciUf ?? "")
+    if (creciChanged && !creciUf) {
+      return NextResponse.json({ error: "Informe a UF do CRECI para validar a alteração." }, { status: 400 })
+    }
+    const creciValidationRequired = creciChanged || (name !== user.name && Boolean(creciUf))
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Informe um email válido." }, { status: 400 })
@@ -210,6 +223,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Já existe uma conta com este email." }, { status: 400 })
     }
 
+    const creciValidation = creciValidationRequired
+      ? await validateBrokerCreci({ state: creciUf, creci, informedName: name })
+      : null
+
+    if (creciValidation?.status === "REJECTED") {
+      const errorMessage =
+        creciValidation.reason === "NOT_FOUND"
+          ? "CRECI não localizado para a UF informada. Confira os dados e tente novamente."
+          : creciValidation.reason === "INACTIVE"
+            ? "O CRECI informado não está ativo. Confira sua situação cadastral antes de continuar."
+            : "Informe uma UF e um número de CRECI válidos."
+      return NextResponse.json({ error: errorMessage }, { status: 422 })
+    }
+
     const updated = await prisma.$transaction(async (tx: PrismaTransaction) => {
       await tx.user.update({
         where: { id: user.id },
@@ -231,7 +258,18 @@ export async function PATCH(request: NextRequest) {
         where: { id: brokerId },
         data: {
           phone,
-          creci,
+          creci: creciValidation?.creci ?? creci,
+          ...(creciValidation
+            ? {
+                creciUf: creciValidation.state,
+                creciValidationStatus: creciValidation.status,
+                creciValidatedAt: creciValidation.checkedAt,
+                creciOfficialName: creciValidation.officialName,
+                creciProviderStatus: creciValidation.providerStatus,
+                creciValidationProvider: creciValidation.provider,
+                creciNameMismatch: creciValidation.nameMismatch,
+              }
+            : {}),
           description: description || null,
           brandColor: brandColor || null,
           logoUrl: logoUrl || null,

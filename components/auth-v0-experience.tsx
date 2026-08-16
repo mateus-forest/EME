@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import type { StructuredInputKind } from "@/lib/structured-fields"
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 
 const easeOut = [0.16, 1, 0.3, 1] as const
 const INTERVAL = 4200
@@ -101,6 +102,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
   const [creci, setCreci] = useState("")
+  const [creciUf, setCreciUf] = useState("")
   const [signupError, setSignupError] = useState("")
 
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
@@ -175,6 +177,12 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
     setIsSubmitting(true)
     setSignupError("")
 
+    if (!creciUf || !creci.trim()) {
+      setSignupError("Informe a UF e o número do CRECI.")
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       clearLegacyAuthState()
 
@@ -190,6 +198,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
           email,
           phone,
           creci,
+          creciUf,
           password,
         }),
       })
@@ -303,14 +312,29 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
                       placeholder="(11) 99999-9999"
                       autoComplete="tel"
                     />
-                    <Field
-                      label="CRECI"
-                      type="text"
-                      value={creci}
-                      onChange={setCreci}
-                      placeholder="123456"
-                      autoComplete="off"
-                    />
+                    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2">
+                      <label className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-[var(--muted-foreground)]">UF</span>
+                        <select
+                          value={creciUf}
+                          onChange={(event) => setCreciUf(event.target.value)}
+                          required
+                          aria-label="UF do CRECI"
+                          className="h-11 rounded-xl border border-[color:var(--border)] bg-white px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[color:var(--ring)]"
+                        >
+                          <option value="">UF</option>
+                          {CRECI_UF_OPTIONS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                        </select>
+                      </label>
+                      <Field
+                        label="Número do CRECI"
+                        type="text"
+                        value={creci}
+                        onChange={(value) => setCreci(value.replace(/\D/g, ""))}
+                        placeholder="123456"
+                        autoComplete="off"
+                      />
+                    </div>
                   </>
                 )}
                 <Field

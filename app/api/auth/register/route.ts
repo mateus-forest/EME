@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { isDatabaseUnavailableError } from "@/lib/auth-errors"
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
+import { validateBrokerCreci } from "@/lib/imobisec.server"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 function slugify(value: string) {
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
     const password = typeof body?.password === "string" ? body.password : ""
     const phone = typeof body?.phone === "string" ? body.phone.trim() : ""
     const creci = typeof body?.creci === "string" ? body.creci.trim() : ""
+    const creciUf = typeof body?.creciUf === "string" ? body.creciUf.trim().toUpperCase() : ""
     const companyName = typeof body?.companyName === "string" ? body.companyName.trim() : ""
 
     if (!role || !name || !email || !password) {
@@ -84,12 +86,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nome da imobiliária é obrigatório." }, { status: 400 })
     }
 
+    if (role === UserRole.BROKER && (!creciUf || !creci)) {
+      return NextResponse.json({ error: "Informe a UF e o número do CRECI." }, { status: 400 })
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
     })
 
     if (existingUser) {
       return NextResponse.json({ error: "Já existe uma conta com este email." }, { status: 409 })
+    }
+
+    const creciValidation =
+      role === UserRole.BROKER
+        ? await validateBrokerCreci({ state: creciUf, creci, informedName: name })
+        : null
+
+    if (creciValidation?.status === "REJECTED") {
+      const errorMessage =
+        creciValidation.reason === "NOT_FOUND"
+          ? "CRECI não localizado para a UF informada. Confira os dados e tente novamente."
+          : creciValidation.reason === "INACTIVE"
+            ? "O CRECI informado não está ativo. Confira sua situação cadastral antes de continuar."
+            : "Informe uma UF e um número de CRECI válidos."
+
+      return NextResponse.json({ error: errorMessage }, { status: 422 })
     }
 
     const passwordHash = await hash(password, 10)
@@ -123,13 +145,24 @@ export async function POST(request: NextRequest) {
           let agencyId: string | null = null
 
           if (role === UserRole.BROKER) {
+            if (!creciValidation || !creciValidation.state) {
+              throw new Error("CRECI_VALIDATION_MISSING")
+            }
+
             const catalogSlug = await generateUniqueSlug(name, (slug) => catalogSlugExists(tx, slug))
 
             const broker = await tx.broker.create({
               data: {
                 userId: createdUser.id,
                 phone,
-                creci: creci || null,
+                creci: creciValidation.creci,
+                creciUf: creciValidation.state,
+                creciValidationStatus: creciValidation.status,
+                creciValidatedAt: creciValidation.checkedAt,
+                creciOfficialName: creciValidation.officialName,
+                creciProviderStatus: creciValidation.providerStatus,
+                creciValidationProvider: creciValidation.provider,
+                creciNameMismatch: creciValidation.nameMismatch,
                 catalogSlug,
               },
             })
@@ -217,6 +250,7 @@ export async function POST(request: NextRequest) {
         role: user.role,
         brokerId,
         agencyId,
+        ...(creciValidation ? { creciValidationStatus: creciValidation.status } : {}),
       },
     })
     response.headers.set("Cache-Control", "no-store, max-age=0")
