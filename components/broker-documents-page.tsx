@@ -309,7 +309,7 @@ export function BrokerDocumentsPage() {
 
   return (
     <div className="grid min-w-0 gap-4">
-      <section className="grid gap-3 xl:grid-cols-[20rem_minmax(0,1fr)]">
+      <section className="grid gap-3 xl:grid-cols-[minmax(22rem,.75fr)_minmax(0,1.25fr)]">
         <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
           <CardHeader className="gap-3 border-b border-[var(--broker-border)] px-4 py-4">
             <div className="flex items-center justify-between gap-3">

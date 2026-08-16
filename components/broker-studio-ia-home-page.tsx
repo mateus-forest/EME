@@ -64,7 +64,7 @@ const studioActions: StudioAction[] = [
 export function BrokerStudioIaHomePage() {
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="grid min-w-0 gap-4">
+      <div className="grid min-w-0 gap-3.5">
         <BrokerPageIntro
           eyebrow="Studio IA"
           title="Estúdio"
@@ -80,21 +80,21 @@ export function BrokerStudioIaHomePage() {
           }
         />
 
-        <section className="grid min-w-0 gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1380px]:grid-cols-6">
+        <section className="grid min-w-0 gap-2.5 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1380px]:grid-cols-6">
           {studioActions.map((action) => {
             const Icon = action.icon
 
             return (
               <Link key={action.title} href={action.href} className="group min-w-0 rounded-[var(--broker-radius-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009b3a]/25">
-                <BrokerSurface as="article" padding="compact" className="flex h-full min-h-40 flex-col transition duration-200 group-hover:-translate-y-0.5 group-hover:border-[#009b3a]/16 group-hover:shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
+                <BrokerSurface as="article" padding="compact" className="flex h-full min-h-[8.25rem] flex-col transition duration-200 group-hover:-translate-y-0.5 group-hover:border-[#009b3a]/16 group-hover:shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-[#009b3a]/12 bg-[#eef9f1] text-[#009b3a]">
-                        <Icon className="size-5" />
+                      <div className="flex size-8 items-center justify-center rounded-[0.7rem] border border-[#009b3a]/12 bg-[#eef9f1] text-[#009b3a]">
+                        <Icon className="size-4" />
                       </div>
                       <ArrowRight className="mt-1 size-4 text-[#B0B7C0] transition group-hover:translate-x-0.5 group-hover:text-[#009b3a]" />
                     </div>
-                    <h3 className="mt-4 text-base font-semibold leading-tight text-[#111827]">{action.title}</h3>
-                    <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#667085]">{action.description}</p>
+                    <h3 className="mt-3 text-[15px] font-semibold leading-tight text-[#111827]">{action.title}</h3>
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-[1.15rem] text-[#667085]">{action.description}</p>
                 </BrokerSurface>
               </Link>
             )

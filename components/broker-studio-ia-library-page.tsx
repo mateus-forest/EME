@@ -121,7 +121,7 @@ function CampaignCard({ campaign }: { campaign: StudioCampaignRecord }) {
   return (
     <Link href={`/corretor/studio-ia/biblioteca/${campaign.id}`} className="min-w-0">
       <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--broker-shadow-sm)]">
-        <div className="relative aspect-[4/3] overflow-hidden border-b border-[var(--broker-border)] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
+        <div className="relative aspect-[16/10] overflow-hidden border-b border-[var(--broker-border)] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
           {coverUrl ? (
             <img src={coverUrl} alt={campaign.title} className="h-full w-full object-cover" onError={handleCoverError} />
           ) : (
@@ -137,16 +137,16 @@ function CampaignCard({ campaign }: { campaign: StudioCampaignRecord }) {
           {isProjectVisualization(campaign) ? <div className="absolute right-2.5 bottom-2.5 max-w-[80%] truncate rounded-full bg-white/90 px-2.5 py-1 text-[9px] font-medium text-[#356047] backdrop-blur">Representação ilustrativa gerada por IA</div> : null}
         </div>
 
-        <CardContent className="grid gap-2.5 p-3.5">
-          <div className="grid gap-1.5">
+        <CardContent className="grid gap-2 p-3">
+          <div className="grid gap-1">
             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--broker-muted-soft)]">
               <span>{formatStudioCampaignKind(campaign.kind)}</span>
               <span className="h-1 w-1 rounded-full bg-[#c7d0db]" />
               <span>{campaign.assets.length} itens</span>
               {campaign.provider ? <><span className="h-1 w-1 shrink-0 rounded-full bg-[#c7d0db]" /><span className="truncate">{formatStudioProvider(campaign.provider)}</span></> : null}
             </div>
-            <h3 className="line-clamp-2 text-sm font-semibold leading-5 tracking-tight text-[var(--broker-ink)] sm:text-[15px]">{campaign.title}</h3>
-            <p className="line-clamp-1 text-xs leading-5 text-[var(--broker-muted)]">{getCampaignPropertyLabel(campaign)}</p>
+            <h3 className="line-clamp-1 text-sm font-semibold leading-5 tracking-tight text-[var(--broker-ink)]">{campaign.title}</h3>
+            <p className="line-clamp-1 text-[11px] leading-4 text-[var(--broker-muted)]">{getCampaignPropertyLabel(campaign)}</p>
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-[var(--broker-border)] pt-2 text-[10px] text-[var(--broker-muted-soft)]">
@@ -226,7 +226,7 @@ export function BrokerStudioIaLibraryPage() {
       searchValue={search}
       onSearchChange={setSearch}
     >
-      <div className="grid gap-5">
+      <div className="grid gap-3.5">
         <BrokerPageIntro
           eyebrow="Biblioteca"
           title="Acervo do Studio IA"
@@ -269,13 +269,13 @@ export function BrokerStudioIaLibraryPage() {
           )}
         />
 
-        <section className="grid gap-4">
+        <section className="grid gap-3">
           {isLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1380px]:grid-cols-4 min-[1740px]:grid-cols-5">
-              {Array.from({ length: 6 }).map((_, index) => (
+            <div className="grid gap-2.5 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 min-[1440px]:grid-cols-5">
+              {Array.from({ length: 10 }).map((_, index) => (
                 <div key={index} className="overflow-hidden rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface)]">
-                  <div className="aspect-[4/3] animate-pulse bg-[#f2f4f7]" />
-                  <div className="grid gap-2.5 p-3.5">
+                  <div className="aspect-[16/10] animate-pulse bg-[#f2f4f7]" />
+                  <div className="grid gap-2 p-3">
                     <div className="h-3 w-24 animate-pulse rounded-full bg-[#eef1f5]" />
                     <div className="h-5 w-3/4 animate-pulse rounded-full bg-[#eef1f5]" />
                     <div className="h-4 w-full animate-pulse rounded-full bg-[#f4f6f8]" />
@@ -296,7 +296,7 @@ export function BrokerStudioIaLibraryPage() {
               description="Ajuste os filtros ou gere novos conteúdos no Studio IA para alimentar a Biblioteca."
             />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1380px]:grid-cols-4 min-[1740px]:grid-cols-5">
+            <div className="grid gap-2.5 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 min-[1440px]:grid-cols-5">
               {campaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
               ))}

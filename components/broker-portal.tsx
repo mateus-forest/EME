@@ -6,13 +6,11 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   CheckCircle2,
   Circle,
   Grip,
   FileText,
   Home,
-  Sparkles,
   X,
   UsersRound,
 } from "lucide-react"
@@ -22,7 +20,6 @@ import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } f
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { BrokerSurface } from "@/components/broker-portal-ui"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
@@ -73,7 +70,6 @@ export function BrokerPortal() {
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [contracts, setContracts] = useState<ContractRecord[]>([])
   const [commissionPercent, setCommissionPercent] = useState(6)
-  const [isOperationHealthExpanded, setIsOperationHealthExpanded] = useState(false)
   const [isMobileOperationHealthOpen, setIsMobileOperationHealthOpen] = useState(false)
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
@@ -233,17 +229,6 @@ export function BrokerPortal() {
           { id: "help_general_question", label: "Tirar uma dúvida" },
         ],
       },
-    ],
-    [],
-  )
-
-  const emptyStateActions = useMemo<CosPromptComposerMenuAction[]>(
-    () => [
-      { id: "register_client", label: "Cadastrar cliente" },
-      { id: "search_property", label: "Buscar imóveis" },
-      { id: "generate_proposal", label: "Criar proposta" },
-      { id: "attach_contract", label: "Anexar contrato" },
-      { id: "today_agenda", label: "Agenda de hoje" },
     ],
     [],
   )
@@ -477,62 +462,29 @@ export function BrokerPortal() {
             <div className="relative flex min-h-0 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
-                  <div className="flex min-h-0 flex-1 flex-col justify-center py-4 sm:py-6">
-                    <div className="mx-auto flex w-full max-w-[48rem] flex-col items-center px-1 text-center">
-                      <div>
+                  <div className="flex min-h-0 flex-1 flex-col justify-start py-6 sm:py-8 lg:py-10">
+                    <div className="mx-auto flex w-full max-w-[52rem] items-start justify-between gap-5 px-1">
+                      <div className="min-w-0">
                         {hasResolvedBrokerName ? (
-                          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
+                          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2.7rem]">
                             {greetingLabel}
                           </h1>
                         ) : isProfileLoading ? (
-                          <div className="mx-auto h-12 w-56 rounded-full bg-[#e9ece6] animate-pulse sm:h-14 sm:w-72" />
+                          <div className="h-11 w-56 animate-pulse rounded-full bg-[#e9ece6] sm:h-13 sm:w-72" />
                         ) : (
-                          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[3rem]">
+                          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2.7rem]">
                             {greetingLabel}
                           </h1>
                         )}
                       </div>
-
-                      <BrokerSurface
-                        tone="default"
-                        padding="compact"
-                        className="mt-7 w-full max-w-[34rem] text-left sm:mt-9"
-                      >
-                        <div className="flex items-center gap-3 border-b border-[var(--broker-border)] pb-3">
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--broker-accent-soft)] text-[var(--broker-accent)]">
-                            <Sparkles className="size-4" />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--broker-accent)]">
-                              Comece por aqui
-                            </p>
-                            <p className="mt-0.5 text-sm text-[var(--broker-muted)]">
-                              Escolha uma ação ou escreva seu pedido abaixo.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                          {emptyStateActions.map((action, index) => {
-                            const actionIcons = [UsersRound, Home, FileText, FileText, CalendarDays]
-                            const Icon = actionIcons[index] ?? Sparkles
-
-                            return (
-                              <button
-                                key={action.id}
-                                type="button"
-                                onClick={() => void handleMenuAction(action)}
-                                className={`flex min-h-11 items-center gap-3 rounded-xl border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3.5 py-2.5 text-left text-sm font-medium text-[var(--broker-ink)] transition-colors hover:border-[var(--broker-border-strong)] hover:bg-white ${index === emptyStateActions.length - 1 ? "sm:col-span-2" : ""}`}
-                              >
-                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--broker-accent-soft)] text-[var(--broker-accent)]">
-                                  <Icon className="size-4" />
-                                </span>
-                                <span className="min-w-0 flex-1 truncate">{action.label}</span>
-                                <ChevronRight className="size-4 shrink-0 text-[var(--broker-muted-soft)]" />
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </BrokerSurface>
+                      <div className="hidden shrink-0 items-center gap-2 pt-1 sm:flex">
+                        <span className="rounded-full border border-black/[0.06] bg-white/78 px-3 py-1.5 text-[11px] font-medium text-[#667085]">
+                          {assistantEnabled ? "COS ativo" : "COS pausado"}
+                        </span>
+                        <span className="rounded-full border border-black/[0.06] bg-white/78 px-3 py-1.5 text-[11px] font-medium text-[#667085]">
+                          {assistantCredits.balance} créditos
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -650,27 +602,21 @@ export function BrokerPortal() {
               </div>
             </div>
 
-            <aside data-testid="cos-operation-health" className="hidden min-h-0 overflow-hidden lg:flex lg:flex-col lg:items-end lg:justify-end lg:py-2">
-              <div className={`flex w-full max-w-[17rem] flex-col overflow-hidden rounded-[1.6rem] border border-black/[0.06] bg-white/82 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl transition-all duration-200 ${isOperationHealthExpanded ? "h-full max-h-[42rem]" : ""}`}>
-                <button
-                  type="button"
-                  onClick={() => setIsOperationHealthExpanded((current) => !current)}
-                  className="flex w-full items-start justify-between gap-3 text-left"
-                  aria-expanded={isOperationHealthExpanded}
-                  aria-controls="operation-health-panel"
-                >
+            <aside data-testid="cos-operation-health" className="hidden min-h-0 lg:flex lg:flex-col lg:items-end lg:justify-center lg:py-2">
+              <div className="flex w-full max-w-[18rem] flex-col rounded-[1.6rem] border border-black/[0.06] bg-white/84 p-3.5 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl">
+                <div className="flex w-full items-start justify-between gap-3 text-left">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8a97a8]">
                       Saúde da operação
                     </p>
-                    <p className="mt-2 text-[1.8rem] font-semibold tracking-[-0.05em] text-[#111111]">
+                    <p className="mt-1.5 text-[1.7rem] font-semibold tracking-[-0.05em] text-[#111111]">
                       {operationHealthReady ? `${displayedOperationHealth}%` : "—"}
                     </p>
                   </div>
                   <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#667085]">
-                    {isOperationHealthExpanded ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+                    <ChevronDown className="size-4" />
                   </span>
-                </button>
+                </div>
 
                 <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
                   <div
@@ -686,14 +632,7 @@ export function BrokerPortal() {
                   </span>
                 </div>
 
-                <div
-                  id="operation-health-panel"
-                  className={`overflow-hidden transition-all duration-300 ease-out ${
-                    isOperationHealthExpanded
-                      ? "eme-subtle-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 opacity-100"
-                      : "max-h-0 opacity-0"
-                  }`}
-                >
+                <div id="operation-health-panel" className="mt-3">
                   <OperationHealthDetails
                     operationIndicators={operationIndicators}
                     operationPendingItems={operationPendingItems}
@@ -830,42 +769,42 @@ function OperationHealthDetails({
 }) {
   return (
     <>
-      <div className="space-y-2 border-t border-black/[0.06] pt-4">
+      <div className="space-y-1.5 border-t border-black/[0.06] pt-3">
         {operationIndicators.map((item) => {
           const Icon = item.icon
 
           return (
             <div
               key={item.label}
-              className="flex items-center justify-between gap-3 rounded-[1rem] bg-[#fbfbf8] px-3 py-2.5"
+              className="flex items-center justify-between gap-2.5 rounded-xl bg-[#fbfbf8] px-2.5 py-1.5"
             >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-[#f5fbf7] text-[#009b3a]">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#edf8f1] text-[#009b3a]">
                   <Icon className="size-3.5" />
                 </span>
-                <span className="truncate text-sm font-medium text-[#111111]">{item.label}</span>
+                <span className="truncate text-[13px] font-medium text-[#111111]">{item.label}</span>
               </div>
-              <span className="text-sm font-semibold text-[#111111]">{item.score}%</span>
+              <span className="text-[13px] font-semibold text-[#111111]">{item.score}%</span>
             </div>
           )
         })}
       </div>
 
-      <div className="mt-4 border-t border-black/[0.06] pt-4">
+      <div className="mt-3 border-t border-black/[0.06] pt-3">
         <div className="flex items-center gap-2">
-          <AlertCircle className="size-4 text-[#9a6b00]" />
-          <p className="text-sm font-semibold text-[#111111]">Pendências</p>
+          <AlertCircle className="size-3.5 text-[#9a6b00]" />
+          <p className="text-[13px] font-semibold text-[#111111]">Pendências</p>
         </div>
-        <div className="mt-3 space-y-2">
+        <div className="mt-2 space-y-1.5">
           {operationPendingItems.length > 0 ? (
-            operationPendingItems.slice(0, 5).map((item) => (
-              <div key={item} className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
-                <span className="mt-2 size-1.5 rounded-full bg-[#c28a00]" />
+            operationPendingItems.map((item) => (
+              <div key={item} className="flex items-start gap-2 text-xs leading-[1.15rem] text-[#667085]">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#c28a00]" />
                 <span>{item}</span>
               </div>
             ))
           ) : (
-            <div className="flex items-start gap-2 text-sm leading-6 text-[#667085]">
+            <div className="flex items-start gap-2 text-xs leading-5 text-[#667085]">
               <CheckCircle2 className="mt-0.5 size-4 text-[#009b3a]" />
               <span>Nenhuma pendência crítica detectada agora.</span>
             </div>
@@ -876,7 +815,7 @@ function OperationHealthDetails({
           type="button"
           variant="ghost"
           onClick={onViewDetails}
-          className="mt-4 h-9 w-full rounded-full border border-black/[0.06] bg-white px-4 text-sm text-[#111111] hover:bg-white"
+          className="mt-3 h-8 w-full rounded-full border border-black/[0.06] bg-white px-4 text-xs font-medium text-[#111111] hover:bg-white"
         >
           Ver detalhes
         </Button>

@@ -186,7 +186,7 @@ export function BrokerPageShell({
                 className={`h-full max-w-full overflow-x-hidden ${
                   isCosVariant
                     ? "overflow-y-hidden px-0 py-0"
-                    : "eme-subtle-scrollbar overflow-y-auto px-0 py-0 sm:px-4 sm:py-4 lg:px-5"
+                    : "eme-subtle-scrollbar overflow-y-auto px-0 py-0 sm:px-3.5 sm:py-3.5 lg:px-4"
                 } ${contentClassName ?? ""}`}
               >
                 {children}

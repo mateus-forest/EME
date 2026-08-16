@@ -365,10 +365,10 @@ export function BrokerStudioIaPreparePropertyPage() {
 
   return (
     <BrokerPageShell title="Studio IA">
-      <div className="grid min-w-0 gap-4 sm:gap-5">
-        <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-6 lg:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#009b3a]">Fotografia imobiliária</p><h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">Preparar imóvel</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-[#5F6B7A]">Transforme fotografias reais e revise cada resultado antes de aprová-lo na Biblioteca.</p></div>
+      <div className="grid min-w-0 gap-3.5">
+        <section className="rounded-[var(--broker-radius-lg)] border border-black/[0.06] bg-white/90 p-4 shadow-[var(--broker-shadow-sm)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#009b3a]">Fotografia imobiliária</p><h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-[#050505]">Preparar imóvel</h2><p className="mt-1.5 max-w-2xl text-sm leading-5 text-[#5F6B7A]">Transforme fotografias reais e revise cada resultado antes de aprová-lo na Biblioteca.</p></div>
             <Button asChild variant="ghost" className="w-fit rounded-xl border border-black/[0.06] bg-white text-[#4B5563]"><Link href="/corretor/studio-ia"><ArrowLeft className="size-4" />Voltar ao Estúdio</Link></Button>
           </div>
         </section>
@@ -376,13 +376,13 @@ export function BrokerStudioIaPreparePropertyPage() {
         {error ? <section className="rounded-[1.25rem] border border-[#f2caca] bg-[#fff5f5] px-4 py-3 text-sm text-[#c24141]">{error}</section> : null}
         {notice ? <section className="rounded-[1.25rem] border border-[#009b3a]/16 bg-[#eef9f1] px-4 py-3 text-sm text-[#0a8f3d]">{notice}</section> : null}
 
-        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(20rem,.92fr)]">
-          <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
-            <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">1. Escolha o material</CardTitle></CardHeader>
-            <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
+        <section className="grid min-w-0 items-start gap-3.5 xl:grid-cols-[minmax(0,.88fr)_minmax(24rem,1.12fr)]">
+          <Card className="min-w-0 rounded-[var(--broker-radius-lg)] border-black/[0.06] bg-white/90 py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-4 py-4 sm:px-5"><CardTitle className="text-lg">1. Escolha o material</CardTitle></CardHeader>
+            <CardContent className="grid gap-3.5 px-4 pb-4 sm:px-5 sm:pb-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => { setSourceMode("property"); setObjectMask(null) }} className={cn("rounded-[1.2rem] border p-4 text-left transition", sourceMode === "property" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><ImagePlus className="size-4 text-[#009b3a]" />Foto de um imóvel</span><span className="mt-2 block text-xs leading-5 text-[#6B7280]">Escolha uma fotografia já cadastrada no EME.</span></button>
-                <button type="button" onClick={() => { setSourceMode("upload"); setObjectMask(null) }} className={cn("rounded-[1.2rem] border p-4 text-left transition", sourceMode === "upload" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-3 text-sm font-semibold text-[#050505]"><Upload className="size-4 text-[#009b3a]" />Enviar imagem</span><span className="mt-2 block text-xs leading-5 text-[#6B7280]">Use uma imagem sem cadastrar um imóvel.</span></button>
+                <button type="button" onClick={() => { setSourceMode("property"); setObjectMask(null) }} className={cn("rounded-[var(--broker-radius-md)] border p-3 text-left transition", sourceMode === "property" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-2.5 text-sm font-semibold text-[#050505]"><ImagePlus className="size-4 text-[#009b3a]" />Foto de um imóvel</span><span className="mt-1.5 block text-xs leading-[1.15rem] text-[#6B7280]">Escolha uma fotografia já cadastrada no EME.</span></button>
+                <button type="button" onClick={() => { setSourceMode("upload"); setObjectMask(null) }} className={cn("rounded-[var(--broker-radius-md)] border p-3 text-left transition", sourceMode === "upload" ? "border-[#009b3a]/30 bg-[#f4fbf6]" : "border-black/[0.06] bg-[#fbfbf8]")}><span className="flex items-center gap-2.5 text-sm font-semibold text-[#050505]"><Upload className="size-4 text-[#009b3a]" />Enviar imagem</span><span className="mt-1.5 block text-xs leading-[1.15rem] text-[#6B7280]">Use uma imagem sem cadastrar um imóvel.</span></button>
               </div>
 
               {sourceMode === "property" ? <div className="grid gap-4">
@@ -394,19 +394,19 @@ export function BrokerStudioIaPreparePropertyPage() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 rounded-[1.5rem] border-black/[0.06] bg-white/90 py-0">
-            <CardHeader className="px-5 py-5 sm:px-6"><CardTitle className="text-xl">2. Escolha a preparação</CardTitle></CardHeader>
-            <CardContent className="grid gap-5 px-5 pb-6 sm:px-6">
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                {propertyPreparationOperations.map((item) => <button key={item.value} type="button" onClick={() => handleOperationChange(item.value)} className={cn("rounded-xl border p-3 text-left transition", operation === item.value ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}><span className="flex items-center gap-2 text-sm font-semibold text-[#374151]">{operation === item.value ? <Check className="size-4 text-[#009b3a]" /> : null}{item.shortLabel}</span><span className="mt-1 block text-xs leading-5 text-[#7B8491]">{item.description}</span></button>)}
+          <Card className="min-w-0 rounded-[var(--broker-radius-lg)] border-black/[0.06] bg-white/90 py-0 shadow-[var(--broker-shadow-xs)]">
+            <CardHeader className="px-4 py-4 sm:px-5"><CardTitle className="text-lg">2. Escolha a preparação</CardTitle></CardHeader>
+            <CardContent className="grid gap-3.5 px-4 pb-4 sm:px-5 sm:pb-5">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {propertyPreparationOperations.map((item) => <button key={item.value} type="button" onClick={() => handleOperationChange(item.value)} className={cn("rounded-xl border p-2.5 text-left transition", operation === item.value ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}><span className="flex items-center gap-2 text-[13px] font-semibold text-[#374151]">{operation === item.value ? <Check className="size-3.5 text-[#009b3a]" /> : null}{item.shortLabel}</span><span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-[#7B8491]">{item.description}</span></button>)}
               </div>
 
-              <div className="flex items-start gap-3 rounded-[1.2rem] border border-[#009b3a]/18 bg-[#f4fbf6] p-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#009b3a]"><Sparkles className="size-5" /></span><div><p className="text-sm font-semibold text-[#08752f]">{selectedOperation.label}</p><p className="mt-1 text-xs leading-5 text-[#4f715b]">{selectedOperation.description}</p></div></div>
-              <div className="grid gap-2" data-testid="preparation-provider-options">
-                <p className="text-sm font-medium text-[#374151]">IA</p>
-                {availableProviders.map((provider) => <button key={provider} type="button" onClick={() => setSelectedProvider(provider)} aria-pressed={selectedProvider === provider} className={cn("rounded-xl border p-3 text-left transition", selectedProvider === provider ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}><span className="text-sm font-semibold text-[#374151]">{STUDIO_PROVIDER_LABELS[provider]}</span><span className="mt-1 block text-xs leading-5 text-[#7B8491]">{providerDescriptions[provider]}</span></button>)}
+              <div className="flex items-start gap-2.5 rounded-[var(--broker-radius-md)] border border-[#009b3a]/18 bg-[#f4fbf6] p-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#009b3a]"><Sparkles className="size-4" /></span><div><p className="text-[13px] font-semibold text-[#08752f]">{selectedOperation.label}</p><p className="mt-1 text-xs leading-[1.15rem] text-[#4f715b]">{selectedOperation.description}</p></div></div>
+              <div className="grid gap-2 sm:grid-cols-3" data-testid="preparation-provider-options">
+                <p className="text-sm font-medium text-[#374151] sm:col-span-3">IA</p>
+                {availableProviders.map((provider) => <button key={provider} type="button" onClick={() => setSelectedProvider(provider)} aria-pressed={selectedProvider === provider} className={cn("rounded-xl border p-2.5 text-left transition", selectedProvider === provider ? "border-[#009b3a]/28 bg-[#f4fbf6]" : "border-black/[0.06] bg-white")}><span className="text-[13px] font-semibold text-[#374151]">{STUDIO_PROVIDER_LABELS[provider]}</span><span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-[#7B8491]">{providerDescriptions[provider]}</span></button>)}
               </div>
-              <div className="grid gap-4">{renderOperationControls()}</div>
+              <div className="grid gap-3">{renderOperationControls()}</div>
 
               <Button type="button" disabled={!sourceReady || isGenerating || (operation === "remove_object" && !objectMask)} onClick={handleGenerate} className="h-11 rounded-xl">{isGenerating ? <><Spinner className="size-4" />Processando imagem...</> : <><Sparkles className="size-4" />{selectedOperation.label}</>}</Button>
               <p className="text-xs leading-5 text-[#7B8491]">O processamento começa somente após o envio. Repetições da mesma solicitação em andamento reutilizam o processamento existente.</p>
