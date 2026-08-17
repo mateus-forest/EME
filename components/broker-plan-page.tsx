@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   ArrowUpRight,
@@ -15,8 +15,10 @@ import {
   Home,
   PackagePlus,
   Sparkles,
+  Store,
   TriangleAlert,
   WalletCards,
+  XCircle,
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -25,6 +27,7 @@ import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsibl
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getNextEmePlanKey, isEmePlanUpgrade } from "@/lib/eme-plans"
 import { startStripeCheckout } from "@/lib/stripe-client"
 
 type PlanItem = {
@@ -97,7 +100,8 @@ const featureIcons: Record<string, typeof Home> = {
   financial: WalletCards,
   analytics: ChartColumn,
   assessor_eme: Sparkles,
-  all: CheckCircle2,
+  core_modules: CheckCircle2,
+  marketplace: Store,
 }
 
 const featureLabels: Record<string, string> = {
@@ -108,10 +112,11 @@ const featureLabels: Record<string, string> = {
   financial: "Financeiro",
   analytics: "Desempenho",
   assessor_eme: "COS e Studio IA",
-  all: "Todos os módulos disponíveis",
+  core_modules: "Módulos essenciais do EME",
+  marketplace: "Marketplace",
 }
 
-const premiumFeatureOrder = ["assessor_eme", "analytics", "documents", "agenda", "catalog", "financial", "leads", "all"]
+const premiumFeatureOrder = ["marketplace", "assessor_eme", "analytics", "documents", "agenda", "catalog", "financial", "leads", "core_modules"]
 
 const commercialPlanContent = {
   free: {
@@ -123,7 +128,6 @@ const commercialPlanContent = {
       "30 Créditos IA por mês",
       "Sistema Operacional EME completo",
       "Login com PIN e Face ID",
-      "Todos os módulos disponíveis",
     ],
   },
   pro: {
@@ -134,7 +138,6 @@ const commercialPlanContent = {
       "Até 150 imóveis ativos",
       "500 Créditos IA por mês",
       "Sistema Operacional EME completo",
-      "Todos os módulos disponíveis",
       "Mais capacidade para campanhas, vídeos e automações",
     ],
   },
@@ -146,7 +149,6 @@ const commercialPlanContent = {
       "Até 1000 imóveis ativos",
       "2000 Créditos IA por mês",
       "Sistema Operacional EME completo",
-      "Todos os módulos disponíveis",
       "Ideal para equipes e alto volume operacional",
     ],
   },
@@ -174,10 +176,15 @@ function getCommercialPlanCopy(planKey: string) {
 }
 
 function buildPlanHighlights(plan: PlanItem) {
-  return getCommercialPlanCopy(plan.key)?.highlights ?? [
+  const highlights = getCommercialPlanCopy(plan.key)?.highlights ?? [
     `Até ${plan.propertyLimit} imóveis ativos`,
     `${plan.monthlyAiCredits} Créditos IA por mês`,
     "Sistema Operacional EME completo",
+  ]
+
+  return [
+    ...highlights,
+    plan.features.includes("marketplace") ? "Marketplace incluso" : "Marketplace não incluso",
   ]
 }
 
@@ -218,9 +225,12 @@ function getLimitMessage(remaining: number, label: string) {
 
 export function BrokerPlanPage() {
   const searchParams = useSearchParams()
+  const packagesSectionRef = useRef<HTMLDivElement>(null)
   const [upgradeFeedback, setUpgradeFeedback] = useState("")
   const [planSnapshot, setPlanSnapshot] = useState<BrokerPlanSnapshot | null>(null)
   const [isPlanLoading, setIsPlanLoading] = useState(true)
+  const [isCreditHistoryExpanded, setIsCreditHistoryExpanded] = useState(false)
+  const [isPropertyHistoryExpanded, setIsPropertyHistoryExpanded] = useState(false)
   const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
 
   const propertyLimits = planSnapshot?.propertyLimits
@@ -275,7 +285,13 @@ export function BrokerPlanPage() {
     () => (planSnapshot?.packageHistory ?? []).filter((item) => item.packageType === "property"),
     [planSnapshot?.packageHistory],
   )
+  const creditHistory = planSnapshot?.credits.history ?? []
+  const visibleCreditHistory = isCreditHistoryExpanded ? creditHistory : creditHistory.slice(0, 3)
+  const visiblePropertyHistory = isPropertyHistoryExpanded
+    ? propertyPackageHistory
+    : propertyPackageHistory.slice(0, 3)
   const isFreePlan = currentPlan?.key === "free"
+  const nextPlanKey = currentPlan ? getNextEmePlanKey(currentPlan.key) : null
   const visiblePlans = useMemo(
     () => (planSnapshot?.plans ?? []).filter((plan) => ["free", "pro", "scale"].includes(plan.key)),
     [planSnapshot?.plans],
@@ -348,10 +364,21 @@ export function BrokerPlanPage() {
     }
   }
 
-  async function handlePlanCheckout(planKey: "pro" | "scale" = "pro") {
+  async function handlePlanCheckout(planKey?: "pro" | "scale") {
+    const targetPlanKey = planKey ?? nextPlanKey
+
+    if (!currentPlan || !targetPlanKey || !isEmePlanUpgrade(currentPlan.key, targetPlanKey)) {
+      setUpgradeFeedback(
+        currentPlan?.key === "scale"
+          ? "Plano máximo ativo. Use os pacotes extras para ampliar sua operação."
+          : "Não foi possível identificar um upgrade válido para sua conta.",
+      )
+      return
+    }
+
     try {
       setUpgradeFeedback("")
-      await startStripeCheckout({ plan: planKey })
+      await startStripeCheckout({ plan: targetPlanKey })
     } catch (caughtError) {
       setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout.")
     }
@@ -364,6 +391,24 @@ export function BrokerPlanPage() {
     } catch (caughtError) {
       setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout.")
     }
+  }
+
+  function focusPackagesSection() {
+    const section = packagesSectionRef.current
+    if (!section) return
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    section.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" })
+    section.focus({ preventScroll: true })
+    setUpgradeFeedback("Escolha um pacote extra para ampliar sua operação.")
+  }
+
+  function handleEvolvePlan() {
+    if (nextPlanKey) {
+      void handlePlanCheckout(nextPlanKey)
+      return
+    }
+
+    focusPackagesSection()
   }
 
   return (
@@ -411,10 +456,11 @@ export function BrokerPlanPage() {
                   </div>
                   <Button
                     type="button"
-                    onClick={() => void handlePlanCheckout()}
-                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
+                    disabled={!currentPlan || !nextPlanKey}
+                    onClick={nextPlanKey ? () => void handlePlanCheckout(nextPlanKey) : undefined}
+                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:bg-[#e7e9e5] disabled:text-[#667085] disabled:shadow-none"
                   >
-                    Fazer upgrade
+                    {currentPlan?.key === "scale" ? "Plano máximo ativo" : "Fazer upgrade"}
                   </Button>
                 </div>
               </div>
@@ -433,7 +479,7 @@ export function BrokerPlanPage() {
               </p>
               <Button
                 type="button"
-                onClick={() => void handlePlanCheckout()}
+                onClick={handleEvolvePlan}
                 className="mt-3 h-9 w-full rounded-xl bg-[#009b3a] text-xs font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
               >
                 Quero evoluir meu plano
@@ -471,7 +517,7 @@ export function BrokerPlanPage() {
             <CardHeader className="border-b border-[var(--broker-border)] px-4 py-3">
               <CardTitle className="text-lg text-[#050505]">O que está incluso</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-1.5 p-3 sm:grid-cols-2">
+            <CardContent data-testid="included-plan-features" className="grid gap-1.5 p-3 sm:grid-cols-2">
               {includedFeatures.map((feature) => {
                 const Icon = featureIcons[feature] ?? CheckCircle2
                 return (
@@ -486,6 +532,14 @@ export function BrokerPlanPage() {
                   </div>
                 )
               })}
+              {currentPlan?.key === "free" ? (
+                <div className="flex items-center gap-2 rounded-[var(--broker-radius-md)] border border-black/[0.06] bg-[#f6f6f3] px-2.5 py-2">
+                  <div className="flex size-8 items-center justify-center rounded-xl border border-black/[0.08] bg-white text-[#7B8491]">
+                    <XCircle className="size-4" />
+                  </div>
+                  <p className="text-sm text-[#667085]">Marketplace não incluso no plano Free</p>
+                </div>
+              ) : null}
               {currentPlan ? (
                 <div className="flex items-center gap-2 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-muted)] px-2.5 py-2">
                   <div className="flex size-8 items-center justify-center rounded-xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
@@ -507,6 +561,7 @@ export function BrokerPlanPage() {
             <CardContent className="grid gap-2.5 p-3 lg:grid-cols-3">
               {visiblePlans.map((plan) => {
                 const isCurrent = plan.key === currentPlan?.key
+                const canSelectPlan = Boolean(currentPlan && isEmePlanUpgrade(currentPlan.key, plan.key))
                 const isRecommended = plan.key === "pro"
                 const commercialCopy = getCommercialPlanCopy(plan.key)
 
@@ -535,26 +590,31 @@ export function BrokerPlanPage() {
                       <p className="mt-1.5 text-xs leading-[1.15rem] text-[#5F6B7A]">{getPlanAudience(plan.key)}</p>
 
                       <div className="mt-3 grid gap-1.5">
-                        {buildPlanHighlights(plan).map((highlight) => (
-                          <div key={highlight} className="flex items-start gap-2 text-xs leading-[1.15rem] text-[#5F6B7A]">
-                            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#009b3a]" />
+                        {buildPlanHighlights(plan).map((highlight) => {
+                          const isExcluded = highlight === "Marketplace não incluso"
+                          const HighlightIcon = isExcluded ? XCircle : CheckCircle2
+                          return (
+                          <div key={highlight} className={`flex items-start gap-2 text-xs leading-[1.15rem] ${isExcluded ? "text-[#7B8491]" : "text-[#5F6B7A]"}`}>
+                            <HighlightIcon className={`mt-0.5 size-4 shrink-0 ${isExcluded ? "text-[#98A2B3]" : "text-[#009b3a]"}`} />
                             <span>{highlight}</span>
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
 
                     <Button
                       type="button"
-                      variant={isCurrent ? "ghost" : "default"}
-                      onClick={isCurrent ? undefined : () => void handlePlanCheckout(plan.key === "scale" ? "scale" : "pro")}
+                      variant={isCurrent || !canSelectPlan ? "ghost" : "default"}
+                      disabled={isCurrent || !canSelectPlan}
+                      onClick={canSelectPlan ? () => void handlePlanCheckout(plan.key === "scale" ? "scale" : "pro") : undefined}
                       className={
-                        isCurrent
+                        isCurrent || !canSelectPlan
                           ? "mt-4 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 text-xs text-[#4B5563] hover:bg-white hover:text-[#050505]"
                           : "mt-4 h-9 w-full rounded-xl bg-[#009b3a] text-xs font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
                       }
                     >
-                      {isCurrent ? "Plano atual" : plan.key === "pro" ? "Assinar Pro" : "Assinar Scale"}
+                      {isCurrent ? "Plano atual" : !canSelectPlan ? "Plano inferior" : plan.key === "pro" ? "Assinar Pro" : "Assinar Scale"}
                     </Button>
                   </div>
                 )
@@ -573,11 +633,12 @@ export function BrokerPlanPage() {
             <p className="text-xs leading-5 text-[#4B5563]">
               <span className="font-semibold text-[#050505]">Todos os planos incluem:</span>{" "}
               COS, Cadastro Inteligente, Carteira, Catálogo Público, Studio IA, Propostas, Contratos, Agenda, Financeiro,
-              Desempenho, Histórico e Login com PIN e Face ID.
+              Desempenho, Histórico e Login com PIN e Face ID. Marketplace está disponível nos planos Pro e Scale.
             </p>
           </CardContent>
         </Card>
 
+        <div id="pacotes-extras" ref={packagesSectionRef} tabIndex={-1} className="scroll-mt-24 focus:outline-none">
         <ResponsiveCollapsibleSection title="Pacotes extras" defaultMobileOpen variant="broker">
           <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
             <CardHeader className="border-b border-[var(--broker-border)] px-4 py-3">
@@ -606,6 +667,7 @@ export function BrokerPlanPage() {
             </CardContent>
           </Card>
         </ResponsiveCollapsibleSection>
+        </div>
 
         <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] py-0 shadow-[var(--broker-shadow)]">
           <CardContent className="flex flex-col gap-3 p-3.5 lg:flex-row lg:items-center lg:justify-between">
@@ -621,10 +683,10 @@ export function BrokerPlanPage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 type="button"
-                onClick={() => void handlePlanCheckout()}
+                onClick={handleEvolvePlan}
                 className="h-10 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30"
               >
-                Fazer upgrade do plano
+                {currentPlan?.key === "scale" ? "Ver pacotes extras" : "Fazer upgrade do plano"}
               </Button>
               <Button
                 type="button"
@@ -648,9 +710,9 @@ export function BrokerPlanPage() {
               <CardTitle className="text-lg text-[#050505]">Histórico de Créditos IA</CardTitle>
             </CardHeader>
             <CardContent className="divide-y divide-[var(--broker-border)] p-3">
-              {planSnapshot?.credits.history.length ? (
-                planSnapshot.credits.history.map((item) => (
-                  <div key={item.id} className="py-3 first:pt-0 last:pb-0">
+              {creditHistory.length ? (
+                visibleCreditHistory.map((item) => (
+                  <div key={item.id} data-testid="credit-history-item" className="py-3 first:pt-0 last:pb-0">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-sm font-medium text-[#050505]">{item.description || item.actionType || "Movimento de Créditos IA"}</p>
                       <span className={item.amount >= 0 ? "text-sm font-semibold text-[#009b3a]" : "text-sm font-semibold text-[#4B5563]"}>
@@ -668,6 +730,18 @@ export function BrokerPlanPage() {
                   <p className="text-sm text-[#6B7280]">Nenhuma movimentação de Créditos IA registrada ainda.</p>
                 </div>
               )}
+              {creditHistory.length > 3 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  data-testid="credit-history-toggle"
+                  aria-expanded={isCreditHistoryExpanded}
+                  onClick={() => setIsCreditHistoryExpanded((expanded) => !expanded)}
+                  className="mt-2 h-9 w-full rounded-xl text-xs font-semibold text-[#4B5563] hover:bg-[#f5f6f3] hover:text-[#050505]"
+                >
+                  {isCreditHistoryExpanded ? "Recolher histórico" : "Mostrar mais"}
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         </ResponsiveCollapsibleSection>
@@ -680,8 +754,8 @@ export function BrokerPlanPage() {
             </CardHeader>
             <CardContent className="divide-y divide-[var(--broker-border)] p-3">
               {propertyPackageHistory.length ? (
-                propertyPackageHistory.map((item) => (
-                  <div key={item.id} className="py-3 first:pt-0 last:pb-0">
+                visiblePropertyHistory.map((item) => (
+                  <div key={item.id} data-testid="property-history-item" className="py-3 first:pt-0 last:pb-0">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-sm font-medium text-[#050505]">{getPackagePurchaseLabel(item)}</p>
                       <span className="text-sm font-semibold text-[#009b3a]">{item.price}</span>
@@ -696,6 +770,18 @@ export function BrokerPlanPage() {
                   <p className="text-sm text-[#6B7280]">Nenhuma compra de capacidade de imóveis registrada ainda.</p>
                 </div>
               )}
+              {propertyPackageHistory.length > 3 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  data-testid="property-history-toggle"
+                  aria-expanded={isPropertyHistoryExpanded}
+                  onClick={() => setIsPropertyHistoryExpanded((expanded) => !expanded)}
+                  className="mt-2 h-9 w-full rounded-xl text-xs font-semibold text-[#4B5563] hover:bg-[#f5f6f3] hover:text-[#050505]"
+                >
+                  {isPropertyHistoryExpanded ? "Recolher histórico" : "Mostrar mais"}
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         </ResponsiveCollapsibleSection>

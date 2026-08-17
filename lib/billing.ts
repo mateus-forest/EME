@@ -9,7 +9,11 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { getStripeEnv } from "@/lib/env.server"
-import type { EmeExtraPackageKey, EmePlanKey } from "@/lib/eme-plans"
+import {
+  resolveEmePlanUpgradeTarget,
+  type EmeExtraPackageKey,
+  type EmePlanKey,
+} from "@/lib/eme-plans"
 import { syncBrokerPlanAccountFromStripe } from "@/lib/eme-plan-service"
 import { prisma } from "@/lib/prisma"
 
@@ -35,8 +39,11 @@ export function getCheckoutPriceIdForPlan(planKey: BrokerCheckoutPlanKey) {
   return planKey === "scale" ? stripeEnv.scalePriceId : stripeEnv.proPriceId
 }
 
-export function resolveBrokerCheckoutPlanKey(requestedPlanKey?: string | null): BrokerCheckoutPlanKey {
-  return isBrokerCheckoutPlanKey(requestedPlanKey) ? requestedPlanKey : "pro"
+export function resolveBrokerUpgradeCheckoutPlanKey(
+  currentPlanKey: EmePlanKey,
+  requestedPlanKey?: string | null,
+): BrokerCheckoutPlanKey | null {
+  return resolveEmePlanUpgradeTarget(currentPlanKey, requestedPlanKey)
 }
 
 // Deriva o tier (pro/scale) real a partir do price ID confirmado pelo Stripe,

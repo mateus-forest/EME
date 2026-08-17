@@ -119,7 +119,7 @@ export const EME_PLANS = {
     propertyLimit: 5,
     monthlyAiCredits: 30,
     initialAiCredits: 30,
-    features: ["all", "assessor_eme"],
+    features: ["core_modules", "assessor_eme"],
   },
   pro: {
     key: "pro",
@@ -128,7 +128,7 @@ export const EME_PLANS = {
     propertyLimit: 150,
     monthlyAiCredits: 500,
     initialAiCredits: 500,
-    features: ["all", "assessor_eme"],
+    features: ["core_modules", "assessor_eme", "marketplace"],
   },
   scale: {
     key: "scale",
@@ -137,7 +137,7 @@ export const EME_PLANS = {
     propertyLimit: 1000,
     monthlyAiCredits: 2000,
     initialAiCredits: 2000,
-    features: ["all", "assessor_eme"],
+    features: ["core_modules", "assessor_eme", "marketplace"],
   },
 } as const satisfies Record<
   EmePlanKey,
@@ -392,6 +392,36 @@ export function isEmeActivePropertyLabel(value: unknown): value is (typeof EME_A
 export function normalizeEmePlanKey(value: unknown): EmePlanKey {
   if (value === "scale" || value === "growth") return "scale"
   return value === "pro" ? "pro" : "free"
+}
+
+const EME_PLAN_RANK: Record<EmePlanKey, number> = {
+  free: 0,
+  pro: 1,
+  scale: 2,
+}
+
+export function getNextEmePlanKey(value: unknown): Extract<EmePlanKey, "pro" | "scale"> | null {
+  const currentPlan = normalizeEmePlanKey(value)
+  if (currentPlan === "free") return "pro"
+  if (currentPlan === "pro") return "scale"
+  return null
+}
+
+export function isEmePlanUpgrade(currentValue: unknown, targetValue: unknown) {
+  const currentPlan = normalizeEmePlanKey(currentValue)
+  const targetPlan = normalizeEmePlanKey(targetValue)
+  return EME_PLAN_RANK[targetPlan] > EME_PLAN_RANK[currentPlan]
+}
+
+export function resolveEmePlanUpgradeTarget(
+  currentValue: unknown,
+  requestedValue?: unknown,
+): Extract<EmePlanKey, "pro" | "scale"> | null {
+  const nextPlan = getNextEmePlanKey(currentValue)
+  if (!nextPlan) return null
+  if (requestedValue === undefined || requestedValue === null || requestedValue === "") return nextPlan
+  if (requestedValue !== "pro" && requestedValue !== "scale") return null
+  return isEmePlanUpgrade(currentValue, requestedValue) ? requestedValue : null
 }
 
 // Nunca deve lançar: uma action esquecida na tabela não pode derrubar o fluxo inteiro do COS

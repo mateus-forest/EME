@@ -7,11 +7,12 @@ import {
   getCheckoutPriceIdForPackage,
   getCheckoutPriceIdForPlan,
   getPlanLabel,
-  resolveBrokerCheckoutPlanKey,
+  resolveBrokerUpgradeCheckoutPlanKey,
   type BrokerCheckoutPlanKey,
 } from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
+import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
 import { getStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
@@ -110,10 +111,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Contas AGENCY continuam fixas em "scale" (não mudado aqui, fora do escopo).
-    // Contas BROKER escolhem entre Pro e Scale — precisa vir do plano clicado no
-    // frontend, não só do role, senão "Assinar Scale" sempre cobra o preço do Pro.
-    const planKey: BrokerCheckoutPlanKey =
-      user.role === UserRole.BROKER ? resolveBrokerCheckoutPlanKey(payload.plan) : "scale"
+    // Contas BROKER progridem conforme o plano persistido (Free -> Pro -> Scale).
+    // Um plano explicitamente selecionado também precisa ser superior ao atual.
+    let planKey: BrokerCheckoutPlanKey = "scale"
+
+    if (user.role === UserRole.BROKER) {
+      if (!user.broker) {
+        return NextResponse.json({ error: "Corretor não encontrado." }, { status: 404 })
+      }
+
+      const currentPlan = await getBrokerPlanSnapshot(user.broker.id)
+      const upgradePlan = resolveBrokerUpgradeCheckoutPlanKey(currentPlan.planKey, payload.plan)
+
+      if (!upgradePlan) {
+        return NextResponse.json(
+          {
+            error:
+              currentPlan.planKey === "scale"
+                ? "Plano máximo ativo. Use os pacotes extras para ampliar sua operação."
+                : "O plano escolhido não é um upgrade válido para sua conta.",
+          },
+          { status: 409 },
+        )
+      }
+
+      planKey = upgradePlan
+    }
 
     const priceId = getCheckoutPriceIdForPlan(planKey)
     if (!priceId) {
