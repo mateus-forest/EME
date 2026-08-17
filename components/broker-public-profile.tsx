@@ -138,16 +138,16 @@ export function BrokerProfileHero({
   ].filter((metric): metric is NonNullable<typeof metric> => Boolean(metric))
 
   return (
-    <section className="relative mx-auto max-w-[1280px] px-3 pt-5 sm:px-5 sm:pt-7">
-      <div className="relative min-h-[400px] overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_26px_70px_rgba(47,68,57,.11)] sm:min-h-[430px]">
+    <section className="relative mx-auto w-full max-w-[1440px] px-2 pt-5 sm:px-4 sm:pt-7 lg:px-6">
+      <div className="relative min-h-[440px] overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_30px_78px_rgba(47,68,57,.12)] sm:min-h-[500px] lg:min-h-[560px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={catalog.bannerUrl || PREMIUM_BANNER_FALLBACK} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,251,249,.98)_0%,rgba(250,251,249,.94)_35%,rgba(250,251,249,.45)_62%,rgba(250,251,249,.08)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(248,250,246,.96)_0%,rgba(248,250,246,.88)_30%,rgba(248,250,246,.55)_52%,rgba(248,250,246,.16)_70%,rgba(248,250,246,.0)_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#f7fbf7] via-[#f7fbf7]/50 to-transparent" />
         <div className="absolute -bottom-16 -left-16 size-72 rounded-full bg-[#bdf3ce]/45 blur-3xl" />
 
-        <div className="relative flex min-h-[400px] flex-col items-center justify-center gap-5 px-6 pb-20 pt-8 text-center sm:min-h-[430px] sm:px-10 lg:flex-row lg:justify-start lg:gap-9 lg:pb-24 lg:text-left">
-          <div className="relative size-36 shrink-0 overflow-hidden rounded-full border-4 border-white/90 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-44">
+        <div className="relative flex min-h-[440px] flex-col items-center justify-center gap-6 px-5 pb-16 pt-8 text-center sm:min-h-[500px] sm:px-10 lg:flex-row lg:items-start lg:justify-start lg:gap-10 lg:px-12 lg:py-14 lg:text-left">
+          <div className="relative size-40 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_20px_55px_rgba(27,47,36,.16)] sm:size-48 md:size-52 lg:size-60">
             {catalog.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={catalog.photoUrl} alt={catalog.displayName} className="h-full w-full object-cover object-center" />
@@ -158,14 +158,14 @@ export function BrokerProfileHero({
             )}
           </div>
 
-          <div className="max-w-2xl min-w-0">
-            <h1 className="flex flex-wrap items-center justify-center gap-2.5 text-[2.35rem] font-semibold leading-none tracking-[-0.055em] text-[#0f1411] sm:text-[3.5rem] lg:justify-start">
+          <div className="min-w-0 max-w-3xl">
+            <h1 className="flex flex-wrap items-center justify-center gap-2.5 text-[2.9rem] font-semibold leading-none tracking-[-0.055em] text-[#0f1411] sm:text-[3.9rem] lg:justify-start lg:text-[4.1rem]">
               {catalog.displayName}
               {catalog.creciVerified ? <BadgeCheck className="size-7 fill-[#17a24c] text-white sm:size-8" aria-label="CRECI verificado" /> : null}
             </h1>
-            {catalog.description ? <p className="mt-4 text-base font-medium text-[#313a35] sm:text-xl">{catalog.description}</p> : null}
-            {creciLabel(catalog) ? <p className="mt-2 text-sm text-[#69736e]">{creciLabel(catalog)}</p> : null}
-            <div className="mt-6 flex flex-wrap justify-center gap-3 lg:justify-start">
+            {catalog.description ? <p className="mt-5 text-lg font-medium leading-snug text-[#2f3833] sm:text-2xl">{catalog.description}</p> : null}
+            {creciLabel(catalog) ? <p className="mt-3 text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p> : null}
+            <div className="mt-8 flex flex-wrap justify-center gap-3.5 lg:justify-start">
               {catalog.whatsApp ? (
                 <Button type="button" onClick={onWhatsApp} className="h-11 rounded-full bg-[#159447] px-6 font-semibold text-white shadow-[0_12px_26px_rgba(21,148,71,.24)] hover:bg-[#107c39]">
                   <MessageCircle className="size-4" /> WhatsApp
@@ -180,10 +180,10 @@ export function BrokerProfileHero({
       </div>
 
       {metrics.length ? (
-        <div className="relative z-10 mx-3 -mt-16 grid grid-cols-2 overflow-hidden rounded-[1.6rem] border border-white/80 bg-white/94 shadow-[0_22px_52px_rgba(43,61,52,.1)] backdrop-blur-xl sm:mx-5 lg:grid-flow-col lg:auto-cols-fr">
+        <div className="relative z-10 -mt-20 grid grid-cols-2 overflow-hidden rounded-[1.6rem] border border-white/80 bg-white/94 shadow-[0_22px_52px_rgba(43,61,52,.1)] backdrop-blur-xl sm:grid-flow-col sm:auto-cols-fr">
           {metrics.map(({ icon: Icon, value, label }, index) => (
             <div key={label} className={cn(
-              "flex min-h-[116px] flex-col items-center justify-center px-4 py-5 text-center lg:border-t-0",
+              "flex min-h-[124px] flex-col items-center justify-center px-4 py-5 text-center sm:min-h-[132px] lg:border-t-0",
               index > 1 && "border-t border-[#edf0ed]",
               index % 2 === 1 && "border-l border-[#edf0ed]",
               index > 0 && "lg:border-l lg:border-[#edf0ed]",
