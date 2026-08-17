@@ -151,12 +151,27 @@ async function mockPropertyPageDependencies(page: Page) {
   )
 }
 
-test.describe("estado dos modais de clientes e imóveis", () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAsBroker(page)
-  })
+async function mockBrokerSession(page: Page) {
+  await page.route("**/api/auth/me", (route) => route.fulfill({
+    json: {
+      user: {
+        id: "user-1",
+        name: "Corretor Teste",
+        email: "corretor@example.com",
+        role: "BROKER",
+        accountType: "BROKER_INDEPENDENT",
+        plan: "BROKER",
+        subscriptionStatus: "ACTIVE",
+        brokerId: "broker-1",
+        agencyId: null,
+      },
+    },
+  }))
+}
 
+test.describe("estado dos modais de clientes e imóveis", () => {
   test("cliente fecha uma vez, não reabre após refetch e mantém a lista", async ({ page }) => {
+    await loginAsBroker(page)
     let leadRequests = 0
     await page.route("**/api/brokers/leads**", async (route) => {
       leadRequests += 1
@@ -188,6 +203,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
   })
 
   test("imóvel fecha sem remontar a lista ou reabrir após sincronização", async ({ page }) => {
+    await loginAsBroker(page)
     let propertyRequests = 0
     await mockPropertyPageDependencies(page)
     await page.unroute("**/api/properties/me**")
@@ -199,7 +215,8 @@ test.describe("estado dos modais de clientes e imóveis", () => {
 
     await page.goto("/corretor/imoveis")
     await expect(page.getByText(property.title, { exact: true })).toBeVisible()
-    await page.getByRole("button", { name: "Editar", exact: true }).last().click()
+    await page.getByRole("button", { name: `Mais ações para ${property.title}` }).click()
+    await page.getByRole("menuitem", { name: "Editar imóvel" }).click()
     await expect(page).toHaveURL(new RegExp(`/corretor/imoveis/${property.id}$`))
 
     const dialog = page.getByRole("dialog")
@@ -218,5 +235,76 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await page.waitForTimeout(250)
     await expect(dialog).toHaveCount(0)
     await expect(page.getByText(property.title, { exact: true })).toBeVisible()
+  })
+
+  test("publicação por canal é independente e o card interno não oferece WhatsApp", async ({ page }) => {
+    await mockBrokerSession(page)
+    let currentProperty = { ...property, status: "Rascunho", published: false, marketplacePublished: false }
+    await mockPropertyPageDependencies(page)
+    await page.unroute("**/api/properties/me**")
+    await page.route("**/api/properties/me**", (route) => route.fulfill({ json: { properties: [currentProperty] } }))
+    await page.route(`**/api/properties/${property.id}/marketplace`, async (route) => {
+      const body = route.request().postDataJSON() as { published: boolean }
+      currentProperty = { ...currentProperty, marketplacePublished: body.published }
+      await route.fulfill({ json: { property: currentProperty } })
+    })
+    await page.route(`**/api/properties/${property.id}/publish`, async (route) => {
+      const body = route.request().postDataJSON() as { status: "Publicado" | "Rascunho" }
+      currentProperty = { ...currentProperty, status: body.status, published: body.status === "Publicado" }
+      await route.fulfill({ json: { property: currentProperty } })
+    })
+
+    await page.goto("/corretor/imoveis")
+    const card = page.getByRole("heading", { name: property.title }).locator("xpath=ancestor::*[@data-slot='card'][1]")
+    const actions = page.getByRole("button", { name: `Mais ações para ${property.title}` })
+
+    await actions.click()
+    await expect(page.getByRole("menuitem", { name: "Publicar no Catálogo" })).toBeVisible()
+    await expect(page.getByRole("menuitem", { name: "Publicar no Marketplace" })).toBeVisible()
+    await expect(page.getByRole("menuitem", { name: /WhatsApp/i })).toHaveCount(0)
+    await page.getByRole("menuitem", { name: "Publicar no Marketplace" }).click()
+    await expect(card.getByText("Marketplace", { exact: true })).toBeVisible()
+    await expect(card.getByText("Catálogo", { exact: true })).toHaveCount(0)
+
+    await actions.click()
+    await page.getByRole("menuitem", { name: "Publicar no Catálogo" }).click()
+    await expect(card.getByText("Catálogo", { exact: true })).toBeVisible()
+    await expect(card.getByText("Marketplace", { exact: true })).toBeVisible()
+
+    await actions.click()
+    await page.getByRole("menuitem", { name: "Despublicar do Marketplace" }).click()
+    await expect(card.getByText("Marketplace", { exact: true })).toHaveCount(0)
+    await expect(card.getByText("Catálogo", { exact: true })).toBeVisible()
+  })
+
+  test("Marketplace bloqueado mostra a lista de correções e atalho para o CRECI", async ({ page }) => {
+    await mockBrokerSession(page)
+    await mockPropertyPageDependencies(page)
+    await page.route(`**/api/properties/${property.id}/marketplace`, (route) => route.fulfill({
+      status: 422,
+      json: {
+        error: "Este imóvel ainda não atende ao padrão de publicação do EME.",
+        code: "PROPERTY_NOT_READY",
+        channel: "marketplace",
+        channelReadiness: {
+          ready: false,
+          issues: [
+            { code: "MINIMUM_PHOTOS_REQUIRED", message: "Adicione pelo menos 4 fotos.", field: "images", scope: "property" },
+            { code: "CRECI_NOT_VERIFIED", message: "Seu CRECI precisa estar verificado.", field: "creciValidationStatus", scope: "broker" },
+          ],
+        },
+      },
+    }))
+
+    await page.goto("/corretor/imoveis")
+    await page.getByRole("button", { name: `Mais ações para ${property.title}` }).click()
+    await page.getByRole("menuitem", { name: "Publicar no Marketplace" }).click()
+
+    const dialog = page.getByRole("dialog")
+    await expect(dialog.getByRole("heading", { name: "Este imóvel ainda não atende ao padrão de publicação do EME." })).toBeVisible()
+    await expect(dialog.getByText("Adicione pelo menos 4 fotos.")).toBeVisible()
+    await expect(dialog.getByText("Seu CRECI precisa estar verificado.")).toBeVisible()
+    await expect(dialog.getByRole("link", { name: "Verificar CRECI" })).toHaveAttribute("href", "/corretor/conta")
+    await expect(dialog.getByRole("button", { name: "Corrigir imóvel" })).toBeVisible()
   })
 })

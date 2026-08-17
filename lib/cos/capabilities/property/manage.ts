@@ -2,10 +2,11 @@ import "server-only"
 
 import { PropertyStatus } from "@/lib/prisma-enums"
 
-import { createCosSuccessResult } from "@/lib/cos/action-result"
+import { createCosErrorResult, createCosSuccessResult } from "@/lib/cos/action-result"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
+import { assessCatalogReadiness } from "@/lib/property-publication-readiness"
 import { prisma } from "@/lib/prisma"
 
 import {
@@ -49,6 +50,22 @@ async function updatePropertyPublication(input: {
     capabilityId: input.capabilityId,
   })
 
+  if (input.published) {
+    const readiness = assessCatalogReadiness(property)
+    if (!readiness.ready) {
+      return createCosErrorResult({
+        response: `Este imóvel ainda não atende ao padrão do Catálogo:\n\n${readiness.issues.map((item) => `- ${item.message}`).join("\n")}`,
+        errorCode: "PROPERTY_NOT_READY",
+        metadata: {
+          propertyId: property.id,
+          channel: "catalog",
+          issueCodes: readiness.issues.map((item) => item.code),
+        },
+        propertyId: property.id,
+      })
+    }
+  }
+
   const updated = await prisma.property.update({
     where: { id: property.id },
     data: {
@@ -75,7 +92,7 @@ export const publishPropertyCapability: CosCapabilityHandler = async ({ brokerId
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     published: true,
     status: PropertyStatus.PUBLISHED,
-    responseLabel: "Imóvel publicado com sucesso.",
+    responseLabel: "Imóvel publicado no Catálogo.",
     action: "PUBLISH_PROPERTY",
     capabilityId: "property.publish",
   })
@@ -86,7 +103,7 @@ export const unpublishPropertyCapability: CosCapabilityHandler = async ({ broker
     payload: getPayloadRecord({ brokerId, userId: "", message: "", action: "general", payload }),
     published: false,
     status: PropertyStatus.PAUSED,
-    responseLabel: "Imóvel pausado com sucesso.",
+    responseLabel: "Imóvel despublicado do Catálogo.",
     action: "UNPUBLISH_PROPERTY",
     capabilityId: "property.unpublish",
   })

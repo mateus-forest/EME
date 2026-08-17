@@ -6,6 +6,11 @@ import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
 import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { CompletionSummary, EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { getPropertyImages } from "@/lib/property-media"
+import type {
+  PropertyChannelReadiness,
+  PropertyPublicationChannel,
+  PropertyPublicationReadiness,
+} from "@/lib/property-publication-readiness"
 
 export type BrokerPropertyType = "Apartamento" | "Casa" | "Comercial" | "Terreno" | "Sala comercial" | "Loja" | "Cobertura"
 export type BrokerPropertyPurpose = "Venda" | "Locação"
@@ -80,6 +85,24 @@ type PropertyApiItem = {
   completion: CompletionSummary
 }
 
+export type PropertyPublicationBlockedError = Error & {
+  status: 422
+  code: "PROPERTY_NOT_READY"
+  channel: PropertyPublicationChannel
+  channelReadiness: PropertyChannelReadiness
+  publicationReadiness?: PropertyPublicationReadiness
+}
+
+export function isPropertyPublicationBlockedError(error: unknown): error is PropertyPublicationBlockedError {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    error.code === "PROPERTY_NOT_READY" &&
+    "channelReadiness" in error &&
+    Boolean(error.channelReadiness)
+  )
+}
+
 function normalizeBrokerProperty(property: PropertyApiItem): BrokerProperty {
   const normalizedStatus = isEmeActivePropertyLabel(property.status) ? property.status : "Rascunho"
 
@@ -122,6 +145,10 @@ async function parsePropertiesResponse(response: Response) {
   const data = (await response.json().catch(() => null)) as
     | {
         error?: string
+        code?: string
+        channel?: PropertyPublicationChannel
+        channelReadiness?: PropertyChannelReadiness
+        publicationReadiness?: PropertyPublicationReadiness
         properties?: PropertyApiItem[]
         property?: PropertyApiItem
       }
@@ -130,8 +157,16 @@ async function parsePropertiesResponse(response: Response) {
   if (!response.ok) {
     const error = new Error(data?.error || "Não foi possível carregar os imóveis do corretor.") as Error & {
       status?: number
+      code?: string
+      channel?: PropertyPublicationChannel
+      channelReadiness?: PropertyChannelReadiness
+      publicationReadiness?: PropertyPublicationReadiness
     }
     error.status = response.status
+    if (data?.code) error.code = data.code
+    if (data?.channel) error.channel = data.channel
+    if (data?.channelReadiness) error.channelReadiness = data.channelReadiness
+    if (data?.publicationReadiness) error.publicationReadiness = data.publicationReadiness
     throw error
   }
 

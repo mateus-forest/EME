@@ -6,6 +6,10 @@ import {
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceBrokerPropertyPublication } from "@/lib/billing-enforcement"
 import { mapPropertyStatus, serializeProperty } from "@/lib/property-contract"
+import {
+  assessCatalogReadiness,
+  propertyPublicationBlockedResponse,
+} from "@/lib/property-publication-readiness"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 const propertyInclude = {
@@ -57,6 +61,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     if (statusPayload.published && !property.published) {
+      const readiness = assessCatalogReadiness(property)
+      if (!readiness.ready) {
+        return NextResponse.json(propertyPublicationBlockedResponse(readiness, "catalog"), { status: 422 })
+      }
+
       const billingBlocked = await enforceBrokerPropertyPublication(user)
       if (billingBlocked) return billingBlocked
     }

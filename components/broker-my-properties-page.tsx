@@ -4,18 +4,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
-import { Bath, BedDouble, CarFront, FileText, Filter, ImagePlus, MapPin, MessageCircle, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
+import { Bath, BedDouble, BookOpenCheck, CarFront, CircleAlert, FileText, Filter, ImagePlus, MapPin, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
-import { useBrokerProfile } from "@/components/use-broker-profile"
-import { useBrokerProperties, type BrokerProperty as Property } from "@/components/use-broker-properties"
+import {
+  isPropertyPublicationBlockedError,
+  useBrokerProperties,
+  type BrokerProperty as Property,
+  type PropertyPublicationBlockedError,
+} from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { lookupCep } from "@/lib/cep"
 import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { EntityDocumentRecord, PropertyLegalData } from "@/lib/legal-entities"
 import { requestPropertyAi } from "@/lib/property-ai-client"
 import { getPropertyImage } from "@/lib/property-media"
-import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -49,8 +52,6 @@ type EditableProperty = {
 
 const propertyDocumentLabels = ["Matrícula", "Escritura", "IPTU", "Planta", "Convenção", "Outros"]
 
-const propertyStatuses = ["Publicado", "Rascunho", "Pausado"] as const
-
 function mapPropertyToEditable(property: Property): EditableProperty {
   return {
     id: property.id,
@@ -83,7 +84,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const router = useRouter()
   const params = useParams<{ id?: string }>()
   const routePropertyId = initialPropertyId ?? (typeof params?.id === "string" ? params.id : undefined)
-  const { profile } = useBrokerProfile()
   const {
     properties,
     updateProperty,
@@ -98,7 +98,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
   const [search, setSearch] = useState("")
-  const [statusFilters, setStatusFilters] = useState<Array<Property["status"]>>([...propertyStatuses])
   const allPropertyTypes: Array<Property["type"]> = ["Casa", "Apartamento", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]
   const [typeFilters, setTypeFilters] = useState<Array<Property["type"]>>(allPropertyTypes)
   const [priceFilters, setPriceFilters] = useState<string[]>(["low", "mid", "high"])
@@ -110,6 +109,10 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
+  const [publicationBlock, setPublicationBlock] = useState<{
+    property: Property
+    error: PropertyPublicationBlockedError
+  } | null>(null)
   const dismissedRoutePropertyIdRef = useRef<string | null>(null)
   const pendingRoutePropertyIdRef = useRef<string | null>(null)
   const activePropertiesCount = useMemo(
@@ -126,7 +129,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     () =>
       properties.filter((property) => {
         const matchesSearch = normalizedSearch ? [property.title, property.city, property.neighborhood, property.publicCode ? String(property.publicCode) : ""].some((field) => field.toLowerCase().includes(normalizedSearch)) : true
-        const matchesStatus = statusFilters.includes(property.status)
         const matchesType = typeFilters.includes(property.type)
         const numericPrice = Number(property.price.replace(/\D/g, "")) / 100
         const matchesPrice =
@@ -136,14 +138,13 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
             if (filter === "mid") return numericPrice > 800000 && numericPrice <= 2000000
             return numericPrice > 2000000
           })
-        return matchesSearch && matchesStatus && matchesType && matchesPrice
+        return matchesSearch && matchesType && matchesPrice
       }),
-    [properties, normalizedSearch, statusFilters, typeFilters, priceFilters],
+    [properties, normalizedSearch, typeFilters, priceFilters],
   )
   const hasProperties = filteredProperties.length > 0
-  const whatsAppUrl = createWhatsAppUrl(profile.whatsApp, "Olá, tenho interesse neste imóvel")
   const hasActiveFilters =
-    normalizedSearch.length > 0 || statusFilters.length < 3 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
+    normalizedSearch.length > 0 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
 
   const openEditModal = useCallback((property: Property) => {
     dismissedRoutePropertyIdRef.current = null
@@ -194,7 +195,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
 
   function clearFilters() {
     setSearch("")
-    setStatusFilters([...propertyStatuses])
     setTypeFilters(allPropertyTypes)
     setPriceFilters(["low", "mid", "high"])
   }
@@ -359,15 +359,25 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     }
   }
 
-  async function toggleEditingPropertyStatus() {
-    if (!editingProperty) return
-    const nextStatus = editingProperty.status === "Publicado" ? "Rascunho" : "Publicado"
+  function handlePublicationFailure(caughtError: unknown, property: Property, fallback: string) {
+    if (isPropertyPublicationBlockedError(caughtError)) {
+      setPublicationBlock({ property, error: caughtError })
+      setListFeedback("")
+      return
+    }
+
+    setListFeedback(caughtError instanceof Error ? caughtError.message : fallback)
+    window.setTimeout(() => setListFeedback(""), 2500)
+  }
+
+  async function toggleCatalog(property: Property) {
+    const nextStatus = property.published ? "Rascunho" : "Publicado"
     try {
-      await publishProperty(editingProperty.id, nextStatus)
-      updateField("status", nextStatus)
-      setSaveFeedback(nextStatus === "Publicado" ? "Imóvel publicado com sucesso." : "Imóvel movido para rascunho.")
+      await publishProperty(property.id, nextStatus)
+      setListFeedback(property.published ? "Imóvel despublicado do Catálogo." : "Imóvel publicado no Catálogo.")
+      window.setTimeout(() => setListFeedback(""), 2500)
     } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
+      handlePublicationFailure(caughtError, property, "Não foi possível atualizar o Catálogo.")
     }
   }
 
@@ -378,31 +388,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
       setListFeedback(nextPublished ? 'Imóvel publicado no Marketplace.' : 'Imóvel removido do Marketplace.')
       window.setTimeout(() => setListFeedback(''), 2500)
     } catch (caughtError) {
-      setListFeedback(caughtError instanceof Error ? caughtError.message : 'Não foi possível atualizar o Marketplace.')
-      window.setTimeout(() => setListFeedback(''), 2500)
-    }
-  }
-
-  async function applyCardStatus(property: Property, nextStatus: Property["status"]) {
-    try {
-      await publishProperty(property.id, nextStatus)
-      setListFeedback(`Status atualizado para ${nextStatus.toLowerCase()}.`)
-      window.setTimeout(() => setListFeedback(""), 2500)
-    } catch (caughtError) {
-      setListFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
-      window.setTimeout(() => setListFeedback(""), 2500)
-    }
-  }
-
-  async function applyEditingStatus(nextStatus: EditableProperty["status"]) {
-    if (!editingProperty) return
-
-    try {
-      await publishProperty(editingProperty.id, nextStatus)
-      updateField("status", nextStatus)
-      setSaveFeedback(`Status atualizado para ${nextStatus.toLowerCase()}.`)
-    } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do imóvel.")
+      handlePublicationFailure(caughtError, property, 'Não foi possível atualizar o Marketplace.')
     }
   }
 
@@ -459,8 +445,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     )
   }
 
-  const publishToggleChecked = useMemo(() => editingProperty?.status === "Publicado", [editingProperty])
-
   return (
     <>
       <BrokerPageShell
@@ -480,18 +464,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-72 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-              <DropdownMenuLabel className="text-[#6B7280]">Status</DropdownMenuLabel>
-              {propertyStatuses.map((status) => (
-                <DropdownMenuCheckboxItem
-                  key={status}
-                  checked={statusFilters.includes(status)}
-                  onCheckedChange={() => toggleFilter(status, statusFilters, setStatusFilters)}
-                  className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]"
-                >
-                  {status}
-                </DropdownMenuCheckboxItem>
-              ))}
-              <DropdownMenuSeparator className="bg-white" />
               <DropdownMenuLabel className="text-[#6B7280]">Tipo</DropdownMenuLabel>
               {allPropertyTypes.map((type) => (
                 <DropdownMenuCheckboxItem key={type} checked={typeFilters.includes(type)} onCheckedChange={() => toggleFilter(type, typeFilters, setTypeFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">{type}</DropdownMenuCheckboxItem>
@@ -565,16 +537,18 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       </div>
                     )}
                     {getPropertyImage(property.images?.[0] ?? null, property.id) ? <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" /> : null}
-                    <div className="absolute top-2 left-2">
-                      <Badge className={property.status === "Publicado" ? "rounded-full border border-[#009b3a]/16 bg-white/92 px-2 py-0.5 text-[10px] font-semibold text-[#008633] backdrop-blur-md" : "rounded-full border border-black/[0.05] bg-white/92 px-2 py-0.5 text-[10px] font-medium text-[#344054] backdrop-blur-md"}>
-                        {property.status}
-                      </Badge>
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
+                      {property.published ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-white/92 px-2 py-0.5 text-[10px] font-semibold text-[#008633] backdrop-blur-md">
+                          <BookOpenCheck className="size-3" /> Catálogo
+                        </span>
+                      ) : null}
+                      {property.marketplacePublished ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-white/92 px-2 py-0.5 text-[10px] font-semibold text-[#008633] backdrop-blur-md">
+                          <Store className="size-3" /> Marketplace
+                        </span>
+                      ) : null}
                     </div>
-                    {property.marketplacePublished ? (
-                      <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full border border-[#009b3a]/16 bg-white/92 px-2 py-0.5 text-[10px] font-medium text-[#008633] backdrop-blur-md">
-                        <Store className="size-3" /> Marketplace
-                      </span>
-                    ) : null}
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5 px-0.5">
@@ -606,25 +580,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                     </div>
 
                     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
-                      <div className="grid min-w-0 grid-cols-[6.7rem_minmax(0,1fr)] gap-2">
-                        <Select value={property.status} onValueChange={(value) => void applyCardStatus(property, value as Property["status"])}>
-                          <SelectTrigger className="h-8 min-w-0 rounded-lg border-black/[0.07] bg-white px-2 text-xs text-[#344054]">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
-                            {propertyStatuses.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button asChild className="h-8 min-w-0 rounded-lg bg-[#009b3a] px-3 text-xs font-semibold text-white shadow-none hover:bg-[#008633]">
-                          <Link href={`/corretor/imoveis/${property.id}`} scroll={false}>
-                            Ver imóvel
-                          </Link>
-                        </Button>
-                      </div>
+                      <Button asChild className="h-8 min-w-0 rounded-lg bg-[#009b3a] px-3 text-xs font-semibold text-white shadow-none hover:bg-[#008633]">
+                        <Link href={`/corretor/imoveis/${property.id}`} scroll={false}>
+                          Ver imóvel
+                        </Link>
+                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button type="button" variant="ghost" size="icon" className="size-8 rounded-lg border border-black/[0.07] bg-white text-[#667085] hover:bg-[#f7f8f5] hover:text-[#111827]">
@@ -634,8 +594,10 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
                           <DropdownMenuItem onSelect={() => openEditModal(property)} className="rounded-lg"><PencilLine className="size-4" />Editar imóvel</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => void toggleMarketplace(property)} className="rounded-lg"><Store className="size-4" />{property.marketplacePublished ? "Remover do Marketplace" : "Publicar no Marketplace"}</DropdownMenuItem>
-                          <DropdownMenuItem asChild className="rounded-lg"><a href={whatsAppUrl} target="_blank" rel="noreferrer"><MessageCircle className="size-4" />WhatsApp</a></DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-black/[0.06]" />
+                          <DropdownMenuItem onSelect={() => void toggleCatalog(property)} className="rounded-lg"><BookOpenCheck className="size-4" />{property.published ? "Despublicar do Catálogo" : "Publicar no Catálogo"}</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => void toggleMarketplace(property)} className="rounded-lg"><Store className="size-4" />{property.marketplacePublished ? "Despublicar do Marketplace" : "Publicar no Marketplace"}</DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-black/[0.06]" />
                           <DropdownMenuItem asChild className="rounded-lg"><Link href="/corretor/documentos"><FileText className="size-4" />Propostas</Link></DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-black/[0.06]" />
                           <DropdownMenuItem onSelect={() => handleDeleteProperty(property.id)} className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700"><Trash2 className="size-4" />Excluir imóvel</DropdownMenuItem>
@@ -666,7 +628,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
               <>
                 <div className="border-b border-black/[0.06] px-6 py-5">
                   <DialogTitle className="text-xl text-[#050505]">Editar imóvel</DialogTitle>
-                  <DialogDescription className="mt-2 text-[#6B7280]">Atualize fotos, informações e status sem sair da tela.</DialogDescription>
+                  <DialogDescription className="mt-2 text-[#6B7280]">Atualize fotos e informações sem sair da tela.</DialogDescription>
                 </div>
                 <div className="max-h-[calc(92vh-168px)] overflow-y-auto px-6 py-5">
                   <div className="grid gap-6">
@@ -677,7 +639,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                           <input
                             type="file"
                             multiple
-                            accept="image/*"
+                            accept="image/jpeg,image/png,image/webp"
                             className="sr-only"
                             onChange={(event) => {
                               void addPropertyPhotos(event.target.files)
@@ -838,40 +800,6 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       ) : null}
                     </section>
 
-                    <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
-                      <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                        <h3 className="text-lg font-semibold text-[#050505]">Áudio (opcional)</h3>
-                        <Button type="button" variant="ghost" disabled className="mt-4 h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#7B8491] disabled:opacity-60">
-                          <Mic className="size-4" />
-                          Gravação em breve
-                        </Button>
-                      </div>
-                      <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                        <h3 className="text-lg font-semibold text-[#050505]">Status</h3>
-                        <div className="mt-3 grid gap-3">
-                          <div>
-                            <p className="text-sm text-[#5F6B7A]">Status atual</p>
-                            <p className="mt-1 font-medium text-[#050505]">{editingProperty.status}</p>
-                          </div>
-                          <Select value={editingProperty.status} onValueChange={(value) => void applyEditingStatus(value as EditableProperty["status"])}>
-                            <SelectTrigger className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
-                              <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent className="border-black/[0.06] bg-white text-[#050505]">
-                              {propertyStatuses.map((status) => (
-                                <SelectItem key={status} value={status}>
-                                  {status}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button type="button" variant="ghost" onClick={toggleEditingPropertyStatus} className="hidden">
-                          {publishToggleChecked ? "Despublicar imóvel" : "Publicar imóvel"}
-                        </Button>
-                      </div>
-                    </section>
-
                     <section className="grid gap-3">
                       <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                         <h3 className="text-lg font-semibold text-[#050505]">Áudio</h3>
@@ -918,6 +846,62 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={Boolean(publicationBlock)} onOpenChange={(open) => !open && setPublicationBlock(null)}>
+          <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.35rem] border-black/[0.07] bg-white p-0 text-[#111827] shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:max-w-lg">
+            {publicationBlock ? (
+              <>
+                <div className="flex items-start gap-3 border-b border-black/[0.06] px-5 py-4">
+                  <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                    <CircleAlert className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-base font-semibold text-[#111827]">
+                      Este imóvel ainda não atende ao padrão de publicação do EME.
+                    </DialogTitle>
+                    <DialogDescription className="mt-1 text-sm leading-5 text-[#667085]">
+                      Complete os itens abaixo antes de publicar no {publicationBlock.error.channel === "catalog" ? "Catálogo" : "Marketplace"}.
+                    </DialogDescription>
+                  </div>
+                </div>
+
+                <div className="max-h-[52vh] overflow-y-auto px-5 py-4">
+                  <ul className="grid gap-2.5" data-testid="publication-readiness-issues">
+                    {publicationBlock.error.channelReadiness.issues.map((item) => (
+                      <li key={`${item.code}:${item.field}`} className="flex gap-2.5 rounded-xl border border-black/[0.055] bg-[#fbfbf8] px-3 py-2.5 text-sm text-[#475467]">
+                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <span>{item.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <DialogFooter className="border-t border-black/[0.06] px-5 py-4 sm:justify-between">
+                  {publicationBlock.error.channelReadiness.issues.some((item) => item.scope === "broker") ? (
+                    <Button asChild variant="ghost" className="h-10 rounded-xl border border-black/[0.07] bg-white px-4 text-[#475467] hover:bg-[#f7f8f5] hover:text-[#111827]">
+                      <Link href="/corretor/conta" onClick={() => setPublicationBlock(null)}>Verificar CRECI</Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" onClick={() => setPublicationBlock(null)} className="h-10 rounded-xl px-4 text-[#667085]">
+                      Agora não
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const currentProperty = properties.find((item) => item.id === publicationBlock.property.id) ?? publicationBlock.property
+                      setPublicationBlock(null)
+                      openEditModal(currentProperty)
+                    }}
+                    className="h-10 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white hover:bg-[#008633]"
+                  >
+                    Corrigir imóvel
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
           </DialogContent>
         </Dialog>
       </BrokerPageShell>

@@ -5,6 +5,7 @@ import { NextRequest,
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { deletePropertyStorageFile, savePropertyImage } from "@/lib/property-storage"
+import { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-readiness"
 import { serializeProperty } from "@/lib/property-contract"
 import { prisma } from "@/lib/prisma"
 
@@ -24,9 +25,10 @@ const propertyInclude = {
 
 export const dynamic = "force-dynamic"
 
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/jpg"])
-const MAX_FILES_PER_REQUEST = 6
-const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set<string>(PROPERTY_PUBLICATION_STANDARDS.uploads.supportedMimeTypes)
+const MAX_FILES_PER_REQUEST = PROPERTY_PUBLICATION_STANDARDS.marketplace.maximumPhotos
+const MAX_FILE_SIZE_BYTES = PROPERTY_PUBLICATION_STANDARDS.uploads.maximumImageBytes
+const MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES / (1024 * 1024)
 
 async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
   const property = await prisma.property.findUnique({
@@ -105,13 +107,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       }
 
       if (file.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json({ error: "A imagem excede o limite de 8 MB." }, { status: 400 })
+        return NextResponse.json({ error: `A imagem excede o limite de ${MAX_FILE_SIZE_MB} MB.` }, { status: 400 })
       }
     }
 
     const existingImages = getExistingImages(accessible.property)
     const uploadedUrls = await Promise.all(files.map((file: File) => savePropertyImage(accessible.property.id, file)))
-    const nextImages = [...existingImages, ...uploadedUrls].slice(0, 6)
+    const nextImages = [...existingImages, ...uploadedUrls].slice(0, MAX_FILES_PER_REQUEST)
 
     const updatedProperty = await prisma.property.update({
       where: { id: accessible.property.id },

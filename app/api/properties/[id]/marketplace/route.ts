@@ -3,6 +3,10 @@ import { UserRole } from '@/lib/prisma-enums'
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from '@/lib/auth-route'
 import { slugify } from '@/lib/catalog-slug'
 import { serializeProperty } from '@/lib/property-contract'
+import {
+  assessPropertyPublicationReadiness,
+  propertyPublicationBlockedResponse,
+} from '@/lib/property-publication-readiness'
 import { prisma } from '@/lib/prisma'
 
 const propertyInclude = {
@@ -38,8 +42,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (typeof body?.published !== 'boolean') {
       return NextResponse.json({ error: 'Informe se o imóvel deve aparecer no Marketplace.' }, { status: 400 })
     }
-    if (body.published && (!property.title.trim() || !property.city.trim() || property.price <= 0)) {
-      return NextResponse.json({ error: 'Complete título, cidade e preço antes de publicar no Marketplace.' }, { status: 400 })
+    if (body.published && !property.marketplacePublished) {
+      const readiness = await assessPropertyPublicationReadiness(property, { baseUrl: request.nextUrl.origin })
+      if (!readiness.marketplaceReady) {
+        return NextResponse.json(propertyPublicationBlockedResponse(readiness, 'marketplace'), { status: 422 })
+      }
     }
 
     const updated = await prisma.property.update({

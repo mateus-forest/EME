@@ -56,6 +56,8 @@ test.describe('Marketplace integrado ao EME', () => {
             catalogSlug: FIXTURE_SLUG,
             status: 'ACTIVE',
             creci: '99999-F',
+            creciUf: 'RS',
+            creciValidationStatus: 'VERIFIED',
             marketplaceSpecialty: 'Casas e apartamentos',
             marketplaceRegion: 'Vacaria e região',
             marketplaceTransactions: 'BOTH',
@@ -69,10 +71,11 @@ test.describe('Marketplace integrado ao EME', () => {
     await prisma.catalog.create({ data: { slug: FIXTURE_SLUG, ownerType: 'BROKER', ownerId: brokerId } })
 
     const commonLegalData = { city: 'Vacaria', state: 'RS', district: 'Centro', privateArea: '120' }
+    const publicationImages = ['/mockups/catalogo-premium.png', '/mockups/compromissos-premium.png', '/mockups/contratos-premium.png', '/mockups/cos-premium.png']
     const records = await Promise.all([
-      prisma.property.create({ data: { publicCode: 98001, title: 'Casa Integração Marketplace', description: 'Casa pronta para morar com pátio amplo no Centro.', price: 72000000, city: 'Vacaria', neighborhood: 'Centro', bedrooms: 3, bathrooms: 2, parkingSpots: 2, type: 'HOUSE', purpose: 'SALE', status: 'DRAFT', published: false, imageUrls: ['/marketplace/placeholder.svg'], legalData: commonLegalData, brokerId } }),
-      prisma.property.create({ data: { publicCode: 98002, title: 'Apartamento Integração Marketplace', description: 'Apartamento novo e pronto para morar no Centro.', price: 61000000, city: 'Vacaria', neighborhood: 'Centro', bedrooms: 2, bathrooms: 2, parkingSpots: 1, type: 'APARTMENT', purpose: 'SALE', status: 'DRAFT', published: false, imageUrls: ['/marketplace/placeholder.svg'], legalData: { ...commonLegalData, privateArea: '88' }, brokerId } }),
-      prisma.property.create({ data: { publicCode: 98003, title: 'Casa para Alugar Integração', description: 'Casa mobiliada para locação com quintal.', price: 350000, city: 'Vacaria', neighborhood: 'Bela Vista', bedrooms: 2, bathrooms: 1, parkingSpots: 1, type: 'HOUSE', purpose: 'RENT', status: 'DRAFT', published: false, imageUrls: ['/marketplace/placeholder.svg'], legalData: { ...commonLegalData, district: 'Bela Vista', privateArea: '95' }, brokerId } }),
+      prisma.property.create({ data: { publicCode: 98001, title: 'Casa Integração Marketplace', description: 'Casa pronta para morar com pátio amplo no Centro, ambientes integrados, ótima iluminação e estrutura completa para a família.', price: 72000000, city: 'Vacaria', neighborhood: 'Centro', bedrooms: 3, bathrooms: 2, parkingSpots: 2, type: 'HOUSE', purpose: 'SALE', status: 'DRAFT', published: false, imageUrls: publicationImages, legalData: commonLegalData, brokerId } }),
+      prisma.property.create({ data: { publicCode: 98002, title: 'Apartamento Integração Marketplace', description: 'Apartamento novo e pronto para morar no Centro, com ambientes funcionais, boa iluminação e localização conveniente.', price: 61000000, city: 'Vacaria', neighborhood: 'Centro', bedrooms: 2, bathrooms: 2, parkingSpots: 1, type: 'APARTMENT', purpose: 'SALE', status: 'DRAFT', published: false, imageUrls: publicationImages, legalData: { ...commonLegalData, privateArea: '88' }, brokerId } }),
+      prisma.property.create({ data: { publicCode: 98003, title: 'Casa para Alugar Integração', description: 'Casa mobiliada para locação com quintal, espaços confortáveis, boa iluminação natural e acesso rápido ao bairro.', price: 350000, city: 'Vacaria', neighborhood: 'Bela Vista', bedrooms: 2, bathrooms: 1, parkingSpots: 1, type: 'HOUSE', purpose: 'RENT', status: 'DRAFT', published: false, imageUrls: publicationImages, legalData: { ...commonLegalData, district: 'Bela Vista', privateArea: '95' }, brokerId } }),
     ])
     propertyIds = records.map((property) => property.id)
   })
