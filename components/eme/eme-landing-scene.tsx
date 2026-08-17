@@ -6,6 +6,7 @@ import { AnimatePresence, useMotionValue, useMotionValueEvent, useSpring } from 
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
+import { LandingActivity } from "@/components/eme/landing-activity"
 import { LandingHeader } from "@/components/eme/landing-header"
 import { OrbitStage } from "@/components/eme/orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
@@ -143,6 +144,10 @@ export function EmeLandingScene({
         onEntrar={() => openAuth("login")}
         onComecar={() => openAuth("signup")}
         authOpen={authMode != null}
+      />
+      <LandingActivity
+        authOpen={authMode != null}
+        className="absolute left-6 top-9 z-[60] hidden sm:block sm:left-12"
       />
 
       <div

@@ -6,6 +6,7 @@ import { AnimatePresence, useMotionValue, useSpring } from "motion/react"
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
+import { LandingActivity } from "@/components/eme/landing-activity"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
@@ -167,6 +168,11 @@ export function EmeMobileExperience({
         authOpen={authOpen}
         onEntrar={() => openAuth("login")}
         onComecar={() => openAuth("signup")}
+      />
+      <LandingActivity
+        authOpen={authOpen}
+        compact
+        className="fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[60]"
       />
 
       <div
