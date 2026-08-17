@@ -48,9 +48,13 @@ test.describe("COS Core E2E", () => {
 
     const composer = page.getByTestId("cos-composer-dock")
     const operationHealth = page.getByTestId("cos-operation-health")
+    const operationHealthToggle = operationHealth.getByRole("button", { name: /Saúde da operação/i })
     await expect(composer).toBeVisible()
     await expect(operationHealth).toBeVisible()
-    await operationHealth.getByRole("button", { name: /Saúde da operação/i }).click()
+    await expect(page.locator("#operation-health-panel")).toBeVisible()
+    await operationHealthToggle.click()
+    await expect(page.locator("#operation-health-panel")).toHaveCount(0)
+    await operationHealthToggle.click()
     await expect(page.locator("#operation-health-panel")).toBeVisible()
 
     const layout = await page.evaluate(() => {
@@ -58,8 +62,9 @@ test.describe("COS Core E2E", () => {
       const composerDock = document.querySelector<HTMLElement>('[data-testid="cos-composer-dock"]')
       const health = document.querySelector<HTMLElement>('[data-testid="cos-operation-health"]')
       const healthPanel = document.querySelector<HTMLElement>("#operation-health-panel")
+      const surface = document.querySelector<HTMLElement>('[data-testid="cos-conversation-surface"]')
       const sidebar = document.querySelector<HTMLElement>('aside:not([data-testid="cos-operation-health"])')
-      if (!composerDock || !health || !healthPanel || !sidebar) return null
+      if (!composerDock || !health || !healthPanel || !surface || !sidebar) return null
 
       const before = {
         composerTop: composerDock.getBoundingClientRect().top,
@@ -76,6 +81,8 @@ test.describe("COS Core E2E", () => {
         conversationOverflowY: conversation ? getComputedStyle(conversation).overflowY : null,
         conversationScrollbarWidth: conversation ? getComputedStyle(conversation).scrollbarWidth : null,
         healthPanelOverflowY: getComputedStyle(healthPanel).overflowY,
+        conversationSurfaceBackground: getComputedStyle(surface).backgroundColor,
+        conversationSurfaceBorderWidth: getComputedStyle(surface).borderTopWidth,
         healthPanelTop: healthPanel.getBoundingClientRect().top,
         healthTop: health.getBoundingClientRect().top,
         composerDelta: composerDock.getBoundingClientRect().top - before.composerTop,
@@ -90,10 +97,27 @@ test.describe("COS Core E2E", () => {
     expect(layout!.conversationOverflowY).toBe("auto")
     expect(layout!.conversationScrollbarWidth).toBe("none")
     expect(layout!.healthPanelOverflowY).toBe("auto")
+    expect(layout!.conversationSurfaceBackground).toBe("rgba(0, 0, 0, 0)")
+    expect(layout!.conversationSurfaceBorderWidth).toBe("0px")
     expect(layout!.healthPanelTop).toBeGreaterThanOrEqual(layout!.healthTop)
     expect(Math.abs(layout!.composerDelta)).toBeLessThan(1)
     expect(Math.abs(layout!.healthDelta)).toBeLessThan(1)
     expect(Math.abs(layout!.sidebarDelta)).toBeLessThan(1)
+  })
+
+  test("mobile mantém compositor e saúde próximos ao rodapé sem exceder a viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openCosHome(page)
+
+    const dock = page.getByTestId("cos-composer-dock")
+    await expect(dock).toBeVisible()
+    const position = await dock.evaluate((element) => {
+      const rect = element.getBoundingClientRect()
+      return { top: rect.top, bottomGap: window.innerHeight - rect.bottom, viewportHeight: window.innerHeight }
+    })
+    expect(position.top).toBeGreaterThan(position.viewportHeight * 0.6)
+    expect(position.bottomGap).toBeGreaterThanOrEqual(0)
+    expect(position.bottomGap).toBeLessThanOrEqual(32)
   })
 
   test("conversa simples responde sem mensagens técnicas", async ({ page }) => {

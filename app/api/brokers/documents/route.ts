@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { parseCurrencyInputToCents } from "@/lib/currency"
-import { buildProposalHtml } from "@/lib/proposal-template"
+import {
+  buildProposalHtml,
+  sanitizeProposalDisplayText,
+  sanitizeProposalDocumentContent,
+} from "@/lib/proposal-template"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -29,16 +33,27 @@ function serializeDocument(document: {
   lead?: { name: string | null; phone: string | null } | null
   property?: { id: string; title: string; city: string; neighborhood: string | null; price: number; purpose: string | null; type: string; bedrooms: number; parkingSpots: number; area?: string | null } | null
 }) {
+  const leadName = sanitizeProposalDisplayText(document.lead?.name ?? document.lead?.phone ?? "")
+  const propertyTitle = sanitizeProposalDisplayText(document.property?.title ?? "")
+  const sanitizedTitle = document.type === "proposal"
+    ? sanitizeProposalDisplayText(document.title)
+    : document.title
+  const title = document.type === "proposal" && (!sanitizedTitle || sanitizedTitle.toLowerCase() === "proposta")
+    ? `Proposta ${leadName || propertyTitle || "EME"}`
+    : sanitizedTitle
+
   return {
     id: document.id,
     type: document.type,
-    title: document.title,
-    content: document.content,
+    title,
+    content: document.type === "proposal"
+      ? sanitizeProposalDocumentContent(document.content)
+      : document.content,
     status: document.status,
     leadId: document.leadId,
     propertyId: document.propertyId,
-    leadName: document.lead?.name ?? document.lead?.phone ?? "",
-    propertyTitle: document.property?.title ?? "",
+    leadName,
+    propertyTitle,
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
   }

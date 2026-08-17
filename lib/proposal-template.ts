@@ -31,9 +31,34 @@ type ProposalBroker = {
   photoUrl?: string | null
 } | null
 
+const INTERNAL_ATTACHMENT_CONTEXT = [
+  /\s*IMPORTANTE:\s*os anexos s[aã]o a fonte principal de informa[cç][aã]o\.[\s\S]*$/i,
+  /\s*O texto do usu[aá]rio descreve apenas a inten[cç][aã]o operacional\.[\s\S]*$/i,
+  /\s*N[aã]o use o prompt como t[ií]tulo, descri[cç][aã]o ou conte[uú]do[\s\S]*$/i,
+]
+
+export function sanitizeProposalDisplayText(value: string) {
+  return INTERNAL_ATTACHMENT_CONTEXT
+    .reduce((current, pattern) => current.replace(pattern, ""), value)
+    .trim()
+}
+
+export function sanitizeProposalDocumentContent(content: string) {
+  if (!/<!doctype html|<html|<main|<section/i.test(content)) {
+    return sanitizeProposalDisplayText(content)
+  }
+
+  return content.replace(/>([^<]*)</g, (match, text: string) => {
+    const sanitized = sanitizeProposalDisplayText(text)
+    return `>${sanitized}<`
+  })
+}
+
 function valueOrFallback(value?: string | number | null) {
   if (value === 0) return "0"
-  return value ? String(value) : "—"
+  if (!value) return "—"
+  const sanitized = sanitizeProposalDisplayText(String(value))
+  return sanitized || "—"
 }
 
 function escapeHtml(value?: string | number | null) {
@@ -872,7 +897,7 @@ export function buildProposalHtml(input: {
 }
 
 export function proposalHtmlToText(html: string) {
-  return html
+  return sanitizeProposalDocumentContent(html)
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, "\n")
     .replace(/&amp;/g, "&")

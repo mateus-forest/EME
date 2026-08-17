@@ -307,4 +307,37 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await expect(dialog.getByRole("link", { name: "Verificar CRECI" })).toHaveAttribute("href", "/corretor/conta")
     await expect(dialog.getByRole("button", { name: "Corrigir imóvel" })).toBeVisible()
   })
+
+  test("Catálogo bloqueia CRECI não verificado sem exigir o padrão premium", async ({ page }) => {
+    await mockBrokerSession(page)
+    await mockPropertyPageDependencies(page)
+    await page.unroute("**/api/properties/me**")
+    await page.route("**/api/properties/me**", (route) => route.fulfill({
+      json: { properties: [{ ...property, status: "Rascunho", published: false }] },
+    }))
+    await page.route(`**/api/properties/${property.id}/publish`, (route) => route.fulfill({
+      status: 422,
+      json: {
+        error: "Este imóvel ainda não atende ao padrão de publicação do EME.",
+        code: "PROPERTY_NOT_READY",
+        channel: "catalog",
+        channelReadiness: {
+          ready: false,
+          issues: [
+            { code: "CRECI_NOT_VERIFIED", message: "Seu CRECI precisa estar verificado.", field: "creciValidationStatus", scope: "broker" },
+          ],
+        },
+      },
+    }))
+
+    await page.goto("/corretor/imoveis")
+    await page.getByRole("button", { name: `Mais ações para ${property.title}` }).click()
+    await page.getByRole("menuitem", { name: "Publicar no Catálogo" }).click()
+
+    const dialog = page.getByRole("dialog")
+    await expect(dialog.getByText("Seu CRECI precisa estar verificado.")).toBeVisible()
+    await expect(dialog.getByRole("link", { name: "Verificar CRECI" })).toHaveAttribute("href", "/corretor/conta")
+    await expect(dialog.getByTestId("publication-readiness-issues").getByRole("listitem")).toHaveCount(1)
+    await expect(dialog).not.toContainText("Adicione pelo menos 4 fotos.")
+  })
 })

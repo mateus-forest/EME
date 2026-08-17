@@ -43,7 +43,12 @@ async function updatePropertyPublication(input: {
   capabilityId: "property.publish" | "property.unpublish"
 }) {
   const propertyId = getEntityIdFromPayload(input.payload, "property")
-  const property = propertyId ? await prisma.property.findFirst({ where: { id: propertyId, brokerId: input.brokerId } }) : null
+  const property = propertyId
+    ? await prisma.property.findFirst({
+        where: { id: propertyId, brokerId: input.brokerId },
+        include: { broker: { select: { creciValidationStatus: true } } },
+      })
+    : null
   if (!property) return requiredSelectionResponse("imóvel", "propertyId", undefined, {
     action: input.action,
     entity: "property",

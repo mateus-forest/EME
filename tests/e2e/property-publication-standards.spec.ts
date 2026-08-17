@@ -61,7 +61,7 @@ test.describe("padrão de publicação de imóveis", () => {
       imageUrls: [],
       neighborhood: "",
       legalData: {},
-      broker: { creciValidationStatus: "PENDING" as const },
+      broker: { creciValidationStatus: "VERIFIED" as const },
     }
 
     expect(assessCatalogReadiness(property).ready).toBe(true)
@@ -73,7 +73,6 @@ test.describe("padrão de publicação de imóveis", () => {
       "AREA_REQUIRED",
       "DESCRIPTION_TOO_SHORT",
       "MINIMUM_PHOTOS_REQUIRED",
-      "CRECI_NOT_VERIFIED",
     ]))
   })
 
@@ -152,14 +151,22 @@ test.describe("padrão de publicação de imóveis", () => {
     ]))
   })
 
-  test("CRECI não verificado bloqueia somente o Marketplace", async () => {
+  test("CRECI não verificado bloqueia Catálogo e Marketplace sem herdar exigências premium", async () => {
     for (const status of ["PENDING", "REJECTED", "REVIEW_REQUIRED"] as const) {
-      const readiness = await assessPropertyPublicationReadiness({
+      const property = {
         ...completeProperty,
+        description: "",
+        imageUrls: [],
+        neighborhood: "",
+        legalData: {},
         broker: { creciValidationStatus: status },
-      }, { inspectImage: async () => validHorizontalImage })
+      }
+      const catalogReadiness = assessCatalogReadiness(property)
+      const readiness = await assessPropertyPublicationReadiness(property)
 
-      expect(readiness.catalogReady).toBe(true)
+      expect(catalogReadiness.ready).toBe(false)
+      expect(catalogReadiness.issues.map((item) => item.code)).toEqual(["CRECI_NOT_VERIFIED"])
+      expect(readiness.catalogReady).toBe(false)
       expect(issueCodes(readiness)).toContain("CRECI_NOT_VERIFIED")
       expect(readiness.marketplaceReady).toBe(false)
     }

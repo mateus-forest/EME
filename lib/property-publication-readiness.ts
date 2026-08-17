@@ -95,7 +95,7 @@ export type PropertyImageInspection = {
 }
 
 type ImageInspector = (url: string) => Promise<PropertyImageInspection>
-type CatalogPublicationInput = Pick<PropertyPublicationInput, "title" | "price" | "city">
+type CatalogPublicationInput = Pick<PropertyPublicationInput, "title" | "price" | "city" | "broker">
 
 const RESIDENTIAL_TYPES = new Set<PropertyType>(["APARTMENT", "HOUSE", "PENTHOUSE"])
 const BUILT_TYPES = new Set<PropertyType>(["APARTMENT", "HOUSE", "PENTHOUSE", "COMMERCIAL", "OFFICE", "STORE"])
@@ -160,6 +160,16 @@ export function assessCatalogReadiness(input: CatalogPublicationInput): Property
   if (!readText(input.city)) {
     issues.push(issue("CITY_REQUIRED", "Informe a cidade do imóvel.", "city"))
   }
+  if (input.broker.creciValidationStatus !== "VERIFIED") {
+    issues.push(
+      issue(
+        "CRECI_NOT_VERIFIED",
+        "Seu CRECI precisa estar verificado.",
+        "creciValidationStatus",
+        "broker",
+      ),
+    )
+  }
 
   return { ready: issues.length === 0, issues }
 }
@@ -200,17 +210,6 @@ function assessMarketplaceFields(input: PropertyPublicationInput) {
       ),
     )
   }
-  if (input.broker.creciValidationStatus !== "VERIFIED") {
-    issues.push(
-      issue(
-        "CRECI_NOT_VERIFIED",
-        "Seu CRECI precisa estar verificado.",
-        "creciValidationStatus",
-        "broker",
-      ),
-    )
-  }
-
   return issues
 }
 

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 import { loginAsBroker } from "./helpers/auth"
 
@@ -18,6 +18,40 @@ const adCampaign = {
     { ...approvedMaterial.assets[0], id: "ad-title", assetKey: "title", label: "Título", type: "COPY", fileUrl: null, thumbnailUrl: null, status: "PENDING_REVIEW", content: "Seu próximo imóvel" },
   ],
 }
+
+async function mockBrokerSession(page: Page) {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { id: "user-1", name: "Corretor Teste", email: "corretor@example.com", role: "BROKER", brokerId: "broker", agencyId: null } } }))
+  await page.route("**/api/brokers/me**", (route) => route.fulfill({ json: { profile: { id: "user-1", brokerId: "broker", agencyId: null, agencyName: "", accountType: "BROKER_INDEPENDENT", name: "Corretor Teste", email: "corretor@example.com", phone: "11999999999", photoUrl: "", creci: "12345", description: "" } } }))
+  await page.route("**/api/brokers/subscription**", (route) => route.fulfill({ json: { subscription: { planName: "Plano EME", isUpgraded: true, propertyLimit: 10, status: "Ativo" } } }))
+}
+
+test.describe("Studio IA — hub", () => {
+  test("mantém cinco ações e resume atividade real do Studio", async ({ page }) => {
+    await mockBrokerSession(page)
+    await page.route("**/api/studio-ia/campaigns?page=1&limit=100", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        campaigns: [approvedMaterial],
+        pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+      }),
+    }))
+
+    await page.goto("/corretor/studio-ia")
+    const actions = page.getByTestId("studio-actions")
+    await expect(actions.getByRole("link")).toHaveCount(5)
+    await expect(actions).toContainText("Criar campanha")
+    await expect(actions).toContainText("Preparar imóvel")
+    await expect(actions).toContainText("Visualizar projeto")
+    await expect(actions).toContainText("Criar vídeo")
+    await expect(actions).toContainText("Criar anúncio")
+    await expect(actions).not.toContainText("Captar imóveis")
+    await expect(page.getByText("Atividade do Estúdio", { exact: true })).toBeVisible()
+    await expect(page.getByText("Recentes", { exact: true })).toBeVisible()
+    await expect(page.getByRole("link", { name: /Sala preparada/ })).toHaveAttribute("href", "/corretor/studio-ia/biblioteca/prepared-campaign")
+    await expect(page.getByRole("link", { name: "Ver biblioteca", exact: true })).toHaveAttribute("href", "/corretor/studio-ia/biblioteca")
+  })
+})
 
 test.describe("Studio IA — continuidade Biblioteca → anúncio", () => {
   test.beforeEach(async ({ page }) => {

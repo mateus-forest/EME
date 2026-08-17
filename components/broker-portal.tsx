@@ -71,6 +71,7 @@ export function BrokerPortal() {
   const [contracts, setContracts] = useState<ContractRecord[]>([])
   const [commissionPercent, setCommissionPercent] = useState(6)
   const [isMobileOperationHealthOpen, setIsMobileOperationHealthOpen] = useState(false)
+  const [isDesktopOperationHealthCollapsed, setIsDesktopOperationHealthCollapsed] = useState(false)
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
   const [isAgendaLoaded, setIsAgendaLoaded] = useState(false)
@@ -458,8 +459,8 @@ export function BrokerPortal() {
     <>
       <BrokerPageShell title="COS" variant="cos" contentClassName="overflow-hidden">
         <section className="h-full min-h-0 w-full overflow-hidden bg-[#f4f1eb]">
-          <div className="mx-auto grid h-full min-h-0 w-full max-w-[86rem] grid-cols-[minmax(0,1fr)] gap-6 overflow-hidden px-4 pb-5 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
-            <div className="relative flex min-h-0 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+8.75rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+9.25rem)]">
+          <div className="mx-auto grid h-full min-h-0 w-full max-w-[86rem] grid-cols-[minmax(0,1fr)] gap-6 overflow-hidden px-4 pb-3 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:px-8 lg:py-6">
+            <div className="relative flex min-h-0 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+7.5rem)] sm:pb-[calc(env(safe-area-inset-bottom,0px)+8rem)]">
               {isConversationEmpty ? (
                 <div className="flex min-h-full flex-col">
                   <div className="flex min-h-0 flex-1 flex-col justify-start py-6 sm:py-8 lg:py-10">
@@ -502,7 +503,7 @@ export function BrokerPortal() {
                   ) : null}
                 </div>
               ) : (
-                <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-black/[0.05] bg-white/58 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.04)] backdrop-blur-sm">
+                <div data-testid="cos-conversation-surface" className="flex h-full min-h-0 flex-col p-2">
                   <div className="flex flex-wrap items-start justify-between gap-3 px-4 pb-3 pt-2">
                     <div className="min-w-0">
                       <div className="mt-1 min-h-[2rem]">
@@ -532,7 +533,7 @@ export function BrokerPortal() {
                     </div>
                   </div>
 
-                  <div ref={chatViewportRef} data-testid="cos-conversation-scroll" className="eme-hidden-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-2 pb-28 sm:pb-32">
+                  <div ref={chatViewportRef} data-testid="cos-conversation-scroll" className="eme-hidden-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-2 pb-24 sm:pb-28">
                     {hasVisibleConversation &&
                       conversation.map((item) => (
                         <div
@@ -574,7 +575,7 @@ export function BrokerPortal() {
                 </div>
               )}
 
-              <div data-testid="cos-composer-dock" className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+40px)] z-20">
+              <div data-testid="cos-composer-dock" className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+16px)] z-20 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+20px)] lg:bottom-10">
                 <div className="mx-auto flex w-full max-w-[48rem] flex-col items-end gap-2 px-1 pointer-events-auto">
                   <MobileOperationHealthTrigger
                     operationHealth={displayedOperationHealth}
@@ -604,7 +605,13 @@ export function BrokerPortal() {
 
             <aside data-testid="cos-operation-health" className="hidden min-h-0 lg:flex lg:flex-col lg:items-end lg:justify-center lg:py-2">
               <div className="flex w-full max-w-[18rem] flex-col rounded-[1.6rem] border border-black/[0.06] bg-white/84 p-3.5 shadow-[0_14px_32px_rgba(15,23,42,0.045)] backdrop-blur-xl">
-                <div className="flex w-full items-start justify-between gap-3 text-left">
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopOperationHealthCollapsed((current) => !current)}
+                  className="flex w-full items-start justify-between gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009b3a]/25"
+                  aria-expanded={!isDesktopOperationHealthCollapsed}
+                  aria-controls="operation-health-panel"
+                >
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8a97a8]">
                       Saúde da operação
@@ -614,9 +621,9 @@ export function BrokerPortal() {
                     </p>
                   </div>
                   <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-[#fbfbf8] text-[#667085]">
-                    <ChevronDown className="size-4" />
+                    <ChevronDown className={`size-4 transition-transform ${isDesktopOperationHealthCollapsed ? "" : "rotate-180"}`} />
                   </span>
-                </div>
+                </button>
 
                 <div className="mt-3 h-1.5 rounded-full bg-black/[0.06]">
                   <div
@@ -632,13 +639,15 @@ export function BrokerPortal() {
                   </span>
                 </div>
 
-                <div id="operation-health-panel" className="mt-3">
-                  <OperationHealthDetails
-                    operationIndicators={operationIndicators}
-                    operationPendingItems={operationPendingItems}
-                    onViewDetails={() => void handleOperationDetails()}
-                  />
-                </div>
+                {!isDesktopOperationHealthCollapsed ? (
+                  <div id="operation-health-panel" className="eme-subtle-scrollbar mt-3 max-h-[min(52vh,28rem)] overflow-y-auto overscroll-contain pr-1">
+                    <OperationHealthDetails
+                      operationIndicators={operationIndicators}
+                      operationPendingItems={operationPendingItems}
+                      onViewDetails={() => void handleOperationDetails()}
+                    />
+                  </div>
+                ) : null}
               </div>
             </aside>
           </div>

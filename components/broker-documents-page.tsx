@@ -308,9 +308,9 @@ export function BrokerDocumentsPage() {
   }
 
   return (
-    <div className="grid min-w-0 gap-4">
-      <section className="grid gap-3 xl:grid-cols-[minmax(22rem,.75fr)_minmax(0,1.25fr)]">
-        <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+    <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden">
+      <section data-testid="proposal-workspace" className="grid min-w-0 max-w-full gap-3 xl:h-[min(54rem,calc(100dvh-8rem))] xl:min-h-[38rem] xl:grid-cols-[minmax(22rem,.75fr)_minmax(0,1.25fr)] xl:items-stretch">
+        <Card className="flex min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
           <CardHeader className="gap-3 border-b border-[var(--broker-border)] px-4 py-4">
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
@@ -335,13 +335,13 @@ export function BrokerDocumentsPage() {
               ))}
             </div>
           </CardHeader>
-          <CardContent className="grid max-h-[32rem] gap-2 overflow-y-auto p-3.5">
+          <CardContent className="eme-subtle-scrollbar grid max-h-[32rem] min-h-0 gap-2 overflow-y-auto overscroll-contain p-3.5 xl:max-h-none xl:flex-1">
             {feedback ? <p className="rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#009b3a]">{feedback}</p> : null}
             {isLoading ? (
               <EmeLoading compact message="Carregando documentos..." />
             ) : documents.length > 0 ? (
               documents.map((document) => (
-                <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`rounded-[var(--broker-radius-md)] border p-3 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}>
+                <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`min-w-0 max-w-full rounded-[var(--broker-radius-md)] border p-3 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}>
                   <p className="truncate text-sm font-semibold text-[#050505]">{document.title}</p>
                   <p className="mt-1 truncate text-xs text-[#6B7280]">{typeLabel(document.type)} · {statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
                 </button>
@@ -352,7 +352,7 @@ export function BrokerDocumentsPage() {
           </CardContent>
         </Card>
 
-        <div className="grid min-w-0 gap-3">
+        <div className="eme-subtle-scrollbar grid min-h-0 min-w-0 max-w-full content-start gap-3 overflow-x-hidden xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
           <Card
             ref={composerRef}
             tabIndex={-1}
@@ -430,28 +430,28 @@ export function BrokerDocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <Card className="min-w-0 max-w-full overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
             <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
-              <CardTitle className="text-lg text-[#050505]">{selectedDocument?.title ?? "Prévia da proposta"}</CardTitle>
+              <CardTitle className="break-words text-lg text-[#050505] [overflow-wrap:anywhere]">{selectedDocument?.title ?? "Prévia da proposta"}</CardTitle>
               <p className="text-xs text-[#667085]">Revise o documento selecionado antes de baixar ou marcar como assinado.</p>
             </CardHeader>
-            <CardContent className="grid gap-3 p-4">
+            <CardContent className="grid min-w-0 max-w-full gap-3 overflow-hidden p-4">
               {selectedDocument ? (
                 <>
                   {isVideoDocument(selectedDocument) ? (
                     <video
                       controls
                       src={parseVideoDocumentContent(selectedDocument.content)}
-                      className="h-[min(34rem,64vh)] min-h-[24rem] w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-black"
+                      className="block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-black object-contain"
                     />
                   ) : isHtmlDocument(selectedDocument.content) ? (
                     <iframe
                       title={selectedDocument.title}
                       srcDoc={selectedDocument.content}
-                      className="h-[min(34rem,64vh)] min-h-[24rem] w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white"
+                      className="block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white"
                     />
                   ) : (
-                    <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A]">{selectedDocument.content}</pre>
+                    <pre data-testid="proposal-preview" className="eme-subtle-scrollbar max-h-[min(26rem,54vh)] max-w-full overflow-auto whitespace-pre-wrap break-words rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A] [overflow-wrap:anywhere]">{selectedDocument.content}</pre>
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <Button type="button" variant="ghost" onClick={() => void openDocument(false)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">

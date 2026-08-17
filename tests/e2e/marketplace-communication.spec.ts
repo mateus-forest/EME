@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
-import { loginAsBroker } from './helpers/auth'
+
+async function mockBrokerSession(page: Page) {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ json: { user: { id: 'user-1', name: 'Corretora Real', email: 'corretora@example.com', role: 'BROKER', brokerId: 'broker-1', agencyId: null } } }))
+  await page.route('**/api/brokers/me**', (route) => route.fulfill({ json: { profile: { id: 'user-1', brokerId: 'broker-1', agencyId: null, agencyName: '', accountType: 'BROKER_INDEPENDENT', name: 'Corretora Real', email: 'corretora@example.com', phone: '5554999999999', photoUrl: '', creci: '12345-F', description: '' } } }))
+  await page.route('**/api/brokers/subscription**', (route) => route.fulfill({ json: { subscription: { planName: 'Plano EME', isUpgraded: true, propertyLimit: 10, status: 'Ativo' } } }))
+}
 
 async function expectNoHorizontalOverflow(page: Page) {
   const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
@@ -13,6 +18,19 @@ const broker = {
 test.describe('Comunicação e descoberta do Marketplace', () => {
   test('filtros rápidos abrem fora da faixa rolável e aplicam valor, quartos e área', async ({ page }) => {
     await page.goto('/imoveis/busca')
+    await page.getByRole('button', { name: 'Faixa de valor' }).click()
+    const themedPopover = page.getByRole('dialog')
+    await expect(themedPopover).toBeVisible()
+    const popoverColors = await themedPopover.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { background: style.backgroundColor, color: style.color }
+    })
+    expect(popoverColors.background).not.toBe('rgb(0, 0, 0)')
+    expect(popoverColors.color).not.toBe('rgb(255, 255, 255)')
+    await page.evaluate(() => window.scrollBy(0, 120))
+    await expect(themedPopover).toBeHidden()
+    await page.evaluate(() => window.scrollTo(0, 0))
+
     for (const label of ['Faixa de valor', 'Quartos', 'Área']) {
       await page.getByRole('button', { name: label }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
@@ -40,20 +58,49 @@ test.describe('Comunicação e descoberta do Marketplace', () => {
   })
 
   test('área Marketplace do corretor usa perfil real e mantém conversas em mobile', async ({ page }) => {
-    await loginAsBroker(page)
+    await mockBrokerSession(page)
+    const messages = Array.from({ length: 36 }, (_, index) => ({
+      id: `message-${index + 1}`,
+      sender: index % 2 ? 'BROKER' : 'CUSTOMER',
+      body: `Mensagem persistida ${index + 1} com conteúdo suficiente para validar a rolagem interna da conversa.`,
+      createdAt: new Date(Date.now() + index * 1000).toISOString(),
+    }))
     await page.route('**/api/brokers/marketplace', (route) => route.fulfill({ json: { profile: broker, settings: { slug: broker.slug, displayName: broker.name, photoUrl: broker.image, specialty: broker.specialty, region: broker.region, transactions: 'BOTH', about: broker.about }, publicPath: `/imoveis/corretores/${broker.slug}`, properties: [{ id: 'property-1', title: 'Apartamento real', marketplaceSlug: 'apartamento-real', purpose: 'SALE', price: 500000, city: 'Centro', image: '/marketplace/placeholder.svg' }], leads: [{ id: 'lead-1', name: 'Cliente Real', phone: '5554999999999', intent: 'Compra', status: 'NEW', createdAt: new Date().toISOString() }], counts: { conversations: 1, properties: 1, leads: 1, reviews: { PENDING_REVIEW: 1 } } } }))
-    await page.route('**/api/brokers/marketplace/conversations', (route) => route.fulfill({ json: { conversations: [{ id: 'conversation-1', customerName: 'Cliente Real', customerPhone: '5554999999999', status: 'OPEN', property: { title: 'Apartamento real' }, lastMessageAt: new Date().toISOString(), reviewRequestedAt: null, messages: [{ id: 'message-1', sender: 'CUSTOMER', body: 'Gostaria de visitar.', createdAt: new Date().toISOString() }] }] } }))
+    await page.route('**/api/brokers/marketplace/conversations', (route) => route.fulfill({ json: { conversations: [
+      { id: 'conversation-1', customerName: 'Cliente Real', customerPhone: '5554999999999', status: 'OPEN', property: { title: 'Apartamento real' }, lastMessageAt: new Date().toISOString(), reviewRequestedAt: null, messages },
+      { id: 'conversation-2', customerName: 'Cliente Encerrado', customerPhone: '5554888888888', status: 'CLOSED', property: { title: 'Casa encerrada' }, lastMessageAt: new Date().toISOString(), reviewRequestedAt: new Date().toISOString(), messages: [{ id: 'closed-message', sender: 'CUSTOMER', body: 'Atendimento finalizado.', createdAt: new Date().toISOString() }] },
+    ] } }))
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/corretor/marketplace')
     await expect(page.getByRole('heading', { name: 'Seu atendimento público em um só lugar' })).toBeVisible()
     await expect(page.getByText('Corretora Real').first()).toBeVisible()
-    await expect(page.getByText('Gostaria de visitar.')).toBeVisible()
+    const closedConversation = page.getByRole('button', { name: /Cliente Encerrado/ })
+    await expect(closedConversation).toContainText('Encerrado')
+    await expect(closedConversation).not.toContainText('Em atendimento')
+    const composer = page.getByPlaceholder('Responder')
+    await composer.scrollIntoViewIfNeeded()
+    await expect(composer).toBeVisible()
+    const conversationScroll = page.getByTestId('marketplace-conversation-scroll')
+    const scrollLayout = await conversationScroll.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+      const composer = document.querySelector<HTMLInputElement>('input[placeholder="Responder"]')
+      return {
+        overflowY: getComputedStyle(element).overflowY,
+        hasInternalOverflow: element.scrollHeight > element.clientHeight,
+        composerBottom: composer?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY,
+        viewportHeight: window.innerHeight,
+      }
+    })
+    expect(scrollLayout.overflowY).toBe('auto')
+    expect(scrollLayout.hasInternalOverflow).toBe(true)
+    expect(scrollLayout.composerBottom).toBeLessThanOrEqual(scrollLayout.viewportHeight)
+    await expect(page.getByText('Mensagem persistida 36 com conteúdo suficiente para validar a rolagem interna da conversa.')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Ver perfil público' })).toHaveAttribute('href', `/imoveis/corretores/${broker.slug}`)
     await expectNoHorizontalOverflow(page)
   })
 
   test('compositor do corretor compartilha apenas imóvel publicado e proposta compatível', async ({ page }) => {
-    await loginAsBroker(page)
+    await mockBrokerSession(page)
     const messages: Array<{ id: string; sender: string; kind: string; body: string; metadata?: unknown; createdAt: string }> = [
       { id: 'message-1', sender: 'CUSTOMER', kind: 'TEXT', body: 'Pode me enviar as opções?', createdAt: new Date().toISOString() },
     ]

@@ -73,6 +73,13 @@
   background: transparent;
 }
 
+.marketplace-shell.marketplace-popover {
+  min-height: 0;
+  overflow-x: visible;
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
 .marketplace-shell *,
 .marketplace-shell *::before,
 .marketplace-shell *::after {
