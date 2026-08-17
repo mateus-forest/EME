@@ -21,12 +21,11 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react'
-import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
+import { formatPrice, type SearchProperty } from '@/lib/marketplace/search-data'
 import {
   filterSearchResults,
   inferMarketplaceFilters,
 } from '@/lib/marketplace/search-filters'
-import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { AssistantMark } from '@/components/marketplace/assistant/assistant-mark'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
 import { cn } from '@/lib/utils'
@@ -43,15 +42,17 @@ type AssistantContextValue = {
   closeAssistant: () => void
 }
 
+export type AssistantBroker = {
+  slug: string
+  name: string
+  image: string
+  specialty: string
+  verified: boolean
+}
+
 const AssistantContext = createContext<AssistantContextValue | null>(null)
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: 1,
-    from: 'assistant',
-    text: 'Olá. Conte o que procura e eu vou analisar os imóveis publicados no Marketplace EME.',
-  },
-]
+const defaultInitialMessage = 'Olá. Conte o que procura e eu vou analisar os imóveis publicados no Marketplace EME.'
 
 const intentOptions = ['Quero comprar', 'Quero alugar', 'Ainda estou pesquisando']
 const priorityOptions = ['Pátio maior', 'Perto do centro', 'Imóvel mais novo']
@@ -83,9 +84,17 @@ function Bubble({ message }: { message: ChatMessage }) {
 function PropertySuggestion({
   property,
   onBroker,
+  href,
+  onNavigate,
+  hideUnavailableFacts,
+  preventNavigation,
 }: {
-  property: SearchResult
-  onBroker: (property: SearchResult) => void
+  property: SearchProperty
+  onBroker: (property: SearchProperty) => void
+  href: string
+  onNavigate: () => void
+  hideUnavailableFacts: boolean
+  preventNavigation: boolean
 }) {
   return (
     <article className="min-w-[230px] flex-1 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[var(--shadow-soft)]">
@@ -104,12 +113,22 @@ function PropertySuggestion({
         </h3>
         <p className="mt-1 text-sm font-semibold text-primary">{formatPrice(property.price)}</p>
         <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-          {property.reasons[0]}. {property.bedrooms} quartos e {property.area} m².
+          {hideUnavailableFacts ? (
+            <>
+              {property.reasons[0]}
+              {property.bedrooms > 0 ? ` · ${property.bedrooms} ${property.bedrooms === 1 ? 'quarto' : 'quartos'}` : ''}
+              {property.area > 0 ? ` · ${property.area} m²` : ''}.
+            </>
+          ) : `${property.reasons[0]}. ${property.bedrooms} quartos e ${property.area} m².`}
         </p>
       </div>
       <div className="grid grid-cols-2 border-t border-border/60">
         <Link
-          href={`/imoveis/imovel/${property.slug}`}
+          href={href}
+          onClick={(event) => {
+            if (preventNavigation) event.preventDefault()
+            onNavigate()
+          }}
           className="inline-flex min-h-11 items-center justify-center gap-1 border-r border-border/60 px-2 text-xs font-medium text-primary transition-colors hover:bg-eme-50"
         >
           Ver imóvel <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -150,12 +169,36 @@ function QuickChoices({
   )
 }
 
-function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void; properties: SearchResult[]; brokers: BrokerProfile[] }) {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
+function AssistantPanel({
+  onClose,
+  properties,
+  brokers,
+  initialMessage,
+  propertyHref,
+  brokerHref,
+  confirmedVerificationOnly,
+  hideUnavailablePropertyFacts,
+  onPropertySelect,
+  onBrokerSelect,
+}: {
+  onClose: () => void
+  properties: SearchProperty[]
+  brokers: AssistantBroker[]
+  initialMessage: string
+  propertyHref: (property: SearchProperty) => string
+  brokerHref: (broker: AssistantBroker) => string
+  confirmedVerificationOnly: boolean
+  hideUnavailablePropertyFacts: boolean
+  onPropertySelect?: (property: SearchProperty) => void
+  onBrokerSelect?: (broker: AssistantBroker) => void
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: 1, from: 'assistant', text: initialMessage },
+  ])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
-  const [matchedProperties, setMatchedProperties] = useState<SearchResult[]>([])
-  const [handoff, setHandoff] = useState<SearchResult | null>(null)
+  const [matchedProperties, setMatchedProperties] = useState<SearchProperty[]>([])
+  const [handoff, setHandoff] = useState<SearchProperty | null>(null)
   const handoffBroker = handoff ? brokers.find((broker) => broker.slug === handoff.brokerSlug) : null
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -209,7 +252,7 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
     runAssistantSearch(value)
   }
 
-  function requestBroker(property: SearchResult) {
+  function requestBroker(property: SearchProperty) {
     setHandoff(property)
     append('user', `Quero falar com o corretor sobre ${property.title}.`)
     append(
@@ -267,7 +310,18 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
           {matchedProperties.length > 0 && (
             <div className="ml-0 flex gap-3 overflow-x-auto pb-1 pl-9 no-scrollbar sm:pl-9" aria-label="Imóveis sugeridos pelo Assistente EME">
               {matchedProperties.map((property) => (
-                <PropertySuggestion key={property.slug} property={property} onBroker={requestBroker} />
+                <PropertySuggestion
+                  key={property.slug}
+                  property={property}
+                  onBroker={requestBroker}
+                  href={propertyHref(property)}
+                  onNavigate={() => {
+                    onClose()
+                    onPropertySelect?.(property)
+                  }}
+                  hideUnavailableFacts={hideUnavailablePropertyFacts}
+                  preventNavigation={Boolean(onPropertySelect)}
+                />
               ))}
             </div>
           )}
@@ -292,13 +346,18 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                     {handoffBroker.name}
-                    <Check className="h-3.5 w-3.5 text-primary" aria-label="Verificada" />
+                    {(!confirmedVerificationOnly || handoffBroker.verified) ? <Check className="h-3.5 w-3.5 text-primary" aria-label="Verificada" /> : null}
                   </p>
                   <p className="text-xs text-muted-foreground">{handoffBroker.specialty}</p>
                 </div>
               </div>
               <Link
-                href={`/imoveis/corretores/${handoffBroker.slug}#contato-corretor`}
+                href={brokerHref(handoffBroker)}
+                onClick={(event) => {
+                  if (onBrokerSelect) event.preventDefault()
+                  onClose()
+                  onBrokerSelect?.(handoffBroker)
+                }}
                 className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Continuar com o corretor
@@ -345,7 +404,29 @@ function AssistantPanel({ onClose, properties, brokers }: { onClose: () => void;
   )
 }
 
-export function AssistantProvider({ children, properties, brokers }: { children: ReactNode; properties: SearchResult[]; brokers: BrokerProfile[] }) {
+export function AssistantProvider({
+  children,
+  properties,
+  brokers,
+  initialMessage = defaultInitialMessage,
+  propertyHref = (property) => `/imoveis/imovel/${property.slug}`,
+  brokerHref = (broker) => `/imoveis/corretores/${broker.slug}#contato-corretor`,
+  confirmedVerificationOnly = false,
+  hideUnavailablePropertyFacts = false,
+  onPropertySelect,
+  onBrokerSelect,
+}: {
+  children: ReactNode
+  properties: SearchProperty[]
+  brokers: AssistantBroker[]
+  initialMessage?: string
+  propertyHref?: (property: SearchProperty) => string
+  brokerHref?: (broker: AssistantBroker) => string
+  confirmedVerificationOnly?: boolean
+  hideUnavailablePropertyFacts?: boolean
+  onPropertySelect?: (property: SearchProperty) => void
+  onBrokerSelect?: (broker: AssistantBroker) => void
+}) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -370,7 +451,20 @@ export function AssistantProvider({ children, properties, brokers }: { children:
       value={{ open, openAssistant: () => setOpen(true), closeAssistant: () => setOpen(false) }}
     >
       {children}
-      {open && <AssistantPanel onClose={() => setOpen(false)} properties={properties} brokers={brokers} />}
+      {open ? (
+        <AssistantPanel
+          onClose={() => setOpen(false)}
+          properties={properties}
+          brokers={brokers}
+          initialMessage={initialMessage}
+          propertyHref={propertyHref}
+          brokerHref={brokerHref}
+          confirmedVerificationOnly={confirmedVerificationOnly}
+          hideUnavailablePropertyFacts={hideUnavailablePropertyFacts}
+          onPropertySelect={onPropertySelect}
+          onBrokerSelect={onBrokerSelect}
+        />
+      ) : null}
     </AssistantContext.Provider>
   )
 }

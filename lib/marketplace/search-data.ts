@@ -2,7 +2,7 @@
 
 export type Compatibility = 'muito' | 'boa' | 'considerar'
 
-export type SearchResult = {
+export type SearchProperty = {
   id: string
   slug: string
   title: string
@@ -28,6 +28,9 @@ export type SearchResult = {
   compatibility: Compatibility
   relevanceScore?: number
   reasons: string[]
+}
+
+export type SearchResult = SearchProperty & {
   map: { x: number; y: number }
 }
 

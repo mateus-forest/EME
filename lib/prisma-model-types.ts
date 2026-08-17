@@ -45,6 +45,17 @@ export type Broker = {
   creciValidationProvider: CreciValidationProvider | null
   creciNameMismatch: boolean
   description: string | null
+  catalogBannerUrl: string | null
+  catalogHeadline: string | null
+  catalogBio: string | null
+  catalogExperienceYears: number | null
+  catalogSoldProperties: number | null
+  catalogServiceArea: string | null
+  catalogCities: unknown
+  catalogPriceRange: string | null
+  catalogSpecialties: unknown
+  catalogDifferentials: unknown
+  catalogVideoUrl: string | null
   brandColor: string | null
   logoUrl: string | null
   showAgencyWatermark: boolean

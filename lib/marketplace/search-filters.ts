@@ -1,9 +1,9 @@
-import { formatPrice, type Criterion, type CriteriaKey, type SearchResult } from '@/lib/marketplace/search-data'
+import { formatPrice, type Criterion, type CriteriaKey, type SearchProperty } from '@/lib/marketplace/search-data'
 import { getIntentLabel, intentionsFromQuery, intentReasons, intentScore, normalizeIntentSlugs } from '@/lib/marketplace/search-intents'
 
 export type MarketplaceFilters = {
   purpose?: 'compra' | 'aluguel'
-  propertyType?: SearchResult['propertyType']
+  propertyType?: SearchProperty['propertyType']
   location?: string
   priceMin?: number
   priceMax?: number
@@ -44,13 +44,13 @@ function moneyFromQuery(raw: string) {
   return digits
 }
 
-export function inferMarketplaceFilters(query: string, results: SearchResult[] = []): MarketplaceFilters {
+export function inferMarketplaceFilters(query: string, results: SearchProperty[] = []): MarketplaceFilters {
   const text = normalizeMarketplaceText(query)
   const inferred: MarketplaceFilters = { features: [], intentions: intentionsFromQuery(query) }
   if (/\b(alugar|aluguel|locacao|locar)\b/.test(text)) inferred.purpose = 'aluguel'
   else if (/\b(comprar|compra|venda|adquirir)\b/.test(text)) inferred.purpose = 'compra'
 
-  const types: [RegExp, SearchResult['propertyType']][] = [
+  const types: [RegExp, SearchProperty['propertyType']][] = [
     [/\b(apartamento|apto|cobertura)\b/, 'apartamento'],
     [/\b(sobrado)\b/, 'sobrado'],
     [/\b(terreno|lote)\b/, 'terreno'],
@@ -90,7 +90,7 @@ export function replaceInferredMarketplaceFilters(
   current: MarketplaceFilters,
   previousQuery: string,
   nextQuery: string,
-  results: SearchResult[] = [],
+  results: SearchProperty[] = [],
 ) {
   const previous = inferMarketplaceFilters(previousQuery, results)
   const next: MarketplaceFilters = {
@@ -107,7 +107,7 @@ export function replaceInferredMarketplaceFilters(
   return mergeMarketplaceFilters(next, inferMarketplaceFilters(nextQuery, results))
 }
 
-export function filtersFromSearchParams(source: SearchParamSource, results: SearchResult[] = []): MarketplaceFilters {
+export function filtersFromSearchParams(source: SearchParamSource, results: SearchProperty[] = []): MarketplaceFilters {
   const rawPurpose = readParam(source, 'finalidade')
   const rawType = readParam(source, 'tipo')
   const rawFeatures = readParam(source, 'caracteristicas')
@@ -118,7 +118,7 @@ export function filtersFromSearchParams(source: SearchParamSource, results: Sear
   const rawRegion = readParam(source, 'regiao')
   const explicit: MarketplaceFilters = {
     purpose: rawPurpose === 'compra' || rawPurpose === 'aluguel' ? rawPurpose : undefined,
-    propertyType: ['casa', 'apartamento', 'terreno', 'sobrado', 'comercial'].includes(rawType || '') ? rawType as SearchResult['propertyType'] : undefined,
+    propertyType: ['casa', 'apartamento', 'terreno', 'sobrado', 'comercial'].includes(rawType || '') ? rawType as SearchProperty['propertyType'] : undefined,
     location: rawRegion === 'centro' ? undefined : rawRegion || readParam(source, 'cidade') || readParam(source, 'local'),
     priceMin: positiveNumber(readParam(source, 'precoMin')) || (valueRange.length > 1 ? valueRange[0] : undefined),
     priceMax: positiveNumber(readParam(source, 'precoMax')) || valueRange[1] || (valueRange.length === 1 ? valueRange[0] : undefined),
@@ -167,7 +167,7 @@ export function buildQuickSearchHref(purpose: MarketplaceFilters['purpose'], par
   if (param === 'cidade') filters.location = value
   if (param === 'regiao' && value === 'centro') filters.intentions = ['perto-do-centro']
   if (param === 'tipo' && value === 'mobiliado') filters.features = ['mobiliado']
-  else if (param === 'tipo') filters.propertyType = value as SearchResult['propertyType']
+  else if (param === 'tipo') filters.propertyType = value as SearchProperty['propertyType']
   if (param === 'quartos') filters.bedrooms = positiveNumber(value)
   if (param === 'valor') [filters.priceMin, filters.priceMax] = value.split('-').map(positiveNumber)
   return buildMarketplaceSearchHref(filters)
@@ -206,7 +206,7 @@ function queryTokens(query: string) {
   return normalizeMarketplaceText(query).split(/[^a-z0-9]+/).filter((token) => token.length > 1 && !textStopWords.has(token) && !/^\d+$/.test(token))
 }
 
-function queryTextScore(result: SearchResult, tokens: string[]) {
+function queryTextScore(result: SearchProperty, tokens: string[]) {
   const title = normalizeMarketplaceText(result.title)
   const location = normalizeMarketplaceText(`${result.neighborhood} ${result.city} ${result.state} ${result.region}`)
   return tokens.reduce((score, token) => {
@@ -217,7 +217,7 @@ function queryTextScore(result: SearchResult, tokens: string[]) {
   }, 0)
 }
 
-export function filterSearchResults(results: SearchResult[], filters: MarketplaceFilters, query = '') {
+export function filterSearchResults<T extends SearchProperty>(results: T[], filters: MarketplaceFilters, query = '') {
   const location = normalizeMarketplaceText(filters.location)
   const tokens = queryTokens(query)
   const hasObjectiveFilters = Boolean(

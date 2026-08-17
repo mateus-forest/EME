@@ -231,6 +231,7 @@ export async function GET(_request: NextRequest, { params }: OgImageRouteContext
 
   const brokerName = broker?.user.name?.trim() || "EME"
   const description =
+    broker?.catalogHeadline?.trim() ||
     broker?.description?.trim() ||
     "Encontre imoveis disponiveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
   const title = brokerName ? `Catalogo de imoveis | ${brokerName}` : "Catalogo de imoveis | EME"

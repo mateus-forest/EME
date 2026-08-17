@@ -238,6 +238,17 @@ model Broker {
   creciValidationProvider   CreciValidationProvider?
   creciNameMismatch         Boolean                    @default(false)
   description               String?
+  catalogBannerUrl          String?
+  catalogHeadline           String?
+  catalogBio                String?
+  catalogExperienceYears    Int?
+  catalogSoldProperties     Int?
+  catalogServiceArea        String?
+  catalogCities             Json?
+  catalogPriceRange         String?
+  catalogSpecialties        Json?
+  catalogDifferentials      Json?
+  catalogVideoUrl           String?
   brandColor                String?
   logoUrl                   String?
   showAgencyWatermark       Boolean                    @default(true)

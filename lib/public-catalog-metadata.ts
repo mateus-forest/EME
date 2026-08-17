@@ -39,6 +39,7 @@ export function getBrokerCatalogCanonicalUrl(slug: string) {
 function buildOgImageVersion(catalog?: PublicBrokerCatalogData | null) {
   const source = JSON.stringify({
     renderer: CATALOG_OG_IMAGE_RENDER_VERSION,
+    bannerUrl: catalog?.bannerUrl?.trim() || "fallback",
     photoUrl: catalog?.photoUrl?.trim() || "fallback",
     title: getBrokerCatalogTitle(catalog),
     description: getCatalogDescription(catalog),
@@ -65,6 +66,7 @@ export function normalizeImageSource(value: string | null | undefined) {
 
 export function getBrokerCatalogShareImageCandidates(catalog?: PublicBrokerCatalogData | null) {
   return [
+    normalizeImageSource(catalog?.bannerUrl),
     normalizeImageSource(catalog?.photoUrl),
     normalizeImageSource(PREMIUM_FALLBACK_IMAGE_PATH),
   ].filter(Boolean)

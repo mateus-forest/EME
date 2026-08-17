@@ -14,8 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Logo } from '@/components/marketplace/logo'
-import { AssistantMark } from '@/components/marketplace/assistant/assistant-mark'
-import { useEmeAssistant } from '@/components/marketplace/assistant/assistant-provider'
+import { AssistantLauncher } from '@/components/marketplace/assistant/assistant-launcher'
 import { EME_OFFICIAL_URL, mainNav } from '@/lib/marketplace/site'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +29,6 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
-  const { open: assistantOpen, openAssistant } = useEmeAssistant()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -108,17 +106,7 @@ export function Header() {
         </nav>
 
         <div className="ml-auto hidden items-center gap-1.5 md:flex lg:gap-2">
-        <button
-          type="button"
-          onClick={openAssistant}
-          aria-expanded={assistantOpen}
-          aria-haspopup="dialog"
-          className="group flex items-center gap-1.5 rounded-full border border-border/60 bg-background/85 py-1 pl-1 pr-2.5 text-[11px] font-medium text-foreground shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[var(--shadow-soft)] focus-visible:ring-2 focus-visible:ring-primary/15"
-        >
-          <AssistantMark size="sm" className="h-6 w-6" />
-          <span>Assistente EME</span>
-          <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_3px_rgba(43,167,94,.08)]" aria-label="Online" />
-        </button>
+        <AssistantLauncher />
 
         <a
           href={EME_OFFICIAL_URL}
@@ -182,22 +170,7 @@ export function Header() {
                 </Link>
               )
             })}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                openAssistant()
-              }}
-              className="mt-2 flex items-center gap-3 rounded-2xl border border-primary/20 bg-eme-50 px-4 py-3.5 text-left text-base font-medium text-foreground outline-none transition-colors hover:bg-eme-100 focus-visible:ring-4 focus-visible:ring-primary/15"
-              aria-haspopup="dialog"
-            >
-              <AssistantMark size="md" />
-              <span className="flex-1">
-                Assistente EME
-                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">Tecnologia COS · online</span>
-              </span>
-              <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_4px_rgba(43,167,94,.10)]" aria-label="Online" />
-            </button>
+            <AssistantLauncher variant="menu" onBeforeOpen={() => setOpen(false)} />
             <a
               href={EME_OFFICIAL_URL}
               target="_blank"

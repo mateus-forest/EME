@@ -1,8 +1,9 @@
-import { CatalogOwnerType, PropertyStatus } from "@/lib/prisma-enums"
+import { CatalogOwnerType, CreciValidationStatus, PropertyStatus } from "@/lib/prisma-enums"
 
 import { formatCurrencyFromCents } from "@/lib/property-contract"
 import { getPropertyImage, getPropertyImages } from "@/lib/property-media"
 import { prisma } from "@/lib/prisma"
+import { parsePropertyLegalData } from "@/lib/legal-entities"
 
 export type PublicBrokerCatalogProperty = {
   id: string
@@ -10,11 +11,13 @@ export type PublicBrokerCatalogProperty = {
   title: string
   location: string
   city: string
+  state: string
   neighborhood: string
   price: string
   priceValue: number
   bedrooms: number
   bathrooms: number
+  area: number
   parking: number
   type: string
   purpose: string
@@ -31,7 +34,21 @@ export type PublicBrokerCatalogData = {
   displayName: string
   photoUrl: string
   description: string
+  bannerUrl: string
+  bio: string
+  experienceYears: number | null
+  soldProperties: number | null
+  serviceArea: string
+  cities: string[]
+  priceRange: string
+  specialties: string[]
+  differentials: string[]
+  videoUrl: string
   creci: string
+  creciUf: string
+  creciVerified: boolean
+  email: string
+  phone: string
   whatsApp: string
   properties: PublicBrokerCatalogProperty[]
   brokerId: string
@@ -119,6 +136,18 @@ function propertyPurposeLabel(purpose: string) {
   return purpose === "RENT" ? "Locação" : "Venda"
 }
 
+function stringList(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+}
+
+function numberFromText(value?: string | null) {
+  if (!value) return 0
+  const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".")
+  const parsed = Number.parseFloat(normalized)
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0
+}
+
 export async function getPublicBrokerCatalogBySlug(slug: string): Promise<PublicBrokerCatalogData | null> {
   const catalog = await prisma.catalog.findFirst({
     where: {
@@ -163,33 +192,54 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
     brokerId: broker.id,
     displayName: broker.user.name,
     photoUrl: broker.user.photoUrl ?? "",
-    description: broker.description ?? `Confira os imóveis publicados por ${broker.user.name}.`,
+    description: broker.catalogHeadline ?? broker.description ?? `Confira os imóveis publicados por ${broker.user.name}.`,
+    bannerUrl: broker.catalogBannerUrl ?? "",
+    bio: broker.catalogBio ?? "",
+    experienceYears: broker.catalogExperienceYears,
+    soldProperties: broker.catalogSoldProperties,
+    serviceArea: broker.catalogServiceArea ?? "",
+    cities: stringList(broker.catalogCities),
+    priceRange: broker.catalogPriceRange ?? "",
+    specialties: stringList(broker.catalogSpecialties),
+    differentials: stringList(broker.catalogDifferentials),
+    videoUrl: broker.catalogVideoUrl ?? "",
     creci: broker.creci ?? "",
-    whatsApp: broker.user.phone ?? broker.phone ?? "",
-    properties: broker.properties.map((property: any) => ({
-      id: property.id,
-      publicCode: property.publicCode ?? null,
-      title: property.title,
-      location: locationFromProperty(property.city, property.neighborhood),
-      city: property.city,
-      neighborhood: property.neighborhood ?? "",
-      price: formatCurrencyFromCents(property.price),
-      priceValue: property.price,
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      parking: property.parkingSpots,
-      type: propertyTypeLabel(property.type),
-      purpose: propertyPurposeLabel(property.purpose),
-      description: property.description ?? "",
-      images: getPropertyImages(
-        Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [],
-        property.id,
-      ),
-      views: property.viewsCount,
-      interested: property._count.leads,
-      brokerId: property.brokerId,
-      agencyId: property.agencyId,
-    })),
+    creciUf: broker.creciUf ?? "",
+    creciVerified: broker.creciValidationStatus === CreciValidationStatus.VERIFIED,
+    email: broker.user.email,
+    phone: broker.phone || broker.user.phone || "",
+    whatsApp: broker.user.phone || broker.phone || "",
+    properties: broker.properties.map((property: any) => {
+      const legal = parsePropertyLegalData(property.legalData)
+      const city = legal.city || property.city
+      const neighborhood = property.neighborhood || legal.district || ""
+      return {
+        id: property.id,
+        publicCode: property.publicCode ?? null,
+        title: property.title,
+        location: locationFromProperty(city, neighborhood),
+        city,
+        state: legal.state || "",
+        neighborhood,
+        price: formatCurrencyFromCents(property.price),
+        priceValue: property.price,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        area: numberFromText(legal.privateArea) || numberFromText(legal.totalArea),
+        parking: property.parkingSpots,
+        type: propertyTypeLabel(property.type),
+        purpose: propertyPurposeLabel(property.purpose),
+        description: property.description ?? "",
+        images: getPropertyImages(
+          Array.isArray(property.imageUrls) ? (property.imageUrls as string[]) : [],
+          property.id,
+        ),
+        views: property.viewsCount,
+        interested: property._count.leads,
+        brokerId: property.brokerId,
+        agencyId: property.agencyId,
+      }
+    }),
   }
 }
 

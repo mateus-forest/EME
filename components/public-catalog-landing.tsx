@@ -42,6 +42,14 @@ import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { normalizePhone } from "@/lib/structured-fields"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import {
+  BrokerAboutContent,
+  BrokerCatalogFooterContact,
+  BrokerCatalogHeader,
+  BrokerContactDialog,
+  BrokerProfileHero,
+} from "@/components/broker-public-profile"
 
 type CatalogKind = "broker" | "agency"
 
@@ -73,6 +81,7 @@ type PublicCatalogLandingProps = {
   slug: string
   catalog: PublicBrokerCatalogData | PublicAgencyCatalogData
   listingOnly?: boolean
+  profileOnly?: boolean
 }
 
 type LeadDraft = {
@@ -102,7 +111,13 @@ const quickSuggestions = [
   "Mais filtros",
 ]
 
-export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false }: PublicCatalogLandingProps) {
+export function PublicCatalogLanding({
+  kind,
+  slug,
+  catalog,
+  listingOnly = false,
+  profileOnly = false,
+}: PublicCatalogLandingProps) {
   const [search, setSearch] = useState("")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [advancedFilters, setAdvancedFilters] = useState<CatalogAdvancedFilters>({
@@ -121,6 +136,8 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
   const [leadFeedback, setLeadFeedback] = useState("")
   const [isSavingLead, setIsSavingLead] = useState(false)
   const [showPortalBackButton, setShowPortalBackButton] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
   const properties = useMemo(() => normalizeProperties(catalog), [catalog])
   const searchAnalysis = useMemo(() => analyzeSearch(search), [search])
   const visibleProperties = useMemo(
@@ -147,6 +164,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
   const priceRange = getPriceRangeLabel(properties)
   const avatarUrl = kind === "broker" ? (catalog as PublicBrokerCatalogData).photoUrl : (catalog as PublicAgencyCatalogData).logoUrl
   const creci = kind === "broker" ? (catalog as PublicBrokerCatalogData).creci : ""
+  const brokerCatalog = kind === "broker" ? catalog as PublicBrokerCatalogData : null
 
   useEffect(() => {
     void trackCatalogEvent({
@@ -159,6 +177,43 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
   useEffect(() => {
     setShowPortalBackButton(new URLSearchParams(window.location.search).get("from") === "portal")
   }, [])
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(`eme-catalog-favorites:${catalog.slug || slug}`)
+      const ids = stored ? JSON.parse(stored) : []
+      if (Array.isArray(ids)) setFavoriteIds(new Set(ids.filter((id): id is string => typeof id === "string")))
+    } catch {
+      setFavoriteIds(new Set())
+    }
+  }, [catalog.slug, slug])
+
+  useEffect(() => {
+    if (kind !== "broker") return
+
+    function openAssistantProperty(event: Event) {
+      const propertyId = (event as CustomEvent<unknown>).detail
+      if (typeof propertyId !== "string") return
+      const property = properties.find((item) => item.id === propertyId)
+      if (!property) return
+      setSelectedProperty(property)
+      setCurrentImageIndex(0)
+      void trackCatalogEvent({
+        eventType: "property_view",
+        catalogSlug: catalog.slug || slug,
+        catalogType: kind,
+        propertyId: property.id,
+      })
+    }
+
+    window.addEventListener("eme:catalog-open-property", openAssistantProperty)
+    const openAssistantContact = () => setContactOpen(true)
+    window.addEventListener("eme:catalog-open-contact", openAssistantContact)
+    return () => {
+      window.removeEventListener("eme:catalog-open-property", openAssistantProperty)
+      window.removeEventListener("eme:catalog-open-contact", openAssistantContact)
+    }
+  }, [catalog.slug, kind, properties, slug])
 
   function showFeedback(message: string) {
     setFeedback(message)
@@ -215,6 +270,37 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
     })
   }
 
+  function openCatalogWhatsApp() {
+    if (!catalog.whatsApp) {
+      showFeedback("Contato indisponível no momento")
+      return
+    }
+    window.open(
+      createWhatsAppUrl(catalog.whatsApp, `Olá, quero saber mais sobre o catálogo ${catalogUrl}`),
+      "_blank",
+      "noopener,noreferrer",
+    )
+    void trackCatalogEvent({
+      eventType: "whatsapp_click",
+      catalogSlug: catalog.slug || slug,
+      catalogType: kind,
+    })
+  }
+
+  function toggleFavorite(propertyId: string) {
+    setFavoriteIds((current) => {
+      const next = new Set(current)
+      if (next.has(propertyId)) next.delete(propertyId)
+      else next.add(propertyId)
+      try {
+        window.localStorage.setItem(`eme-catalog-favorites:${catalog.slug || slug}`, JSON.stringify([...next]))
+      } catch {
+        // Favoritar continua funcionando durante a sessão quando o armazenamento não está disponível.
+      }
+      return next
+    })
+  }
+
   async function submitLead() {
     if (!leadDraft) return
     const name = leadDraft.name.trim()
@@ -265,8 +351,22 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-      <div className="mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12">
+    <main className={kind === "broker" ? "min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_0%_22%,rgba(196,244,210,.58),transparent_26%),radial-gradient(circle_at_100%_0%,rgba(210,235,249,.72),transparent_28%),#f8f8f5] font-[family-name:var(--font-geist-sans)] text-[#1f2937]" : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}>
+      {brokerCatalog ? (
+        <BrokerCatalogHeader
+          catalog={brokerCatalog}
+          view={profileOnly ? "about" : listingOnly ? "listing" : "properties"}
+          onContact={() => setContactOpen(true)}
+          onShare={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catálogo de imóveis")}
+        />
+      ) : null}
+      {brokerCatalog && feedback ? (
+        <div role="status" className="fixed bottom-5 left-1/2 z-[90] -translate-x-1/2 rounded-full bg-[#172019] px-4 py-2 text-sm font-medium text-white shadow-xl">
+          {feedback}
+        </div>
+      ) : null}
+
+      <div className={kind === "broker" ? cn("mx-auto grid max-w-[1320px] min-w-0 gap-7 px-1 pb-6 sm:gap-9 sm:px-2 lg:gap-10", listingOnly && "pt-6") : "mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12"}>
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
@@ -275,7 +375,16 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
           </div>
         ) : null}
 
-        {!listingOnly ? (
+        {brokerCatalog && !listingOnly ? (
+          <BrokerProfileHero
+            catalog={brokerCatalog}
+            priceRange={brokerCatalog.priceRange || priceRange}
+            onShare={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catálogo de imóveis")}
+            onWhatsApp={openCatalogWhatsApp}
+          />
+        ) : null}
+
+        {!listingOnly && kind !== "broker" ? (
         <section className="overflow-hidden rounded-[2rem] border border-[#ece5dc] bg-white px-6 py-6 shadow-[0_20px_54px_rgba(15,23,42,0.05)] sm:px-8 sm:py-7 lg:px-10 lg:py-8">
           <div className="grid gap-6 lg:grid-cols-[170px_minmax(0,1fr)_520px] lg:items-center lg:gap-8">
             <div className="flex justify-center lg:justify-start">
@@ -289,7 +398,7 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
 
             <div className="min-w-0 text-center lg:text-left">
               <p className="text-xs uppercase tracking-[0.3em] text-[#6a6a6a]">
-                {kind === "broker" ? "Catálogo do corretor" : "Catálogo da imobiliária"}
+                Catálogo da imobiliária
               </p>
               <h1 className="mt-2 text-[2.9rem] font-semibold tracking-[-0.055em] text-[#111111] sm:text-[3.65rem]">
                 {catalog.displayName || "Catálogo EME"}
@@ -348,8 +457,12 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
         </section>
         ) : null}
 
-        {!listingOnly ? (
-        <section className="rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10">
+        {brokerCatalog && profileOnly ? (
+          <BrokerAboutContent catalog={brokerCatalog} onContact={() => setContactOpen(true)} />
+        ) : null}
+
+        {!profileOnly && !listingOnly ? (
+        <section className={kind === "broker" ? "mx-3 rounded-[1.6rem] border border-[#e8eee9] bg-white px-5 py-6 shadow-[0_18px_46px_rgba(43,61,52,.055)] sm:mx-5 sm:px-7 sm:py-7 lg:px-10" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
           <div className="mx-auto max-w-none">
             <h2 className="text-[1.3rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
               Encontre seu próximo imóvel
@@ -524,9 +637,9 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
         </section>
         ) : null}
 
-        {visibleProperties.length > 0 ? (
+        {!profileOnly ? (visibleProperties.length > 0 ? (
           <>
-            <div className="flex items-center justify-between gap-4">
+            <div className={kind === "broker" ? "mx-3 flex items-center justify-between gap-4 sm:mx-5" : "flex items-center justify-between gap-4"}>
               <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2rem]">
                 {listingOnly ? "Todos os imóveis" : "Imóveis em destaque"}
               </h2>
@@ -535,20 +648,21 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                   href={listingPath}
                   className="text-sm font-medium text-[#202020] transition hover:text-[#009b3a] sm:text-base"
                 >
-                  Ver todos
+                  {kind === "broker" ? "Ver todos os imóveis" : "Ver todos"}
                 </Link>
               ) : null}
             </div>
 
-            <section className="grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2">
+            <section id="imoveis" className={kind === "broker" ? "mx-3 grid min-w-0 scroll-mt-32 grid-cols-1 gap-5 sm:mx-5 md:grid-cols-2 lg:grid-cols-3" : "grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2"}>
               {visibleProperties.map(({ property, matchLabel }) => (
                 <article
                   key={property.id}
                   id={`imovel-${property.id}`}
-                  className="min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"
+                  className={kind === "broker" ? "min-w-0 overflow-hidden rounded-[1.15rem] border border-[#e7ece8] bg-white shadow-[0_12px_30px_rgba(43,61,52,.055)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(43,61,52,.1)]" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
                 >
+                  <div className="relative">
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                    <div className="relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]">
+                    <div className={kind === "broker" ? "relative aspect-[16/9] overflow-hidden bg-[#eef2f0]" : "relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]"}>
                       {property.images[0]?.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
@@ -559,16 +673,23 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                       <div className="absolute left-4 top-4 rounded-full border border-white/90 bg-white/96 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-sm backdrop-blur-sm">
                         {matchLabel}
                       </div>
-                      <div className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm">
-                        <Heart className="size-5" />
-                      </div>
                     </div>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFavorite(property.id)}
+                    aria-label={favoriteIds.has(property.id) ? `Remover ${property.title} dos favoritos` : `Favoritar ${property.title}`}
+                    aria-pressed={favoriteIds.has(property.id)}
+                    className={kind === "broker" ? "absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
+                  >
+                    <Heart className={cn(kind === "broker" ? "size-4" : "size-5", favoriteIds.has(property.id) && "fill-[#159447] text-[#159447]")} />
+                  </button>
+                  </div>
 
-                  <div className="grid gap-6 p-6 sm:p-7">
-                    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className={kind === "broker" ? "grid gap-4 p-4" : "grid gap-6 p-6 sm:p-7"}>
+                    <div className={kind === "broker" ? "grid gap-2" : "grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"}>
                       <div className="min-w-0">
-                        <h3 className="line-clamp-2 text-[2rem] font-semibold leading-tight tracking-[-0.05em] text-[#111111]">
+                        <h3 className={kind === "broker" ? "line-clamp-2 text-base font-semibold leading-snug tracking-[-0.02em] text-[#111111]" : "line-clamp-2 text-[2rem] font-semibold leading-tight tracking-[-0.05em] text-[#111111]"}>
                           {property.title}
                         </h3>
                         <p className="mt-2.5 flex items-center gap-2 text-sm text-[#838383]">
@@ -577,15 +698,15 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                         </p>
                       </div>
 
-                      <div className="sm:text-right">
-                        <p className="break-words whitespace-nowrap text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]">
+                      <div className={kind === "broker" ? "" : "sm:text-right"}>
+                        <p className={kind === "broker" ? "break-words text-base font-semibold text-[#199148]" : "break-words whitespace-nowrap text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]"}>
                           {property.price || "Consulte valor"}
                         </p>
-                        <p className="mt-1.5 text-sm text-[#8a8a8a]">{getShortHighlight(property)}</p>
+                        {kind !== "broker" ? <p className="mt-1.5 text-sm text-[#8a8a8a]">{getShortHighlight(property)}</p> : null}
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-[#545454]">
+                    <div className={kind === "broker" ? "flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#626b66]" : "flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-[#545454]"}>
                       {property.bedrooms > 0 ? <InlineSpec icon={Bed} value={`${property.bedrooms} quartos`} /> : null}
                       {property.parking > 0 ? <InlineSpec icon={Car} value={`${property.parking} vagas`} /> : null}
                       {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={`${property.bathrooms} banheiros`} /> : null}
@@ -609,7 +730,9 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
               ))}
             </section>
 
-            {!listingOnly ? (
+            {!listingOnly ? (brokerCatalog ? (
+              <div className="mx-3 sm:mx-5"><BrokerCatalogFooterContact catalog={brokerCatalog} onContact={() => setContactOpen(true)} /></div>
+            ) : (
             <section className="rounded-[1.9rem] border border-[#ece5dc] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
@@ -640,14 +763,16 @@ export function PublicCatalogLanding({ kind, slug, catalog, listingOnly = false 
                 </Button>
               </div>
             </section>
-            ) : null}
+            )) : null}
           </>
         ) : (
           <div className="rounded-[1.75rem] border border-black/[0.05] bg-white px-6 py-16 text-center text-sm text-[#6B7280] shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
             Nenhum imóvel encontrado para essa busca.
           </div>
-        )}
+        )) : null}
       </div>
+
+      {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
         <DialogContent showCloseButton className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:max-w-5xl">

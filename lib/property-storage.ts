@@ -73,7 +73,7 @@ async function uploadPropertyFile({
 }: {
   propertyId: string
   file: File
-  folder: "images" | "audio"
+  folder: string
   extension: string
 }) {
   const config = getStorageConfig()
@@ -236,6 +236,42 @@ export async function savePropertyGeneratedVideo(propertyId: string, videoBuffer
   })
 }
 
+export async function saveBrokerCatalogBanner(brokerId: string, file: File) {
+  const source = Buffer.from(await file.arrayBuffer())
+  let buffer: Buffer<ArrayBufferLike> = source
+  let extension = getImageExtension(file)
+  let contentType = file.type || "application/octet-stream"
+  try {
+    const sharp = (await import("sharp")).default
+    buffer = await sharp(source)
+      .rotate()
+      .resize({ width: 2400, height: 1200, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 84 })
+      .toBuffer()
+    extension = ".webp"
+    contentType = "image/webp"
+  } catch (error) {
+    console.error("[storage][catalog] banner optimization failed, uploading original bytes", error)
+  }
+  return uploadPropertyBuffer({
+    propertyId: `broker-${brokerId}`,
+    buffer,
+    folder: "catalog/banner",
+    extension,
+    contentType,
+  })
+}
+
+export async function saveBrokerCatalogVideo(brokerId: string, file: File) {
+  const extension = file.type === "video/webm" ? ".webm" : file.type === "video/quicktime" ? ".mov" : ".mp4"
+  return uploadPropertyFile({
+    propertyId: `broker-${brokerId}`,
+    file,
+    folder: "catalog/video",
+    extension,
+  })
+}
+
 export async function deletePropertyStorageFile(fileUrl: string) {
   let config: ReturnType<typeof getStorageConfig>
   try {
@@ -258,5 +294,58 @@ export async function deletePropertyStorageFile(fileUrl: string) {
   if (response && !response.ok) {
     const detail = await response.text().catch(() => "")
     console.error("[storage][properties] delete failed", { status: response.status, detail })
+  }
+}
+
+/**
+ * Removes catalog media only when the object belongs to the authenticated
+ * broker's dedicated catalog directory. Catalog URLs can also be supplied by
+ * the broker, so the generic bucket deleter must never be used for this flow.
+ */
+export async function deleteBrokerCatalogStorageFile(brokerId: string, fileUrl: string) {
+  let config: ReturnType<typeof getStorageConfig>
+  try {
+    config = getStorageConfig()
+  } catch {
+    return
+  }
+
+  const publicPathPrefix = `/storage/v1/object/public/${config.bucket}/`
+  let parsedUrl: URL
+  let objectPath: string
+  try {
+    parsedUrl = new URL(fileUrl)
+    if (
+      parsedUrl.origin !== config.supabaseUrl
+      || parsedUrl.search
+      || parsedUrl.hash
+      || !parsedUrl.pathname.startsWith(publicPathPrefix)
+    ) return
+    objectPath = decodeURIComponent(parsedUrl.pathname.slice(publicPathPrefix.length))
+  } catch {
+    return
+  }
+
+  const segments = objectPath.split("/")
+  const [ownerDirectory, catalogDirectory, kindDirectory, fileName] = segments
+  if (
+    segments.length !== 4
+    || ownerDirectory !== `broker-${brokerId}`
+    || catalogDirectory !== "catalog"
+    || (kindDirectory !== "banner" && kindDirectory !== "video")
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpe?g|png|webp|mp4|webm|mov)$/i.test(fileName)
+  ) return
+
+  const canonicalPath = segments.map(encodeURIComponent).join("/")
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${config.bucket}/${canonicalPath}`, {
+    method: "DELETE",
+    headers: {
+      ...getStorageAuthHeaders(config.serviceRoleKey),
+    },
+  }).catch(() => null)
+
+  if (response && !response.ok) {
+    const detail = await response.text().catch(() => "")
+    console.error("[storage][catalog] delete failed", { status: response.status, detail })
   }
 }

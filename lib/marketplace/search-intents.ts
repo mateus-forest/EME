@@ -1,4 +1,4 @@
-import type { SearchResult } from '@/lib/marketplace/search-data'
+import type { SearchProperty } from '@/lib/marketplace/search-data'
 
 export type SearchIntent = { slug: string; label: string; keywords: string[] }
 export type IntentMatch = { score: number; reasons: string[] }
@@ -39,7 +39,7 @@ export function intentionsFromQuery(query?: string) {
     .map((intent) => intent.slug)
 }
 
-function contains(result: SearchResult, pattern: RegExp) {
+function contains(result: SearchProperty, pattern: RegExp) {
   return pattern.test(result.searchableText)
 }
 
@@ -50,7 +50,7 @@ function add(match: IntentMatch, condition: boolean, score: number, reason?: str
 }
 
 /** Traduz intenção editorial em sinais objetivos já publicados no anúncio. */
-export function matchSearchIntent(result: SearchResult, intent: string): IntentMatch {
+export function matchSearchIntent(result: SearchProperty, intent: string): IntentMatch {
   const match: IntentMatch = { score: 0, reasons: [] }
   const central = contains(result, /\b(centro|central|regiao central)\b/)
   const ready = result.furnished || result.isNew || contains(result, /\b(pronto|reformad|acabamento|chaves|estruturad)\w*/)
@@ -114,10 +114,10 @@ export function matchSearchIntent(result: SearchResult, intent: string): IntentM
   return match
 }
 
-export function intentScore(result: SearchResult, intentions: string[]) {
+export function intentScore(result: SearchProperty, intentions: string[]) {
   return intentions.reduce((score, intent) => score + matchSearchIntent(result, intent).score, 0)
 }
 
-export function intentReasons(result: SearchResult, intentions: string[]) {
+export function intentReasons(result: SearchProperty, intentions: string[]) {
   return intentions.flatMap((intent) => matchSearchIntent(result, intent).reasons).slice(0, 3)
 }
