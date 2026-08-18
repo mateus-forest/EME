@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ensureRole, getAuthenticatedUser } from '@/lib/auth-route'
 import {
+  MarketplaceRegionMediaConfigurationError,
+  MarketplaceRegionStateAmbiguousError,
   restoreMarketplaceRegionAutomaticImage,
   setMarketplaceRegionManualImage,
 } from '@/lib/marketplace/region-media'
@@ -45,6 +47,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     if (!region) return NextResponse.json({ error: 'Região não encontrada.' }, { status: 404 })
     return NextResponse.json({ region })
   } catch (error) {
+    if (error instanceof MarketplaceRegionMediaConfigurationError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
+    if (error instanceof MarketplaceRegionStateAmbiguousError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 422 })
+    }
     console.error('[api][admin][marketplace][regions] automatic restore failed', {
       reason: error instanceof Error ? error.message : 'unknown_error',
     })

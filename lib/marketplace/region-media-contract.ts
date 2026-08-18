@@ -14,6 +14,13 @@ export type StoredMarketplaceRegionMedia = {
   manualImageUrl: string | null
 }
 
+export type StoredMarketplaceRegionIdentity = {
+  city: string | null
+  displayName: string | null
+  state: string | null
+  ibgeCode: string | null
+}
+
 const BRAZILIAN_STATES: Record<string, { code: string; name: string }> = {
   AC: { code: 'AC', name: 'Acre' },
   AL: { code: 'AL', name: 'Alagoas' },
@@ -76,6 +83,21 @@ export function normalizeMarketplaceRegion(cityInput: string, stateInput: string
     key: `${legacySlug}-${stateCode.toLocaleLowerCase('pt-BR') || 'sem-uf'}`,
     legacySlug,
   }
+}
+
+export function regionIdentityFromStoredMedia(
+  city: string,
+  state: string,
+  stored: StoredMarketplaceRegionIdentity[],
+) {
+  const region = normalizeMarketplaceRegion(city, state)
+  if (region.state) return region
+  const cityMatches = stored.filter((media) => (
+    Boolean(media.state && media.ibgeCode) &&
+    normalizeMarketplaceRegionText(media.city || media.displayName || '') === normalizeMarketplaceRegionText(region.city)
+  ))
+  const states = [...new Set(cityMatches.map((media) => media.state).filter((value): value is string => Boolean(value)))]
+  return states.length === 1 ? normalizeMarketplaceRegion(region.city, states[0]) : region
 }
 
 export function buildPexelsRegionQueries(city: string, stateName: string) {

@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server'
 
 import { ensureRole, getAuthenticatedUser } from '@/lib/auth-route'
 import { getMarketplaceRegions } from '@/lib/marketplace/server-data'
-import { listMarketplaceRegionMedia } from '@/lib/marketplace/region-media'
+import {
+  assertMarketplaceRegionMediaConfiguration,
+  MarketplaceRegionMediaConfigurationError,
+  listMarketplaceRegionMedia,
+} from '@/lib/marketplace/region-media'
 import { UserRole } from '@/lib/prisma-enums'
 
 export async function GET() {
@@ -12,10 +16,14 @@ export async function GET() {
   if (forbidden) return forbidden
 
   try {
+    assertMarketplaceRegionMediaConfiguration()
     await getMarketplaceRegions()
     const regions = await listMarketplaceRegionMedia()
     return NextResponse.json({ regions })
   } catch (error) {
+    if (error instanceof MarketplaceRegionMediaConfigurationError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
     console.error('[api][admin][marketplace][regions] load failed', {
       reason: error instanceof Error ? error.message : 'unknown_error',
     })

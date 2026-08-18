@@ -24,7 +24,7 @@ export default async function RegiaoPage({ params }: { params: Promise<{ slug: s
   const normalizedName = region.name.toLocaleLowerCase('pt-BR')
   const regionProperties = properties.filter((property) => (
     property.city.toLocaleLowerCase('pt-BR') === normalizedName &&
-    (!region.state || property.state.toLocaleUpperCase('pt-BR') === region.state)
+    (!region.state || !property.state || property.state.toLocaleUpperCase('pt-BR') === region.state)
   ))
   const brokerSlugs = new Set(regionProperties.map((property) => property.brokerSlug))
   const regionBrokers = brokers.filter((broker) => brokerSlugs.has(broker.slug) || broker.regionSlug === slug)

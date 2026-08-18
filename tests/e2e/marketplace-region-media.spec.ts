@@ -7,6 +7,7 @@ import {
   isPexelsImageUrl,
   isSafeMarketplaceRegionImageUrl,
   normalizeMarketplaceRegion,
+  regionIdentityFromStoredMedia,
 } from '@/lib/marketplace/region-media-contract'
 
 test.describe('Marketplace region media contract', () => {
@@ -27,6 +28,19 @@ test.describe('Marketplace region media contract', () => {
       'Vacaria Rio Grande do Sul',
       'Rio Grande do Sul Brazil',
     ])
+  })
+
+  test('reuses the official UF persisted for properties that still only contain a city', () => {
+    expect(regionIdentityFromStoredMedia('Porto Alegre', '', [{
+      city: 'Porto Alegre',
+      displayName: 'Porto Alegre',
+      state: 'RS',
+      ibgeCode: '4314902',
+    }]).key).toBe('porto-alegre-rs')
+    expect(regionIdentityFromStoredMedia('Bom Jesus', '', [
+      { city: 'Bom Jesus', displayName: 'Bom Jesus', state: 'RS', ibgeCode: '4302303' },
+      { city: 'Bom Jesus', displayName: 'Bom Jesus', state: 'PI', ibgeCode: '2201903' },
+    ]).key).toBe('bom-jesus-sem-uf')
   })
 
   test('reuses valid automatic media and the neutral EME fallback', () => {

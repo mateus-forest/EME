@@ -9,6 +9,7 @@ import {
   isSafeMarketplaceRegionImageUrl,
   normalizeMarketplaceRegion,
   normalizeMarketplaceRegionText,
+  regionIdentityFromStoredMedia,
   type NormalizedMarketplaceRegion,
 } from '@/lib/marketplace/region-media-contract'
 
@@ -17,7 +18,15 @@ type RegionInput = { city: string; state: string }
 type IbgeMunicipality = {
   id: number
   nome: string
+  microrregiao?: {
+    mesorregiao?: { UF?: IbgeState }
+  }
+  'regiao-imediata'?: {
+    'regiao-intermediaria'?: { UF?: IbgeState }
+  }
 }
+
+type IbgeState = { sigla: string; nome: string }
 
 type PexelsPhoto = {
   id: number
@@ -60,6 +69,29 @@ type RegionMediaRecord = Omit<MarketplaceRegionMediaView, 'displayName' | 'city'
 
 const regionResolutionPromises = new Map<string, Promise<MarketplaceRegionMediaView>>()
 const ibgeMunicipalityPromises = new Map<string, Promise<IbgeMunicipality[]>>()
+let allIbgeMunicipalitiesPromise: Promise<IbgeMunicipality[]> | null = null
+
+export class MarketplaceRegionMediaConfigurationError extends Error {
+  readonly code = 'PEXELS_API_KEY_MISSING'
+
+  constructor() {
+    super('PEXELS_API_KEY não está configurada no ambiente do servidor.')
+    this.name = 'MarketplaceRegionMediaConfigurationError'
+  }
+}
+
+export class MarketplaceRegionStateAmbiguousError extends Error {
+  readonly code = 'MARKETPLACE_REGION_STATE_AMBIGUOUS'
+
+  constructor(city: string) {
+    super(`A cidade ${city} existe em mais de uma UF no IBGE; informe a UF no imóvel.`)
+    this.name = 'MarketplaceRegionStateAmbiguousError'
+  }
+}
+
+export function assertMarketplaceRegionMediaConfiguration() {
+  if (!process.env.PEXELS_API_KEY?.trim()) throw new MarketplaceRegionMediaConfigurationError()
+}
 
 function fallbackResolution(region: NormalizedMarketplaceRegion, ibge?: { id: string; city: string }) {
   return {
@@ -88,31 +120,71 @@ async function fetchJson(url: string, init?: RequestInit) {
   return response.json() as Promise<unknown>
 }
 
-async function resolveIbgeMunicipality(region: NormalizedMarketplaceRegion) {
-  if (!region.city || !region.state) return null
-  let pending = ibgeMunicipalityPromises.get(region.state)
+function parseIbgeMunicipalities(payload: unknown) {
+  return Array.isArray(payload) ? payload.filter((item): item is IbgeMunicipality => (
+    Boolean(item) && typeof item === 'object' &&
+    typeof (item as Partial<IbgeMunicipality>).id === 'number' &&
+    typeof (item as Partial<IbgeMunicipality>).nome === 'string'
+  )) : []
+}
+
+function ibgeMunicipalityState(municipality: IbgeMunicipality) {
+  const state = municipality['regiao-imediata']?.['regiao-intermediaria']?.UF || municipality.microrregiao?.mesorregiao?.UF
+  return state && typeof state.sigla === 'string' && typeof state.nome === 'string' ? state : null
+}
+
+async function getIbgeMunicipalitiesByState(state: string) {
+  let pending = ibgeMunicipalityPromises.get(state)
   if (!pending) {
     pending = fetchJson(
-      `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(region.state)}/municipios?orderBy=nome`,
-    ).then((payload) => Array.isArray(payload) ? payload.filter((item): item is IbgeMunicipality => (
-      Boolean(item) && typeof item === 'object' &&
-      typeof (item as Partial<IbgeMunicipality>).id === 'number' &&
-      typeof (item as Partial<IbgeMunicipality>).nome === 'string'
-    )) : []).catch((error) => {
-      ibgeMunicipalityPromises.delete(region.state)
+      `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(state)}/municipios?orderBy=nome`,
+    ).then(parseIbgeMunicipalities).catch((error) => {
+      ibgeMunicipalityPromises.delete(state)
       throw error
     })
-    ibgeMunicipalityPromises.set(region.state, pending)
+    ibgeMunicipalityPromises.set(state, pending)
   }
-  const municipalities = await pending
+  return pending
+}
+
+async function getAllIbgeMunicipalities() {
+  if (!allIbgeMunicipalitiesPromise) {
+    allIbgeMunicipalitiesPromise = fetchJson(
+      'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome',
+    ).then(parseIbgeMunicipalities).catch((error) => {
+      allIbgeMunicipalitiesPromise = null
+      throw error
+    })
+  }
+  return allIbgeMunicipalitiesPromise
+}
+
+async function resolveIbgeMunicipality(region: NormalizedMarketplaceRegion) {
+  if (!region.city) return null
+  const municipalities = region.state
+    ? await getIbgeMunicipalitiesByState(region.state)
+    : await getAllIbgeMunicipalities()
   const expectedCity = normalizeMarketplaceRegionText(region.city)
-  const municipality = municipalities.find((item) => normalizeMarketplaceRegionText(item.nome) === expectedCity)
-  return municipality ? { id: String(municipality.id), city: municipality.nome } : null
+  const matches = municipalities.filter((item) => normalizeMarketplaceRegionText(item.nome) === expectedCity)
+  if (!matches.length) return null
+
+  const officialMatches = matches.map((municipality) => ({ municipality, state: ibgeMunicipalityState(municipality) }))
+  if (!region.state) {
+    const states = new Set(officialMatches.map((match) => match.state?.sigla).filter(Boolean))
+    if (states.size !== 1) throw new MarketplaceRegionStateAmbiguousError(region.city)
+  }
+  const match = officialMatches.find((item) => !region.state || item.state?.sigla === region.state) || officialMatches[0]
+  return match ? {
+    id: String(match.municipality.id),
+    city: match.municipality.nome,
+    state: match.state?.sigla || region.state,
+    stateName: match.state?.nome || region.stateName,
+  } : null
 }
 
 async function resolvePexelsPhoto(city: string, stateName: string) {
-  const apiKey = process.env.PEXELS_API_KEY?.trim()
-  if (!apiKey) return null
+  assertMarketplaceRegionMediaConfiguration()
+  const apiKey = process.env.PEXELS_API_KEY?.trim() || ''
 
   for (const query of buildPexelsRegionQueries(city, stateName)) {
     const params = new URLSearchParams({
@@ -168,35 +240,49 @@ async function persistAutomaticResolution(region: NormalizedMarketplaceRegion, f
   let pexels: Awaited<ReturnType<typeof resolvePexelsPhoto>> = null
   try {
     ibge = await resolveIbgeMunicipality(region)
-    if (ibge) pexels = await resolvePexelsPhoto(ibge.city, region.stateName)
+    if (ibge) pexels = await resolvePexelsPhoto(ibge.city, ibge.stateName)
   } catch (error) {
+    if (error instanceof MarketplaceRegionMediaConfigurationError || error instanceof MarketplaceRegionStateAmbiguousError) {
+      throw error
+    }
     console.error('[marketplace][region-media] automatic resolution failed', {
       region: region.key,
       reason: error instanceof Error ? error.message : 'unknown_error',
     })
   }
 
+  const targetRegion = ibge ? normalizeMarketplaceRegion(ibge.city, ibge.state) : region
+
   const automatic = pexels
     ? {
-        city: ibge?.city ?? region.city,
-        state: region.state,
+        city: ibge?.city ?? targetRegion.city,
+        state: ibge?.state ?? targetRegion.state,
         ibgeCode: ibge?.id ?? null,
         ...pexels,
         resolvedAt: new Date(),
       }
-    : fallbackResolution(region, ibge ?? undefined)
+    : fallbackResolution(targetRegion, ibge ?? undefined)
 
   if (!forceAutomatic) {
-    const current = await prisma.marketplaceRegionMedia.findUnique({ where: { slug: region.key } })
+    const current = await prisma.marketplaceRegionMedia.findUnique({ where: { slug: targetRegion.key } })
     if (current?.source === 'manual' && isMarketplaceRegionMediaReusable(current)) {
-      return serializeRegionMedia(current)
+      const savedManual = await prisma.marketplaceRegionMedia.update({
+        where: { slug: targetRegion.key },
+        data: {
+          displayName: automatic.city,
+          ...automatic,
+          source: 'manual',
+          manualImageUrl: current.manualImageUrl,
+        },
+      })
+      return serializeRegionMedia(savedManual)
     }
   }
 
   const saved = await prisma.marketplaceRegionMedia.upsert({
-    where: { slug: region.key },
+    where: { slug: targetRegion.key },
     create: {
-      slug: region.key,
+      slug: targetRegion.key,
       displayName: automatic.city,
       ...automatic,
       source: 'automatic',
@@ -209,66 +295,71 @@ async function persistAutomaticResolution(region: NormalizedMarketplaceRegion, f
       manualImageUrl: null,
     },
   })
+  if (targetRegion.key !== region.key) {
+    await prisma.marketplaceRegionMedia.deleteMany({
+      where: { slug: region.key, source: 'automatic', ibgeCode: null },
+    })
+  }
   return serializeRegionMedia(saved)
 }
 
-async function cloneLegacyMedia(region: NormalizedMarketplaceRegion, legacy: RegionMediaRecord) {
-  const saved = await prisma.marketplaceRegionMedia.upsert({
-    where: { slug: region.key },
-    create: {
-      slug: region.key,
-      displayName: region.city,
-      city: region.city,
-      state: region.state,
-      ibgeCode: null,
-      provider: legacy.provider,
-      pexelsPhotoId: legacy.pexelsPhotoId,
-      imageUrl: legacy.imageUrl,
-      originalUrl: legacy.originalUrl,
-      photoPageUrl: legacy.photoPageUrl,
-      photographer: legacy.photographer,
-      photographerUrl: legacy.photographerUrl,
-      query: legacy.query,
-      resolvedAt: legacy.resolvedAt,
-      source: legacy.source,
-      manualImageUrl: legacy.manualImageUrl || (legacy.source === 'manual' ? legacy.imageUrl : null),
-    },
-    update: {},
+function hasOfficialRegionIdentity(media: RegionMediaRecord) {
+  return Boolean(media.state && media.ibgeCode)
+}
+
+async function migrateManualOverride(target: MarketplaceRegionMediaView, legacy: RegionMediaRecord) {
+  const manualImageUrl = legacy.manualImageUrl || legacy.imageUrl
+  if (legacy.source !== 'manual' || !isSafeMarketplaceRegionImageUrl(manualImageUrl)) return target
+  const saved = await prisma.marketplaceRegionMedia.update({
+    where: { slug: target.slug },
+    data: { source: 'manual', manualImageUrl },
   })
+  if (legacy.slug !== target.slug) await prisma.marketplaceRegionMedia.delete({ where: { slug: legacy.slug } })
   return serializeRegionMedia(saved)
 }
 
 export async function ensureMarketplaceRegionMedia(inputs: RegionInput[]) {
-  const regions = [...new Map(inputs.map((input) => {
+  const inputRegions = [...new Map(inputs.map((input) => {
     const region = normalizeMarketplaceRegion(input.city, input.state)
     return [region.key, region]
   })).values()].filter((region) => region.city)
-  if (!regions.length) return new Map<string, MarketplaceRegionMediaView>()
+  if (!inputRegions.length) return new Map<string, MarketplaceRegionMediaView>()
 
-  const slugs = [...new Set(regions.flatMap((region) => [region.key, region.legacySlug]))]
-  const existing = await prisma.marketplaceRegionMedia.findMany({ where: { slug: { in: slugs } } })
+  const inputSlugs = [...new Set(inputRegions.flatMap((region) => [region.key, region.legacySlug]))]
+  const inputCities = [...new Set(inputRegions.map((region) => region.city))]
+  const existing = await prisma.marketplaceRegionMedia.findMany({
+    where: {
+      OR: [
+        { slug: { in: inputSlugs } },
+        { city: { in: inputCities, mode: 'insensitive' } },
+      ],
+    },
+  })
   const existingBySlug = new Map(existing.map((media) => [media.slug, media]))
   const resolved = new Map<string, MarketplaceRegionMediaView>()
 
-  await Promise.all(regions.map(async (region) => {
+  await Promise.all(inputRegions.map(async (inputRegion) => {
+    const region = regionIdentityFromStoredMedia(inputRegion.city, inputRegion.state, existing)
+
     const direct = existingBySlug.get(region.key)
-    if (direct && isMarketplaceRegionMediaReusable(direct)) {
-      resolved.set(region.key, serializeRegionMedia(direct))
+    if (direct && hasOfficialRegionIdentity(direct) && isMarketplaceRegionMediaReusable(direct)) {
+      const view = serializeRegionMedia(direct)
+      resolved.set(inputRegion.key, view)
+      resolved.set(view.slug, view)
       return
     }
-    const legacy = existingBySlug.get(region.legacySlug)
-    if (legacy && isMarketplaceRegionMediaReusable(legacy)) {
-      const cloned = await cloneLegacyMedia(region, legacy)
-      resolved.set(region.key, cloned)
-      return
-    }
+
+    const legacy = existingBySlug.get(inputRegion.key) || existingBySlug.get(region.legacySlug)
 
     let pending = regionResolutionPromises.get(region.key)
     if (!pending) {
       pending = persistAutomaticResolution(region).finally(() => regionResolutionPromises.delete(region.key))
       regionResolutionPromises.set(region.key, pending)
     }
-    resolved.set(region.key, await pending)
+    const automatic = await pending
+    const view = legacy ? await migrateManualOverride(automatic, legacy) : automatic
+    resolved.set(inputRegion.key, view)
+    resolved.set(view.slug, view)
   }))
 
   return resolved
@@ -293,7 +384,7 @@ export async function setMarketplaceRegionManualImage(slug: string, manualImageU
 export async function restoreMarketplaceRegionAutomaticImage(slug: string) {
   const current = await prisma.marketplaceRegionMedia.findUnique({ where: { slug } })
   if (!current) return null
-  if (current.provider === 'pexels' || current.provider === 'eme') {
+  if (current.provider === 'pexels' && current.ibgeCode && current.state && isMarketplaceRegionMediaReusable(current)) {
     const saved = await prisma.marketplaceRegionMedia.update({
       where: { slug },
       data: { manualImageUrl: null, source: 'automatic' },
@@ -301,12 +392,8 @@ export async function restoreMarketplaceRegionAutomaticImage(slug: string) {
     return serializeRegionMedia(saved)
   }
   const region = normalizeMarketplaceRegion(current.city || current.displayName || '', current.state || '')
-  if (!region.city || region.key !== slug) {
-    const saved = await prisma.marketplaceRegionMedia.update({
-      where: { slug },
-      data: { manualImageUrl: null, source: 'automatic' },
-    })
-    return serializeRegionMedia(saved)
-  }
-  return persistAutomaticResolution(region, true)
+  if (!region.city) return null
+  const resolved = await persistAutomaticResolution(region, true)
+  if (resolved.slug !== slug) await prisma.marketplaceRegionMedia.deleteMany({ where: { slug } })
+  return resolved
 }

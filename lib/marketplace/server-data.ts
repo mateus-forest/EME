@@ -440,7 +440,12 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
     const media = await ensureMarketplaceRegionMedia(
       [...groups.values()].map((region) => ({ city: region.name, state: region.state })),
     )
-    for (const region of groups.values()) region.image = media.get(region.mediaKey)?.imageUrl || ''
+    for (const region of groups.values()) {
+      const resolvedMedia = media.get(region.mediaKey)
+      region.image = resolvedMedia?.imageUrl || ''
+      region.state = resolvedMedia?.state || region.state
+      region.mediaKey = resolvedMedia?.slug || region.mediaKey
+    }
   } catch (error) {
     console.error('[marketplace][regions] persisted media unavailable', {
       reason: error instanceof Error ? error.message : 'unknown_error',
