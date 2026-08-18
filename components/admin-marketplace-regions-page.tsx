@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink, ImageIcon, MapPinned, RefreshCw, Save } from 'lucide-react'
+import { ExternalLink, ImageIcon, Link as LinkIcon, MapPinned, RefreshCw, Upload } from 'lucide-react'
 
 import { AdminPageShell } from '@/components/admin-page-shell'
 
@@ -42,7 +42,7 @@ export function AdminMarketplaceRegionsPage() {
       if (!response.ok) throw new Error(payload?.error || 'Não foi possível carregar as regiões.')
       const nextRegions = Array.isArray(payload?.regions) ? payload.regions as RegionMedia[] : []
       setRegions(nextRegions)
-      setManualUrls(Object.fromEntries(nextRegions.map((region) => [region.slug, region.manualImageUrl || ''])))
+      setManualUrls(Object.fromEntries(nextRegions.map((region) => [region.slug, ''])))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível carregar as regiões.')
     } finally {
@@ -52,9 +52,9 @@ export function AdminMarketplaceRegionsPage() {
 
   useEffect(() => { void load() }, [load])
 
-  async function saveOverride(region: RegionMedia) {
-    const manualImageUrl = manualUrls[region.slug]?.trim() || ''
-    if (!manualImageUrl) {
+  async function saveUrlOverride(region: RegionMedia) {
+    const sourceUrl = manualUrls[region.slug]?.trim() || ''
+    if (!sourceUrl) {
       setError('Informe a URL da imagem que deve substituir a mídia automática.')
       return
     }
@@ -64,13 +64,35 @@ export function AdminMarketplaceRegionsPage() {
       const response = await fetch(`/api/admin/marketplace/regions/${encodeURIComponent(region.slug)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manualImageUrl }),
+        body: JSON.stringify({ sourceUrl }),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error || 'Não foi possível salvar a imagem manual.')
       setRegions((current) => current.map((item) => item.slug === region.slug ? payload.region : item))
+      setManualUrls((current) => ({ ...current, [region.slug]: '' }))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível salvar a imagem manual.')
+    } finally {
+      setWorkingSlug('')
+    }
+  }
+
+  async function uploadOverride(region: RegionMedia, file: File) {
+    setWorkingSlug(region.slug)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.set('file', file)
+      const response = await fetch(`/api/admin/marketplace/regions/${encodeURIComponent(region.slug)}`, {
+        method: 'POST',
+        body: formData,
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error || 'Não foi possível enviar a imagem.')
+      setRegions((current) => current.map((item) => item.slug === region.slug ? payload.region : item))
+      setManualUrls((current) => ({ ...current, [region.slug]: '' }))
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Não foi possível enviar a imagem.')
     } finally {
       setWorkingSlug('')
     }
@@ -152,9 +174,28 @@ export function AdminMarketplaceRegionsPage() {
                       </div>
                     ) : null}
 
-                    <div>
-                      <label htmlFor={`manual-${region.slug}`} className="text-xs font-medium text-[#475467]">URL da imagem manual</label>
-                      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          id={`upload-${region.slug}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={working}
+                          className="sr-only"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            event.target.value = ''
+                            if (file) void uploadOverride(region, file)
+                          }}
+                        />
+                        <label htmlFor={`upload-${region.slug}`} className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white ${working ? 'pointer-events-none opacity-60' : ''}`}>
+                          <Upload className="h-4 w-4" /> Enviar imagem
+                        </label>
+                        <span className="text-xs text-[#98a2b3]">JPG, PNG ou WebP · até 4 MB</span>
+                      </div>
+
+                      <label htmlFor={`manual-${region.slug}`} className="text-xs font-medium text-[#475467]">Usar URL de uma imagem</label>
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <input
                           id={`manual-${region.slug}`}
                           type="url"
@@ -163,8 +204,8 @@ export function AdminMarketplaceRegionsPage() {
                           placeholder="https://..."
                           className="h-10 min-w-0 flex-1 rounded-xl border border-black/10 px-3 text-sm outline-none focus:border-[#009b3a]/40"
                         />
-                        <button type="button" disabled={working} onClick={() => void saveOverride(region)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#009b3a] px-4 text-sm font-semibold text-white disabled:opacity-60">
-                          <Save className="h-4 w-4" /> Salvar override
+                        <button type="button" disabled={working} onClick={() => void saveUrlOverride(region)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-black/10 px-4 text-sm font-semibold text-[#475467] disabled:opacity-60">
+                          <LinkIcon className="h-4 w-4" /> Usar URL
                         </button>
                       </div>
                     </div>

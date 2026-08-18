@@ -1,4 +1,19 @@
 import { randomUUID } from "node:crypto"
+import { lookup } from "node:dns/promises"
+import { isIP } from "node:net"
+
+const MARKETPLACE_REGION_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+const MAX_MARKETPLACE_REGION_IMAGE_BYTES = 4 * 1024 * 1024
+
+export class InvalidMarketplaceRegionImageError extends Error {
+  readonly reason: string
+
+  constructor(reason = "invalid_image") {
+    super("O link informado não é uma imagem válida.")
+    this.name = "InvalidMarketplaceRegionImageError"
+    this.reason = reason
+  }
+}
 
 function readRequiredEnv(name: string) {
   const value = process.env[name]?.trim()
@@ -39,6 +54,107 @@ function getImageExtensionFromMimeType(mimeType: string) {
 
 function getImageExtension(file: File) {
   return getImageExtensionFromMimeType(file.type)
+}
+
+function assertMarketplaceRegionSlug(slug: string) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Região inválida para upload.")
+}
+
+function isPublicIpv4(address: string) {
+  const parts = address.split(".").map(Number)
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false
+  const [a, b, c] = parts
+  if (
+    a === 0 || a === 10 || a === 127 || a >= 224 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 198 && b === 18) ||
+    (a === 198 && b === 19) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113)
+  ) return false
+  return true
+}
+
+function isPublicIp(address: string) {
+  const version = isIP(address)
+  if (version === 4) return isPublicIpv4(address)
+  if (version !== 6) return false
+  const normalized = address.toLowerCase()
+  if (normalized.startsWith("::ffff:")) return isPublicIpv4(normalized.slice(7))
+  return !(
+    normalized === "::" || normalized === "::1" ||
+    normalized.startsWith("fc") || normalized.startsWith("fd") ||
+    /^fe[89ab]/.test(normalized) || normalized.startsWith("ff") ||
+    normalized.startsWith("2001:db8:")
+  )
+}
+
+async function assertPublicMarketplaceRegionImageUrl(value: string) {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new InvalidMarketplaceRegionImageError("invalid_url")
+  }
+  if (
+    parsed.protocol !== "https:" || parsed.username || parsed.password ||
+    (parsed.port && parsed.port !== "443") ||
+    parsed.hostname === "localhost" || parsed.hostname.endsWith(".local") || parsed.hostname.endsWith(".internal")
+  ) throw new InvalidMarketplaceRegionImageError("unsafe_url")
+  const addresses = await lookup(parsed.hostname, { all: true, verbatim: true }).catch(() => [])
+  if (!addresses.length || addresses.some(({ address }) => !isPublicIp(address))) {
+    throw new InvalidMarketplaceRegionImageError("non_public_host")
+  }
+  return parsed
+}
+
+async function readImageResponse(response: Response) {
+  const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() || ""
+  const contentLength = Number(response.headers.get("content-length") || 0)
+  if (!MARKETPLACE_REGION_IMAGE_TYPES.has(contentType) || contentLength > MAX_MARKETPLACE_REGION_IMAGE_BYTES || !response.body) {
+    throw new InvalidMarketplaceRegionImageError("invalid_content_type_or_size")
+  }
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > MAX_MARKETPLACE_REGION_IMAGE_BYTES) {
+      await reader.cancel().catch(() => undefined)
+      throw new InvalidMarketplaceRegionImageError("image_too_large")
+    }
+    chunks.push(Buffer.from(value))
+  }
+  if (!total) throw new InvalidMarketplaceRegionImageError("empty_image")
+  return Buffer.concat(chunks)
+}
+
+async function downloadMarketplaceRegionImage(value: string) {
+  let target = await assertPublicMarketplaceRegionImageUrl(value)
+  for (let redirect = 0; redirect <= 3; redirect += 1) {
+    const response = await fetch(target, {
+      headers: { Accept: "image/webp,image/png,image/jpeg", "User-Agent": "EME-Region-Media/1.0" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(12_000),
+    }).catch(() => null)
+    if (!response) throw new InvalidMarketplaceRegionImageError("download_failed")
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location")
+      if (!location || redirect === 3) throw new InvalidMarketplaceRegionImageError("invalid_redirect")
+      target = await assertPublicMarketplaceRegionImageUrl(new URL(location, target).toString())
+      continue
+    }
+    if (!response.ok) throw new InvalidMarketplaceRegionImageError("download_status")
+    return readImageResponse(response)
+  }
+  throw new InvalidMarketplaceRegionImageError("too_many_redirects")
 }
 
 // Fotos de imovel chegam direto da camera do celular, que grava a orientacao real como metadado
@@ -270,6 +386,85 @@ export async function saveBrokerCatalogVideo(brokerId: string, file: File) {
     folder: "catalog/video",
     extension,
   })
+}
+
+async function saveMarketplaceRegionImageBuffer(slug: string, source: Buffer) {
+  assertMarketplaceRegionSlug(slug)
+  let buffer: Buffer<ArrayBufferLike>
+  try {
+    const sharp = (await import("sharp")).default
+    buffer = await sharp(source, { failOn: "error", limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize({ width: 2400, height: 1400, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 84 })
+      .toBuffer()
+  } catch {
+    throw new InvalidMarketplaceRegionImageError("invalid_image_bytes")
+  }
+  return uploadPropertyBuffer({
+    propertyId: "marketplace-regions",
+    buffer,
+    folder: `${slug}/manual`,
+    extension: ".webp",
+    contentType: "image/webp",
+  })
+}
+
+export async function saveMarketplaceRegionImage(slug: string, file: File) {
+  if (!MARKETPLACE_REGION_IMAGE_TYPES.has(file.type) || file.size === 0 || file.size > MAX_MARKETPLACE_REGION_IMAGE_BYTES) {
+    throw new Error("Use uma imagem JPG, PNG ou WebP de até 4 MB.")
+  }
+  return saveMarketplaceRegionImageBuffer(slug, Buffer.from(await file.arrayBuffer()))
+}
+
+export async function saveMarketplaceRegionImageFromUrl(slug: string, imageUrl: string) {
+  const downloaded = await downloadMarketplaceRegionImage(imageUrl)
+  return saveMarketplaceRegionImageBuffer(slug, downloaded)
+}
+
+function marketplaceRegionStorageObjectPath(slug: string, fileUrl: string) {
+  assertMarketplaceRegionSlug(slug)
+  let config: ReturnType<typeof getStorageConfig>
+  try {
+    config = getStorageConfig()
+  } catch {
+    return null
+  }
+  const publicPathPrefix = `/storage/v1/object/public/${config.bucket}/`
+  try {
+    const parsedUrl = new URL(fileUrl)
+    if (
+      parsedUrl.origin !== config.supabaseUrl || parsedUrl.search || parsedUrl.hash ||
+      !parsedUrl.pathname.startsWith(publicPathPrefix)
+    ) return null
+    const objectPath = decodeURIComponent(parsedUrl.pathname.slice(publicPathPrefix.length))
+    const segments = objectPath.split("/")
+    const [root, regionSlug, kind, fileName] = segments
+    if (
+      segments.length !== 4 || root !== "marketplace-regions" || regionSlug !== slug || kind !== "manual" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i.test(fileName)
+    ) return null
+    return { config, objectPath: segments.map(encodeURIComponent).join("/") }
+  } catch {
+    return null
+  }
+}
+
+export function isMarketplaceRegionStorageUrl(slug: string, fileUrl: string | null | undefined) {
+  return Boolean(fileUrl && marketplaceRegionStorageObjectPath(slug, fileUrl))
+}
+
+export async function deleteMarketplaceRegionStorageFile(slug: string, fileUrl: string) {
+  const owned = marketplaceRegionStorageObjectPath(slug, fileUrl)
+  if (!owned) return
+  const response = await fetch(`${owned.config.supabaseUrl}/storage/v1/object/${owned.config.bucket}/${owned.objectPath}`, {
+    method: "DELETE",
+    headers: getStorageAuthHeaders(owned.config.serviceRoleKey),
+  }).catch(() => null)
+  if (response && !response.ok) {
+    const detail = await response.text().catch(() => "")
+    console.error("[storage][marketplace-regions] delete failed", { status: response.status, detail })
+  }
 }
 
 export async function deletePropertyStorageFile(fileUrl: string) {

@@ -9,6 +9,10 @@ import {
   normalizeMarketplaceRegion,
   regionIdentityFromStoredMedia,
 } from '@/lib/marketplace/region-media-contract'
+import {
+  isMarketplaceRegionStorageUrl,
+  saveMarketplaceRegionImageFromUrl,
+} from '@/lib/property-storage'
 
 test.describe('Marketplace region media contract', () => {
   test('normalizes city and UF without a manual municipality catalog', () => {
@@ -87,5 +91,29 @@ test.describe('Marketplace region media contract', () => {
     expect(isSafeMarketplaceRegionImageUrl('https://example.com/photo.jpg')).toBe(true)
     expect(isPexelsImageUrl('https://images.pexels.com/photos/123/photo.jpeg')).toBe(true)
     expect(isPexelsImageUrl('https://example.com/photos/123/photo.jpeg')).toBe(false)
+  })
+
+  test('accepts only canonical EME storage paths owned by the same region', () => {
+    const previousUrl = process.env.SUPABASE_URL
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_URL = 'https://storage.eme.test'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role'
+    try {
+      const fileName = '123e4567-e89b-42d3-a456-426614174000.webp'
+      const owned = `https://storage.eme.test/storage/v1/object/public/properties/marketplace-regions/porto-alegre-rs/manual/${fileName}`
+      expect(isMarketplaceRegionStorageUrl('porto-alegre-rs', owned)).toBe(true)
+      expect(isMarketplaceRegionStorageUrl('sao-paulo-sp', owned)).toBe(false)
+      expect(isMarketplaceRegionStorageUrl('porto-alegre-rs', owned.replace(fileName, `%252e%252e/${fileName}`))).toBe(false)
+    } finally {
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL
+      else process.env.SUPABASE_URL = previousUrl
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey
+    }
+  })
+
+  test('rejects non-HTTPS URL imports before downloading them', async () => {
+    await expect(saveMarketplaceRegionImageFromUrl('porto-alegre-rs', 'http://example.com/photo.jpg'))
+      .rejects.toThrow('O link informado não é uma imagem válida.')
   })
 })

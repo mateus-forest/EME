@@ -2,6 +2,11 @@ import 'server-only'
 
 import { prisma } from '@/lib/prisma'
 import {
+  deleteMarketplaceRegionStorageFile,
+  isMarketplaceRegionStorageUrl,
+  saveMarketplaceRegionImageFromUrl,
+} from '@/lib/property-storage'
+import {
   buildPexelsRegionQueries,
   effectiveMarketplaceRegionImage,
   isMarketplaceRegionMediaReusable,
@@ -310,12 +315,50 @@ function hasOfficialRegionIdentity(media: RegionMediaRecord) {
 async function migrateManualOverride(target: MarketplaceRegionMediaView, legacy: RegionMediaRecord) {
   const manualImageUrl = legacy.manualImageUrl || legacy.imageUrl
   if (legacy.source !== 'manual' || !isSafeMarketplaceRegionImageUrl(manualImageUrl)) return target
-  const saved = await prisma.marketplaceRegionMedia.update({
-    where: { slug: target.slug },
-    data: { source: 'manual', manualImageUrl },
-  })
-  if (legacy.slug !== target.slug) await prisma.marketplaceRegionMedia.delete({ where: { slug: legacy.slug } })
-  return serializeRegionMedia(saved)
+  let ownedUrl = ''
+  try {
+    ownedUrl = isMarketplaceRegionStorageUrl(target.slug, manualImageUrl)
+      ? manualImageUrl
+      : await saveMarketplaceRegionImageFromUrl(target.slug, manualImageUrl)
+    const saved = await prisma.marketplaceRegionMedia.update({
+      where: { slug: target.slug },
+      data: { source: 'manual', manualImageUrl: ownedUrl },
+    })
+    if (legacy.slug !== target.slug) await prisma.marketplaceRegionMedia.delete({ where: { slug: legacy.slug } })
+    return serializeRegionMedia(saved)
+  } catch (error) {
+    if (ownedUrl) await deleteMarketplaceRegionStorageFile(target.slug, ownedUrl)
+    console.error('[marketplace][region-media] legacy manual override import failed', {
+      region: legacy.slug,
+      reason: error instanceof Error ? error.message : 'unknown_error',
+    })
+    if (legacy.slug !== target.slug) await prisma.marketplaceRegionMedia.delete({ where: { slug: legacy.slug } })
+    return target
+  }
+}
+
+async function ensureOwnedManualOverride(media: RegionMediaRecord) {
+  if (media.source !== 'manual' || !media.manualImageUrl || isMarketplaceRegionStorageUrl(media.slug, media.manualImageUrl)) {
+    return media
+  }
+  let ownedUrl = ''
+  try {
+    ownedUrl = await saveMarketplaceRegionImageFromUrl(media.slug, media.manualImageUrl)
+    return await prisma.marketplaceRegionMedia.update({
+      where: { slug: media.slug },
+      data: { manualImageUrl: ownedUrl },
+    })
+  } catch (error) {
+    if (ownedUrl) await deleteMarketplaceRegionStorageFile(media.slug, ownedUrl)
+    console.error('[marketplace][region-media] manual override import failed; restoring automatic image', {
+      region: media.slug,
+      reason: error instanceof Error ? error.message : 'unknown_error',
+    })
+    return prisma.marketplaceRegionMedia.update({
+      where: { slug: media.slug },
+      data: { source: 'automatic', manualImageUrl: null },
+    })
+  }
 }
 
 export async function ensureMarketplaceRegionMedia(inputs: RegionInput[]) {
@@ -343,7 +386,7 @@ export async function ensureMarketplaceRegionMedia(inputs: RegionInput[]) {
 
     const direct = existingBySlug.get(region.key)
     if (direct && hasOfficialRegionIdentity(direct) && isMarketplaceRegionMediaReusable(direct)) {
-      const view = serializeRegionMedia(direct)
+      const view = serializeRegionMedia(await ensureOwnedManualOverride(direct))
       resolved.set(inputRegion.key, view)
       resolved.set(view.slug, view)
       return
@@ -374,10 +417,15 @@ export async function listMarketplaceRegionMedia() {
 }
 
 export async function setMarketplaceRegionManualImage(slug: string, manualImageUrl: string) {
+  if (!isMarketplaceRegionStorageUrl(slug, manualImageUrl)) throw new Error('A imagem manual precisa estar no storage do EME.')
+  const current = await prisma.marketplaceRegionMedia.findUniqueOrThrow({ where: { slug } })
   const saved = await prisma.marketplaceRegionMedia.update({
     where: { slug },
     data: { manualImageUrl, source: 'manual' },
   })
+  if (current.manualImageUrl && current.manualImageUrl !== manualImageUrl) {
+    await deleteMarketplaceRegionStorageFile(slug, current.manualImageUrl)
+  }
   return serializeRegionMedia(saved)
 }
 
@@ -389,11 +437,13 @@ export async function restoreMarketplaceRegionAutomaticImage(slug: string) {
       where: { slug },
       data: { manualImageUrl: null, source: 'automatic' },
     })
+    if (current.manualImageUrl) await deleteMarketplaceRegionStorageFile(slug, current.manualImageUrl)
     return serializeRegionMedia(saved)
   }
   const region = normalizeMarketplaceRegion(current.city || current.displayName || '', current.state || '')
   if (!region.city) return null
   const resolved = await persistAutomaticResolution(region, true)
+  if (current.manualImageUrl) await deleteMarketplaceRegionStorageFile(slug, current.manualImageUrl)
   if (resolved.slug !== slug) await prisma.marketplaceRegionMedia.deleteMany({ where: { slug } })
   return resolved
 }
