@@ -10,6 +10,10 @@ import { extractPropertyAd } from "@/lib/property-ad-import-client"
 import { confirmPropertyXmlImport, previewPropertyXml, type XmlImportReport, type XmlImportSummary } from "@/lib/property-xml-import-client"
 import type { ParsedXmlProperty } from "@/lib/property-xml-import"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
+import { lookupCep } from "@/lib/cep"
+import { defaultPropertyLegalData } from "@/lib/legal-entities"
+import { inferExplicitPropertyLocation, inferPropertyPurposeFromText } from "@/lib/property-new-ai"
+import { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
 import { useBrokerProperties, type BrokerPropertyPurpose } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
@@ -54,6 +58,10 @@ type AiPreviewSnapshot = {
   description: string
   context: string
   image: File | null
+  cep: string
+  street: string
+  state: string
+  privateArea: string
 }
 
 declare global {
@@ -77,10 +85,17 @@ export function BrokerNewPropertyPage() {
   const [title, setTitle] = useState("")
   const [city, setCity] = useState("")
   const [neighborhood, setNeighborhood] = useState("")
+  const [cep, setCep] = useState("")
+  const [street, setStreet] = useState("")
+  const [addressNumber, setAddressNumber] = useState("")
+  const [addressComplement, setAddressComplement] = useState("")
+  const [state, setState] = useState("")
+  const [privateArea, setPrivateArea] = useState("")
+  const [ownerName, setOwnerName] = useState("")
   const [price, setPrice] = useState("")
   const [propertyType, setPropertyType] = useState<PropertyType>("Apartamento")
   const [propertyPurpose, setPropertyPurpose] = useState<PropertyPurpose>("Venda")
-  const [publishStatus, setPublishStatus] = useState<PublishStatus>("Publicado")
+  const [publishStatus, setPublishStatus] = useState<PublishStatus>("Rascunho")
   const [description, setDescription] = useState("")
   const [bedrooms, setBedrooms] = useState(2)
   const [bathrooms, setBathrooms] = useState(2)
@@ -89,6 +104,7 @@ export function BrokerNewPropertyPage() {
   const [hasGenerated, setHasGenerated] = useState(false)
   const [isPublished, setIsPublished] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [publishFeedback, setPublishFeedback] = useState("")
   const [aiHighlights, setAiHighlights] = useState<string[]>([])
   const [xmlPreview, setXmlPreview] = useState<ParsedXmlProperty[]>([])
@@ -122,7 +138,7 @@ export function BrokerNewPropertyPage() {
   const previewDescription =
     description.trim() || "A prévia será enriquecida automaticamente conforme você enviar mais contexto."
   const hasAiSource =
-    Boolean(aiContext.trim() || title.trim() || city.trim() || neighborhood.trim() || price.trim()) ||
+    Boolean(aiContext.trim() || title.trim() || city.trim() || neighborhood.trim() || price.trim() || cep.trim() || street.trim() || privateArea.trim()) ||
     selectedFiles.length > 0
   const hasPreviewData =
     creationMode === "ai"
@@ -140,6 +156,10 @@ export function BrokerNewPropertyPage() {
         bathrooms,
         parking,
         aiContext,
+        cep,
+        street,
+        state,
+        privateArea,
         image:
           selectedFiles[0]
             ? {
@@ -149,7 +169,7 @@ export function BrokerNewPropertyPage() {
               }
             : null,
       }),
-    [aiContext, bathrooms, bedrooms, city, neighborhood, parking, price, propertyType, selectedFiles, title],
+    [aiContext, bathrooms, bedrooms, cep, city, neighborhood, parking, price, privateArea, propertyType, selectedFiles, state, street, title],
   )
 
   const buildFallbackTitle = useCallback(() => {
@@ -158,14 +178,19 @@ export function BrokerNewPropertyPage() {
     return [baseTitle, location ? `em ${location}` : ""].filter(Boolean).join(" ").trim()
   }, [city, neighborhood, propertyType])
 
-  function buildAiNotes(snapshot: AiPreviewSnapshot) {
+  const buildAiNotes = useCallback((snapshot: AiPreviewSnapshot) => {
     return [
       "Contexto complementar do corretor para montar a prévia editável do imóvel.",
       snapshot.title.trim() ? `Título informado: ${snapshot.title.trim()}` : "",
       snapshot.type ? `Tipo do imóvel: ${snapshot.type}` : "",
       snapshot.city.trim() ? `Cidade informada: ${snapshot.city.trim()}` : "",
       snapshot.neighborhood.trim() ? `Bairro informado: ${snapshot.neighborhood.trim()}` : "",
+      snapshot.cep.trim() ? `CEP informado: ${snapshot.cep.trim()}` : "",
+      snapshot.street.trim() ? `Endereço informado: ${snapshot.street.trim()}` : "",
+      snapshot.state.trim() ? `Estado/UF informado: ${snapshot.state.trim()}` : "",
+      snapshot.privateArea.trim() ? `Área privativa informada: ${snapshot.privateArea.trim()} m²` : "",
       snapshot.price.trim() ? `Valor informado: ${snapshot.price.trim()}` : "",
+      `Finalidade informada: ${propertyPurpose}`,
       `Dormitórios informados: ${snapshot.bedrooms}`,
       `Banheiros informados: ${snapshot.bathrooms}`,
       `Garagens informadas: ${snapshot.parking}`,
@@ -174,12 +199,18 @@ export function BrokerNewPropertyPage() {
     ]
       .filter(Boolean)
       .join("\n")
-  }
+  }, [propertyPurpose])
 
   const applyAiPreview = useCallback((snapshot: AiPreviewSnapshot, draft: Awaited<ReturnType<typeof extractPropertyAd>>["drafts"][number]) => {
+    const explicitLocation = inferExplicitPropertyLocation([snapshot.context, draft.title, draft.description, draft.address].filter(Boolean).join("\n"))
+    const explicitPurpose = inferPropertyPurposeFromText(snapshot.context)
     setTitle(draft.title.trim() || snapshot.title.trim() || buildFallbackTitle())
-    setCity(draft.city.trim() || snapshot.city.trim())
-    setNeighborhood(draft.neighborhood.trim() || snapshot.neighborhood.trim())
+    setCity(draft.city.trim() || snapshot.city.trim() || explicitLocation.city)
+    setNeighborhood(draft.neighborhood.trim() || snapshot.neighborhood.trim() || explicitLocation.neighborhood)
+    setStreet(draft.address.trim() || snapshot.street.trim())
+    setState(snapshot.state.trim() || explicitLocation.state)
+    setPrivateArea(draft.area.trim() || snapshot.privateArea.trim())
+    if (explicitPurpose) setPropertyPurpose(explicitPurpose)
     setPrice(draft.price.trim() || snapshot.price.trim())
     setPropertyType(draft.type || snapshot.type)
     setBedrooms(draft.bedrooms > 0 ? draft.bedrooms : snapshot.bedrooms)
@@ -210,6 +241,10 @@ export function BrokerNewPropertyPage() {
       description,
       context: aiContext,
       image: selectedFiles[0] ?? null,
+      cep,
+      street,
+      state,
+      privateArea,
     }
 
     if (!options?.force) {
@@ -252,7 +287,9 @@ export function BrokerNewPropertyPage() {
     aiGenerationKey,
     bathrooms,
     bedrooms,
+    buildAiNotes,
     city,
+    cep,
     creationMode,
     description,
     hasAiSource,
@@ -262,20 +299,47 @@ export function BrokerNewPropertyPage() {
     neighborhood,
     parking,
     price,
+    privateArea,
     propertyType,
     selectedFiles,
+    state,
+    street,
     title,
   ])
 
   function validateManualProperty(titleOverride?: string) {
     const resolvedTitle = titleOverride?.trim() || title.trim()
 
-    if (!resolvedTitle || !city.trim() || !neighborhood.trim() || !price.trim()) {
-      setPublishFeedback("Preencha título, cidade, bairro e valor para cadastrar o imóvel manualmente.")
+    if (!resolvedTitle) {
+      setPublishFeedback("Informe um título para cadastrar o imóvel.")
+      return false
+    }
+
+    if (publishStatus === "Publicado" && (!city.trim() || !price.trim())) {
+      setPublishFeedback("Para publicar no Catálogo, informe título, valor e cidade. Você pode salvar como rascunho e completar depois.")
       return false
     }
 
     return true
+  }
+
+  async function applyNewPropertyCep() {
+    setIsLoadingCep(true)
+    setPublishFeedback("")
+
+    try {
+      const result = await lookupCep(cep)
+      setCep(result.cep)
+      if (result.city) setCity(result.city)
+      if (result.district) setNeighborhood(result.district)
+      if (result.street) setStreet(result.street)
+      if (result.state) setState(result.state)
+      if (!addressComplement && result.complement) setAddressComplement(result.complement)
+    } catch (caughtError) {
+      setPublishFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível localizar o CEP.")
+    } finally {
+      setIsLoadingCep(false)
+    }
   }
 
   async function handleImageSelection(files: FileList | null) {
@@ -505,7 +569,7 @@ export function BrokerNewPropertyPage() {
         city,
         neighborhood,
         location: `${neighborhood}, ${city}`,
-        ownerName: "",
+        ownerName,
         price,
         images: [],
         bedrooms,
@@ -519,28 +583,15 @@ export function BrokerNewPropertyPage() {
         description,
         audioUrl: "",
         legal: {
-          code: "",
-          registryNumber: "",
-          registryOffice: "",
-          registryBook: "",
-          registryPage: "",
-          municipalRegistration: "",
-          taxRegistration: "",
-          cep: "",
-          street: "",
-          number: "",
-          complement: "",
-          district: "",
-          city: "",
-          state: "",
-          privateArea: "",
-          totalArea: "",
-          idealFraction: "",
-          condominiumName: "",
-          condominiumFee: "",
-          iptuValue: "",
-          additionalFees: "",
-          legalNotes: "",
+          ...defaultPropertyLegalData,
+          cep,
+          street,
+          number: addressNumber,
+          complement: addressComplement,
+          district: neighborhood,
+          city,
+          state,
+          privateArea,
         },
         documents: [],
         completion: {
@@ -878,6 +929,21 @@ export function BrokerNewPropertyPage() {
                       </SelectContent>
                     </Select>
                   </Field>
+                  <Field label="CEP">
+                    <div className="flex gap-2">
+                      <StructuredInput
+                        kind="cep"
+                        value={cep}
+                        onValueChange={setCep}
+                        placeholder="00000-000"
+                        aria-label="CEP do imóvel"
+                        className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
+                      />
+                      <Button type="button" variant="ghost" onClick={() => void applyNewPropertyCep()} disabled={isLoadingCep} className="h-10 shrink-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-[#4B5563]">
+                        {isLoadingCep ? "Buscando..." : "Buscar CEP"}
+                      </Button>
+                    </div>
+                  </Field>
                   <Field label="Cidade">
                     <Input
                       value={city}
@@ -893,6 +959,24 @@ export function BrokerNewPropertyPage() {
                       placeholder="Jardins"
                       className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]"
                     />
+                  </Field>
+                  <Field label="Rua / endereço">
+                    <Input value={street} onChange={(event) => setStreet(event.target.value)} placeholder="Rua e logradouro" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
+                  </Field>
+                  <Field label="Número">
+                    <Input value={addressNumber} onChange={(event) => setAddressNumber(event.target.value)} placeholder="Número" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
+                  </Field>
+                  <Field label="Complemento">
+                    <Input value={addressComplement} onChange={(event) => setAddressComplement(event.target.value)} placeholder="Apartamento, bloco..." className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
+                  </Field>
+                  <Field label="Estado / UF">
+                    <Input value={state} onChange={(event) => setState(event.target.value.toUpperCase().slice(0, 2))} placeholder="RS" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
+                  </Field>
+                  <Field label="Área privativa (m²)">
+                    <StructuredInput kind="decimal" value={privateArea} onValueChange={setPrivateArea} aria-label="Área privativa em metros quadrados" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                  </Field>
+                  <Field label="Proprietário">
+                    <Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Nome do proprietário" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#8B95A1]" />
                   </Field>
                 </div>
 
@@ -913,6 +997,12 @@ export function BrokerNewPropertyPage() {
                   <CounterCard label="Quartos" value={bedrooms} onChange={setBedrooms} />
                   <CounterCard label="Banheiros" value={bathrooms} onChange={setBathrooms} />
                   <CounterCard label="Vagas" value={parking} onChange={setParking} />
+                </div>
+
+                <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm text-[#5F6B7A]" data-testid="property-publication-field-guide">
+                  <p><span className="font-semibold text-[#050505]">Cadastro:</span> você pode salvar um rascunho apenas com título e tipo e completar os demais dados depois.</p>
+                  <p><span className="font-semibold text-[#050505]">Catálogo:</span> exige título, valor e cidade; a publicação também valida o CRECI da conta.</p>
+                  <p><span className="font-semibold text-[#050505]">Marketplace:</span> adicionalmente exige bairro, área, finalidade, tipo, características compatíveis, descrição com pelo menos {PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumDescriptionCharacters} caracteres e de {PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos} a {PROPERTY_PUBLICATION_STANDARDS.marketplace.maximumPhotos} fotos válidas.</p>
                 </div>
               </CardContent>
             </Card>
@@ -986,7 +1076,7 @@ export function BrokerNewPropertyPage() {
                       <InfoPill label={`${bedrooms} quartos`} />
                       <InfoPill label={`${bathrooms} banheiros`} />
                       <InfoPill label={`${parking} vagas`} />
-                      {isPublished && <InfoPill label="Status: Publicado" />}
+                      {isPublished && <InfoPill label={publishStatus === "Publicado" ? "Status: Publicado" : "Status: Rascunho"} />}
                     </div>
 
                     {aiHighlights.length > 0 ? (
@@ -1009,7 +1099,11 @@ export function BrokerNewPropertyPage() {
                         className="h-11 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30 disabled:opacity-70"
                       >
                         <ArrowUpFromLine className="size-4" />
-                        {isPublished ? "Publicado no catálogo" : isSubmitting ? "Publicando..." : "Publicar no catálogo"}
+                        {isPublished
+                          ? publishStatus === "Publicado" ? "Publicado no catálogo" : "Rascunho salvo"
+                          : isSubmitting
+                            ? publishStatus === "Publicado" ? "Publicando..." : "Salvando..."
+                            : publishStatus === "Publicado" ? "Publicar no catálogo" : "Salvar rascunho"}
                       </Button>
                       {publishFeedback && <p className="mt-3 text-sm text-[#009b3a]">{publishFeedback}</p>}
                     </div>

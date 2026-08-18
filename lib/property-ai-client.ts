@@ -9,6 +9,11 @@ export type PropertyAiPayload = {
   bathrooms: number
   parkingSpots: number
   description?: string
+  address?: string
+  state?: string
+  privateArea?: string
+  totalArea?: string
+  condominiumName?: string
 }
 
 export type PropertyAiResult = {

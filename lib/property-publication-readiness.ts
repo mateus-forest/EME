@@ -1,22 +1,8 @@
 import type { CreciValidationStatus, PropertyType } from "@/lib/prisma-enums"
 import { isPlaceholderPropertyImage } from "@/lib/property-media"
+import { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
 
-export const PROPERTY_PUBLICATION_STANDARDS = {
-  uploads: {
-    maximumImageBytes: 8 * 1024 * 1024,
-    supportedMimeTypes: ["image/jpeg", "image/png", "image/webp"] as const,
-  },
-  marketplace: {
-    minimumPhotos: 4,
-    maximumPhotos: 6,
-    minimumDescriptionCharacters: 100,
-    minimumImageLongEdge: 1200,
-    minimumImageShortEdge: 675,
-    maximumImageBytes: 12 * 1024 * 1024,
-    supportedFormats: ["jpeg", "png", "webp"] as const,
-    imageTimeoutMs: 8_000,
-  },
-} as const
+export { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
 
 export type PropertyPublicationChannel = "catalog" | "marketplace"
 

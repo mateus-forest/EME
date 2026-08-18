@@ -324,10 +324,16 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
         city: editingProperty.city,
         neighborhood: editingProperty.neighborhood,
         price: editingProperty.price,
+        purpose: editingProperty.purpose,
         bedrooms: editingProperty.bedrooms,
         bathrooms: editingProperty.bathrooms,
         parkingSpots: editingProperty.parking,
         description: editingProperty.description,
+        address: [editingProperty.legal.street, editingProperty.legal.number].filter(Boolean).join(", "),
+        state: editingProperty.legal.state,
+        privateArea: editingProperty.legal.privateArea,
+        totalArea: editingProperty.legal.totalArea,
+        condominiumName: editingProperty.legal.condominiumName,
       })
 
       updateField("description", generated.description)
@@ -402,14 +408,16 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
         current
           ? {
               ...current,
+              city: result.city || current.city,
+              neighborhood: result.district || current.neighborhood,
               legal: {
                 ...current.legal,
                 cep: result.cep,
-                street: result.street,
+                street: result.street || current.legal.street,
                 complement: current.legal.complement || result.complement,
-                district: result.district,
-                city: result.city,
-                state: result.state,
+                district: result.district || current.legal.district,
+                city: result.city || current.legal.city,
+                state: result.state || current.legal.state,
               },
             }
           : current,
@@ -705,8 +713,18 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         <Field label="Quartos"><CounterInput value={editingProperty.bedrooms} onChange={(value) => updateField("bedrooms", value)} /></Field>
                         <Field label="Banheiros"><CounterInput value={editingProperty.bathrooms} onChange={(value) => updateField("bathrooms", value)} /></Field>
                         <Field label="Vagas"><CounterInput value={editingProperty.parking} onChange={(value) => updateField("parking", value)} /></Field>
+                        <Field label="CEP">
+                          <div className="flex gap-2">
+                            <StructuredInput kind="cep" value={editingProperty.legal.cep} onValueChange={(value) => updateLegalField("cep", value)} aria-label="CEP comercial" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                            <Button type="button" variant="ghost" onClick={() => void applyPropertyCep()} disabled={isLoadingCep} className="h-10 shrink-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-[#4B5563]">
+                              {isLoadingCep ? "Buscando..." : "Buscar CEP"}
+                            </Button>
+                          </div>
+                        </Field>
                         <Field label="Cidade"><Input value={editingProperty.city} onChange={(event) => updateField("city", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Bairro"><Input value={editingProperty.neighborhood} onChange={(event) => updateField("neighborhood", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Rua / endereço"><Input value={editingProperty.legal.street} onChange={(event) => updateLegalField("street", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
+                        <Field label="Estado / UF"><Input value={editingProperty.legal.state} onChange={(event) => updateLegalField("state", event.target.value.toUpperCase().slice(0, 2))} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                         <Field label="Proprietário"><Input value={editingProperty.ownerName} onChange={(event) => updateField("ownerName", event.target.value)} className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" /></Field>
                       </div>
                     </section>

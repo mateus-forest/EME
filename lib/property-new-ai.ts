@@ -37,6 +37,52 @@ export function isDescriptionTooSimilarToSource(source: string, candidate: strin
   return overlap >= 0.58 && expansion < 1.8
 }
 
+export function isDescriptionTooSimilarToSources(sources: string[], candidate: string) {
+  return sources
+    .map((source) => source.trim())
+    .filter(Boolean)
+    .some((source) => isDescriptionTooSimilarToSource(source, candidate))
+}
+
+function cleanLocationValue(value: string) {
+  return value.replace(/\s+/g, " ").replace(/^[,;\s]+|[,;\s]+$/g, "").trim()
+}
+
+function validCityCandidate(value: string) {
+  const normalized = normalizeDescriptionForComparison(value)
+  if (!normalized) return ""
+  if (/^(?:um|uma|o|a|apartamento|casa|imovel|terreno|sala|loja|cobertura|bairro)\b/.test(normalized)) return ""
+  return value
+}
+
+export function inferExplicitPropertyLocation(value: string) {
+  const text = value.replace(/\s+/g, " ").trim()
+  if (!text) return { city: "", neighborhood: "", state: "" }
+
+  const cityWithContext = text.match(
+    /\b(?:cidade\s*(?:de|[:=-])|localizad[oa]\s+em|situad[oa]\s+em|im[oó]vel\s+em|em)\s+([\p{L}'’-]+(?:\s+(?!(?:no|na|bairro|com|por|para|at[eé]|à|n[aã]o|que|e|tem|possui)\b)[\p{L}'’-]+){0,4}?)(?:\s*[-/]\s*([a-z]{2})\b|(?=[,.;]|\s+(?:no|na|bairro|com|por|para|at[eé]|à|n[aã]o|que|e|tem|possui)\b|$))/iu,
+  )
+  const cityWithState = text.match(
+    /\b([\p{Lu}][\p{L}'’-]*(?:\s+(?:d[aeo]s?|[\p{Lu}][\p{L}'’-]*)){0,3})\s*[-/]\s*([A-Z]{2})\b/u,
+  )
+  const neighborhoodMatch = text.match(
+    /\b(?:no\s+bairro|bairro\s*[:=-]?|na\s+regi[aã]o\s+de)\s+([\p{L}'’-]+(?:\s+(?!(?:com|por|para|at[eé]|e)\b)[\p{L}'’-]+){0,3}?)(?=[,.;]|\s+(?:com|por|para|at[eé]|e)\b|$)/iu,
+  )
+
+  return {
+    city: validCityCandidate(cleanLocationValue(cityWithContext?.[1] ?? cityWithState?.[1] ?? "")),
+    neighborhood: cleanLocationValue(neighborhoodMatch?.[1] ?? ""),
+    state: cleanLocationValue(cityWithContext?.[2] ?? cityWithState?.[2] ?? "").toUpperCase(),
+  }
+}
+
+export function inferPropertyPurposeFromText(value: string): "Venda" | "Locação" | null {
+  const normalized = normalizeDescriptionForComparison(value)
+  if (/\b(?:locacao|aluguel|alugar|para alugar)\b/.test(normalized)) return "Locação"
+  if (/\b(?:venda|vender|a venda|para vender)\b/.test(normalized)) return "Venda"
+  return null
+}
+
 export function buildCommercialDescriptionPrompt(draft: AdImportDraft, retry = false) {
   const propertyFacts = {
     title: draft.title || null,
@@ -56,6 +102,7 @@ export function buildCommercialDescriptionPrompt(draft: AdImportDraft, retry = f
   return [
     "Escreva a descricao comercial de um anuncio imobiliario em portugues do Brasil.",
     "Use exclusivamente os fatos presentes no JSON abaixo; omita qualquer informacao ausente.",
+    "Preserve nos campos estruturados toda cidade, bairro, endereco, medida e valor explicitamente informados.",
     "Crie um texto novo, coeso e natural. Nao copie frases do material de origem nem reproduza uma transcricao.",
     "Nao acrescente vista, acabamento, lazer, seguranca, proximidades, estado de conservacao ou outros atributos nao informados.",
     "Nao mencione campos, JSON, fonte, usuario, audio, imagem, transcricao ou informacoes ausentes.",

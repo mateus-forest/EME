@@ -237,6 +237,72 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await expect(page.getByText(property.title, { exact: true })).toBeVisible()
   })
 
+  test("CEP comercial e cadastro jurídico persistem ao salvar e reabrir", async ({ page }) => {
+    await loginAsBroker(page)
+    await mockPropertyPageDependencies(page)
+    let savedPayload: Record<string, unknown> | null = null
+
+    await page.route("https://viacep.com.br/ws/**", (route) => route.fulfill({
+      json: {
+        cep: "95200-000",
+        logradouro: "Rua Júlio de Castilhos",
+        complemento: "",
+        bairro: "Centro",
+        localidade: "Vacaria",
+        uf: "RS",
+      },
+    }))
+    await page.route(`**/api/properties/${property.id}`, async (route) => {
+      if (route.request().method() !== "PATCH") return route.continue()
+      savedPayload = route.request().postDataJSON() as Record<string, unknown>
+      const body = savedPayload as { legal?: typeof property.legal; city?: string; neighborhood?: string; ownerName?: string }
+      await route.fulfill({
+        json: {
+          property: {
+            ...property,
+            city: body.city ?? property.city,
+            neighborhood: body.neighborhood ?? property.neighborhood,
+            ownerName: body.ownerName ?? property.ownerName,
+            legal: body.legal ?? property.legal,
+          },
+        },
+      })
+    })
+
+    await page.goto("/corretor/imoveis")
+    await page.getByRole("button", { name: `Mais ações para ${property.title}` }).click()
+    await page.getByRole("menuitem", { name: "Editar imóvel" }).click()
+    const dialog = page.getByRole("dialog")
+
+    await dialog.getByLabel("CEP comercial").fill("95200000")
+    await dialog.getByLabel("CEP comercial").locator("xpath=..").getByRole("button", { name: "Buscar CEP" }).click()
+    await expect(dialog.getByLabel("Cidade", { exact: true })).toHaveValue("Vacaria")
+    await expect(dialog.getByLabel("Bairro", { exact: true })).toHaveValue("Centro")
+    await expect(dialog.getByLabel("Rua / endereço", { exact: true })).toHaveValue("Rua Júlio de Castilhos")
+    await expect(dialog.getByLabel("Estado / UF", { exact: true })).toHaveValue("RS")
+    await dialog.getByRole("textbox", { name: "Matrícula", exact: true }).fill("12.345")
+    await dialog.getByRole("button", { name: "Salvar alterações" }).click()
+
+    await expect.poll(() => savedPayload).not.toBeNull()
+    expect(savedPayload).toMatchObject({
+      city: "Vacaria",
+      neighborhood: "Centro",
+      legal: {
+        cep: "95200-000",
+        street: "Rua Júlio de Castilhos",
+        district: "Centro",
+        city: "Vacaria",
+        state: "RS",
+        registryNumber: "12.345",
+      },
+    })
+
+    await dialog.getByRole("button", { name: "Close" }).click()
+    await page.getByRole("button", { name: `Mais ações para ${property.title}` }).click()
+    await page.getByRole("menuitem", { name: "Editar imóvel" }).click()
+    await expect(page.getByRole("dialog").getByRole("textbox", { name: "Matrícula", exact: true })).toHaveValue("12.345")
+  })
+
   test("publicação por canal é independente e o card interno não oferece WhatsApp", async ({ page }) => {
     await mockBrokerSession(page)
     let currentProperty = { ...property, status: "Rascunho", published: false, marketplacePublished: false }

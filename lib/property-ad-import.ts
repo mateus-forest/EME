@@ -6,7 +6,7 @@ import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import {
   buildCommercialDescriptionPrompt,
-  isDescriptionTooSimilarToSource,
+  isDescriptionTooSimilarToSources,
 } from "@/lib/property-new-ai"
 import {
   AD_IMPORT_MAX_IMAGE_BYTES,
@@ -786,7 +786,11 @@ async function generateCommercialPropertyDescription(input: {
   draft: AdImportDraft
   rawSource: string
 }) {
-  const comparisonSource = [input.rawSource, input.draft.description].filter(Boolean).join("\n")
+  const comparisonSources = [
+    input.draft.description,
+    ...input.rawSource.split(/\n+/g),
+  ].filter((source) => source.trim().length >= 20)
+  let terminalError = "OPENAI_EMPTY_RESPONSE"
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const response = await createOpenAIResponse({
@@ -828,13 +832,24 @@ async function generateCommercialPropertyDescription(input: {
     })
 
     const parsedPayload = extractStructuredResponsePayload(response)
-    const parsed = propertyCommercialDescriptionSchema.parse(parsedPayload)
-    if (!isDescriptionTooSimilarToSource(comparisonSource, parsed.description)) {
-      return parsed.description
+    if (!parsedPayload) {
+      terminalError = "OPENAI_EMPTY_RESPONSE"
+      continue
     }
+
+    const parsed = propertyCommercialDescriptionSchema.safeParse(parsedPayload)
+    if (!parsed.success) {
+      terminalError = "OPENAI_INVALID_JSON"
+      continue
+    }
+
+    if (!isDescriptionTooSimilarToSources(comparisonSources, parsed.data.description)) {
+      return parsed.data.description
+    }
+    terminalError = "PROPERTY_DESCRIPTION_TOO_SIMILAR"
   }
 
-  throw new Error("PROPERTY_DESCRIPTION_TOO_SIMILAR")
+  throw new Error(terminalError)
 }
 
 export async function extractPropertyFromAd(input: AdImportInput) {
@@ -886,7 +901,7 @@ export async function extractPropertyFromAd(input: AdImportInput) {
     })
   }
 
-  const response = await createOpenAIResponse({
+  const requestDraft = (retry: boolean) => createOpenAIResponse({
     client,
     operationKey: sanitizedInput.workflow === "new_property"
       ? "property.new_ai_draft"
@@ -898,6 +913,7 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       hasSourceUrl: Boolean(sanitizedInput.sourceUrl),
       sourceWarningCode: sourceLookup.warningCode || null,
       workflow: sanitizedInput.workflow,
+      retry,
     },
     request: {
       model,
@@ -905,9 +921,14 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       reasoning: {
         effort: "minimal",
       },
-      instructions: sanitizedInput.workflow === "new_property"
-        ? "Extraia os fatos de um imovel e produza uma descricao comercial original baseada somente neles. Nao copie a entrada e nao invente informacoes. Responda apenas com o JSON do schema solicitado, sem texto adicional."
-        : "Extraia dados de anuncios imobiliarios no Brasil e responda apenas com o JSON do schema solicitado, sem texto adicional.",
+      instructions: [
+        sanitizedInput.workflow === "new_property"
+          ? "Extraia os fatos de um imovel e produza uma descricao comercial original baseada somente neles. Nao copie a entrada e nao invente informacoes."
+          : "Extraia dados de anuncios imobiliarios no Brasil sem inventar informacoes ausentes.",
+        "Preserve em seus campos toda cidade, bairro, endereco, medida, valor e caracteristica explicitamente informados.",
+        retry ? "A tentativa anterior veio vazia. Retorne ao menos um draft parcial com os fatos identificados." : "",
+        "Responda apenas com o JSON do schema solicitado, sem texto adicional.",
+      ].filter(Boolean).join(" "),
       input: [
         {
           role: "user",
@@ -980,6 +1001,11 @@ export async function extractPropertyFromAd(input: AdImportInput) {
       },
     },
   })
+
+  let response = await requestDraft(false)
+  if (!isTruncatedStructuredOutputResponse(response) && !extractStructuredResponsePayload(response)) {
+    response = await requestDraft(true)
+  }
 
   try {
     if (isTruncatedStructuredOutputResponse(response)) {

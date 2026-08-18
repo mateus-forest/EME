@@ -163,7 +163,14 @@ export async function POST(request: NextRequest) {
 
     if (caughtError instanceof Error && caughtError.message.includes("OPENAI_EMPTY_RESPONSE")) {
       return NextResponse.json(
-        { error: "A IA não retornou um anúncio válido. Tente novamente em instantes." },
+        { error: "A IA não retornou conteúdo suficiente mesmo após uma nova tentativa. Tente novamente em instantes." },
+        { status: 502 },
+      )
+    }
+
+    if (caughtError instanceof Error && caughtError.message.includes("PROPERTY_DESCRIPTION_TOO_SIMILAR")) {
+      return NextResponse.json(
+        { error: "A IA não conseguiu criar uma descrição comercial diferente do texto atual após uma nova tentativa. Acrescente dados reais do imóvel e tente novamente." },
         { status: 502 },
       )
     }

@@ -261,6 +261,9 @@ export function useBrokerProperties() {
         purpose: property.purpose,
         status: property.status,
         images: property.images,
+        ownerName: property.ownerName,
+        legal: property.legal,
+        documents: property.documents,
       }),
     })
 
@@ -325,6 +328,9 @@ export function useBrokerProperties() {
         type: updates.type,
         purpose: updates.purpose,
         images: updates.images,
+        ownerName: updates.ownerName,
+        legal: updates.legal,
+        documents: updates.documents,
       }),
     })
 

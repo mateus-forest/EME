@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test"
 
-import { buildCommercialDescriptionPrompt, isDescriptionTooSimilarToSource } from "../../lib/property-new-ai"
+import {
+  buildCommercialDescriptionPrompt,
+  inferExplicitPropertyLocation,
+  inferPropertyPurposeFromText,
+  isDescriptionTooSimilarToSource,
+  isDescriptionTooSimilarToSources,
+} from "../../lib/property-new-ai"
 import type { AdImportDraft } from "../../lib/property-ad-import-shared"
 import { loginAsBroker } from "./helpers/auth"
 
@@ -40,6 +46,24 @@ test.describe("Novo imóvel com IA", () => {
     expect(commercialPrompt).toContain("Use exclusivamente os fatos")
     expect(commercialPrompt).toContain("Nao copie frases")
     expect(commercialPrompt).toContain("Nao acrescente")
+    expect(commercialPrompt).toContain("Preserve nos campos estruturados toda cidade")
+  })
+
+  test("preserva localização e finalidade explicitamente informadas", () => {
+    expect(inferExplicitPropertyLocation("Sala comercial em Vacaria/RS, no bairro Centro, para venda.")).toEqual({
+      city: "Vacaria",
+      neighborhood: "Centro",
+      state: "RS",
+    })
+    expect(inferExplicitPropertyLocation("Tenho interesse em uma sala comercial").city).toBe("")
+    expect(inferExplicitPropertyLocation("Cidade: Vacaria; bairro: Centro")).toMatchObject({ city: "Vacaria", neighborhood: "Centro" })
+    expect(inferPropertyPurposeFromText("Imóvel disponível para aluguel")).toBe("Locação")
+    expect(inferPropertyPurposeFromText("Casa à venda")).toBe("Venda")
+  })
+
+  test("compara a descrição por fonte sem criar sobreposição artificial entre blocos", () => {
+    expect(isDescriptionTooSimilarToSources([simpleSource, "Observação curta do corretor"], simpleSource)).toBeTruthy()
+    expect(isDescriptionTooSimilarToSources([simpleSource, "Observação curta do corretor"], commercialDescription)).toBeFalsy()
   })
 
   test("envia o workflow dedicado e aplica uma descrição comercial nova", async ({ page }) => {

@@ -3,21 +3,28 @@ import { z } from "zod"
 import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
+import { isDescriptionTooSimilarToSource } from "@/lib/property-new-ai"
 
 export const propertyGenerationSchema = z.object({
   title: z.string().trim().max(120).optional().default(""),
   type: z.enum(["Apartamento", "Casa", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]),
-  city: z.string().trim().min(1).max(80),
-  neighborhood: z.string().trim().min(1).max(80),
-  price: z.string().trim().min(1).max(40),
+  purpose: z.enum(["Venda", "Locação"]).optional().default("Venda"),
+  city: z.string().trim().max(80).optional().default(""),
+  neighborhood: z.string().trim().max(80).optional().default(""),
+  price: z.string().trim().max(40).optional().default(""),
   bedrooms: z.number().int().min(0).max(20),
   bathrooms: z.number().int().min(0).max(20),
   parkingSpots: z.number().int().min(0).max(20),
   description: z.string().trim().max(3000).optional().default(""),
+  address: z.string().trim().max(240).optional().default(""),
+  state: z.string().trim().max(32).optional().default(""),
+  privateArea: z.string().trim().max(64).optional().default(""),
+  totalArea: z.string().trim().max(64).optional().default(""),
+  condominiumName: z.string().trim().max(160).optional().default(""),
 })
 
 export const propertyGenerationResultSchema = z.object({
-  description: z.string().trim().min(1).max(1400),
+  description: z.string().trim().min(40).max(1400),
   suggestedTitle: z.string().trim().min(1).max(120),
   highlights: z.array(z.string().trim().min(1).max(60)).max(4),
 })
@@ -26,17 +33,27 @@ export type PropertyGenerationInput = z.infer<typeof propertyGenerationSchema>
 export type PropertyGenerationResult = z.infer<typeof propertyGenerationResultSchema>
 
 function buildPrompt(input: PropertyGenerationInput) {
-  return [
-    "Dados do imovel para anuncio:",
-    `Titulo atual: ${input.title || "Nao informado"}`,
+  const facts = [
+    input.title ? `Título atual: ${input.title}` : "",
     `Tipo: ${input.type}`,
-    `Cidade: ${input.city}`,
-    `Bairro: ${input.neighborhood}`,
-    `Preco: ${input.price}`,
+    `Finalidade: ${input.purpose}`,
+    input.city ? `Cidade: ${input.city}` : "",
+    input.neighborhood ? `Bairro: ${input.neighborhood}` : "",
+    input.state ? `Estado/UF: ${input.state}` : "",
+    input.address ? `Endereço: ${input.address}` : "",
+    input.price ? `Preço: ${input.price}` : "",
     `Quartos: ${input.bedrooms}`,
     `Banheiros: ${input.bathrooms}`,
     `Vagas: ${input.parkingSpots}`,
-    `Descricao manual atual: ${input.description || "Nenhuma"}`,
+    input.privateArea ? `Área privativa: ${input.privateArea}` : "",
+    input.totalArea ? `Área total: ${input.totalArea}` : "",
+    input.condominiumName ? `Condomínio: ${input.condominiumName}` : "",
+    input.description ? `Descrição manual atual: ${input.description}` : "",
+  ].filter(Boolean)
+
+  return [
+    "Dados do imovel para anuncio:",
+    ...facts,
     "",
     "Gere:",
     "1. Uma descricao pronta para uso, clara, natural e comercial.",
@@ -48,22 +65,38 @@ function buildPrompt(input: PropertyGenerationInput) {
 
 function parseGeneratedJson(outputText: string) {
   const normalized = outputText.trim()
+  if (!normalized) return null
 
-  if (!normalized) {
-    throw new Error("OPENAI_EMPTY_RESPONSE")
-  }
-
+  const fencedMatch = normalized.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || normalized
   try {
-    return JSON.parse(normalized)
+    return JSON.parse(candidate)
   } catch {
-    const fencedMatch = normalized.match(/```(?:json)?\s*([\s\S]*?)```/i)
-
-    if (fencedMatch?.[1]) {
-      return JSON.parse(fencedMatch[1].trim())
-    }
-
-    throw new Error("OPENAI_INVALID_JSON")
+    return null
   }
+}
+
+function extractGeneratedPayload(response: unknown) {
+  const candidate = response as {
+    output_parsed?: unknown
+    parsed?: unknown
+    output_text?: string
+    output?: Array<{ content?: Array<{ parsed?: unknown; text?: string }> }>
+  }
+  if (candidate.output_parsed && typeof candidate.output_parsed === "object") return candidate.output_parsed
+  if (candidate.parsed && typeof candidate.parsed === "object") return candidate.parsed
+
+  const parsedText = parseGeneratedJson(candidate.output_text ?? "")
+  if (parsedText) return parsedText
+
+  for (const item of candidate.output ?? []) {
+    for (const content of item.content ?? []) {
+      if (content.parsed && typeof content.parsed === "object") return content.parsed
+      const parsedContent = parseGeneratedJson(content.text ?? "")
+      if (parsedContent) return parsedContent
+    }
+  }
+  return null
 }
 
 export async function generatePropertyCopy(input: PropertyGenerationInput) {
@@ -74,58 +107,92 @@ export async function generatePropertyCopy(input: PropertyGenerationInput) {
   }
 
   const { model } = getOpenAIEnv()
-  const response = await createOpenAIResponse({
-    client,
-    operationKey: "property.generate_copy",
-    metadata: {
-      propertyType: input.type,
-      city: input.city,
-      neighborhood: input.neighborhood,
-    },
-    request: {
-      model,
-      max_output_tokens: 500,
-      instructions:
-        "Voce e um especialista em criacao de anuncios imobiliarios no Brasil. Gere uma descricao clara, objetiva, profissional e persuasiva com base nos dados fornecidos. Destaque os diferenciais reais do imovel, localizacao e praticidade. Nao invente informacoes que nao foram fornecidas.",
-      input: buildPrompt(input),
-      text: {
-        format: {
-          type: "json_schema",
-          name: "property_ad_generation",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              description: {
-                type: "string",
-                description: "Descricao pronta para uso, em portugues do Brasil, com cerca de 80 a 140 palavras.",
-              },
-              suggestedTitle: {
-                type: "string",
-                description: "Titulo curto e comercial, sem exageros irreais.",
-              },
-              highlights: {
-                type: "array",
-                maxItems: 3,
-                items: {
+  let terminalError = "OPENAI_EMPTY_RESPONSE"
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await createOpenAIResponse({
+      client,
+      operationKey: "property.generate_copy",
+      metadata: {
+        propertyType: input.type,
+        city: input.city || null,
+        neighborhood: input.neighborhood || null,
+        retry: attempt > 0,
+      },
+      request: {
+        model,
+        max_output_tokens: 700,
+        reasoning: { effort: "minimal" },
+        instructions: [
+          "Voce e um especialista em anuncios imobiliarios no Brasil.",
+          "Use estritamente os dados atuais fornecidos e omita o que estiver ausente.",
+          "Nunca invente caracteristicas, localizacao, acabamento, lazer, proximidades ou estado de conservacao.",
+          "Produza uma descricao comercial natural e util, nao uma lista de campos.",
+          input.description
+            ? "A descricao precisa ser uma redacao comercial nova, sem copiar ou apenas reorganizar o texto atual."
+            : "",
+          attempt > 0
+            ? `A tentativa anterior foi ${terminalError === "PROPERTY_DESCRIPTION_TOO_SIMILAR" ? "semelhante demais ao texto atual" : "vazia ou invalida"}. Regenere com outra estrutura, preservando os mesmos fatos.`
+            : "",
+        ].filter(Boolean).join(" "),
+        input: buildPrompt(input),
+        text: {
+          verbosity: "low",
+          format: {
+            type: "json_schema",
+            name: "property_ad_generation",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                description: {
                   type: "string",
-                  description: "Highlight curto do imovel com ate 8 palavras.",
+                  description: "Descricao comercial em portugues do Brasil baseada somente nos fatos fornecidos.",
+                },
+                suggestedTitle: {
+                  type: "string",
+                  description: "Titulo curto e comercial, sem exageros irreais.",
+                },
+                highlights: {
+                  type: "array",
+                  maxItems: 3,
+                  items: {
+                    type: "string",
+                    description: "Highlight curto e factual do imovel com ate 8 palavras.",
+                  },
                 },
               },
+              required: ["description", "suggestedTitle", "highlights"],
             },
-            required: ["description", "suggestedTitle", "highlights"],
           },
         },
       },
-    },
-  })
+    })
 
-  const parsed = propertyGenerationResultSchema.parse(parseGeneratedJson(response.output_text))
+    const payload = extractGeneratedPayload(response)
+    if (!payload) {
+      terminalError = "OPENAI_EMPTY_RESPONSE"
+      continue
+    }
 
-  return {
-    description: parsed.description,
-    suggestedTitle: parsed.suggestedTitle,
-    highlights: parsed.highlights.slice(0, 3),
-  } satisfies PropertyGenerationResult
+    const parsed = propertyGenerationResultSchema.safeParse(payload)
+    if (!parsed.success) {
+      terminalError = "OPENAI_INVALID_JSON"
+      continue
+    }
+
+    if (input.description && isDescriptionTooSimilarToSource(input.description, parsed.data.description)) {
+      terminalError = "PROPERTY_DESCRIPTION_TOO_SIMILAR"
+      continue
+    }
+
+    return {
+      description: parsed.data.description,
+      suggestedTitle: parsed.data.suggestedTitle,
+      highlights: parsed.data.highlights.slice(0, 3),
+    } satisfies PropertyGenerationResult
+  }
+
+  throw new Error(terminalError)
 }
