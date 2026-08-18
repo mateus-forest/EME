@@ -87,7 +87,17 @@ export function Footer() {
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} EME Imóveis. Todos os direitos reservados.
           </p>
-          <p className="text-xs text-muted-foreground">Imóveis publicados pelos profissionais da rede EME.</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <p>Imóveis publicados pelos profissionais da rede EME.</p>
+            <a
+              href="https://www.pexels.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="outline-none transition-colors hover:text-primary focus-visible:text-primary focus-visible:underline"
+            >
+              Fotos de regiões fornecidas pelo Pexels
+            </a>
+          </div>
         </div>
       </div>
     </footer>

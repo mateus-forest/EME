@@ -39,7 +39,7 @@ export const rentIntents: Intent[] = [
 export type RegionDetail = {
   slug: string; name: string; description: string; image: string; properties: number; forSale: number; forRent: number; areas: string[]; tags: string[]
 }
-export type MarketplaceRegion = RegionDetail & { searchVolume: number }
+export type MarketplaceRegion = RegionDetail & { searchVolume: number; state?: string }
 export const regionDetails: RegionDetail[] = [
   { slug: 'vacaria', name: 'Vacaria', description: 'Cidade tranquila dos Campos de Cima da Serra, com clima ameno, boa infraestrutura e forte ligação com o campo.', image: '/marketplace/images/region-vacaria.png', properties: 0, forSale: 0, forRent: 0, areas: ['Centro', 'Bela Vista', 'Santa Catarina', 'Km 3'], tags: ['Clima ameno', 'Perto de tudo', 'Bom para famílias'] },
   { slug: 'serra-gaucha', name: 'Serra Gaúcha', description: 'Região de colinas, vinhedos e cidades charmosas, com natureza, turismo e uma rotina acolhedora.', image: '/marketplace/images/region-serra.png', properties: 0, forSale: 0, forRent: 0, areas: ['Bento Gonçalves', 'Garibaldi', 'Nova Pádua', 'Interior'], tags: ['Natureza', 'Turismo', 'Vinhedos'] },

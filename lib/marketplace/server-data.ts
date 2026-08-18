@@ -6,6 +6,8 @@ import { parsePropertyLegalData } from '@/lib/legal-entities'
 import type { Property } from '@/lib/marketplace/data'
 import type { BrokerProfile, MarketplaceRegion, Rental } from '@/lib/marketplace/pages-data'
 import type { PropertyDetail, SimilarProperty } from '@/lib/marketplace/property-detail'
+import { ensureMarketplaceRegionMedia } from '@/lib/marketplace/region-media'
+import { marketplaceRegionSlug as buildMarketplaceRegionSlug, normalizeMarketplaceRegion } from '@/lib/marketplace/region-media-contract'
 import type { SearchResult } from '@/lib/marketplace/search-data'
 
 const marketplacePropertyInclude = {
@@ -385,11 +387,11 @@ export async function getMarketplacePropertyDetail(slug: string) {
 }
 
 export function marketplaceRegionSlug(value: string) {
-  return normalizeText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return buildMarketplaceRegionSlug(value)
 }
 
 export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
-  const [properties, events, regionMedia] = await Promise.all([
+  const [properties, events] = await Promise.all([
     getMarketplaceProperties(),
     prisma.searchEvent.findMany({
       where: { source: 'marketplace' },
@@ -397,20 +399,21 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
       orderBy: { createdAt: 'desc' },
       take: 500,
     }),
-    prisma.marketplaceRegionMedia.findMany({ select: { slug: true, imageUrl: true } }),
   ])
-  const imageBySlug = new Map(regionMedia.map((item) => [item.slug, item.imageUrl]))
-  const groups = new Map<string, MarketplaceRegion>()
+  const groups = new Map<string, MarketplaceRegion & { mediaKey: string; legacySlug: string; state: string }>()
 
   for (const property of properties) {
     const name = property.city.trim()
     if (!name) continue
-    const slug = marketplaceRegionSlug(name)
-    const current = groups.get(slug) || {
-      slug,
+    const normalized = normalizeMarketplaceRegion(name, property.state)
+    const current = groups.get(normalized.key) || {
+      slug: normalized.legacySlug,
+      legacySlug: normalized.legacySlug,
+      mediaKey: normalized.key,
       name,
-      description: `Inventário publicado em ${name}, atualizado diretamente pelos corretores da rede EME.`,
-      image: imageBySlug.get(slug) || '',
+      state: normalized.state,
+      description: `Inventário publicado em ${name}${normalized.state ? `, ${normalized.state}` : ''}, atualizado diretamente pelos corretores da rede EME.`,
+      image: '',
       properties: 0,
       forSale: 0,
       forRent: 0,
@@ -422,7 +425,26 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
     if (property.purpose === 'compra') current.forSale += 1
     else current.forRent += 1
     if (property.neighborhood && !current.areas.includes(property.neighborhood)) current.areas.push(property.neighborhood)
-    groups.set(slug, current)
+    groups.set(normalized.key, current)
+  }
+
+  const legacySlugCounts = new Map<string, number>()
+  for (const region of groups.values()) {
+    legacySlugCounts.set(region.legacySlug, (legacySlugCounts.get(region.legacySlug) || 0) + 1)
+  }
+  for (const region of groups.values()) {
+    if ((legacySlugCounts.get(region.legacySlug) || 0) > 1) region.slug = region.mediaKey
+  }
+
+  try {
+    const media = await ensureMarketplaceRegionMedia(
+      [...groups.values()].map((region) => ({ city: region.name, state: region.state })),
+    )
+    for (const region of groups.values()) region.image = media.get(region.mediaKey)?.imageUrl || ''
+  } catch (error) {
+    console.error('[marketplace][regions] persisted media unavailable', {
+      reason: error instanceof Error ? error.message : 'unknown_error',
+    })
   }
 
   for (const event of events) {
@@ -433,6 +455,9 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
   }
 
   return [...groups.values()]
-    .map((region) => ({ ...region, areas: region.areas.sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 12) }))
+    .map(({ mediaKey: _mediaKey, legacySlug: _legacySlug, ...region }) => ({
+      ...region,
+      areas: region.areas.sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 12),
+    }))
     .sort((a, b) => b.properties - a.properties || a.name.localeCompare(b.name, 'pt-BR'))
 }

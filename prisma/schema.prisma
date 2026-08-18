@@ -899,9 +899,24 @@ model MarketplaceReview {
 }
 
 model MarketplaceRegionMedia {
-  slug        String   @id
-  displayName String?
-  imageUrl    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  slug              String   @id
+  displayName       String?
+  city              String?
+  state             String?
+  ibgeCode          String?  @unique
+  provider          String   @default("eme")
+  pexelsPhotoId     String?
+  imageUrl          String
+  originalUrl       String?
+  photoPageUrl      String?
+  photographer      String?
+  photographerUrl   String?
+  query             String?
+  resolvedAt        DateTime?
+  source            String   @default("automatic")
+  manualImageUrl    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([state, city])
 }
