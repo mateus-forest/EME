@@ -270,10 +270,7 @@ function MobileHeader({
       className="pointer-events-none fixed inset-x-0 top-0 z-[75]"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="pointer-events-auto flex items-start justify-between gap-3 px-4 py-3.5">
-        <p className="max-w-[52%] text-balance text-[11px] font-normal italic leading-snug tracking-[0.02em] text-graphite">
-          Sistema Operacional do Corretor de Imóveis
-        </p>
+      <div className="pointer-events-auto flex items-start justify-end gap-3 px-4 py-3.5">
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"

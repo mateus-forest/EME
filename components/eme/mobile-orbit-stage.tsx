@@ -8,8 +8,8 @@ import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 const MOBILE_ORBIT = {
   radiusX: 210,
-  verticalLift: 112,
-  sideLift: 14,
+  verticalLift: 128,
+  sideLift: 18,
   radiusZ: 92,
   backScale: 0.76,
   frontScale: 1,
@@ -117,14 +117,14 @@ export function MobileOrbitStage({
           style={{
             background:
               "radial-gradient(50% 50% at 50% 50%, rgba(115,223,48,0.18) 0%, rgba(115,223,48,0.07) 42%, rgba(115,223,48,0) 74%)",
-            transform: "translateY(24%)",
+            transform: "translateY(32%)",
           }}
         />
 
         <div
           aria-hidden
           className="absolute left-1/2 top-1/2 h-[128px] w-[356px] -translate-x-1/2 rounded-[100%] border border-eme/10"
-          style={{ transform: "translate(-50%, 12%) rotateX(80deg)", zIndex: 10 }}
+          style={{ transform: "translate(-50%, 22%) rotateX(80deg)", zIndex: 10 }}
         />
 
         <div
@@ -132,7 +132,7 @@ export function MobileOrbitStage({
           className="absolute left-1/2 top-1/2"
           style={{
             zIndex: 34,
-            transform: "translate(-50%, -50%) translateY(-52px)",
+            transform: "translate(-50%, -50%) translateY(-58px)",
             transformStyle: "preserve-3d",
             pointerEvents: frozen ? "none" : undefined,
           }}
@@ -153,11 +153,11 @@ export function MobileOrbitStage({
           className="pointer-events-none absolute left-1/2 top-1/2"
           style={{
             zIndex: 60,
-            transform: "translate(-50%, -50%) translateY(46px)",
+            transform: "translate(-50%, -50%) translateY(40px)",
             transformStyle: "preserve-3d",
           }}
         >
-          <div className="relative aspect-[5/2] w-[208px]">
+          <div className="relative aspect-[5/2] w-[232px]">
             <div
               aria-hidden
               className="absolute inset-x-[12%] bottom-[3%] h-[12%] rounded-full bg-foreground/10 blur-[7px]"

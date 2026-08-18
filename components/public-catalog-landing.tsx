@@ -493,7 +493,7 @@ export function PublicCatalogLanding({
               </Button>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
@@ -506,7 +506,7 @@ export function PublicCatalogLanding({
 
                     setSearch(suggestion)
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#efe8df] bg-white px-3 py-[0.42rem] text-[11px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[13px]"
+                  className="inline-flex h-7 items-center gap-1 rounded-full border border-[#efe8df] bg-white px-2.5 text-[10.5px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5] sm:h-auto sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[13px]"
                 >
                   {getSuggestionIcon(suggestion)}
                   {suggestion}
@@ -1421,11 +1421,12 @@ function CatalogImagePlaceholder() {
 }
 
 function getSuggestionIcon(suggestion: string) {
-  if (suggestion === "Mais filtros") return <SlidersHorizontal className="size-4 text-[#6a6a6a]" />
-  if (suggestion === "Até R$ 1 milhão") return <CircleDollarSign className="size-4 text-[#6a6a6a]" />
-  if (suggestion === "Frente mar") return <Sparkles className="size-4 text-[#6a6a6a]" />
-  if (suggestion === "Investimento") return <Building2 className="size-4 text-[#6a6a6a]" />
-  return <Home className="size-4 text-[#6a6a6a]" />
+  const iconClassName = "size-3.5 text-[#6a6a6a] sm:size-4"
+  if (suggestion === "Mais filtros") return <SlidersHorizontal className={iconClassName} />
+  if (suggestion === "Até R$ 1 milhão") return <CircleDollarSign className={iconClassName} />
+  if (suggestion === "Frente mar") return <Sparkles className={iconClassName} />
+  if (suggestion === "Investimento") return <Building2 className={iconClassName} />
+  return <Home className={iconClassName} />
 }
 
 function FilterField({ label, children }: { label: string; children: ReactNode }) {

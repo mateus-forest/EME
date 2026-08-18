@@ -16,11 +16,11 @@ export function ModuleCard({
   const Icon = module.icon
 
   const frameClass = mobile
-    ? "h-[172px] w-[126px] rounded-[22px]"
+    ? "h-[160px] w-[118px] rounded-[20px]"
     : compact
       ? "h-[228px] w-[166px] rounded-[28px]"
       : "h-[252px] w-[184px] rounded-[30px]"
-  const radiusClass = mobile ? "rounded-[22px]" : compact ? "rounded-[28px]" : "rounded-[30px]"
+  const radiusClass = mobile ? "rounded-[20px]" : compact ? "rounded-[28px]" : "rounded-[30px]"
 
   return (
     <div
@@ -64,7 +64,7 @@ export function ModuleCard({
       />
 
       <div
-        className={`relative flex h-full flex-col items-center text-center ${mobile ? "px-3 py-[18px]" : compact ? "px-4 py-7" : "px-5 py-9"}`}
+        className={`relative flex h-full flex-col items-center text-center ${mobile ? "px-3 py-4" : compact ? "px-4 py-7" : "px-5 py-9"}`}
       >
         {badge ? (
           <span
@@ -74,18 +74,18 @@ export function ModuleCard({
           </span>
         ) : null}
         <Icon
-          className={`${mobile ? "h-[22px] w-[22px]" : compact ? "h-7 w-7" : "h-8 w-8"} text-eme`}
+          className={`${mobile ? "h-5 w-5" : compact ? "h-7 w-7" : "h-8 w-8"} text-eme`}
           strokeWidth={1.5}
           aria-hidden
         />
 
         <h3
-          className={`${mobile ? "mt-[18px] text-[14px]" : compact ? "mt-6 text-[17px]" : "mt-8 text-[18px]"} font-medium tracking-[-0.01em] text-foreground`}
+          className={`${mobile ? "mt-4 text-[13.5px]" : compact ? "mt-6 text-[17px]" : "mt-8 text-[18px]"} font-medium tracking-[-0.01em] text-foreground`}
         >
           {module.name}
         </h3>
         <p
-          className={`${mobile ? "mt-2 text-[10.5px] leading-[1.45]" : compact ? "mt-2.5 text-[12px] leading-[1.6]" : "mt-3 text-[12.5px] leading-[1.65]"} text-pretty font-normal tracking-[0.005em] text-muted-foreground`}
+          className={`${mobile ? "mt-1.5 text-[10px] leading-[1.4]" : compact ? "mt-2.5 text-[12px] leading-[1.6]" : "mt-3 text-[12.5px] leading-[1.65]"} text-pretty font-normal tracking-[0.005em] text-muted-foreground`}
         >
           {module.description}
         </p>

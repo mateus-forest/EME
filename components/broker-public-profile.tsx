@@ -59,7 +59,7 @@ export function BrokerCatalogHeader({
   return (
     <header className="sticky top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-5">
       <div className="mx-auto max-w-[1280px] rounded-[1.4rem] border border-white/70 bg-white/88 px-3 shadow-[0_18px_55px_rgba(40,58,49,.09)] backdrop-blur-2xl sm:px-5">
-        <div className="flex h-[68px] items-center gap-3">
+        <div className="relative flex h-[68px] items-center gap-3">
           <Link
             href={catalogPath}
             className="flex shrink-0 items-center rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30"
@@ -68,7 +68,7 @@ export function BrokerCatalogHeader({
             <Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={38} height={38} className="size-8 sm:size-9" priority />
           </Link>
 
-          <nav className="mx-auto hidden items-center gap-1 lg:flex" aria-label="Navegação do catálogo">
+          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 lg:flex" aria-label="Navegação do catálogo">
             <CatalogNavLink href={catalogPath} active={view !== "about"}>Imóveis</CatalogNavLink>
             <CatalogNavLink href={`${catalogPath}/sobre`} active={view === "about"}>Sobre o corretor</CatalogNavLink>
             <button type="button" onClick={onContact} className="rounded-full px-4 py-2 text-sm font-medium text-[#4c5551] transition hover:bg-[#f3f7f3] hover:text-[#11863d]">
@@ -85,7 +85,7 @@ export function BrokerCatalogHeader({
           </div>
         </div>
 
-        <nav className="flex gap-1 overflow-x-auto border-t border-[#edf1ed] py-2 lg:hidden" aria-label="Navegação do catálogo mobile">
+        <nav className="flex justify-center gap-1 overflow-x-auto border-t border-[#edf1ed] py-2 lg:hidden" aria-label="Navegação do catálogo mobile">
           <CatalogNavLink href={catalogPath} active={view !== "about"}>Imóveis</CatalogNavLink>
           <CatalogNavLink href={`${catalogPath}/sobre`} active={view === "about"}>Sobre o corretor</CatalogNavLink>
           <button type="button" onClick={onContact} className="shrink-0 rounded-full px-3 py-2 text-xs font-medium text-[#4c5551]">Contato</button>
@@ -136,7 +136,7 @@ export function BrokerProfileHero({
       ? { icon: MapPin, value: `${catalog.cities.length} ${catalog.cities.length === 1 ? "cidade" : "cidades"}`, label: "Cidades atendidas" }
       : null,
     priceRange && priceRange !== "Consulte"
-      ? { icon: CircleDollarSign, value: priceRange, label: "Faixa de preço" }
+      ? { icon: CircleDollarSign, value: priceRange, label: "Faixa de preço", wideMobile: true }
       : null,
   ].filter((metric): metric is NonNullable<typeof metric> => Boolean(metric))
 
@@ -211,17 +211,28 @@ export function BrokerProfileHero({
 
       {metrics.length ? (
         <div className="relative z-10 mx-auto mt-3 grid w-full max-w-[1440px] grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {metrics.map(({ icon: Icon, value, label }) => (
+          {metrics.map(({ icon: Icon, value, label, wideMobile }) => (
             <div
               key={label}
-              className="relative grid items-center overflow-hidden rounded-[1.2rem] border border-[#ebf0ec] bg-white/97 px-3 py-3 backdrop-blur"
+              className={cn(
+                "relative grid items-center overflow-hidden rounded-[1.2rem] border border-[#ebf0ec] bg-white/97 px-3 py-3 backdrop-blur",
+                wideMobile && "col-span-2 py-2.5 lg:col-span-1 lg:py-3",
+              )}
             >
-              <div className="flex flex-col items-center justify-center gap-1.5 text-center">
+              <div className={cn(
+                "flex items-center justify-center text-center",
+                wideMobile ? "gap-3 lg:flex-col lg:gap-1.5" : "flex-col gap-1.5",
+              )}>
                 <span className="flex size-7 items-center justify-center rounded-full border border-[#dfece2] bg-[#f5fbf6] text-[#159447]">
                   <Icon className="size-3.5" />
                 </span>
-                <strong className="line-clamp-2 text-sm font-semibold leading-snug text-[#151b17] sm:text-base">{value}</strong>
-                <span className="text-xs leading-4 text-[#7a837e]">{label}</span>
+                <span className={cn("flex min-w-0 flex-col", wideMobile ? "items-start text-left lg:items-center lg:text-center" : "items-center")}>
+                  <strong className={cn(
+                    "text-sm font-semibold leading-snug text-[#151b17] sm:text-base",
+                    wideMobile ? "max-w-full whitespace-nowrap tracking-[-0.02em]" : "line-clamp-2",
+                  )}>{value}</strong>
+                  <span className={cn("text-xs leading-4 text-[#7a837e]", wideMobile && "mt-0.5")}>{label}</span>
+                </span>
               </div>
             </div>
           ))}
