@@ -4,7 +4,7 @@ import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { serializePaymentNotification } from "@/lib/notification-contract"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -12,15 +12,16 @@ export async function GET() {
   }
 
   try {
+    const includeArchived = request.nextUrl.searchParams.get("history") === "1"
     const notifications = await prisma.notification.findMany({
       where: {
         userId: user.id,
-        archivedAt: null,
+        ...(includeArchived ? {} : { archivedAt: null }),
       },
       orderBy: {
         createdAt: "desc",
       },
-      take: 50,
+      take: includeArchived ? 200 : 50,
     })
 
     const response = NextResponse.json({

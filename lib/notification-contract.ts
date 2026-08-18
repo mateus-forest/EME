@@ -29,6 +29,7 @@ export function serializePaymentNotification(notification: Notification) {
       month: "2-digit",
       year: "numeric",
     }).format(notification.createdAt),
+    createdAt: notification.createdAt.toISOString(),
     financialStatus: "notificacao-recebida",
     category: isFinancial ? "cobranca" : "aviso-administrativo",
     lida: notification.read,

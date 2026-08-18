@@ -421,6 +421,8 @@ export function BrokerPlanPage() {
           unreadCount={unreadCount}
           onMarkAsRead={markAsRead}
           onArchive={archive}
+          historyHref="/corretor/notificacoes"
+          relatedActionHref="/corretor/plano"
           tone="light"
         />
       )}

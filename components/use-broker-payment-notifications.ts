@@ -9,11 +9,11 @@ import type {
 } from "@/components/use-payment-notifications"
 import { isFinancialNotification } from "@/lib/notification-contract"
 
-export function useBrokerPaymentNotifications() {
+export function useBrokerPaymentNotifications(options?: { includeArchived?: boolean }) {
   const [notifications, setNotifications] = useState<PaymentNotification[]>([])
 
   const loadNotifications = useCallback(async () => {
-    const response = await fetch("/api/notifications", {
+    const response = await fetch(options?.includeArchived ? "/api/notifications?history=1" : "/api/notifications", {
       method: "GET",
       credentials: "include",
       cache: "no-store",
@@ -23,7 +23,7 @@ export function useBrokerPaymentNotifications() {
     if (response.ok && data?.notifications) {
       setNotifications(data.notifications)
     }
-  }, [])
+  }, [options?.includeArchived])
 
   useEffect(() => {
     loadNotifications().catch(() => setNotifications([]))
@@ -105,6 +105,7 @@ export function useBrokerPaymentNotifications() {
   }
 
   return {
+    allNotifications: notifications,
     notifications: visibleNotifications,
     historyNotifications,
     unreadCount,

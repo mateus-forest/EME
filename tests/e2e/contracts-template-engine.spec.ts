@@ -422,11 +422,52 @@ test("contrato completo registra assinatura externa com data e observação", as
     await page.locator(`#contract-field-${field.id}`).fill(field.type === "DATE" ? "2026-08-11" : `Valor de ${field.label}`)
   }
   await page.getByRole("button", { name: "Salvar alterações" }).click()
-  await expect(page.getByText("100%")).toBeVisible()
+  await expect(page.getByTestId("contract-instance-editor").getByText("100%", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Registrar assinatura" }).click()
   await page.getByLabel("Observação").fill("Assinado presencialmente pelas partes.")
   await page.getByRole("button", { name: "Confirmar" }).click()
   await expect(page.getByRole("button", { name: "Assinatura registrada" })).toBeVisible()
+})
+
+test("preenchimento prioriza pendências, recolhe campos completos e move o foco pelo painel", async ({ page }) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({
+    json: {
+      user: {
+        id: "user-1",
+        name: "Corretor Teste",
+        email: "corretor@example.com",
+        role: "BROKER",
+        accountType: "BROKER_INDEPENDENT",
+        plan: "BROKER",
+        subscriptionStatus: "ACTIVE",
+        brokerId: "broker-1",
+        agencyId: null,
+      },
+    },
+  }))
+  await mockContracts(page, true)
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Novo contrato" }).click()
+  await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
+
+  await expect(page.locator('[data-testid^="contract-field-group-party-"]').getByText("Locatário", { exact: true })).toBeVisible()
+  await expect(page.getByTestId("contract-field-group-property").getByText("Imóvel", { exact: true })).toBeVisible()
+  await expect(page.getByTestId("contract-field-group-values").getByText("Valores e condições", { exact: true })).toBeVisible()
+
+  const completedField = structure.fields[0]
+  const pendingField = structure.fields[1]
+  await page.locator(`#contract-field-${completedField.id}`).fill("Carlos Souza")
+  await page.getByRole("button", { name: "Salvar alterações" }).click()
+  await expect(page.locator(`#contract-field-${completedField.id}`)).toHaveCount(0)
+  await expect(page.getByText(/1 campo preenchido recolhido/)).toBeVisible()
+
+  await page.getByRole("button", { name: pendingField.label, exact: true }).click()
+  await expect(page.locator(`#contract-field-${pendingField.id}`)).toBeFocused()
+
+  await page.getByRole("button", { name: "Mostrar todos os campos" }).click()
+  await expect(page.locator(`#contract-field-${completedField.id}`)).toHaveValue("Carlos Souza")
+  await page.getByRole("button", { name: "Mostrar somente em aberto" }).click()
+  await expect(page.locator(`#contract-field-${completedField.id}`)).toHaveCount(0)
 })
 
 test("editor permanece utilizável em PWA sem overflow horizontal", async ({ page }) => {

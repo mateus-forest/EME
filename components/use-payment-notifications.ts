@@ -22,6 +22,7 @@ export type PaymentNotification = {
   title: string
   message: string
   date: string
+  createdAt?: string
   financialStatus: PaymentNotificationStatus
   category: PaymentNotificationCategory
   lida: boolean

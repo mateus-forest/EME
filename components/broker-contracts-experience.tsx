@@ -812,6 +812,7 @@ function InstanceEditor({
   const [signatureOpen, setSignatureOpen] = useState(false)
   const [signedAt, setSignedAt] = useState(new Date().toISOString().slice(0, 10))
   const [signatureNote, setSignatureNote] = useState("")
+  const [showAllFields, setShowAllFields] = useState(false)
 
   const applyInstance = useCallback((next: ContractTemplateInstanceRecord) => {
     setInstance(next)
@@ -850,14 +851,55 @@ function InstanceEditor({
 
   const groupedFields = useMemo(() => {
     if (!instance) return []
-    const groups = [
-      { id: "parties", label: "Partes", fields: instance.structure.fields.filter((field) => ["CLIENT", "ADDITIONAL_PARTY", "BROKER"].includes(field.source)) },
-      { id: "property", label: "Imóvel", fields: instance.structure.fields.filter((field) => field.source === "PROPERTY") },
-      { id: "negotiation", label: "Negociação", fields: instance.structure.fields.filter((field) => field.source === "CONTRACT") },
-      { id: "other", label: "Outros dados", fields: instance.structure.fields.filter((field) => field.source === "NONE") },
-    ]
-    return groups.filter((group) => group.fields.length > 0)
-  }, [instance])
+    const groups = new Map<string, { id: string; label: string; fields: ContractTemplateField[] }>()
+    const monetaryBindings = new Set<ContractFieldBinding>([
+      "property.price",
+      "contract.value",
+      "contract.paymentMethod",
+      "contract.guarantee",
+      "contract.duration",
+      "contract.dueDate",
+    ])
+
+    for (const field of instance.structure.fields) {
+      const party = field.partyId ? instance.structure.parties.find((item) => item.id === field.partyId) : null
+      const block = instance.structure.blocks.find((item) => item.id === field.blockId)
+      const isSignature = block?.type === "SIGNATURE" || /\b(assinatura|testemunha)\b/i.test(field.label)
+      const isValue = field.type === "CURRENCY" || monetaryBindings.has(field.binding)
+      const group = party
+        ? { id: `party-${party.id}`, label: party.label }
+        : isSignature
+          ? { id: "signature", label: "Assinatura" }
+          : field.source === "PROPERTY"
+            ? { id: "property", label: "Imóvel" }
+            : field.source === "CLIENT"
+              ? { id: "client", label: "Cliente" }
+              : field.source === "BROKER"
+                ? { id: "broker", label: "Corretor" }
+                : field.source === "ADDITIONAL_PARTY"
+                  ? { id: "additional-parties", label: "Outras partes" }
+                  : isValue
+                    ? { id: "values", label: "Valores e condições" }
+                    : field.source === "CONTRACT"
+                      ? { id: "contract", label: "Dados do contrato" }
+                      : { id: "other", label: "Outros dados" }
+      const existing = groups.get(group.id) ?? { ...group, fields: [] }
+      existing.fields.push(field)
+      groups.set(group.id, existing)
+    }
+
+    return [...groups.values()].map((group) => ({
+      ...group,
+      fields: [...group.fields].sort((left, right) => {
+        const priority = (field: ContractTemplateField) => {
+          if (field.required && !values[field.id]?.trim()) return 0
+          if (!values[field.id]?.trim()) return 1
+          return 2
+        }
+        return priority(left) - priority(right)
+      }),
+    }))
+  }, [instance, values])
 
   const readinessGroups = useMemo(() => groupedFields.map((group) => {
     const required = group.fields.filter((field) => field.required)
@@ -954,6 +996,14 @@ function InstanceEditor({
       : { label: "Informação deste contrato", tone: "text-[#5f6b7a]" }
   }
 
+  function focusContractField(fieldId: string) {
+    window.requestAnimationFrame(() => {
+      const field = document.getElementById(`contract-field-${fieldId}`)
+      field?.scrollIntoView({ behavior: "smooth", block: "center" })
+      field?.focus({ preventScroll: true })
+    })
+  }
+
   if (isBusy && !instance) return <div className="flex min-h-[40vh] items-center justify-center"><Spinner className="size-6 text-[#009b3a]" /></div>
   if (!instance) return <p className="rounded-xl bg-[#fff8e8] p-4 text-sm text-[#765a16]">{feedback || "Contrato não encontrado."}</p>
 
@@ -1024,19 +1074,49 @@ function InstanceEditor({
             </section>
           ))}
 
-          {groupedFields.map((group) => (
-            <section key={group.id} className="rounded-2xl border border-black/[0.06] bg-white p-4">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">{group.label}</p>
-              <div className="mt-3 grid gap-3">
-                {group.fields.map((field) => (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-[#111]">Campos do contrato</p>
+              <p className="mt-0.5 text-xs text-[#7b8491]">Pendências obrigatórias aparecem primeiro.</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowAllFields((current) => !current)}
+              className="h-9 rounded-lg border border-black/[0.06] bg-white px-3 text-xs text-[#4b5563]"
+            >
+              {showAllFields ? "Mostrar somente em aberto" : "Mostrar todos os campos"}
+            </Button>
+          </div>
+
+          {groupedFields.map((group) => {
+            const completedCount = group.fields.filter((field) => values[field.id]?.trim()).length
+            const visibleFields = showAllFields
+              ? group.fields
+              : group.fields.filter((field) => !instance.values[field.id]?.trim() || !values[field.id]?.trim())
+            return (
+            <section key={group.id} data-testid={`contract-field-group-${group.id}`} className="rounded-2xl border border-black/[0.06] bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">{group.label}</p>
+                <span className="text-[11px] text-[#7b8491]">{completedCount}/{group.fields.length} preenchidos</span>
+              </div>
+              {visibleFields.length > 0 ? <div className="mt-3 grid gap-3">
+                {visibleFields.map((field) => (
                   <label key={field.id} className="grid gap-1.5 text-xs text-[#687386]">
                     <span className="flex items-center justify-between gap-2"><span>{field.label}{field.required ? " *" : ""}</span><span className={fieldState(field).tone}>{fieldState(field).label}</span></span>
                     <FieldInput field={field} value={values[field.id] ?? ""} onChange={(value) => setValues((current) => ({ ...current, [field.id]: value }))} />
                   </label>
                 ))}
-              </div>
+              </div> : (
+                <p className="mt-3 rounded-xl bg-[#f7faf7] px-3 py-2 text-xs text-[#17733a]">
+                  Campos preenchidos recolhidos para manter o formulário compacto.
+                </p>
+              )}
+              {!showAllFields && completedCount > 0 && visibleFields.length > 0 ? (
+                <p className="mt-3 text-[11px] text-[#7b8491]">{completedCount} campo{completedCount === 1 ? "" : "s"} preenchido{completedCount === 1 ? "" : "s"} recolhido{completedCount === 1 ? "" : "s"}.</p>
+              ) : null}
             </section>
-          ))}
+          )})}
           <Button onClick={() => void save()} disabled={isBusy} className="rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]">{isBusy ? <Spinner className="size-4" /> : <Check className="size-4" />} Salvar alterações</Button>
         </aside>
 
@@ -1056,7 +1136,7 @@ function InstanceEditor({
               <button
                 key={group.id}
                 type="button"
-                onClick={() => group.missing[0] && document.getElementById(`contract-field-${group.missing[0].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                onClick={() => group.missing[0] && focusContractField(group.missing[0].id)}
                 className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-left text-xs"
               >
                 <span className="text-[#4b5563]">{group.label}</span>
@@ -1069,7 +1149,7 @@ function InstanceEditor({
           <p className="mt-5 text-[11px] uppercase tracking-[0.16em] text-[#8b95a1]">Pendências</p>
           <div className="mt-2 grid gap-2">
             {readiness.missing.length > 0 ? readiness.missing.map((field) => (
-              <button key={field.id} type="button" onClick={() => document.getElementById(`contract-field-${field.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })} className="flex items-start gap-2 rounded-lg bg-white p-2 text-left text-xs text-[#765a16]">
+              <button key={field.id} type="button" onClick={() => focusContractField(field.id)} className="flex items-start gap-2 rounded-lg bg-white p-2 text-left text-xs text-[#765a16]">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" /> {field.label}
               </button>
             )) : <p className="flex gap-2 rounded-lg bg-white p-3 text-xs text-[#17733a]"><CheckCircle2 className="size-4" /> Contrato pronto para gerar</p>}
