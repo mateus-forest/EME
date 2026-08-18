@@ -14,8 +14,11 @@ const STOP_WORDS = new Set([
 
 const GENERIC_PRODUCT_TOKENS = new Set(["eme", "cos", "sistema"])
 const TECHNICAL_GLOSSARY_TERMS = /\b(property|lead|agenda|appointment|broker|listing|proposal|contract|pending|completed|failed)\b/
-const PROCEDURE_SIGNAL = /\b(como faco|como fazer|como publico|como publicar|como cadastro|como cadastrar|como configuro|como configurar|como compartilho|como compartilhar|onde encontro|passo a passo|funciona)\b/
+const PROCEDURE_SIGNAL = /\b(como (?:eu )?(?:usar|utiliz\w*)|como faco|como fazer|como publico|como publicar|como cadastro|como cadastrar|como configuro|como configurar|como compartilho|como compartilhar|onde encontro|passo a passo|funciona)\b/
 const RULE_SIGNAL = /\b(regra|regras|clausula|clausulas|assinatura digital|certificado|moderacao|aprovar avaliacao|pode inventar|cria clausula)\b/
+const COS_GUIDANCE_SIGNAL = /\b(?:(?:o que|quais? coisas?) (?:voce|o cos) (?:faz|consegue|pode fazer)|(?:voce|o cos) (?:consegue|pode) fazer|como (?:usar|utilizar|utilizo|uso) (?:o )?cos)\b/
+const DETAILED_ANSWER_SIGNAL = /\b(?:em detalhes|detalhadamente|passo a passo|lista completa|explique melhor|aprofund\w*|tudo sobre|resposta completa)\b/
+const INTERNAL_KNOWLEDGE_LANGUAGE = /\b(?:conversation\s*snapshot|dialogue\s*decision|schema\s*version|executor|payload|prisma)\b/i
 
 const DOMAIN_DOCUMENT_IDS: Partial<Record<CosConversationDomain, string>> = {
   lead: "clientes",
@@ -54,6 +57,11 @@ function tokenize(value: string) {
 function hasPhrase(text: string, phrase: string) {
   if (!phrase) return false
   return ` ${text} `.includes(` ${phrase} `)
+}
+
+function isCosGuidanceQuery(message: string, targetCapabilityId: CosDialogueDecision["objective"]["targetCapabilityId"]) {
+  const normalized = normalizeCosKnowledgeText(message)
+  return targetCapabilityId === "help.use_cos" || COS_GUIDANCE_SIGNAL.test(normalized)
 }
 
 function knowledgeTypesForDecision(decision: CosDialogueDecision): CosKnowledgeType[] {
@@ -129,6 +137,7 @@ function scoreChunk(input: {
   queryTokens: string[]
   expectedTypes: CosKnowledgeType[]
   explicitlyFiltered: boolean
+  cosGuidanceQuery: boolean
 }) {
   let score = 0
   const reason: string[] = []
@@ -209,15 +218,29 @@ function scoreChunk(input: {
   }
 
   const productDefinitionMatched = input.document.id === "eme" && /^(o que e|como funciona) (o )?eme\b/.test(input.query)
-  const hasEvidence = meaningfulLexicalHits > 0 || aliasMatched || targetCapabilityMatched || glossaryMatched || productDefinitionMatched || input.explicitlyFiltered
+  const productUsageMatched = input.document.id === "eme" && PROCEDURE_SIGNAL.test(input.query) && /\b(?:eme|sistema)\b/.test(input.query)
+  if (productUsageMatched && /^(o que o usuario pode fazer|fluxos principais|para que serve)/.test(normalizeCosKnowledgeText(input.chunk.heading))) {
+    score += 16
+    reason.push("product_usage_heading")
+  }
+  const cosGuidanceMatched = input.cosGuidanceQuery && ["cos", "capacidades-cos"].includes(input.document.id)
+  if (cosGuidanceMatched) {
+    const heading = normalizeCosKnowledgeText(input.chunk.heading)
+    if (/^(o que o usuario pode fazer|o que o cos pode fazer|para que serve|como interpretar)/.test(heading)) {
+      score += 18
+      reason.push("cos_guidance_heading")
+    }
+  }
+  const hasEvidence = meaningfulLexicalHits > 0 || aliasMatched || targetCapabilityMatched || glossaryMatched || productDefinitionMatched || productUsageMatched || cosGuidanceMatched || input.explicitlyFiltered
   return { score: hasEvidence ? score : 0, reason }
 }
 
-function isCandidateDocument(document: CosKnowledgeDocument, decision: CosDialogueDecision, query: string) {
+function isCandidateDocument(document: CosKnowledgeDocument, decision: CosDialogueDecision, query: string, cosGuidanceQuery: boolean) {
   if (document.id === "glossario" && !TECHNICAL_GLOSSARY_TERMS.test(query)) return false
-  if (document.id === "capacidades-cos" && decision.dialogueAct !== "capability_question") return false
+  if (document.id === "capacidades-cos" && decision.dialogueAct !== "capability_question" && !cosGuidanceQuery) return false
   const domains = [decision.primaryDomain, ...decision.secondaryDomains]
   if (document.domains.some((domain) => domains.includes(domain))) return true
+  if (cosGuidanceQuery && ["cos", "capacidades-cos"].includes(document.id)) return true
   if (decision.dialogueAct === "capability_question" && document.id === "capacidades-cos") return true
   if (["explain", "execute"].includes(decision.dialogueAct) && document.id === "regras-negocio") return true
   if (document.id === "glossario" && TECHNICAL_GLOSSARY_TERMS.test(query)) return true
@@ -275,12 +298,13 @@ export async function retrieveCosKnowledge(input: {
     const queryTokens = tokenize(query)
     const expectedTypes = knowledgeTypesForDecision(input.decision)
     const explicitlyFiltered = Boolean(input.filters?.documentIds?.length || input.filters?.knowledgeTypes?.length)
+    const cosGuidanceQuery = isCosGuidanceQuery(input.message, input.decision.objective.targetCapabilityId)
     const scored = index.documents
-      .filter((document) => isCandidateDocument(document, input.decision, query))
+      .filter((document) => isCandidateDocument(document, input.decision, query, cosGuidanceQuery))
       .filter((document) => !input.filters?.documentIds?.length || input.filters.documentIds.includes(document.id))
       .filter((document) => !input.filters?.knowledgeTypes?.length || document.knowledgeTypes.some((type) => input.filters!.knowledgeTypes!.includes(type)))
       .flatMap((document) => document.chunks.map((chunk) => {
-        const result = scoreChunk({ chunk, document, decision: input.decision, query, queryTokens, expectedTypes, explicitlyFiltered })
+        const result = scoreChunk({ chunk, document, decision: input.decision, query, queryTokens, expectedTypes, explicitlyFiltered, cosGuidanceQuery })
         return { ...chunk, score: Number(result.score.toFixed(2)), reason: result.reason.slice(0, 6) }
       }))
       .filter((chunk) => chunk.score >= 5)
@@ -289,9 +313,14 @@ export async function retrieveCosKnowledge(input: {
     const preferredSourceIds = [input.decision.primaryDomain, ...input.decision.secondaryDomains]
       .map((domain) => DOMAIN_DOCUMENT_IDS[domain])
       .filter((id): id is string => Boolean(id))
+    const comparesCatalogAndMarketplace = /\b(?:diferenca|comparar|comparacao|distincao)\b/.test(query) &&
+      /\bcatalogo\b/.test(query) &&
+      /\bmarketplace\b/.test(query)
+    if (comparesCatalogAndMarketplace) preferredSourceIds.push("regras-negocio")
     if (input.decision.dialogueAct === "capability_question" && input.decision.objective.targetCapabilityId) {
       preferredSourceIds.unshift("capacidades-cos")
     }
+    if (cosGuidanceQuery) preferredSourceIds.unshift("cos", "capacidades-cos")
     const { selected, selectedChars } = selectWithinLimits(scored, [...new Set(preferredSourceIds)])
     const selectedDocumentIds = [...new Set(selected.map((chunk) => chunk.sourceId))]
     const selectedDocuments = selectedDocumentIds.map((id) => {
@@ -346,4 +375,173 @@ export function buildCosKnowledgeAudit(context: CosKnowledgeContext | null | und
 export function formatCosKnowledgeContext(context: CosKnowledgeContext) {
   if (context.knowledgeMiss || context.chunks.length === 0) return ""
   return context.chunks.map((chunk) => `[${chunk.sourceId} · ${chunk.heading} · v${chunk.version}]\n${chunk.text}`).join("\n\n---\n\n")
+}
+
+export function isDetailedCosKnowledgeRequest(message: string) {
+  return DETAILED_ANSWER_SIGNAL.test(normalizeCosKnowledgeText(message))
+}
+
+function cleanKnowledgeUnit(value: string) {
+  if (INTERNAL_KNOWLEDGE_LANGUAGE.test(value)) return ""
+  if (/^Somente as capabilit(?:y|ies) validadas do Registry\.?$/i.test(value.trim())) return ""
+  return value
+    .replace(/\[([^\]]+)]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\bProperty\b/gi, "imóvel")
+    .replace(/\bLead\b/gi, "cliente")
+    .replace(/\bAgendaEvent\b/gi, "compromisso")
+    .replace(/\bBrokerDocument\b/gi, "documento")
+    .replace(/\bCatalogEvent\b/gi, "evento do Catálogo")
+    .replace(/\bcapabilities\b/gi, "funções")
+    .replace(/\bcapability\b/gi, "função")
+    .replace(/\bRegistry\b/gi, "EME")
+    .replace(/\bworkflows?\b/gi, "fluxos")
+    .replace(/\bhandlers?\b/gi, "recursos")
+    .replace(/\bdescriptors?\b/gi, "regras")
+    .replace(/\bactions?\b/gi, "ações")
+    .replace(/\bgeneral\b/gi, "orientação")
+    .replace(/\b[A-Z][A-Z0-9_]{3,}\b/g, "")
+    .replace(/\s*→\s*/g, ", depois ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim()
+}
+
+function knowledgeUnits(context: CosKnowledgeContext) {
+  return context.chunks.flatMap((chunk, chunkIndex) => {
+    if (/inventário gerado/i.test(chunk.heading)) return []
+    const heading = normalizeCosKnowledgeText(chunk.heading)
+    const units = chunk.text
+      .replace(/```[\s\S]*?```/g, " ")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !/^(?:#|---|\|)/.test(line))
+      .flatMap((line) => line.replace(/^[-*]\s+/, "").split(/(?<=[.!?])\s+/))
+      .map(cleanKnowledgeUnit)
+      .filter((unit) => unit.length >= 18)
+
+    return units.map((text, unitIndex) => ({
+      text,
+      sourceId: chunk.sourceId,
+      heading,
+      order: chunkIndex * 100 + unitIndex,
+    }))
+  })
+}
+
+function unitScore(input: {
+  unit: ReturnType<typeof knowledgeUnits>[number]
+  queryTokens: string[]
+  comparison: boolean
+  procedure: boolean
+  capability: boolean
+}) {
+  const heading = input.unit.heading
+  let score = 0
+  if (input.comparison) {
+    if (heading === "o que e") score += 40
+    if (heading === "regras de negocio") score += 24
+    if (heading === "relacao com outros modulos") score += 14
+  } else if (input.capability) {
+    if (heading === "o que o cos pode fazer") score += 38
+    if (heading === "o que o usuario pode fazer") score += 34
+    if (heading === "para que serve") score += 18
+    if (heading === "como interpretar") score += 12
+    if (input.unit.sourceId === "cos") score += 24
+    if (input.unit.sourceId === "capacidades-cos") score += 10
+  } else if (input.procedure) {
+    if (heading === "fluxos principais") score += 36
+    if (heading === "o que o usuario pode fazer") score += 32
+    if (heading === "regras de negocio") score += 22
+    if (heading === "para que serve") score += 16
+  } else {
+    if (heading === "o que e") score += 30
+    if (heading === "para que serve") score += 25
+    if (heading === "regras de negocio") score += 14
+  }
+  const normalizedText = normalizeCosKnowledgeText(input.unit.text)
+  score += input.queryTokens.filter((token) => normalizedText.includes(token)).length * 4
+  if (input.procedure && input.unit.order % 100 === 0) score += 8
+  if (!input.queryTokens.includes("studio") && normalizedText.includes("studio")) score -= 12
+  if (input.unit.text.length > 280) score -= 10
+  return score
+}
+
+function naturalizeKnowledgeUnit(value: string) {
+  let text = value.trim()
+  if (/^O COS pode\b/i.test(text)) {
+    text = text.replace(/^O COS pode\b/i, "Posso").replace(/\s+conforme\b.*$/i, "")
+  }
+  text = text
+    .replace(/^Você pode perguntar, consultar dados, solicitar ações, corrigir um dado do fluxo, confirmar, rejeitar, cancelar, selecionar resultados, mudar e retomar tópicos\.?$/i, "Diga o que você quer consultar ou fazer. Se faltar algum dado, eu pergunto; quando necessário, peço confirmação.")
+    .replace(/^Cadastro, depois revisão dos dados\/mídias, depois publicação, depois atendimento e documentos\.?$/i, "Cadastre o imóvel, revise os dados e as mídias e publique quando estiver pronto.")
+    .replace(/^Cadastro e atendimento de clientes; criação e publicação de imóveis; propostas e contratos; compromissos; divulgação pública; geração de conteúdo; consultas operacionais\.?$/i, "No EME, você gerencia clientes e imóveis, cria propostas e contratos, organiza compromissos, publica e gera conteúdo.")
+    .replace(/^Criar manualmente\b/i, "Você pode criar manualmente")
+    .replace(/^Perguntar, consultar\b/i, "Você pode perguntar, consultar")
+    .replace(/^Centralizar clientes\b/i, "O EME centraliza clientes")
+    .replace(/^(Administrar|Publicar|Usar|Consultar)\b/, (verb) => `Você pode ${verb.toLowerCase()}`)
+    .trim()
+  if (!text) return ""
+  return /[.!?]$/.test(text) ? text : `${text}.`
+}
+
+function truncateKnowledgeAnswer(value: string, maxChars: number) {
+  if (value.length <= maxChars) return value
+  const candidate = value.slice(0, maxChars + 1)
+  const sentenceEnd = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("? "), candidate.lastIndexOf("! "), candidate.lastIndexOf("\n"))
+  if (sentenceEnd >= Math.floor(maxChars * 0.55)) return candidate.slice(0, sentenceEnd + 1).trim()
+  const wordEnd = candidate.lastIndexOf(" ")
+  return `${candidate.slice(0, wordEnd > 0 ? wordEnd : maxChars).trimEnd()}…`
+}
+
+export function normalizeCosGroundedAnswer(value: string, detailed: boolean) {
+  const maxUnits = detailed ? 8 : 3
+  const maxChars = detailed ? 1_600 : 520
+  const units = value
+    .replace(/```[\s\S]*?```/g, " ")
+    .split(/\r?\n|(?<=[.!?])\s+/)
+    .map((line) => cleanKnowledgeUnit(line.replace(/^#{1,6}\s+/, "").replace(/^(?:[-*]|\d+[.)])\s+/, "")))
+    .filter(Boolean)
+    .slice(0, maxUnits)
+    .map(naturalizeKnowledgeUnit)
+  return truncateKnowledgeAnswer(detailed ? units.map((unit) => `- ${unit}`).join("\n") : units.join(" "), maxChars)
+}
+
+export function buildCosGroundedKnowledgeFallback(input: {
+  message: string
+  context: CosKnowledgeContext
+}) {
+  if (input.context.knowledgeMiss || input.context.chunks.length === 0) return ""
+  const normalizedMessage = normalizeCosKnowledgeText(input.message)
+  const detailed = isDetailedCosKnowledgeRequest(input.message)
+  const comparison = /\b(?:diferenca|comparar|comparacao|distincao)\b/.test(normalizedMessage)
+  const procedure = PROCEDURE_SIGNAL.test(normalizedMessage) || /\bcomo (?:usar|utilizar|utilizo|uso)\b/.test(normalizedMessage)
+  const capability = isCosGuidanceQuery(input.message, null)
+  const queryTokens = tokenize(normalizedMessage).filter((token) => !GENERIC_PRODUCT_TOKENS.has(token))
+  const candidates = knowledgeUnits(input.context)
+    .map((unit) => ({ ...unit, score: unitScore({ unit, queryTokens, comparison, procedure, capability }) }))
+    .sort((left, right) => right.score - left.score || left.order - right.order)
+  const selected: typeof candidates = []
+  const add = (candidate: typeof candidates[number] | undefined) => {
+    if (!candidate || selected.some((item) => normalizeCosKnowledgeText(item.text) === normalizeCosKnowledgeText(candidate.text))) return
+    selected.push(candidate)
+  }
+
+  if (comparison) {
+    for (const document of input.context.selectedDocuments) {
+      const sourceCandidate = document.id === "regras-negocio"
+        ? candidates.find((candidate) => candidate.sourceId === document.id && /\bpublicacao\b.*\bseparad\w*\b/.test(normalizeCosKnowledgeText(candidate.text)))
+        : candidates.find((candidate) => candidate.sourceId === document.id)
+      add(sourceCandidate)
+    }
+  }
+  const answerUnitLimit = detailed ? 8 : comparison ? Math.max(2, selected.length) : 2
+  if (detailed || !comparison || selected.length < 2) {
+    for (const candidate of candidates) {
+      if (selected.length >= answerUnitLimit) break
+      add(candidate)
+    }
+  }
+
+  return normalizeCosGroundedAnswer(selected.map((item) => item.text).join("\n"), detailed)
 }

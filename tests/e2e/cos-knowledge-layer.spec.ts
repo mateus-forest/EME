@@ -9,9 +9,12 @@ import {
   parseCosKnowledgeDocument,
 } from "@/lib/cos/knowledge/loader.server"
 import {
+  buildCosGroundedKnowledgeFallback,
   buildCosKnowledgeAudit,
   COS_KNOWLEDGE_LIMITS,
   formatCosKnowledgeContext,
+  isDetailedCosKnowledgeRequest,
+  normalizeCosGroundedAnswer,
   retrieveCosKnowledge,
   shouldRetrieveCosKnowledge,
 } from "@/lib/cos/knowledge/retrieval"
@@ -217,13 +220,74 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
     const context = await retrieveCosKnowledge({ message, decision: dialogue })
     expect(context.required).toBe(true)
     expect(context.knowledgeMiss).toBe(false)
-    expect(context.selectedDocuments.map((document) => document.id)).toEqual(["catalogo", "marketplace"])
+    expect(context.selectedDocuments.map((document) => document.id)).toEqual(expect.arrayContaining(["catalogo", "marketplace", "regras-negocio"]))
 
     const catalogText = context.chunks.filter((chunk) => chunk.sourceId === "catalogo").map((chunk) => chunk.text).join("\n")
     const marketplaceText = context.chunks.filter((chunk) => chunk.sourceId === "marketplace").map((chunk) => chunk.text).join("\n")
     expect(catalogText).toContain("público individual")
     expect(marketplaceText).toContain("ambiente público agregado")
     expect(context.chunks.some((chunk) => ["studio", "financeiro", "contratos"].includes(chunk.sourceId))).toBe(false)
+  })
+
+  test("respostas de orientação sintetizam o Livro sem despejar texto ou linguagem interna", async () => {
+    const cases = [
+      {
+        message: "Como usar o COS?",
+        expectedDocuments: ["cos", "capacidades-cos"],
+        expectedText: ["consultar"],
+      },
+      {
+        message: "Como eu utilizo o sistema?",
+        expectedDocuments: ["eme"],
+        expectedText: ["clientes", "imóveis"],
+      },
+      {
+        message: "Qual a diferença entre Catálogo e Marketplace?",
+        expectedDocuments: ["catalogo", "marketplace"],
+        expectedText: ["individual", "agregado", "separad"],
+      },
+      {
+        message: "Como cadastrar imóvel?",
+        expectedDocuments: ["imoveis"],
+        expectedText: ["revis"],
+      },
+      {
+        message: "O que você consegue fazer?",
+        expectedDocuments: ["cos", "capacidades-cos"],
+        expectedText: ["consultar", "criar"],
+      },
+    ] as const
+
+    for (const example of cases) {
+      const dialogue = decide(example.message)
+      expect(["explain", "capability_question", "query"]).toContain(dialogue.dialogueAct)
+      expect(dialogue.selectedAction ?? "").not.toMatch(/^(?:CREATE|UPDATE|DELETE|PUBLISH|UNPUBLISH|ARCHIVE|CANCEL|SIGN|SEND)_/)
+
+      const context = await retrieveCosKnowledge({ message: example.message, decision: dialogue })
+      expect(context.knowledgeMiss, example.message).toBe(false)
+      expect(context.selectedDocuments.map((document) => document.id)).toEqual(expect.arrayContaining([...example.expectedDocuments]))
+
+      const answer = buildCosGroundedKnowledgeFallback({ message: example.message, context })
+      expect(answer.length).toBeGreaterThan(20)
+      expect(answer.length).toBeLessThanOrEqual(520)
+      expect(answer).not.toMatch(/(?:```|\|---|\[[^\]]+ ·|\b(?:general|capability|workflow|registry|handler|descriptor|actions?)\b)/i)
+      expect(answer).not.toMatch(/\b[A-Z][A-Z0-9_]{3,}\b/)
+      for (const fragment of example.expectedText) expect(answer.toLowerCase()).toContain(fragment)
+    }
+  })
+
+  test("resposta longa só é habilitada quando o corretor pede detalhes", () => {
+    expect(isDetailedCosKnowledgeRequest("Como cadastrar imóvel?")).toBe(false)
+    expect(isDetailedCosKnowledgeRequest("Explique em detalhes como cadastrar imóvel.")).toBe(true)
+
+    const source = [
+      "Primeira frase útil.",
+      "Segunda frase útil.",
+      "Terceira frase útil.",
+      "Quarta frase útil.",
+    ].join(" ")
+    expect(normalizeCosGroundedAnswer(source, false)).not.toContain("Quarta frase")
+    expect(normalizeCosGroundedAnswer(source, true)).toContain("Quarta frase")
   })
 
   test("contratos recupera a regra completa sem esconder a divergência do legado", async () => {

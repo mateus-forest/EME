@@ -7,7 +7,12 @@ import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 import { loadHelpManualContext, type HelpTopic } from "@/lib/cos/capabilities/help/manual"
-import { formatCosKnowledgeContext } from "@/lib/cos/knowledge/retrieval"
+import {
+  buildCosGroundedKnowledgeFallback,
+  formatCosKnowledgeContext,
+  isDetailedCosKnowledgeRequest,
+  normalizeCosGroundedAnswer,
+} from "@/lib/cos/knowledge/retrieval"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 const HELP_SYSTEM_PROMPT = [
@@ -20,11 +25,17 @@ const HELP_SYSTEM_PROMPT = [
 const KNOWLEDGE_SYSTEM_PROMPT = [
   "Você é o assistente de suporte e orientação do EME, o Sistema Operacional do Corretor.",
   "Use somente os trechos selecionados do Livro do EME como fonte factual e não invente funcionalidades.",
-  "Responda em português, de forma clara, direta e orientada à ação.",
+  "Sintetize a resposta; não copie nem despeje os trechos recebidos.",
+  "Responda em português, de forma natural, direta e orientada à necessidade do corretor.",
+  "Não mencione o Livro, as fontes ou termos internos como general, capability, workflow, Registry, handler, descriptor, actions ou enums.",
+  "Use os termos de apresentação do produto: cliente, imóvel, compromisso, proposta e contrato.",
+  "Perguntas de orientação nunca executam ações nem afirmam que dados foram alterados.",
   "Quando os trechos não cobrirem algo, admita isso com honestidade.",
 ].join(" ")
 
-const HELP_FALLBACK_EXCERPT_LENGTH = 1400
+const SHORT_ANSWER_INSTRUCTION = "Responda por padrão em até três frases curtas, sem título, introdução ou lista extensa."
+const DETAILED_ANSWER_INSTRUCTION = "O corretor pediu detalhes; ainda seja objetivo e use no máximo oito itens curtos."
+const SAFE_HELP_FALLBACK = "Não encontrei uma resposta objetiva para isso. Diga qual parte do EME você quer entender."
 
 // Mensagem literal enviada pelo botao "Tirar uma duvida" do menu "+" (ver actionMap em
 // components/broker-portal.tsx). So mostramos o menu fixo de topicos quando a mensagem e
@@ -89,11 +100,8 @@ const GUIDED_HELP_OPTIONS: Partial<Record<HelpTopic, GuidedHelpOption[]>> = {
   ],
 }
 
-function buildHelpFallbackResponse(manualContext: string) {
-  const trimmed = manualContext.trim()
-  return trimmed.length > HELP_FALLBACK_EXCERPT_LENGTH
-    ? `${trimmed.slice(0, HELP_FALLBACK_EXCERPT_LENGTH).trimEnd()}...`
-    : trimmed
+function buildHelpFallbackResponse(manualContext: string, message: string) {
+  return normalizeCosGroundedAnswer(manualContext, isDetailedCosKnowledgeRequest(message))
 }
 
 function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
@@ -122,7 +130,7 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
     const knowledge = usesKnowledgeLayer ? context?.knowledge ?? null : null
     if (knowledge?.knowledgeMiss) {
       return {
-        response: "Não encontrei informação suficiente no Livro do EME para responder com segurança. Posso ajudar a localizar uma função existente ou reformular a dúvida com você.",
+        response: SAFE_HELP_FALLBACK,
         metadata: {
           noCharge: true,
           topic,
@@ -135,6 +143,11 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
     }
 
     const manualContext = knowledge ? formatCosKnowledgeContext(knowledge) : await loadHelpManualContext(topic)
+    const detailedAnswer = isDetailedCosKnowledgeRequest(message)
+    const fallbackResponse = knowledge
+      ? buildCosGroundedKnowledgeFallback({ message, context: knowledge })
+      : buildHelpFallbackResponse(manualContext, message)
+    const safeFallbackResponse = fallbackResponse || SAFE_HELP_FALLBACK
     const knowledgeMetadata = knowledge
       ? {
           knowledgeVersion: knowledge.sourceVersion,
@@ -146,7 +159,7 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
 
     if (!client) {
       return {
-        response: buildHelpFallbackResponse(manualContext),
+        response: safeFallbackResponse,
         metadata: {
           noCharge: true,
           topic,
@@ -164,11 +177,11 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
         metadata: { topic, action, ...knowledgeMetadata },
         request: {
           model,
-          max_output_tokens: 1800,
+          max_output_tokens: detailedAnswer ? 700 : 260,
           reasoning: {
             effort: "minimal",
           },
-          instructions: knowledge ? KNOWLEDGE_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT,
+          instructions: `${knowledge ? KNOWLEDGE_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT} ${detailedAnswer ? DETAILED_ANSWER_INSTRUCTION : SHORT_ANSWER_INSTRUCTION}`,
           input: [
             `${knowledge ? "Trechos relevantes do Livro do EME" : "Manual oficial do EME"}:\n\n${manualContext}`,
             `Pergunta do corretor: ${message}`,
@@ -179,7 +192,7 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
       if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
         console.error("[cos][help][openai-response-truncated]", { topic, status: response.status })
         return {
-          response: buildHelpFallbackResponse(manualContext),
+          response: safeFallbackResponse,
           metadata: {
             noCharge: true,
             topic,
@@ -189,10 +202,10 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
         }
       }
 
-      const answer = response.output_text.trim()
+      const answer = normalizeCosGroundedAnswer(response.output_text, detailedAnswer)
 
       return {
-        response: answer || buildHelpFallbackResponse(manualContext),
+        response: answer || safeFallbackResponse,
         metadata: knowledge
           ? {
               noCharge: true,
@@ -209,7 +222,7 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
         error: caughtError instanceof Error ? caughtError.message : "unknown",
       })
       return {
-        response: buildHelpFallbackResponse(manualContext),
+        response: safeFallbackResponse,
         metadata: {
           noCharge: true,
           topic,
