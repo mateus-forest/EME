@@ -14,6 +14,7 @@
     "test:e2e:report": "playwright show-report",
     "cos:eval": "node --experimental-strip-types scripts/run-cos-evals.mjs",
     "cos:evals": "npm run cos:eval",
+    "cos:eval:test": "playwright test tests/e2e/cos-conversational-evals.spec.ts --config playwright.cos-evals.config.ts",
     "cos:knowledge:sync": "node --experimental-strip-types scripts/validate-eme-knowledge.mjs --write",
     "cos:knowledge:validate": "node --experimental-strip-types scripts/validate-eme-knowledge.mjs",
     "db:generate": "prisma generate",

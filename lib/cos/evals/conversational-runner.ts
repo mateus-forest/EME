@@ -26,10 +26,18 @@ import {
 import { getCosDomainLabel, getCosStatusLabel } from "@/lib/cos/localization"
 import { classifyCosPendingReply } from "@/lib/cos/pending-input"
 import { cosGoldenConversations } from "@/lib/cos/evals/conversations/golden"
+import {
+  COS_GOLDEN_V1_METADATA,
+  cosGoldenV1Conversations,
+} from "@/lib/cos/evals/conversations/golden-v1"
 import type {
   CosEvalMetric,
+  CosGoldenCaseResult,
   CosGoldenConversation,
+  CosGoldenCoverageMetric,
+  CosGoldenEvaluationLayer,
   CosGoldenFailure,
+  CosGoldenLayerResult,
   CosGoldenStatePatch,
 } from "@/lib/cos/evals/golden-types"
 import { runCosEvalSuite } from "@/lib/cos/evals/runner"
@@ -72,6 +80,84 @@ type ExecutionFixtureResult = {
   passed: boolean
   expected: string
   actual: string
+}
+
+const GOLDEN_V1_LAYERS: CosGoldenEvaluationLayer[] = [
+  "dialogue_act",
+  "domain",
+  "entity_resolution",
+  "reference_resolution",
+  "working_set",
+  "context_continuity",
+  "capability_reference",
+  "capability_selection",
+  "capability_execution",
+  "pending_input",
+  "confirmation",
+  "persistence",
+  "partial_success",
+  "knowledge_correctness",
+  "gap_recognition",
+  "failure_classification",
+  "entitlement_security",
+  "credit_correctness",
+  "response_quality",
+  "forbidden_behaviors",
+]
+
+type MutableGoldenLayerResult = CosGoldenLayerResult
+
+function createLayerResults(scenario: CosGoldenConversation) {
+  return new Map<CosGoldenEvaluationLayer, MutableGoldenLayerResult>(
+    (scenario.requiredLayers ?? []).map((layer) => [layer, {
+      layer,
+      status: "not_evaluated",
+      turn: null,
+      expected: null,
+      actual: null,
+      reason: "A camada não possui oracle executável no baseline determinístico atual.",
+    }]),
+  )
+}
+
+function recordLayerResult(
+  results: Map<CosGoldenEvaluationLayer, MutableGoldenLayerResult>,
+  layer: CosGoldenEvaluationLayer,
+  passed: boolean,
+  turn: number,
+  expected: string,
+  actual: string,
+) {
+  if (!results.has(layer)) return
+  const current = results.get(layer)
+  if (current?.status === "fail") return
+  results.set(layer, {
+    layer,
+    status: passed ? "pass" : "fail",
+    turn,
+    expected,
+    actual,
+    reason: null,
+  })
+}
+
+function finalizeCoverageMetrics(caseResults: CosGoldenCaseResult[]) {
+  return Object.fromEntries(GOLDEN_V1_LAYERS.map((layer) => {
+    const eligibleResults = caseResults.flatMap((item) => item.layers.filter((result) => result.layer === layer))
+    const evaluatedResults = eligibleResults.filter((result) => result.status !== "not_evaluated")
+    const passed = evaluatedResults.filter((result) => result.status === "pass").length
+    const failed = evaluatedResults.length - passed
+    const metric: CosGoldenCoverageMetric = {
+      eligible: eligibleResults.length,
+      evaluated: evaluatedResults.length,
+      passed,
+      failed,
+      notEvaluated: eligibleResults.length - evaluatedResults.length,
+      accuracy: evaluatedResults.length === 0 ? null : Number(((passed / evaluatedResults.length) * 100).toFixed(2)),
+      coverage: eligibleResults.length === 0 ? null : Number(((evaluatedResults.length / eligibleResults.length) * 100).toFixed(2)),
+    }
+    return [layer, metric]
+  })) as Record<CosGoldenEvaluationLayer, CosGoldenCoverageMetric>
 }
 
 function emptySnapshot(conversationId: string): CosConversationSnapshot {
@@ -290,9 +376,10 @@ function addFailure(input: Omit<CosGoldenFailure, "suite"> & { suite: CosGoldenF
   failures.push(input)
 }
 
-async function runGoldenConversations() {
+async function runGoldenConversations(conversationFixtures: CosGoldenConversation[] = cosGoldenConversations) {
   const dialogueAct = createAccumulator()
   const domain = createAccumulator()
+  const capabilityReference = createAccumulator()
   const capability = createAccumulator()
   const referenceResolution = createAccumulator()
   const contextContinuity = createAccumulator()
@@ -300,9 +387,10 @@ async function runGoldenConversations() {
   const safety = createAccumulator()
   const conversation = createAccumulator()
   const failures: CosGoldenFailure[] = []
+  const caseResults: CosGoldenCaseResult[] = []
   let turns = 0
 
-  for (const scenario of cosGoldenConversations) {
+  for (const scenario of conversationFixtures) {
     const state: MutableConversationState = {
       snapshot: emptySnapshot(scenario.id),
       activeWorkflow: null,
@@ -310,6 +398,7 @@ async function runGoldenConversations() {
     }
     applyStatePatch(state, scenario.initial)
     let conversationPassed = true
+    const layerResults = createLayerResults(scenario)
 
     for (const [turnIndex, turn] of scenario.turns.entries()) {
       turns += 1
@@ -324,28 +413,96 @@ async function runGoldenConversations() {
         attachments: [],
       })
 
+      const expectedPrimaryDomain = turn.expected.primaryDomain ?? turn.expected.domain ?? "general"
+      const expectedSecondaryDomains = turn.expected.secondaryDomains ?? []
       const actCheck = { label: "dialogue act", expected: turn.expected.act, actual: decision.dialogueAct }
-      const domainCheck = { label: "domínio", expected: turn.expected.domain, actual: decision.primaryDomain }
-      const hasCapabilityExpectation = Object.prototype.hasOwnProperty.call(turn.expected, "capabilityId")
-      const capabilityCheck = {
-        label: "capability",
-        expected: turn.expected.capabilityId ?? null,
-        actual: decision.selectedCapabilityId,
+      const primaryDomainPassed = expectedPrimaryDomain === decision.primaryDomain
+      const secondaryDomainsPassed = expectedSecondaryDomains.every((item) => decision.secondaryDomains.includes(item as never))
+      const domainCheck = {
+        label: "domínio",
+        expected: [expectedPrimaryDomain, ...expectedSecondaryDomains].join("+") || "general",
+        actual: [decision.primaryDomain, ...decision.secondaryDomains].join("+") || "general",
+        passed: primaryDomainPassed && secondaryDomainsPassed,
       }
-      const routingChecks = [actCheck, domainCheck, ...(hasCapabilityExpectation ? [capabilityCheck] : [])]
-      const routingAccumulators = [dialogueAct, domain, ...(hasCapabilityExpectation ? [capability] : [])]
-      for (const [checkIndex, check] of routingChecks.entries()) {
-        const passed = check.expected === check.actual
-        recordMetric(routingAccumulators[checkIndex], passed)
-        if (!passed) {
+      const basicRoutingChecks = [
+        { ...actCheck, passed: actCheck.expected === actCheck.actual, layer: "dialogue_act" as const, accumulator: dialogueAct },
+        { ...domainCheck, layer: "domain" as const, accumulator: domain },
+      ]
+      for (const check of basicRoutingChecks) {
+        recordLayerResult(layerResults, check.layer, check.passed, turnIndex + 1, String(check.expected), String(check.actual))
+        recordMetric(check.accumulator, check.passed)
+        if (!check.passed) {
           conversationPassed = false
           addFailure({ suite: "routing", caseId: scenario.id, turn: turnIndex + 1, message: turn.message, expected: `${check.label}=${check.expected}`, actual: `${check.label}=${check.actual}` }, failures)
+        }
+      }
+
+      const usesV11CapabilityOracle =
+        Object.prototype.hasOwnProperty.call(turn.expected, "referencedCapabilityId") ||
+        Object.prototype.hasOwnProperty.call(turn.expected, "referencedProductFunction") ||
+        Object.prototype.hasOwnProperty.call(turn.expected, "selectedCapabilityId") ||
+        Object.prototype.hasOwnProperty.call(turn.expected, "executedCapabilityId")
+      const hasLegacyCapabilityExpectation = Object.prototype.hasOwnProperty.call(turn.expected, "capabilityId")
+      const hasReferencedCapabilityExpectation = Object.prototype.hasOwnProperty.call(turn.expected, "referencedCapabilityId")
+      const canEvaluateCapabilityReference = hasReferencedCapabilityExpectation && turn.expected.referencedCapabilityId !== null
+      const referencedCapabilityCheck = {
+        label: "capability referenciada",
+        expected: turn.expected.referencedCapabilityId ?? null,
+        actual: decision.objective.targetCapabilityId,
+      }
+      if (canEvaluateCapabilityReference) {
+        const passed = referencedCapabilityCheck.expected === referencedCapabilityCheck.actual
+        recordLayerResult(layerResults, "capability_reference", passed, turnIndex + 1, String(referencedCapabilityCheck.expected), String(referencedCapabilityCheck.actual))
+        recordMetric(capabilityReference, passed)
+        if (!passed) {
+          conversationPassed = false
+          addFailure({ suite: "routing", caseId: scenario.id, turn: turnIndex + 1, message: turn.message, expected: `${referencedCapabilityCheck.label}=${referencedCapabilityCheck.expected}`, actual: `${referencedCapabilityCheck.label}=${referencedCapabilityCheck.actual}` }, failures)
+        }
+      }
+
+      const hasSelectedCapabilityExpectation = usesV11CapabilityOracle
+        ? Object.prototype.hasOwnProperty.call(turn.expected, "selectedCapabilityId")
+        : hasLegacyCapabilityExpectation
+      const expectedSelectedCapabilityId = usesV11CapabilityOracle
+        ? turn.expected.selectedCapabilityId ?? null
+        : turn.expected.capabilityId ?? null
+      const actualSelectedCapabilityId = usesV11CapabilityOracle && ["respond", "explain", "clarify"].includes(decision.objective.mode)
+        ? null
+        : decision.selectedCapabilityId
+      const capabilityCheck = {
+        label: "capability selecionada",
+        expected: expectedSelectedCapabilityId,
+        actual: actualSelectedCapabilityId,
+      }
+      const capabilityPassed = !hasSelectedCapabilityExpectation || capabilityCheck.expected === capabilityCheck.actual
+      if (hasSelectedCapabilityExpectation) {
+        recordLayerResult(layerResults, "capability_selection", capabilityPassed, turnIndex + 1, String(capabilityCheck.expected), String(capabilityCheck.actual))
+        recordMetric(capability, capabilityPassed)
+        if (!capabilityPassed) {
+          conversationPassed = false
+          addFailure({ suite: "routing", caseId: scenario.id, turn: turnIndex + 1, message: turn.message, expected: `${capabilityCheck.label}=${capabilityCheck.expected}`, actual: `${capabilityCheck.label}=${capabilityCheck.actual}` }, failures)
         }
       }
 
       const hasReferenceExpectation = Object.prototype.hasOwnProperty.call(turn.expected, "referenceId")
       const referencePassed = !hasReferenceExpectation || (turn.expected.referenceId ?? null) === decision.reference.id
       if (hasReferenceExpectation) {
+        recordLayerResult(
+          layerResults,
+          "reference_resolution",
+          referencePassed,
+          turnIndex + 1,
+          turn.expected.referenceId ?? "nenhuma",
+          decision.reference.id ?? "nenhuma",
+        )
+        recordLayerResult(
+          layerResults,
+          "entity_resolution",
+          referencePassed,
+          turnIndex + 1,
+          turn.expected.referenceId ?? "nenhuma",
+          decision.reference.id ?? "nenhuma",
+        )
         recordMetric(referenceResolution, referencePassed)
         if (!referencePassed) {
           conversationPassed = false
@@ -356,10 +513,11 @@ async function runGoldenConversations() {
       if (turnIndex > 0 || scenario.initial) {
         const contextPassed =
           actCheck.expected === actCheck.actual &&
-          domainCheck.expected === domainCheck.actual &&
-          (!hasCapabilityExpectation || capabilityCheck.expected === capabilityCheck.actual) &&
+          domainCheck.passed &&
+          capabilityPassed &&
           referencePassed
         recordMetric(contextContinuity, contextPassed)
+        recordLayerResult(layerResults, "context_continuity", contextPassed, turnIndex + 1, "continuidade preservada", contextPassed ? "preservada" : "divergente")
         if (!contextPassed) conversationPassed = false
       }
 
@@ -373,6 +531,14 @@ async function runGoldenConversations() {
         )
         const missPassed = typeof turn.expected.knowledgeMiss !== "boolean" || retrieved.knowledgeMiss === turn.expected.knowledgeMiss
         recordMetric(knowledge, docsPassed && textPassed && missPassed)
+        recordLayerResult(
+          layerResults,
+          "knowledge_correctness",
+          docsPassed && textPassed && missPassed,
+          turnIndex + 1,
+          `docs=${(turn.expected.knowledgeDocuments ?? []).join(",") || "nenhum"}`,
+          `docs=${actualDocuments.join(",") || "nenhum"}`,
+        )
         if (!docsPassed || !textPassed || !missPassed) {
           conversationPassed = false
           addFailure({ suite: "knowledge", caseId: scenario.id, turn: turnIndex + 1, message: turn.message, expected: `docs=${(turn.expected.knowledgeDocuments ?? []).join(",") || "nenhum"}; trechos=${(turn.expected.knowledgeTextIncludes ?? []).join(" | ") || "não exigidos"}; miss=${turn.expected.knowledgeMiss ?? "não exigido"}`, actual: `docs=${actualDocuments.join(",") || "nenhum"}; trechos=${textPassed ? "presentes" : "ausentes"}; miss=${retrieved.knowledgeMiss}` }, failures)
@@ -390,6 +556,12 @@ async function runGoldenConversations() {
         ]
         for (const check of checks) {
           const passed = check.expected === check.actual
+          const layer = check.label === "confirmação"
+            ? "confirmation"
+            : check.label === "clarificação"
+              ? "pending_input"
+              : null
+          if (layer) recordLayerResult(layerResults, layer, passed, turnIndex + 1, String(check.expected), String(check.actual))
           recordMetric(safety, passed)
           if (!passed) {
             conversationPassed = false
@@ -403,14 +575,38 @@ async function runGoldenConversations() {
     }
 
     recordMetric(conversation, conversationPassed)
+    const requiredLayerResults = [...layerResults.values()]
+    const status = requiredLayerResults.some((result) => result.status === "fail")
+      ? "fail"
+      : requiredLayerResults.some((result) => result.status === "not_evaluated")
+        ? "incomplete"
+        : "pass"
+    caseResults.push({
+      id: scenario.id,
+      baseScenarioId: scenario.baseScenarioId ?? scenario.id,
+      sourceNumber: scenario.sourceNumber ?? scenario.id,
+      title: scenario.title ?? scenario.description,
+      classifications: scenario.classifications ?? [],
+      priorities: scenario.priorities ?? [],
+      status,
+      firstFailureTurn: requiredLayerResults
+        .filter((result) => result.status === "fail" && result.turn !== null)
+        .map((result) => result.turn as number)
+        .sort((left, right) => left - right)[0] ?? null,
+      knownGap: scenario.assertions?.knownGap ?? null,
+      knownGapLayer: scenario.assertions?.knownGapLayer ?? null,
+      forbiddenBehaviors: scenario.assertions?.forbidden ?? [],
+      layers: requiredLayerResults,
+    })
   }
 
   return {
-    scenarios: cosGoldenConversations.length,
+    scenarios: conversationFixtures.length,
     turns,
     metrics: {
       dialogueAct: finalizeMetric(dialogueAct),
       domain: finalizeMetric(domain),
+      capabilityReference: finalizeMetric(capabilityReference),
       capability: finalizeMetric(capability),
       referenceResolution: finalizeMetric(referenceResolution),
       contextContinuity: finalizeMetric(contextContinuity),
@@ -418,6 +614,8 @@ async function runGoldenConversations() {
       safety: finalizeMetric(safety),
       conversation: finalizeMetric(conversation),
     },
+    coverageMetrics: finalizeCoverageMetrics(caseResults),
+    caseResults,
     failures,
   }
 }
@@ -755,9 +953,30 @@ function metricFromFixtureResults(results: ExecutionFixtureResult[]) {
 }
 
 export async function runCosSystemEvalSuite() {
-  const [legacyRouting, conversations, execution, response] = await Promise.all([
+  const goldenV1Validation = validateCosGoldenV1Dataset()
+  const invalidDatasetEntries = [
+    ...goldenV1Validation.duplicateIds,
+    ...goldenV1Validation.invalidConversationIds,
+    ...goldenV1Validation.invalidCapabilityRefs,
+    ...goldenV1Validation.unresolvedPlaceholders,
+    ...goldenV1Validation.unsafeKnowledgeCases,
+    ...goldenV1Validation.unsafeProductGapCases,
+    ...goldenV1Validation.conflatedCapabilityOracle,
+    ...goldenV1Validation.p0WithoutStateOrTrace,
+    ...goldenV1Validation.invalidOracleAuditCaseIds,
+  ]
+  if (
+    goldenV1Validation.baseScenarios !== goldenV1Validation.expectedBaseScenarios ||
+    goldenV1Validation.executableCases !== goldenV1Validation.expectedExecutableCases ||
+    invalidDatasetEntries.length > 0
+  ) {
+    throw new Error(`Golden V1 inválido: ${invalidDatasetEntries.join(", ") || "contagens divergentes"}`)
+  }
+
+  const [legacyRouting, legacyConversations, goldenV1, execution, response] = await Promise.all([
     runCosEvalSuite(),
     runGoldenConversations(),
+    runGoldenConversations(cosGoldenV1Conversations),
     runExecutionFixtures(),
     runResponseFixtures(),
   ])
@@ -787,30 +1006,51 @@ export async function runCosSystemEvalSuite() {
     expected: item.expected,
     actual: item.actual,
   }))
-  const allFailures = [...conversations.failures, ...executionFailures, ...responseFailures, ...localizationFailures]
+  const allFailures = [...goldenV1.failures, ...executionFailures, ...responseFailures, ...localizationFailures]
+  const classificationBreakdown = Object.fromEntries(
+    ["SUPPORTED_NOW", "SUPPORTED_WITH_KNOWN_GAP", "PRODUCT_EXISTS_COS_GAP", "KNOWLEDGE_ONLY", "NOT_SUPPORTED"].map((classification) => [
+      classification,
+      goldenV1.caseResults.filter((item) => item.classifications.includes(classification as never)).length,
+    ]),
+  )
+  const statusBreakdown = {
+    pass: goldenV1.caseResults.filter((item) => item.status === "pass").length,
+    fail: goldenV1.caseResults.filter((item) => item.status === "fail").length,
+    incomplete: goldenV1.caseResults.filter((item) => item.status === "incomplete").length,
+  }
+  const failedLayerCounts = Object.fromEntries(GOLDEN_V1_LAYERS.map((layer) => [
+    layer,
+    goldenV1.caseResults.filter((item) => item.layers.some((result) => result.layer === layer && result.status === "fail")).length,
+  ]))
+  const knownGapFailures = goldenV1.caseResults.filter((item) => item.status === "fail" && item.knownGap)
+  const newGapFailures = goldenV1.caseResults.filter((item) => item.status === "fail" && !item.knownGap)
 
   return {
     generatedAt: new Date().toISOString(),
     dataset: {
       legacySingleTurn: legacyRouting.totals.scenarios,
-      multiTurnConversations: conversations.scenarios,
-      multiTurnTurns: conversations.turns,
+      legacyMultiTurnConversations: legacyConversations.scenarios,
+      legacyMultiTurnTurns: legacyConversations.turns,
+      baseScenarios: COS_GOLDEN_V1_METADATA.baseScenarioCount,
+      executableCases: goldenV1.scenarios,
+      goldenV1Turns: goldenV1.turns,
       executionFixtures: execution.length,
       responseFixtures: responseOnly.length,
       localizationFixtures: localizationOnly.length,
     },
     metrics: {
-      dialogueActAccuracy: conversations.metrics.dialogueAct,
-      domainAccuracy: conversations.metrics.domain,
-      capabilityAccuracy: conversations.metrics.capability,
-      referenceResolution: conversations.metrics.referenceResolution,
-      contextContinuity: conversations.metrics.contextContinuity,
-      knowledgeRetrieval: conversations.metrics.knowledge,
+      dialogueActAccuracy: goldenV1.metrics.dialogueAct,
+      domainAccuracy: goldenV1.metrics.domain,
+      capabilityReferenceAccuracy: goldenV1.metrics.capabilityReference,
+      capabilityAccuracy: goldenV1.metrics.capability,
+      referenceResolution: goldenV1.metrics.referenceResolution,
+      contextContinuity: goldenV1.metrics.contextContinuity,
+      knowledgeRetrieval: goldenV1.metrics.knowledge,
       executionCorrectness: metricFromFixtureResults(execution),
       responseCorrectness: metricFromFixtureResults(responseOnly),
       localization: metricFromFixtureResults(localizationOnly),
-      safetyInvariants: conversations.metrics.safety,
-      endToEndConversation: conversations.metrics.conversation,
+      safetyInvariants: goldenV1.metrics.safety,
+      deterministicConversationChecks: goldenV1.metrics.conversation,
       legacyRouting: {
         evaluated: legacyRouting.totals.scenarios,
         passed: legacyRouting.totals.passed,
@@ -819,7 +1059,24 @@ export async function runCosSystemEvalSuite() {
       },
     },
     failures: allFailures,
-    topFailures: allFailures.slice(0, 30),
+    topFailures: allFailures.slice(0, 50),
+    goldenV1: {
+      metadata: COS_GOLDEN_V1_METADATA,
+      statusBreakdown,
+      classificationBreakdown,
+      layerMetrics: goldenV1.coverageMetrics,
+      failedLayerCounts,
+      knownGapFailureCases: knownGapFailures.map((item) => item.id),
+      newGapFailureCases: newGapFailures.map((item) => item.id),
+      sourceIssues: COS_GOLDEN_V1_METADATA.sourceIssues,
+      cases: goldenV1.caseResults,
+    },
+    legacyConversational: {
+      conversations: legacyConversations.scenarios,
+      turns: legacyConversations.turns,
+      metrics: legacyConversations.metrics,
+      failures: legacyConversations.failures,
+    },
     legacyRouting: {
       totals: legacyRouting.totals,
       metrics: legacyRouting.metrics,
@@ -837,6 +1094,16 @@ export function buildCosSystemEvalMarkdownReport(report: Awaited<ReturnType<type
   const metricRows = Object.entries(report.metrics).map(([name, metric]) =>
     `| ${name} | ${metric.passed}/${metric.evaluated} | ${metric.accuracy}% | ${metric.failed} |`,
   )
+  const layerRows = Object.entries(report.goldenV1.layerMetrics).map(([name, metric]) =>
+    `| ${name} | ${metric.passed}/${metric.evaluated} | ${metric.accuracy === null ? "N/A" : `${metric.accuracy}%`} | ${metric.coverage === null ? "N/A" : `${metric.coverage}%`} | ${metric.notEvaluated} |`,
+  )
+  const oracleCategoryRows = Object.entries(report.goldenV1.metadata.oracleAudit.categories)
+    .map(([category, count]) => `- \`${category}\`: ${count} cases.`)
+  const structuralCauses = Object.entries(report.goldenV1.failedLayerCounts)
+    .filter(([, count]) => count > 0)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 6)
+    .map(([layer, count]) => `- \`${layer}\`: ${count} cases com falha.`)
   const failures = report.topFailures.length === 0
     ? ["- Nenhuma falha no conjunto atual."]
     : report.topFailures.flatMap((failure) => [
@@ -846,36 +1113,75 @@ export function buildCosSystemEvalMarkdownReport(report: Awaited<ReturnType<type
       ])
 
   return [
-    "# COS — Relatório de evals conversacionais",
+    "# COS — Baseline do Golden Conversation Scenarios V1",
     "",
     `Gerado em: ${report.generatedAt}`,
     "",
     "## Dataset",
     "",
     `- Routing legado single-turn: ${report.dataset.legacySingleTurn} casos.`,
-    `- Conversas multi-turno: ${report.dataset.multiTurnConversations} cenários / ${report.dataset.multiTurnTurns} turnos.`,
+    `- Golden V1: ${report.dataset.baseScenarios} cenários-base / ${report.dataset.executableCases} cases executáveis / ${report.dataset.goldenV1Turns} turnos.`,
+    `- Golden anterior preservado: ${report.dataset.legacyMultiTurnConversations} conversas / ${report.dataset.legacyMultiTurnTurns} turnos.`,
     `- Execution fixtures no executor real: ${report.dataset.executionFixtures}.`,
     `- Response fixtures: ${report.dataset.responseFixtures}.`,
     `- Localization fixtures: ${report.dataset.localizationFixtures}.`,
     "",
-    "## Métricas separadas",
+    "## Auditoria do oracle V1.1",
+    "",
+    `- Cases auditados contra a fonte humana: ${report.goldenV1.metadata.oracleAudit.auditedExecutableCases}.`,
+    `- Cases afetados pela ambiguidade estrutural do campo único de capability: ${report.goldenV1.metadata.oracleAudit.capabilitySchemaAmbiguityCases}.`,
+    `- Cases com correção semântica além da separação mecânica do schema: ${report.goldenV1.metadata.oracleAudit.semanticCorrectionCases}.`,
+    `- Oracle congelado: \`${report.goldenV1.metadata.frozen}\` em ${report.goldenV1.metadata.frozenAt}; versão \`${report.goldenV1.metadata.oracleVersion}\`.`,
+    "",
+    "Categorias afetadas (podem se sobrepor):",
+    "",
+    ...oracleCategoryRows,
+    "",
+    "## Resultado dos cases oficiais",
+    "",
+    `- Passaram integralmente: ${report.goldenV1.statusBreakdown.pass}.`,
+    `- Falharam em ao menos uma camada avaliada: ${report.goldenV1.statusBreakdown.fail}.`,
+    `- Incompletos por camada obrigatória não avaliada: ${report.goldenV1.statusBreakdown.incomplete}.`,
+    `- Falhas associadas a gaps conhecidos: ${report.goldenV1.knownGapFailureCases.length}.`,
+    `- Falhas fora dos gaps previamente anotados: ${report.goldenV1.newGapFailureCases.length}.`,
+    `- Forbidden behaviors com observação executável: ${report.goldenV1.layerMetrics.forbidden_behaviors.evaluated}; não avaliados: ${report.goldenV1.layerMetrics.forbidden_behaviors.notEvaluated}.`,
+    "",
+    "Um case só passa integralmente quando todas as camadas obrigatórias são avaliadas e aprovadas. Camada sem oracle executável produz `incomplete`, nunca aprovação implícita.",
+    "",
+    "### Causas estruturais mais frequentes",
+    "",
+    ...structuralCauses,
+    "",
+    "## Cobertura e acurácia por camada do Golden V1",
+    "",
+    "| Camada | Aprovados/avaliados | Acurácia | Cobertura | Não avaliados |",
+    "|---|---:|---:|---:|---:|",
+    ...layerRows,
+    "",
+    "## Métricas determinísticas auxiliares",
     "",
     "| Métrica | Aprovados | Acurácia | Falhas |",
     "|---|---:|---:|---:|",
     ...metricRows,
     "",
-    "Não existe média agregada: cada camada é reportada separadamente para evitar que 400 casos simples escondam falhas multi-turno ou operacionais.",
+    "Não existe média agregada: coverage e accuracy são separadas para impedir que uma camada não executada apareça como 100%.",
     "",
-    "## Principais falhas observadas",
+    "## Primeiras falhas observadas por turno/camada",
     "",
     ...failures,
     "",
+    "## Inconsistências preservadas da fonte",
+    "",
+    ...report.goldenV1.sourceIssues.map((issue) => `- ${issue}`),
+    "",
     "## Limitações metodológicas",
     "",
-    "- O conjunto determinístico não chama provedores pagos.",
-    "- Execution eval usa o executor real com handlers-fixture tipados e sem banco; não substitui validação transacional em uma base de teste isolada.",
-    "- Knowledge eval mede documentos, chunks e evidências textuais esperadas, não julgamento semântico por modelo.",
-    "- O relatório registra divergências; o runner não altera o esperado para obter 100%.",
+    "- O baseline determinístico não chama banco remoto nem provedores pagos.",
+    "- Routing, referência, continuidade, retrieval e policies declarativas são avaliados contra componentes reais e puros.",
+    "- Persistência Prisma, ledger de créditos, entitlement real, artefatos de provider e forbidden behaviors dependentes de side effect ficam `not_evaluated` até existir ambiente isolado e adapters seguros.",
+    "- O estado `turn.after` organiza a conversa-fixture; ele não é aceito como prova de persistência.",
+    "- Execution eval usa o executor real com handlers-fixture tipados e sem banco; não substitui validação transacional.",
+    "- O relatório registra divergências; o runner não altera o expected para obter aprovação.",
     "",
   ].join("\n")
 }
@@ -889,6 +1195,98 @@ export function validateCosGoldenDataset(conversations: CosGoldenConversation[] 
     turns: conversations.reduce((sum, conversation) => sum + conversation.turns.length, 0),
     duplicateIds: [...new Set(duplicateIds)],
     invalidConversationIds: invalid.map((conversation) => conversation.id),
+  }
+}
+
+export function validateCosGoldenV1Dataset(conversations: CosGoldenConversation[] = cosGoldenV1Conversations) {
+  const ids = conversations.map((conversation) => conversation.id)
+  const baseIds = conversations.map((conversation) => conversation.baseScenarioId ?? conversation.id)
+  const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))]
+  const invalidConversationIds = conversations
+    .filter((conversation) =>
+      conversation.turns.length === 0 ||
+      !conversation.baseScenarioId ||
+      !conversation.sourceNumber ||
+      !conversation.title ||
+      !conversation.classifications?.length ||
+      !conversation.priorities?.length ||
+      !conversation.domains?.length ||
+      !conversation.requiredLayers?.length ||
+      conversation.turns.some((turn) => !turn.expected.primaryDomain),
+    )
+    .map((conversation) => conversation.id)
+  const invalidCapabilityRefs = conversations.flatMap((conversation) =>
+    conversation.turns.flatMap((item, index) => {
+      const capabilityIds = [
+        item.expected.referencedCapabilityId,
+        item.expected.selectedCapabilityId,
+        item.expected.executedCapabilityId,
+      ].filter((capabilityId): capabilityId is string => typeof capabilityId === "string")
+      return capabilityIds.flatMap((capabilityId) => getCosCapabilityDescriptorById(capabilityId as never)
+        ? []
+        : [`${conversation.id}:turn-${index + 1}:${capabilityId}`])
+    }),
+  )
+  const unresolvedPlaceholders = conversations.flatMap((conversation) =>
+    conversation.turns.flatMap((item, index) => /\[\.\.\.\]|\[(?:dados|motivo|eventos) reais\]/i.test(item.message)
+      ? [`${conversation.id}:turn-${index + 1}`]
+      : []),
+  )
+  const unsafeKnowledgeCases = conversations
+    .filter((conversation) => conversation.classifications?.includes("KNOWLEDGE_ONLY"))
+    .filter((conversation) => conversation.turns.some((item) =>
+      item.expected.shouldMutate === true ||
+      item.expected.requiresConfirmation === true ||
+      item.expected.selectedCapabilityId !== null ||
+      item.expected.executedCapabilityId !== null,
+    ))
+    .map((conversation) => conversation.id)
+  const unsafeProductGapCases = conversations
+    .filter((conversation) => conversation.classifications?.includes("PRODUCT_EXISTS_COS_GAP"))
+    .filter((conversation) => conversation.turns.some((item) =>
+      item.expected.selectedCapabilityId !== null ||
+      item.expected.executedCapabilityId !== null,
+    ))
+    .map((conversation) => conversation.id)
+  const conflatedCapabilityOracle = conversations.flatMap((conversation) =>
+    conversation.turns.flatMap((item, index) => Object.prototype.hasOwnProperty.call(item.expected, "capabilityId")
+      ? [`${conversation.id}:turn-${index + 1}`]
+      : []),
+  )
+  const p0WithoutStateOrTrace = conversations
+    .filter((conversation) => conversation.priorities?.includes("P0"))
+    .filter((conversation) => {
+      const assertions = conversation.assertions
+      return !assertions?.stateAfter && !assertions?.persistence && !assertions?.expectedTrace && !assertions?.forbidden
+    })
+    .map((conversation) => conversation.id)
+  const correctionCaseIds = [...COS_GOLDEN_V1_METADATA.oracleAudit.semanticCorrectionCaseIds]
+  const invalidOracleAuditCaseIds = [
+    ...correctionCaseIds.filter((id, index) => correctionCaseIds.indexOf(id) !== index),
+    ...correctionCaseIds.filter((id) => !ids.includes(id)),
+    ...(correctionCaseIds.length !== COS_GOLDEN_V1_METADATA.oracleAudit.semanticCorrectionCases
+      ? ["semanticCorrectionCases:count_mismatch"]
+      : []),
+    ...(COS_GOLDEN_V1_METADATA.oracleAudit.auditedExecutableCases !== conversations.length
+      ? ["auditedExecutableCases:count_mismatch"]
+      : []),
+  ]
+
+  return {
+    expectedBaseScenarios: COS_GOLDEN_V1_METADATA.baseScenarioCount,
+    expectedExecutableCases: COS_GOLDEN_V1_METADATA.executableCaseCount,
+    baseScenarios: new Set(baseIds).size,
+    executableCases: conversations.length,
+    turns: conversations.reduce((sum, conversation) => sum + conversation.turns.length, 0),
+    duplicateIds,
+    invalidConversationIds,
+    invalidCapabilityRefs,
+    unresolvedPlaceholders,
+    unsafeKnowledgeCases,
+    unsafeProductGapCases,
+    conflatedCapabilityOracle,
+    p0WithoutStateOrTrace,
+    invalidOracleAuditCaseIds: [...new Set(invalidOracleAuditCaseIds)],
   }
 }
 

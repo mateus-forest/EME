@@ -1,0 +1,9 @@
+{
+  "status": "frozen",
+  "oracleVersion": "golden-v1.1-oracle-audit",
+  "frozenAt": "2026-08-18",
+  "baseScenarios": 104,
+  "executableCases": 106,
+  "datasetSha256": "44d01462f688270061c0df359141853044867507b68270cc311392e1780aceac",
+  "oracleSha256": "c8d03151d3690f8e1a9e5acbc2c8fb84ab032e6439280e59cdf690caffe8ec90"
+}
