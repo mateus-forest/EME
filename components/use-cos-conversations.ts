@@ -95,7 +95,11 @@ type AssistantMessageResponse = {
     leadId?: unknown
     options?: unknown
     workflow?: {
+      id?: unknown
+      status?: unknown
       pendingInput?: {
+        action?: unknown
+        field?: unknown
         options?: unknown
         parsedData?: {
           options?: unknown
@@ -857,30 +861,53 @@ export function useCosConversations({
 
       setConversation((current) => [...current, assistantMessage])
 
-      if (data?.confirmRequired && assistantMessage.action) {
+      const persistedConfirmationAction =
+        data?.metadata?.workflow?.pendingInput?.field === "confirmation" &&
+        typeof data.metadata.workflow.pendingInput.action === "string"
+          ? data.metadata.workflow.pendingInput.action
+          : null
+
+      const preservesExistingConfirmation = Boolean(
+        data?.confirmRequired &&
+        persistedConfirmationAction &&
+        pendingConfirmation?.action === persistedConfirmationAction &&
+        assistantMessage.action !== persistedConfirmationAction,
+      )
+
+      if (preservesExistingConfirmation) {
+        setPendingConfirmation(pendingConfirmation)
+        setChatFeedback("Revise a ação pendente e confirme quando quiser continuar.")
+      } else if (data?.confirmRequired && (persistedConfirmationAction || assistantMessage.action)) {
+        const confirmationAction = persistedConfirmationAction ?? assistantMessage.action!
         assistantMessage.sourceInteractionId = assistantMessage.id
         setSuppressedPendingConfirmation(null)
         setPendingConfirmation({
-          action: assistantMessage.action,
+          action: confirmationAction,
           sourceMessage: normalizedMessage,
           sourceInteractionId: assistantMessage.id,
           prompt:
             typeof data?.metadata?.confirmationPrompt === "string"
               ? repairLegacyCosText(data.metadata.confirmationPrompt)
-              : responseView?.confirmation?.prompt ?? buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).prompt,
+              : responseView?.confirmation?.prompt ?? buildPendingConfirmationLabels({ action: confirmationAction, content: assistantMessage.content }).prompt,
           confirmLabel:
             typeof data?.metadata?.confirmationConfirmLabel === "string"
               ? repairLegacyCosText(data.metadata.confirmationConfirmLabel)
-              : responseView?.confirmation?.confirmLabel ?? buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).confirmLabel,
+              : responseView?.confirmation?.confirmLabel ?? buildPendingConfirmationLabels({ action: confirmationAction, content: assistantMessage.content }).confirmLabel,
           cancelLabel:
             typeof data?.metadata?.confirmationCancelLabel === "string"
               ? repairLegacyCosText(data.metadata.confirmationCancelLabel)
-              : responseView?.confirmation?.cancelLabel ?? buildPendingConfirmationLabels({ action: assistantMessage.action, content: assistantMessage.content }).cancelLabel,
+              : responseView?.confirmation?.cancelLabel ?? buildPendingConfirmationLabels({ action: confirmationAction, content: assistantMessage.content }).cancelLabel,
           attachments: resolvedOptions?.attachments ?? [],
           options: responseOptions,
         })
         setChatFeedback("Aguardando sua confirmação.")
         setChatFeedback("Revise a ação e confirme para continuar.")
+      } else if (persistedConfirmationAction && pendingConfirmation?.action === persistedConfirmationAction) {
+        // Uma consulta curta pode ser respondida sem encerrar a ação que aguardava confirmação.
+        // O workflow persistido é a fonte de verdade; mantenha o card existente enquanto a API
+        // informar que a mesma confirmação continua pendente.
+        setPendingConfirmation(pendingConfirmation)
+        setChatFeedback("Revise a ação pendente e confirme quando quiser continuar.")
       } else {
         setPendingConfirmation(null)
         setChatFeedback(
@@ -951,14 +978,20 @@ export function useCosConversations({
   }, [pendingConfirmation, sendCosMessage])
 
   const selectPendingOption = useCallback(async (option: CosResponseOption) => {
+    if (option.href) {
+      navigateToFastActionHref(option.href)
+      return
+    }
+
+    const carriesWorkflowAttachment = option.actionId.startsWith("workflow_selection:")
     await sendCosMessage(option.message ?? option.label, {
       action: option.action ?? undefined,
       visibleMessage: option.label,
       optionActionId: option.actionId,
       selectedOptionId: option.selectedOptionId ?? option.id,
-      attachments: pendingConfirmation?.attachments ?? [],
+      attachments: carriesWorkflowAttachment ? pendingConfirmation?.attachments ?? [] : [],
     })
-  }, [pendingConfirmation, sendCosMessage])
+  }, [navigateToFastActionHref, pendingConfirmation, sendCosMessage])
 
   useEffect(() => {
     writeConversationCache({

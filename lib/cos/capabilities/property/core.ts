@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client"
 
 import { createCosErrorResult, createCosSuccessResult, normalizeCosActionResult } from "@/lib/cos/action-result"
 import { createPendingInputMetadata } from "@/lib/cos/pending-input"
-import { resolvePropertyEntity } from "@/lib/cos/entity-resolver"
+import { resolveLeadEntity, resolvePropertyEntity } from "@/lib/cos/entity-resolver"
 import { createPropertyDraftRecord, formatAssessorPropertyPrice, searchBrokerProperties } from "@/lib/cos/runtime-helpers"
 import { prisma } from "@/lib/prisma"
 import { parsePropertyLegalData } from "@/lib/legal-entities"
@@ -44,7 +44,82 @@ export const createPropertyDraftCapability: CosCapabilityHandler = async ({ brok
   return result
 }
 
-export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerId, message, pendingInput }) => {
+export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerId, message, payload, pendingInput, context }) => {
+  let searchMessage = message
+  let selectedLead: { id: string; name: string | null } | null = context?.selectedEntityIds.lead
+    ? {
+        id: context.selectedEntityIds.lead,
+        name: context.snapshot?.activeEntities.lead?.label ?? null,
+      }
+    : null
+
+  if (pendingInput?.action === "searchProperties" && pendingInput.field === "lead") {
+    const leadResolution = await resolveLeadEntity({
+      brokerId,
+      message,
+      payload: payload ?? {},
+      pendingField: pendingInput.field,
+      pendingData: pendingInput.parsedData,
+      pendingOptions: pendingInput.options,
+    })
+
+    if (!leadResolution.record) {
+      return {
+        response: leadResolution.options?.length
+          ? "Encontrei mais de um cliente. Qual deles está procurando o imóvel?"
+          : "Não encontrei esse cliente. Pode informar o nome completo?",
+        metadata: createPendingInputMetadata({
+          field: "lead",
+          action: "searchProperties",
+          entity: "property",
+          capabilityId: "property.search",
+          reason: "property_search_client_missing",
+          parsedData: pendingInput.parsedData,
+          options: leadResolution.options ?? pendingInput.options,
+        }),
+      }
+    }
+
+    selectedLead = leadResolution.record
+    searchMessage = typeof pendingInput.parsedData.searchQuery === "string"
+      ? pendingInput.parsedData.searchQuery
+      : message
+  } else if (
+    context?.decision?.secondaryDomains.includes("lead") &&
+    !context.selectedEntityIds.lead
+  ) {
+    const recentLeads = await prisma.lead.findMany({
+      where: { brokerId },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: { id: true, name: true, phone: true },
+    })
+
+    return {
+      response: "Qual cliente está procurando esse imóvel?",
+      metadata: createPendingInputMetadata({
+        field: "lead",
+        action: "searchProperties",
+        entity: "property",
+        capabilityId: "property.search",
+        reason: "property_search_client_missing",
+        parsedData: { searchQuery: message },
+        options: recentLeads.map((lead) => ({
+          id: lead.id,
+          label: lead.name ?? "Cliente sem nome",
+          description: lead.phone ?? undefined,
+        })),
+      }),
+    }
+  }
+
+  if (!selectedLead && pendingInput?.action === "searchProperties" && typeof pendingInput.parsedData.leadId === "string") {
+    selectedLead = {
+      id: pendingInput.parsedData.leadId,
+      name: typeof pendingInput.parsedData.leadName === "string" ? pendingInput.parsedData.leadName : null,
+    }
+  }
+
   if (pendingInput?.action === "searchProperties" && pendingInput.field === "propertyChoice") {
     const resolution = await resolvePropertyEntity({
       brokerId,
@@ -62,13 +137,27 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
           formatPropertyLocationLabel(property.city, property.neighborhood),
           formatAssessorPropertyPrice(property.price),
         ])}\n\nQuer gerar proposta ou ver detalhes?`,
-        metadata: json({ propertyId: property.id, publicCode: property.publicCode }),
+        metadata: json({
+          propertyId: property.id,
+          publicCode: property.publicCode,
+          ...(selectedLead ? { leadId: selectedLead.id, leadName: selectedLead.name } : {}),
+        }),
         propertyId: property.id,
+        leadId: selectedLead?.id,
       }
     }
   }
 
-  const searchResult = await searchBrokerProperties(brokerId, message)
+  if (pendingInput?.action === "searchProperties" && (pendingInput.field === "query" || pendingInput.field === "price")) {
+    const previousQuery = typeof pendingInput.parsedData.previousQuery === "string"
+      ? pendingInput.parsedData.previousQuery
+      : typeof pendingInput.parsedData.query === "string"
+        ? pendingInput.parsedData.query
+        : ""
+    searchMessage = [previousQuery, message].filter(Boolean).join(" ")
+  }
+
+  const searchResult = await searchBrokerProperties(brokerId, searchMessage)
   const properties = searchResult.results
   const filters = searchResult.filters as Record<string, unknown>
   if (filters.priceOutOfRange === true) {
@@ -78,7 +167,10 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
         field: "price",
         action: "searchProperties",
         entity: "property",
-        parsedData: { query: message },
+        parsedData: {
+          query: searchMessage,
+          ...(selectedLead ? { leadId: selectedLead.id, leadName: selectedLead.name } : {}),
+        },
       }),
     }
   }
@@ -99,7 +191,11 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
         field: "query",
         action: "searchProperties",
         entity: "property",
-        parsedData: { previousQuery: message, previousFilters: searchResult.filters as Record<string, unknown> },
+        parsedData: {
+          previousQuery: searchMessage,
+          previousFilters: searchResult.filters as Record<string, unknown>,
+          ...(selectedLead ? { leadId: selectedLead.id, leadName: selectedLead.name } : {}),
+        },
       }),
     }
   }
@@ -115,8 +211,10 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
         propertyId: property.id,
         publicCode: property.publicCode,
         resultCount: 1,
+        ...(selectedLead ? { leadId: selectedLead.id, leadName: selectedLead.name } : {}),
       }),
       propertyId: property.id,
+      leadId: selectedLead?.id,
     }
   }
 
@@ -127,6 +225,7 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
       action: "searchProperties",
       entity: "property",
       parsedData: {
+        ...(selectedLead ? { leadId: selectedLead.id, leadName: selectedLead.name } : {}),
         propertyOptions: properties.map((item) => ({ id: item.id, title: item.title })),
         options: properties.map((item) => ({
           id: item.id,
@@ -136,6 +235,7 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
       },
       extra: {
         propertyIds: properties.map((item) => item.id),
+        ...(selectedLead ? { leadId: selectedLead.id, leadName: selectedLead.name } : {}),
       },
     }),
   }

@@ -53,6 +53,7 @@ import {
   type CosWorkflow,
 } from "@/lib/cos"
 import { mapAttachmentDraftToPendingPropertyData } from "@/lib/cos/attachment-analysis"
+import { getCosCapabilityDescriptorByAliasOrAction } from "@/lib/cos/capability-catalog"
 import { classifyCosSocialIntent, getSafeFirstName } from "@/lib/cos/conversation"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { resolveCosIntent } from "@/lib/cos/intent-resolver"
@@ -479,6 +480,43 @@ function getCosActionDomain(action: string | null | undefined) {
   return "general"
 }
 
+function buildNaturalClarificationResponse(input: {
+  reason: string | null
+  primaryDomain: CosDialogueDecision["primaryDomain"]
+  hasActiveLead: boolean
+}) {
+  switch (input.reason) {
+    case "property_search_context_incomplete":
+    case "property_search_location_missing":
+      return input.hasActiveLead
+        ? "Qual cidade ou região devo considerar na busca?"
+        : "Que tipo de imóvel você procura e em qual cidade ou região?"
+    case "required_entity_unresolved":
+      if (input.primaryDomain === "lead") return "Qual cliente você quer usar? Pode informar o nome."
+      if (input.primaryDomain === "property") return "Qual imóvel você quer usar? Pode informar o título ou endereço."
+      if (input.primaryDomain === "proposal") return "Qual proposta você quer usar?"
+      if (input.primaryDomain === "contract") return "Qual contrato você quer usar?"
+      if (input.primaryDomain === "studio") return "Qual imóvel você quer usar no Studio IA?"
+      return "Qual item você quer usar para continuar?"
+    case "entity_reference_ambiguous":
+    case "lead_target_ambiguous":
+      return "Encontrei mais de uma possibilidade. Qual delas você quer usar?"
+    case "studio_parameters_missing":
+      return "Qual imóvel e qual formato de campanha você quer criar?"
+    case "property_draft_data_missing":
+      return "Envie o endereço e os dados principais do imóvel para eu continuar o cadastro."
+    case "agenda_time_missing":
+    case "temporal_input_ambiguous":
+      return "Qual é o dia e o horário do compromisso?"
+    case "proposal_property_missing":
+      return "Qual imóvel deve entrar na proposta?"
+    case "performance_metric_ambiguous":
+      return "Você quer comparar visualizações, contatos, conversões ou propostas?"
+    default:
+      return "O que você quer fazer agora? Se houver um cliente ou imóvel envolvido, informe qual."
+  }
+}
+
 function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
   const propertyId = typeof metadata.propertyId === "string" ? metadata.propertyId : null
   const leadId = typeof metadata.leadId === "string" ? metadata.leadId : null
@@ -584,7 +622,7 @@ function buildStructuredNextStepOptions(action: AssessorAction, metadata: Prisma
       case "next_contract_property":
         return buildStructuredOption({ ...option, actionId: "next:CREATE_CONTRACT", action: "CREATE_CONTRACT", message: option.message ?? option.label })
       case "next_client_timeline":
-        return buildStructuredOption({ ...option, actionId: "next:open_history", message: option.message ?? option.label, href: "/corretor/historico" })
+        return buildStructuredOption({ ...option, actionId: "next:LEAD_TIMELINE", action: "LEAD_TIMELINE", message: option.message ?? option.label })
       default:
         return buildStructuredOption({ ...option, actionId: `next:${option.id}`, message: option.message ?? option.label })
     }
@@ -784,8 +822,13 @@ export async function POST(request: NextRequest) {
   const conversationIdFromBody = cleanText(body?.conversationId, 80)
   const displayMessage = cleanText(body?.displayMessage, 3000) || message
   const selectedOptionId = cleanText(body?.selectedOptionId, 160)
+  const optionActionId = cleanText(body?.optionActionId, 200)
   let isCancellation = Boolean(body?.cancel)
-  const requestedAction = cleanText(body?.action ?? body?.actionType, 80)
+  const rawRequestedAction = cleanText(body?.action ?? body?.actionType, 80)
+  const requestedDescriptor = getCosCapabilityDescriptorByAliasOrAction(rawRequestedAction)
+  const requestedAction = rawRequestedAction === "workflow_details"
+    ? rawRequestedAction
+    : requestedDescriptor?.action ?? rawRequestedAction
   const isWorkflowDetailsRequest = requestedAction === "workflow_details"
   const attachments = sanitizeIncomingAttachments(body?.attachments)
   const socialIntent = classifyCosSocialIntent(message)
@@ -804,6 +847,10 @@ export async function POST(request: NextRequest) {
 
   if (!message) {
     return NextResponse.json({ error: "Digite uma mensagem para o COS." }, { status: 400 })
+  }
+
+  if (optionActionId && rawRequestedAction && !requestedDescriptor && rawRequestedAction !== "workflow_details") {
+    return NextResponse.json({ error: "Esta opção não está mais disponível. Escolha uma ação atualizada." }, { status: 409 })
   }
 
   try {
@@ -970,7 +1017,14 @@ export async function POST(request: NextRequest) {
     })
     const contextualActiveWorkflow = contextualTurn.workflow
     const structuredSelectionMessage = resolveStructuredSelectionMessage(contextualActiveWorkflow, selectedOptionId)
-    const effectiveAttachments = attachments.length > 0 ? attachments : (conversationMemory?.attachments ?? [])
+    // Anexos pertencem ao turno que os enviou ou ao workflow ainda ativo. Depois que o fluxo
+    // termina, não reaproveite arquivos antigos em uma nova intenção: isso evitava que um PDF,
+    // vídeo ou imagem mudasse silenciosamente o domínio de mensagens posteriores.
+    const effectiveAttachments = attachments.length > 0
+      ? attachments
+      : contextualActiveWorkflow
+        ? conversationMemory?.attachments ?? []
+        : []
     const baseNormalizedContext = createCosNormalizedContext({
       brokerId: user.broker.id,
       userId: user.id,
@@ -1133,6 +1187,14 @@ export async function POST(request: NextRequest) {
       contextualActiveWorkflow?.steps[contextualActiveWorkflow.currentStep]?.action ??
       contextualActiveWorkflow?.executionPlan.requestedAction ??
       null
+    const structuredOptionContinuesWorkflow = Boolean(
+      optionActionId && activeWorkflowAction && resolvedRequestedAction === activeWorkflowAction,
+    )
+    const naturalWorkflowContinuation = Boolean(
+      contextualActiveWorkflow?.pendingInput &&
+      !requestedAction &&
+      ["provide_input", "correct", "confirm", "select"].includes(dialogueDecision.dialogueAct),
+    )
     const rejectionStartsNewAction = Boolean(
       rejectionHasFollowUp &&
       dialogueDecision.workflowDecision === "start_new" &&
@@ -1149,23 +1211,38 @@ export async function POST(request: NextRequest) {
       !activeWorkflowAction ||
       getCosActionDomain(activeWorkflowAction) === getCosActionDomain(effectiveRequestedAction)
     const resumableWorkflow =
-      (isBoundPendingConfirmationResponse || shouldResumeWorkflow(contextualActiveWorkflow, message)) &&
-      intentResolution.workflowDecision !== "start_new" &&
+      (isBoundPendingConfirmationResponse || structuredOptionContinuesWorkflow || naturalWorkflowContinuation || shouldResumeWorkflow(contextualActiveWorkflow, message)) &&
+      (intentResolution.workflowDecision !== "start_new" || structuredOptionContinuesWorkflow || naturalWorkflowContinuation) &&
       workflowDomainsCompatible
         ? contextualActiveWorkflow
         : null
 
-    if (!isCancellation && !isBoundPendingConfirmationResponse && (intentResolution.confidence < 0.6 || dialogueDecision.needsClarification)) {
+    const propertyHandlerWillResolveClient = Boolean(
+      resolvedRequestedAction === "searchProperties" &&
+      dialogueDecision.secondaryDomains.includes("lead") &&
+      !conversationSnapshot.activeEntities.lead?.id &&
+      workspace?.entity !== "lead",
+    )
+    const runtimeClarificationReason = dialogueDecision.clarificationReason
+    const shouldClarifyBeforeExecution = !propertyHandlerWillResolveClient && (
+      intentResolution.confidence < 0.6 || dialogueDecision.needsClarification
+    )
+
+    if (!isCancellation && !isBoundPendingConfirmationResponse && shouldClarifyBeforeExecution) {
       const clarificationOptions = buildIntentClarificationOptions(intentResolution.candidates)
       if (clarificationOptions || dialogueDecision.needsClarification) {
         const brokerCredits = await getBrokerCredits(user.broker.id)
         const clarificationResponse = clarificationOptions
           ? "Quero ter certeza antes de seguir.\n\nVocê quis dizer uma destas ações?"
-          : dialogueDecision.clarificationReason === "selection_context_missing"
+          : runtimeClarificationReason === "selection_context_missing"
             ? "Preciso saber a qual item você está se referindo. Mostre a lista novamente ou informe o nome do cliente, imóvel, proposta ou contrato."
-            : dialogueDecision.clarificationReason === "return_topic_not_found"
+            : runtimeClarificationReason === "return_topic_not_found"
               ? "Não encontrei esse assunto entre os tópicos recentes. Diga qual cliente, imóvel, proposta ou contrato você quer retomar."
-              : `Entendi que você quer ${dialogueDecision.objective.mode === "query" ? "consultar" : "executar algo em"} ${dialogueDecision.primaryDomain}, mas preciso de um detalhe a mais para escolher a operação correta.`
+              : buildNaturalClarificationResponse({
+                  reason: runtimeClarificationReason,
+                  primaryDomain: dialogueDecision.primaryDomain,
+                  hasActiveLead: Boolean(conversationSnapshot.activeEntities.lead?.id || workspace?.entity === "lead"),
+                })
         const interactionMetadata = {
           source: metadataSource,
           parsedIntent: "general",
@@ -2120,7 +2197,7 @@ export async function POST(request: NextRequest) {
       actionStatus,
       metadata: interactionMetadata,
       creditsUsed: finalCreditsUsed,
-      confirmRequired: updatedWorkflow.pendingInput?.field === "confirmation",
+      confirmRequired: workflowToPersist.pendingInput?.field === "confirmation",
       conversation: touchedConversation ? serializeConversation(touchedConversation) : null,
       ...(updatedBroker ? creditsResponse(updatedBroker) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
     })

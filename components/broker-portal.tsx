@@ -268,16 +268,16 @@ export function BrokerPortal() {
 
   async function handleMenuAction(action: CosPromptComposerMenuAction) {
     const actionMap: Record<string, { label: string; message: string; action?: string; creditCostPreview?: number }> = {
-      register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente.", creditCostPreview: 1 },
-      create_property: { label: "Criar imóvel", message: "Quero criar um imóvel.", creditCostPreview: 3 },
+      register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente.", action: "createLead", creditCostPreview: 1 },
+      create_property: { label: "Criar imóvel", message: "Quero criar um imóvel.", action: "createPropertyDraft", creditCostPreview: 3 },
       attach_contract: { label: "Anexar contrato", message: "Quero anexar um contrato.", creditCostPreview: 2 },
-      create_campaign: { label: "Criar campanha", message: "Quero criar uma campanha para Instagram.", creditCostPreview: 10 },
-      generate_proposal: { label: "Gerar proposta", message: "Quero gerar uma proposta.", creditCostPreview: 2 },
-      search_property: { label: "Buscar imóvel", message: "Quero buscar um imóvel.", creditCostPreview: 1 },
-      my_clients: { label: "Meus clientes", message: "Mostre meus clientes.", creditCostPreview: 1 },
-      today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje.", creditCostPreview: 1 },
-      latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads.", creditCostPreview: 1 },
-      latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados.", creditCostPreview: 1 },
+      create_campaign: { label: "Criar campanha", message: "Quero criar uma campanha para Instagram.", action: "STUDIO_GENERATE_INSTAGRAM", creditCostPreview: 10 },
+      generate_proposal: { label: "Gerar proposta", message: "Quero gerar uma proposta.", action: "CREATE_PROPOSAL", creditCostPreview: 2 },
+      search_property: { label: "Buscar imóvel", message: "Quero buscar um imóvel.", action: "searchProperties", creditCostPreview: 1 },
+      my_clients: { label: "Meus clientes", message: "Mostre meus clientes.", action: "getLeadsSummary", creditCostPreview: 1 },
+      today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje.", action: "LIST_AGENDA_TODAY", creditCostPreview: 1 },
+      latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads.", action: "summarizeLead", creditCostPreview: 1 },
+      latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados.", action: "searchProperties", creditCostPreview: 1 },
       // As 7 entradas de ajuda passam `action` com o próprio id do botão — isso deixa a
       // classificação no backend determinística (casa direto contra o Capability Registry,
       // sem depender da cadeia de regex de inferAssessorAction) e conecta cada botão à sua

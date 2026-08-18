@@ -1,4 +1,5 @@
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
+import { attachmentSupportsCosAction } from "@/lib/cos/attachment-pipeline"
 import {
   getCosCapabilityDescriptorByAliasOrAction,
   getCosCapabilityDescriptorById,
@@ -242,11 +243,15 @@ function scoreContextAffinity(descriptor: CosCapabilityDescriptor, normalizedMes
   let score = 0
   const actionDomain = getDescriptorActionDomain(descriptor)
   const hasImage = context.attachments.some((attachment) => attachment.category === "image")
-  const hasDocument = context.attachments.some((attachment) => attachment.category === "document")
-  const hasVideo = context.attachments.some((attachment) => attachment.category === "video")
-  const hasAudio = context.attachments.some((attachment) => attachment.type.toLowerCase().startsWith("audio/"))
+  const workflowAction = context.workflow?.pendingInput?.action ?? context.workflow?.steps[context.workflow.currentStep]?.action ?? null
+  const attachmentSupportsAction = attachmentSupportsCosAction({
+    action: descriptor.action,
+    normalizedMessage,
+    workflowAction,
+    attachments: context.attachments,
+  })
 
-  if ((hasImage || hasAudio) && descriptor.action === "createPropertyDraft") {
+  if (attachmentSupportsAction && descriptor.action === "createPropertyDraft") {
     score += 4.4
     reasons.push("anexo orienta cadastro de imovel")
   }
@@ -256,12 +261,12 @@ function scoreContextAffinity(descriptor: CosCapabilityDescriptor, normalizedMes
     reasons.push("imagem + imovel selecionado")
   }
 
-  if (hasDocument && descriptor.action === "ATTACH_LEAD_DOCUMENT") {
+  if (attachmentSupportsAction && descriptor.action === "ATTACH_LEAD_DOCUMENT") {
     score += 4.2
     reasons.push("documento orienta anexo em cliente")
   }
 
-  if (hasVideo && descriptor.action === "STUDIO_GENERATE_VIDEO") {
+  if (attachmentSupportsAction && descriptor.action === "STUDIO_GENERATE_VIDEO") {
     score += 2.8
     reasons.push("video orienta studio video")
   }
@@ -281,7 +286,6 @@ function scoreContextAffinity(descriptor: CosCapabilityDescriptor, normalizedMes
     reasons.push("contrato selecionado")
   }
 
-  const workflowAction = context.workflow?.pendingInput?.action ?? context.workflow?.steps[context.workflow.currentStep]?.action ?? null
   if (workflowAction) {
     const workflowDomain = getDescriptorActionDomain({
       ...descriptor,

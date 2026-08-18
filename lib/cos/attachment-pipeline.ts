@@ -41,6 +41,37 @@ export function splitCosAttachmentsByCategory(attachments: CosAttachmentInput[])
   }
 }
 
+export function attachmentSupportsCosAction(input: {
+  action: string
+  normalizedMessage: string
+  workflowAction?: string | null
+  attachments: CosAttachmentInput[]
+}) {
+  const hasImageOrAudio = input.attachments.some(
+    (attachment) => attachment.category === "image" || attachment.type.toLowerCase().startsWith("audio/"),
+  )
+  const hasDocument = input.attachments.some((attachment) => attachment.category === "document")
+  const hasVideo = input.attachments.some((attachment) => attachment.category === "video")
+  const continuesAction = input.workflowAction === input.action
+
+  if (input.action === "createPropertyDraft") {
+    const explicitPropertyIntent = /\b(?:cadastr\w*|cri\w*|atualiz\w*|foto\w*|imagem\w*)\b.*\bimovel\b|\bimovel\b.*\b(?:cadastr\w*|cri\w*|atualiz\w*|foto\w*|imagem\w*)\b/u.test(input.normalizedMessage)
+    return hasImageOrAudio && (continuesAction || explicitPropertyIntent)
+  }
+
+  if (input.action === "ATTACH_LEAD_DOCUMENT") {
+    const explicitLeadIntent = /\b(?:anex\w*|vincul\w*|document\w*)\b.*\b(?:cliente|lead)\b|\b(?:cliente|lead)\b.*\b(?:anex\w*|vincul\w*|document\w*)\b/u.test(input.normalizedMessage)
+    return hasDocument && (continuesAction || explicitLeadIntent)
+  }
+
+  if (input.action === "STUDIO_GENERATE_VIDEO") {
+    const explicitVideoIntent = /\b(?:cri\w*|ger\w*|produz\w*|roteir\w*)\b.*\bvideo\b|\bvideo\b.*\b(?:cri\w*|ger\w*|produz\w*|roteir\w*)\b/u.test(input.normalizedMessage)
+    return hasVideo && (continuesAction || explicitVideoIntent)
+  }
+
+  return false
+}
+
 export async function runCosAttachmentPipeline(input: {
   message: string
   requestedAction?: string | null

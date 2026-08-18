@@ -207,7 +207,11 @@ function mapConversationMessages(rows: Array<{
       }
     }
 
-    if (row.actionStatus === "cancelled" || row.actionStatus === "success" || row.actionStatus === "error") {
+    if (
+      pendingConfirmation &&
+      row.actionType === pendingConfirmation.action &&
+      (row.actionStatus === "cancelled" || row.actionStatus === "success" || row.actionStatus === "error")
+    ) {
       pendingConfirmation = null
     }
   }
@@ -272,11 +276,13 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     })
 
     const mapped = mapConversationMessages(rows)
+    const { workflow } = parseConversationWorkflowContent(resolved.conversation.content)
+    const hasPersistedConfirmation = workflow?.pendingInput?.field === "confirmation"
 
     return NextResponse.json({
       conversation: serializeConversation(resolved.conversation),
       messages: mapped.messages,
-      pendingConfirmation: mapped.pendingConfirmation,
+      pendingConfirmation: hasPersistedConfirmation ? mapped.pendingConfirmation : null,
     })
   } catch (caughtError) {
     if (isPrismaUnavailable(caughtError)) {
