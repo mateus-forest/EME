@@ -60,9 +60,12 @@ export function BrokerCatalogHeader({
     <header className="sticky top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-5">
       <div className="mx-auto max-w-[1280px] rounded-[1.4rem] border border-white/70 bg-white/88 px-3 shadow-[0_18px_55px_rgba(40,58,49,.09)] backdrop-blur-2xl sm:px-5">
         <div className="flex h-[68px] items-center gap-3">
-          <Link href={catalogPath} className="flex shrink-0 items-center gap-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30" aria-label="EME — início do catálogo">
+          <Link
+            href={catalogPath}
+            className="flex shrink-0 items-center rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30"
+            aria-label="EME — início do catálogo"
+          >
             <Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={38} height={38} className="size-8 sm:size-9" priority />
-            <span className="text-[1.45rem] font-bold tracking-[-0.06em] text-[#121715]">eme</span>
           </Link>
 
           <nav className="mx-auto hidden items-center gap-1 lg:flex" aria-label="Navegação do catálogo">
@@ -138,16 +141,20 @@ export function BrokerProfileHero({
   ].filter((metric): metric is NonNullable<typeof metric> => Boolean(metric))
 
   return (
-    <section className="relative mx-auto w-full max-w-[1440px] px-2 pt-5 sm:px-4 sm:pt-7 lg:px-6">
-      <div className="relative min-h-[440px] overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_30px_78px_rgba(47,68,57,.12)] sm:min-h-[500px] lg:min-h-[560px]">
+    <section className="relative mx-auto w-full max-w-[1440px] px-3 pt-4 sm:px-4 lg:px-6">
+      <div className="relative overflow-hidden rounded-[1.3rem] border border-white/70 bg-[#f6fbf6] px-0 py-0 shadow-[0_24px_62px_rgba(47,68,57,.12)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={catalog.bannerUrl || PREMIUM_BANNER_FALLBACK} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(248,250,246,.96)_0%,rgba(248,250,246,.88)_30%,rgba(248,250,246,.55)_52%,rgba(248,250,246,.16)_70%,rgba(248,250,246,.0)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#f7fbf7] via-[#f7fbf7]/50 to-transparent" />
-        <div className="absolute -bottom-16 -left-16 size-72 rounded-full bg-[#bdf3ce]/45 blur-3xl" />
+        <img
+          src={catalog.bannerUrl || PREMIUM_BANNER_FALLBACK}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,246,.86)_0%,rgba(248,250,246,.76)_34%,rgba(248,250,246,.45)_57%,rgba(248,250,246,.18)_73%,rgba(248,250,246,.05)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#f7fbf7] via-[#f7fbf7]/45 to-transparent" />
+        <div className="absolute -bottom-16 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-[#bdf3ce]/45 blur-[74px]" />
 
-        <div className="relative flex min-h-[440px] flex-col items-center justify-center gap-6 px-5 pb-16 pt-8 text-center sm:min-h-[500px] sm:px-10 lg:flex-row lg:items-start lg:justify-start lg:gap-10 lg:px-12 lg:py-14 lg:text-left">
-          <div className="relative size-40 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_20px_55px_rgba(27,47,36,.16)] sm:size-48 md:size-52 lg:size-60">
+        <div className="relative z-10 grid gap-5 px-4 pb-4 pt-5 text-center sm:px-6 sm:pt-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-8 lg:pt-8 lg:text-left">
+          <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-36 lg:size-44 xl:size-52">
             {catalog.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={catalog.photoUrl} alt={catalog.displayName} className="h-full w-full object-cover object-center" />
@@ -158,21 +165,44 @@ export function BrokerProfileHero({
             )}
           </div>
 
-          <div className="min-w-0 max-w-3xl">
-            <h1 className="flex flex-wrap items-center justify-center gap-2.5 text-[2.9rem] font-semibold leading-none tracking-[-0.055em] text-[#0f1411] sm:text-[3.9rem] lg:justify-start lg:text-[4.1rem]">
-              {catalog.displayName}
-              {catalog.creciVerified ? <BadgeCheck className="size-7 fill-[#17a24c] text-white sm:size-8" aria-label="CRECI verificado" /> : null}
-            </h1>
-            {catalog.description ? <p className="mt-5 text-lg font-medium leading-snug text-[#2f3833] sm:text-2xl">{catalog.description}</p> : null}
-            {creciLabel(catalog) ? <p className="mt-3 text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p> : null}
-            <div className="mt-8 flex flex-wrap justify-center gap-3.5 lg:justify-start">
+          <div className="relative z-10 min-w-0 max-w-[38rem] space-y-3 pb-2 lg:pb-0">
+            <div className="flex flex-wrap items-start justify-center gap-2.5 sm:justify-start">
+              <h1 className="max-w-full text-[2rem] leading-tight tracking-[-0.04em] text-[#0f1411] sm:text-[2.35rem] lg:text-[3.2rem]">
+                {catalog.displayName}
+              </h1>
+              {catalog.creciVerified ? (
+                <BadgeCheck className="mt-2 size-6 fill-[#17a24c] text-white sm:size-7" aria-label="CRECI verificado" />
+              ) : null}
+            </div>
+
+            {catalog.description ? (
+              <p className="text-[1rem] font-medium leading-snug text-[#2f3833] sm:text-[1.05rem]">
+                {catalog.description}
+              </p>
+            ) : null}
+            {creciLabel(catalog) ? (
+              <p className="text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p>
+            ) : null}
+
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
               {catalog.whatsApp ? (
-                <Button type="button" onClick={onWhatsApp} className="h-11 rounded-full bg-[#159447] px-6 font-semibold text-white shadow-[0_12px_26px_rgba(21,148,71,.24)] hover:bg-[#107c39]">
-                  <MessageCircle className="size-4" /> WhatsApp
+                <Button
+                  type="button"
+                  onClick={onWhatsApp}
+                  className="h-11 min-w-0 flex-1 rounded-full bg-[#159447] px-5 font-semibold text-white shadow-[0_12px_26px_rgba(21,148,71,.24)] hover:bg-[#107c39] sm:flex-none sm:px-6"
+                >
+                  <MessageCircle className="size-4" />
+                  <span>WhatsApp</span>
                 </Button>
               ) : null}
-              <Button type="button" variant="ghost" onClick={onShare} className="h-11 rounded-full border border-[#dfe7e1] bg-white/92 px-6 font-semibold text-[#26302a] shadow-sm hover:bg-white">
-                <Share2 className="size-4" /> Compartilhar
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onShare}
+                className="h-11 min-w-0 flex-1 rounded-full border border-[#dfe7e1] bg-white/92 px-5 font-semibold text-[#26302a] shadow-sm hover:bg-white sm:flex-none sm:px-6"
+              >
+                <Share2 className="size-4" />
+                <span>Compartilhar</span>
               </Button>
             </div>
           </div>
@@ -180,18 +210,19 @@ export function BrokerProfileHero({
       </div>
 
       {metrics.length ? (
-        <div className="relative z-10 -mt-20 grid grid-cols-2 overflow-hidden rounded-[1.6rem] border border-white/80 bg-white/94 shadow-[0_22px_52px_rgba(43,61,52,.1)] backdrop-blur-xl sm:grid-flow-col sm:auto-cols-fr">
-          {metrics.map(({ icon: Icon, value, label }, index) => (
-            <div key={label} className={cn(
-              "flex min-h-[124px] flex-col items-center justify-center px-4 py-5 text-center sm:min-h-[132px] lg:border-t-0",
-              index > 1 && "border-t border-[#edf0ed]",
-              index % 2 === 1 && "border-l border-[#edf0ed]",
-              index > 0 && "lg:border-l lg:border-[#edf0ed]",
-              metrics.length % 2 === 1 && index === metrics.length - 1 && "col-span-2 lg:col-span-1",
-            )}>
-              <span className="flex size-8 items-center justify-center rounded-full border border-[#dfece2] bg-[#f5fbf6] text-[#159447]"><Icon className="size-4" /></span>
-              <strong className="mt-2 line-clamp-2 text-sm font-semibold text-[#151b17] sm:text-base">{value}</strong>
-              <span className="mt-1 text-xs text-[#7a837e]">{label}</span>
+        <div className="relative z-10 mx-auto mt-3 grid w-full max-w-[1440px] grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {metrics.map(({ icon: Icon, value, label }) => (
+            <div
+              key={label}
+              className="relative grid items-center overflow-hidden rounded-[1.2rem] border border-[#ebf0ec] bg-white/97 px-3 py-3 backdrop-blur"
+            >
+              <div className="flex flex-col items-center justify-center gap-1.5 text-center">
+                <span className="flex size-7 items-center justify-center rounded-full border border-[#dfece2] bg-[#f5fbf6] text-[#159447]">
+                  <Icon className="size-3.5" />
+                </span>
+                <strong className="line-clamp-2 text-sm font-semibold leading-snug text-[#151b17] sm:text-base">{value}</strong>
+                <span className="text-xs leading-4 text-[#7a837e]">{label}</span>
+              </div>
             </div>
           ))}
         </div>
