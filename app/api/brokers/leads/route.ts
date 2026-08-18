@@ -10,7 +10,7 @@ import {
   prismaSchemaMismatchResponse,
 } from "@/lib/auth-route"
 import { normalizeEntityDocumentForStorage } from "@/lib/entity-document"
-import { leadInclude, serializeLead } from "@/lib/lead-contract"
+import { leadInclude, parseLeadStatus, serializeLead } from "@/lib/lead-contract"
 import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
 import { formatPhone, normalizeCep, normalizeCpfCnpj, normalizePhone, parseBrazilianDateToIso } from "@/lib/structured-fields"
@@ -85,10 +85,15 @@ export async function POST(request: NextRequest) {
     const message = cleanText(body?.message, 800)
     const searchTerm = cleanText(body?.searchTerm, 240)
     const intent = cleanText(body?.intent, 120)
+    const status = body?.status === undefined ? null : parseLeadStatus(body.status)
     const identification = normalizeLeadIdentification(body?.identification)
     const address = normalizeLeadAddress(body?.address)
     const legal = normalizeLeadLegal(body?.legal)
     const documents = normalizeDocuments(body?.documents)
+
+    if (body?.status !== undefined && !status) {
+      return NextResponse.json({ error: "Status do cliente inválido." }, { status: 400 })
+    }
 
     if (!name && !email && !phone) {
       return NextResponse.json(
@@ -144,6 +149,7 @@ export async function POST(request: NextRequest) {
             message: message || existingLead.message || null,
             searchTerm: searchTerm || existingLead.searchTerm || null,
             intent: intent || existingLead.intent || null,
+            ...(status ? { status } : {}),
             legalData: {
               ...identification,
               ...legal,
@@ -166,6 +172,7 @@ export async function POST(request: NextRequest) {
             message: message || (property ? `Cliente vinculado ao imovel ${property.title}` : null),
             searchTerm: searchTerm || null,
             intent: intent || null,
+            ...(status ? { status } : {}),
             legalData: {
               ...identification,
               ...legal,

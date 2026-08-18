@@ -16,7 +16,7 @@ const client = {
   intent: "Comprar imóvel",
   source: "Manual",
   status: "NEW",
-  statusLabel: "Novo",
+  statusLabel: "Novo interessado",
   propertyId: null,
   propertyTitle: "",
   brokerId: "broker-1",
@@ -170,6 +170,74 @@ async function mockBrokerSession(page: Page) {
 }
 
 test.describe("estado dos modais de clientes e imóveis", () => {
+  test("status comercial persiste na edição e atualiza lista e filtro", async ({ page }) => {
+    await loginAsBroker(page)
+    let persistedClient = { ...client }
+    let savedStatus = ""
+
+    await page.route("**/api/brokers/leads**", (route) => route.fulfill({ json: { leads: [persistedClient] } }))
+    await page.route(`**/api/leads/${client.id}`, async (route) => {
+      if (route.request().method() !== "PATCH") return route.continue()
+      const body = route.request().postDataJSON() as { status?: string }
+      savedStatus = body.status ?? ""
+      persistedClient = {
+        ...persistedClient,
+        status: body.status ?? persistedClient.status,
+        statusLabel: body.status === "NEGOTIATING" ? "Em negociação" : persistedClient.statusLabel,
+      }
+      await route.fulfill({ json: { lead: persistedClient } })
+    })
+
+    await page.goto("/corretor/clientes")
+    await page.getByRole("button", { name: "Ver cliente" }).click()
+    const dialog = page.getByRole("dialog")
+    await dialog.getByRole("combobox", { name: "Status comercial" }).click()
+    await page.getByRole("option", { name: "Em negociação" }).click()
+    await dialog.getByRole("button", { name: "Salvar cliente" }).click()
+
+    await expect.poll(() => savedStatus).toBe("NEGOTIATING")
+    await expect(dialog.getByRole("combobox", { name: "Status comercial" })).toContainText("Em negociação")
+    await dialog.getByRole("button", { name: "Close" }).click()
+    await page.getByRole("button", { name: "Em negociação", exact: true }).click()
+    await expect(page.getByText(client.name, { exact: true })).toBeVisible()
+
+    await page.getByRole("button", { name: "Ver cliente" }).click()
+    await expect(page.getByRole("dialog").getByRole("combobox", { name: "Status comercial" })).toContainText("Em negociação")
+  })
+
+  test("novo cliente permite escolher o status inicial real", async ({ page }) => {
+    await loginAsBroker(page)
+    let createdClient: typeof client | null = null
+    let createdStatus = ""
+
+    await page.route("**/api/brokers/leads**", async (route) => {
+      if (route.request().method() === "POST") {
+        const body = route.request().postDataJSON() as { name?: string; status?: string }
+        createdStatus = body.status ?? ""
+        createdClient = {
+          ...client,
+          id: "client-created-status",
+          name: body.name ?? "Novo cliente",
+          status: body.status ?? "NEW",
+          statusLabel: body.status === "LOST" ? "Perdido" : "Novo interessado",
+        }
+        return route.fulfill({ status: 201, json: { lead: createdClient, created: true } })
+      }
+      return route.fulfill({ json: { leads: createdClient ? [createdClient] : [] } })
+    })
+
+    await page.goto("/corretor/clientes")
+    await page.getByRole("button", { name: "Novo cliente" }).click()
+    const dialog = page.getByRole("dialog")
+    await dialog.getByRole("combobox", { name: "Status comercial" }).click()
+    await page.getByRole("option", { name: "Perdido", exact: true }).click()
+    await dialog.getByLabel("Nome completo").fill("Cliente com status inicial")
+    await dialog.getByRole("button", { name: "Cadastrar cliente" }).click()
+
+    await expect.poll(() => createdStatus).toBe("LOST")
+    await expect(page.getByText("Cliente com status inicial", { exact: true })).toBeVisible()
+  })
+
   test("cliente fecha uma vez, não reabre após refetch e mantém a lista", async ({ page }) => {
     await loginAsBroker(page)
     let leadRequests = 0

@@ -21,13 +21,22 @@ import {
 const leadStatuses = ["NEW", "CONTACTED", "NEGOTIATING", "WON", "LOST", "ARCHIVED"] as const
 
 export const leadStatusLabels: Record<LeadStatus, string> = {
-  NEW: "Novo",
+  NEW: "Novo interessado",
   CONTACTED: "Em atendimento",
-  NEGOTIATING: "Em atendimento",
-  WON: "Convertido",
+  NEGOTIATING: "Em negociação",
+  WON: "Vendido",
   LOST: "Perdido",
   ARCHIVED: "Arquivado",
 }
+
+export const leadStatusOptions: ReadonlyArray<{ value: LeadStatus; label: string }> = [
+  { value: LeadStatus.NEW, label: leadStatusLabels.NEW },
+  { value: LeadStatus.CONTACTED, label: leadStatusLabels.CONTACTED },
+  { value: LeadStatus.NEGOTIATING, label: leadStatusLabels.NEGOTIATING },
+  { value: LeadStatus.WON, label: leadStatusLabels.WON },
+  { value: LeadStatus.LOST, label: leadStatusLabels.LOST },
+  { value: LeadStatus.ARCHIVED, label: leadStatusLabels.ARCHIVED },
+]
 
 export type LeadRecord = {
   id: string

@@ -46,16 +46,15 @@ import {
 import { openClientDocumentPreview } from "@/lib/client-document-preview"
 import { dispatchEntitySync, subscribeEntitySync } from "@/lib/entity-sync"
 import type { EntityDocumentRecord } from "@/lib/legal-entities"
-import type { LeadRecord } from "@/lib/lead-contract"
+import { leadStatusLabels, leadStatusOptions, type LeadRecord } from "@/lib/lead-contract"
 
 type ClientFilterId =
   | "all"
   | "new"
   | "contacted"
-  | "visit"
   | "negotiating"
-  | "active"
   | "sold"
+  | "lost"
   | "archived"
 
 type ClientForm = {
@@ -68,6 +67,7 @@ type ClientForm = {
   searchTerm: string
   intent: string
   message: string
+  status: LeadRecord["status"]
   identification: {
     cpfCnpj: string
     rg: string
@@ -112,6 +112,7 @@ const emptyClientForm: ClientForm = {
   searchTerm: "",
   intent: "",
   message: "",
+  status: "NEW",
   identification: {
     cpfCnpj: "",
     rg: "",
@@ -149,50 +150,52 @@ const clientStages: Array<{
   match: (client: LeadRecord) => boolean
 }> = [
   {
-    title: "Novos interessados",
+    title: leadStatusLabels.NEW,
     description: "Contatos que chegaram e ainda precisam do primeiro atendimento.",
     icon: UsersRound,
     match: (client) => client.status === "NEW",
   },
   {
-    title: "Em atendimento",
-    description: "Clientes com conversa ativa, retorno ou negociação em andamento.",
+    title: leadStatusLabels.CONTACTED,
+    description: "Clientes com conversa ativa ou aguardando retorno.",
     icon: MessageCircle,
-    match: (client) => client.status === "CONTACTED" || client.status === "NEGOTIATING",
+    match: (client) => client.status === "CONTACTED",
   },
   {
-    title: "Vendidos",
+    title: leadStatusLabels.NEGOTIATING,
+    description: "Clientes com negociação comercial em andamento.",
+    icon: MessageCircle,
+    match: (client) => client.status === "NEGOTIATING",
+  },
+  {
+    title: leadStatusLabels.WON,
     description: "Clientes que avançaram para fechamento dentro do funil comercial.",
     icon: Trophy,
     match: (client) => client.status === "WON",
   },
   {
-    title: "Arquivados",
-    description: "Contatos arquivados ou encerrados fora da operação ativa.",
+    title: leadStatusLabels.LOST,
+    description: "Oportunidades encerradas sem venda.",
     icon: Clock3,
-    match: (client) => client.status === "ARCHIVED" || client.status === "LOST",
+    match: (client) => client.status === "LOST",
+  },
+  {
+    title: leadStatusLabels.ARCHIVED,
+    description: "Contatos retirados da operação ativa.",
+    icon: Clock3,
+    match: (client) => client.status === "ARCHIVED",
   },
 ]
 
 const clientFilters: Array<{ id: ClientFilterId; label: string }> = [
   { id: "all", label: "Todos" },
-  { id: "new", label: "Novos interessados" },
-  { id: "contacted", label: "Em atendimento" },
-  { id: "visit", label: "Visita agendada" },
-  { id: "negotiating", label: "Negociação" },
-  { id: "active", label: "Clientes ativos" },
-  { id: "sold", label: "Vendidos" },
-  { id: "archived", label: "Arquivados" },
+  { id: "new", label: leadStatusLabels.NEW },
+  { id: "contacted", label: leadStatusLabels.CONTACTED },
+  { id: "negotiating", label: leadStatusLabels.NEGOTIATING },
+  { id: "sold", label: leadStatusLabels.WON },
+  { id: "lost", label: leadStatusLabels.LOST },
+  { id: "archived", label: leadStatusLabels.ARCHIVED },
 ]
-
-const statusLabelOverrides: Record<LeadRecord["status"], string> = {
-  NEW: "Novo interessado",
-  CONTACTED: "Em atendimento",
-  NEGOTIATING: "Negociação",
-  WON: "Vendido",
-  LOST: "Arquivado",
-  ARCHIVED: "Arquivado",
-}
 
 export function BrokerClientsPage() {
   const router = useRouter()
@@ -210,7 +213,6 @@ export function BrokerClientsPage() {
   const [isCreateClientOpen, setIsCreateClientOpen] = useState(false)
   const [isCreatingClient, setIsCreatingClient] = useState(false)
   const [isSavingClient, setIsSavingClient] = useState(false)
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeletingClient, setIsDeletingClient] = useState(false)
   const [isLoadingCep, setIsLoadingCep] = useState(false)
   const [clientDraft, setClientDraft] = useState<ClientForm>(emptyClientForm)
@@ -374,31 +376,6 @@ export function BrokerClientsPage() {
 
     return unsubscribe
   }, [getLeadSyncSourceId, loadClients])
-
-  async function updateClientStatus(client: LeadRecord, status: LeadRecord["status"]) {
-    setIsUpdatingStatus(true)
-
-    try {
-      const response = await fetch(`/api/leads/${client.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({ status }),
-      })
-      const data = (await response.json().catch(() => null)) as { lead?: LeadRecord; error?: string } | null
-
-      if (!response.ok || !data?.lead) {
-        throw new Error(data?.error || "Não foi possível atualizar o status do cliente.")
-      }
-
-      syncClientInState(data.lead)
-    } catch (caughtError) {
-      showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o status do cliente.", "error")
-    } finally {
-      setIsUpdatingStatus(false)
-    }
-  }
 
   async function saveSelectedClient() {
     if (!selectedClient) return
@@ -684,7 +661,7 @@ export function BrokerClientsPage() {
                       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                         <p className="truncate font-semibold text-[#111827]">{client.name || "Cliente sem nome"}</p>
                         <span className="rounded-full border border-[#009b3a]/14 bg-[#eef9f1] px-2 py-0.5 text-[11px] font-medium text-[#008633]">
-                          {statusLabelOverrides[client.status]}
+                          {leadStatusLabels[client.status]}
                         </span>
                       </div>
                       <p className="mt-1 truncate text-xs text-[#7B8491]">
@@ -792,6 +769,12 @@ export function BrokerClientsPage() {
                   <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
                     <SectionTitle title="Identificação" subtitle="Dados civis e documentais usados diretamente no contrato." />
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <Field label="Status comercial">
+                        <LeadStatusSelect
+                          value={selectedClientDraft.status}
+                          onValueChange={(status) => setSelectedClientDraft((current) => ({ ...current, status }))}
+                        />
+                      </Field>
                       <Field label="Nome completo"><Input value={selectedClientDraft.name} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 rounded-xl" /></Field>
                       <Field label="CPF/CNPJ"><StructuredInput kind="cpf-cnpj" value={selectedClientDraft.identification.cpfCnpj} onValueChange={(value) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, cpfCnpj: value } }))} className="h-11 rounded-xl" aria-label="CPF ou CNPJ" /></Field>
                       <Field label="RG"><Input value={selectedClientDraft.identification.rg} onChange={(event) => setSelectedClientDraft((current) => ({ ...current, identification: { ...current.identification, rg: formatRg(event.target.value) } }))} className="h-11 rounded-xl" /></Field>
@@ -957,6 +940,12 @@ export function BrokerClientsPage() {
               <section className="grid gap-4 rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-5">
                 <SectionTitle title="Identificação" subtitle="Base civil do cadastro." />
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <Field label="Status comercial">
+                    <LeadStatusSelect
+                      value={clientDraft.status}
+                      onValueChange={(status) => setClientDraft((current) => ({ ...current, status }))}
+                    />
+                  </Field>
                   <Field label="Nome completo"><Input value={clientDraft.name} onChange={(event) => setClientDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 rounded-xl" /></Field>
                   <Field label="CPF/CNPJ"><StructuredInput kind="cpf-cnpj" value={clientDraft.identification.cpfCnpj} onValueChange={(value) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, cpfCnpj: value } }))} className="h-11 rounded-xl" aria-label="CPF ou CNPJ" /></Field>
                   <Field label="RG"><Input value={clientDraft.identification.rg} onChange={(event) => setClientDraft((current) => ({ ...current, identification: { ...current.identification, rg: formatRg(event.target.value) } }))} className="h-11 rounded-xl" /></Field>
@@ -1069,6 +1058,29 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
   )
 }
 
+function LeadStatusSelect({
+  value,
+  onValueChange,
+}: {
+  value: LeadRecord["status"]
+  onValueChange: (status: LeadRecord["status"]) => void
+}) {
+  return (
+    <Select value={value} onValueChange={(status) => onValueChange(status as LeadRecord["status"])}>
+      <SelectTrigger aria-label="Status comercial" className="h-11 rounded-xl bg-white">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {leadStatusOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 function QualityCard({ score, pending }: { score: number; pending: string[] }) {
   return (
     <div className="rounded-[1.5rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
@@ -1135,6 +1147,7 @@ function mapLeadToForm(lead: LeadRecord): ClientForm {
     searchTerm: lead.searchTerm,
     intent: lead.intent,
     message: lead.message,
+    status: lead.status,
     identification: {
       ...lead.identification,
       cpfCnpj: formatCpfCnpj(lead.identification.cpfCnpj),
@@ -1156,6 +1169,7 @@ function serializeClientForm(form: ClientForm) {
     searchTerm: form.searchTerm,
     intent: form.intent,
     message: form.message,
+    status: form.status,
     identification: {
       ...form.identification,
       cpfCnpj: normalizeCpfCnpj(form.identification.cpfCnpj),
@@ -1197,20 +1211,10 @@ function matchesClientFilter(client: LeadRecord, filter: ClientFilterId) {
   if (filter === "all") return true
   if (filter === "new") return client.status === "NEW"
   if (filter === "contacted") return client.status === "CONTACTED"
-  if (filter === "visit") return hasVisitScheduled(client)
   if (filter === "negotiating") return client.status === "NEGOTIATING"
-  if (filter === "active") return ["NEW", "CONTACTED", "NEGOTIATING"].includes(client.status)
   if (filter === "sold") return client.status === "WON"
-  return client.status === "ARCHIVED" || client.status === "LOST"
-}
-
-function hasVisitScheduled(client: LeadRecord) {
-  const content = [client.message, client.intent, client.searchTerm]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-
-  return /\b(visita|visitar|agendada|agendar|tour)\b/.test(content)
+  if (filter === "lost") return client.status === "LOST"
+  return client.status === "ARCHIVED"
 }
 
 function readFileAsDataUrl(file: File) {
