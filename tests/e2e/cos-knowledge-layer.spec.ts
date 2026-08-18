@@ -266,7 +266,7 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
   test("pergunta sobre publicar imóvel recupera procedimento, sem executar a mutação", async () => {
     const message = "Como publico meu imóvel?"
     const dialogue = decide(message)
-    expect(["query", "unknown"]).toContain(dialogue.dialogueAct)
+    expect(dialogue.dialogueAct).toBe("explain")
     expect(dialogue.primaryDomain).toBe("property")
 
     const context = await retrieveCosKnowledge({ message, decision: dialogue })

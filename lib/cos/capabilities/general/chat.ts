@@ -67,7 +67,7 @@ export const generalChatCapability: CosCapabilityHandler = async ({ message, con
       }
     }
 
-    const capabilityDescription = CAPABILITY_DOMAIN_RESPONSES[decision.primaryDomain]
+    const capabilityDescription = CAPABILITY_DOMAIN_RESPONSES[decision.primaryDomain as keyof typeof CAPABILITY_DOMAIN_RESPONSES] ?? CAPABILITY_DOMAIN_RESPONSES.general
     return {
       response: `Sim. Posso ${capabilityDescription}. Se quiser, me diga para executar e eu conduzo os dados necessários com você.`,
       metadata: {

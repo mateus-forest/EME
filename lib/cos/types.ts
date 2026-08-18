@@ -167,6 +167,11 @@ export type CosConversationDomain =
   | "agenda"
   | "catalog"
   | "marketplace"
+  | "account"
+  | "plan"
+  | "library"
+  | "history"
+  | "security"
   | "finance"
   | "analytics"
   | "studio"
@@ -652,7 +657,7 @@ export type CosConversationSelectionSet = {
 
 export type CosConversationTopic = {
   id: string
-  domain: CosCapabilityDomain
+  domain: CosConversationDomain
   label: string
   entityType: CosConversationEntityType | null
   selectionSetId: string | null

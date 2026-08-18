@@ -28,6 +28,7 @@ import {
   getConversationSnapshot,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
+  hasCosPendingRejectionFollowUp,
   isCosCapabilityAvailableOnSurface,
   normalizeCosAttachments,
   planCosExecution,
@@ -39,6 +40,7 @@ import {
   runCosAttachmentPipeline,
   sanitizeWorkspaceContext,
   shouldConfirmWorkflowMessage,
+  shouldPreserveCosPendingWorkflow,
   shouldResumeWorkflow,
   stringifyConversationWorkflowContent,
   updateWorkflowFromExecutionResult,
@@ -68,6 +70,7 @@ import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
+const COS_PROCESSING_LEASE_MS = 30 * 60 * 1000
 
 function creditsResponse(broker: { aiCreditsBalance: number; aiAssistantEnabled: boolean; aiCreditsUsedThisMonth: number }) {
   return {
@@ -171,17 +174,56 @@ function sanitizeIncomingAttachments(value: unknown) {
   return normalizeCosAttachments(value)
 }
 
+function pickConfirmationData(payload: Record<string, unknown>) {
+  const frozen: Record<string, string> = {}
+  for (const field of ["leadId", "propertyId", "contractId", "documentId", "proposalId", "agendaEventId", "eventId", "campaignId"] as const) {
+    const value = cleanText(payload[field], 191)
+    if (value) frozen[field] = value
+  }
+  return frozen
+}
+
+class CosConversationConflictError extends Error {
+  constructor(message = "Esta conversa mudou enquanto a ação era processada.") {
+    super(message)
+    this.name = "CosConversationConflictError"
+  }
+}
+
 async function persistConversationWorkflow(
-  conversationId: string,
-  workflow: CosWorkflow | null,
-  memory?: import("@/lib/cos").CosConversationMemory | null,
-  snapshot?: import("@/lib/cos").CosConversationSnapshot | null,
+  input: {
+    conversationId: string
+    brokerId: string
+    expectedContent: string
+    workflow: CosWorkflow | null
+    memory?: import("@/lib/cos").CosConversationMemory | null
+    snapshot?: import("@/lib/cos").CosConversationSnapshot | null
+  },
 ) {
-  return prisma.brokerDocument.update({
-    where: { id: conversationId },
-    data: { content: stringifyConversationWorkflowContent(workflow, memory, snapshot) },
+  const content = stringifyConversationWorkflowContent(input.workflow, input.memory, input.snapshot)
+  const updated = await prisma.brokerDocument.updateMany({
+    where: {
+      id: input.conversationId,
+      brokerId: input.brokerId,
+      type: "cos_conversation",
+      status: { not: "archived" },
+      content: input.expectedContent,
+    },
+    data: { content },
+  })
+  if (updated.count !== 1) throw new CosConversationConflictError()
+
+  const conversation = await prisma.brokerDocument.findFirst({
+    where: {
+      id: input.conversationId,
+      brokerId: input.brokerId,
+      type: "cos_conversation",
+      status: { not: "archived" },
+    },
     select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
   })
+  if (!conversation) throw new CosConversationConflictError("Esta conversa não está mais disponível.")
+  return { conversation, content }
 }
 
 type CosResponseOption = {
@@ -800,13 +842,57 @@ export async function POST(request: NextRequest) {
 
     const conversationMemory = conversationDocument ? getConversationMemory(conversationDocument.content) : null
     const activeWorkflow = conversationDocument ? getActiveWorkflow(conversationDocument.content) : null
-    const pendingReply = activeWorkflow?.pendingInput ? classifyCosPendingReply(message) : "answer"
-    if (pendingReply === "cancel" || pendingReply === "reject") {
+    if (activeWorkflow?.status === "processing" && !activeWorkflow.pendingInput) {
+      const processingAge = Date.now() - Date.parse(activeWorkflow.updatedAt)
+      if (conversationDocument && Number.isFinite(processingAge) && processingAge > COS_PROCESSING_LEASE_MS) {
+        const expiredAt = new Date().toISOString()
+        const expiredWorkflow: CosWorkflow = {
+          ...activeWorkflow,
+          status: "failed",
+          steps: activeWorkflow.steps.map((step, index) => index === activeWorkflow.currentStep
+            ? { ...step, status: "failed", errorMessage: "COS_WORKFLOW_LEASE_EXPIRED" }
+            : step),
+          pendingInput: null,
+          updatedAt: expiredAt,
+          completedAt: expiredAt,
+        }
+        const persistedSnapshot = getConversationSnapshot(conversationDocument.content)
+        await persistConversationWorkflow({
+          conversationId: conversationDocument.id,
+          brokerId: user.broker.id,
+          expectedContent: conversationDocument.content,
+          workflow: expiredWorkflow,
+          memory: conversationMemory,
+          snapshot: persistedSnapshot
+            ? { ...persistedSnapshot, activeWorkflow: expiredWorkflow, pendingInput: null, updatedAt: expiredAt }
+            : null,
+        })
+        return NextResponse.json({ error: "A execução anterior expirou. Verifique o resultado antes de repetir a ação." }, { status: 409 })
+      }
+      return NextResponse.json({ error: "Esta ação já está em processamento." }, { status: 409 })
+    }
+    const activePendingAction = activeWorkflow?.pendingInput?.action ?? activeWorkflow?.steps[activeWorkflow.currentStep]?.action ?? null
+    const isBoundPendingConfirmationResponse = Boolean(
+      body?.confirm &&
+      activeWorkflow?.pendingInput?.field === "confirmation" &&
+      Boolean(requestedAction) &&
+      requestedAction === activePendingAction,
+    )
+    if (body?.confirm && !isBoundPendingConfirmationResponse) {
+      return NextResponse.json({ error: "Esta confirmação não corresponde mais à ação pendente." }, { status: 409 })
+    }
+    if (body?.cancel && (!activeWorkflow?.pendingInput || !requestedAction || requestedAction !== activePendingAction)) {
+      return NextResponse.json({ error: "Esta ação pendente não está mais ativa." }, { status: 409 })
+    }
+    const decisionMessage = body?.confirm ? "confirmar" : body?.cancel ? "cancelar" : message
+    const pendingReply = activeWorkflow?.pendingInput ? classifyCosPendingReply(decisionMessage) : "answer"
+    const rejectionHasFollowUp = pendingReply === "reject" && hasCosPendingRejectionFollowUp(message)
+    if (pendingReply === "cancel" || pendingReply === "reject") creditsUsed = 0
+    if (pendingReply === "cancel" || (pendingReply === "reject" && !rejectionHasFollowUp)) {
       isCancellation = true
-      creditsUsed = 0
     }
     const preflightDialogueDecision = resolveCosDialogueDecision({
-      message,
+      message: decisionMessage,
       requestedAction,
       surface,
       workspace,
@@ -900,7 +986,7 @@ export async function POST(request: NextRequest) {
       attachments: effectiveAttachments,
     })
     let dialogueDecision = resolveCosDialogueDecision({
-      message: structuredSelectionMessage ?? message,
+      message: structuredSelectionMessage ?? decisionMessage,
       requestedAction,
       surface,
       workspace,
@@ -913,11 +999,23 @@ export async function POST(request: NextRequest) {
       ...baseNormalizedContext,
       decision: dialogueDecision,
     }
+    const contextualActionIsReadOnly = Boolean(
+      contextualTurn.requestedAction && !doesCosCapabilityMutateData(contextualTurn.requestedAction),
+    )
+    const contextualRequestedAction =
+      (["query", "select", "return_topic"].includes(dialogueDecision.dialogueAct) && contextualActionIsReadOnly) ||
+      (contextualTurn.reason === "active_lead_contact_followup" && dialogueDecision.dialogueAct === "execute")
+        ? contextualTurn.requestedAction
+        : null
+    const decisionAllowsFastFallback = !dialogueDecision.selectedAction ||
+      (dialogueDecision.source === "fallback" && dialogueDecision.selectedAction === "general")
     const fastAction =
       !requestedAction &&
-      !contextualTurn.requestedAction &&
+      !contextualRequestedAction &&
+      decisionAllowsFastFallback &&
       !isCancellation &&
       !socialIntent &&
+      dialogueDecision.dialogueAct === "unknown" &&
       !["explain", "capability_question", "correct", "confirm", "reject", "cancel", "provide_input"].includes(dialogueDecision.dialogueAct)
         ? resolveFastCosAction({
             message,
@@ -925,9 +1023,14 @@ export async function POST(request: NextRequest) {
             context: normalizedContext,
           })
         : { kind: "none" as const, confidence: 0 }
+    const decisionSelectedAction =
+      dialogueDecision.source === "fallback" && dialogueDecision.selectedAction === "general"
+        ? null
+        : dialogueDecision.selectedAction
     const effectiveRequestedAction =
       requestedAction ||
-      contextualTurn.requestedAction ||
+      decisionSelectedAction ||
+      contextualRequestedAction ||
       (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null) ||
       dialogueDecision.selectedAction ||
       (socialIntent ? "general" : null)
@@ -1005,7 +1108,7 @@ export async function POST(request: NextRequest) {
     }
 
     const intentResolution = resolveCosIntent({
-      message: structuredSelectionMessage ?? message,
+      message: structuredSelectionMessage ?? decisionMessage,
       requestedAction: effectiveRequestedAction,
       attachments: effectiveAttachments,
       workspace,
@@ -1030,6 +1133,13 @@ export async function POST(request: NextRequest) {
       contextualActiveWorkflow?.steps[contextualActiveWorkflow.currentStep]?.action ??
       contextualActiveWorkflow?.executionPlan.requestedAction ??
       null
+    const rejectionStartsNewAction = Boolean(
+      rejectionHasFollowUp &&
+      dialogueDecision.workflowDecision === "start_new" &&
+      resolvedRequestedAction &&
+      resolvedRequestedAction !== activeWorkflowAction,
+    )
+    if (pendingReply === "reject" && !rejectionStartsNewAction) isCancellation = true
     const hasExplicitNewAction =
       Boolean(effectiveRequestedAction) &&
       effectiveRequestedAction !== "workflow_details" &&
@@ -1039,13 +1149,13 @@ export async function POST(request: NextRequest) {
       !activeWorkflowAction ||
       getCosActionDomain(activeWorkflowAction) === getCosActionDomain(effectiveRequestedAction)
     const resumableWorkflow =
-      shouldResumeWorkflow(contextualActiveWorkflow, message) &&
+      (isBoundPendingConfirmationResponse || shouldResumeWorkflow(contextualActiveWorkflow, message)) &&
       intentResolution.workflowDecision !== "start_new" &&
       workflowDomainsCompatible
         ? contextualActiveWorkflow
         : null
 
-    if (intentResolution.confidence < 0.6 || dialogueDecision.needsClarification) {
+    if (!isCancellation && !isBoundPendingConfirmationResponse && (intentResolution.confidence < 0.6 || dialogueDecision.needsClarification)) {
       const clarificationOptions = buildIntentClarificationOptions(intentResolution.candidates)
       if (clarificationOptions || dialogueDecision.needsClarification) {
         const brokerCredits = await getBrokerCredits(user.broker.id)
@@ -1233,6 +1343,7 @@ export async function POST(request: NextRequest) {
       ...(conversationMemory?.leadId ? { leadId: conversationMemory.leadId } : {}),
       ...(conversationMemory?.propertyId ? { propertyId: conversationMemory.propertyId } : {}),
       ...(conversationMemory?.documentId ? { documentId: conversationMemory.documentId } : {}),
+      ...(conversationMemory?.campaignId ? { campaignId: conversationMemory.campaignId } : {}),
       ...(conversationSnapshot.activeEntities.lead?.id ? { leadId: conversationSnapshot.activeEntities.lead.id } : {}),
       ...(conversationSnapshot.activeEntities.property?.id ? { propertyId: conversationSnapshot.activeEntities.property.id } : {}),
       ...(conversationSnapshot.activeEntities.contract?.id ? { contractId: conversationSnapshot.activeEntities.contract.id } : {}),
@@ -1345,22 +1456,27 @@ export async function POST(request: NextRequest) {
         }),
       } as Prisma.InputJsonObject
 
-      const [updatedBroker, persistedConversation, touchedConversation] = await Promise.all([
+      let persistedConversation = conversationDocument
+      if (cancelledWorkflow && conversationDocument) {
+        const persisted = await persistConversationWorkflow({
+          conversationId: conversationDocument.id,
+          brokerId: user.broker.id,
+          expectedContent: conversationDocument.content,
+          workflow: cancelledWorkflow,
+          memory: conversationMemory,
+          snapshot: updateCosConversationSnapshot({
+            snapshot: conversationSnapshot,
+            message,
+            workflow: cancelledWorkflow,
+            result: null,
+            status: "cancelled",
+          }),
+        })
+        persistedConversation = persisted.conversation
+      }
+
+      const [updatedBroker, touchedConversation] = await Promise.all([
         getBrokerCredits(user.broker.id),
-        cancelledWorkflow && conversationDocument
-          ? persistConversationWorkflow(
-              conversationDocument.id,
-              cancelledWorkflow,
-              conversationMemory,
-              updateCosConversationSnapshot({
-                snapshot: conversationSnapshot,
-                message,
-                workflow: cancelledWorkflow,
-                result: null,
-                status: "cancelled",
-              }),
-            )
-          : Promise.resolve(conversationDocument),
         touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
         prisma.aiAssistantInteraction.create({
           data: {
@@ -1527,6 +1643,7 @@ export async function POST(request: NextRequest) {
       const pendingWorkflow = createWorkflowFromExecutionPlan({
         conversationId: conversationDocument?.id ?? "ephemeral",
         plan: executionPlan,
+        confirmationData: pickConfirmationData(executionPayload),
       })
       if (pendingWorkflow.pendingInput?.action === "createPropertyDraft" && attachmentAnalysis.primaryPropertyDraft) {
         pendingWorkflow.pendingInput = {
@@ -1566,28 +1683,31 @@ export async function POST(request: NextRequest) {
         attachments: effectiveAttachments,
       } as Prisma.InputJsonObject
 
-      const [updatedBroker, _persistedConversation, updatedConversation] = await Promise.all([
+      if (conversationDocument) {
+        await persistConversationWorkflow({
+          conversationId: conversationDocument.id,
+          brokerId: user.broker.id,
+          expectedContent: conversationDocument.content,
+          workflow: pendingWorkflow,
+          memory: buildConversationMemory({
+            current: conversationMemory,
+            workflow: pendingWorkflow,
+            action,
+            message: displayMessage || message,
+            attachments: effectiveAttachments,
+          }),
+          snapshot: updateCosConversationSnapshot({
+            snapshot: conversationSnapshot,
+            message,
+            workflow: pendingWorkflow,
+            result: null,
+            status: "awaiting_input",
+          }),
+        })
+      }
+
+      const [updatedBroker, updatedConversation] = await Promise.all([
         getBrokerCredits(user.broker.id),
-        conversationDocument
-          ? persistConversationWorkflow(
-              conversationDocument.id,
-              pendingWorkflow,
-              buildConversationMemory({
-                current: conversationMemory,
-                workflow: pendingWorkflow,
-                action,
-                message: displayMessage || message,
-                attachments: effectiveAttachments,
-              }),
-              updateCosConversationSnapshot({
-                snapshot: conversationSnapshot,
-                message,
-                workflow: pendingWorkflow,
-                result: null,
-                status: "awaiting_input",
-              }),
-            )
-          : Promise.resolve(conversationDocument),
         touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
         prisma.aiAssistantInteraction.create({
           data: {
@@ -1641,6 +1761,13 @@ export async function POST(request: NextRequest) {
           conversationId: conversationDocument?.id ?? "ephemeral",
           plan: executionPlan!,
         })
+    const isConfirmedPendingWorkflow = Boolean(
+      resumableWorkflow?.pendingInput?.field === "confirmation" &&
+      shouldConfirmWorkflowMessage(decisionMessage, Boolean(body?.confirm)),
+    )
+    const executionMutatesData = workflow.steps
+      .slice(workflow.currentStep)
+      .some((step) => doesCosCapabilityMutateData(step.action))
 
     creditsUsed = getCosInteractionCreditCost(workflow.steps.map((step) => step.action))
 
@@ -1656,6 +1783,32 @@ export async function POST(request: NextRequest) {
         },
         { status: 402 },
       )
+    }
+
+    let workflowContentVersion = conversationDocument?.content ?? null
+    if (executionMutatesData && conversationDocument) {
+      const claimedAt = new Date().toISOString()
+      const claimedWorkflow: CosWorkflow = {
+        ...workflow,
+        status: "processing",
+        pendingInput: null,
+        pausedAt: null,
+        updatedAt: claimedAt,
+      }
+      const claimed = await persistConversationWorkflow({
+        conversationId: conversationDocument.id,
+        brokerId: user.broker.id,
+        expectedContent: conversationDocument.content,
+        workflow: claimedWorkflow,
+        memory: conversationMemory,
+        snapshot: {
+          ...conversationSnapshot,
+          activeWorkflow: claimedWorkflow,
+          pendingInput: null,
+          updatedAt: claimedAt,
+        },
+      })
+      workflowContentVersion = claimed.content
     }
 
     let responseText = ""
@@ -1684,7 +1837,10 @@ export async function POST(request: NextRequest) {
             workflow,
             brokerId: user.broker!.id,
             userId: user.id,
-            message: executionMessage,
+            message: isConfirmedPendingWorkflow && resumableWorkflow
+              ? resumableWorkflow.executionPlan.message
+              : executionMessage,
+            pendingReplyMessage: isConfirmedPendingWorkflow ? decisionMessage : undefined,
             confirm: shouldConfirmWorkflowMessage(message, Boolean(body?.confirm)),
             workspace,
             payload: {
@@ -1790,13 +1946,17 @@ export async function POST(request: NextRequest) {
     // Consultas e explicações podem interromper um pending sem destruir a operação transacional.
     // O resultado consultado entra no snapshot/topic stack, enquanto o workflow mutável permanece
     // disponível para uma retomada explícita e segura.
-    const preservesActiveWorkflow = Boolean(
-      activeWorkflow &&
-      dialogueDecision.workflowDecision === "start_new" &&
-      ["query", "explain", "capability_question", "switch_topic", "return_topic"].includes(dialogueDecision.dialogueAct) &&
-      !doesCosCapabilityMutateData(action),
-    )
-    const workflowToPersist = (socialIntent || preservesActiveWorkflow) && activeWorkflow ? activeWorkflow : updatedWorkflow
+    const explicitlyDefersActiveWorkflow = /\b(?:depois eu|mais tarde|deixa(?: isso| essa| esse| a| o)? (?:pra|para) depois|fica (?:pra|para) depois)\b/i.test(message)
+    const preservesActiveWorkflow = shouldPreserveCosPendingWorkflow({
+      hasActiveWorkflow: Boolean(activeWorkflow),
+      workflowDecision: dialogueDecision.workflowDecision,
+      dialogueAct: dialogueDecision.dialogueAct,
+      actionMutatesData: doesCosCapabilityMutateData(action),
+      rejectionStartsNewAction,
+      explicitlyDefersActiveWorkflow,
+    })
+    const isSocialTurn = dialogueDecision.dialogueAct === "social"
+    const workflowToPersist = (isSocialTurn || preservesActiveWorkflow) && activeWorkflow ? activeWorkflow : updatedWorkflow
     const nextConversationMemory = buildConversationMemory({
       current: conversationMemory,
       workflow: workflowToPersist,
@@ -1813,7 +1973,7 @@ export async function POST(request: NextRequest) {
           : null,
       attachments: effectiveAttachments,
     })
-    const nextConversationSnapshot = socialIntent
+    const nextConversationSnapshot = isSocialTurn
       ? {
           ...conversationSnapshot,
           activeWorkflow: workflowToPersist,
@@ -1902,11 +2062,19 @@ export async function POST(request: NextRequest) {
       }),
     } as Prisma.InputJsonObject
 
-    const [updatedBroker, _persistedConversation, touchedConversation] = await Promise.all([
+    if (conversationDocument && workflowContentVersion !== null) {
+      await persistConversationWorkflow({
+        conversationId: conversationDocument.id,
+        brokerId: user.broker.id,
+        expectedContent: workflowContentVersion,
+        workflow: workflowToPersist,
+        memory: nextConversationMemory,
+        snapshot: nextConversationSnapshot,
+      })
+    }
+
+    const [updatedBroker, touchedConversation] = await Promise.all([
       getBrokerCredits(user.broker.id),
-      conversationDocument
-        ? persistConversationWorkflow(conversationDocument.id, workflowToPersist, nextConversationMemory, nextConversationSnapshot)
-        : Promise.resolve(conversationDocument),
       touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
       prisma.aiAssistantInteraction.create({
         data: {
@@ -1963,6 +2131,10 @@ export async function POST(request: NextRequest) {
 
     if (isPrismaUnavailable(caughtError)) {
       return NextResponse.json({ error: "O COS está indisponível no momento." }, { status: 503 })
+    }
+
+    if (caughtError instanceof CosConversationConflictError) {
+      return NextResponse.json({ error: caughtError.message }, { status: 409 })
     }
 
     return NextResponse.json({ error: "Não consegui concluir sua ação agora. Tente novamente em instantes." }, { status: 500 })

@@ -240,6 +240,46 @@ test.describe("COS — ConversationSnapshot da Etapa 2B", () => {
     expect(resolveCosContextualTurn({ message: "Quantos metros ele tem?", snapshot: selected, activeWorkflow: null }).requestedAction).toBe("GET_PROPERTY")
   })
 
+  test("ranking por preço usa os valores reais e não a posição arbitrária da lista", () => {
+    const selectionSet = {
+      id: "selection-priced-properties",
+      type: "property" as const,
+      items: [
+        { index: 1, entity: entity("property", "property-expensive", "Casa Centro"), description: "Centro · R$ 950.000" },
+        { index: 2, entity: entity("property", "property-cheap", "Apartamento Serra"), description: "Serra · R$ 780.000" },
+      ],
+      query: "imóveis em Gramado",
+      topicId: "topic-properties",
+      createdAt: NOW,
+      expiresAt: "2026-08-20T12:00:00.000Z",
+    }
+    const pricedSnapshot = emptySnapshot({
+      currentTopic: {
+        id: "topic-properties",
+        domain: "property",
+        label: "Imóveis em Gramado",
+        entityType: "property",
+        selectionSetId: selectionSet.id,
+        startedAt: NOW,
+        lastMentionedAt: NOW,
+      },
+      selectionSets: [selectionSet],
+    })
+
+    expect(resolveCosConversationReference("O mais barato.", pricedSnapshot).entity?.id).toBe("property-cheap")
+
+    const withoutPrices = {
+      ...pricedSnapshot,
+      selectionSets: [{
+        ...selectionSet,
+        items: selectionSet.items.map(({ description: _description, ...item }) => item),
+      }],
+    }
+    const unresolved = resolveCosConversationReference("O mais barato.", withoutPrices)
+    expect(unresolved.entity).toBeNull()
+    expect(unresolved.ambiguous.map((item) => item.id)).toEqual(["property-expensive", "property-cheap"])
+  })
+
   test("F — troca de tópico mantém a lista anterior recuperável", () => {
     const propertyTopic = {
       id: "topic-property",
@@ -311,5 +351,307 @@ test.describe("COS — ConversationSnapshot da Etapa 2B", () => {
     })
     expect(result.workflowDecision).toBe("start_new")
     expect(result.requestedAction).not.toBe("createLead")
+  })
+
+  test("opções temporais não são convertidas em entidades da agenda", () => {
+    const pending = createPendingInput({
+      field: "time",
+      type: "time",
+      action: "CREATE_AGENDA_EVENT",
+      entity: "agenda",
+      capabilityId: "agenda.create",
+      parsedData: { date: "tomorrow" },
+      options: [
+        { id: "03:00", label: "3h" },
+        { id: "15:00", label: "15h" },
+      ],
+      now: new Date(NOW),
+    })
+    const active = workflow("CREATE_AGENDA_EVENT", "agenda.create", pending)
+    const result = updateCosConversationSnapshot({
+      snapshot: emptySnapshot(),
+      message: "Marca sexta às 3.",
+      workflow: active,
+      result: null,
+      status: "awaiting_input",
+      now: new Date(NOW),
+    })
+    expect(result.selectionSets).toHaveLength(0)
+    expect(result.activeEntities.agenda).toBeUndefined()
+  })
+
+  test("pending usa o ID persistido mesmo quando havia outra entidade ativa", () => {
+    const pending = createPendingInput({
+      field: "confirmation",
+      type: "confirmation",
+      action: "DELETE_LEAD",
+      entity: "lead",
+      capabilityId: "lead.delete",
+      parsedData: { leadId: "lead-b" },
+      now: new Date(NOW),
+    })
+    const leadA = entity("lead", "lead-a", "Cliente A")
+    const state = emptySnapshot({
+      activeEntities: { lead: leadA },
+      recentEntities: [leadA],
+      pendingInput: pending,
+    })
+    expect(resolveCosConversationReference("Pode.", state).entity?.id).toBe("lead-b")
+  })
+
+  test("snapshot absorve entidades e selection set de pending sem resultado", () => {
+    const pending = createPendingInput({
+      field: "leadChoice",
+      type: "selection",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: { propertyId: "property-solar" },
+      options: [
+        { id: "lead-carlos-mendes", label: "Carlos Mendes" },
+        { id: "lead-carlos-mendonca", label: "Carlos Mendonça" },
+      ],
+      now: new Date(NOW),
+    })
+    const active = workflow("CREATE_PROPOSAL", "proposal.create", pending)
+    const result = updateCosConversationSnapshot({
+      snapshot: emptySnapshot(),
+      message: "Faz uma proposta para o Carlos.",
+      workflow: active,
+      result: null,
+      status: "awaiting_input",
+      now: new Date(NOW),
+    })
+    expect(result.activeEntities.property?.id).toBe("property-solar")
+    expect(result.selectionSets[0]?.type).toBe("lead")
+    expect(resolveCosConversationReference("Mendes.", result).entity?.id).toBe("lead-carlos-mendes")
+  })
+
+  test("pending cross-domain retornado pelo handler mantém o tipo e o tópico da seleção", () => {
+    const pending = createPendingInput({
+      field: "leadChoice",
+      type: "selection",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: { propertyId: "property-solar" },
+      options: [
+        { id: "lead-carlos-mendes", label: "Carlos Mendes" },
+        { id: "lead-carlos-mendonca", label: "Carlos Mendonça" },
+      ],
+      now: new Date(NOW),
+    })
+    const active = workflow("CREATE_PROPOSAL", "proposal.create", pending)
+    const result = updateCosConversationSnapshot({
+      snapshot: emptySnapshot(),
+      message: "Cria uma proposta para o Carlos.",
+      workflow: active,
+      result: executionResult({
+        action: "CREATE_PROPOSAL",
+        capabilityId: "proposal.create",
+        status: "awaiting_input",
+        metadata: {},
+        pendingInput: pending,
+      }),
+      status: "awaiting_input",
+      now: new Date(NOW),
+    })
+
+    expect(result.selectionSets[0]?.type).toBe("lead")
+    expect(result.currentTopic?.entityType).toBe("lead")
+    expect(result.selectionSets[0]?.topicId).toBe(result.currentTopic?.id)
+  })
+
+  test("documentId pendente segue o domínio da proposta, não ativa contrato", () => {
+    const pending = createPendingInput({
+      field: "confirmation",
+      type: "confirmation",
+      action: "CREATE_PROPOSAL",
+      entity: "proposal",
+      capabilityId: "proposal.create",
+      parsedData: { documentId: "proposal-1" },
+      now: new Date(NOW),
+    })
+    const active = workflow("CREATE_PROPOSAL", "proposal.create", pending)
+    const result = updateCosConversationSnapshot({
+      snapshot: emptySnapshot(),
+      message: "Cria a proposta.",
+      workflow: active,
+      result: null,
+      status: "awaiting_input",
+      now: new Date(NOW),
+    })
+
+    expect(result.activeEntities.proposal?.id).toBe("proposal-1")
+    expect(result.activeEntities.contract).toBeUndefined()
+  })
+
+  test("pronome não escolhe outra entidade quando a lista atual é ambígua", () => {
+    const lead = entity("lead", "lead-carlos", "Carlos Mendes")
+    const first = entity("property", "property-a", "Apartamento A")
+    const second = entity("property", "property-b", "Apartamento B")
+    const result = resolveCosConversationReference("Mostra ele.", emptySnapshot({
+      activeEntities: { lead },
+      recentEntities: [lead, first, second],
+      currentTopic: {
+        id: "topic-property",
+        domain: "property",
+        label: "Busca de imóveis",
+        entityType: "property",
+        selectionSetId: "selection-properties",
+        startedAt: NOW,
+        lastMentionedAt: NOW,
+      },
+      selectionSets: [{
+        id: "selection-properties",
+        type: "property",
+        items: [
+          { index: 1, entity: first },
+          { index: 2, entity: second },
+        ],
+        query: "imóveis",
+        topicId: "topic-property",
+        createdAt: NOW,
+        expiresAt: "2026-08-20T12:00:00.000Z",
+      }],
+    }))
+
+    expect(result.entity).toBeNull()
+    expect(result.ambiguous.map((item) => item.id)).toEqual(["property-a", "property-b"])
+  })
+
+  test("correção de horário não contamina o pending com preço", () => {
+    const pending = createPendingInput({
+      field: "time",
+      type: "time",
+      action: "CREATE_AGENDA_EVENT",
+      entity: "agenda",
+      capabilityId: "agenda.create",
+      parsedData: { date: "tomorrow" },
+      now: new Date(NOW),
+    })
+    const active = workflow("CREATE_AGENDA_EVENT", "agenda.create", pending)
+    const result = resolveCosContextualTurn({
+      message: "Na verdade 15h.",
+      snapshot: emptySnapshot({ activeWorkflow: active, pendingInput: pending }),
+      activeWorkflow: active,
+    })
+
+    expect(result.payload).toEqual({ time: "Na verdade 15h." })
+    expect(result.workflow?.pendingInput?.parsedData.price).toBeUndefined()
+  })
+
+  test("pergunta com telefone não vira atualização do cliente", () => {
+    const lead = entity("lead", "lead-carlos", "Carlos Mendes")
+    const result = resolveCosContextualTurn({
+      message: "Qual cliente tem o número 54999998888",
+      snapshot: emptySnapshot({ activeEntities: { lead }, recentEntities: [lead] }),
+      activeWorkflow: null,
+    })
+
+    expect(result.requestedAction).not.toBe("UPDATE_LEAD")
+  })
+
+  test("resultado multi-domínio mantém cliente, imóvel e proposta ativos", () => {
+    const active = workflow("CREATE_PROPOSAL", "proposal.create", null as never)
+    const result = updateCosConversationSnapshot({
+      snapshot: emptySnapshot(),
+      message: "Cria a proposta do Carlos para o Solar.",
+      workflow: { ...active, status: "completed", pendingInput: null },
+      result: executionResult({
+        action: "CREATE_PROPOSAL",
+        capabilityId: "proposal.create",
+        status: "success",
+        leadId: "lead-carlos",
+        propertyId: "property-solar",
+        metadata: { documentId: "proposal-carlos-solar" },
+      }),
+      status: "success",
+      now: new Date(NOW),
+    })
+    expect(result.activeEntities.lead?.id).toBe("lead-carlos")
+    expect(result.activeEntities.property?.id).toBe("property-solar")
+    expect(result.activeEntities.proposal?.id).toBe("proposal-carlos-solar")
+    expect(result.lastExecution?.entities.map((item) => item.id)).toEqual(expect.arrayContaining([
+      "lead-carlos",
+      "property-solar",
+      "proposal-carlos-solar",
+    ]))
+  })
+
+  test("reconstrução por mensagens preserva labels já conhecidos", () => {
+    const solar = entity("property", "property-solar", "Solar Comercial")
+    const result = buildCosConversationSnapshot({
+      conversationId: "conversation",
+      message: "Quanto está?",
+      recentMessages: [{
+        id: "message-property",
+        message: "Abre o imóvel.",
+        response: "Aqui está.",
+        actionType: "GET_PROPERTY",
+        actionStatus: "success",
+        leadId: null,
+        propertyId: solar.id,
+        metadata: {},
+        createdAt: NOW,
+      }],
+      activeWorkflow: null,
+      memory: null,
+      persistedSnapshot: emptySnapshot({ activeEntities: { property: solar }, recentEntities: [solar] }),
+      workspace: null,
+      now: new Date(NOW),
+    })
+    expect(result.activeEntities.property?.label).toBe("Solar Comercial")
+  })
+
+  test("pronome nu usa a entidade ativa mais recente sem confundir o objeto consultado", () => {
+    const contract = entity("contract", "contract-carlos", "Contrato de Carlos")
+    const lead = entity("lead", "lead-carlos", "Carlos Mendes")
+    const result = resolveCosConversationReference("Tem mais documento dele?", emptySnapshot({
+      activeEntities: { contract, lead },
+      recentEntities: [lead, contract],
+    }))
+    expect(result.entity?.id).toBe("lead-carlos")
+  })
+
+  test("pergunta elíptica usa a entidade do tópico entre múltiplas entidades ativas", () => {
+    const lead = entity("lead", "lead-carlos", "Carlos Mendes")
+    const property = entity("property", "property-solar", "Solar Comercial")
+    const result = resolveCosConversationReference("Quanto está?", emptySnapshot({
+      activeEntities: { lead, property },
+      recentEntities: [property, lead],
+      currentTopic: {
+        id: "topic-property",
+        domain: "property",
+        label: "Solar Comercial",
+        entityType: "property",
+        selectionSetId: null,
+        startedAt: NOW,
+        lastMentionedAt: NOW,
+      },
+    }))
+    expect(result.entity?.id).toBe("property-solar")
+  })
+
+  test("jornada entre proposta e agenda mantém o cliente relacionado", () => {
+    const lead = entity("lead", "lead-carlos", "Carlos Mendes")
+    const property = entity("property", "property-solar", "Solar Comercial")
+    const proposal = entity("proposal", "proposal-carlos-solar", "Proposta Carlos + Solar")
+    const state = emptySnapshot({
+      activeEntities: { lead, property, proposal },
+      recentEntities: [proposal, property, lead],
+      currentTopic: {
+        id: "topic-property",
+        domain: "property",
+        label: "Solar Comercial",
+        entityType: "property",
+        selectionSetId: null,
+        startedAt: NOW,
+        lastMentionedAt: NOW,
+      },
+    })
+
+    expect(resolveCosConversationReference("Já fiz proposta?", state).entity?.id).toBe("lead-carlos")
+    expect(resolveCosConversationReference("Marca amanhã às 10.", state).entity?.id).toBe("lead-carlos")
   })
 })

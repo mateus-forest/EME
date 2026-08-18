@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client"
 import type {
   CosRuntimeActionResult,
   CosCapabilityId,
+  CosDialogueAct,
   CosEntityModuleId,
   CosPendingInput,
   CosPendingInputOption,
@@ -177,23 +178,100 @@ export function isCosPendingInputExpired(pendingInput: CosPendingInput, now = ne
   return Number.isFinite(expiresAt) && expiresAt <= now.getTime()
 }
 
+export function buildCosPendingResumePayload(input: {
+  pendingInput: CosPendingInput | null
+  message: string
+  payload?: Record<string, unknown>
+}) {
+  const payload: Record<string, unknown> = { ...(input.payload ?? {}) }
+  const pendingInput = input.pendingInput
+  if (!pendingInput) return payload
+
+  if (pendingInput.type === "confirmation") {
+    Object.assign(payload, pendingInput.parsedData)
+    payload.confirmation = input.message.trim()
+    return payload
+  }
+
+  if (pendingInput.type === "selection") payload.selection = input.message.trim()
+
+  if (pendingInput.action === "createLead") {
+    if (pendingInput.field === "name") {
+      payload.name = input.message.trim()
+    } else if (pendingInput.field === "phone") {
+      payload.phone = input.message.trim()
+      const extractedName = typeof pendingInput.parsedData.extractedName === "string" ? pendingInput.parsedData.extractedName : ""
+      if (extractedName) payload.name = extractedName
+    }
+  }
+
+  if (pendingInput.action === "createPropertyDraft" && pendingInput.field === "price") {
+    payload.price = input.message.trim()
+    const preservedDraftFields = ["city", "neighborhood", "bedrooms", "bathrooms", "parkingSpots", "area"]
+    for (const field of preservedDraftFields) {
+      if (pendingInput.parsedData[field] !== undefined) payload[field] = pendingInput.parsedData[field]
+    }
+  }
+
+  if (pendingInput.type === "text" || pendingInput.type === "currency" || pendingInput.type === "time") {
+    payload[pendingInput.field] = input.message.trim()
+  }
+
+  return payload
+}
+
 export type CosPendingReplyKind = "confirm" | "reject" | "cancel" | "correction" | "answer"
 
 export function classifyCosPendingReply(message: string): CosPendingReplyKind {
+  if (/^\s*n[aã]o\s*[,;:]\s*(?:deixa|cancelar|cancela|esquece)\b/i.test(message)) return "reject"
   const normalized = message
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[.!?]+$/g, "")
+    .replace(/[.,!?;:]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
 
-  if (/^(sim|pode|confirmo|confirmar|pode confirmar)$/.test(normalized)) return "confirm"
-  if (/^(cancelar|cancela|deixa|deixa pra la|deixa para la|esquece|nao quero)$/.test(normalized)) return "cancel"
+  if (/^(?:sim|s|ok|pode|pode fazer|pode seguir|seguir|confirmo|confirmar|pode confirmar|confirma|vai|manda bala|beleza|ta|ta bom|esta bem|fechado|combinado|(?:ta|beleza) (?:pode )?(?:fazer|seguir))$/.test(normalized)) {
+    return "confirm"
+  }
+  if (/^nao\s+(?:cancelar|cancela|deixa|esquece)\b/.test(normalized)) return "answer"
+  if (/^(?:cancelar|cancela|deixa|deixa pra la|deixa para la|deixa pra depois|deixa para depois|deixa (?:a|o) .+ (?:pra|para) depois|esquece)$/.test(normalized)) return "cancel"
+  if (/^nao\s+(?:so\s+)?(?:queria|quero|preciso|era|foi)\b/.test(normalized)) return "reject"
   if (/^(nao|n)$/.test(normalized)) return "reject"
-  if (/^(nao[,;:]?\s+|na verdade\s+|corrige para\s+|muda para\s+|troca para\s+|quis dizer\s+)/.test(normalized)) {
+  if (/^(nao\s+(?!(?:so\s+)?(?:queria|quero|preciso|era|foi)\b)|na verdade\s+|corrige para\s+|muda para\s+|troca para\s+|quis dizer\s+)/.test(normalized)) {
     return "correction"
   }
   return "answer"
+}
+
+export function hasCosPendingRejectionFollowUp(message: string) {
+  const normalized = message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[.,!?;:]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  return /^nao\s+so\s+(?:queria|quero)\s+/.test(normalized) &&
+    /\b(?:ver|mostrar|consultar|abrir|cadastro|status|detalhes?)\b/.test(normalized)
+}
+
+export function shouldPreserveCosPendingWorkflow(input: {
+  hasActiveWorkflow: boolean
+  workflowDecision: "none" | "continue_workflow" | "start_new"
+  dialogueAct: CosDialogueAct
+  actionMutatesData: boolean
+  rejectionStartsNewAction: boolean
+  explicitlyDefersActiveWorkflow: boolean
+}) {
+  return input.hasActiveWorkflow &&
+    input.workflowDecision === "start_new" &&
+    ["query", "explain", "capability_question", "switch_topic", "return_topic"].includes(input.dialogueAct) &&
+    !input.actionMutatesData &&
+    !input.rejectionStartsNewAction &&
+    !input.explicitlyDefersActiveWorkflow
 }
 
 export function normalizeWorkflowStatus(status: CosWorkflowStatus): Exclude<CosWorkflowStatus, "running"> {

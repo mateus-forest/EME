@@ -582,7 +582,12 @@ export function planCosCapability(input: {
     context: input.context ?? null,
     surface,
   })
-  const catalogCandidate = decisionCandidate ?? directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
+  const hasAuthoritativeDecision = Boolean(input.context?.decision && input.context.decision.source !== "fallback")
+  const catalogCandidate = decisionCandidate ?? (
+    hasAuthoritativeDecision
+      ? null
+      : directRequestedCandidate ?? pendingCatalogCandidate ?? scoredCatalogCandidate
+  )
   const usePendingContext = Boolean(pendingCatalogCandidate)
   const resolvedSource: CosCapabilityPlanSource = "catalog"
   const resolvedAction = catalogCandidate?.descriptor.action ?? "general"

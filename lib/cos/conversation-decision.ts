@@ -1,7 +1,7 @@
 import { getCosCapabilityDescriptorByAliasOrAction, getCosCapabilityDescriptorById, listCosCapabilityCatalog } from "@/lib/cos/capability-catalog"
 import { classifyCosSocialIntent } from "@/lib/cos/conversation"
 import { resolveCosConversationReference } from "@/lib/cos/conversation-snapshot"
-import { classifyCosPendingReply } from "@/lib/cos/pending-input"
+import { classifyCosPendingReply, hasCosPendingRejectionFollowUp } from "@/lib/cos/pending-input"
 
 import type {
   CosAttachmentInput,
@@ -29,14 +29,26 @@ export const COS_DECISION_CONFIDENCE = {
   ambiguityMargin: 0.08,
 } as const
 
-const INTERNAL_ONLY_CAPABILITIES = new Set<CosCapabilityId>([
-  "operation.summary",
-])
+const INTERNAL_ONLY_CAPABILITIES = new Set<CosCapabilityId>()
 
 const GENERIC_TOKENS = new Set([
   "a", "ao", "aos", "as", "com", "da", "das", "de", "do", "dos", "e", "ela", "ele",
   "em", "esse", "essa", "este", "esta", "me", "meu", "minha", "na", "nas", "no", "nos",
   "o", "os", "ou", "para", "por", "pra", "que", "se", "um", "uma", "voce",
+])
+
+const NATURAL_MUTATION_VERBS = new Set([
+  "cadastra", "cadastre", "cadastrar", "cria", "crie", "criar", "gera", "gere", "gerar",
+  "publica", "publique", "publicar", "despublica", "despublique", "despublicar",
+  "atualiza", "atualize", "atualizar", "edita", "edite", "editar", "altera", "altere", "alterar",
+  "reagenda", "reagende", "reagendar", "agenda", "agende", "agendar", "marca", "marque", "marcar",
+  "conclui", "conclua", "concluir", "exclui", "exclua", "excluir", "remove", "remova", "remover",
+  "apaga", "apague", "apagar", "deleta", "delete", "deletar", "envia", "envie", "enviar",
+  "assina", "assine", "assinar", "cancela", "cancele", "cancelar", "desmarca", "desmarque", "desmarcar",
+  "anexa", "anexe", "anexar", "melhora", "melhore", "melhorar", "arquiva", "arquive", "arquivar",
+  "adiciona", "adicione", "adicionar", "aprova", "aprove", "aprovar", "responde", "responda", "responder",
+  "troca", "troque", "trocar", "tira", "tire", "tirar", "coloca", "coloque", "colocar",
+  "monta", "monte", "montar", "passa", "passe", "passar", "faz", "faca", "usar", "usa",
 ])
 
 function normalizeText(value: string) {
@@ -67,12 +79,23 @@ function hasAny(message: string, tokens: string[]) {
   return tokens.some((token) => message.includes(token))
 }
 
+function describesLeadByNeed(message: string) {
+  return /\bquem\b.*\b(?:quer\w*|procur\w*|busc\w*|precis\w*)\b/.test(message) ||
+    /\b(?:aquele|aquela)\s+(?:cliente|lead|contato|pessoa|cara)\b.*\b(?:quer\w*|procur\w*|busc\w*|precis\w*)\b/.test(message)
+}
+
+function describesPastLeadPreference(message: string) {
+  return /\b(?:aquele|aquela)\s+(?:cliente|lead|contato|pessoa|cara)\b.*\b(?:queria|procurava|buscava)\b/.test(message) ||
+    /\b(?:queria|procurava|buscava)\b.*\bquem\b|\bquem\b.*\b(?:queria|procurava|buscava)\b/.test(message)
+}
+
 function descriptorDomain(descriptor: CosCapabilityDescriptor): CosConversationDomain {
   if (descriptor.id.startsWith("help.")) return "help"
   if (descriptor.domain === "property") return "property"
   if (descriptor.domain === "lead") return "lead"
   if (descriptor.domain === "proposal") return "proposal"
   if (descriptor.domain === "contract") return "contract"
+  if (descriptor.domain === "document") return "contract"
   if (descriptor.domain === "agenda") return "agenda"
   if (descriptor.domain === "catalog") return "catalog"
   if (descriptor.domain === "finance") return "finance"
@@ -95,7 +118,7 @@ function workspaceDomain(entity: string | null | undefined): CosConversationDoma
   if (entity === "document") return "contract"
   if (entity === "operation") return "analytics"
   if (entity === "conversation") return "general"
-  if (["lead", "property", "contract", "agenda", "catalog", "finance", "analytics"].includes(entity ?? "")) {
+  if (["lead", "property", "proposal", "contract", "agenda", "catalog", "finance", "analytics"].includes(entity ?? "")) {
     return entity as CosConversationDomain
   }
   return null
@@ -103,7 +126,7 @@ function workspaceDomain(entity: string | null | undefined): CosConversationDoma
 
 function topicDomain(domain: string | null | undefined): CosConversationDomain | null {
   if (!domain) return null
-  if (["lead", "property", "proposal", "contract", "agenda", "catalog", "finance", "studio", "general"].includes(domain)) {
+  if (["lead", "property", "proposal", "contract", "agenda", "catalog", "marketplace", "account", "plan", "library", "history", "security", "finance", "studio", "general"].includes(domain)) {
     return domain as CosConversationDomain
   }
   if (domain === "analytics" || domain === "operation") return "analytics"
@@ -116,22 +139,154 @@ function detectMentionedDomains(message: string): CosConversationDomain[] {
     if (matches && !detected.includes(domain)) detected.push(domain)
   }
 
-  add("lead", /\b(cliente|clientes|lead|leads|contato|contatos)\b/.test(message) || /\b(cadastre|cadastrar)\b.*\bproposta\b/.test(message))
-  add("property", /\b(imovel|imoveis|apartamento|apartamentos|casa|casas|terreno|terrenos|sala comercial)\b/.test(message))
+  add("lead", /\b(cliente|clientes|lead|leads|contato|contatos|cadastro do cliente)\b/.test(message) || describesLeadByNeed(message) || /\bcadastr\w*\b(?![^.]*\bimove)/.test(message))
+  add("property", /\b(imovel|imoveis|apartamento|apartamentos|casa|casas|terreno|terrenos|sala comercial|comercial|residencial)\b/.test(message) || /\b(?:procur\w*|busc\w*|encontr\w*)\b.*\b(?:algo|alguma coisa)\b.*\b(?:pra|pro|para)\b/.test(message))
   add("proposal", /\b(proposta|propostas)\b/.test(message))
   add("contract", /\b(contrato|contratos|assinatura)\b/.test(message))
   add("agenda", /\b(agenda|compromisso|compromissos|evento|eventos|visita|visitas|reuniao|reunioes|lembrete)\b/.test(message))
   add("catalog", /\b(catalogo|catalogos)\b/.test(message))
-  add("marketplace", /\b(marketplace|mercado publico|portal publico)\b/.test(message))
+  add("marketplace", /\b(marketplace|mercado publico|portal publico)\b/.test(message) || /\bconversa\b.*\b(?:atendimento|encerrada|aberta)\b/.test(message) || /\bavaliacao\b.*\b(?:estrela|aprova|modera)\w*\b/.test(message))
+  add("account", /\b(creci|senha|seguranca da conta|minha conta|meu telefone|meu e mail)\b/.test(message))
+  add("plan", /\b(plano|planos|assinatura atual|capacidade da carteira|creditos?)\b/.test(message))
+  add("library", /\b(biblioteca|arte|artes|material|materiais|asset|assets)\b/.test(message))
+  add("history", /\b(historico de conversa|conversa antiga|retomar conversa)\b/.test(message) || /\b(?:volt\w*|retom\w*)\b.*\bconversa\b/.test(message))
   add("finance", /\b(financeiro|financeira|comissao|comissoes|recebiveis|despesas|pagamentos|caixa|cashflow|forecast)\b/.test(message))
-  add("analytics", /\b(analytics|desempenho|performance|metricas|estatisticas|conversao|ranking)\b/.test(message))
-  add("studio", /\b(studio|campanha|campanhas|instagram|facebook|story|stories|reel|reels|video|videos)\b/.test(message))
-  add("help", /\b(eme|cos|sistema|modulo|modulos|funcionalidade|funcionalidades)\b/.test(message))
+  add("analytics", /\b(analytics|desempenho|performance|perform\w*|metricas|estatisticas|conversao|ranking|visualiz\w*|operacao)\b/.test(message) || /\b(?:teve mais procura|pessoas estao procurando|gente buscando|resolver primeiro)\b/.test(message))
+  add("studio", /\b(studio|campanha|campanhas|instagram|facebook|story|stories|reel|reels|video|videos)\b/.test(message) || /\b(?:divulg\w*|promov\w*)\b.*\bimove(?:l|is)\b/.test(message))
+  add("help", /\b(sistema|modulo|modulos|funcionalidade|funcionalidades)\b/.test(message))
 
   if (/\bquantos? (?:imoveis|clientes|leads|contratos|propostas)\b/.test(message) && !detected.includes("analytics")) {
     detected.push("analytics")
   }
   return detected
+}
+
+function lastContextDescriptor(snapshot: CosConversationSnapshot | null, activeWorkflow: CosWorkflow | null) {
+  const active = getCosCapabilityDescriptorByAliasOrAction(workflowAction(activeWorkflow))
+  if (active) return active
+  if (snapshot?.lastExecution?.capabilityId) {
+    const descriptor = getCosCapabilityDescriptorById(snapshot.lastExecution.capabilityId)
+    if (descriptor) return descriptor
+  }
+  const byLastAction = getCosCapabilityDescriptorByAliasOrAction(snapshot?.lastAction)
+  if (byLastAction) return byLastAction
+  for (const message of [...(snapshot?.recentMessages ?? [])].reverse()) {
+    const descriptor = getCosCapabilityDescriptorByAliasOrAction(message.action)
+    if (descriptor) return descriptor
+  }
+  return null
+}
+
+function hasOperationalQuestionStructure(message: string) {
+  return /^(?:como|onde|quando|quem|qual|quais|quanto|quantos|quantas|por que|porque|o que|tem|esta|estao|foi|foram)\b/.test(message) ||
+    /^(?:e\s+)?(?:quem|qual|quais|quanto|quantos|quantas|onde|quando|como|tem|esta|estao|foi)\b/.test(message)
+}
+
+function hasNaturalMutationVerb(message: string) {
+  return message.split(/\s+/).some((token) => NATURAL_MUTATION_VERBS.has(token))
+}
+
+function hasNaturalQueryVerb(message: string) {
+  return /\b(?:procur\w*|busc\w*|encontr\w*|localiz\w*|consult\w*|abr(?:e|ir)|mostr\w*|list\w*|analis\w*|revis\w*)\b/.test(message)
+}
+
+function hasSingleTokenLeadTarget(message: string) {
+  const tokens = message.split(/\s+/).filter(Boolean)
+  const boundaries = new Set([
+    "amanha", "as", "ate", "com", "da", "de", "depois", "do", "e", "em", "hoje", "na", "no",
+    "num", "numa", "para", "por", "pra", "pro", "segunda", "sexta", "quinta", "sabado", "domingo", "terca", "quarta",
+  ])
+  const contextualReferences = new Set(["aquele", "aquela", "ele", "ela", "esse", "essa", "este", "esta"])
+  const articles = new Set(["a", "o"])
+  const entityNouns = new Set(["cliente", "contato", "lead", "pessoa"])
+  const nonPersonTargets = new Set([
+    ...boundaries,
+    "apartamento", "casa", "data", "duracao", "entrada", "horario", "imovel", "investimento", "locacao",
+    "morar", "terreno", "temporada", "valor", "venda",
+  ])
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (!["com", "para", "pra", "pro"].includes(tokens[index])) continue
+    let targetIndex = index + 1
+    if (articles.has(tokens[targetIndex] ?? "")) targetIndex += 1
+    if (entityNouns.has(tokens[targetIndex] ?? "")) targetIndex += 1
+    const firstToken = tokens[targetIndex]
+    if (!firstToken || contextualReferences.has(firstToken) || nonPersonTargets.has(firstToken)) continue
+    const nextToken = tokens[targetIndex + 1]
+    if (!nextToken || boundaries.has(nextToken)) return true
+  }
+  return false
+}
+
+function openNamedTargetDomain(message: string): "lead" | "property" | null {
+  const match = message.match(/^(?:abre|me mostra|mostra)\s+(?:(?:o|a)\s+)?(.+)$/u)
+  const target = match?.[1]?.trim()
+  if (!target) return null
+  if (/\b(?:imovel|apartamento|casa|terreno|sala|comercial|residencial|residence)\b/.test(target)) return "property"
+  return target.split(/\s+/).length > 1 ? "lead" : null
+}
+
+function prioritizeRecentDomains(message: string, domains: CosConversationDomain[]) {
+  const channel = domains.find((domain) => {
+    if (domain === "marketplace") return /\bmarketplace\b/.test(message)
+    if (domain === "catalog") return /\bcatalogo\b/.test(message)
+    if (domain === "history") return /\b(?:historico|conversa antiga|retom\w* conversa|volt\w*.*conversa)\b/.test(message)
+    if (domain === "studio") return /\b(?:studio|campanha|instagram|facebook|story|reel|video|divulg\w*|promov\w*)\b/.test(message)
+    return false
+  })
+  return channel ? [channel, ...domains.filter((domain) => domain !== channel)] : domains
+}
+
+function preferredConversationDomain(input: {
+  message: string
+  act: CosDialogueAct
+  mentionedDomains: CosConversationDomain[]
+  pendingInput: CosPendingInput | null
+  topicDomain: CosConversationDomain | null
+  referenceDomain: CosConversationDomain | null
+  contextDescriptor: CosCapabilityDescriptor | null
+  recentDomains: CosConversationDomain[]
+}) {
+  const message = input.message
+  const contextualAct = ["provide_input", "correct", "confirm", "reject", "cancel", "select"].includes(input.act)
+  if (contextualAct) {
+    return input.topicDomain ?? (input.contextDescriptor ? descriptorDomain(input.contextDescriptor) : null) ?? pendingDomain(input.pendingInput) ?? input.referenceDomain
+  }
+  if (input.act === "capability_question" && input.contextDescriptor && /\b(isso|esse|essa|custa|creditos?)\b/.test(message)) {
+    return descriptorDomain(input.contextDescriptor)
+  }
+
+  const recentPublicationChannel = input.recentDomains.find((domain) => domain === "marketplace" || domain === "catalog")
+  if (recentPublicationChannel && /\b(?:o que falta|quais? pendencias?|o que ainda precisa)\b/.test(message)) return recentPublicationChannel
+
+  if (input.mentionedDomains.includes("catalog") && /\b(catalogo|nao aparece|complet\w*|tira\w*|despublic\w*)\b/.test(message)) return "catalog"
+  if (input.act === "execute" && /\b(?:publica|publique|publicar)\b/.test(message) && !input.mentionedDomains.includes("marketplace")) return "catalog"
+  if (input.mentionedDomains.includes("marketplace") && !/\b(?:diferenca|catalogo)\b.*\bmarketplace\b/.test(message)) return "marketplace"
+  if (input.mentionedDomains.includes("library")) return "library"
+  if (input.mentionedDomains.includes("history")) return "history"
+  if (input.mentionedDomains.includes("plan")) return /\bcos\b.*\bcreditos?\b/.test(message) ? "general" : "plan"
+  if (/\bquantos?\s+imoveis\b.*\b(?:ainda posso|posso cadastrar|cabem|capacidade)\b/.test(message)) return "plan"
+  if (input.mentionedDomains.includes("account")) return "account"
+  if (input.mentionedDomains.includes("studio") || /\b(campanha|video|instagram|facebook|story|reel)\b/.test(message)) return "studio"
+  if (input.mentionedDomains.includes("proposal") && !/^cadastr\w*\b/.test(message)) return "proposal"
+  if (input.mentionedDomains.includes("contract")) return "contract"
+  if (input.mentionedDomains.includes("agenda") || (/\b(amanha|sexta|dia \d+|\d+h|hoje)\b/.test(message) && /\b(marc\w*|agend\w*|compromisso|visita|o que tenho)\b/.test(message))) return "agenda"
+  if ((input.mentionedDomains.includes("analytics") || (input.contextDescriptor && descriptorDomain(input.contextDescriptor) === "analytics")) && /\b(performance|perform\w*|desempenho|visualiz\w*|procur\w*|busc\w*|contatos|conversao|operacao|metricas|estatisticas|atencao|resolver primeiro)\b/.test(message)) return "analytics"
+  if (describesLeadByNeed(message) || /\bprecisando de atencao\b/.test(message)) return "lead"
+  if (input.referenceDomain && /^(?:abre|me mostra|mostra)\b/.test(message)) return input.referenceDomain
+  const openTargetDomain = openNamedTargetDomain(message)
+  if (openTargetDomain) return openTargetDomain
+  if (/^cadastr\w*\b/.test(message) && !/\bcadastr\w*\b.{0,30}\bimovel\b/.test(message)) return "lead"
+  if (input.mentionedDomains.includes("property")) return "property"
+  if (input.mentionedDomains.includes("lead")) return "lead"
+  if (/\b(?:procur\w*|algo|alguma coisa)\b.*\b(?:pra|pro|para)\b/.test(message)) return "property"
+  if (input.recentDomains.length > 0 && (!input.contextDescriptor || ["help", "general"].includes(descriptorDomain(input.contextDescriptor)))) return input.recentDomains[0]
+  if (input.referenceDomain && /\b(?:documentos?|cadastro|historico|propostas?|contratos?)\b.*\b(?:dele|dela|deles|delas)\b/.test(message)) return input.referenceDomain
+  if (input.contextDescriptor) {
+    const domain = descriptorDomain(input.contextDescriptor)
+    return domain === "help" ? input.mentionedDomains.find((candidate) => candidate !== "help") ?? "general" : domain
+  }
+  return input.topicDomain ?? input.referenceDomain ?? input.mentionedDomains.find((domain) => domain !== "help") ?? null
 }
 
 function workflowAction(workflow: CosWorkflow | null) {
@@ -173,19 +328,57 @@ function legacyReference(memory: CosConversationMemory | null, domain: CosConver
 }
 
 function inferDialogueAct(input: {
+  rawMessage: string
   normalized: string
+  hasQuestionMark: boolean
   requestedDescriptor: CosCapabilityDescriptor | null
   pendingInput: CosPendingInput | null
   activeWorkflow: CosWorkflow | null
   snapshot: CosConversationSnapshot | null
   mentionedDomains: CosConversationDomain[]
   referenceResolved: boolean
+  referenceReason: string
   referenceType: CosConversationEntityType | null
+  contextDescriptor: CosCapabilityDescriptor | null
   attachments: CosAttachmentInput[]
 }) {
   const evidence: string[] = []
   const message = input.normalized
-  const hasActiveContext = Boolean(input.activeWorkflow || input.pendingInput || input.snapshot?.currentTopic)
+  const hasActiveContext = Boolean(
+    input.activeWorkflow ||
+    input.pendingInput ||
+    input.snapshot?.currentTopic ||
+    input.snapshot?.lastExecution ||
+    input.snapshot?.lastAction ||
+    input.snapshot?.recentMessages.some((item) => item.action) ||
+    Object.keys(input.snapshot?.activeEntities ?? {}).length,
+  )
+
+  const requestedContinuesPending = Boolean(
+    input.requestedDescriptor &&
+    input.pendingInput &&
+    input.requestedDescriptor.action === input.pendingInput.action,
+  )
+  if (input.requestedDescriptor && !requestedContinuesPending) {
+    const act: CosDialogueAct = input.requestedDescriptor.id.startsWith("help.")
+      ? "explain"
+      : input.requestedDescriptor.mutatesData
+        ? "execute"
+        : "query"
+    return { act, confidence: 1, evidence: ["requested_action_explicit"] }
+  }
+
+  const pendingReply = input.pendingInput ? classifyCosPendingReply(input.rawMessage) : null
+  if (pendingReply === "confirm" && input.pendingInput?.type === "confirmation") {
+    return { act: "confirm" as const, confidence: 0.99, evidence: ["confirmation_pending", "affirmative_reply"] }
+  }
+  if (pendingReply === "reject" && input.pendingInput?.type === "confirmation") {
+    return { act: "reject" as const, confidence: 0.99, evidence: ["confirmation_pending", "negative_reply"] }
+  }
+  if (pendingReply === "cancel") return { act: "cancel" as const, confidence: 0.99, evidence: ["pending_context", "cancel_marker"] }
+  if (pendingReply === "answer" && input.pendingInput?.type === "confirmation" && /^nao\s+(?:cancelar|cancela|deixa|esquece)\b/.test(message)) {
+    return { act: "provide_input" as const, confidence: 0.62, evidence: ["confirmation_pending", "negated_cancel_ambiguous"] }
+  }
 
   if (input.requestedDescriptor) {
     const act: CosDialogueAct = input.requestedDescriptor.id.startsWith("help.")
@@ -197,95 +390,118 @@ function inferDialogueAct(input: {
   }
 
   const socialIntent = classifyCosSocialIntent(message)
+  if (socialIntent === "capabilities" || socialIntent === "identity") {
+    return { act: "explain" as const, confidence: 0.98, evidence: [`informational_social:${socialIntent}`] }
+  }
   if (socialIntent) return { act: "social" as const, confidence: 0.98, evidence: [`social:${socialIntent}`] }
 
-  if (/\b(voce|o cos) (consegue|pode|sabe)\b/.test(message) || /\b(da para|tem como|e possivel)\b/.test(message)) {
+  if (
+    /\b(voce|o cos) (consegue|pode|sabe)\b/.test(message) ||
+    /\b(da para|da pra|tem como|e possivel)\b/.test(message) ||
+    /^(?:se|quando) eu (?:falar|disser|mandar|pedir)\b.*\bvoce\b/.test(message) ||
+    /^se eu\b.*\b(?:mandar|pedir|falar)\b.*\b(?:muda|faz|executa|cadastra|publica|gera)\b/.test(message) ||
+    /^(?:quanto|quantos) (?:custa|creditos).*\b(?:gerar|criar|fazer)\b/.test(message)
+    || /\b(?:custa|consome)\b.*\bcreditos?\b/.test(message)
+  ) {
     return { act: "capability_question" as const, confidence: 0.96, evidence: ["capability_question_structure"] }
   }
 
-  const correction = /^(nao\s+|na verdade\s+|corrige(?: para)?\s+|muda(?: para)?\s+|troca(?: para)?\s+|quis dizer\s+)/.test(message) ||
+  const correction = /^(na verdade\s+|corrige(?: para)?\s+|muda(?: para)?\s+|troca(?: para)?\s+|quis dizer\s+|nao\s+(?:coloca|muda|troca|corrige|o valor|o preco|a data|o horario|e\s+\d))/.test(message) ||
     /\b(esta errado|estava errado|o correto e|na realidade)\b/.test(message)
-  if (correction && hasActiveContext) {
+  if ((correction || pendingReply === "correction") && hasActiveContext) {
     return { act: "correct" as const, confidence: 0.96, evidence: ["explicit_correction_marker", "active_context"] }
   }
 
   const returnTopic = /\b(voltando|volta(?:ndo)?|retomando|retoma|de volta|sobre aquel[ea]|anterior)\b/.test(message)
-  if (returnTopic && input.snapshot?.recentTopics.length) {
+  const distantEntityReturn = /\b(?:aquele|aquela)\s+(?:cliente|lead|imovel|contrato|proposta)\b/.test(message) &&
+    input.referenceResolved && input.contextDescriptor && entityDomain(input.referenceType) !== descriptorDomain(input.contextDescriptor)
+  if (returnTopic || distantEntityReturn) {
     return { act: "return_topic" as const, confidence: 0.94, evidence: ["return_topic_marker", "recent_topic_available"] }
   }
 
   const selection =
-    /^(?:o |a )?(?:primeir[oa]|segund[oa]|terceir[oa]|ultim[oa]|anterior|esse|essa|aquele|aquela)\b/.test(message) ||
+    (!input.hasQuestionMark && /^(?:o |a )?(?:primeir[oa]|segund[oa]|terceir[oa]|ultim[oa]|anterior|mais barat[oa]|mais complet[oa])(?:\s+.+)?$/.test(message)) ||
     /^\d{1,2}$/.test(message) ||
-    (/^(manda|envia|abre|usa|faz)\b/.test(message) && /\b(esse|essa|aquele|aquela)\b/.test(message))
+    (/^(manda|envia|abre|usa|faz)\b/.test(message) && /\b(esse|essa|aquele|aquela)\b/.test(message)) ||
+    (["selection_label", "selection_ranked_price"].includes(input.referenceReason) && message.split(/\s+/).length <= 4)
   if (selection) {
     return input.referenceResolved || input.snapshot?.selectionSets.length || input.pendingInput?.options?.length
       ? { act: "select" as const, confidence: 0.95, evidence: ["selection_marker", "selection_context"] }
       : { act: "select" as const, confidence: 0.62, evidence: ["selection_marker", "selection_context_missing"] }
   }
 
+  if (input.pendingInput?.type === "selection" && input.referenceResolved && input.referenceReason.startsWith("selection_")) {
+    return { act: "select" as const, confidence: 0.97, evidence: ["pending_selection", input.referenceReason] }
+  }
+
   if (input.pendingInput) {
-    const reply = classifyCosPendingReply(message)
-    if (reply === "correction") return { act: "correct" as const, confidence: 0.97, evidence: ["pending_correction"] }
-    if (reply === "confirm" && input.pendingInput.type === "confirmation") {
-      return { act: "confirm" as const, confidence: 0.99, evidence: ["confirmation_pending", "affirmative_reply"] }
-    }
-    if (reply === "reject" && input.pendingInput.type === "confirmation") {
-      return { act: "reject" as const, confidence: 0.99, evidence: ["confirmation_pending", "negative_reply"] }
-    }
-    if (reply === "cancel") return { act: "cancel" as const, confidence: 0.99, evidence: ["pending_context", "cancel_marker"] }
+    if (pendingReply === "correction") return { act: "correct" as const, confidence: 0.97, evidence: ["pending_correction"] }
   }
 
   if (hasActiveContext && /^(cancela|cancelar|esquece|deixa pra la|deixa para la|para isso)$/.test(message)) {
     return { act: "cancel" as const, confidence: 0.98, evidence: ["isolated_cancel_marker", "active_context"] }
   }
 
-  if (/\b(qual a diferenca|qual e a diferenca|como funciona|como funcionam|o que e|me explica|me explique|quero entender)\b/.test(message)) {
+  if (/\b(qual a diferenca|qual e a diferenca|como funciona|como funcionam|como (?:cadastro|excluo|publico|crio|faco)|o que e|o que precisa|o que acontece se|o que significa|por que precisa|onde ficam|me explica|me explique|quero entender)\b/.test(message) ||
+    /^(?:quantas?|quantos?)\b.*\b(?:precisa|exige|necessari[oa]s?)\b/.test(message) ||
+    (/^por que\b/.test(message) && !/\b(meu|minha|nao consigo|nao aparece|\d+\s*(?:%|por cento))\b/.test(message)) ||
+    /^(?:o|a)\s+\w+(?:\s+\w+){0,3}\s+consegue\b.*\b(?:eme|sistema)\b/.test(message) ||
+    /^o que (?:o )?(?:eme|cos) faz\b/.test(message) ||
+    /^posso\b/.test(message) ||
+    (/^e\s+com\b/.test(message) && !input.referenceResolved && input.contextDescriptor?.id.startsWith("help."))) {
     return { act: "explain" as const, confidence: 0.95, evidence: ["explanation_structure"] }
   }
 
-  const executeSignal = hasAny(message, [
-    "cadastre", "cadastrar", "crie", "criar", "gere", "gerar", "publique", "publicar", "despublique", "despublicar",
-    "atualize", "atualizar", "edite", "editar", "altere", "alterar", "reagende", "reagendar", "marque", "marcar",
-    "conclua", "concluir", "exclua", "excluir", "remova", "remover", "envie", "enviar", "assine", "assinar",
-    "cancele", "cancelar", "baixe", "baixar", "anexe", "anexar", "melhore", "melhorar",
-  ])
+  const executeSignal = hasNaturalMutationVerb(message)
   const hasLeadContactValue =
     message.replace(/\D/g, "").length >= 10 ||
     (/\bemail\b/.test(message) && !/^(qual|quais|quanto|quantos|tem|mostre|mostrar)\b/.test(message))
-  if (input.referenceType === "lead" && hasLeadContactValue) {
+  if (!input.pendingInput && input.referenceType === "lead" && hasLeadContactValue && !input.hasQuestionMark && !hasOperationalQuestionStructure(message)) {
     return { act: "execute" as const, confidence: 0.9, evidence: ["active_lead_contact_followup"] }
   }
-  const querySignal = /\?$/.test(message) || hasAny(message, [
+  const querySignal = input.hasQuestionMark || hasOperationalQuestionStructure(message) || hasNaturalQueryVerb(message) || hasAny(message, [
     "tenho ", "qual ", "quais ", "quanto ", "quantos ", "quantas ", "como esta", "como ficam", "me mostra", "mostre", "mostrar", "liste", "listar",
-    "buscar", "busque", "encontre", "consultar", "ver meus", "ver minhas", "proximo compromisso",
+    "buscar", "busque", "encontre", "consultar", "ver meus", "ver minhas", "proximo compromisso", "so ate", "e com", "antes disso",
   ])
-  const switchSignal = /^(agora|e (?:os|as|quantos|quantas)|vamos falar|mudando de assunto)\b/.test(message)
+  const switchSignal = /\b(agora|vamos falar|mudando de assunto)\b/.test(message) || /^(?:e\s+)?(?:os|as|quantos|quantas)\b/.test(message)
   const currentDomain = topicDomain(input.snapshot?.currentTopic?.domain)
   const explicitOtherDomain = input.mentionedDomains.some((domain) => domain !== currentDomain && domain !== "analytics")
-  if ((switchSignal || Boolean(input.pendingInput && querySignal)) && explicitOtherDomain) {
+  if (hasActiveContext && (switchSignal || Boolean(input.pendingInput && querySignal)) && explicitOtherDomain) {
     evidence.push("topic_switch_marker", executeSignal ? "execute_signal" : "query_signal")
     return { act: "switch_topic" as const, confidence: 0.92, evidence }
   }
-
-  if (executeSignal) return { act: "execute" as const, confidence: 0.9, evidence: ["explicit_execution_verb"] }
-  if (querySignal) return { act: "query" as const, confidence: 0.88, evidence: ["query_structure"] }
 
   if (input.pendingInput) {
     const hasAttachmentAnswer = input.attachments.length > 0 && ["attachments", "document", "imageUrls"].includes(input.pendingInput.field)
     const pendingDomainValue = pendingDomain(input.pendingInput)
     const unrelatedDomain = input.mentionedDomains.some((domain) => domain !== pendingDomainValue && domain !== "analytics")
-    if (hasAttachmentAnswer || !unrelatedDomain) {
-      return { act: "provide_input" as const, confidence: 0.9, evidence: ["pending_input_present", hasAttachmentAnswer ? "expected_attachment" : "compatible_reply"] }
+    const hasNumericValue = /\d/.test(message)
+    const compatibleTypedValue =
+      (input.pendingInput.type === "phone" && message.replace(/\D/g, "").length >= 10) ||
+      (["currency", "number", "date", "time"].includes(input.pendingInput.type) && hasNumericValue) ||
+      (input.pendingInput.type === "selection" && input.referenceResolved) ||
+      (input.pendingInput.type === "text" && !querySignal && !executeSignal)
+    if (!unrelatedDomain && (hasAttachmentAnswer || compatibleTypedValue)) {
+      return { act: "provide_input" as const, confidence: 0.94, evidence: ["pending_input_present", hasAttachmentAnswer ? "expected_attachment" : "typed_value_compatible"] }
     }
   }
 
-  if (input.referenceResolved) return { act: "query" as const, confidence: 0.72, evidence: ["resolved_reference"] }
+  if (querySignal && (input.hasQuestionMark || hasOperationalQuestionStructure(message))) {
+    return { act: "query" as const, confidence: 0.9, evidence: ["question_overrides_operational_verb"] }
+  }
+  if (executeSignal) return { act: "execute" as const, confidence: 0.9, evidence: ["explicit_execution_verb"] }
+  if (querySignal) return { act: "query" as const, confidence: 0.88, evidence: ["query_structure"] }
+
+  if (input.referenceResolved) return { act: "query" as const, confidence: 0.78, evidence: ["resolved_reference"] }
+  if (input.contextDescriptor && hasActiveContext) {
+    return { act: "query" as const, confidence: 0.72, evidence: ["contextual_continuation", input.contextDescriptor.id] }
+  }
   return { act: "unknown" as const, confidence: 0.25, evidence: ["insufficient_dialogue_signals"] }
 }
 
 function capabilityOperation(descriptor: CosCapabilityDescriptor): "execute" | "query" | "explain" {
   if (descriptor.id.startsWith("help.")) return "explain"
+  if (descriptor.id === "property.description.improve") return "execute"
   if (descriptor.mutatesData) return "execute"
   if (descriptor.id.endsWith(".download")) return "execute"
   return "query"
@@ -301,12 +517,14 @@ function capabilitySearchText(descriptor: CosCapabilityDescriptor) {
   ].join(" "))
 }
 
-function helpCapabilityBoost(descriptor: CosCapabilityDescriptor, domains: CosConversationDomain[]) {
+function helpCapabilityBoost(descriptor: CosCapabilityDescriptor, domains: CosConversationDomain[], message: string) {
   if (!descriptor.id.startsWith("help.")) return 0
   if (domains.includes("property") && descriptor.id === "help.register_properties") return 9
   if (domains.includes("lead") && descriptor.id === "help.manage_clients") return 9
   if ((domains.includes("contract") || domains.includes("proposal")) && descriptor.id === "help.contracts_proposals") return 9
-  if (domains.includes("studio") && descriptor.id === "help.marketing_studio") return 9
+  if ((domains.includes("studio") || domains.includes("library")) && descriptor.id === "help.marketing_studio") return 9
+  if (domains.includes("general") && descriptor.id === "help.use_cos" && /\b(?:o que (?:voce|o cos|o eme) (?:consegue|pode|faz)|capacidades? do cos)\b/.test(message)) return 12
+  if (domains.includes("general") && descriptor.id === "help.general_question") return 9
   if ((domains.includes("catalog") || domains.includes("marketplace")) && descriptor.id === "help.general_question") return 10
   if (descriptor.id === "help.general_question") return 4
   return 0
@@ -324,27 +542,46 @@ function semanticCapabilityBoost(descriptor: CosCapabilityDescriptor, message: s
   if (descriptor.id === "agenda.week" && /\b(semana|proximos sete dias)\b/.test(message)) add(18, "agenda_week")
   if (descriptor.id === "agenda.month" && /\b(mes|mensal)\b/.test(message)) add(18, "agenda_month")
   if (descriptor.id === "agenda.list" && /\b(amanha|proximo compromisso|proximos compromissos)\b/.test(message)) add(10, "agenda_filtered_query")
-  if (descriptor.id === "agenda.create" && /\b(crie|criar|marque|marcar|agende|agendar|novo compromisso)\b/.test(message)) add(8, "agenda_create")
-  if (descriptor.id === "agenda.update" && /\b(altere|alterar|reagende|reagendar|mude o horario)\b/.test(message)) add(9, "agenda_update")
-  if (descriptor.id === "agenda.cancel" && /\b(cancele|cancelar|desmarque|desmarcar)\b/.test(message)) add(9, "agenda_cancel")
-  if (descriptor.id === "agenda.complete" && /\b(conclua|concluir|marque como concluido|feito)\b/.test(message)) add(9, "agenda_complete")
+  if (descriptor.id === "agenda.create" && /\b(cri\w*|marc\w*|agend\w*|novo compromisso)\b/.test(message)) add(10, "agenda_create")
+  if (descriptor.id === "agenda.update" && /\b(alter\w*|reagend\w*|passa\w*|mude o horario|troca\w*)\b/.test(message)) add(11, "agenda_update")
+  if (descriptor.id === "agenda.cancel" && /\b(cancel\w*|desmarc\w*)\b/.test(message)) add(11, "agenda_cancel")
+  if (descriptor.id === "agenda.complete" && /\b(conclu\w*|marque como concluido|feito)\b/.test(message)) add(10, "agenda_complete")
 
   if (descriptor.id === "property.get" && referenceType === "property") add(9, "active_property_detail")
+  if (descriptor.id === "property.get" && openNamedTargetDomain(message) === "property") add(14, "named_property_open")
   if (descriptor.id === "lead.find" && referenceType === "lead") add(9, "active_lead_detail")
+  if (descriptor.id === "lead.find" && (openNamedTargetDomain(message) === "lead" || describesPastLeadPreference(message))) add(14, "named_lead_lookup")
   if (descriptor.id === "contract.get" && referenceType === "contract") add(9, "active_contract_detail")
   if (descriptor.id === "proposal.summary" && referenceType === "proposal") add(7, "active_proposal_detail")
   if (descriptor.id === "property.get" && /\b(metros|metragem|area|quartos|banheiros|vagas)\b/.test(message)) add(8, "property_detail_field")
   if (descriptor.id === "lead.find" && /\b(telefone|whatsapp|email|e mail|contato)\b/.test(message)) add(8, "lead_detail_field")
-  if (descriptor.id === "lead.update" && (message.replace(/\D/g, "").length >= 10 || (/\bemail\b/.test(message) && !/^(qual|quais|quanto|quantos|tem|mostre|mostrar)\b/.test(message)))) add(10, "lead_contact_update")
-  if (descriptor.id === "lead.summary" && /\bquant(?:os|as) (?:leads|clientes)\b/.test(message)) add(12, "lead_count_query")
-  if (descriptor.id === "proposal.summary" && /\b(valor|status|proposta)\b/.test(message)) add(4, "proposal_detail_field")
+  if (descriptor.id === "lead.update" && referenceType === "lead" && (message.replace(/\D/g, "").length >= 10 || (/\bemail\b/.test(message) && !/^(qual|quais|quanto|quantos|tem|mostre|mostrar)\b/.test(message)))) add(10, "lead_contact_update")
+  if (descriptor.id === "lead.summary" && /\b(?:quant(?:os|as) (?:leads|clientes)|clientes? novos?|precisando de atencao|tem cliente|quem esta)\b/.test(message)) add(12, "lead_summary_query")
+  if (descriptor.id === "proposal.summary" && /\b(valor|status|proposta)\b/.test(message)) add(10, "proposal_detail_field")
 
-  if (descriptor.id === "lead.create" && /\b(cadastre|cadastrar|novo cliente|nova cliente|novo lead)\b/.test(message)) add(8, "lead_create")
-  if (descriptor.id === "property.create" && (/(?:cadastre|cadastrar).{0,30}\bimovel\b/.test(message) || /\b(novo imovel|crie um imovel)\b/.test(message))) add(8, "property_create")
-  if (descriptor.id === "proposal.create" && /\b(crie|criar|gere|gerar|nova proposta)\b/.test(message)) add(8, "proposal_create")
-  if (descriptor.id === "contract.create" && /\b(crie|criar|gere|gerar|novo contrato)\b/.test(message)) add(8, "contract_create")
-  if (descriptor.id === "property.search" && /\b(mostre|mostrar|buscar|busque|encontre|listar|imoveis em)\b/.test(message)) add(7, "property_search")
-  if (descriptor.id === "lead.find" && /\b(mostre|mostrar|buscar|busque|encontre|cliente)\b/.test(message)) add(5, "lead_query")
+  if (descriptor.id === "lead.create" && /\bcadastr\w*\b/.test(message) && !/\bcadastr\w*\b.{0,30}\bimovel\b/.test(message)) add(12, "lead_create")
+  if (descriptor.id === "property.create" && (/\bcadastr\w*\b.{0,30}\bimovel\b/.test(message) || /\b(novo imovel|cri\w* um imovel)\b/.test(message))) add(12, "property_create")
+  if (descriptor.id === "proposal.create" && /\b(?:cri\w*|ger\w*|faz|monta\w*)\b.{0,30}\bproposta\b|\bproposta\b/.test(message)) add(12, "proposal_create")
+  if (descriptor.id === "contract.create" && /\b(?:cri\w*|ger\w*|monta\w*)\b.{0,30}\bcontrato\b/.test(message)) add(12, "contract_create")
+  if (descriptor.id === "property.search" && /\b(mostr\w*|busc\w*|procur\w*|encontr\w*|list\w*|imoveis em|algo\b.*\b(?:pra|pro|para)|alguma coisa)\b/.test(message)) add(11, "property_search")
+  if (descriptor.id === "lead.find" && /\b(mostr\w*|busc\w*|procur\w*|encontr\w*|abr\w*|cliente|cadastro)\b/.test(message)) add(8, "lead_query")
+  if (descriptor.id === "lead.update" && referenceType === "lead" && /\b(telefon\w*|email|sobrenome|atualiz\w*|troc\w*|errad\w*)\b/.test(message)) add(10, "lead_update")
+  if (descriptor.id === "lead.delete" && /\b(exclu\w*|apag\w*|delet\w*|remov\w*)\b/.test(message)) add(12, "lead_delete")
+  if (descriptor.id === "lead.timeline" && /\b(aconteceu|ultimamente|antes disso|timeline|historico|interacoes)\b/.test(message)) add(14, "lead_timeline")
+  if (descriptor.id === "catalog.publish" && /\b(public\w*|coloca\w*)\b/.test(message)) add(12, "catalog_publish")
+  if (descriptor.id === "catalog.unpublish" && /\b(tira\w*|despublic\w*|remov\w*)\b/.test(message)) add(12, "catalog_unpublish")
+  if (descriptor.id === "catalog.analyze" && /\b(nao aparece|falta|complet\w*|analis\w*|diagnostic\w*)\b/.test(message)) add(11, "catalog_analyze")
+  if (descriptor.id === "property.archive" && /\b(arquiv\w*|exclu\w*|remov\w*)\b/.test(message)) add(12, "property_archive")
+  if (descriptor.id === "property.media.update" && /\b(foto|fotos|imagem|imagens|midia|midias)\b/.test(message)) add(10, "property_media")
+  if (descriptor.id === "property.description.improve" && /\b(descricao|texto|anuncio)\b.*\b(frac\w*|melhor\w*)|\bmelhor\w*\b.*\b(descricao|texto|anuncio)\b/.test(message)) add(11, "property_description")
+  if (descriptor.id === "property.price.suggest" && /\b(quanto|preco|valor)\b.*\b(acha|deveria|pedir|vale)\b/.test(message)) add(14, "property_price")
+  if (descriptor.id === "analytics.performance" && /\b(performance|perform\w*|procur\w*|busc\w*|contat\w*|convers\w*|atencao|operacao)\b/.test(message)) add(10, "analytics_performance")
+  if (descriptor.id === "analytics.properties" && /\b(imoveis?|visualizacoes?|publicados?)\b/.test(message)) add(9, "analytics_properties")
+  if (descriptor.id === "operation.summary" && /\b(saude|operacao|resolver primeiro|atencao)\b/.test(message)) add(12, "operation_summary")
+  if (descriptor.id === "studio.generateVideo" && /\bvideo\b/.test(message)) add(12, "studio_video")
+  if (descriptor.id === "studio.generateInstagram" && /\binstagram\b/.test(message)) add(12, "studio_instagram")
+  if (descriptor.id === "studio.generateCampaign" && /\bcampanha\b/.test(message)) add(9, "studio_campaign")
+  if (descriptor.id === "document.list" && /\b(mais documentos?|outros documentos?|listar documentos?)\b/.test(message)) add(18, "document_list")
 
   if (descriptor.id === "contract.preview" && /\b(preview|revisar|visualizar)\b/.test(message)) add(8, "contract_preview")
   if (descriptor.id === "contract.history" && /\b(historico|andamento|status dos contratos)\b/.test(message)) add(8, "contract_history")
@@ -360,15 +597,19 @@ function scoreCandidates(input: {
   domains: CosConversationDomain[]
   surface: CosCapabilitySurface
   referenceType: CosConversationEntityType | null
+  contextCapabilityId?: CosCapabilityId | null
   targetOperation?: "execute" | "query" | "explain"
 }) {
   const messageTokens = tokenize(input.message)
   const operation = input.targetOperation ?? (
     input.act === "explain" ? "explain" : input.act === "execute" ? "execute" : "query"
   )
-  const eligibleDomains = new Set(input.act === "explain" ? ["help"] : input.domains)
+  const routableDescriptors = listCosRoutableCapabilityDescriptors(input.surface)
+  const primaryDomain = input.domains[0]
+  const primaryHasCapability = routableDescriptors.some((descriptor) => descriptorDomain(descriptor) === primaryDomain)
+  const eligibleDomains = new Set(input.act === "explain" ? ["help"] : primaryHasCapability ? input.domains : primaryDomain ? [primaryDomain] : input.domains)
 
-  return listCosRoutableCapabilityDescriptors(input.surface)
+  return routableDescriptors
     .filter((descriptor) => {
       if (input.act === "explain") return descriptor.id.startsWith("help.")
       if (descriptor.id.startsWith("help.") || descriptor.id === "general.chat") return false
@@ -380,8 +621,10 @@ function scoreCandidates(input: {
       const domain = descriptorDomain(descriptor)
       const searchTokens = tokenize(capabilitySearchText(descriptor))
       const overlap = messageTokens.filter((token) => searchTokens.some((candidate) => tokensMatch(token, candidate)))
-      let score = (input.domains.includes(domain) ? 6 : 0) + overlap.length * 1.15
-      const evidence = [input.domains.includes(domain) ? `domain:${domain}` : "", overlap.length ? `tokens:${overlap.join(",")}` : ""].filter(Boolean)
+      const isPrimaryDomain = input.domains[0] === domain
+      const domainScore = isPrimaryDomain ? 10 : input.domains.includes(domain) ? 3 : 0
+      let score = domainScore + overlap.length * 1.15
+      const evidence = [domainScore ? `${isPrimaryDomain ? "primary" : "secondary"}_domain:${domain}` : "", overlap.length ? `tokens:${overlap.join(",")}` : ""].filter(Boolean)
       const exactAlias = descriptor.aliases.find((alias) => normalizeText(alias) === input.message)
       const partialAlias = descriptor.aliases.find((alias) => input.message.includes(normalizeText(alias)))
       if (exactAlias) {
@@ -392,8 +635,17 @@ function scoreCandidates(input: {
         evidence.push(`partial_alias:${partialAlias}`)
       }
       const semantic = semanticCapabilityBoost(descriptor, input.message, input.referenceType)
-      score += semantic.score + helpCapabilityBoost(descriptor, input.domains)
+      score += semantic.score + helpCapabilityBoost(descriptor, input.domains, input.message)
       evidence.push(...semantic.evidence)
+      if (descriptor.id === "lead.find" && primaryDomain === "lead" && /^(?:o|a)\s+[\p{L}]+(?:\s+[\p{L}]+)?\s+(?:serve|atende|funciona)\b/u.test(input.message)) {
+        score += 10
+        evidence.push("named_lead_candidate_query")
+      }
+      if (input.contextCapabilityId === descriptor.id) {
+        const contextualRefinement = descriptor.id === "property.search" && /^(?:so|e\s+com|com|ate)\b/.test(input.message)
+        score += contextualRefinement ? 12 : 6
+        evidence.push(contextualRefinement ? "snapshot_filter_refinement" : "snapshot_capability")
+      }
       if (capabilityOperation(descriptor) === operation) {
         score += 3
         evidence.push(`operation:${operation}`)
@@ -430,6 +682,13 @@ function contextualCapabilityId(type: CosConversationEntityType): CosCapabilityI
   return "agenda.list"
 }
 
+function contextualUpdateCapabilityId(type: CosConversationEntityType): CosCapabilityId | null {
+  if (type === "lead") return "lead.update"
+  if (type === "contract") return "contract.update"
+  if (type === "agenda") return "agenda.update"
+  return null
+}
+
 function directCandidate(descriptor: CosCapabilityDescriptor, evidence: string[]): CosDialogueDecisionCandidate {
   return {
     capabilityId: descriptor.id,
@@ -464,6 +723,17 @@ export function resolveCosDialogueDecision(input: {
     ? resolveCosConversationReference(input.message, input.snapshot)
     : { entity: null, selectionSet: null, ambiguous: [], reason: "snapshot_unavailable" }
   const mentionedDomains = detectMentionedDomains(normalized)
+  const contextDescriptor = lastContextDescriptor(input.snapshot, input.activeWorkflow)
+  const recentDomains: CosConversationDomain[] = []
+  for (const recent of [...(input.snapshot?.recentMessages ?? [])].slice(-3).reverse()) {
+    const recentMessage = normalizeText(recent.userMessage)
+    for (const domain of prioritizeRecentDomains(
+      recentMessage,
+      detectMentionedDomains(recentMessage).filter((candidate) => candidate !== "help"),
+    )) {
+      if (!recentDomains.includes(domain)) recentDomains.push(domain)
+    }
+  }
   const legacyHint = mentionedDomains.length === 0
     ? /\b(metros|metragem|area|quartos|banheiros|vagas)\b/.test(normalized) && (input.memory?.propertyId || input.memory?.selectedProperty?.id)
       ? "property"
@@ -471,18 +741,22 @@ export function resolveCosDialogueDecision(input: {
         ? "lead"
         : null
     : null
-  const hintedDomain = mentionedDomains[0] ?? legacyHint ?? pendingDomain(pendingInput) ?? topicDomain(input.snapshot?.currentTopic?.domain) ?? null
+  const hintedDomain = mentionedDomains[0] ?? legacyHint ?? pendingDomain(pendingInput) ?? topicDomain(input.snapshot?.currentTopic?.domain) ?? (contextDescriptor ? descriptorDomain(contextDescriptor) : null)
   const legacyEntity = hintedDomain ? legacyReference(input.memory, hintedDomain) : null
   const referenceEntity = snapshotReference.entity ?? legacyEntity
   const actResolution = inferDialogueAct({
+    rawMessage: input.message,
     normalized,
+    hasQuestionMark: /\?\s*$/.test(input.message),
     requestedDescriptor,
     pendingInput,
     activeWorkflow: input.activeWorkflow,
     snapshot: input.snapshot,
     mentionedDomains,
     referenceResolved: Boolean(referenceEntity),
+    referenceReason: snapshotReference.reason,
     referenceType: referenceEntity?.type ?? null,
+    contextDescriptor,
     attachments: input.attachments ?? [],
   })
   const act = actResolution.act
@@ -494,15 +768,65 @@ export function resolveCosDialogueDecision(input: {
       }) ?? null
     : input.snapshot?.currentTopic ?? null
   const topicValueDomain = topicDomain(topicValue?.domain)
-  const domains = [...mentionedDomains]
+  const preferredDomain = preferredConversationDomain({
+    message: normalized,
+    act,
+    mentionedDomains,
+    pendingInput,
+    topicDomain: topicValueDomain,
+    referenceDomain,
+    contextDescriptor,
+    recentDomains,
+  })
+  const domains: CosConversationDomain[] = []
   const addDomain = (domain: CosConversationDomain | null) => {
     if (domain && !domains.includes(domain)) domains.push(domain)
   }
+  addDomain(preferredDomain)
+  for (const domain of mentionedDomains) {
+    if (domain !== "help" && domain !== preferredDomain) addDomain(domain)
+  }
+  const recentPublicationDomains = recentDomains.filter((domain) => domain === "catalog" || domain === "marketplace")
+  if (/\b(?:nos dois|em ambos|entre eles|entre os dois)\b/.test(normalized)) {
+    for (const domain of recentPublicationDomains) addDomain(domain)
+  } else if (preferredDomain === "property" && referenceEntity && /^(?:e|ja|quanto|quantas?)\b/.test(normalized)) {
+    addDomain(recentPublicationDomains[0] ?? null)
+  }
+  if (preferredDomain === "property" && (/\b(?:pra|pro|para)\b/.test(normalized) || referenceDomain === "lead" || input.snapshot?.activeEntities.lead)) addDomain("lead")
+  if (preferredDomain === "proposal") {
+    addDomain("property")
+    addDomain("lead")
+  }
+  if (preferredDomain === "lead" && (referenceDomain === "property" || input.snapshot?.activeEntities.property)) addDomain("property")
+  if (preferredDomain === "contract" && (/\b(?:de quem|dele|dela)\b/.test(normalized) || referenceDomain === "lead" || input.snapshot?.activeEntities.lead)) addDomain("lead")
+  if (preferredDomain === "agenda") {
+    if (/\bvisita\b/.test(normalized) || referenceDomain === "property" || input.snapshot?.activeEntities.property) addDomain("property")
+    if (/\b(?:com|falar|ele|ela)\b/.test(normalized) || referenceDomain === "lead" || input.snapshot?.activeEntities.lead) addDomain("lead")
+    if (input.snapshot?.activeEntities.proposal) addDomain("proposal")
+  }
+  if (preferredDomain && ["catalog", "marketplace", "studio"].includes(preferredDomain) && (mentionedDomains.includes("property") || referenceDomain === "property" || input.snapshot?.activeEntities.property)) addDomain("property")
+  if (preferredDomain === "catalog" && /\bpublic(?:a|e|ar)\w*\b/.test(normalized)) addDomain("property")
+  if (preferredDomain === "analytics") {
+    if (mentionedDomains.includes("property") || referenceDomain === "property" || input.snapshot?.activeEntities.property || /\b(?:ou|compar\w*)\b.*\b(?:procur\w*|busc\w*|visualiz\w*)\b/.test(normalized)) addDomain("property")
+    if (mentionedDomains.includes("lead") || referenceDomain === "lead") addDomain("lead")
+  }
+  if (preferredDomain === "library") addDomain("studio")
+  if (preferredDomain === "history" && mentionedDomains.includes("proposal")) addDomain("lead")
+  if (preferredDomain === "property" && /\bpublicad\w*\b/.test(normalized) && act === "query") {
+    addDomain("catalog")
+    addDomain("marketplace")
+  }
+  if (preferredDomain === "general" && /\bcreditos?\b/.test(normalized)) addDomain("studio")
+  if (preferredDomain === "catalog" && /\bnao consigo publicar\b/.test(normalized)) addDomain("account")
   addDomain(referenceDomain)
-  if (act === "provide_input" || act === "correct" || act === "confirm" || act === "reject" || act === "cancel") addDomain(pendingDomain(pendingInput))
-  addDomain(topicValueDomain)
+  if ((act === "query" || act === "explain") && pendingInput?.type === "selection") addDomain(pendingDomain(pendingInput))
+  if (act === "provide_input" || act === "correct" || act === "confirm" || act === "reject" || act === "cancel" || act === "select") addDomain(pendingDomain(pendingInput))
+  if (act !== "switch_topic") addDomain(topicValueDomain)
+  if (contextDescriptor && act !== "switch_topic") {
+    const contextDomain = descriptorDomain(contextDescriptor)
+    if (contextDomain !== "help") addDomain(contextDomain)
+  }
   if (domains.length === 0) addDomain(workspaceDomain(input.workspace?.entity))
-  if (act === "explain" && !domains.includes("help")) domains.push("help")
   if (domains.length === 0) domains.push("general")
 
   const primaryDomain = domains[0]
@@ -517,17 +841,50 @@ export function resolveCosDialogueDecision(input: {
 
   const activeAction = workflowAction(input.activeWorkflow)
   const activeDescriptor = getCosCapabilityDescriptorByAliasOrAction(activeAction)
+  const rejectedWithFollowUp = act === "reject" && hasCosPendingRejectionFollowUp(input.message)
+  const unsupportedContractReview = primaryDomain === "contract" && /\b(?:analis\w*|(?:algo|alguma coisa)\s+errad\w*|ponto que .* marcou|revisao documental)\b/.test(normalized)
+  const unsupportedNativeSignature = primaryDomain === "contract" && /\bassin(?:a|e|ar)\b/.test(normalized) && !/\bmarc\w*\b.*\bassinad\w*\b/.test(normalized)
+  const unsupportedCatalogAccountDiagnosis = primaryDomain === "catalog" && domains.includes("account") && /\b(?:nao consigo|bloquead\w*|creci)\b.*\bpublic\w*|\bpublic\w*.*\b(?:nao consigo|bloquead\w*|creci)\b/.test(normalized)
+  const studioRecommendation = act === "query" && primaryDomain === "studio" && /\brecomend\w*\b/.test(normalized)
   if (requestedDescriptor) {
     candidates = [directCandidate(requestedDescriptor, ["requested_action_explicit"])]
     selectedCapabilityId = requestedDescriptor.id
     selectedAction = requestedDescriptor.action
     objectiveMode = act === "explain" ? "explain" : requestedDescriptor.mutatesData ? "execute" : "query"
+  } else if (rejectedWithFollowUp && referenceEntity) {
+    const descriptor = getCosCapabilityDescriptorById(contextualCapabilityId(referenceEntity.type))
+    if (descriptor) {
+      candidates = [directCandidate(descriptor, ["rejection_follow_up", snapshotReference.reason])]
+      selectedCapabilityId = descriptor.id
+      selectedAction = descriptor.action
+      objectiveMode = "query"
+      source = "snapshot_context"
+    }
+  } else if (act === "query" && referenceEntity && ["selection_alternative", "selection_ordinal", "selection_ranked_price"].includes(snapshotReference.reason)) {
+    const descriptor = getCosCapabilityDescriptorById(contextualCapabilityId(referenceEntity.type))
+    if (descriptor) {
+      candidates = [directCandidate(descriptor, [snapshotReference.reason, "selection_detail_query"])]
+      selectedCapabilityId = descriptor.id
+      selectedAction = descriptor.action
+      objectiveMode = "query"
+      source = "snapshot_context"
+    }
   } else if (["provide_input", "correct", "confirm", "reject", "cancel"].includes(act) && activeDescriptor) {
     candidates = [directCandidate(activeDescriptor, [`active_workflow:${act}`])]
     selectedCapabilityId = activeDescriptor.id
     selectedAction = activeDescriptor.action
     objectiveMode = "continue"
     source = "snapshot_context"
+  } else if (act === "correct" && referenceEntity) {
+    const descriptorId = contextualUpdateCapabilityId(referenceEntity.type)
+    const descriptor = descriptorId ? getCosCapabilityDescriptorById(descriptorId) : null
+    if (descriptor) {
+      candidates = [directCandidate(descriptor, ["contextual_correction", snapshotReference.reason])]
+      selectedCapabilityId = descriptor.id
+      selectedAction = descriptor.action
+      objectiveMode = "continue"
+      source = "snapshot_context"
+    }
   } else if (act === "select" && pendingInput?.type === "selection" && activeDescriptor) {
     candidates = [directCandidate(activeDescriptor, ["pending_selection"])]
     selectedCapabilityId = activeDescriptor.id
@@ -543,6 +900,15 @@ export function resolveCosDialogueDecision(input: {
       objectiveMode = "query"
       source = "snapshot_context"
     }
+  } else if (act === "select" && snapshotReference.selectionSet) {
+    const descriptor = getCosCapabilityDescriptorById(contextualCapabilityId(snapshotReference.selectionSet.type))
+    if (descriptor) {
+      candidates = [directCandidate(descriptor, [snapshotReference.reason, "selection_target_unresolved"])]
+      selectedCapabilityId = descriptor.id
+      selectedAction = descriptor.action
+      objectiveMode = "clarify"
+      source = "snapshot_context"
+    }
   } else if (act === "select" || act === "return_topic") {
     needsClarification = true
     clarificationReason = act === "select" ? "selection_context_missing" : "return_topic_not_found"
@@ -554,31 +920,44 @@ export function resolveCosDialogueDecision(input: {
     selectedCapabilityId = descriptor.id
     selectedAction = descriptor.action
     objectiveMode = "respond"
+  } else if (unsupportedContractReview || unsupportedNativeSignature || unsupportedCatalogAccountDiagnosis) {
+    objectiveMode = act === "explain" ? "explain" : "query"
+    source = "registry"
+  } else if (studioRecommendation) {
+    const descriptor = getCosCapabilityDescriptorById("help.marketing_studio")!
+    candidates = [directCandidate(descriptor, ["studio_recommendation"])]
+    selectedCapabilityId = descriptor.id
+    selectedAction = descriptor.action
+    objectiveMode = "query"
+    source = "registry"
   } else if (act === "capability_question") {
     const targetOperation = hasAny(normalized, ["buscar", "consultar", "mostrar", "listar", "ver "]) ? "query" : "execute"
-    candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null, targetOperation }))
+    candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null, contextCapabilityId: contextDescriptor?.id ?? null, targetOperation }))
     const descriptor = getCosCapabilityDescriptorById("general.chat")!
     selectedCapabilityId = descriptor.id
     selectedAction = descriptor.action
     objectiveMode = "respond"
     source = "registry"
   } else if (act === "explain") {
-    candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null }))
+    candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null, contextCapabilityId: contextDescriptor?.id ?? null }))
     const top = candidates[0]
     selectedCapabilityId = top?.capabilityId ?? "help.general_question"
     selectedAction = top?.action ?? "help_general_question"
     objectiveMode = "explain"
     source = "registry"
   } else if (["execute", "query", "switch_topic"].includes(act)) {
-    const targetOperation = act === "execute" || (act === "switch_topic" && hasAny(normalized, ["crie", "criar", "cadastre", "cadastrar", "publique", "publicar"]))
+    const switchMutation = act === "switch_topic" && hasNaturalMutationVerb(normalized) && !/\?\s*$/.test(input.message) && !hasOperationalQuestionStructure(normalized)
+    const targetOperation = act === "execute" || switchMutation
       ? "execute"
       : "query"
-    candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null, targetOperation }))
+    candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null, contextCapabilityId: contextDescriptor?.id ?? null, targetOperation }))
     const top = candidates[0]
     const runnerUp = candidates[1]
     const threshold = top?.mutatesData ? COS_DECISION_CONFIDENCE.mutationMinimum : COS_DECISION_CONFIDENCE.queryMinimum
-    const margin = top && runnerUp ? top.confidence - runnerUp.confidence : 1
-    if (top && top.confidence >= threshold && (margin >= COS_DECISION_CONFIDENCE.ambiguityMargin || top.confidence >= COS_DECISION_CONFIDENCE.high)) {
+    const confidenceMargin = top && runnerUp ? top.confidence - runnerUp.confidence : 1
+    const scoreMargin = top && runnerUp ? top.score - runnerUp.score : Number.POSITIVE_INFINITY
+    const safelySeparated = scoreMargin >= (top?.mutatesData ? 2.5 : 1.5) || confidenceMargin >= COS_DECISION_CONFIDENCE.ambiguityMargin
+    if (top && top.confidence >= threshold && safelySeparated) {
       selectedCapabilityId = top.capabilityId
       selectedAction = top.action
     } else if (top) {
@@ -599,8 +978,79 @@ export function resolveCosDialogueDecision(input: {
     source = "fallback"
   }
 
+  const selectedDescriptor = selectedCapabilityId ? getCosCapabilityDescriptorById(selectedCapabilityId) : null
+  const unresolvedRequiredReference = Boolean(
+    selectedDescriptor?.requiresSelection &&
+    !referenceEntity &&
+    selectedDescriptor.id !== "property.search" &&
+    selectedDescriptor.id !== "lead.find",
+  )
+  const hasClientBeneficiary = /\b(?:pra|pro)\b/.test(normalized) ||
+    /\bpara\s+(?!(?:aluguel|comprar|investimento|locacao|morar|temporada|venda)\b)[\p{L}]{2,}\b/u.test(normalized)
+  const unresolvedClientSearch = selectedCapabilityId === "property.search" && (
+    (hasClientBeneficiary && !referenceEntity) ||
+    !/\b(?:apartamento|casa|terreno|sala|comercial|residencial|em\s+[\p{L}]+|ate\s+\d)\b/u.test(normalized)
+  )
+  const analyzesCurrentSelectionSet = selectedCapabilityId === "catalog.analyze" &&
+    act === "query" &&
+    Boolean(snapshotReference.selectionSet) &&
+    snapshotReference.ambiguous.length > 1
+  const ambiguousReference = snapshotReference.ambiguous.length > 0 && !analyzesCurrentSelectionSet
+  const ambiguousHour = selectedCapabilityId === "agenda.create" && /\b(?:as\s+)?(?:[1-9]|1[0-2])\b/.test(normalized) && !/\b(?:manha|tarde|noite|\d{1,2}:\d{2}|\d{1,2}h)\b/.test(normalized)
+  const missingCorrectionValue = act === "correct" && selectedCapabilityId === "lead.update" && /\b(?:telefone|email|sobrenome)\b/.test(normalized) && !(/\d{10,}/.test(normalized.replace(/\D/g, "")) || /\S+@\S+/.test(input.message) || /\b(?:e|para)\s+[\p{L}]{2,}\b/u.test(normalized))
+  const missingCatalogTarget = selectedCapabilityId === "catalog.analyze" && !referenceEntity && !analyzesCurrentSelectionSet
+  const genericStudioRequest = selectedCapabilityId === "studio.generateCampaign" && !/\b(instagram|facebook|story|reel|video|anuncio|objetivo)\b/.test(normalized)
+  const incompletePropertyDraft = selectedCapabilityId === "property.create" && /\b(?:foto|fotos|imagem|imagens)\b/.test(normalized) && !/\b(?:rua|avenida|bairro|cidade|preco|valor|apartamento|casa|terreno)\b/.test(normalized)
+  const ambiguousPerformanceMetric = selectedCapabilityId === "analytics.performance" && /\b(?:melhor|mais\s+procur\w*)\b/.test(normalized) && !/\b(?:visualiz\w*|contat\w*|convers\w*|lead\w*|propost\w*)\b/.test(normalized)
+  const hasExplicitAgendaTime = /\b(?:as\s+(?:[01]?\d|2[0-3])(?::[0-5]\d)?|(?:[01]?\d|2[0-3])h(?:[0-5]\d)?|(?:[01]?\d|2[0-3]):[0-5]\d)\b/.test(normalized)
+  const missingAgendaTime = selectedCapabilityId === "agenda.create" && !hasExplicitAgendaTime
+  const hasExplicitSearchLocation = /\b(?:em|na|no)\s+(?!maximo\b|minimo\b|valor\b|preco\b|total\b|momento\b|prazo\b|dia\b|mes\b|ano\b)[\p{L}][\p{L}\s-]{1,40}(?:$|\bate\b|\bcom\b|\bdepois\b)/u.test(normalized)
+  const chainedPropertySearchMissingLocation = selectedCapabilityId === "lead.create" &&
+    domains.includes("property") &&
+    /\b(?:procur\w*|busc\w*|encontr\w*)\b/.test(normalized) &&
+    !hasExplicitSearchLocation
+  const chainedProposalMissingProperty = selectedCapabilityId === "lead.create" &&
+    domains.includes("proposal") &&
+    !domains.includes("property") &&
+    !input.snapshot?.activeEntities.property
+  const unresolvedNamedLeadTarget = ["agenda.create", "proposal.create"].includes(selectedCapabilityId ?? "") &&
+    referenceEntity?.type !== "lead" &&
+    hasSingleTokenLeadTarget(normalized)
+  const isWorkflowContinuation = Boolean(input.activeWorkflow) && ["provide_input", "correct", "confirm", "reject", "cancel", "select"].includes(act)
+  if (!needsClarification && !isWorkflowContinuation && (unresolvedRequiredReference || unresolvedClientSearch || ambiguousReference || ambiguousHour || missingCorrectionValue || missingCatalogTarget || genericStudioRequest || incompletePropertyDraft || ambiguousPerformanceMetric || missingAgendaTime || chainedPropertySearchMissingLocation || chainedProposalMissingProperty || unresolvedNamedLeadTarget)) {
+    needsClarification = true
+    clarificationReason = ambiguousReference
+      ? "entity_reference_ambiguous"
+      : unresolvedClientSearch
+        ? "property_search_context_incomplete"
+        : ambiguousHour
+          ? "temporal_input_ambiguous"
+          : missingCorrectionValue
+            ? "correction_value_missing"
+            : missingCatalogTarget
+              ? "catalog_target_missing"
+              : genericStudioRequest
+                ? "studio_parameters_missing"
+                  : incompletePropertyDraft
+                    ? "property_draft_data_missing"
+                    : ambiguousPerformanceMetric
+                      ? "performance_metric_ambiguous"
+                      : missingAgendaTime
+                        ? "agenda_time_missing"
+                        : chainedPropertySearchMissingLocation
+                          ? "property_search_location_missing"
+                          : chainedProposalMissingProperty
+                            ? "proposal_property_missing"
+                            : unresolvedNamedLeadTarget
+                              ? "lead_target_ambiguous"
+                            : "required_entity_unresolved"
+  }
+
+  const rejectedIntoNewAction = rejectedWithFollowUp && Boolean(selectedAction) && selectedAction !== activeAction
   const workflowDecision: CosDialogueDecision["workflowDecision"] = !input.activeWorkflow
     ? selectedAction ? "start_new" : "none"
+    : rejectedIntoNewAction
+      ? "start_new"
     : ["provide_input", "correct", "confirm", "reject", "cancel"].includes(act)
       ? "continue_workflow"
       : act === "select" && pendingInput?.type === "selection"
@@ -619,7 +1069,7 @@ export function resolveCosDialogueDecision(input: {
     objective: {
       mode: objectiveMode,
       summary: `${act}:${domains.join("+")}`,
-      targetCapabilityId: act === "capability_question" ? candidates[0]?.capabilityId ?? null : selectedCapabilityId,
+      targetCapabilityId: candidates[0]?.capabilityId ?? selectedCapabilityId,
     },
     reference: {
       type: referenceEntity?.type ?? null,

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 
 import { listCosRoutableCapabilityDescriptors, resolveCosDialogueDecision } from "@/lib/cos/conversation-decision"
 import { findCosExecutionRecipe } from "@/lib/cos/execution-recipes"
-import { createPendingInput } from "@/lib/cos/pending-input"
+import { classifyCosPendingReply, createPendingInput, hasCosPendingRejectionFollowUp } from "@/lib/cos/pending-input"
 import type {
   CosConversationEntityReference,
   CosConversationSnapshot,
@@ -86,10 +86,11 @@ function workflow(action: CosWorkflow["steps"][number]["action"], capabilityId: 
 function decide(message: string, input: {
   snapshot?: CosConversationSnapshot | null
   workflow?: CosWorkflow | null
+  requestedAction?: string | null
 } = {}) {
   return resolveCosDialogueDecision({
     message,
-    requestedAction: null,
+    requestedAction: input.requestedAction ?? null,
     surface: "portal",
     workspace: null,
     snapshot: input.snapshot ?? null,
@@ -326,13 +327,293 @@ test.describe("COS — decisão de agenda", () => {
   }
 })
 
+test.describe("COS — linguagem natural e continuidade operacional", () => {
+  test("busca para cliente usa property como alvo e lead como contexto", () => {
+    const carlos = entity("lead", "lead-carlos", "Carlos Mendes")
+    const result = decide("Procura alguma coisa pro Carlos.", {
+      snapshot: snapshot({ activeEntities: { lead: carlos }, recentEntities: [carlos] }),
+    })
+    expect(result.dialogueAct).toBe("query")
+    expect(result.primaryDomain).toBe("property")
+    expect(result.secondaryDomains).toContain("lead")
+    expect(result.reference.id).toBe("lead-carlos")
+    expect(result.selectedCapabilityId).toBe("property.search")
+  })
+
+  test("refinamentos curtos mantêm busca e filtros no contexto de imóveis", () => {
+    const carlos = entity("lead", "lead-carlos", "Carlos Mendes")
+    const propertyTopic = {
+      id: "topic-property-search",
+      domain: "property" as const,
+      label: "Busca para Carlos",
+      entityType: "property" as const,
+      selectionSetId: null,
+      startedAt: NOW,
+      lastMentionedAt: NOW,
+    }
+    const context = snapshot({
+      currentTopic: propertyTopic,
+      activeEntities: { lead: carlos },
+      recentEntities: [carlos],
+      lastAction: "searchProperties",
+    })
+    for (const message of ["Só até 700.", "E com duas vagas?"]) {
+      const result = decide(message, { snapshot: context })
+      expect.soft(result.dialogueAct).toBe("query")
+      expect.soft(result.primaryDomain).toBe("property")
+      expect.soft(result.selectedCapabilityId).toBe("property.search")
+    }
+  })
+
+  test("sobrenome resolve seleção pendente sem trocar a capability do fluxo", () => {
+    const pending = createPendingInput({
+      field: "leadChoice",
+      type: "selection",
+      action: "searchProperties",
+      entity: "property",
+      capabilityId: "property.search",
+      options: [
+        { id: "lead-carlos-mendes", label: "Carlos Mendes" },
+        { id: "lead-carlos-mendonca", label: "Carlos Mendonça" },
+      ],
+      now: new Date(NOW),
+    })
+    const active = workflow("searchProperties", "property.search", pending)
+    const result = decide("Mendes.", {
+      workflow: active,
+      snapshot: snapshot({ activeWorkflow: active, pendingInput: pending }),
+    })
+    expect(result.dialogueAct).toBe("select")
+    expect(result.reference.id).toBe("lead-carlos-mendes")
+    expect(result.selectedCapabilityId).toBe("property.search")
+  })
+
+  test("alternativa de uma lista vira consulta do outro item, não nova busca", () => {
+    const result = decide("E o outro?", { snapshot: propertySelectionSnapshot() })
+    expect(result.dialogueAct).toBe("query")
+    expect(result.reference.id).toBe("property-2")
+    expect(result.selectedCapabilityId).toBe("property.get")
+  })
+
+  test("ranking sem dados mantém a capability e pede seleção sem escolher item", () => {
+    const result = decide("O mais barato.", { snapshot: propertySelectionSnapshot() })
+    expect(result.dialogueAct).toBe("select")
+    expect(result.reference.id).toBeNull()
+    expect(result.selectedCapabilityId).toBe("property.get")
+    expect(result.needsClarification).toBe(true)
+  })
+
+  test("filtro temporal explícito vence o período anterior", () => {
+    const result = decide("E amanhã?", {
+      snapshot: snapshot({
+        currentTopic: {
+          id: "topic-agenda",
+          domain: "agenda",
+          label: "Agenda de hoje",
+          entityType: "agenda",
+          selectionSetId: null,
+          startedAt: NOW,
+          lastMentionedAt: NOW,
+        },
+        lastAction: "LIST_AGENDA_TODAY",
+      }),
+    })
+    expect(result.dialogueAct).toBe("query")
+    expect(result.selectedCapabilityId).toBe("agenda.list")
+  })
+
+  test("confirmações informais usam o mesmo classificador da execução", () => {
+    const pending = createPendingInput({
+      field: "confirmation",
+      type: "confirmation",
+      action: "DELETE_LEAD",
+      entity: "lead",
+      capabilityId: "lead.delete",
+      parsedData: { leadId: "lead-roberto" },
+      now: new Date(NOW),
+    })
+    const active = workflow("DELETE_LEAD", "lead.delete", pending)
+    for (const message of ["Sim!", "s", "ok", "Pode.", "seguir", "Manda bala.", "Beleza.", "Combinado."]) {
+      expect.soft(decide(message, { workflow: active }).dialogueAct).toBe("confirm")
+      expect.soft(classifyCosPendingReply(message)).toBe("confirm")
+    }
+    expect(classifyCosPendingReply("Não, deixa.")).toBe("reject")
+    expect(classifyCosPendingReply("Não deixa.")).toBe("answer")
+    expect(decide("Não, deixa.", { workflow: active }).dialogueAct).toBe("reject")
+    expect(decide("Não cancela.", { workflow: active }).dialogueAct).toBe("provide_input")
+    expect(classifyCosPendingReply("não cancela")).toBe("answer")
+    expect(classifyCosPendingReply("não deixa pra lá")).toBe("answer")
+  })
+
+  test("recusa com consulta residual troca de ação; negativa pura não inverte intenção", () => {
+    const roberto = entity("lead", "lead-roberto", "Roberto Lima")
+    const pending = createPendingInput({
+      field: "confirmation",
+      type: "confirmation",
+      action: "DELETE_LEAD",
+      entity: "lead",
+      capabilityId: "lead.delete",
+      parsedData: { leadId: roberto.id },
+      now: new Date(NOW),
+    })
+    const active = workflow("DELETE_LEAD", "lead.delete", pending)
+    const result = decide("Não, só queria ver o cadastro.", {
+      workflow: active,
+      snapshot: snapshot({ activeWorkflow: active, pendingInput: pending, activeEntities: { lead: roberto }, recentEntities: [roberto] }),
+    })
+    expect(result.dialogueAct).toBe("reject")
+    expect(result.selectedCapabilityId).toBe("lead.find")
+    expect(result.workflowDecision).toBe("start_new")
+    expect(hasCosPendingRejectionFollowUp("Não quero abrir o cadastro.")).toBe(false)
+    expect(hasCosPendingRejectionFollowUp("Não preciso ver os detalhes.")).toBe(false)
+  })
+
+  test("pronome locativo preserva entidade e capability do tópico", () => {
+    const property = entity("property", "property-studio", "Solar Comercial")
+    const result = decide("Faz nele.", {
+      snapshot: snapshot({
+        currentTopic: {
+          id: "topic-studio",
+          domain: "studio",
+          label: "Campanha do Solar",
+          entityType: "property",
+          selectionSetId: null,
+          startedAt: NOW,
+          lastMentionedAt: NOW,
+        },
+        activeEntities: { property },
+        recentEntities: [property],
+        lastAction: "STUDIO_GENERATE_CAMPAIGN",
+      }),
+    })
+    expect(result.dialogueAct).toBe("execute")
+    expect(result.reference.id).toBe("property-studio")
+    expect(result.primaryDomain).toBe("studio")
+    expect(result.selectedCapabilityId).toBe("studio.generateCampaign")
+  })
+
+  test("abertura por nome curto sem contexto não escolhe silenciosamente um tipo", () => {
+    const result = decide("Abre o Solar.")
+    expect(result.dialogueAct).toBe("query")
+    expect(result.reference.id).toBeNull()
+    expect(result.primaryDomain).toBe("general")
+    expect(result.needsClarification).toBe(true)
+  })
+
+  test("referência resolvida decide entre cliente e imóvel sem heurística pelo nome", () => {
+    const carlos = entity("lead", "lead-carlos", "Carlos")
+    const result = decide("Mostra Carlos.", {
+      snapshot: snapshot({ activeEntities: { lead: carlos }, recentEntities: [carlos] }),
+    })
+    expect(result.primaryDomain).toBe("lead")
+    expect(result.selectedCapabilityId).toBe("lead.find")
+  })
+
+  test("ação explícita nova não é sequestrada pelo pending anterior", () => {
+    const active = phoneWorkflow()
+    const result = decide("Criar proposta", {
+      workflow: active,
+      snapshot: snapshot({ activeWorkflow: active, pendingInput: active.pendingInput }),
+      requestedAction: "CREATE_PROPOSAL",
+    })
+    expect(result.dialogueAct).toBe("execute")
+    expect(result.selectedCapabilityId).toBe("proposal.create")
+    expect(result.workflowDecision).toBe("start_new")
+  })
+
+  test("pedido de assinatura nativa reconhece o gap sem escolher outra mutação", () => {
+    for (const message of ["Assine o contrato do João.", "Assinar este contrato?", "O cliente consegue assinar contrato pelo EME?"]) {
+      const result = decide(message)
+      expect.soft(result.primaryDomain).toBe("contract")
+      expect.soft(result.selectedCapabilityId).toBeNull()
+      expect.soft(result.selectedAction).toBeNull()
+    }
+  })
+
+  test("pergunta geral usa ajuda geral e capacidade declarada usa ajuda do COS", () => {
+    const howTo = decide("Como excluo?")
+    expect(howTo.primaryDomain).toBe("general")
+    expect(howTo.selectedCapabilityId).toBe("help.general_question")
+
+    const capabilities = decide("O que você consegue fazer?")
+    expect(capabilities.primaryDomain).toBe("general")
+    expect(capabilities.selectedCapabilityId).toBe("help.use_cos")
+  })
+
+  test("recomendação de divulgação usa o Studio sem iniciar geração", () => {
+    const property = entity("property", "property-studio", "Solar Comercial")
+    const result = decide("Preciso divulgar mais esse imóvel. O que você recomenda?", {
+      snapshot: snapshot({ activeEntities: { property }, recentEntities: [property] }),
+    })
+    expect(result.dialogueAct).toBe("query")
+    expect(result.primaryDomain).toBe("studio")
+    expect(result.secondaryDomains).toContain("property")
+    expect(result.selectedCapabilityId).toBe("help.marketing_studio")
+  })
+
+  test("completude temporal exige um horário explícito", () => {
+    const missingTime = decide("Marca um compromisso dia 20.")
+    expect(missingTime.selectedCapabilityId).toBe("agenda.create")
+    expect(missingTime.needsClarification).toBe(true)
+    expect(missingTime.clarificationReason).toBe("agenda_time_missing")
+
+    const withTime = decide("Cria um compromisso amanhã às 15.")
+    expect(withTime.selectedCapabilityId).toBe("agenda.create")
+    expect(withTime.clarificationReason).not.toBe("agenda_time_missing")
+  })
+
+  test("limite de preço não é confundido com localização da busca encadeada", () => {
+    const missingLocation = decide("Cadastra Ana e procura apartamento no máximo 600 mil.")
+    expect(missingLocation.selectedCapabilityId).toBe("lead.create")
+    expect(missingLocation.needsClarification).toBe(true)
+    expect(missingLocation.clarificationReason).toBe("property_search_location_missing")
+
+    const withLocation = decide("Cadastra Ana e procura apartamento em Porto Alegre até 600 mil.")
+    expect(withLocation.selectedCapabilityId).toBe("lead.create")
+    expect(withLocation.clarificationReason).not.toBe("property_search_location_missing")
+
+    const purpose = decide("Procura apartamentos para venda em São Paulo.")
+    expect(purpose.selectedCapabilityId).toBe("property.search")
+    expect(purpose.clarificationReason).not.toBe("property_search_context_incomplete")
+  })
+
+  test("proposta encadeada aguarda imóvel sem perder o cliente criado", () => {
+    const result = decide("Cadastra Lucas e cria uma proposta pra ele.")
+    expect(result.selectedCapabilityId).toBe("lead.create")
+    expect(result.secondaryDomains).toContain("proposal")
+    expect(result.needsClarification).toBe(true)
+    expect(result.clarificationReason).toBe("proposal_property_missing")
+  })
+
+  test("operações multi-entidade não tratam primeiro nome como cliente inequívoco", () => {
+    const property = entity("property", "property-solar", "Solar Comercial")
+    for (const message of [
+      "Faz uma proposta pro Carlos no Solar Comercial.",
+      "Marca visita no Solar Comercial com Carlos amanhã às 15.",
+    ]) {
+      const result = decide(message, {
+        snapshot: snapshot({ activeEntities: { property }, recentEntities: [property] }),
+      })
+      expect.soft(result.needsClarification).toBe(true)
+      expect.soft(result.clarificationReason).toBe("lead_target_ambiguous")
+    }
+
+    for (const completeMessage of [
+      "Cria uma proposta do Solar Comercial para Carlos Mendes.",
+      "Cria uma proposta com entrada de 100 mil do Solar Comercial para Carlos Mendes.",
+    ]) {
+      expect(decide(completeMessage).clarificationReason).not.toBe("lead_target_ambiguous")
+    }
+  })
+})
+
 test.describe("COS — cobertura do Registry e perguntas de capacidade", () => {
-  test("deriva 73 actions roteáveis do Registry do portal", () => {
+  test("deriva 74 actions roteáveis do Registry do portal", () => {
     const descriptors = listCosRoutableCapabilityDescriptors("portal")
     const actions = new Set(descriptors.map((descriptor) => descriptor.action))
-    expect(descriptors).toHaveLength(73)
-    expect(actions.size).toBe(73)
-    for (const action of ["LIST_AGENDA_TODAY", "LIST_AGENDA_WEEK", "GET_FINANCE_CASHFLOW", "CONTRACT_PREVIEW", "GET_PROPERTY"]) {
+    expect(descriptors).toHaveLength(74)
+    expect(actions.size).toBe(74)
+    for (const action of ["LIST_AGENDA_TODAY", "LIST_AGENDA_WEEK", "GET_FINANCE_CASHFLOW", "CONTRACT_PREVIEW", "GET_PROPERTY", "createInternalNotification"]) {
       expect(actions.has(action as never)).toBe(true)
     }
   })

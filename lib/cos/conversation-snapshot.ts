@@ -1,6 +1,7 @@
 import type { AssessorAction } from "@/lib/eme-backend"
+import { classifyCosPendingReply } from "@/lib/cos/pending-input"
 import type {
-  CosCapabilityDomain,
+  CosConversationDomain,
   CosConversationEntityReference,
   CosConversationEntityType,
   CosConversationExecutionReference,
@@ -75,7 +76,7 @@ export function buildCosTemporalContext(message: string, now = new Date()): CosT
   return { today: isoDate(now), references }
 }
 
-export function getCosSnapshotActionDomain(action: AssessorAction | null): CosCapabilityDomain {
+export function getCosSnapshotActionDomain(action: AssessorAction | null): CosConversationDomain {
   if (!action) return "general"
   if (action.startsWith("STUDIO_")) return "studio"
   if (action.includes("CONTRACT")) return "contract"
@@ -86,11 +87,11 @@ export function getCosSnapshotActionDomain(action: AssessorAction | null): CosCa
   if (action.includes("FINANCE") || action === "getFinancialSummary") return "finance"
   if (action.includes("ANALYTICS") || action === "getAnalyticsSummary") return "analytics"
   if (action.includes("CATALOG") || action === "getCatalogSummary" || action === "analyzeCatalog") return "catalog"
-  if (action.includes("DOCUMENT")) return "document"
+  if (action.includes("DOCUMENT")) return "contract"
   return "general"
 }
 
-function domainEntityType(domain: CosCapabilityDomain): CosConversationEntityType | null {
+function domainEntityType(domain: CosConversationDomain): CosConversationEntityType | null {
   if (domain === "lead") return "lead"
   if (domain === "property") return "property"
   if (domain === "proposal") return "proposal"
@@ -106,6 +107,18 @@ function makeEntity(input: Omit<CosConversationEntityReference, "lastMentionedAt
 function upsertRecentEntity(list: CosConversationEntityReference[], entity: CosConversationEntityReference) {
   return [entity, ...list.filter((item) => !(item.type === entity.type && item.id === entity.id))]
     .slice(0, COS_RECENT_ENTITY_LIMIT)
+}
+
+function preserveEntityLabel(
+  entity: CosConversationEntityReference,
+  activeEntities: CosConversationSnapshot["activeEntities"],
+  recentEntities: CosConversationEntityReference[],
+) {
+  if (entity.label) return entity
+  const existing = activeEntities[entity.type]?.id === entity.id
+    ? activeEntities[entity.type]
+    : recentEntities.find((candidate) => candidate.type === entity.type && candidate.id === entity.id)
+  return existing?.label ? { ...entity, label: existing.label } : entity
 }
 
 function legacyEntities(memory: CosConversationMemory | null, now: string) {
@@ -194,12 +207,12 @@ export function buildCosConversationSnapshot(input: {
   }
   for (const message of recentMessages) {
     if (message.leadId) {
-      const entity = makeEntity({ type: "lead", id: message.leadId, label: null, source: "message", confidence: 0.95, evidence: `message:${message.id}`, lastMentionedAt: message.createdAt }, nowIso)
+      const entity = preserveEntityLabel(makeEntity({ type: "lead", id: message.leadId, label: null, source: "message", confidence: 0.95, evidence: `message:${message.id}`, lastMentionedAt: message.createdAt }, nowIso), activeEntities, recentEntities)
       activeEntities.lead = entity
       recentEntities = upsertRecentEntity(recentEntities, entity)
     }
     if (message.propertyId) {
-      const entity = makeEntity({ type: "property", id: message.propertyId, label: null, source: "message", confidence: 0.95, evidence: `message:${message.id}`, lastMentionedAt: message.createdAt }, nowIso)
+      const entity = preserveEntityLabel(makeEntity({ type: "property", id: message.propertyId, label: null, source: "message", confidence: 0.95, evidence: `message:${message.id}`, lastMentionedAt: message.createdAt }, nowIso), activeEntities, recentEntities)
       activeEntities.property = entity
       recentEntities = upsertRecentEntity(recentEntities, entity)
     }
@@ -228,7 +241,7 @@ export function buildCosConversationSnapshot(input: {
       const options = Array.isArray(pending.options)
         ? pending.options.map(asRecord).filter((option) => typeof option.id === "string")
         : []
-      const entities = uniqueIds.map((id) => makeEntity({
+      const entities = uniqueIds.map((id) => preserveEntityLabel(makeEntity({
         type,
         id,
         label: typeof options.find((option) => option.id === id)?.label === "string"
@@ -238,7 +251,7 @@ export function buildCosConversationSnapshot(input: {
         confidence: 0.9,
         evidence: `message_metadata:${message.id}`,
         lastMentionedAt: message.createdAt,
-      }, nowIso))
+      }, nowIso), activeEntities, recentEntities))
       if (entities.length === 1) activeEntities[type] = entities[0]
       for (const entity of entities) recentEntities = upsertRecentEntity(recentEntities, entity)
       let selectionSetId: string | null = null
@@ -331,6 +344,31 @@ function entityIdsFromResult(type: CosConversationEntityType | null, result: Non
   return [directId, ...ids].filter((id): id is string => typeof id === "string" && id.length > 0)
 }
 
+function linkedEntityIdsFromResult(
+  domain: CosConversationDomain,
+  result: NonNullable<CosExecutionPlanResult["steps"][number]["result"]>,
+) {
+  const metadata = asRecord(result.metadata)
+  const values = (direct: unknown, list: unknown) => [...new Set([
+    direct,
+    ...(Array.isArray(list) ? list : []),
+  ].filter((id): id is string => typeof id === "string" && id.length > 0))]
+
+  return {
+    lead: values(result.leadId ?? metadata.leadId, metadata.leadIds),
+    property: values(result.propertyId ?? metadata.propertyId, metadata.propertyIds),
+    proposal: values(
+      metadata.proposalId ?? (domain === "proposal" ? metadata.documentId : null),
+      metadata.proposalIds ?? (domain === "proposal" ? metadata.documentIds : null),
+    ),
+    contract: values(
+      metadata.contractId ?? (domain === "contract" ? metadata.documentId : null),
+      metadata.contractIds ?? (domain === "contract" ? metadata.documentIds : null),
+    ),
+    agenda: values(metadata.agendaEventId, metadata.agendaEventIds),
+  } satisfies Record<CosConversationEntityType, string[]>
+}
+
 function buildSelectionSet(input: {
   type: CosConversationEntityType
   ids: string[]
@@ -385,14 +423,66 @@ export function updateCosConversationSnapshot(input: {
     temporalContext: buildCosTemporalContext(input.message, now),
     updatedAt: nowIso,
   }
-  if (!input.result) return snapshot
-
   const activeEntities = { ...snapshot.activeEntities }
   let recentEntities = [...snapshot.recentEntities]
   let currentTopic = snapshot.currentTopic
   let recentTopics = [...snapshot.recentTopics]
   let selectionSets = [...snapshot.selectionSets]
   let lastExecution: CosConversationExecutionReference | null = null
+
+  if (!input.result) {
+    const pending = input.workflow.pendingInput
+    if (!pending) return snapshot
+    const parsedData = pending.parsedData ?? {}
+    const domain = getCosSnapshotActionDomain(pending.action)
+    const pendingLinks: Array<[CosConversationEntityType, unknown]> = [
+      ["lead", parsedData.leadId],
+      ["property", parsedData.propertyId],
+      ["proposal", parsedData.proposalId ?? (domain === "proposal" ? parsedData.documentId : null)],
+      ["contract", parsedData.contractId ?? (domain === "contract" ? parsedData.documentId : null)],
+      ["agenda", parsedData.agendaEventId],
+    ]
+    for (const [entityType, id] of pendingLinks) {
+      if (typeof id !== "string" || !id) continue
+      const entity = preserveEntityLabel(makeEntity({
+        type: entityType,
+        id,
+        label: null,
+        source: "workflow",
+        confidence: 1,
+        evidence: `pending:${pending.capabilityId ?? pending.action}`,
+      }, nowIso), activeEntities, recentEntities)
+      activeEntities[entityType] = entity
+      recentEntities = upsertRecentEntity(recentEntities, entity)
+    }
+
+    const pendingSet = pendingSelectionSet({ ...snapshot, activeEntities, recentEntities })
+    const topic: CosConversationTopic | null = domain === "general"
+      ? currentTopic
+      : {
+          id: currentTopic?.domain === domain ? currentTopic.id : `topic:${domain}:${now.getTime()}`,
+          domain,
+          label: input.message.trim().slice(0, 120) || pending.label,
+          entityType: pendingSet?.type ?? domainEntityType(domain),
+          selectionSetId: pendingSet?.id ?? (currentTopic?.domain === domain ? currentTopic.selectionSetId : null),
+          startedAt: currentTopic?.domain === domain ? currentTopic.startedAt : nowIso,
+          lastMentionedAt: nowIso,
+        }
+    if (topic && currentTopic && topic.id !== currentTopic.id) {
+      recentTopics = [currentTopic, ...recentTopics.filter((item) => item.id !== currentTopic?.id)].slice(0, COS_RECENT_TOPIC_LIMIT)
+    }
+    const linkedPendingSet = pendingSet && topic ? { ...pendingSet, topicId: topic.id } : pendingSet
+    if (linkedPendingSet) selectionSets = [linkedPendingSet, ...selectionSets.filter((set) => set.id !== linkedPendingSet.id)].slice(0, COS_SELECTION_SET_LIMIT)
+    return {
+      ...snapshot,
+      currentTopic: topic,
+      recentTopics,
+      activeEntities,
+      recentEntities: recentEntities.slice(0, COS_RECENT_ENTITY_LIMIT),
+      selectionSets,
+      lastAction: pending.action,
+    }
+  }
 
   for (const step of input.result.executedSteps) {
     if (!step.result) continue
@@ -411,23 +501,31 @@ export function updateCosConversationSnapshot(input: {
       recentTopics = [currentTopic, ...recentTopics.filter((item) => item.id !== currentTopic?.id)].slice(0, COS_RECENT_TOPIC_LIMIT)
     }
 
-    const ids = entityIdsFromResult(type, step.result)
+    const linkedIds = linkedEntityIdsFromResult(domain, step.result)
+    const ids = type ? [...new Set([...entityIdsFromResult(type, step.result), ...linkedIds[type]])] : []
     const pendingInput = step.result.status === "awaiting_input" ? step.result.pendingInput : null
-    const selectionSet = type ? buildSelectionSet({ type, ids, pendingInput, message: input.message, topicId: topic.id, now }) : null
+    const selectionType = pendingSelectionType(pendingInput) ?? type
+    const selectionSet = selectionType ? buildSelectionSet({ type: selectionType, ids: selectionType === type ? ids : [], pendingInput, message: input.message, topicId: topic.id, now }) : null
     if (selectionSet) {
+      topic.entityType = selectionSet.type
       topic.selectionSetId = selectionSet.id
       selectionSets = [selectionSet, ...selectionSets.filter((set) => set.id !== selectionSet.id)].slice(0, COS_SELECTION_SET_LIMIT)
     }
 
-    const entities = ids.slice(0, 20).map((id, index) => makeEntity({
-      type: type as CosConversationEntityType,
-      id,
-      label: selectionSet?.items[index]?.entity.label ?? null,
-      source: "execution",
-      confidence: 1,
-      evidence: `${step.capabilityId}:${step.status}`,
-    }, nowIso))
-    if (type && entities.length === 1) activeEntities[type] = entities[0]
+    const entities = (Object.entries(linkedIds) as Array<[CosConversationEntityType, string[]]>).flatMap(([entityType, entityIds]) =>
+      entityIds.slice(0, 20).map((id) => preserveEntityLabel(makeEntity({
+        type: entityType,
+        id,
+        label: entityType === selectionSet?.type ? selectionSet.items.find((item) => item.entity.id === id)?.entity.label ?? null : null,
+        source: "execution",
+        confidence: 1,
+        evidence: `${step.capabilityId}:${step.status}`,
+      }, nowIso), activeEntities, recentEntities)),
+    )
+    for (const entityType of ["lead", "property", "proposal", "contract", "agenda"] as const) {
+      const typedEntities = entities.filter((entity) => entity.type === entityType)
+      if (typedEntities.length === 1) activeEntities[entityType] = typedEntities[0]
+    }
     for (const entity of entities) recentEntities = upsertRecentEntity(recentEntities, entity)
 
     lastExecution = {
@@ -451,7 +549,7 @@ export function updateCosConversationSnapshot(input: {
     selectionSets,
     recentResults: lastExecution ? [lastExecution, ...snapshot.recentResults].slice(0, COS_RECENT_RESULT_LIMIT) : snapshot.recentResults,
     lastAction: input.result.primaryAction,
-    lastExecution,
+    lastExecution: lastExecution ?? snapshot.lastExecution,
   }
 }
 
@@ -467,8 +565,18 @@ const ORDINALS: Record<string, number> = {
   anterior: -2,
 }
 
-function mentionedEntityType(message: string): CosConversationEntityType | null {
-  if (/\b(imovel|imoveis|apartamento|casa|terreno)\b/.test(message)) return "property"
+function explicitlyReferencedEntityType(message: string): CosConversationEntityType | null {
+  const demonstrative = "(?:ess[ea]|est[ea]|aquel[ea]|dess[ea]|dest[ea]|ness[ea]|nest[ea]|daquel[ea]|naquel[ea]|meu|minha)"
+  if (new RegExp(`\\b${demonstrative}\\s+(?:imovel|apartamento|casa|terreno)\\b`).test(message)) return "property"
+  if (new RegExp(`\\b${demonstrative}\\s+(?:cliente|lead|contato)\\b`).test(message)) return "lead"
+  if (new RegExp(`\\b${demonstrative}\\s+proposta\\b`).test(message)) return "proposal"
+  if (new RegExp(`\\b${demonstrative}\\s+contrato\\b`).test(message)) return "contract"
+  if (new RegExp(`\\b${demonstrative}\\s+(?:compromisso|evento|visita)\\b`).test(message)) return "agenda"
+  return null
+}
+
+function mentionedTargetEntityType(message: string): CosConversationEntityType | null {
+  if (/\b(imovel|imoveis|apartamento|apartamentos|casa|casas|terreno|terrenos)\b/.test(message)) return "property"
   if (/\b(cliente|clientes|lead|leads)\b/.test(message)) return "lead"
   if (/\b(proposta|propostas)\b/.test(message)) return "proposal"
   if (/\b(contrato|contratos)\b/.test(message)) return "contract"
@@ -492,16 +600,141 @@ export type CosResolvedConversationReference = {
   reason: string
 }
 
+const REFERENCE_LABEL_STOPWORDS = new Set([
+  "abre", "abrir", "aquele", "aquela", "com", "da", "de", "do", "e", "esse", "essa", "este", "esta",
+  "me", "meu", "minha", "no", "na", "o", "a", "os", "as", "para", "por", "pra", "pro", "que", "qual",
+  "quero", "tem", "um", "uma", "ver", "mostra", "mostre", "entao",
+])
+
+function referenceLabelTokens(value: string) {
+  return normalizeText(value)
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !REFERENCE_LABEL_STOPWORDS.has(token))
+}
+
+function pendingSelectionType(pendingInput: CosPendingInput | null): CosConversationEntityType | null {
+  if (!pendingInput || pendingInput.type !== "selection") return null
+  if (/lead|client|contato/i.test(pendingInput.field)) return "lead"
+  if (/propert|imovel/i.test(pendingInput.field)) return "property"
+  if (/proposal|proposta/i.test(pendingInput.field)) return "proposal"
+  if (/contract|contrato|document/i.test(pendingInput.field)) return "contract"
+  if (/agenda|event|appointment|compromisso/i.test(pendingInput.field)) return "agenda"
+  return null
+}
+
+function pendingSelectionSet(snapshot: CosConversationSnapshot): CosConversationSelectionSet | null {
+  const pending = snapshot.pendingInput
+  const options = pending?.options ?? []
+  const type = pendingSelectionType(pending)
+  if (!pending || pending.type !== "selection" || !type || options.length === 0) return null
+  const createdAt = pending.createdAt ?? snapshot.updatedAt
+  return {
+    id: `pending:${pending.capabilityId}:${pending.field}`,
+    type,
+    items: options.map((option, index) => ({
+      index: index + 1,
+      entity: {
+        type,
+        id: option.id,
+        label: option.label,
+        source: "selection",
+        lastMentionedAt: createdAt,
+        confidence: 1,
+        evidence: `pending_option:${index + 1}`,
+      },
+      ...(option.description ? { description: option.description } : {}),
+    })),
+    query: null,
+    topicId: snapshot.currentTopic?.id ?? null,
+    createdAt,
+    expiresAt: pending.expiresAt ?? new Date(Date.parse(createdAt) + COS_SELECTION_SET_TTL_MS).toISOString(),
+  }
+}
+
+function matchingSelectionItems(message: string, selectionSet: CosConversationSelectionSet | null) {
+  if (!selectionSet) return []
+  const messageTokens = referenceLabelTokens(message)
+  if (messageTokens.length === 0) return []
+  return selectionSet.items.filter((item) => {
+    const candidateTokens = referenceLabelTokens(`${item.entity.label ?? ""} ${item.description ?? ""}`)
+    return messageTokens.every((token) => candidateTokens.includes(token))
+  })
+}
+
+function selectionItemPrice(description: string | undefined) {
+  const rawPrice = description?.match(/R\$\s*([\d.]+(?:,\d{1,2})?)/i)?.[1]
+  if (!rawPrice) return null
+  const value = Number(rawPrice.replace(/\./g, "").replace(",", "."))
+  return Number.isFinite(value) ? value : null
+}
+
+function lowestPricedSelectionItem(selectionSet: CosConversationSelectionSet) {
+  const priced = selectionSet.items.map((item) => ({ item, price: selectionItemPrice(item.description) }))
+  if (priced.length === 0 || priced.some((entry) => entry.price === null)) return null
+  const ordered = priced.sort((left, right) => (left.price ?? 0) - (right.price ?? 0))
+  if (ordered.length > 1 && ordered[0].price === ordered[1].price) return null
+  return ordered[0].item
+}
+
+function pendingEntityReference(snapshot: CosConversationSnapshot, type: CosConversationEntityType | null) {
+  const parsedData = snapshot.pendingInput?.parsedData ?? {}
+  const entries: Array<[CosConversationEntityType, unknown]> = [
+    ["lead", parsedData.leadId],
+    ["property", parsedData.propertyId],
+    ["proposal", parsedData.proposalId],
+    ["contract", parsedData.contractId ?? parsedData.documentId],
+    ["agenda", parsedData.agendaEventId],
+  ]
+  const match = entries.find(([candidateType, id]) => (!type || candidateType === type) && typeof id === "string" && id.length > 0)
+  if (!match) return null
+  const [matchedType, id] = match as [CosConversationEntityType, string]
+  const active = snapshot.activeEntities[matchedType]
+  return (active?.id === id ? active : null) ?? snapshot.recentEntities.find((entity) => entity.type === matchedType && entity.id === id) ?? {
+    type: matchedType,
+    id,
+    label: null,
+    source: "workflow" as const,
+    lastMentionedAt: snapshot.pendingInput?.createdAt ?? snapshot.updatedAt,
+    confidence: 1,
+    evidence: "pending_parsed_data",
+  }
+}
+
+function uniqueLabelReference(message: string, entities: CosConversationEntityReference[], type: CosConversationEntityType | null) {
+  const genericEntityTokens = new Set(["cliente", "lead", "contato", "imovel", "apartamento", "casa", "terreno", "comercial", "residencial", "proposta", "contrato", "documento", "compromisso", "evento", "visita"])
+  const messageTokens = referenceLabelTokens(message).filter((token) => !genericEntityTokens.has(token))
+  if (messageTokens.length === 0) return { entity: null, ambiguous: [] as CosConversationEntityReference[] }
+  const scored = entities
+    .filter((entity, index, all) => (!type || entity.type === type) && all.findIndex((candidate) => candidate.type === entity.type && candidate.id === entity.id) === index)
+    .map((entity) => {
+      const labelTokens = referenceLabelTokens(entity.label ?? "").filter((token) => !genericEntityTokens.has(token))
+      const overlap = messageTokens.filter((token) => labelTokens.includes(token)).length
+      const normalizedLabel = labelTokens.join(" ")
+      const fullLabel = normalizedLabel.length > 0 && ` ${normalizeText(message)} `.includes(` ${normalizedLabel} `)
+      return { entity, score: overlap + (fullLabel ? 10 : 0) }
+    })
+    .filter((candidate) => candidate.score > 0)
+    .sort((left, right) => right.score - left.score)
+  const topScore = scored[0]?.score ?? 0
+  const matches = scored.filter((candidate) => candidate.score === topScore).map((candidate) => candidate.entity)
+  return {
+    entity: matches.length === 1 ? matches[0] : null,
+    ambiguous: matches.length > 1 ? matches : [],
+  }
+}
+
 export function resolveCosConversationReference(message: string, snapshot: CosConversationSnapshot): CosResolvedConversationReference {
   const normalized = normalizeText(message)
-  const explicitType = mentionedEntityType(normalized)
+  const explicitType = explicitlyReferencedEntityType(normalized)
   const returnToTopic = /\b(voltando|volta|retomando|de volta)\b/.test(normalized)
   const topic = returnToTopic
     ? [snapshot.currentTopic, ...snapshot.recentTopics].find((item) => item && (!explicitType || item.entityType === explicitType)) ?? null
     : snapshot.currentTopic
-  const type = explicitType ?? topic?.entityType ?? null
+  const type = explicitType ?? null
   const ordinal = findOrdinal(normalized)
+  const pendingSet = pendingSelectionSet(snapshot)
   const selectionSet = [
+    ...(pendingSet ? [pendingSet] : []),
     ...(topic?.selectionSetId ? snapshot.selectionSets.filter((set) => set.id === topic.selectionSetId) : []),
     ...snapshot.selectionSets,
   ].find((set, index, all) => all.findIndex((candidate) => candidate.id === set.id) === index && (!type || set.type === type)) ?? null
@@ -516,13 +749,144 @@ export function resolveCosConversationReference(message: string, snapshot: CosCo
     }
   }
 
-  const hasReference = /\b(ele|ela|dele|dela|esse|essa|este|esta|aquele|aquela)\b/.test(normalized) || returnToTopic
-  if (!hasReference) return { entity: null, selectionSet, ambiguous: [], reason: "no_reference" }
-  if (type && snapshot.activeEntities[type]) {
-    return { entity: snapshot.activeEntities[type] ?? null, selectionSet, ambiguous: [], reason: "active_entity" }
+  if (!/\?\s*$/.test(message) && /\b(?:mais barato|mais barata)\b/.test(normalized) && selectionSet) {
+    const rankedItem = lowestPricedSelectionItem(selectionSet)
+    return {
+      entity: rankedItem?.entity ?? null,
+      selectionSet,
+      ambiguous: rankedItem ? [] : selectionSet.items.map((item) => item.entity).slice(0, 4),
+      reason: rankedItem ? "selection_ranked_price" : "selection_rank_missing_data",
+    }
   }
 
-  const candidates = snapshot.recentEntities.filter((entity) => !type || entity.type === type).slice(0, 4)
+  if (!/\?\s*$/.test(message) && /\b(?:melhor opcao|mais completo|mais completa)\b/.test(normalized) && selectionSet) {
+    return {
+      entity: null,
+      selectionSet,
+      ambiguous: selectionSet.items.map((item) => item.entity).slice(0, 4),
+      reason: "selection_rank_missing_metric",
+    }
+  }
+
+  if (/\b(?:outro|outra)\b/.test(normalized) && selectionSet) {
+    const activeId = snapshot.activeEntities[selectionSet.type]?.id
+    const alternatives = activeId
+      ? selectionSet.items.filter((item) => item.entity.id !== activeId)
+      : selectionSet.items.slice(1)
+    return {
+      entity: alternatives.length === 1 ? alternatives[0].entity : null,
+      selectionSet,
+      ambiguous: alternatives.length > 1 ? alternatives.map((item) => item.entity) : [],
+      reason: alternatives.length === 1 ? "selection_alternative" : "selection_alternative_ambiguous",
+    }
+  }
+
+  const selectionMatches = matchingSelectionItems(normalized, selectionSet)
+  if (selectionMatches.length > 0) {
+    return {
+      entity: selectionMatches.length === 1 ? selectionMatches[0].entity : null,
+      selectionSet,
+      ambiguous: selectionMatches.length > 1 ? selectionMatches.map((item) => item.entity) : [],
+      reason: selectionMatches.length === 1 ? "selection_label" : "selection_label_ambiguous",
+    }
+  }
+
+  const labelMatch = uniqueLabelReference(
+    normalized,
+    [...Object.values(snapshot.activeEntities).filter(Boolean), ...snapshot.recentEntities] as CosConversationEntityReference[],
+    type,
+  )
+  if (labelMatch.entity || labelMatch.ambiguous.length > 0) {
+    return {
+      entity: labelMatch.entity,
+      selectionSet,
+      ambiguous: labelMatch.ambiguous,
+      reason: labelMatch.entity ? "entity_label" : "entity_label_ambiguous",
+    }
+  }
+
+  const hasReference = /\b(ele|ela|eles|elas|nele|nela|neles|nelas|dele|dela|deles|delas|isso|isto|aquilo|esse|essa|esses|essas|este|estes|estas|desse|dessa|desses|dessas|neste|nesta|nesse|nessa|daquele|daquela|daqueles|daquelas|aquele|aquela|aqueles|aquelas|naquele|naquela)\b/.test(normalized) || returnToTopic
+  const hasNakedPronoun = !explicitType && /\b(?:ele|ela|eles|elas|nele|nela|neles|nelas|dele|dela|deles|delas)\b/.test(normalized)
+  const hasPluralPronoun = /\b(?:eles|elas|neles|nelas|deles|delas)\b/.test(normalized)
+  if (hasNakedPronoun && selectionSet && selectionSet.items.length > 1) {
+    const activeInSet = snapshot.activeEntities[selectionSet.type]
+    const selected = !hasPluralPronoun && activeInSet && selectionSet.items.some((item) => item.entity.id === activeInSet.id)
+      ? activeInSet
+      : null
+    if (selected) return { entity: selected, selectionSet, ambiguous: [], reason: "active_selection_entity" }
+    return { entity: null, selectionSet, ambiguous: selectionSet.items.map((item) => item.entity).slice(0, 4), reason: "ambiguous_selection_reference" }
+  }
+  if (hasNakedPronoun) {
+    const salientActiveEntity = snapshot.recentEntities.find((entity) => snapshot.activeEntities[entity.type]?.id === entity.id)
+    if (salientActiveEntity) {
+      return { entity: salientActiveEntity, selectionSet, ambiguous: [], reason: "salient_active_entity" }
+    }
+  }
+  const contextualType = explicitType ?? (hasReference || returnToTopic ? topic?.entityType ?? null : null)
+  if (contextualType && snapshot.activeEntities[contextualType]) {
+    return { entity: snapshot.activeEntities[contextualType] ?? null, selectionSet, ambiguous: [], reason: "active_entity" }
+  }
+
+  if (hasReference) {
+    const salientEntities = snapshot.recentEntities
+      .filter((entity, index, all) => all.findIndex((candidate) => candidate.id === entity.id) === index)
+      .filter((entity) => !contextualType || entity.type === contextualType)
+    if (selectionSet && selectionSet.items.length > 1) {
+      const activeInSet = snapshot.activeEntities[selectionSet.type]
+      const selected = activeInSet && selectionSet.items.some((item) => item.entity.id === activeInSet.id)
+        ? activeInSet
+        : null
+      if (selected) return { entity: selected, selectionSet, ambiguous: [], reason: "active_selection_entity" }
+      return { entity: null, selectionSet, ambiguous: selectionSet.items.map((item) => item.entity).slice(0, 4), reason: "ambiguous_selection_reference" }
+    }
+    if (salientEntities.length > 0) {
+      if (salientEntities.length > 1) {
+        return { entity: null, selectionSet, ambiguous: salientEntities.slice(0, 4), reason: "ambiguous_reference" }
+      }
+      return { entity: salientEntities[0], selectionSet, ambiguous: [], reason: "salient_recent_entity" }
+    }
+  }
+
+  const pendingReference = pendingEntityReference(snapshot, contextualType ?? topic?.entityType ?? null)
+  if (pendingReference) {
+    return { entity: pendingReference, selectionSet, ambiguous: [], reason: "pending_entity" }
+  }
+
+  const activeEntities = Object.values(snapshot.activeEntities).filter(Boolean) as CosConversationEntityReference[]
+  const mentionedTarget = mentionedTargetEntityType(normalized)
+  const isContextDependentQuestion = /^(?:e\b|entao\b|ja\b|quanto\b|quantas?\b|por que\b|na verdade\b|antes\b|depois\b)|\b(?:dele|dela|isso|nisso)\b/.test(normalized)
+  if (!hasReference && mentionedTarget === "proposal" && isContextDependentQuestion) {
+    const relatedEntity = snapshot.activeEntities.lead ?? snapshot.activeEntities.property
+    if (relatedEntity) return { entity: relatedEntity, selectionSet, ambiguous: [], reason: "proposal_related_entity" }
+  }
+  if (!hasReference && /\b(?:marca|marque|agende|agendar)\b/.test(normalized) && snapshot.activeEntities.lead) {
+    return { entity: snapshot.activeEntities.lead, selectionSet, ambiguous: [], reason: "agenda_related_lead" }
+  }
+  const usesImplicitActiveProperty = activeEntities[0]?.type === "property" && /\b(campanha|video|descricao|publicar|catalogo|marketplace)\b/.test(normalized)
+  const topicEntity = topic?.entityType ? snapshot.activeEntities[topic.entityType] : null
+  if (!hasReference && topicEntity && isContextDependentQuestion && (!mentionedTarget || mentionedTarget === topicEntity.type)) {
+    return { entity: topicEntity, selectionSet, ambiguous: [], reason: "topic_entity_question" }
+  }
+  const salientActiveEntity = snapshot.recentEntities.find((entity) => snapshot.activeEntities[entity.type]?.id === entity.id)
+  if (!hasReference && salientActiveEntity && isContextDependentQuestion && (!mentionedTarget || mentionedTarget === salientActiveEntity.type)) {
+    return { entity: salientActiveEntity, selectionSet, ambiguous: [], reason: "recent_entity_question" }
+  }
+  if (!hasReference && activeEntities.length === 1 && (isContextDependentQuestion || usesImplicitActiveProperty) && (!mentionedTarget || mentionedTarget === activeEntities[0].type)) {
+    return { entity: activeEntities[0], selectionSet, ambiguous: [], reason: "single_active_entity_context" }
+  }
+
+  const isEllipticalContinuation = /^(?:e\b|so\b|com\b|ate\b|antes\b|depois\b|amanha\b|hoje\b)/.test(normalized)
+  if (!hasReference && isEllipticalContinuation && topicEntity) {
+    return { entity: topicEntity, selectionSet, ambiguous: [], reason: "topic_entity_continuation" }
+  }
+  if (!hasReference && isEllipticalContinuation) {
+    if (activeEntities.length === 1) {
+      return { entity: activeEntities[0], selectionSet, ambiguous: [], reason: "active_entity_continuation" }
+    }
+  }
+
+  if (!hasReference) return { entity: null, selectionSet, ambiguous: [], reason: "no_reference" }
+  const candidates = snapshot.recentEntities.filter((entity) => !contextualType || entity.type === contextualType).slice(0, 4)
   if (candidates.length === 1) return { entity: candidates[0], selectionSet, ambiguous: [], reason: "single_recent_entity" }
   return { entity: null, selectionSet, ambiguous: candidates, reason: candidates.length > 1 ? "ambiguous_reference" : "unresolved_reference" }
 }
@@ -552,19 +916,30 @@ export function resolveCosContextualTurn(input: {
 }): CosContextualTurnResolution {
   const normalized = normalizeText(input.message)
   const reference = resolveCosConversationReference(input.message, input.snapshot)
-  const isCorrection = /^(nao\s+|na verdade\s+|corrige para\s+|muda para\s+|troca para\s+|quis dizer\s+)/.test(normalized)
+  const isCorrection = classifyCosPendingReply(input.message) === "correction" ||
+    /^(na verdade\s+|corrige para\s+|muda para\s+|troca para\s+|quis dizer\s+)/.test(normalized)
   if (isCorrection && input.activeWorkflow?.pendingInput) {
-    const value = parseCorrectionValue(input.message)
+    const activePending = input.activeWorkflow.pendingInput
+    const hasCurrencyCue = /\b(?:preco|valor|mil|milhao|milhoes|mi)\b|r\$/.test(normalized)
+    const isCurrencyField = activePending.type === "currency" ||
+      /(?:price|preco|valor|amount)/i.test(activePending.field) ||
+      hasCurrencyCue ||
+      (getCosSnapshotActionDomain(activePending.action) === "proposal" && /\d/.test(normalized))
+    const value = isCurrencyField ? parseCorrectionValue(input.message) : null
+    const fieldCorrection = activePending.type !== "confirmation" && value === null
+      ? { [activePending.field]: input.message.trim() }
+      : {}
     const pendingInput = {
-      ...input.activeWorkflow.pendingInput,
+      ...activePending,
       parsedData: {
-        ...input.activeWorkflow.pendingInput.parsedData,
+        ...activePending.parsedData,
         ...(value !== null ? { price: value, correctedValue: value } : {}),
+        ...fieldCorrection,
       },
     }
     return {
       requestedAction: pendingInput.action,
-      payload: value !== null ? { price: value } : {},
+      payload: value !== null ? { price: value } : fieldCorrection,
       workflow: { ...input.activeWorkflow, pendingInput },
       reference,
       reason: "active_workflow_correction",
@@ -573,7 +948,8 @@ export function resolveCosContextualTurn(input: {
 
   const activeLead = reference.entity?.type === "lead" ? reference.entity : input.snapshot.activeEntities.lead
   const hasContactValue = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(input.message) || input.message.replace(/\D/g, "").length >= 10
-  if (!input.activeWorkflow && activeLead && hasContactValue) {
+  const contactQuestion = /\?\s*$/.test(input.message) || /^(?:qual|quais|quem|que|o que|onde)\b/.test(normalized)
+  if (!input.activeWorkflow && activeLead && hasContactValue && !contactQuestion) {
     return {
       requestedAction: "UPDATE_LEAD",
       payload: { leadId: activeLead.id },

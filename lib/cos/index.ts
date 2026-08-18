@@ -27,6 +27,8 @@ export {
   extractPendingInputFromMetadata,
   isAwaitingInputResult,
   isCosPendingInputExpired,
+  hasCosPendingRejectionFollowUp,
+  shouldPreserveCosPendingWorkflow,
   normalizeWorkflowStatus,
 } from "@/lib/cos/pending-input"
 export { formatCosCapabilityResponse, formatCosExecutionPlanResponse } from "@/lib/cos/response-formatter"

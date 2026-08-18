@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { executeCosExecutionPlan } from "@/lib/cos/executor"
+import { buildCosPendingResumePayload, createPendingInput, shouldPreserveCosPendingWorkflow } from "@/lib/cos/pending-input"
 import { formatCosExecutionPlanResponse } from "@/lib/cos/response-formatter"
 import { resumeWorkflowState, shouldResumeWorkflow } from "@/lib/cos/workflow-recovery"
 import type {
@@ -144,6 +145,49 @@ function success(response: string, metadata: Record<string, unknown> = {}): CosA
 }
 
 test.describe("COS — núcleo operacional", () => {
+  test("alvos congelados da confirmação vencem o contexto atual e sobrevivem ao round-trip", () => {
+    const confirmationData = {
+      leadId: "lead-a",
+      propertyId: "property-a",
+      contractId: "contract-a",
+      documentId: "document-a",
+      proposalId: "proposal-a",
+      agendaEventId: "agenda-a",
+      eventId: "event-a",
+      campaignId: "campaign-a",
+    }
+    const pending = createPendingInput({
+      field: "confirmation",
+      type: "confirmation",
+      action: "ARCHIVE_PROPERTY",
+      entity: "property",
+      capabilityId: "property.archive",
+      parsedData: confirmationData,
+    })
+
+    const restored = JSON.parse(JSON.stringify(pending)) as typeof pending
+    const resumedPayload = buildCosPendingResumePayload({
+      pendingInput: restored,
+      message: "sim",
+      payload: Object.fromEntries(Object.keys(confirmationData).map((field) => [field, `${field}-b`])),
+    })
+    expect(resumedPayload).toMatchObject({ ...confirmationData, confirmation: "sim" })
+    expect(restored.parsedData).toEqual(confirmationData)
+  })
+
+  test("consulta lateral preserva pending, mas recusa com nova consulta o encerra", () => {
+    const base = {
+      hasActiveWorkflow: true,
+      workflowDecision: "start_new" as const,
+      dialogueAct: "query" as const,
+      actionMutatesData: false,
+      explicitlyDefersActiveWorkflow: false,
+    }
+    expect(shouldPreserveCosPendingWorkflow({ ...base, rejectionStartsNewAction: false })).toBe(true)
+    expect(shouldPreserveCosPendingWorkflow({ ...base, rejectionStartsNewAction: true })).toBe(false)
+    expect(shouldPreserveCosPendingWorkflow({ ...base, explicitlyDefersActiveWorkflow: true, rejectionStartsNewAction: false })).toBe(false)
+  })
+
   test("propaga o resultado de uma etapa para a dependente", async () => {
     const planId = "dependency-plan"
     let receivedLeadId: unknown = null

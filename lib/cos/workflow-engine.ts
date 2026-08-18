@@ -2,7 +2,7 @@ import { executeCosExecutionPlan } from "@/lib/cos/executor"
 import { normalizeCosActionResult } from "@/lib/cos/action-result"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
 import { createStepPlanForCapability } from "@/lib/cos/execution-planner"
-import { createPendingInput, extractPendingInputFromMetadata, isCosPendingInputExpired, normalizeCosPendingInput, normalizeWorkflowStatus } from "@/lib/cos/pending-input"
+import { buildCosPendingResumePayload, classifyCosPendingReply, createPendingInput, extractPendingInputFromMetadata, isCosPendingInputExpired, normalizeCosPendingInput, normalizeWorkflowStatus } from "@/lib/cos/pending-input"
 import type { Prisma } from "@prisma/client"
 import type {
   CosConversationMemory,
@@ -32,18 +32,6 @@ function recordValue(value: unknown) {
 
 function jsonObject(value: unknown): Prisma.InputJsonObject {
   return recordValue(value) as Prisma.InputJsonObject
-}
-
-function normalizeText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-}
-
-function isAffirmativeMessage(message: string) {
-  return /^(sim|s|ok|pode|confirmar|confirma|pode seguir|seguir)$/i.test(normalizeText(message))
 }
 
 function getWorkflowStatusLabel(workflow: CosWorkflow) {
@@ -82,55 +70,19 @@ function buildPendingInput(input: {
   })
 }
 
-function buildResumePayload(input: {
+export function buildWorkflowResumePayload(input: {
   workflow: CosWorkflow
   message: string
   workspace: CosWorkspaceContext | null
+  payload?: Record<string, unknown>
 }) {
-  const payload: Record<string, unknown> = {}
+  const payload: Record<string, unknown> = { ...(input.payload ?? {}) }
   if (input.workspace) payload.workspace = input.workspace
-
-  const pendingInput = input.workflow.pendingInput
-  if (!pendingInput) return payload
-
-  if (pendingInput.type === "confirmation") {
-    payload.confirmation = input.message.trim()
-    return payload
-  }
-
-  if (pendingInput.type === "selection") {
-    payload.selection = input.message.trim()
-  }
-
-  if (pendingInput.action === "createLead") {
-    if (pendingInput.field === "name") {
-      payload.name = input.message.trim()
-    } else if (pendingInput.field === "phone") {
-      payload.phone = input.message.trim()
-      const extractedName = typeof pendingInput.parsedData.extractedName === "string" ? pendingInput.parsedData.extractedName : ""
-      if (extractedName) payload.name = extractedName
-    }
-  }
-
-  if (pendingInput.action === "createPropertyDraft" && pendingInput.field === "price") {
-    payload.price = input.message.trim()
-    // parsePropertyDraftData roda de novo sobre esta mensagem de resposta (ex: "850 mil"), que nao
-    // tem cidade/bairro/quartos/etc — sem repassar o que ja foi extraido no primeiro turno via
-    // parsedData, esses campos eram perdidos e voltavam a aparecer como pendencia mesmo tendo sido
-    // informados corretamente antes.
-    const preservedDraftFields = ["city", "neighborhood", "bedrooms", "bathrooms", "parkingSpots", "area"]
-    for (const field of preservedDraftFields) {
-      if (pendingInput.parsedData[field] !== undefined) {
-        payload[field] = pendingInput.parsedData[field]
-      }
-    }
-  }
-
-  if (pendingInput.type === "text" || pendingInput.type === "currency" || pendingInput.type === "time") {
-    payload[pendingInput.field] = input.message.trim()
-  }
-
-  return payload
+  return buildCosPendingResumePayload({
+    pendingInput: input.workflow.pendingInput,
+    message: input.message,
+    payload,
+  })
 }
 
 function serializeStep(step: CosExecutionStep) {
@@ -250,6 +202,7 @@ export function getConversationSnapshot(content: string | null | undefined) {
 export function createWorkflowFromExecutionPlan(input: {
   conversationId: string
   plan: CosExecutionPlan
+  confirmationData?: Record<string, unknown>
 }): CosWorkflow {
   const now = new Date().toISOString()
   return {
@@ -277,6 +230,7 @@ export function createWorkflowFromExecutionPlan(input: {
             capabilityId: input.plan.primaryStep.capabilityId,
             source: "confirmation",
             reason: "capability_confirmation_required",
+            parsedData: input.confirmationData,
           })
         : null,
     startedAt: now,
@@ -340,17 +294,18 @@ export async function resumeWorkflowExecution(input: {
   brokerId: string
   userId: string
   message: string
+  pendingReplyMessage?: string
   confirm?: boolean
   workspace: CosWorkspaceContext | null
   payload?: Record<string, unknown>
 }) {
   const plan = rebuildExecutionPlanFromWorkflow(input.workflow)
-  const payload = buildResumePayload({
+  const payload = buildWorkflowResumePayload({
     workflow: input.workflow,
-    message: input.message,
+    message: input.pendingReplyMessage ?? input.message,
     workspace: input.workspace,
+    payload: input.payload,
   })
-  Object.assign(payload, input.payload ?? {})
 
   return executeCosExecutionPlan({
     plan,
@@ -485,5 +440,5 @@ export function formatWorkflowOperationDetails(input: {
 export { resumeWorkflowState, shouldResumeWorkflow } from "@/lib/cos/workflow-recovery"
 
 export function shouldConfirmWorkflowMessage(message: string, confirm?: boolean) {
-  return Boolean(confirm) || isAffirmativeMessage(message)
+  return Boolean(confirm) || classifyCosPendingReply(message) === "confirm"
 }
