@@ -6,8 +6,10 @@ import {
   createTemplateContractContent,
   mergeKnownContractValues,
   parseStoredTemplateStructure,
+  reconcileAdditionalPartyContractValues,
+  resolveAdditionalPartyContractBinding,
+  type AdditionalPartyContractState,
 } from "@/lib/contract-template-server"
-import { parseLeadAddress, parseLeadIdentification } from "@/lib/legal-entities"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 import { recoverStoredContractTemplateVersion } from "@/lib/contract-template-recovery.server"
@@ -50,7 +52,7 @@ function stringRecord(value: unknown) {
   )
 }
 
-type AdditionalPartyState = Record<string, { leadId?: string; values?: Record<string, string> }>
+type AdditionalPartyState = AdditionalPartyContractState
 
 function additionalPartiesRecord(value: unknown): AdditionalPartyState {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {}
@@ -64,13 +66,6 @@ function additionalPartiesRecord(value: unknown): AdditionalPartyState {
     }
   }
   return result
-}
-
-function addressLine(address: ReturnType<typeof parseLeadAddress>) {
-  const street = [address.street, address.number].filter(Boolean).join(", ")
-  return [street, address.complement, address.district, [address.city, address.state].filter(Boolean).join(" - ")]
-    .filter(Boolean)
-    .join(", ")
 }
 
 async function applyAdditionalPartyBindings(input: {
@@ -88,7 +83,7 @@ async function applyAdditionalPartyBindings(input: {
     : []
   const personById = new Map(people.map((person) => [person.id, person]))
 
-  for (const field of input.structure.fields.filter((item) => item.source === "ADDITIONAL_PARTY" && item.partyId)) {
+  for (const field of input.structure.fields.filter((item) => item.binding.startsWith("additionalParty.") && item.partyId)) {
     const state = input.additionalParties[field.partyId!]
     const explicit = state?.values?.[field.id]
     if (typeof explicit === "string") {
@@ -97,20 +92,9 @@ async function applyAdditionalPartyBindings(input: {
     }
     const person = state?.leadId ? personById.get(state.leadId) : null
     if (!person) continue
-    const identification = parseLeadIdentification(person.legalData)
-    const address = parseLeadAddress(person.addressData)
-    const byBinding: Record<string, string> = {
-      "additionalParty.name": person.name ?? "",
-      "additionalParty.email": person.email ?? "",
-      "additionalParty.phone": person.whatsapp ?? person.phone ?? "",
-      "additionalParty.cpfCnpj": identification.cpfCnpj,
-      "additionalParty.rg": identification.rg,
-      "additionalParty.nationality": identification.nationality,
-      "additionalParty.profession": identification.profession,
-      "additionalParty.maritalStatus": identification.maritalStatus,
-      "additionalParty.address": addressLine(address),
-    }
-    input.values[field.id] = byBinding[field.binding] ?? input.values[field.id] ?? ""
+    const resolved = resolveAdditionalPartyContractBinding(field.binding, person)
+    if (!input.values[field.id]?.trim() && resolved.trim()) input.values[field.id] = resolved
+    else if (!(field.id in input.values)) input.values[field.id] = resolved
   }
   return input.values
 }
@@ -147,6 +131,55 @@ function loadInstance(id: string, brokerId: string) {
   return prisma.contractTemplateInstance.findFirst({ where: { id, brokerId }, include: instanceInclude })
 }
 
+function equalStringRecords(left: Record<string, string>, right: Record<string, string>) {
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)])
+  return [...keys].every((key) => (left[key] ?? "") === (right[key] ?? ""))
+}
+
+async function synchronizeStoredBindings(instance: NonNullable<Awaited<ReturnType<typeof loadInstance>>>) {
+  if (instance.status !== "draft") return instance
+  const recoveredVersion = await recoverStoredContractTemplateVersion(instance.templateVersion, {
+    templateTitle: instance.template.name,
+  })
+  const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
+  const storedValues = stringRecord(instance.values)
+  const values = mergeKnownContractValues({
+    structure,
+    currentValues: storedValues,
+    context: { lead: instance.lead, property: instance.property, broker: instance.broker },
+  })
+  const additionalParties = additionalPartiesRecord(instance.additionalParties)
+  await applyAdditionalPartyBindings({ brokerId: instance.brokerId, structure, values, additionalParties })
+  const snapshot = buildInstanceSnapshot({
+    structure,
+    values,
+    title: instance.title,
+    draft: instance.status === "draft",
+  })
+
+  if (equalStringRecords(storedValues, values) && instance.readiness === snapshot.readiness.score) return instance
+
+  const content = createTemplateContractContent({
+    instanceId: instance.id,
+    title: instance.title,
+    status: instance.status,
+    html: snapshot.html,
+    author: instance.broker,
+    lead: instance.lead,
+    property: instance.property,
+    createdAt: instance.createdAt,
+  })
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.contractTemplateInstance.updateMany({
+      where: { id: instance.id, updatedAt: instance.updatedAt },
+      data: { values, readiness: snapshot.readiness.score },
+    })
+    if (updated.count === 0 || !instance.brokerDocumentId) return
+    await tx.brokerDocument.update({ where: { id: instance.brokerDocumentId }, data: { content } })
+  })
+  return (await loadInstance(instance.id, instance.brokerId)) ?? instance
+}
+
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
@@ -154,7 +187,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   try {
     const instance = await loadInstance(id, auth.user.broker!.id)
     if (!instance) return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 })
-    return NextResponse.json({ instance: await serializeInstance(instance) })
+    const synchronized = await synchronizeStoredBindings(instance)
+    return NextResponse.json({ instance: await serializeInstance(synchronized) })
   } catch (error) {
     if (isPrismaUnavailable(error)) return NextResponse.json({ error: "Contrato indisponível no momento." }, { status: 503 })
     return NextResponse.json({ error: "Não foi possível carregar o contrato." }, { status: 500 })
@@ -197,19 +231,30 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       templateTitle: current.template.name,
     })
     const structure = parseStoredTemplateStructure(recoveredVersion.structure, recoveredVersion.originalText)
-    const incomingValues = body?.values ? stringRecord(body.values) : stringRecord(current.values)
+    const storedValues = stringRecord(current.values)
+    const incomingValues = body?.values ? stringRecord(body.values) : storedValues
     const refreshSources: Array<"CLIENT" | "PROPERTY" | "BROKER"> = []
     if (leadId !== current.leadId) refreshSources.push("CLIENT")
     if (propertyId !== current.propertyId) refreshSources.push("PROPERTY")
-    const values = mergeKnownContractValues({
+    const mergedValues = mergeKnownContractValues({
       structure,
       currentValues: incomingValues,
       context: { lead, property, broker: current.broker },
       refreshSources,
     })
-    const additionalParties = body?.additionalParties
+    const storedAdditionalParties = additionalPartiesRecord(current.additionalParties)
+    const incomingAdditionalParties = body?.additionalParties
       ? additionalPartiesRecord(body.additionalParties)
-      : additionalPartiesRecord(current.additionalParties)
+      : storedAdditionalParties
+    const reconciledParties = reconcileAdditionalPartyContractValues({
+      structure,
+      storedValues,
+      incomingValues: mergedValues,
+      storedParties: storedAdditionalParties,
+      incomingParties: incomingAdditionalParties,
+      hasIncomingValues: Boolean(body?.values),
+    })
+    const { additionalParties, values } = reconciledParties
     await applyAdditionalPartyBindings({ brokerId, structure, values, additionalParties })
     const title = typeof body?.title === "string" && body.title.trim()
       ? body.title.trim().slice(0, 180)

@@ -1043,13 +1043,13 @@ function InstanceEditor({
           </section>
           <section className="grid gap-3 rounded-2xl border border-black/[0.06] bg-white p-4">
             <label className="grid gap-1.5 text-xs text-[#687386]">Cliente
-              <select value={leadId} onChange={(event) => { const value = event.target.value; setLeadId(value); void save({ leadId: value }) }} className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111]">
+              <select disabled={isBusy} value={leadId} onChange={(event) => { const value = event.target.value; setLeadId(value); void save({ leadId: value }) }} className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111] disabled:cursor-wait disabled:opacity-60">
                 <option value="">Selecionar cliente</option>
                 {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name || lead.email || "Cliente sem nome"}</option>)}
               </select>
             </label>
             <label className="grid gap-1.5 text-xs text-[#687386]">Imóvel
-              <select value={propertyId} onChange={(event) => { const value = event.target.value; setPropertyId(value); void save({ propertyId: value }) }} className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111]">
+              <select disabled={isBusy} value={propertyId} onChange={(event) => { const value = event.target.value; setPropertyId(value); void save({ propertyId: value }) }} className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111] disabled:cursor-wait disabled:opacity-60">
                 <option value="">Selecionar imóvel</option>
                 {properties.map((property) => <option key={property.id} value={property.id}>{property.title}</option>)}
               </select>
@@ -1060,13 +1060,14 @@ function InstanceEditor({
             <section key={party.id} className="rounded-2xl border border-black/[0.06] bg-white p-4">
               <p className="text-sm font-semibold text-[#111]">{party.label}</p>
               <select
+                disabled={isBusy}
                 value={additionalParties[party.id]?.leadId ?? ""}
                 onChange={(event) => {
                   const next = { ...additionalParties, [party.id]: { ...(additionalParties[party.id] ?? {}), leadId: event.target.value || undefined } }
                   setAdditionalParties(next)
                   void save({ additionalParties: next })
                 }}
-                className="mt-2 h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111]"
+                className="mt-2 h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111] disabled:cursor-wait disabled:opacity-60"
               >
                 <option value="">Cadastrar dados neste contrato</option>
                 {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name || lead.email || "Pessoa sem nome"}</option>)}

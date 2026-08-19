@@ -1,6 +1,5 @@
 import "server-only"
 
-import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import {
   calculateContractReadiness,
   buildTextOnlyContractTemplateStructure,
@@ -8,116 +7,27 @@ import {
   inspectContractTemplateStructure,
   renderContractTemplateHtml,
   splitContractTextIntoBlocks,
-  type ContractFieldBinding,
   type ContractTemplateStructure,
 } from "@/lib/contract-template-engine"
-import { parseLeadAddress, parseLeadIdentification, parsePropertyLegalData } from "@/lib/legal-entities"
+import type { ContractEntityContext } from "@/lib/contract-template-bindings"
 
-type EntityContext = {
-  lead: {
-    name: string | null
-    email: string | null
-    phone: string | null
-    whatsapp: string | null
-    legalData: unknown
-    addressData: unknown
-  } | null
-  property: {
-    title: string
-    price: number
-    city: string
-    neighborhood: string | null
-    ownerName: string | null
-    legalData: unknown
-  } | null
-  broker: {
-    user: { name: string; email: string; phone: string | null }
-    phone: string
-    creci: string | null
-    agency: { name: string } | null
-  }
-}
-
-function addressLine(parts: {
-  street?: string
-  number?: string
-  complement?: string
-  district?: string
-  city?: string
-  state?: string
-}) {
-  const street = [parts.street, parts.number].filter(Boolean).join(", ")
-  return [street, parts.complement, parts.district, [parts.city, parts.state].filter(Boolean).join(" - ")]
-    .filter(Boolean)
-    .join(", ")
-}
-
-export function resolveContractBinding(binding: ContractFieldBinding, context: EntityContext) {
-  const leadIdentification = parseLeadIdentification(context.lead?.legalData)
-  const leadAddress = parseLeadAddress(context.lead?.addressData)
-  const propertyLegal = parsePropertyLegalData(context.property?.legalData)
-  const values: Partial<Record<ContractFieldBinding, string>> = {
-    "client.name": context.lead?.name ?? "",
-    "client.email": context.lead?.email ?? "",
-    "client.phone": context.lead?.whatsapp ?? context.lead?.phone ?? "",
-    "client.cpfCnpj": leadIdentification.cpfCnpj,
-    "client.rg": leadIdentification.rg,
-    "client.nationality": leadIdentification.nationality,
-    "client.profession": leadIdentification.profession,
-    "client.maritalStatus": leadIdentification.maritalStatus,
-    "client.address": addressLine(leadAddress),
-    "property.title": context.property?.title ?? "",
-    "property.address": addressLine({
-      street: propertyLegal.street,
-      number: propertyLegal.number,
-      complement: propertyLegal.complement,
-      district: propertyLegal.district || context.property?.neighborhood || "",
-      city: propertyLegal.city || context.property?.city || "",
-      state: propertyLegal.state,
-    }),
-    "property.registryNumber": propertyLegal.registryNumber,
-    "property.registryOffice": propertyLegal.registryOffice,
-    "property.ownerName": context.property?.ownerName ?? "",
-    "property.price": context.property ? formatCurrencyBRLFromCents(context.property.price) : "",
-    "property.city": propertyLegal.city || context.property?.city || "",
-    "property.neighborhood": propertyLegal.district || context.property?.neighborhood || "",
-    "broker.name": context.broker.user.name,
-    "broker.email": context.broker.user.email,
-    "broker.phone": context.broker.phone || context.broker.user.phone || "",
-    "broker.creci": context.broker.creci ?? "",
-    "broker.agencyName": context.broker.agency?.name ?? "",
-  }
-  return values[binding] ?? ""
-}
-
-export function mergeKnownContractValues(input: {
-  structure: ContractTemplateStructure
-  currentValues?: Record<string, string>
-  context: EntityContext
-  refreshSources?: Array<"CLIENT" | "PROPERTY" | "BROKER">
-}) {
-  const values = { ...(input.currentValues ?? {}) }
-  for (const field of input.structure.fields) {
-    if (["CLIENT", "PROPERTY", "BROKER"].includes(field.source)) {
-      const resolved = resolveContractBinding(field.binding, input.context)
-      if (!input.currentValues || input.refreshSources?.includes(field.source as "CLIENT" | "PROPERTY" | "BROKER")) {
-        values[field.id] = resolved
-      } else if (!(field.id in values)) values[field.id] = resolved
-    } else if (!(field.id in values)) {
-      values[field.id] = ""
-    }
-  }
-  return values
-}
+export {
+  contractBindingEntitySource,
+  mergeKnownContractValues,
+  reconcileAdditionalPartyContractValues,
+  resolveAdditionalPartyContractBinding,
+  resolveContractBinding,
+  type AdditionalPartyContractState,
+} from "@/lib/contract-template-bindings"
 
 export function createTemplateContractContent(input: {
   instanceId: string
   title: string
   status: string
   html: string
-  author: EntityContext["broker"]
-  lead: EntityContext["lead"] & { id?: string } | null
-  property: EntityContext["property"] & { id?: string; publicCode?: number | null } | null
+  author: ContractEntityContext["broker"]
+  lead: ContractEntityContext["lead"] & { id?: string } | null
+  property: ContractEntityContext["property"] & { id?: string; publicCode?: number | null } | null
   createdAt?: Date
 }) {
   const now = (input.createdAt ?? new Date()).toISOString()

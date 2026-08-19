@@ -17,6 +17,11 @@ import {
   splitContractTextIntoBlocks,
   validateContractTemplateOccurrences,
 } from "../../lib/contract-template-engine"
+import {
+  mergeKnownContractValues,
+  reconcileAdditionalPartyContractValues,
+  resolveAdditionalPartyContractBinding,
+} from "../../lib/contract-template-bindings"
 import { loginAsBroker } from "./helpers/auth"
 
 const structure = buildContractTemplateStructure(
@@ -159,7 +164,19 @@ async function mockContracts(page: Page, initialReady = false) {
     }
     if (route.request().method() === "PATCH") {
       const payload = route.request().postDataJSON()
-      currentInstance = { ...currentInstance, ...payload, readiness: calculateContractReadiness(structure, payload.values ?? currentInstance.values) }
+      const nextValues = { ...currentInstance.values, ...(payload.values ?? {}) }
+      if ("leadId" in payload && (payload.leadId || null) !== (currentInstance.leadId || null)) {
+        for (const field of structure.fields) {
+          if (field.binding === "client.name") nextValues[field.id] = payload.leadId ? "Carlos Souza" : ""
+          if (field.binding === "client.cpfCnpj") nextValues[field.id] = payload.leadId ? "123.456.789-00" : ""
+        }
+      }
+      if ("propertyId" in payload && (payload.propertyId || null) !== (currentInstance.propertyId || null)) {
+        for (const field of structure.fields) {
+          if (field.binding === "property.address") nextValues[field.id] = payload.propertyId ? "Rua X, Centro, Sao Paulo" : ""
+        }
+      }
+      currentInstance = { ...currentInstance, ...payload, values: nextValues, readiness: calculateContractReadiness(structure, nextValues) }
     }
     if (route.request().method() === "POST") {
       const payload = route.request().postDataJSON()
@@ -183,6 +200,116 @@ test("engine preserva texto fixo, substitui apenas ocorrências e calcula pronti
   expect(html).not.toContain("TEMPLATE OFICIAL EME")
   expect(calculateContractReadiness(structure, values).score).toBe(100)
   expect(calculateContractReadiness(structure, {}).missing).toHaveLength(4)
+})
+
+test("bindings hydrate empty values, preserve manual edits and use the binding as source", () => {
+  const clientName = structure.fields.find((field) => field.binding === "client.name")!
+  const clientDocument = structure.fields.find((field) => field.binding === "client.cpfCnpj")!
+  const propertyAddress = structure.fields.find((field) => field.binding === "property.address")!
+  const structureWithCorrectedSource = {
+    ...structure,
+    fields: structure.fields.map((field) => field.id === clientName.id ? { ...field, source: "NONE" as const } : field),
+  }
+  const context = {
+    lead: {
+      name: "Carlos Souza",
+      email: "carlos@example.com",
+      phone: "11999999999",
+      whatsapp: "11988888888",
+      legalData: { cpfCnpj: "123.456.789-00" },
+      addressData: {},
+    },
+    property: {
+      title: "Apartamento Central",
+      price: 70000000,
+      city: "Sao Paulo",
+      neighborhood: "Centro",
+      ownerName: "Joao",
+      legalData: { street: "Rua X", number: "10", city: "Sao Paulo", state: "SP" },
+    },
+    broker: {
+      user: { name: "Corretor", email: "corretor@example.com", phone: "11977777777" },
+      phone: "",
+      creci: "12345",
+      agency: null,
+    },
+  }
+
+  const hydrated = mergeKnownContractValues({
+    structure: structureWithCorrectedSource,
+    currentValues: {
+      [clientName.id]: "",
+      [clientDocument.id]: "Documento informado manualmente",
+      [propertyAddress.id]: "",
+    },
+    context,
+  })
+
+  expect(hydrated[clientName.id]).toBe("Carlos Souza")
+  expect(hydrated[clientDocument.id]).toBe("Documento informado manualmente")
+  expect(hydrated[propertyAddress.id]).toBe("Rua X, 10, Centro, Sao Paulo - SP")
+
+  const refreshed = mergeKnownContractValues({
+    structure: structureWithCorrectedSource,
+    currentValues: hydrated,
+    context: { ...context, lead: { ...context.lead, name: "Mariana Lopes" } },
+    refreshSources: ["CLIENT"],
+  })
+  expect(refreshed[clientName.id]).toBe("Mariana Lopes")
+  expect(refreshed[clientDocument.id]).toBe("123.456.789-00")
+  expect(refreshed[propertyAddress.id]).toBe("Rua X, 10, Centro, Sao Paulo - SP")
+})
+
+test("additional party keeps manual corrections and clears dependencies when person changes", () => {
+  const partyId = structure.parties[0].id
+  const additionalField = {
+    ...structure.fields[0],
+    source: "ADDITIONAL_PARTY" as const,
+    binding: "additionalParty.name" as const,
+    partyId,
+  }
+  const additionalStructure = { ...structure, fields: [additionalField] }
+
+  const manual = reconcileAdditionalPartyContractValues({
+    structure: additionalStructure,
+    storedValues: { [additionalField.id]: "Carlos Souza" },
+    incomingValues: { [additionalField.id]: "Carlos de Souza" },
+    storedParties: { [partyId]: { leadId: "lead-1", values: {} } },
+    incomingParties: { [partyId]: { leadId: "lead-1", values: {} } },
+    hasIncomingValues: true,
+  })
+  expect(manual.additionalParties[partyId].values?.[additionalField.id]).toBe("Carlos de Souza")
+  expect(manual.values[additionalField.id]).toBe("Carlos de Souza")
+
+  const switched = reconcileAdditionalPartyContractValues({
+    structure: additionalStructure,
+    storedValues: manual.values,
+    incomingValues: manual.values,
+    storedParties: manual.additionalParties,
+    incomingParties: { [partyId]: { leadId: "lead-2", values: manual.additionalParties[partyId].values } },
+    hasIncomingValues: true,
+  })
+  expect(switched.additionalParties[partyId]).toEqual({ leadId: "lead-2", values: {} })
+  expect(switched.values[additionalField.id]).toBe("")
+
+  const person = {
+    name: "Ana Lima",
+    email: "ana@example.com",
+    phone: "11911111111",
+    whatsapp: "11922222222",
+    legalData: {
+      cpfCnpj: "987.654.321-00",
+      rg: "55.444.333-2",
+      nationality: "Brasileira",
+      profession: "Arquiteta",
+      maritalStatus: "Casada",
+    },
+    addressData: { street: "Rua Y", number: "20", district: "Centro", city: "Curitiba", state: "PR" },
+  }
+  expect(resolveAdditionalPartyContractBinding("additionalParty.name", person)).toBe("Ana Lima")
+  expect(resolveAdditionalPartyContractBinding("additionalParty.phone", person)).toBe("11922222222")
+  expect(resolveAdditionalPartyContractBinding("additionalParty.cpfCnpj", person)).toBe("987.654.321-00")
+  expect(resolveAdditionalPartyContractBinding("additionalParty.address", person)).toBe("Rua Y, 20, Centro, Curitiba - PR")
 })
 
 test("recuperação textual nunca produz folha vazia e divide blocos excessivos sem perder conteúdo", () => {
@@ -468,6 +595,50 @@ test("preenchimento prioriza pendências, recolhe campos completos e move o foco
   await expect(page.locator(`#contract-field-${completedField.id}`)).toHaveValue("Carlos Souza")
   await page.getByRole("button", { name: "Mostrar somente em aberto" }).click()
   await expect(page.locator(`#contract-field-${completedField.id}`)).toHaveCount(0)
+})
+
+test("selecionar cliente e imovel sincroniza campos e prontidao imediatamente", async ({ page }) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({
+    json: {
+      user: {
+        id: "user-1",
+        name: "Corretor Teste",
+        email: "corretor@example.com",
+        role: "BROKER",
+        accountType: "BROKER_INDEPENDENT",
+        plan: "BROKER",
+        subscriptionStatus: "ACTIVE",
+        brokerId: "broker-1",
+        agencyId: null,
+      },
+    },
+  }))
+  await mockContracts(page, true)
+  await page.goto("/corretor/documentos/contratos")
+  await page.getByRole("button", { name: "Novo contrato" }).click()
+  await page.getByRole("button", { name: /Contrato Particular de Locação/ }).click()
+
+  await page.getByRole("combobox").nth(0).selectOption("lead-1")
+  await expect(page.getByText("Alterações salvas.")).toBeVisible()
+  await page.getByRole("combobox").nth(1).selectOption("property-1")
+  await expect(page.getByTestId("contract-instance-editor").getByText("75%", { exact: true })).toBeVisible()
+
+  await page.getByRole("button", { name: "Mostrar todos os campos" }).click()
+  const clientName = structure.fields.find((field) => field.binding === "client.name")!
+  const clientDocument = structure.fields.find((field) => field.binding === "client.cpfCnpj")!
+  const propertyAddress = structure.fields.find((field) => field.binding === "property.address")!
+  await expect(page.locator(`#contract-field-${clientName.id}`)).toHaveValue("Carlos Souza")
+  await expect(page.locator(`#contract-field-${clientDocument.id}`)).toHaveValue("123.456.789-00")
+  await expect(page.locator(`#contract-field-${propertyAddress.id}`)).toHaveValue("Rua X, Centro, Sao Paulo")
+  await expect(page.getByRole("button", { name: "Valor do aluguel", exact: true })).toBeVisible()
+
+  const reopened = await page.evaluate(async () => {
+    const response = await fetch("/api/brokers/contract-instances/instance-1", { cache: "no-store" })
+    return response.json()
+  }) as { instance: typeof instance }
+  expect(reopened.instance.readiness.score).toBe(75)
+  expect(reopened.instance.values[clientName.id]).toBe("Carlos Souza")
+  expect(reopened.instance.values[propertyAddress.id]).toBe("Rua X, Centro, Sao Paulo")
 })
 
 test("editor permanece utilizável em PWA sem overflow horizontal", async ({ page }) => {
