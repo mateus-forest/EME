@@ -126,7 +126,26 @@ test.describe('Marketplace público', () => {
     await page.goto('/imoveis')
 
     await expect(page.getByPlaceholder('Descreva onde e como você gostaria de viver...')).toBeVisible()
-    await expect(page.locator('video[src^="/marketplace/videos/hero-"]')).toHaveCount(5)
+    const heroVideos = page.locator('video[src^="/marketplace/videos/hero-"]')
+    await expect(heroVideos).toHaveCount(2)
+    await expect(heroVideos.nth(0)).toHaveAttribute('src', '/marketplace/videos/hero-1.mp4')
+    await expect(heroVideos.nth(1)).toHaveAttribute('src', '/marketplace/videos/hero-2.mp4')
+    expect(
+      await heroVideos.evaluateAll((videos) =>
+        videos.map((video) => {
+          const element = video as HTMLVideoElement
+          return {
+            autoPlay: element.autoplay,
+            muted: element.muted,
+            playsInline: element.playsInline,
+            preload: element.preload,
+          }
+        }),
+      ),
+    ).toEqual([
+      { autoPlay: true, muted: true, playsInline: true, preload: 'auto' },
+      { autoPlay: false, muted: true, playsInline: true, preload: 'auto' },
+    ])
     const quickSearchAction = page.getByRole('link', { name: 'Usar busca rápida' })
     await expect(quickSearchAction).toHaveAttribute('href', '/imoveis/busca')
     await expect(quickSearchAction).toHaveAttribute('style', /border-width:\s*0\.5px/)
@@ -185,6 +204,51 @@ test.describe('Marketplace público', () => {
     await expect(page.getByRole('heading', { name: /Seu próximo imóvel/ })).toBeVisible()
     await expect(page.locator('video[src="/marketplace/videos/hero-1.mp4"]')).toHaveCount(1)
     await expect(page.locator('video[src^="/marketplace/videos/hero-"]')).toHaveCount(1)
+  })
+
+  test('hero faz crossfade com dois buffers e prepara somente o próximo vídeo', async ({ page }) => {
+    const requestedHeroVideos = new Set<string>()
+    page.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname
+      if (/\/marketplace\/videos\/hero-\d+\.mp4$/.test(pathname)) requestedHeroVideos.add(pathname)
+    })
+
+    await page.goto('/imoveis')
+    const videos = page.locator('video[src^="/marketplace/videos/hero-"]')
+    const current = videos.nth(0)
+    const next = videos.nth(1)
+
+    await expect(videos).toHaveCount(2)
+    await expect(current).toHaveClass(/opacity-100/)
+    await expect(next).toHaveClass(/opacity-0/)
+    await expect.poll(() => current.evaluate((video) => (video as HTMLVideoElement).duration)).toBeGreaterThan(2.4)
+    await expect.poll(() => requestedHeroVideos.size).toBe(2)
+    expect([...requestedHeroVideos].sort()).toEqual([
+      '/marketplace/videos/hero-1.mp4',
+      '/marketplace/videos/hero-2.mp4',
+    ])
+
+    await current.evaluate((video) => {
+      const element = video as HTMLVideoElement
+      element.currentTime = element.duration - 2
+      element.dispatchEvent(new Event('timeupdate'))
+    })
+
+    await expect(current).toHaveClass(/opacity-0/)
+    await expect(next).toHaveClass(/opacity-100/)
+    await expect.poll(() => next.evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
+
+    await current.evaluate((video) => {
+      video.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity' }))
+    })
+
+    await expect(current).toHaveAttribute('src', '/marketplace/videos/hero-3.mp4')
+    await expect(next).toHaveAttribute('src', '/marketplace/videos/hero-2.mp4')
+    await expect(videos).toHaveCount(2)
+    await expect.poll(() => requestedHeroVideos.has('/marketplace/videos/hero-3.mp4')).toBe(true)
+    expect(requestedHeroVideos.size).toBe(3)
+    expect(await current.evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
+    expect(await next.evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
   })
 
   test('detalhe usa informações reais/fallback e mapa aproximado funcional', async ({ page }) => {
