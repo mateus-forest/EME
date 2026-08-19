@@ -1,78 +1,89 @@
-import Image from 'next/image'
-import { Check, TreePine, BedDouble, Wallet } from 'lucide-react'
-import { HeroSearchPanel } from '@/components/marketplace/hero-search-panel'
-import { OrganicLines } from '@/components/marketplace/organic-lines'
-
-const chips = [
-  { icon: TreePine, label: 'Pátio amplo' },
-  { icon: BedDouble, label: '3 quartos' },
-  { icon: Wallet, label: 'Na sua faixa' },
-]
+import Link from 'next/link'
+import { ChevronDown, Sparkles, SlidersHorizontal, Zap } from 'lucide-react'
+import { ConversationalSearch } from '@/components/marketplace/conversational-search'
+import { HeroVideoBackground } from '@/components/marketplace/sections/hero-video-background'
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pt-28 sm:pt-32 md:pt-36">
-      <OrganicLines className="opacity-70" count={7} />
+    <section className="relative flex min-h-[92vh] w-full flex-col overflow-hidden md:h-[80vh] md:min-h-[640px]">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          WebkitMaskImage:
+            'linear-gradient(to bottom, black 0%, black 78%, rgba(0,0,0,0.55) 90%, transparent 100%)',
+          maskImage:
+            'linear-gradient(to bottom, black 0%, black 78%, rgba(0,0,0,0.55) 90%, transparent 100%)',
+        }}
+      >
+        <HeroVideoBackground />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/25" />
+      </div>
 
-      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-5 pb-12 md:grid-cols-[1fr_1.05fr] md:gap-8 md:px-8 md:pb-20 lg:gap-12 lg:pb-24">
-        {/* Coluna de texto */}
-        <div className="animate-rise">
-          <h1 className="text-pretty text-[2.1rem] font-semibold leading-[1.06] tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]">
-            Seu próximo imóvel começa pelo que importa para você.
-          </h1>
-          <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-muted-foreground">
-            Descreva o que procura e descubra imóveis que realmente combinam com você.
-          </p>
+      <div className="relative z-10 flex flex-1 items-center">
+        <div className="mx-auto w-full max-w-6xl px-5 pb-16 pt-24 md:px-8 md:pb-20 md:pt-28">
+          <div className="max-w-2xl animate-rise">
+            <h1 className="text-balance text-[2.35rem] font-normal leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.5rem]">
+              Seu próximo imóvel começa pelo que importa para{' '}
+              <span className="font-medium text-eme-300">você.</span>
+            </h1>
+            <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-white/80 md:text-lg">
+              Encontre o lugar ideal para viver ou investir. Busque como quiser, do seu jeito.
+            </p>
 
-          <div className="mt-8 max-w-xl">
-            <HeroSearchPanel />
-          </div>
-        </div>
-
-        {/* Coluna de imagem com recorte orgânico assimétrico */}
-        <div className="relative animate-rise [animation-delay:120ms]">
-          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[2.5rem] rounded-tl-[8rem] rounded-br-[8rem] shadow-[var(--shadow-glass)] sm:aspect-[6/5] md:aspect-[5/6] lg:aspect-[6/5]">
-            <Image
-              src="/marketplace/images/hero-residence.png"
-              alt="Residência contemporânea ao entardecer com amplas janelas de vidro e jardim"
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 52vw"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
-          </div>
-
-          {/* Card flutuante: compatibilidade */}
-          <div className="glass animate-float absolute -left-2 top-8 max-w-[16rem] rounded-2xl p-4 shadow-[var(--shadow-glass)] sm:-left-6 sm:top-10">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_12px_rgba(35,120,55,0.4)]">
-                <Check className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Muito compatível</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Este imóvel combina com o que você procura.
-                </p>
+            <div className="mt-8 max-w-xl">
+              <ConversationalSearch
+                size="lg"
+                placeholder="Descreva onde e como você gostaria de viver..."
+              />
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/imoveis/busca"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white outline-none backdrop-blur-md transition-all hover:bg-white/20 focus-visible:ring-4 focus-visible:ring-white/25"
+                >
+                  <Zap className="h-4 w-4 text-eme-300" aria-hidden="true" />
+                  Usar busca rápida
+                </Link>
+                <Link
+                  href="/imoveis/busca"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white outline-none backdrop-blur-md transition-all hover:bg-white/20 focus-visible:ring-4 focus-visible:ring-white/25"
+                >
+                  <SlidersHorizontal className="h-4 w-4 text-white/80" aria-hidden="true" />
+                  Explorar por filtros
+                </Link>
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Painel de características unificado */}
-          <div className="glass animate-float absolute -bottom-4 left-1/2 flex w-[min(92%,22rem)] -translate-x-1/2 items-center rounded-2xl px-1.5 py-1 shadow-[var(--shadow-glass)] [animation-delay:1.5s]">
-            {chips.map((chip, i) => (
-              <div key={chip.label} className="flex flex-1 items-center">
-                <span className="flex flex-1 items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-foreground">
-                  <chip.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span className="truncate">{chip.label}</span>
-                </span>
-                {i < chips.length - 1 && (
-                  <span className="h-6 w-px bg-border/70" aria-hidden="true" />
-                )}
-              </div>
-            ))}
+      <div className="absolute bottom-24 right-8 z-10 hidden w-[19rem] rounded-2xl border border-white/15 bg-black/40 p-5 shadow-[var(--shadow-glass)] backdrop-blur-xl lg:block">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-eme-500/25 text-eme-300">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-white">Muito compatível</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/70">
+              Encontramos imóveis que combinam com o que você procura.
+            </p>
           </div>
         </div>
+        <div className="mt-4 flex items-center gap-1.5" aria-hidden="true">
+          <span className="h-1.5 w-8 rounded-full bg-eme-300" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/40" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-1.5 text-white/80">
+        <span className="text-xs font-medium tracking-wide">Explore o Marketplace</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-md">
+          <ChevronDown className="h-4 w-4 animate-bounce" aria-hidden="true" />
+        </span>
       </div>
     </section>
   )

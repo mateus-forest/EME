@@ -45,11 +45,13 @@
   --ring: oklch(0.6 0.13 148);
   --eme-50: oklch(0.975 0.02 148);
   --eme-100: oklch(0.94 0.045 148);
+  --eme-300: oklch(0.82 0.135 148);
   --eme-500: oklch(0.63 0.14 148);
   --eme-600: oklch(0.56 0.13 148);
   --eme-700: oklch(0.46 0.11 148);
   --color-eme-50: var(--eme-50);
   --color-eme-100: var(--eme-100);
+  --color-eme-300: var(--eme-300);
   --color-eme-500: var(--eme-500);
   --color-eme-600: var(--eme-600);
   --color-eme-700: var(--eme-700);
@@ -104,9 +106,12 @@
 .marketplace-shell .bg-eme-50 { background-color: var(--eme-50); }
 .marketplace-shell .bg-eme-50\/60 { background-color: color-mix(in oklab, var(--eme-50) 60%, transparent); }
 .marketplace-shell .bg-eme-100 { background-color: var(--eme-100); }
+.marketplace-shell .bg-eme-300 { background-color: var(--eme-300); }
+.marketplace-shell .bg-eme-500\/25 { background-color: color-mix(in oklab, var(--eme-500) 25%, transparent); }
 .marketplace-shell .bg-eme-600 { background-color: var(--eme-600); }
 .marketplace-shell .bg-surface { background-color: var(--surface); }
 .marketplace-shell .bg-surface\/60 { background-color: color-mix(in oklab, var(--surface) 60%, transparent); }
+.marketplace-shell .text-eme-300 { color: var(--eme-300); }
 .marketplace-shell .text-eme-700 { color: var(--eme-700); }
 .marketplace-shell .border-eme-100 { border-color: var(--eme-100); }
 .marketplace-shell .from-eme-50 {

@@ -115,7 +115,10 @@ test.describe('Marketplace público', () => {
     await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto('/imoveis')
 
-    await expect(page.getByPlaceholder('Procuro um apartamento para alugar perto do centro')).toBeVisible()
+    await expect(page.getByPlaceholder('Descreva onde e como você gostaria de viver...')).toBeVisible()
+    await expect(page.locator('video[src^="/marketplace/videos/hero-"]')).toHaveCount(5)
+    await expect(page.getByRole('link', { name: 'Usar busca rápida' })).toHaveAttribute('href', '/imoveis/busca')
+    await expect(page.getByRole('link', { name: 'Explorar por filtros' })).toHaveAttribute('href', '/imoveis/busca')
     await expect(page.getByText('Tecnologia imobiliária', { exact: true })).toBeAttached()
 
     const explorer = page.getByRole('heading', { name: 'Explore cada detalhe' }).locator('..').locator('..')
@@ -155,6 +158,15 @@ test.describe('Marketplace público', () => {
     await expectNoHorizontalOverflow(page)
     await page.getByRole('button', { name: 'Fechar Assistente EME' }).click()
     await expectNoHorizontalOverflow(page)
+  })
+
+  test('hero respeita preferência por movimento reduzido', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/imoveis')
+
+    await expect(page.getByRole('heading', { name: /Seu próximo imóvel/ })).toBeVisible()
+    await expect(page.locator('video[src="/marketplace/videos/hero-1.mp4"]')).toHaveCount(1)
+    await expect(page.locator('video[src^="/marketplace/videos/hero-"]')).toHaveCount(1)
   })
 
   test('detalhe usa informações reais/fallback e mapa aproximado funcional', async ({ page }) => {
