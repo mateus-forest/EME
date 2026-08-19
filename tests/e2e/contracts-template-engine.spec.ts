@@ -556,7 +556,7 @@ test("contrato completo registra assinatura externa com data e observação", as
   await expect(page.getByRole("button", { name: "Assinatura registrada" })).toBeVisible()
 })
 
-test("preenchimento prioriza pendências, recolhe campos completos e move o foco pelo painel", async ({ page }) => {
+test("preenchimento mantém campos estáveis, recolhe após salvar e move o foco pelo painel", async ({ page }) => {
   await page.route("**/api/auth/me", (route) => route.fulfill({
     json: {
       user: {
@@ -583,7 +583,19 @@ test("preenchimento prioriza pendências, recolhe campos completos e move o foco
 
   const completedField = structure.fields[0]
   const pendingField = structure.fields[1]
-  await page.locator(`#contract-field-${completedField.id}`).fill("Carlos Souza")
+  const partyGroup = page.locator('[data-testid^="contract-field-group-party-"]').first()
+  const completedInput = page.locator(`#contract-field-${completedField.id}`)
+  await completedInput.click()
+  const orderBeforeTyping = await partyGroup.locator('[id^="contract-field-"]').evaluateAll((fields) => fields.map((field) => field.id))
+  const positionBeforeTyping = await completedInput.evaluate((field) => field.getBoundingClientRect().top)
+  await completedInput.pressSequentially("Carlos Souza")
+  await expect(completedInput).toBeFocused()
+  await expect(page.getByTestId("contract-instance-editor").getByText("25%", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: completedField.label, exact: true })).toHaveCount(0)
+  const orderAfterTyping = await partyGroup.locator('[id^="contract-field-"]').evaluateAll((fields) => fields.map((field) => field.id))
+  const positionAfterTyping = await completedInput.evaluate((field) => field.getBoundingClientRect().top)
+  expect(orderAfterTyping).toEqual(orderBeforeTyping)
+  expect(Math.abs(positionAfterTyping - positionBeforeTyping)).toBeLessThan(1)
   await page.getByRole("button", { name: "Salvar alterações" }).click()
   await expect(page.locator(`#contract-field-${completedField.id}`)).toHaveCount(0)
   await expect(page.getByText(/1 campo preenchido recolhido/)).toBeVisible()

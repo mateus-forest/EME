@@ -888,18 +888,8 @@ function InstanceEditor({
       groups.set(group.id, existing)
     }
 
-    return [...groups.values()].map((group) => ({
-      ...group,
-      fields: [...group.fields].sort((left, right) => {
-        const priority = (field: ContractTemplateField) => {
-          if (field.required && !values[field.id]?.trim()) return 0
-          if (!values[field.id]?.trim()) return 1
-          return 2
-        }
-        return priority(left) - priority(right)
-      }),
-    }))
-  }, [instance, values])
+    return [...groups.values()]
+  }, [instance])
 
   const readinessGroups = useMemo(() => groupedFields.map((group) => {
     const required = group.fields.filter((field) => field.required)
@@ -1078,7 +1068,7 @@ function InstanceEditor({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-[#111]">Campos do contrato</p>
-              <p className="mt-0.5 text-xs text-[#7b8491]">Pendências obrigatórias aparecem primeiro.</p>
+              <p className="mt-0.5 text-xs text-[#7b8491]">A ordem do modelo permanece estável durante o preenchimento.</p>
             </div>
             <Button
               type="button"
