@@ -5,24 +5,19 @@ import { HeroVideoBackground } from '@/components/marketplace/sections/hero-vide
 
 export function Hero() {
   return (
-    <section className="relative flex min-h-[92vh] w-full flex-col overflow-hidden md:h-[80vh] md:min-h-[640px]">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          WebkitMaskImage:
-            'linear-gradient(to bottom, black 0%, black 78%, rgba(0,0,0,0.55) 90%, transparent 100%)',
-          maskImage:
-            'linear-gradient(to bottom, black 0%, black 78%, rgba(0,0,0,0.55) 90%, transparent 100%)',
-        }}
-      >
+    <section
+      data-marketplace-hero
+      className="relative flex min-h-[92vh] w-full flex-col overflow-hidden md:h-[80vh] md:min-h-[640px]"
+    >
+      <div aria-hidden="true" className="absolute inset-0">
         <HeroVideoBackground />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/25" />
+        <div className="absolute inset-x-0 bottom-0 h-[24%] bg-gradient-to-b from-transparent via-background/35 to-background" />
       </div>
 
       <div className="relative z-10 flex flex-1 items-center">
-        <div className="mx-auto w-full max-w-6xl px-5 pb-16 pt-24 md:px-8 md:pb-20 md:pt-28">
+        <div className="mx-auto w-full max-w-6xl px-5 pb-10 pt-32 md:px-8 md:pb-12 md:pt-40">
           <div className="max-w-2xl animate-rise">
             <h1 className="text-balance text-[2.35rem] font-normal leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.5rem]">
               Seu próximo imóvel começa pelo que importa para{' '}
@@ -40,14 +35,14 @@ export function Hero() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Link
                   href="/imoveis/busca"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white outline-none backdrop-blur-md transition-all hover:bg-white/20 focus-visible:ring-4 focus-visible:ring-white/25"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all hover:border-white/15 hover:bg-black/25 focus-visible:ring-4 focus-visible:ring-white/20"
                 >
                   <Zap className="h-4 w-4 text-eme-300" aria-hidden="true" />
                   Usar busca rápida
                 </Link>
                 <Link
                   href="/imoveis/busca"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white outline-none backdrop-blur-md transition-all hover:bg-white/20 focus-visible:ring-4 focus-visible:ring-white/25"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all hover:border-white/15 hover:bg-black/25 focus-visible:ring-4 focus-visible:ring-white/20"
                 >
                   <SlidersHorizontal className="h-4 w-4 text-white/80" aria-hidden="true" />
                   Explorar por filtros

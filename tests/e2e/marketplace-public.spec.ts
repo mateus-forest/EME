@@ -66,8 +66,17 @@ test.describe('Marketplace público', () => {
   test('header desktop mantém navegação centralizada', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/imoveis')
-    const box = await page.getByRole('navigation', { name: 'Navegação principal' }).boundingBox()
+    const header = page.locator('header').first()
+    const navigation = page.getByRole('navigation', { name: 'Navegação principal' })
+    const box = await navigation.boundingBox()
     expect(Math.abs(box!.x + box!.width / 2 - 720)).toBeLessThan(3)
+    await expect(header).toHaveClass(/bg-transparent/)
+    await expect(navigation).not.toHaveClass(/glass-strong/)
+
+    await page.locator('[data-marketplace-hero]').evaluate((hero) => {
+      window.scrollTo(0, hero.getBoundingClientRect().height)
+    })
+    await expect(header).not.toHaveClass(/bg-transparent/)
     await expectNoHorizontalOverflow(page)
   })
 
@@ -150,8 +159,10 @@ test.describe('Marketplace público', () => {
     await page.goto('/imoveis')
     const hero = await page.getByRole('heading', { name: /Seu próximo imóvel/ }).boundingBox()
     expect(hero!.y).toBeGreaterThan(95)
+    await expect(page.locator('header').first()).toHaveClass(/bg-transparent/)
 
     await page.getByRole('button', { name: 'Abrir menu' }).click()
+    await expect(page.locator('header').first()).not.toHaveClass(/bg-transparent/)
     await page.getByRole('button', { name: /Assistente EME/ }).click()
     await expect(page.getByRole('dialog', { name: 'Assistente EME' })).toBeVisible()
     await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
