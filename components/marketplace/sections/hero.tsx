@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { ChevronDown, Sparkles, SlidersHorizontal, Zap } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal, Zap } from 'lucide-react'
 import { ConversationalSearch } from '@/components/marketplace/conversational-search'
+import { HeroInsightCard } from '@/components/marketplace/sections/hero-insight-card'
 import { HeroVideoBackground } from '@/components/marketplace/sections/hero-video-background'
 
 export function Hero() {
@@ -14,9 +15,9 @@ export function Hero() {
         className="absolute inset-0"
         style={{
           WebkitMaskImage:
-            'linear-gradient(to bottom, black 0%, black 95%, rgba(0,0,0,0.92) 97%, rgba(0,0,0,0.58) 99%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 84%, rgba(0,0,0,0.98) 88%, rgba(0,0,0,0.9) 92%, rgba(0,0,0,0.7) 95%, rgba(0,0,0,0.38) 98%, transparent 100%)',
           maskImage:
-            'linear-gradient(to bottom, black 0%, black 95%, rgba(0,0,0,0.92) 97%, rgba(0,0,0,0.58) 99%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 84%, rgba(0,0,0,0.98) 88%, rgba(0,0,0,0.9) 92%, rgba(0,0,0,0.7) 95%, rgba(0,0,0,0.38) 98%, transparent 100%)',
         }}
       >
         <HeroVideoBackground />
@@ -63,26 +64,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="absolute bottom-24 right-8 z-10 hidden w-[19rem] rounded-2xl border border-white/15 bg-black/40 p-5 shadow-[var(--shadow-glass)] backdrop-blur-xl lg:block">
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-eme-500/25 text-eme-300">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-white">Muito compatível</p>
-            <p className="mt-1 text-xs leading-relaxed text-white/70">
-              Encontramos imóveis que combinam com o que você procura.
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 flex items-center gap-1.5" aria-hidden="true">
-          <span className="h-1.5 w-8 rounded-full bg-eme-300" />
-          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/40" />
-          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-        </div>
-      </div>
+      <HeroInsightCard />
 
       <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-1.5 text-white/80">
         <span className="text-xs font-medium tracking-wide">Explore o Marketplace</span>

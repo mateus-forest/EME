@@ -153,7 +153,17 @@ test.describe('Marketplace público', () => {
     const videoLayer = page.locator('[data-marketplace-hero] > div[aria-hidden="true"]').first()
     const videoLayerMask = await videoLayer.evaluate((element) => getComputedStyle(element).maskImage)
     expect(videoLayerMask).toContain('linear-gradient')
-    await expect(videoLayer).toHaveAttribute('style', /black 95%/)
+    await expect(videoLayer).toHaveAttribute('style', /black 84%/)
+    const hero = await page.locator('[data-marketplace-hero]').boundingBox()
+    const nextSectionHeading = await page.getByRole('heading', { name: 'Descubra do seu jeito' }).boundingBox()
+    expect(nextSectionHeading!.y - (hero!.y + hero!.height)).toBeLessThan(100)
+
+    const insightCard = page.getByRole('complementary', { name: 'Insights de compatibilidade' })
+    await expect(insightCard).toBeVisible()
+    await expect(insightCard).toHaveAttribute('style', /border-width:\s*0\.5px/)
+    expect((await insightCard.boundingBox())!.height).toBeLessThan(140)
+    await expect(insightCard.getByText('Muito compatível')).toBeVisible()
+    await expect(insightCard.locator('[data-active="true"]')).toHaveAttribute('data-insight-index', '0')
     await expect(page.getByText('Tecnologia imobiliária', { exact: true })).toBeAttached()
 
     const explorer = page.getByRole('heading', { name: 'Explore cada detalhe' }).locator('..').locator('..')
@@ -204,6 +214,21 @@ test.describe('Marketplace público', () => {
     await expect(page.getByRole('heading', { name: /Seu próximo imóvel/ })).toBeVisible()
     await expect(page.locator('video[src="/marketplace/videos/hero-1.mp4"]')).toHaveCount(1)
     await expect(page.locator('video[src^="/marketplace/videos/hero-"]')).toHaveCount(1)
+  })
+
+  test('card de compatibilidade alterna insights sem mudar de tamanho', async ({ page }) => {
+    await page.goto('/imoveis')
+    const card = page.getByRole('complementary', { name: 'Insights de compatibilidade' })
+    const initialBox = await card.boundingBox()
+
+    await expect(card.getByText('Muito compatível')).toBeVisible()
+    await expect(card.locator('[data-active="true"]')).toHaveAttribute('data-insight-index', '0')
+    await expect(card.getByText('Boa localização')).toBeVisible({ timeout: 5_500 })
+    await expect(card.locator('[data-active="true"]')).toHaveAttribute('data-insight-index', '1')
+
+    const rotatedBox = await card.boundingBox()
+    expect(rotatedBox!.width).toBe(initialBox!.width)
+    expect(rotatedBox!.height).toBe(initialBox!.height)
   })
 
   test('hero faz crossfade com dois buffers e prepara somente o próximo vídeo', async ({ page }) => {

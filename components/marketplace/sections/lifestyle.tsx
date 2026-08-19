@@ -16,7 +16,7 @@ const icons: Record<Lifestyle['icon'], React.ElementType> = {
 
 export function LifestyleSection() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
+    <section className="mx-auto w-full max-w-6xl px-5 pb-14 pt-6 md:px-8 md:pb-20 md:pt-8">
       <Reveal>
         <SectionHeading
           title="Descubra do seu jeito"
