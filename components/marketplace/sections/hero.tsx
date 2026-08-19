@@ -14,9 +14,9 @@ export function Hero() {
         className="absolute inset-0"
         style={{
           WebkitMaskImage:
-            'linear-gradient(to bottom, black 0%, black 90%, rgba(0,0,0,0.75) 94%, rgba(0,0,0,0.3) 98%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 95%, rgba(0,0,0,0.92) 97%, rgba(0,0,0,0.58) 99%, transparent 100%)',
           maskImage:
-            'linear-gradient(to bottom, black 0%, black 90%, rgba(0,0,0,0.75) 94%, rgba(0,0,0,0.3) 98%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 95%, rgba(0,0,0,0.92) 97%, rgba(0,0,0,0.58) 99%, transparent 100%)',
         }}
       >
         <HeroVideoBackground />

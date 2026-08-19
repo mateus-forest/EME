@@ -131,11 +131,10 @@ test.describe('Marketplace público', () => {
     await expect(quickSearchAction).toHaveAttribute('href', '/imoveis/busca')
     await expect(quickSearchAction).toHaveAttribute('style', /border-width:\s*0\.5px/)
     await expect(page.getByRole('link', { name: 'Explorar por filtros' })).toHaveAttribute('href', '/imoveis/busca')
-    const videoLayerMask = await page
-      .locator('[data-marketplace-hero] > div[aria-hidden="true"]')
-      .first()
-      .evaluate((element) => getComputedStyle(element).maskImage)
+    const videoLayer = page.locator('[data-marketplace-hero] > div[aria-hidden="true"]').first()
+    const videoLayerMask = await videoLayer.evaluate((element) => getComputedStyle(element).maskImage)
     expect(videoLayerMask).toContain('linear-gradient')
+    await expect(videoLayer).toHaveAttribute('style', /black 95%/)
     await expect(page.getByText('Tecnologia imobiliária', { exact: true })).toBeAttached()
 
     const explorer = page.getByRole('heading', { name: 'Explore cada detalhe' }).locator('..').locator('..')
