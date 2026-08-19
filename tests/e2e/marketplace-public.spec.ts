@@ -71,6 +71,7 @@ test.describe('Marketplace público', () => {
     const box = await navigation.boundingBox()
     expect(Math.abs(box!.x + box!.width / 2 - 720)).toBeLessThan(3)
     await expect(header).toHaveClass(/bg-transparent/)
+    await expect(header).toHaveClass(/border-0/)
     await expect(navigation).not.toHaveClass(/glass-strong/)
 
     await page.locator('[data-marketplace-hero]').evaluate((hero) => {
@@ -126,8 +127,15 @@ test.describe('Marketplace público', () => {
 
     await expect(page.getByPlaceholder('Descreva onde e como você gostaria de viver...')).toBeVisible()
     await expect(page.locator('video[src^="/marketplace/videos/hero-"]')).toHaveCount(5)
-    await expect(page.getByRole('link', { name: 'Usar busca rápida' })).toHaveAttribute('href', '/imoveis/busca')
+    const quickSearchAction = page.getByRole('link', { name: 'Usar busca rápida' })
+    await expect(quickSearchAction).toHaveAttribute('href', '/imoveis/busca')
+    await expect(quickSearchAction).toHaveAttribute('style', /border-width:\s*0\.5px/)
     await expect(page.getByRole('link', { name: 'Explorar por filtros' })).toHaveAttribute('href', '/imoveis/busca')
+    const videoLayerMask = await page
+      .locator('[data-marketplace-hero] > div[aria-hidden="true"]')
+      .first()
+      .evaluate((element) => getComputedStyle(element).maskImage)
+    expect(videoLayerMask).toContain('linear-gradient')
     await expect(page.getByText('Tecnologia imobiliária', { exact: true })).toBeAttached()
 
     const explorer = page.getByRole('heading', { name: 'Explore cada detalhe' }).locator('..').locator('..')

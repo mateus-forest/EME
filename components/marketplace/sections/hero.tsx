@@ -9,11 +9,19 @@ export function Hero() {
       data-marketplace-hero
       className="relative flex min-h-[92vh] w-full flex-col overflow-hidden md:h-[80vh] md:min-h-[640px]"
     >
-      <div aria-hidden="true" className="absolute inset-0">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          WebkitMaskImage:
+            'linear-gradient(to bottom, black 0%, black 90%, rgba(0,0,0,0.75) 94%, rgba(0,0,0,0.3) 98%, transparent 100%)',
+          maskImage:
+            'linear-gradient(to bottom, black 0%, black 90%, rgba(0,0,0,0.75) 94%, rgba(0,0,0,0.3) 98%, transparent 100%)',
+        }}
+      >
         <HeroVideoBackground />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/25" />
-        <div className="absolute inset-x-0 bottom-0 h-[24%] bg-gradient-to-b from-transparent via-background/35 to-background" />
       </div>
 
       <div className="relative z-10 flex flex-1 items-center">
@@ -35,14 +43,16 @@ export function Hero() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Link
                   href="/imoveis/busca"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all hover:border-white/15 hover:bg-black/25 focus-visible:ring-4 focus-visible:ring-white/20"
+                  style={{ borderWidth: '0.5px', borderColor: 'rgba(255,255,255,0.12)' }}
+                  className="inline-flex items-center gap-2 rounded-full border-solid bg-white/[0.07] px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all hover:bg-white/[0.12] focus-visible:ring-4 focus-visible:ring-white/20"
                 >
                   <Zap className="h-4 w-4 text-eme-300" aria-hidden="true" />
                   Usar busca rápida
                 </Link>
                 <Link
                   href="/imoveis/busca"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all hover:border-white/15 hover:bg-black/25 focus-visible:ring-4 focus-visible:ring-white/20"
+                  style={{ borderWidth: '0.5px', borderColor: 'rgba(255,255,255,0.12)' }}
+                  className="inline-flex items-center gap-2 rounded-full border-solid bg-white/[0.07] px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all hover:bg-white/[0.12] focus-visible:ring-4 focus-visible:ring-white/20"
                 >
                   <SlidersHorizontal className="h-4 w-4 text-white/80" aria-hidden="true" />
                   Explorar por filtros

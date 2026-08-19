@@ -70,7 +70,7 @@ export function Header() {
       className={cn(
         'fixed inset-x-0 top-0 z-50 transition-all duration-300',
         overHero
-          ? 'border-b border-transparent bg-transparent'
+          ? 'border-0 bg-transparent'
           : scrolled || open
             ? 'border-b border-border/60 bg-background/88 shadow-[0_8px_30px_rgba(16,24,20,0.035)] backdrop-blur-xl'
             : 'border-b border-transparent bg-background/55 backdrop-blur-md',
