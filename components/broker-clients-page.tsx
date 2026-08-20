@@ -595,7 +595,7 @@ export function BrokerClientsPage() {
             </div>
           </div>
         ) : null}
-        <BrokerStatStrip>
+        <BrokerStatStrip className="w-full md:grid-cols-3">
             {clientStages.map((stage, index) => (
               <BrokerStatItem
                 key={stage.title}
@@ -608,19 +608,19 @@ export function BrokerClientsPage() {
         </BrokerStatStrip>
 
         <section className="rounded-[1.35rem] border border-black/[0.06] bg-white/92 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.035)]">
-          <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
-            <label className="relative block min-w-0 flex-1 xl:max-w-[21rem]">
+          <div className="grid min-w-0 gap-3 lg:flex lg:items-center lg:justify-between lg:gap-2 xl:flex-row xl:items-center">
+            <label className="relative block min-w-0 w-full lg:max-w-[21rem]">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Nome, CPF, telefone ou imóvel"
                   aria-label="Buscar cliente"
-                  className="h-10 rounded-xl border-black/[0.07] bg-[#fcfcfb] pl-10"
+                  className="h-10 w-full rounded-xl border-black/[0.07] bg-[#fcfcfb] pl-10"
                 />
             </label>
 
-            <div className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 xl:ml-auto xl:overflow-visible xl:pb-0">
+            <div className="min-w-0 w-full overflow-x-auto overflow-y-hidden pb-1.5 lg:w-auto lg:flex-1 lg:overflow-visible lg:pb-0 eme-hidden-scrollbar">
               {clientFilters.map((filter) => (
                 <button
                   key={filter.id}
@@ -649,87 +649,182 @@ export function BrokerClientsPage() {
           ) : filteredClients.length > 0 ? (
             <div className="grid divide-y divide-black/[0.055]">
               {filteredClients.map((client) => (
-                <div
-                  key={client.id}
-                  className="grid min-w-0 gap-3 px-3 py-3 transition-colors hover:bg-[#fbfcfa] sm:px-4 md:grid-cols-[minmax(13rem,1.35fr)_10rem_minmax(10rem,1fr)_auto] md:items-center md:gap-3 xl:grid-cols-[minmax(12rem,1.35fr)_7.5rem_10.5rem_minmax(10rem,1fr)_8rem_auto] xl:gap-4"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#eaf7ee] text-sm font-semibold text-[#008633]">
-                      {(client.name || "C").trim().charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                        <p className="truncate font-semibold text-[#111827]">{client.name || "Cliente sem nome"}</p>
-                        <span className="rounded-full border border-[#009b3a]/14 bg-[#eef9f1] px-2 py-0.5 text-[11px] font-medium text-[#008633]">
+                <div key={client.id} className="grid gap-2">
+                  <article className="grid min-w-0 gap-3 rounded-[1.15rem] border border-black/[0.06] bg-white px-3 py-3 transition-colors hover:bg-[#fbfcfa] sm:px-4 lg:hidden">
+                    <div className="grid min-w-0 gap-2">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#eaf7ee] text-sm font-semibold text-[#008633]">
+                          {(client.name || "C").trim().charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-[#111827]">{client.name || "Cliente sem nome"}</p>
+                          <p className="mt-1 truncate text-[11px] text-[#7B8491]">
+                            Origem {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "—")}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-[#009b3a]/14 bg-[#eef9f1] px-2 py-0.5 text-[11px] font-medium leading-4 text-[#008633]">
                           {leadStatusLabels[client.status]}
                         </span>
                       </div>
-                      <p className="mt-1 truncate text-xs text-[#7B8491]">
-                        {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "—")}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="hidden min-w-0 text-xs text-[#667085] xl:block">
-                    <p className="font-medium text-[#344054]">{formatDateBR(client.createdAt, "—")}</p>
-                    <p className="mt-1">Cadastro</p>
-                  </div>
+                      <div className="grid gap-1 text-xs text-[#667085]">
+                        <p className="flex min-w-0 items-center gap-1.5">
+                          <Phone className="size-3.5 shrink-0 text-[#009b3a]" />
+                          <span className="truncate">{formatPhone(client.whatsApp || client.phone) || "Não informado"}</span>
+                        </p>
+                        <p className="truncate">
+                          <span className="font-medium text-[#344054]">CPF:</span> {formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}
+                        </p>
+                        <p className="truncate">
+                          <span className="font-medium text-[#344054]">Imóvel:</span> {client.propertyTitle || "Sem imóvel vinculado"}
+                        </p>
+                        <p className="truncate text-[#008633]">
+                          <span className="font-medium text-[#344054]">Observação:</span>{" "}
+                          {client.searchTerm || client.message || "Interesse em qualificação"}
+                        </p>
+                      </div>
 
-                  <div className="min-w-0 text-xs text-[#667085]">
-                    <p className="flex items-center gap-1.5 truncate font-medium text-[#344054]">
-                      <Phone className="size-3.5 shrink-0 text-[#009b3a]" />
-                      {formatPhone(client.whatsApp || client.phone) || "Não informado"}
-                    </p>
-                    <p className="mt-1 truncate">{formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}</p>
-                  </div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-[#667085]">
+                          <span>Perfil</span>
+                          <span>{client.completion.score}%</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#e8ece8]">
+                          <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${client.completion.score}%` }} />
+                        </div>
+                        {client.completion.pending.length ? (
+                          <p className="mt-1 truncate text-[10px] text-[#b26a00]">
+                            {client.completion.pending.length} pendência{client.completion.pending.length === 1 ? "" : "s"}
+                          </p>
+                        ) : null}
+                      </div>
 
-                  <div className="min-w-0 text-xs text-[#667085]">
-                    <p className="truncate font-medium text-[#344054]">{client.propertyTitle || "Sem imóvel vinculado"}</p>
-                    <p className="mt-1 truncate text-[#008633]">{client.searchTerm || client.message || "Interesse em qualificação"}</p>
-                  </div>
-
-                  <div className="hidden min-w-0 xl:block">
-                    <div className="flex items-center justify-between gap-2 text-[11px] text-[#667085]">
-                      <span>Perfil</span>
-                      <span>{client.completion.score}%</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#e8ece8]">
-                      <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${client.completion.score}%` }} />
-                    </div>
-                    {client.completion.pending.length ? (
-                      <p className="mt-1 truncate text-[10px] text-[#b26a00]">{client.completion.pending.length} pendência{client.completion.pending.length === 1 ? "" : "s"}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => openClient(client)}
-                      className="h-8.5 rounded-lg border border-black/[0.07] bg-white px-3 text-xs font-semibold text-[#008633] hover:bg-[#f7fbf8] hover:text-[#006b2b]"
-                    >
-                      Ver cliente
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="size-8.5 rounded-lg border border-black/[0.07] bg-white text-[#667085] hover:bg-[#f7f8f5] hover:text-[#050505]">
-                          <MoreHorizontal className="size-4" />
-                          <span className="sr-only">Mais ações para {client.name || "cliente"}</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
-                        <DropdownMenuItem asChild className="rounded-lg">
-                          <Link href="/corretor/documentos"><FileText className="size-4" />Propostas</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={isDeletingClient}
-                          onSelect={() => void deleteClient(client)}
-                          className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700"
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => openClient(client)}
+                          className="h-8.5 rounded-lg border border-black/[0.07] bg-white px-3 text-xs font-semibold text-[#008633] hover:bg-[#f7fbf8] hover:text-[#006b2b]"
                         >
-                          <Trash2 className="size-4" />Excluir cliente
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          Ver cliente
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8.5 rounded-lg border border-black/[0.07] bg-white text-[#667085] hover:bg-[#f7f8f5] hover:text-[#050505]"
+                            >
+                              <MoreHorizontal className="size-4" />
+                              <span className="sr-only">Mais ações para {client.name || "cliente"}</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
+                            <DropdownMenuItem asChild className="rounded-lg">
+                              <Link href="/corretor/documentos"><FileText className="size-4" />Propostas</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={isDeletingClient}
+                              onSelect={() => void deleteClient(client)}
+                              className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700"
+                            >
+                              <Trash2 className="size-4" />Excluir cliente
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </article>
+
+                  <div
+                    className="hidden lg:grid min-w-0 gap-3 px-3 py-3 transition-colors hover:bg-[#fbfcfa] sm:px-4 md:grid-cols-[minmax(13rem,1.35fr)_10rem_minmax(10rem,1fr)_auto] md:items-center md:gap-3 xl:grid-cols-[minmax(12rem,1.35fr)_7.5rem_10.5rem_minmax(10rem,1fr)_8rem_auto] xl:gap-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#eaf7ee] text-sm font-semibold text-[#008633]">
+                        {(client.name || "C").trim().charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          <p className="truncate font-semibold text-[#111827]">{client.name || "Cliente sem nome"}</p>
+                          <span className="rounded-full border border-[#009b3a]/14 bg-[#eef9f1] px-2 py-0.5 text-[11px] font-medium text-[#008633]">
+                            {leadStatusLabels[client.status]}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-[#7B8491]">
+                          {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "—")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="hidden min-w-0 text-xs text-[#667085] xl:block">
+                      <p className="font-medium text-[#344054]">{formatDateBR(client.createdAt, "—")}</p>
+                      <p className="mt-1">Cadastro</p>
+                    </div>
+
+                    <div className="min-w-0 text-xs text-[#667085]">
+                      <p className="flex items-center gap-1.5 truncate font-medium text-[#344054]">
+                        <Phone className="size-3.5 shrink-0 text-[#009b3a]" />
+                        {formatPhone(client.whatsApp || client.phone) || "Não informado"}
+                      </p>
+                      <p className="mt-1 truncate">{formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}</p>
+                    </div>
+
+                    <div className="min-w-0 text-xs text-[#667085]">
+                      <p className="truncate font-medium text-[#344054]">{client.propertyTitle || "Sem imóvel vinculado"}</p>
+                      <p className="mt-1 truncate text-[#008633]">{client.searchTerm || client.message || "Interesse em qualificação"}</p>
+                    </div>
+
+                    <div className="hidden min-w-0 xl:block">
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-[#667085]">
+                        <span>Perfil</span>
+                        <span>{client.completion.score}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#e8ece8]">
+                        <div className="h-full rounded-full bg-[#009b3a]" style={{ width: `${client.completion.score}%` }} />
+                      </div>
+                      {client.completion.pending.length ? (
+                        <p className="mt-1 truncate text-[10px] text-[#b26a00]">
+                          {client.completion.pending.length} pendência{client.completion.pending.length === 1 ? "" : "s"}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => openClient(client)}
+                        className="h-8.5 rounded-lg border border-black/[0.07] bg-white px-3 text-xs font-semibold text-[#008633] hover:bg-[#f7fbf8] hover:text-[#006b2b]"
+                      >
+                        Ver cliente
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8.5 rounded-lg border border-black/[0.07] bg-white text-[#667085] hover:bg-[#f7f8f5] hover:text-[#050505]"
+                          >
+                            <MoreHorizontal className="size-4" />
+                            <span className="sr-only">Mais ações para {client.name || "cliente"}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
+                          <DropdownMenuItem asChild className="rounded-lg">
+                            <Link href="/corretor/documentos"><FileText className="size-4" />Propostas</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={isDeletingClient}
+                            onSelect={() => void deleteClient(client)}
+                            className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700"
+                          >
+                            <Trash2 className="size-4" />Excluir cliente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               ))}
