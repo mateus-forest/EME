@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
-import { parseCurrencyInputToCents } from "@/lib/currency"
+import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
 import { parseEntityDocuments, parseLeadIdentification, parsePropertyLegalData } from "@/lib/legal-entities"
 import {
   buildProposalHtml,
+  calculateFixedInstallmentCents,
   sanitizeProposalDisplayText,
   sanitizeProposalDocumentContent,
 } from "@/lib/proposal-template"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { parseDecimalInput } from "@/lib/structured-fields"
 
 const documentStatuses = ["draft", "generated", "signed", "archived"] as const
 
@@ -165,15 +167,24 @@ export async function POST(request: NextRequest) {
       : (manualProperty.title || manualProperty.neighborhood || manualProperty.city || manualProperty.price
           ? { ...manualProperty, purpose: manualProperty.purpose ?? "SALE" }
           : null)
+    const entryValueCents = parseCurrencyInputToCents(body?.entry) ?? 0
+    const financedValueCents = Math.max(0, (proposalProperty?.price ?? 0) - entryValueCents)
+    const rawInstallmentCount = Number(body?.installmentCount ?? body?.installments)
+    const installmentCount = Number.isFinite(rawInstallmentCount) ? Math.max(0, Math.min(9999, Math.trunc(rawInstallmentCount))) : 0
+    const monthlyInterestRate = Math.max(0, parseDecimalInput(body?.monthlyInterestRate ?? body?.interestRate) ?? 0)
+    const installmentValueCents = calculateFixedInstallmentCents(financedValueCents, installmentCount, monthlyInterestRate)
     const title = cleanText(body?.title, 160) || `Proposta ${proposalLead?.name ?? proposalProperty?.title ?? "EME"}`
     const content = buildProposalHtml({
       lead: proposalLead,
       property: proposalProperty,
       broker: { name: user.name, phone: user.broker.phone, email: user.email, city: proposalProperty?.city, creci: user.broker.creci, photoUrl: user.photoUrl },
       conditions: {
-        entry: cleanText(body?.entry, 120),
-        financing: cleanText(body?.financing, 120),
-        installments: cleanText(body?.installments, 200),
+        entry: formatCurrencyBRLFromCents(entryValueCents),
+        financing: proposalProperty ? formatCurrencyBRLFromCents(financedValueCents) : "",
+        installments: installmentCount > 0 ? `${installmentCount}x` : "",
+        installmentCount: installmentCount || null,
+        monthlyInterestRate,
+        installmentValue: installmentValueCents === null ? "" : formatCurrencyBRLFromCents(installmentValueCents),
         paymentMethod: cleanText(body?.paymentMethod, 160),
         notes: cleanText(body?.conditions ?? body?.notes, 700),
         validity: cleanText(body?.validity, 80),

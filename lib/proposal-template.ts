@@ -36,6 +36,27 @@ type ProposalBroker = {
   photoUrl?: string | null
 } | null
 
+export function calculateFixedInstallmentCents(
+  financedValueCents: number,
+  installmentCount: number | null,
+  monthlyInterestRate: number,
+) {
+  const principal = Math.max(0, Number.isFinite(financedValueCents) ? financedValueCents : 0)
+  const count = Math.max(0, Math.trunc(installmentCount ?? 0))
+  if (count < 1) return null
+  if (principal === 0) return 0
+
+  const rate = Math.max(0, Number.isFinite(monthlyInterestRate) ? monthlyInterestRate : 0) / 100
+  if (rate === 0) return Math.round(principal / count)
+
+  const compoundFactor = Math.pow(1 + rate, count)
+  const denominator = compoundFactor - 1
+  if (!Number.isFinite(compoundFactor) || denominator <= 0) return null
+
+  const payment = principal * ((rate * compoundFactor) / denominator)
+  return Number.isFinite(payment) ? Math.round(payment) : null
+}
+
 const INTERNAL_ATTACHMENT_CONTEXT = [
   /\s*IMPORTANTE:\s*os anexos s[aã]o a fonte principal de informa[cç][aã]o\.[\s\S]*$/i,
   /\s*O texto do usu[aá]rio descreve apenas a inten[cç][aã]o operacional\.[\s\S]*$/i,
@@ -149,6 +170,9 @@ export function buildProposalHtml(input: {
     entry?: string | null
     financing?: string | null
     installments?: string | null
+    installmentCount?: number | null
+    monthlyInterestRate?: number | null
+    installmentValue?: string | null
     paymentMethod?: string | null
     notes?: string | null
     validity?: string | null
@@ -173,6 +197,10 @@ export function buildProposalHtml(input: {
   const proposalOnlineUrl = ""
   const proposalQrCodeUrl = buildQrCodeUrl(proposalOnlineUrl)
   const finalNotes = conditions?.notes || input.notes || "—"
+  const installmentSummary = conditions?.installmentCount ? `${conditions.installmentCount}x` : conditions?.installments
+  const monthlyInterestSummary = typeof conditions?.monthlyInterestRate === "number"
+    ? `${conditions.monthlyInterestRate.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% a.m.`
+    : ""
   const propertyHighlights = extractPropertyHighlights(property?.description)
 
   return `<!doctype html>
@@ -794,7 +822,9 @@ export function buildProposalHtml(input: {
                 ${renderDataItem("Valor", price, true)}
                 ${renderDataItem("Entrada", conditions?.entry, true)}
                 ${renderDataItem("Financiamento", conditions?.financing, true)}
-                ${renderDataItem("Parcelamento", conditions?.installments, true)}
+                ${renderDataItem("Parcelas", installmentSummary, true)}
+                ${renderDataItem("Juros mensais", monthlyInterestSummary, true)}
+                ${renderDataItem("Valor estimado da parcela", conditions?.installmentValue, true)}
                 ${renderDataItem("Forma de pagamento", conditions?.paymentMethod, true)}
               </div>
               <div class="notes-block">

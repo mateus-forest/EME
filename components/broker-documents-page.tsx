@@ -9,8 +9,9 @@ import { EmeLoading } from "@/components/ui/eme-loading"
 import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { Textarea } from "@/components/ui/textarea"
-import { proposalHtmlToText } from "@/lib/proposal-template"
-import { formatPhone } from "@/lib/structured-fields"
+import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
+import { calculateFixedInstallmentCents, proposalHtmlToText } from "@/lib/proposal-template"
+import { formatPhone, parseDecimalInput } from "@/lib/structured-fields"
 
 type BrokerDocument = {
   id: string
@@ -134,7 +135,8 @@ const emptyDraft = {
   propertyParkingSpots: "",
   entry: "",
   financing: "",
-  installments: "",
+  installmentCount: null as number | null,
+  interestRate: "",
   paymentMethod: "",
   conditions: "",
   validity: "",
@@ -245,7 +247,12 @@ export function BrokerDocumentsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(draft),
+        body: JSON.stringify({
+          ...draft,
+          financing: financedValue,
+          monthlyInterestRate,
+          installmentValue,
+        }),
       })
       const data = (await response.json().catch(() => null)) as { document?: BrokerDocument; error?: string } | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível gerar a proposta.")
@@ -347,6 +354,15 @@ export function BrokerDocumentsPage() {
     Number(draft.propertyBedrooms) > 0 ? `${draft.propertyBedrooms} dormitório${Number(draft.propertyBedrooms) === 1 ? "" : "s"}` : "",
     Number(draft.propertyParkingSpots) > 0 ? `${draft.propertyParkingSpots} vaga${Number(draft.propertyParkingSpots) === 1 ? "" : "s"}` : "",
   ].filter(Boolean)
+  const proposalValueCents = parseCurrencyInputToCents(draft.propertyPrice)
+  const entryValueCents = parseCurrencyInputToCents(draft.entry) ?? 0
+  const financedValueCents = proposalValueCents === null ? null : Math.max(0, proposalValueCents - entryValueCents)
+  const monthlyInterestRate = Math.max(0, parseDecimalInput(draft.interestRate) ?? 0)
+  const installmentValueCents = financedValueCents === null
+    ? null
+    : calculateFixedInstallmentCents(financedValueCents, draft.installmentCount, monthlyInterestRate)
+  const financedValue = financedValueCents === null ? "" : formatCurrencyBRLFromCents(financedValueCents)
+  const installmentValue = installmentValueCents === null ? "" : formatCurrencyBRLFromCents(installmentValueCents)
 
   return (
     <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden">
@@ -547,11 +563,38 @@ export function BrokerDocumentsPage() {
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
                     Valor financiado / financiamento
-                    <StructuredInput kind="currency" value={draft.financing} onValueChange={(value) => setDraft({ ...draft, financing: value })} placeholder="R$ 0,00" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                    <Input readOnly value={financedValue} placeholder="R$ 0,00" aria-label="Valor financiado calculado" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-[#f4f6f3] font-medium text-[#344054]" />
+                  </label>
+                  <div className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Quantidade / valor das parcelas
+                    <StructuredInput
+                      kind="quantity"
+                      value={draft.installmentCount ?? ""}
+                      onValueChange={(_value, normalizedValue) => setDraft({ ...draft, installmentCount: typeof normalizedValue === "number" ? normalizedValue : null })}
+                      placeholder="Ex.: 24"
+                      aria-label="Quantidade de parcelas"
+                      className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]"
+                    />
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {[12, 24, 36, 48, 60].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => setDraft({ ...draft, installmentCount: count })}
+                          className={`rounded-full border px-2 py-1 text-[10px] font-semibold transition ${draft.installmentCount === count ? "border-[#009b3a]/30 bg-[#009b3a]/10 text-[#007f31]" : "border-black/[0.06] bg-white text-[#667085] hover:bg-[#f4f6f3]"}`}
+                        >
+                          {count}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Juros mensais (%)
+                    <StructuredInput kind="percent" value={draft.interestRate} onValueChange={(value) => setDraft({ ...draft, interestRate: value })} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
-                    Quantidade / valor das parcelas
-                    <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Ex.: 24x de R$ 5.000" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                    Valor estimado da parcela
+                    <Input readOnly value={installmentValue} placeholder="R$ 0,00" aria-label="Valor estimado da parcela calculado" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-[#f4f6f3] font-medium text-[#344054]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
                     Forma de pagamento
