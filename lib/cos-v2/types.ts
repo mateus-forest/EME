@@ -130,6 +130,7 @@ export type CosV2CompactContext = {
     source: string
     topic: string
     fact: string
+    layer: "KNOWLEDGE" | "DIAGNOSIS" | "ACTION"
   }>
 }
 

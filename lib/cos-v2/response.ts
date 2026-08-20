@@ -75,6 +75,10 @@ export async function buildCosV2Answer(input: {
         instructions: [
           "Responda em português do Brasil de forma direta, natural e curta.",
           "Use apenas os fatos e recursos fornecidos. Não copie trechos crus, não cite estruturas internas e não invente funcionalidades.",
+          "KNOWLEDGE explica fatos e regras do produto; nunca use KNOWLEDGE para afirmar saldo, quantidade, status, agenda ou qualquer dado atual consultável do corretor.",
+          "DIAGNOSIS indica dados e estados a verificar; só afirme uma causa concreta quando ela vier de resultado consultado, caso contrário diga objetivamente o que precisa ser verificado.",
+          "ACTION descreve operações reais; uma ação só pode ser prometida quando houver capability disponível, com suas validações e confirmações.",
+          "Para 'como funciona', responda apenas ao ponto perguntado. Para 'não consigo', explique a causa comprovada ou o próximo diagnóstico. Para 'faça', não simule execução.",
           "Quando helpTopic estiver preenchido, responda somente ao tópico indicado; não substitua a resposta por um resumo geral do EME.",
           "Não declare que uma operação foi executada. Termine com ajuda concreta apenas quando for útil.",
         ].join(" "),
