@@ -2,18 +2,16 @@ import { randomUUID } from "crypto"
 
 import { buildRejectedAiPlanGoal, evaluateAiOrchestratorTrigger, generateCosAiExecutionPlan, type CosAiOrchestratorAudit } from "@/lib/cos/ai-orchestrator"
 import { findCosExecutionRecipe, type CosExecutionRecipe } from "@/lib/cos/execution-recipes"
-import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
-import { doesCosCapabilityRequireConfirmation, getCosCapabilityConfirmationMessage, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
+import { doesCosCapabilityRequireConfirmation, getCosCapabilityConfirmationMessage } from "@/lib/cos/capability-catalog"
+import { createStepPlanForCapability } from "@/lib/cos/execution-step"
 import { planCosCapability } from "@/lib/cos/planner"
 import { isCosDialogueDecisionAuthoritativeForCapability } from "@/lib/cos/conversation-decision"
 import type {
   CosCapabilityId,
   CosCapabilityPlan,
-  CosCapabilityPlanSource,
   CosNormalizedContext,
   CosPendingInput,
   CosCapabilitySurface,
-  CosEntityModuleId,
   CosExecutionPlan,
   CosExecutionPlanGap,
   CosExecutionPlanTelemetry,
@@ -22,11 +20,6 @@ import type {
   CosWorkspaceEntity,
   CosWorkflow,
 } from "@/lib/cos/types"
-
-type StepPlanSource = {
-  source?: CosCapabilityPlanSource
-  confidence?: number
-}
 
 function normalizeText(value: string) {
   return value
@@ -66,96 +59,6 @@ function summarizeActiveWorkflow(workflow: CosWorkflow | null | undefined) {
   }
 }
 
-export function createStepPlanForCapability(input: {
-  capabilityId: CosCapabilityId
-  message: string
-  requestedAction?: string
-  pendingInput?: CosPendingInput | null
-  context?: CosNormalizedContext | null
-  surface: CosCapabilitySurface
-  workspace?: CosWorkspaceContext | null
-  planId: string
-  order: number
-  reason: string
-  stepId?: string
-  dependsOn?: string[]
-  source?: CosCapabilityPlanSource
-  confidence?: number
-}): CosExecutionStep {
-  const descriptor = getCosCapabilityDescriptorById(input.capabilityId)
-  if (!descriptor) {
-    throw new Error(`Capability ${input.capabilityId} nao encontrada no catalogo do COS.`)
-  }
-
-  const capability = getCosCapabilityByAction(descriptor.action)
-  const entity = getCosEntityModuleIdByCapabilityId(capability.id) ?? ("general" as CosEntityModuleId)
-  const workspaceEntityUsed = getWorkspaceEntity(input.workspace ?? null)
-  const workspaceEntityIdUsed = getWorkspaceEntityId(input.workspace ?? null)
-  const contextOrigin: "workspace" | "pending_input" | "catalog" | "legacy" =
-    workspaceEntityUsed
-      ? "workspace"
-      : input.pendingInput
-        ? "pending_input"
-        : input.source === "legacy"
-          ? "legacy"
-          : "catalog"
-  const payload = {
-    ...(input.workspace ? { workspace: input.workspace } : {}),
-    ...(input.context ? { context: input.context } : {}),
-  }
-  const stepSource = input.source ?? "catalog"
-  const stepConfidence = input.confidence ?? (stepSource === "ai" ? 0.82 : 0.92)
-  const telemetry = {
-    capabilityId: capability.id,
-    entity,
-    confidence: stepConfidence,
-    source: stepSource,
-    reason: `${input.reason} [step ${input.order + 1}]`,
-    fallbackUsed: stepSource === "legacy",
-    pendingInputUsed: Boolean(input.pendingInput),
-    surface: input.surface,
-    resolutionMs: 0,
-    requestedAction: input.requestedAction?.trim() || null,
-    contextOrigin,
-    workspaceReceived: Boolean(input.workspace),
-    workspacePage: input.workspace?.page ?? null,
-    workspaceEntity: getWorkspaceEntity(input.workspace ?? null),
-    workspaceEntityId: getWorkspaceEntityId(input.workspace ?? null),
-    workspaceEntityUsed,
-    workspaceEntityIdUsed,
-  }
-
-  const plan: CosCapabilityPlan = {
-    action: descriptor.action,
-    payload,
-    pendingInput: input.pendingInput ?? null,
-    context: input.context ?? null,
-    workspace: input.workspace ?? null,
-    capability,
-    capabilityId: capability.id,
-    entity,
-    confidence: telemetry.confidence,
-    source: stepSource,
-    reason: telemetry.reason,
-    contextOrigin,
-    telemetry,
-  }
-
-  return {
-    id: input.stepId ?? `${input.planId}:step:${input.order + 1}`,
-    order: input.order,
-    entity,
-    capabilityId: capability.id,
-    action: plan.action,
-    status: "pending",
-    dependsOn: input.dependsOn ?? (input.order === 0 ? [] : [`${input.planId}:step:${input.order}`]),
-    durationMs: null,
-    result: null,
-    errorMessage: null,
-    plan,
-  }
-}
-
 function buildConfirmationMessage(steps: CosExecutionStep[]) {
   if (steps.length === 0) return null
   if (steps.length === 1) return getCosCapabilityConfirmationMessage(steps[0].action)
@@ -163,6 +66,8 @@ function buildConfirmationMessage(steps: CosExecutionStep[]) {
   const labels = steps.map((step) => `• ${step.plan.capability.title}`)
   return ["Antes de continuar, preciso da sua confirmação para:", ...labels, "", "Confirma esta ação?"].join("\n")
 }
+
+export { createStepPlanForCapability }
 
 function buildIntentConfirmationMessage(input: {
   capabilityPlan: CosCapabilityPlan

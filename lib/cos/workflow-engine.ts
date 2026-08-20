@@ -1,7 +1,7 @@
 import { executeCosExecutionPlan } from "@/lib/cos/executor"
 import { normalizeCosActionResult } from "@/lib/cos/action-result"
 import { getCosCapabilityLabel } from "@/lib/cos/capability-catalog"
-import { createStepPlanForCapability } from "@/lib/cos/execution-planner"
+import { createStepPlanForCapability } from "@/lib/cos/execution-step"
 import { buildCosPendingResumePayload, classifyCosPendingReply, createPendingInput, extractPendingInputFromMetadata, isCosPendingInputExpired, normalizeCosPendingInput, normalizeWorkflowStatus } from "@/lib/cos/pending-input"
 import type { Prisma } from "@prisma/client"
 import type {

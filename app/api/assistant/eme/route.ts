@@ -72,6 +72,8 @@ import { getEmeCreditCost } from "@/lib/eme-plans"
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { isCosV2RuntimeEnabled } from "@/lib/cos-v2/runtime-flag"
+import { handleCosV2Post } from "@/app/api/assistant/eme/v2-runtime"
 
 export const dynamic = "force-dynamic"
 const COS_PROCESSING_LEASE_MS = 30 * 60 * 1000
@@ -666,6 +668,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (isCosV2RuntimeEnabled()) return handleCosV2Post(request)
+
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {

@@ -13,7 +13,8 @@ export {
   listCosEntityModules,
 } from "@/lib/cos/capability-catalog"
 export { executeCosCapability, executeCosExecutionPlan } from "@/lib/cos/executor"
-export { createStepPlanForCapability, planCosExecution } from "@/lib/cos/execution-planner"
+export { planCosExecution } from "@/lib/cos/execution-planner"
+export { createStepPlanForCapability } from "@/lib/cos/execution-step"
 export {
   generateCosAiDialogueInterpretation,
 } from "@/lib/cos/ai-orchestrator"
