@@ -28,6 +28,9 @@ export type CosConversationSummary = {
   lastInteractionAt: string
 }
 
+export const COS_CONVERSATIONS_SYNC_EVENT = "eme:cos-conversations-sync"
+export const COS_CONVERSATIONS_REFRESH_EVENT = "eme:cos-conversations-refresh"
+
 export type CosResponseOption = {
   id: string
   actionId: string
@@ -154,6 +157,7 @@ type UseCosConversationsOptions = {
   bootstrapEnabled?: boolean
   source?: "cos_home" | "portal"
   workspaceContext?: Partial<CosWorkspaceContext> | null
+  initialConversationId?: string
 }
 
 type CosConversationCache = {
@@ -357,6 +361,7 @@ export function useCosConversations({
   bootstrapEnabled = true,
   source = "portal",
   workspaceContext,
+  initialConversationId = "",
 }: UseCosConversationsOptions) {
   const pathname = usePathname()
   const router = useRouter()
@@ -1004,6 +1009,10 @@ export function useCosConversations({
   }, [activeConversationId, conversation, conversations, pendingConfirmation, suppressedPendingConfirmation])
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent(COS_CONVERSATIONS_SYNC_EVENT, { detail: { conversations } }))
+  }, [conversations])
+
+  useEffect(() => {
     if (!bootstrapEnabled) {
       // Bootstrap hasn't run yet: keep the skeleton up. If it already ran,
       // this flag flipping off later (e.g. an unrelated loading state this
@@ -1032,7 +1041,9 @@ export function useCosConversations({
     loadConversations()
       .then((items) => {
         const preferredConversationId =
-          cached?.activeConversationId && items.some((item) => item.id === cached.activeConversationId)
+          initialConversationId && items.some((item) => item.id === initialConversationId)
+            ? initialConversationId
+            : cached?.activeConversationId && items.some((item) => item.id === cached.activeConversationId)
             ? cached.activeConversationId
             : autoOpenLatest
               ? (items[0]?.id ?? "")
@@ -1056,7 +1067,7 @@ export function useCosConversations({
           setIsBootstrappingConversation(false)
         }
       })
-  }, [autoOpenLatest, bootstrapEnabled, loadConversations, openConversation])
+  }, [autoOpenLatest, bootstrapEnabled, initialConversationId, loadConversations, openConversation])
 
   return {
     conversation,

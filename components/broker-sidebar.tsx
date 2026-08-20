@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   CreditCard,
   FileSignature,
-  History,
   LayoutDashboard,
   LogOut,
   Store,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react"
 
 import { useBrokerProfile } from "@/components/use-broker-profile"
+import { BrokerSidebarConversations } from "@/components/broker-sidebar-conversations"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -85,7 +85,6 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     items: [
       { label: "Plano", icon: CreditCard, href: "/corretor/plano" },
       { label: "Conta", icon: UserRound, href: "/corretor/conta" },
-      { label: "Histórico", icon: History, href: "/corretor/historico" },
     ],
   },
 ]
@@ -241,6 +240,14 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
             )
           })}
         </div>
+        <BrokerSidebarConversations
+          collapsed={collapsed}
+          isMobile={isMobile}
+          onCollapsedClick={toggleSidebar}
+          onNavigate={() => {
+            if (isMobile) setOpenMobile(false)
+          }}
+        />
       </div>
 
       <div className="mt-auto px-2.5 pb-2.5">

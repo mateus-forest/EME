@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   AlertCircle,
   CalendarDays,
@@ -25,7 +26,11 @@ import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
-import { AssistantCredits, useCosConversations } from "@/components/use-cos-conversations"
+import {
+  AssistantCredits,
+  COS_CONVERSATIONS_REFRESH_EVENT,
+  useCosConversations,
+} from "@/components/use-cos-conversations"
 import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
 import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
 import type { ContractRecord } from "@/lib/contracts-client"
@@ -60,6 +65,9 @@ type FinancialConfigResponse = {
 }
 
 export function BrokerPortal() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedConversationId = searchParams.get("conversa")?.trim() || ""
   const { properties, isLoading: isPropertiesLoading } = useBrokerProperties()
   const { profile, isLoading: isProfileLoading } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
@@ -92,6 +100,8 @@ export function BrokerPortal() {
     inputRef,
     setChatFeedback,
     createConversation,
+    loadConversations,
+    openConversation,
     sendCosMessage,
     confirmPendingAction,
     cancelPendingAction,
@@ -101,7 +111,26 @@ export function BrokerPortal() {
     assistantCredits,
     setAssistantCredits,
     source: "cos_home",
+    initialConversationId: requestedConversationId,
   })
+
+  useEffect(() => {
+    if (!requestedConversationId || requestedConversationId === activeConversationId || isBootstrappingConversation) return
+    void openConversation(requestedConversationId)
+  }, [activeConversationId, isBootstrappingConversation, openConversation, requestedConversationId])
+
+  useEffect(() => {
+    if (requestedConversationId || !activeConversationId || isBootstrappingConversation) return
+    router.replace(`/corretor?conversa=${encodeURIComponent(activeConversationId)}`, { scroll: false })
+  }, [activeConversationId, isBootstrappingConversation, requestedConversationId, router])
+
+  useEffect(() => {
+    function refreshConversations() {
+      void loadConversations()
+    }
+    window.addEventListener(COS_CONVERSATIONS_REFRESH_EVENT, refreshConversations)
+    return () => window.removeEventListener(COS_CONVERSATIONS_REFRESH_EVENT, refreshConversations)
+  }, [loadConversations])
 
   const activePropertiesCount = useMemo(
     () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
@@ -597,7 +626,8 @@ export function BrokerPortal() {
                     onNewConversation={async () => {
                       setPrompt("")
                       setChatFeedback("")
-                      await createConversation()
+                      const created = await createConversation()
+                      router.replace(`/corretor?conversa=${encodeURIComponent(created.id)}`, { scroll: false })
                     }}
                     disabled={isSending || isConversationLoading}
                     inputRef={inputRef}
