@@ -10,10 +10,18 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type SyntheticEvent,
+  type TransitionEvent,
 } from 'react'
 import { cn } from '@/lib/utils'
 
-type LoadingPhase = 'idle' | 'active' | 'exiting'
+type LoadingPhase = 'idle' | 'preparing' | 'playing' | 'holding' | 'exiting'
+
+type SearchVideoSource = {
+  src: string
+  width: number
+  height: number
+}
 
 type SearchLoadingContextValue = {
   startSearchLoading: () => void
@@ -33,7 +41,16 @@ const SearchLoadingContext = createContext<SearchLoadingContextValue>({
 })
 
 const MESSAGE_INTERVAL_MS = 1_800
-const EXIT_DURATION_MS = 700
+const MOBILE_VIDEO: SearchVideoSource = {
+  src: '/marketplace/videos/search-loading-mobile.mp4',
+  width: 2160,
+  height: 3840,
+}
+const DESKTOP_VIDEO: SearchVideoSource = {
+  src: '/marketplace/videos/search-loading-desktop.mp4',
+  width: 1280,
+  height: 720,
+}
 
 export function useMarketplaceSearchLoading() {
   return useContext(SearchLoadingContext)
@@ -61,19 +78,22 @@ export function MarketplaceSearchLink({
 export function CinematicSearchLoadingProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<LoadingPhase>('idle')
   const [messageIndex, setMessageIndex] = useState(0)
-  const [playbackKey, setPlaybackKey] = useState(0)
+  const [videoSource, setVideoSource] = useState<SearchVideoSource>(DESKTOP_VIDEO)
+  const [videoCanPlay, setVideoCanPlay] = useState(false)
   const [resultsReady, setResultsReady] = useState(false)
   const [videoEnded, setVideoEnded] = useState(false)
-  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const playbackStartedRef = useRef(false)
 
   const startSearchLoading = useCallback(() => {
-    if (exitTimer.current) clearTimeout(exitTimer.current)
-    exitTimer.current = null
+    const source = window.matchMedia('(max-width: 767px)').matches ? MOBILE_VIDEO : DESKTOP_VIDEO
+    playbackStartedRef.current = false
     setMessageIndex(0)
+    setVideoSource(source)
+    setVideoCanPlay(false)
     setResultsReady(false)
     setVideoEnded(false)
-    setPlaybackKey((current) => current + 1)
-    setPhase('active')
+    setPhase('preparing')
   }, [])
 
   const finishSearchLoading = useCallback(() => {
@@ -81,11 +101,11 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
   }, [])
 
   useEffect(() => {
-    if (phase === 'active' && resultsReady && videoEnded) setPhase('exiting')
+    if (phase !== 'idle' && phase !== 'exiting' && resultsReady && videoEnded) setPhase('exiting')
   }, [phase, resultsReady, videoEnded])
 
   useEffect(() => {
-    if (phase !== 'active') return
+    if (phase === 'idle' || phase === 'exiting') return
     const messageTimer = window.setInterval(() => {
       setMessageIndex((current) => (current + 1) % loadingMessages.length)
     }, MESSAGE_INTERVAL_MS)
@@ -93,55 +113,81 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
   }, [phase])
 
   useEffect(() => {
-    if (phase !== 'exiting') return
-    exitTimer.current = setTimeout(() => {
-      exitTimer.current = null
-      setPhase('idle')
-    }, EXIT_DURATION_MS)
-    return () => {
-      if (exitTimer.current) clearTimeout(exitTimer.current)
-      exitTimer.current = null
-    }
-  }, [phase])
+    if (phase !== 'preparing' || !videoCanPlay || playbackStartedRef.current) return
+    const frame = window.requestAnimationFrame(() => {
+      const video = videoRef.current
+      if (!video) return
+      playbackStartedRef.current = true
+      setPhase('playing')
+      void video.play()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [phase, videoCanPlay])
 
+  const sceneMounted = phase !== 'idle'
   useEffect(() => {
-    const visible = phase !== 'idle'
-    if (!visible) return
+    if (!sceneMounted) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [phase])
+  }, [sceneMounted])
+
+  function handleVideoCanPlay(event: SyntheticEvent<HTMLVideoElement>) {
+    if (phase !== 'preparing' || playbackStartedRef.current) return
+    const video = event.currentTarget
+    video.pause()
+    if (video.currentTime !== 0) video.currentTime = 0
+    setVideoCanPlay(true)
+  }
+
+  function handleVideoEnded() {
+    setVideoEnded(true)
+    setPhase((current) => current === 'idle' || current === 'exiting' ? current : 'holding')
+  }
+
+  function handleSceneTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget && event.propertyName === 'opacity' && phase === 'exiting') {
+      setPhase('idle')
+    }
+  }
 
   return (
     <SearchLoadingContext.Provider value={{ startSearchLoading, finishSearchLoading }}>
+      <link rel="preload" as="video" href={MOBILE_VIDEO.src} type="video/mp4" media="(max-width: 767px)" />
+      <link rel="preload" as="video" href={DESKTOP_VIDEO.src} type="video/mp4" media="(min-width: 768px)" />
       {children}
-      {phase !== 'idle' ? (
+      {sceneMounted ? (
         <div
           className={cn(
-            'fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-[#101712] transition-opacity duration-700 ease-out motion-reduce:transition-none',
+            'fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-[#101712] transition-opacity duration-700 ease-out',
             phase === 'exiting' ? 'opacity-0' : 'opacity-100',
           )}
+          onTransitionEnd={handleSceneTransitionEnd}
           role="status"
           aria-live="polite"
           aria-busy="true"
           aria-label={loadingMessages[messageIndex]}
         >
           <video
-            key={playbackKey}
+            ref={videoRef}
+            src={videoSource.src}
+            width={videoSource.width}
+            height={videoSource.height}
             autoPlay
             muted
             playsInline
             preload="auto"
-            onEnded={() => setVideoEnded(true)}
-            onError={() => setVideoEnded(true)}
-            className="absolute inset-0 h-full w-full object-cover"
+            onCanPlay={handleVideoCanPlay}
+            onCanPlayThrough={handleVideoCanPlay}
+            onEnded={handleVideoEnded}
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-200',
+              videoCanPlay ? 'opacity-100' : 'opacity-0',
+            )}
             aria-hidden="true"
-          >
-            <source src="/marketplace/videos/search-loading-mobile.mp4" media="(max-width: 767px)" type="video/mp4" />
-            <source src="/marketplace/videos/search-loading-desktop.mp4" type="video/mp4" />
-          </video>
+          />
 
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,15,10,.08)_0%,rgba(8,15,10,.04)_42%,rgba(8,15,10,.72)_100%)]" />
           <div className="absolute inset-x-0 bottom-[max(3rem,env(safe-area-inset-bottom))] px-6 text-center md:bottom-14 md:px-10">
