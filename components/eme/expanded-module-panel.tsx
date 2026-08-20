@@ -16,9 +16,9 @@ const MODAL_AR: Record<string, number> = {
   catalogo: 1478 / 971,
   "studio-ia": 1495 / 980,
   propostas: 1469 / 965,
-  contratos: 1483 / 962,
+  contratos: 1536 / 1024,
   agenda: 1452 / 941,
-  marketplace: 1293 / 880,
+  marketplace: 1522 / 1033,
 }
 const DEFAULT_AR = 1480 / 962
 
@@ -202,7 +202,7 @@ export function ExpandedModulePanel({
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Ver exemplo no Marketplace — Abrir demonstração"
-              className="absolute bottom-[4.4%] left-[62.9%] h-[8.7%] w-[24.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
+              className="absolute bottom-[3.2%] left-[64.1%] h-[10.7%] w-[23.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
             />
           ) : null}
         </motion.div>
@@ -299,11 +299,17 @@ export function ExpandedModulePanel({
           type="button"
           onClick={handleClose}
           aria-label="Fechar"
-          className="absolute right-0 top-0 z-10 hidden h-[14%] w-[12%] cursor-pointer md:block"
+          className="absolute right-0 top-0 z-10 hidden h-[14%] w-[12%] cursor-pointer items-start justify-end p-[10%] md:flex"
           initial={{ opacity: 0 }}
           animate={{ opacity: closing ? 0 : 1 }}
           transition={{ duration: 0.2, delay: closing ? 0 : 0.15 }}
-        />
+        >
+          {module.id === "contratos" ? (
+            <span className="flex size-11 items-center justify-center rounded-full border border-foreground/8 bg-white/95 text-foreground shadow-[0_10px_28px_rgba(22,34,27,0.12)]">
+              <X className="size-5" aria-hidden />
+            </span>
+          ) : null}
+        </motion.button>
       </motion.section>
     </>
   )
