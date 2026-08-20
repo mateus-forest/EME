@@ -7,6 +7,7 @@ import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import { LandingActivity } from "@/components/eme/landing-activity"
+import { LandingUpcomingFeatures } from "@/components/eme/landing-upcoming-features"
 import { LandingHeader } from "@/components/eme/landing-header"
 import { OrbitStage } from "@/components/eme/orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
@@ -155,7 +156,9 @@ export function EmeLandingScene({
         style={{ opacity: mounted ? 1 : 0 }}
       >
         {mounted && (
-          <OrbitStage
+      <LandingUpcomingFeatures />
+
+      <OrbitStage
             orbitAngle={angle}
             activeId={activeId}
             onHover={setActiveId}
