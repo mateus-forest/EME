@@ -5,7 +5,7 @@ import {
   listCosCapabilityCatalog,
 } from "@/lib/cos/capability-catalog"
 import type { CosCapabilityDescriptor, CosCapabilityId, CosConversationSnapshot, CosWorkspaceContext } from "@/lib/cos/types"
-import type { CosV2EntityType, CosV2Interpretation, CosV2Validation } from "@/lib/cos-v2/types"
+import { COS_V2_CREATED_ENTITY_TYPES, type CosV2EntityType, type CosV2Interpretation, type CosV2Validation } from "@/lib/cos-v2/types"
 
 const SCOPED_PREFIXES = ["lead.", "property.", "proposal.", "agenda."] as const
 
@@ -47,6 +47,46 @@ const ENTITY_ID_FIELDS: Record<CosV2EntityType, string> = {
 }
 
 const RESERVED_PAYLOAD_FIELDS = new Set(["brokerId", "userId", "confirm", "action", "capabilityId", "context", "workspace"])
+
+const REQUIRED_INPUT_ALIASES: Record<string, string[]> = {
+  name: ["name", "nome", "clientname", "personname"],
+  price: ["price", "value", "valor", "preco"],
+  client: ["client", "cliente", "lead", "person", "pessoa", "clientid", "leadid", "personname"],
+  property: ["property", "imovel", "propertyid", "publiccode"],
+  time: ["time", "hora", "horario"],
+}
+
+const CONTEXTUAL_UPDATE_CAPABILITIES: Partial<Record<string, CosCapabilityId>> = {
+  lead: "lead.update",
+  agenda: "agenda.update",
+}
+
+function normalizeInputField(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, "")
+}
+
+function isRequiredInput(field: string, descriptors: CosCapabilityDescriptor[]) {
+  const normalized = normalizeInputField(field)
+  return descriptors.some((descriptor) => descriptor.inputContract?.required.some((requirement) => {
+    const aliases = REQUIRED_INPUT_ALIASES[requirement] ?? [requirement]
+    return aliases.includes(normalized)
+  })) ?? false
+}
+
+function contextualContinuationCapability(input: {
+  interpretation: CosV2Interpretation
+  snapshot: CosConversationSnapshot
+  surface: "portal" | "cos_home"
+}) {
+  if (input.interpretation.turnType !== "correction" || input.interpretation.intendedAction || input.interpretation.steps.length > 0) return null
+  const latest = input.snapshot.recentResults[0]
+  if (!latest || latest.status !== "success") return null
+  const createdEntityType = COS_V2_CREATED_ENTITY_TYPES[latest.capabilityId]
+  const createdEntities = createdEntityType ? latest.entities.filter((entity) => entity.type === createdEntityType) : []
+  if (createdEntities.length !== 1) return null
+  const capabilityId = CONTEXTUAL_UPDATE_CAPABILITIES[createdEntities[0].type]
+  return capabilityId ? resolveCosV2Capability(capabilityId, input.surface) : null
+}
 
 export function isCosV2CapabilityId(value: string): value is CosCapabilityId {
   return SCOPED_PREFIXES.some((prefix) => value.startsWith(prefix)) && Boolean(getCosCapabilityDescriptorById(value as CosCapabilityId))
@@ -113,6 +153,7 @@ function missingDataIsAlreadyKnown(field: string, snapshot: CosConversationSnaps
 
 function buildPayload(input: {
   interpretation: CosV2Interpretation
+  descriptors: CosCapabilityDescriptor[]
   snapshot: CosConversationSnapshot
   workspace: CosWorkspaceContext | null
   knownIds: Set<string>
@@ -139,6 +180,25 @@ function buildPayload(input: {
     if (entityId && !payload[ENTITY_ID_FIELDS[reference.type]]) {
       payload[ENTITY_ID_FIELDS[reference.type]] = entityId
       evidence.push(`reference:${reference.type}:${entityId}`)
+    }
+  }
+
+  for (const descriptor of input.descriptors) {
+    const entityType: CosV2EntityType | null = descriptor.entity === "lead"
+      ? "client"
+      : descriptor.entity === "property"
+        ? "property"
+        : descriptor.entity === "agenda"
+          ? "appointment"
+          : descriptor.entity === "document" && descriptor.domain === "proposal"
+            ? "proposal"
+            : null
+    if (!entityType || !descriptor.requiresSelection || descriptor.id === "proposal.create") continue
+    const field = ENTITY_ID_FIELDS[entityType]
+    const entityId = activeEntityId({ type: entityType, snapshot: input.snapshot, workspace: input.workspace })
+    if (entityId && !payload[field]) {
+      payload[field] = entityId
+      evidence.push(`active_entity:${entityType}:${entityId}`)
     }
   }
 
@@ -170,59 +230,84 @@ export function validateCosV2Interpretation(input: {
   const security = evaluateCosDecisionSecurity({ message: input.message, attachments: input.attachments })
   if (security.flagged) errors.push(...security.reasons)
 
-  const requestedSteps = input.interpretation.steps.length > 0
-    ? input.interpretation.steps.map((step) => step.action)
-    : input.interpretation.intendedAction
-      ? [input.interpretation.intendedAction]
+  const continuationDescriptor = contextualContinuationCapability(input)
+  const interpretation: CosV2Interpretation = continuationDescriptor
+    ? {
+        ...input.interpretation,
+        objective: { kind: "execute", summary: input.interpretation.objective.summary },
+        intendedAction: continuationDescriptor.id,
+        steps: [{ action: continuationDescriptor.id, goal: input.interpretation.objective.summary }],
+      }
+    : input.interpretation
+  if (continuationDescriptor) evidence.push(`contextual_continuation:${continuationDescriptor.id}`)
+
+  const requestedSteps = interpretation.steps.length > 0
+    ? interpretation.steps.map((step) => step.action)
+    : interpretation.intendedAction
+      ? [interpretation.intendedAction]
       : []
   const descriptors = requestedSteps.map((value) => resolveCosV2Capability(value, input.surface))
   if (requestedSteps.some((_, index) => !descriptors[index])) errors.push("capability_not_in_v2_registry_scope")
 
-  const referencedDescriptor = resolveCosV2Capability(input.interpretation.intendedAction, input.surface)
-  const isOperational = input.interpretation.objective.kind === "query" || input.interpretation.objective.kind === "execute"
-  const operationalDescriptors = isOperational ? descriptors.filter((item): item is CosCapabilityDescriptor => Boolean(item)) : []
+  const referencedDescriptor = resolveCosV2Capability(interpretation.intendedAction, input.surface) ?? continuationDescriptor
+  const validDescriptors = descriptors.filter((item): item is CosCapabilityDescriptor => Boolean(item))
+  const isOperationalObjective = interpretation.objective.kind === "query" || interpretation.objective.kind === "execute"
+  const isOperationalTurn = ["execution", "correction", "selection", "confirmation"].includes(interpretation.turnType)
+  const canExecuteTurn = isOperationalTurn && interpretation.objective.kind !== "answer" && (isOperationalObjective || validDescriptors.length > 0)
+  const operationalDescriptors = canExecuteTurn ? validDescriptors : []
 
-  if (input.interpretation.turnType === "question" && input.interpretation.objective.kind === "execute") {
+  if (interpretation.turnType === "question" && interpretation.objective.kind === "execute") {
     errors.push("question_cannot_start_execution")
   }
-  if (input.interpretation.turnType === "context" && isOperational) {
+  if (interpretation.turnType === "context" && isOperationalObjective) {
     errors.push("context_cannot_start_execution")
   }
-  if (input.interpretation.turnType === "confirmation") {
+  if (interpretation.turnType === "confirmation") {
     const pendingCapability = input.snapshot.pendingInput?.capabilityId
     if (input.snapshot.pendingInput?.field !== "confirmation") errors.push("confirmation_without_pending_operation")
     if (pendingCapability && referencedDescriptor?.id !== pendingCapability) errors.push("confirmation_capability_mismatch")
   }
-  if (input.interpretation.objective.kind === "query" && operationalDescriptors.some((descriptor) => descriptor.mutatesData)) {
+  if (interpretation.objective.kind === "query" && validDescriptors.some((descriptor) => descriptor.mutatesData)) {
     errors.push("query_cannot_execute_mutation")
   }
-  if (isOperational && input.interpretation.source === "openai" && input.interpretation.confidence < 0.62) {
+  if (canExecuteTurn && interpretation.source === "openai" && interpretation.confidence < 0.62) {
     errors.push("confidence_below_execution_threshold")
   }
   if (operationalDescriptors.length > 4) errors.push("too_many_steps")
 
   const ids = knownEntityIds(input.snapshot, input.workspace)
-  const missingData = input.interpretation.missingData.filter((field) => !missingDataIsAlreadyKnown(field, input.snapshot, input.workspace))
+  const unresolvedMissingData = interpretation.missingData.filter((field) => !missingDataIsAlreadyKnown(field, input.snapshot, input.workspace))
+  const usesExplicitInputContracts = validDescriptors.length > 0 && validDescriptors.every((descriptor) => Boolean(descriptor.inputContract))
+  const missingData = usesExplicitInputContracts
+    ? unresolvedMissingData.filter((field) => isRequiredInput(field, validDescriptors))
+    : unresolvedMissingData
+  const primaryOperationalDescriptor = operationalDescriptors[0]
   const adjusted: CosV2Interpretation = {
-    ...input.interpretation,
+    ...interpretation,
+    objective: primaryOperationalDescriptor
+      ? {
+          kind: primaryOperationalDescriptor.mutatesData ? "execute" : "query",
+          summary: interpretation.objective.summary,
+        }
+      : interpretation.objective,
     missingData,
-    clarificationQuestion: input.interpretation.missingData.length > 0 && missingData.length === 0
+    clarificationQuestion: interpretation.missingData.length > 0 && missingData.length === 0
       ? null
-      : input.interpretation.clarificationQuestion,
-    entities: input.interpretation.entities.map((entity) => ({
+      : interpretation.clarificationQuestion,
+    entities: interpretation.entities.map((entity) => ({
       ...entity,
       id: entity.id && ids.has(entity.id) ? entity.id : null,
     })),
-    references: input.interpretation.references.map((reference) => ({
+    references: interpretation.references.map((reference) => ({
       ...reference,
       id: reference.id && ids.has(reference.id) ? reference.id : null,
     })),
   }
-  if (input.interpretation.entities.some((entity) => entity.id && !ids.has(entity.id)) || input.interpretation.references.some((reference) => reference.id && !ids.has(reference.id))) {
+  if (interpretation.entities.some((entity) => entity.id && !ids.has(entity.id)) || interpretation.references.some((reference) => reference.id && !ids.has(reference.id))) {
     evidence.push("untrusted_entity_ids_removed")
   }
 
-  const built = buildPayload({ interpretation: adjusted, snapshot: input.snapshot, workspace: input.workspace, knownIds: ids })
+  const built = buildPayload({ interpretation: adjusted, descriptors: operationalDescriptors, snapshot: input.snapshot, workspace: input.workspace, knownIds: ids })
   evidence.push(...built.evidence)
   evidence.push(...operationalDescriptors.map((descriptor) => `registry:${descriptor.id}`))
   if (input.workspace) built.payload.workspace = input.workspace

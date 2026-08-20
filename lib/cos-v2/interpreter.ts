@@ -55,6 +55,7 @@ const turnSchema = z.object({
   confidence: z.number().min(0).max(1),
   clarificationQuestion: z.string().trim().min(1).max(240).nullable(),
   responseFocus: z.enum(["overview", "how_to", "comparison", "status", "direct"]),
+  helpTopic: z.enum(["first_steps", "using_cos", "registering_properties", "managing_clients", "proposals", "general"]).nullable(),
 })
 
 export type CosV2InterpretationAudit = {
@@ -89,6 +90,7 @@ function baseInterpretation(input: Partial<CosV2Interpretation> & Pick<CosV2Inte
     confidence: input.confidence ?? 1,
     clarificationQuestion: input.clarificationQuestion ?? null,
     responseFocus: input.responseFocus ?? "direct",
+    helpTopic: input.helpTopic ?? null,
     source: input.source,
   }
 }
@@ -101,12 +103,14 @@ function domainForCapabilityId(capabilityId: string): CosV2Domain {
   return "general"
 }
 
-function structuredHelpDomain(action: string) {
+function structuredHelp(action: string) {
   const normalized = action.trim().toLowerCase()
-  if (normalized === "help_manage_clients") return "clients" as const
-  if (normalized === "help_register_properties") return "properties" as const
-  if (normalized === "help_contracts_proposals") return "proposals" as const
-  if (["help_first_steps", "help_use_cos", "help_general_question"].includes(normalized)) return "general" as const
+  if (normalized === "help_first_steps") return { domain: "general", topic: "first_steps" } as const
+  if (normalized === "help_use_cos") return { domain: "general", topic: "using_cos" } as const
+  if (normalized === "help_register_properties") return { domain: "properties", topic: "registering_properties" } as const
+  if (normalized === "help_manage_clients") return { domain: "clients", topic: "managing_clients" } as const
+  if (normalized === "help_contracts_proposals") return { domain: "proposals", topic: "proposals" } as const
+  if (normalized === "help_general_question") return { domain: "general", topic: "general" } as const
   return null
 }
 
@@ -182,14 +186,15 @@ function deterministicInterpretation(input: CosV2TurnInput): CosV2Interpretation
   }
 
   if (input.structuredAction) {
-    const helpDomain = structuredHelpDomain(input.structuredAction)
-    if (helpDomain) {
+    const help = structuredHelp(input.structuredAction)
+    if (help) {
       return baseInterpretation({
         turnType: "question",
         source: "structured_action",
-        objective: { kind: "answer", summary: `Explicar brevemente ${helpDomain}.` },
-        primaryDomain: helpDomain,
-        responseFocus: "overview",
+        objective: { kind: "answer", summary: `Responder especificamente sobre ${help.topic}.` },
+        primaryDomain: help.domain,
+        responseFocus: "how_to",
+        helpTopic: help.topic,
       })
     }
     const descriptor = resolveCosV2Capability(input.structuredAction, input.surface)
@@ -233,6 +238,8 @@ function promptForTurn(input: CosV2TurnInput, context: CosV2CompactContext) {
     mutatesData: capability.mutatesData,
     requiresConfirmation: capability.requiresConfirmation,
     requiresSelection: capability.requiresSelection,
+    requiredInputs: capability.inputContract?.required ?? [],
+    optionalInputs: capability.inputContract?.optional ?? [],
   }))
   return JSON.stringify({
     task: [
@@ -244,8 +251,11 @@ function promptForTurn(input: CosV2TurnInput, context: CosV2CompactContext) {
       "Para 'tenho um cliente interessado em uma sala comercial', mantenha contexto comercial e, sem cliente ativo, pergunte somente 'Qual cliente?'.",
       "Use somente ids de entidades presentes no contexto. Nunca invente ids.",
       "Use intendedAction e steps somente com ids da lista de capabilities.",
+      "Use o inputContract da capability como autoridade: missingData contém somente requiredInputs ausentes; optionalInputs nunca impedem execução.",
+      "Se os requiredInputs estiverem presentes, use turnType=execution e objective.kind=execute/query para deixar o handler validar e executar.",
+      "Se a última ação concluída criou uma única entidade e a nova mensagem acrescenta ou corrige dados dela de forma inequívoca, trate como correction e escolha a capability de atualização registrada; não reabra o cadastro concluído para pedir opcionais.",
+      "Em perguntas de ajuda, preencha helpTopic com o assunto exato: first_steps, using_cos, registering_properties, managing_clients, proposals ou general. Tópicos diferentes exigem respostas diferentes.",
       "Em pedido composto simples, ordene até quatro steps. Em correção, preserve a operação pendente quando ela for o alvo.",
-      "missingData contém apenas o mínimo realmente necessário ao próximo passo.",
     ],
     message: input.message,
     context,

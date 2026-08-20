@@ -1,6 +1,6 @@
 import { retrieveCosKnowledge, selectCosKnowledgeFacts } from "@/lib/cos/knowledge/retrieval"
 import type { CosCapabilityId, CosConversationDomain, CosDialogueDecision, CosKnowledgeContext } from "@/lib/cos/types"
-import type { CosV2Domain, CosV2TurnType } from "@/lib/cos-v2/types"
+import type { CosV2Domain, CosV2HelpTopic, CosV2TurnType } from "@/lib/cos-v2/types"
 
 const DOMAIN_MAP: Record<CosV2Domain, CosConversationDomain> = {
   clients: "lead",
@@ -8,6 +8,14 @@ const DOMAIN_MAP: Record<CosV2Domain, CosConversationDomain> = {
   proposals: "proposal",
   agenda: "agenda",
   general: "general",
+}
+
+const HELP_KNOWLEDGE: Partial<Record<CosV2HelpTopic, { capabilityId: CosCapabilityId; documentIds: string[] }>> = {
+  first_steps: { capabilityId: "help.first_steps", documentIds: ["eme", "cos"] },
+  using_cos: { capabilityId: "help.use_cos", documentIds: ["cos", "capacidades-cos"] },
+  registering_properties: { capabilityId: "help.register_properties", documentIds: ["imoveis"] },
+  managing_clients: { capabilityId: "help.manage_clients", documentIds: ["clientes"] },
+  proposals: { capabilityId: "help.contracts_proposals", documentIds: ["propostas"] },
 }
 
 function knowledgeDecision(input: {
@@ -47,15 +55,18 @@ export async function retrieveCosV2Knowledge(input: {
   secondaryDomains?: CosV2Domain[]
   turnType?: CosV2TurnType
   capabilityId?: CosCapabilityId | null
+  helpTopic?: CosV2HelpTopic | null
 }) {
+  const helpKnowledge = input.helpTopic ? HELP_KNOWLEDGE[input.helpTopic] : null
   return retrieveCosKnowledge({
     message: input.message,
     decision: knowledgeDecision({
       domain: input.domain ?? "general",
       secondaryDomains: input.secondaryDomains,
       turnType: input.turnType,
-      capabilityId: input.capabilityId,
+      capabilityId: helpKnowledge?.capabilityId ?? input.capabilityId,
     }),
+    filters: helpKnowledge?.documentIds.length ? { documentIds: helpKnowledge.documentIds } : undefined,
   })
 }
 

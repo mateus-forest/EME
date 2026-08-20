@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test"
 
 import { cosGoldenV1Conversations, COS_GOLDEN_V1_METADATA } from "@/lib/cos/evals/conversations/golden-v1"
 import { resolveCosV2Capability, validateCosV2Interpretation } from "@/lib/cos-v2/capabilities"
-import { buildCosV2ContextResponse, getCosV2DomainOverview } from "@/lib/cos-v2/presentation"
+import { retrieveCosV2Knowledge } from "@/lib/cos-v2/knowledge"
+import { buildCosV2ContextResponse, getCosV2DomainOverview, getCosV2HelpAnswer } from "@/lib/cos-v2/presentation"
 import type { CosConversationSnapshot } from "@/lib/cos/types"
 import type { CosV2Interpretation } from "@/lib/cos-v2/types"
 
@@ -48,6 +49,7 @@ function interpretation(overrides: Partial<CosV2Interpretation> = {}): CosV2Inte
     confidence: 0.95,
     clarificationQuestion: null,
     responseFocus: "direct",
+    helpTopic: null,
     source: "openai",
     ...overrides,
   }
@@ -180,6 +182,23 @@ test("consulta não pode transformar capability mutável em operação escondida
   expect(validated.errors).toContain("query_cannot_execute_mutation")
 })
 
+test("resposta explicativa nunca é convertida em execução por um action sugerido", () => {
+  const validated = validateCosV2Interpretation({
+    message: "Como cadastro um cliente?",
+    interpretation: interpretation({
+      objective: { kind: "answer", summary: "Explicar cadastro de cliente." },
+      responseFocus: "how_to",
+      helpTopic: "managing_clients",
+    }),
+    surface: "portal",
+    snapshot: snapshot(),
+    workspace: null,
+  })
+
+  expect(validated.accepted).toBe(true)
+  expect(validated.capabilityIds).toEqual([])
+})
+
 test("pergunta e declaração de contexto nunca iniciam execução escondida", () => {
   const question = validateCosV2Interpretation({
     message: "Você consegue cadastrar um cliente?",
@@ -229,4 +248,130 @@ test("turno de contexto pergunta somente a entidade que falta", () => {
 
   expect(response.text).toBe("Qual cliente?")
   expect(response.pending).toBeUndefined()
+})
+
+test("contratos de entrada distinguem requisitos reais de dados opcionais", () => {
+  expect(resolveCosV2Capability("lead.create", "portal")?.inputContract).toEqual(expect.objectContaining({ required: ["name"] }))
+  expect(resolveCosV2Capability("property.create", "portal")?.inputContract).toEqual(expect.objectContaining({ required: ["price"] }))
+  expect(resolveCosV2Capability("proposal.create", "portal")?.inputContract).toEqual(expect.objectContaining({ required: ["client", "property"] }))
+  expect(resolveCosV2Capability("agenda.create", "portal")?.inputContract).toEqual(expect.objectContaining({ required: ["time"] }))
+})
+
+test("dados opcionais sugeridos pela IA não bloqueiam uma execução válida", () => {
+  const validated = validateCosV2Interpretation({
+    message: "Cadastre um cliente chamado Marcos.",
+    interpretation: interpretation({
+      objective: { kind: "context", summary: "Cadastrar Marcos." },
+      providedData: [{ field: "name", value: "Marcos" }],
+      missingData: ["phone", "email", "cpf", "address", "more_context"],
+      clarificationQuestion: "Qual o telefone e os demais dados?",
+    }),
+    surface: "portal",
+    snapshot: snapshot(),
+    workspace: null,
+  })
+
+  expect(validated.accepted).toBe(true)
+  expect(validated.capabilityIds).toEqual(["lead.create"])
+  expect(validated.interpretation.objective.kind).toBe("execute")
+  expect(validated.interpretation.missingData).toEqual([])
+  expect(validated.interpretation.clarificationQuestion).toBeNull()
+  expect(validated.payload.name).toBe("Marcos")
+})
+
+test("requisito ausente continua com o handler em vez de coletar opcionais", () => {
+  const validated = validateCosV2Interpretation({
+    message: "Crie um imóvel em rascunho.",
+    interpretation: interpretation({
+      primaryDomain: "properties",
+      intendedAction: "property.create",
+      steps: [{ action: "property.create", goal: "Criar imóvel" }],
+      missingData: ["price", "city", "neighborhood", "description"],
+      clarificationQuestion: "Qual o valor e o endereço completo?",
+    }),
+    surface: "portal",
+    snapshot: snapshot(),
+    workspace: null,
+  })
+
+  expect(validated.capabilityIds).toEqual(["property.create"])
+  expect(validated.interpretation.missingData).toEqual(["price"])
+})
+
+test("complemento inequívoco atualiza a entidade recém-criada", () => {
+  const activeLead = {
+    type: "lead" as const,
+    id: "lead-marcos",
+    label: "Marcos",
+    source: "execution" as const,
+    lastMentionedAt: NOW,
+    confidence: 1,
+    evidence: "lead.create:completed",
+  }
+  const recentCreation = {
+    capabilityId: "lead.create" as const,
+    action: "createLead" as const,
+    status: "success" as const,
+    entities: [
+      activeLead,
+      {
+        type: "property" as const,
+        id: "property-related",
+        label: "Imóvel relacionado",
+        source: "execution" as const,
+        lastMentionedAt: NOW,
+        confidence: 1,
+        evidence: "lead.create:linked",
+      },
+    ],
+    selectionSetId: null,
+    metadata: { leadId: activeLead.id },
+    executedAt: NOW,
+  }
+  const validated = validateCosV2Interpretation({
+    message: "O telefone dele é 54999980754.",
+    interpretation: interpretation({
+      turnType: "correction",
+      objective: { kind: "context", summary: "Complementar o telefone do cliente recém-criado." },
+      intendedAction: null,
+      steps: [],
+      providedData: [{ field: "phone", value: "54999980754" }],
+    }),
+    surface: "portal",
+    snapshot: snapshot({
+      activeEntities: { lead: activeLead },
+      recentEntities: [activeLead],
+      recentResults: [recentCreation],
+      lastExecution: recentCreation,
+    }),
+    workspace: null,
+  })
+
+  expect(validated.capabilityIds).toEqual(["lead.update"])
+  expect(validated.payload.leadId).toBe("lead-marcos")
+  expect(validated.payload.phone).toBe("54999980754")
+  expect(validated.evidence).toContain("contextual_continuation:lead.update")
+})
+
+test("ajuda usa respostas específicas por tópico", () => {
+  const firstSteps = getCosV2HelpAnswer("first_steps")
+  const usingCos = getCosV2HelpAnswer("using_cos")
+  const properties = getCosV2HelpAnswer("registering_properties")
+
+  expect(new Set([firstSteps, usingCos, properties]).size).toBe(3)
+  expect(firstSteps).toContain("começar no EME")
+  expect(usingCos).toContain("linguagem natural")
+  expect(properties).toContain("importação/IA")
+  expect(properties).toContain("rascunho")
+})
+
+test("Knowledge recupera somente os capítulos do tópico de ajuda", async () => {
+  const [firstSteps, properties] = await Promise.all([
+    retrieveCosV2Knowledge({ message: "Primeiros passos", domain: "general", turnType: "question", helpTopic: "first_steps" }),
+    retrieveCosV2Knowledge({ message: "Como cadastrar imóveis?", domain: "properties", turnType: "question", helpTopic: "registering_properties" }),
+  ])
+
+  expect(firstSteps.selectedDocuments.length).toBeGreaterThan(0)
+  expect(firstSteps.selectedDocuments.every((document) => ["eme", "cos"].includes(document.id))).toBe(true)
+  expect(properties.selectedDocuments.map((document) => document.id)).toEqual(["imoveis"])
 })

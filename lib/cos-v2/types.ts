@@ -11,9 +11,24 @@ export const COS_V2_TURN_TYPES = [
 ] as const
 
 export const COS_V2_DOMAINS = ["clients", "properties", "proposals", "agenda", "general"] as const
+export const COS_V2_HELP_TOPICS = [
+  "first_steps",
+  "using_cos",
+  "registering_properties",
+  "managing_clients",
+  "proposals",
+  "general",
+] as const
+export const COS_V2_CREATED_ENTITY_TYPES: Partial<Record<CosCapabilityId, CosConversationSnapshot["recentEntities"][number]["type"]>> = {
+  "lead.create": "lead",
+  "property.create": "property",
+  "proposal.create": "proposal",
+  "agenda.create": "agenda",
+}
 
 export type CosV2TurnType = (typeof COS_V2_TURN_TYPES)[number]
 export type CosV2Domain = (typeof COS_V2_DOMAINS)[number]
+export type CosV2HelpTopic = (typeof COS_V2_HELP_TOPICS)[number]
 export type CosV2ObjectiveKind = "answer" | "query" | "execute" | "context"
 export type CosV2EntityType = "client" | "property" | "proposal" | "appointment"
 
@@ -61,6 +76,7 @@ export type CosV2Interpretation = {
   confidence: number
   clarificationQuestion: string | null
   responseFocus: "overview" | "how_to" | "comparison" | "status" | "direct"
+  helpTopic: CosV2HelpTopic | null
   source: "structured_action" | "pending" | "openai"
 }
 
@@ -93,6 +109,11 @@ export type CosV2CompactContext = {
     status: string
     entityIds: string[]
   }>
+  recentCompletedCreation: {
+    capabilityId: string
+    entityType: string
+    entityId: string
+  } | null
   workspace: {
     page: string
     entity: string

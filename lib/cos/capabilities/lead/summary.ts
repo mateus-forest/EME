@@ -22,7 +22,7 @@ function parseLeadStatusFromText(message: string): LeadStatus {
   return LeadStatus.NEW
 }
 
-export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput }) => {
+export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput, context }) => {
   const pendingLeadData = pendingInput?.action === "createLead" ? pendingInput.parsedData ?? {} : {}
   const extracted = extractClientIdentity(message)
   const name =
@@ -50,7 +50,7 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
     })
   }
 
-  if (!phone) {
+  if (!phone && context?.runtimeVersion !== "v2") {
     const pending = createPendingInput({
       field: "phone",
       action: "createLead",
@@ -66,22 +66,24 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
   }
 
   const requestedStatus = parseLeadStatusFromText(message)
-  const existingLead = await prisma.lead.findFirst({
-    where: { brokerId, OR: [{ phone }, { whatsapp: phone }] },
-    select: { id: true },
-    orderBy: { updatedAt: "desc" },
-  })
+  const existingLead = phone
+    ? await prisma.lead.findFirst({
+        where: { brokerId, OR: [{ phone }, { whatsapp: phone }] },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+      })
+    : null
 
   const lead = existingLead
     ? await prisma.lead.update({
         where: { id: existingLead.id },
-        data: { name, phone, whatsapp: phone, source: "assessor_eme", status: requestedStatus, message },
+        data: { name, phone: phone || null, whatsapp: phone || null, source: "assessor_eme", status: requestedStatus, message },
       })
     : await prisma.lead.create({
         data: {
           name,
-          phone,
-          whatsapp: phone,
+          phone: phone || null,
+          whatsapp: phone || null,
           source: "assessor_eme",
           status: requestedStatus,
           brokerId,
@@ -100,7 +102,7 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
 
   return createCosSuccessResult({
     response: existingLead ? "Esse lead já existia. Atualizei as informações." : `Lead ${name} cadastrado com sucesso.`,
-    metadata: json({ leadId: lead.id, phone, name, status: requestedStatus, updatedExisting: Boolean(existingLead) }),
+    metadata: json({ leadId: lead.id, phone: phone || null, name, status: requestedStatus, updatedExisting: Boolean(existingLead) }),
     leadId: lead.id,
   })
 }

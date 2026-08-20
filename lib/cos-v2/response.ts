@@ -13,7 +13,7 @@ import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import type { CosKnowledgeContext } from "@/lib/cos/types"
 import { getCosV2KnowledgeFacts } from "@/lib/cos-v2/knowledge"
-import { getCosV2DomainOverview } from "@/lib/cos-v2/presentation"
+import { getCosV2DomainOverview, getCosV2HelpAnswer } from "@/lib/cos-v2/presentation"
 import type { CosV2Interpretation } from "@/lib/cos-v2/types"
 
 export {
@@ -39,6 +39,7 @@ function compactFallbackAnswer(input: {
   knowledge: CosKnowledgeContext | null
   message: string
 }) {
+  if (input.interpretation.helpTopic) return getCosV2HelpAnswer(input.interpretation.helpTopic)
   if (input.interpretation.responseFocus === "overview") return getCosV2DomainOverview(input.interpretation.primaryDomain)
   const facts = getCosV2KnowledgeFacts(input.knowledge, input.message)
     .map((item) => sanitizeCosResponseText(item.fact))
@@ -57,13 +58,6 @@ export async function buildCosV2Answer(input: {
   knowledge: CosKnowledgeContext | null
   capabilityTitles: string[]
 }): Promise<CosResponseViewModel> {
-  if (input.interpretation.responseFocus === "overview") {
-    return buildCosSimpleResponseViewModel({
-      kind: "explanation",
-      text: getCosV2DomainOverview(input.interpretation.primaryDomain),
-    })
-  }
-
   const fallback = compactFallbackAnswer(input)
   try {
     const environment = getOpenAIEnv()
@@ -81,11 +75,13 @@ export async function buildCosV2Answer(input: {
         instructions: [
           "Responda em português do Brasil de forma direta, natural e curta.",
           "Use apenas os fatos e recursos fornecidos. Não copie trechos crus, não cite estruturas internas e não invente funcionalidades.",
+          "Quando helpTopic estiver preenchido, responda somente ao tópico indicado; não substitua a resposta por um resumo geral do EME.",
           "Não declare que uma operação foi executada. Termine com ajuda concreta apenas quando for útil.",
         ].join(" "),
         input: JSON.stringify({
           question: input.message,
           objective: input.interpretation.objective.summary,
+          helpTopic: input.interpretation.helpTopic,
           facts,
           availableResources: input.capabilityTitles,
         }),

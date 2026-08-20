@@ -21,6 +21,10 @@ export const propertyEntityModule: CosEntityModule = {
         mutatesData: true,
         requiresConfirmation: false,
         requiresSelection: false,
+        inputContract: {
+          required: ["price"],
+          optional: ["title", "city", "neighborhood", "type", "purpose", "area", "bedrooms", "bathrooms", "parkingSpots", "description", "images"],
+        },
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Encontrei um pedido para cadastrar um imóvel em rascunho. Deseja confirmar?",
       },

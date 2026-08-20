@@ -38,6 +38,10 @@ export const proposalEntityModule: CosEntityModule = {
         mutatesData: true,
         requiresConfirmation: false,
         requiresSelection: true,
+        inputContract: {
+          required: ["client", "property"],
+          optional: ["commercialTerms", "notes"],
+        },
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Posso gerar esta proposta agora e salvar em Documentos. Deseja confirmar?",
       },

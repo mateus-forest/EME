@@ -350,6 +350,10 @@ export type CosCapabilityDefinition = {
   mutatesData: boolean
   requiresConfirmation: boolean
   requiresSelection: boolean
+  inputContract?: {
+    required: string[]
+    optional: string[]
+  }
   surfaces: CosCapabilitySurface[]
   confirmationMessage?: string
   handler?: CosCapabilityHandler
@@ -641,6 +645,7 @@ export type CosNormalizedContext = {
     firstName: string | null
   }
   surface: CosCapabilitySurface
+  runtimeVersion?: "v1" | "v2"
   message: string
   workspace: CosWorkspaceContext | null
   workflow: CosWorkflow | null

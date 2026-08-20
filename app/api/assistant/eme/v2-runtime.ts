@@ -515,6 +515,7 @@ export async function handleCosV2Post(request: NextRequest) {
       secondaryDomains: validation.interpretation.secondaryDomains,
       turnType: validation.interpretation.turnType,
       capabilityId: validation.capabilityIds[0] ?? validation.referencedCapabilityId,
+      helpTopic: validation.interpretation.helpTopic,
     })
     const audit = interpretationResult.audit as unknown as Record<string, unknown>
     const validationAudit = {
@@ -624,6 +625,7 @@ export async function handleCosV2Post(request: NextRequest) {
       userId: user.id,
       actor: { firstName: getSafeFirstName(user.name) },
       surface,
+      runtimeVersion: "v2",
       message,
       workspace,
       workflow: continuesWorkflow ? activeWorkflow : null,

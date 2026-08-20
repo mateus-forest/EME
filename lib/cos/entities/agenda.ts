@@ -21,6 +21,10 @@ export const agendaEntityModule: CosEntityModule = {
         mutatesData: true,
         requiresConfirmation: false,
         requiresSelection: false,
+        inputContract: {
+          required: ["time"],
+          optional: ["date", "title", "type", "client", "property", "notes"],
+        },
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Posso criar este compromisso agora na sua agenda. Deseja confirmar?",
       },

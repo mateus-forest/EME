@@ -1,5 +1,5 @@
 import { getCosV2KnowledgeFacts } from "@/lib/cos-v2/knowledge"
-import type { CosV2CompactContext } from "@/lib/cos-v2/types"
+import { COS_V2_CREATED_ENTITY_TYPES, type CosV2CompactContext } from "@/lib/cos-v2/types"
 import type { CosAttachmentInput, CosConversationSnapshot, CosKnowledgeContext, CosPendingInput, CosWorkspaceContext } from "@/lib/cos/types"
 
 function record(value: unknown) {
@@ -25,6 +25,12 @@ export function buildCosV2CompactContext(input: {
 }): CosV2CompactContext {
   const latestResultData = record(input.snapshot.lastExecution?.metadata)
   const currentFilters = record(latestResultData.parsedData)
+  const latestResult = input.snapshot.recentResults[0]
+  const createdEntityType = latestResult ? COS_V2_CREATED_ENTITY_TYPES[latestResult.capabilityId] : null
+  const createdEntities = latestResult?.status === "success" && createdEntityType
+    ? latestResult.entities.filter((entity) => entity.type === createdEntityType)
+    : []
+  const latestCreationEntity = createdEntities.length === 1 ? createdEntities[0] : null
 
   return {
     recentMessages: input.snapshot.recentMessages
@@ -57,6 +63,13 @@ export function buildCosV2CompactContext(input: {
       status: result.status,
       entityIds: result.entities.map((entity) => entity.id).slice(0, 10),
     })),
+    recentCompletedCreation: latestCreationEntity && latestResult
+      ? {
+          capabilityId: latestResult.capabilityId,
+          entityType: latestCreationEntity.type,
+          entityId: latestCreationEntity.id,
+        }
+      : null,
     workspace: input.workspace
       ? {
           page: input.workspace.page,

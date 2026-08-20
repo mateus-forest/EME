@@ -5,7 +5,7 @@ import {
   sanitizeCosResponseText,
 } from "@/lib/cos/response-view-model"
 import type { CosExecutionPlan, CosExecutionPlanResult } from "@/lib/cos/types"
-import type { CosV2Interpretation } from "@/lib/cos-v2/types"
+import type { CosV2HelpTopic, CosV2Interpretation } from "@/lib/cos-v2/types"
 
 const DOMAIN_OVERVIEWS: Record<CosV2Interpretation["primaryDomain"], string> = {
   clients: "Clientes é onde você organiza seus contatos e negociações. Posso ajudar a cadastrar, localizar, atualizar informações, acompanhar histórico e relacionar imóveis e documentos.",
@@ -15,8 +15,21 @@ const DOMAIN_OVERVIEWS: Record<CosV2Interpretation["primaryDomain"], string> = {
   general: "O EME conecta clientes, imóveis, propostas e compromissos no mesmo fluxo. Diga por onde quer começar e eu ajudo com a próxima ação.",
 }
 
+const HELP_ANSWERS: Record<CosV2HelpTopic, string> = {
+  first_steps: "Para começar no EME, revise sua conta e segurança, cadastre os primeiros clientes, adicione seus imóveis e organize os compromissos. Depois, você pode navegar pelas áreas ou pedir ao COS a próxima tarefa em linguagem natural.",
+  using_cos: "Converse com o COS em linguagem natural e diga o objetivo, por exemplo: “cadastre a Marina”, “busque imóveis até 800 mil” ou “agende uma visita amanhã às 15h”. Ele usa o contexto, pergunta só o indispensável e pede confirmação quando a ação é sensível.",
+  registering_properties: "Você pode cadastrar imóveis pela área de Imóveis, por importação/IA ou pedindo ao COS para criar um rascunho em linguagem natural. No COS, informe o valor; tipo, localização, características e fotos podem ser complementados depois, antes da publicação.",
+  managing_clients: "Clientes é onde você organiza seus contatos e negociações. Posso ajudar a cadastrar, localizar, atualizar informações, acompanhar histórico e relacionar imóveis e documentos.",
+  proposals: "Propostas reúne as condições comerciais apresentadas aos clientes. Posso consultar as propostas existentes ou criar um rascunho quando o cliente e o imóvel estiverem identificados.",
+  general: DOMAIN_OVERVIEWS.general,
+}
+
 export function getCosV2DomainOverview(domain: CosV2Interpretation["primaryDomain"]) {
   return DOMAIN_OVERVIEWS[domain]
+}
+
+export function getCosV2HelpAnswer(topic: CosV2HelpTopic) {
+  return HELP_ANSWERS[topic]
 }
 
 function canonicalMissingQuestion(missingData: string[]) {

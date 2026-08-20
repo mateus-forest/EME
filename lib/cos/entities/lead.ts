@@ -21,6 +21,10 @@ export const leadEntityModule: CosEntityModule = {
         mutatesData: true,
         requiresConfirmation: false,
         requiresSelection: false,
+        inputContract: {
+          required: ["name"],
+          optional: ["phone", "email", "cpf", "address", "source", "status", "interest"],
+        },
         surfaces: ["portal", "cos_home", "whatsapp"],
         confirmationMessage: "Posso cadastrar ou atualizar este cliente agora. Deseja confirmar?",
       },

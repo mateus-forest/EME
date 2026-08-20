@@ -64,6 +64,7 @@ export function createCosNormalizedContext(input: {
     firstName?: string | null
   }
   surface: CosNormalizedContext["surface"]
+  runtimeVersion?: CosNormalizedContext["runtimeVersion"]
   message: string
   workspace: CosWorkspaceContext | null
   workflow: CosWorkflow | null
@@ -80,6 +81,7 @@ export function createCosNormalizedContext(input: {
       firstName: input.actor?.firstName ?? null,
     },
     surface: input.surface,
+    runtimeVersion: input.runtimeVersion,
     message: input.message,
     workspace: input.workspace,
     workflow: input.workflow,
