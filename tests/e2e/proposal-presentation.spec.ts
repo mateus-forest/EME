@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
 
-import { sanitizeProposalDocumentContent, sanitizeProposalDisplayText } from "@/lib/proposal-template"
+import { buildProposalHtml, sanitizeProposalDocumentContent, sanitizeProposalDisplayText } from "@/lib/proposal-template"
 
 async function mockBrokerSession(page: Page) {
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { id: "user-1", name: "Corretor Teste", email: "corretor@example.com", role: "BROKER", brokerId: "broker-1", agencyId: null } } }))
@@ -20,6 +20,153 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
     expect(sanitized).not.toContain("IMPORTANTE")
     expect(sanitized).not.toContain("intencao operacional")
     expect(sanitized).not.toContain("Arquivos anexados")
+  })
+
+  test("mantém imóvel, valor e condições no documento gerado", () => {
+    const html = buildProposalHtml({
+      lead: { name: "Marina Lopes", phone: "11999999999", email: "marina@example.com" },
+      property: {
+        id: "property-1",
+        publicCode: 42,
+        title: "Apartamento Central",
+        neighborhood: "Centro",
+        city: "São Paulo",
+        type: "APARTMENT",
+        purpose: "SALE",
+        price: 825_000_00,
+        area: "82 m²",
+        bedrooms: 3,
+        parkingSpots: 2,
+      },
+      broker: { name: "Corretor Teste", phone: "11988887777", email: "corretor@example.com", creci: "12345" },
+      conditions: {
+        entry: "R$ 165.000,00",
+        installments: "24 parcelas",
+        paymentMethod: "Financiamento bancário",
+        notes: "Entrega das chaves após a quitação da entrada.",
+        validity: "10 dias",
+      },
+    })
+
+    const readableHtml = html.replace(/\u00a0/g, " ")
+    expect(readableHtml).toContain("Apartamento Central")
+    expect(readableHtml).toContain("R$ 825.000,00")
+    expect(html).toContain("R$ 165.000,00")
+    expect(html).toContain("24 parcelas")
+    expect(html).toContain("Financiamento bancário")
+    expect(html).toContain("Entrega das chaves após a quitação da entrada.")
+    expect(html).toContain("10 dias")
+  })
+
+  test("expõe imóvel e condições, envia o payload completo e reabre a proposta", async ({ page }) => {
+    await mockBrokerSession(page)
+    let createdDocument: Record<string, unknown> | null = null
+    let submittedPayload: Record<string, unknown> | null = null
+
+    await page.route("**/api/brokers/documents*", async (route) => {
+      if (route.request().method() === "POST") {
+        submittedPayload = route.request().postDataJSON() as Record<string, unknown>
+        const content = buildProposalHtml({
+          lead: { name: String(submittedPayload.clientName), phone: String(submittedPayload.clientPhone), email: String(submittedPayload.clientEmail) },
+          property: {
+            id: String(submittedPayload.propertyCode),
+            title: String(submittedPayload.propertyTitle),
+            neighborhood: String(submittedPayload.propertyNeighborhood),
+            city: String(submittedPayload.propertyCity),
+            type: String(submittedPayload.propertyType),
+            purpose: "SALE",
+            price: 810_000_00,
+            area: String(submittedPayload.propertyArea),
+            bedrooms: Number(submittedPayload.propertyBedrooms),
+            parkingSpots: Number(submittedPayload.propertyParkingSpots),
+          },
+          broker: { name: "Corretor Teste", phone: "11999999999", email: "corretor@example.com", creci: "12345" },
+          conditions: {
+            entry: String(submittedPayload.entry),
+            installments: String(submittedPayload.installments),
+            paymentMethod: String(submittedPayload.paymentMethod),
+            notes: String(submittedPayload.conditions),
+            validity: String(submittedPayload.validity),
+          },
+        })
+        createdDocument = {
+          id: "proposal-created",
+          type: "proposal",
+          title: "Proposta Marina + Apartamento Central",
+          content,
+          status: "generated",
+          leadId: "lead-1",
+          propertyId: "property-1",
+          leadName: "Marina Lopes",
+          propertyTitle: "Apartamento Central",
+          createdAt: new Date().toISOString(),
+        }
+        await route.fulfill({ status: 201, json: { document: createdDocument } })
+        return
+      }
+
+      await route.fulfill({ json: { documents: createdDocument ? [createdDocument] : [] } })
+    })
+    await page.route("**/api/brokers/leads", (route) => route.fulfill({ json: { leads: [{ id: "lead-1", name: "Marina Lopes", phone: "11999999999", email: "marina@example.com" }] } }))
+    await page.route("**/api/properties/me", (route) => route.fulfill({ json: { properties: [{ id: "property-1", publicCode: 42, title: "Apartamento Central", formattedPrice: "R$ 810.000,00", city: "São Paulo", neighborhood: "Centro", bedrooms: 3, parkingSpots: 2, type: "Apartamento", purpose: "Venda", legal: { privateArea: "82", totalArea: "95" } }] } }))
+
+    await page.goto("/corretor/documentos")
+    await page.getByTestId("proposal-workspace").getByRole("button", { name: "Nova", exact: true }).click()
+
+    await expect(page.getByLabel("Selecionar cliente")).toBeVisible()
+    await expect(page.getByLabel("Selecionar imóvel")).toBeVisible()
+    await expect(page.getByLabel("Valor da proposta")).toBeVisible()
+    await expect(page.getByLabel("Entrada")).toBeVisible()
+    await expect(page.getByLabel("Parcelamento")).toBeVisible()
+    await expect(page.getByLabel("Forma de pagamento")).toBeVisible()
+    await expect(page.getByLabel("Observações")).toBeVisible()
+
+    await page.getByLabel("Selecionar cliente").selectOption("lead-1")
+    await page.getByLabel("Selecionar imóvel").selectOption("property-1")
+    await expect(page.getByLabel("Valor da proposta")).toHaveValue(/R\$\s810\.000,00/)
+    await page.getByLabel("Entrada").fill("R$ 160.000,00")
+    await page.getByLabel("Parcelamento").fill("24 parcelas")
+    await page.getByLabel("Forma de pagamento").fill("Financiamento bancário")
+    await page.getByLabel("Validade").fill("10 dias")
+    await page.getByLabel("Observações").fill("Entrega das chaves após a entrada.")
+    await page.getByRole("button", { name: "Gerar proposta" }).click()
+
+    await expect.poll(() => submittedPayload).not.toBeNull()
+    expect(submittedPayload).toMatchObject({
+      leadId: "lead-1",
+      propertyId: "property-1",
+      propertyTitle: "Apartamento Central",
+      propertyCode: "42",
+      propertyNeighborhood: "Centro",
+      propertyCity: "São Paulo",
+      propertyType: "Apartamento",
+      propertyPurpose: "venda",
+      propertyPrice: "R$ 810.000,00",
+      propertyArea: "82",
+      propertyBedrooms: "3",
+      propertyParkingSpots: "2",
+      entry: "R$ 160.000,00",
+      installments: "24 parcelas",
+      paymentMethod: "Financiamento bancário",
+      validity: "10 dias",
+      conditions: "Entrega das chaves após a entrada.",
+    })
+
+    await expect(page.getByText("Proposta Marina + Apartamento Central").first()).toBeVisible()
+    await page.reload()
+    const proposalCard = page.getByRole("button", { name: /Proposta Marina \+ Apartamento Central/ })
+    await expect(proposalCard).toHaveAttribute("aria-pressed", "true")
+    await expect(proposalCard).toContainText("Gerado")
+    await expect(proposalCard).toContainText("Marina Lopes")
+    await expect(proposalCard).toContainText("Apartamento Central")
+    const proposalCardBox = await proposalCard.boundingBox()
+    expect(proposalCardBox?.height).toBeLessThanOrEqual(56)
+    const proposalFrame = page.frameLocator('iframe[title="Proposta Marina + Apartamento Central"]')
+    await expect(proposalFrame.getByText("Apartamento Central").first()).toBeVisible()
+    await expect(proposalFrame.getByText("R$ 160.000,00").first()).toBeVisible()
+    await expect(proposalFrame.getByText("24 parcelas").first()).toBeVisible()
+    await expect(proposalFrame.getByText("Financiamento bancário").first()).toBeVisible()
+    await expect(proposalFrame.getByText("Entrega das chaves após a entrada.").first()).toBeVisible()
   })
 
   test("mantém proposta longa dentro do workspace no desktop e no mobile", async ({ page }) => {

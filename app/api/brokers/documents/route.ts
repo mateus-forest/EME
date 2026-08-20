@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { parseCurrencyInputToCents } from "@/lib/currency"
+import { parsePropertyLegalData } from "@/lib/legal-entities"
 import {
   buildProposalHtml,
   sanitizeProposalDisplayText,
@@ -110,6 +111,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const leadId = cleanText(body?.leadId, 80)
     const propertyId = cleanText(body?.propertyId, 80)
+    const propertyPurpose = cleanText(body?.propertyPurpose, 20).toLowerCase()
     const manualLead = {
       name: cleanText(body?.clientName, 120),
       phone: cleanText(body?.clientPhone, 40),
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
       neighborhood: cleanText(body?.propertyNeighborhood, 100),
       city: cleanText(body?.propertyCity, 100),
       type: cleanText(body?.propertyType, 80),
-      purpose: cleanText(body?.propertyPurpose, 20).toLowerCase() === "locação" || cleanText(body?.propertyPurpose, 20).toLowerCase() === "locacao" ? "RENT" : "SALE",
+      purpose: propertyPurpose ? (propertyPurpose === "locação" || propertyPurpose === "locacao" ? "RENT" : "SALE") : null,
       price: parseCurrencyInputToCents(body?.propertyPrice) ?? 0,
       area: cleanText(body?.propertyArea, 40),
       bedrooms: Number(body?.propertyBedrooms) || 0,
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
     const [lead, property] = await Promise.all([
       leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true, email: true } }) : null,
-      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true } }) : null,
+      propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, publicCode: true, title: true, description: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true, legalData: true } }) : null,
     ])
     const proposalLead = lead
       ? {
@@ -139,23 +141,26 @@ export async function POST(request: NextRequest) {
           email: manualLead.email || lead.email,
         }
       : (manualLead.name || manualLead.phone || manualLead.email ? manualLead : null)
+    const propertyLegal = property ? parsePropertyLegalData(property.legalData) : null
     const proposalProperty = property
       ? {
           ...property,
           id: manualProperty.id || property.id,
-          publicCode: property.publicCode,
+          publicCode: manualProperty.id && manualProperty.id !== String(property.publicCode ?? property.id) ? null : property.publicCode,
           title: manualProperty.title || property.title,
           neighborhood: manualProperty.neighborhood || property.neighborhood,
           city: manualProperty.city || property.city,
           type: manualProperty.type || property.type,
           purpose: manualProperty.purpose || property.purpose,
           price: manualProperty.price || property.price,
-          area: manualProperty.area,
+          area: manualProperty.area || propertyLegal?.privateArea || propertyLegal?.totalArea,
           bedrooms: manualProperty.bedrooms || property.bedrooms,
           parkingSpots: manualProperty.parkingSpots || property.parkingSpots,
           imageUrl: firstImageUrl(property.imageUrls),
         }
-      : (manualProperty.title || manualProperty.neighborhood || manualProperty.city || manualProperty.price ? manualProperty : null)
+      : (manualProperty.title || manualProperty.neighborhood || manualProperty.city || manualProperty.price
+          ? { ...manualProperty, purpose: manualProperty.purpose ?? "SALE" }
+          : null)
     const title = cleanText(body?.title, 160) || `Proposta ${proposalLead?.name ?? proposalProperty?.title ?? "EME"}`
     const content = buildProposalHtml({
       lead: proposalLead,

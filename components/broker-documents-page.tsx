@@ -18,6 +18,8 @@ type BrokerDocument = {
   title: string
   content: string
   status: string
+  leadId: string | null
+  propertyId: string | null
   leadName: string
   propertyTitle: string
   createdAt: string
@@ -32,6 +34,7 @@ type LeadOption = {
 
 type PropertyOption = {
   id: string
+  publicCode: number | null
   title: string
   formattedPrice: string
   city: string
@@ -40,6 +43,10 @@ type PropertyOption = {
   parkingSpots: number
   type: string
   purpose: string
+  legal?: {
+    privateArea?: string
+    totalArea?: string
+  }
 }
 
 const statuses = [
@@ -71,11 +78,6 @@ function statusLabel(status: string) {
   if (status === "generated") return "Gerado"
   if (status === "archived") return "Arquivado"
   return "Rascunho"
-}
-
-function typeLabel(type: string) {
-  if (type === "studio_ia_video") return "Vídeo"
-  return "Proposta"
 }
 
 function escapeHtml(value: string) {
@@ -141,8 +143,9 @@ export function BrokerDocumentsPage() {
       const response = await fetch(`/api/brokers/documents?status=${nextStatus}&type=proposal`, { credentials: "include", cache: "no-store" })
       const data = (await response.json().catch(() => null)) as { documents?: BrokerDocument[]; error?: string } | null
       if (!response.ok) throw new Error(data?.error || "Não foi possível carregar documentos.")
-      setDocuments(data?.documents ?? [])
-      setSelectedDocument((current) => current ?? data?.documents?.[0] ?? null)
+      const nextDocuments = data?.documents ?? []
+      setDocuments(nextDocuments)
+      setSelectedDocument((current) => nextDocuments.find((document) => document.id === current?.id) ?? nextDocuments[0] ?? null)
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível carregar documentos.")
     } finally {
@@ -194,12 +197,13 @@ export function BrokerDocumentsPage() {
       ...current,
       propertyId,
       propertyTitle: property?.title ?? current.propertyTitle,
-      propertyCode: property?.id ?? current.propertyCode,
+      propertyCode: property ? String(property.publicCode ?? property.id) : current.propertyCode,
       propertyNeighborhood: property?.neighborhood ?? current.propertyNeighborhood,
       propertyCity: property?.city ?? current.propertyCity,
       propertyType: property?.type ?? current.propertyType,
       propertyPurpose: property ? purpose : current.propertyPurpose,
       propertyPrice: property?.formattedPrice ?? current.propertyPrice,
+      propertyArea: property ? property.legal?.privateArea || property.legal?.totalArea || "" : current.propertyArea,
       propertyBedrooms: property ? String(property.bedrooms) : current.propertyBedrooms,
       propertyParkingSpots: property ? String(property.parkingSpots) : current.propertyParkingSpots,
     }))
@@ -335,15 +339,28 @@ export function BrokerDocumentsPage() {
               ))}
             </div>
           </CardHeader>
-          <CardContent className="eme-subtle-scrollbar grid max-h-[32rem] min-h-0 gap-2 overflow-y-auto overscroll-contain p-3.5 xl:max-h-none xl:flex-1">
+          <CardContent className="eme-subtle-scrollbar grid max-h-[32rem] min-h-0 content-start gap-1.5 overflow-y-auto overscroll-contain p-2.5 xl:max-h-none xl:flex-1">
             {feedback ? <p className="rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#009b3a]">{feedback}</p> : null}
             {isLoading ? (
               <EmeLoading compact message="Carregando documentos..." />
             ) : documents.length > 0 ? (
               documents.map((document) => (
-                <button key={document.id} type="button" onClick={() => setSelectedDocument(document)} className={`min-w-0 max-w-full rounded-[var(--broker-radius-md)] border p-3 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}>
-                  <p className="truncate text-sm font-semibold text-[#050505]">{document.title}</p>
-                  <p className="mt-1 truncate text-xs text-[#6B7280]">{typeLabel(document.type)} · {statusLabel(document.status)} {document.leadName ? `· ${document.leadName}` : ""}</p>
+                <button
+                  key={document.id}
+                  type="button"
+                  aria-pressed={selectedDocument?.id === document.id}
+                  onClick={() => setSelectedDocument(document)}
+                  className={`min-w-0 max-w-full rounded-xl border px-3 py-2 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-4 text-[#050505]">{document.title}</p>
+                    <span className="shrink-0 rounded-full border border-black/[0.06] bg-white/75 px-1.5 py-0.5 text-[10px] font-medium leading-3.5 text-[#667085]">
+                      {statusLabel(document.status)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6B7280]">
+                    {document.leadName || "Cliente não informado"}{document.propertyTitle ? ` · ${document.propertyTitle}` : ""}
+                  </p>
                 </button>
               ))
             ) : (
@@ -371,57 +388,104 @@ export function BrokerDocumentsPage() {
               </Button>
             </CardHeader>
             <CardContent className="grid gap-3 p-4">
-              <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Título da proposta" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+              <label className="grid gap-1.5 text-xs font-medium text-[#475467]">
+                Título
+                <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Título da proposta" className="h-10 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+              </label>
 
-              <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-sm font-semibold text-[#050505]">Dados do cliente</p>
-                <select value={draft.leadId} onChange={(event) => selectLead(event.target.value)} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505]">
-                  <option value="" className="bg-white">Lead cadastrado ou preenchimento manual</option>
-                  {leads.map((lead) => (
-                    <option key={lead.id} value={lead.id} className="bg-white">{lead.name || formatPhone(lead.phone) || "Lead sem nome"}</option>
-                  ))}
-                </select>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Input value={draft.clientName} onChange={(event) => setDraft({ ...draft, clientName: event.target.value })} placeholder="Nome cliente" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <StructuredInput kind="phone" value={draft.clientPhone} onValueChange={(value) => setDraft({ ...draft, clientPhone: value })} placeholder="Telefone" aria-label="Telefone do cliente" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.clientEmail} onChange={(event) => setDraft({ ...draft, clientEmail: event.target.value })} placeholder="E-mail" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+              <div className="grid items-start gap-3 lg:grid-cols-2">
+                <div className="grid gap-2.5 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-3.5">
+                  <p className="text-sm font-semibold text-[#050505]">Cliente</p>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Selecionar cliente
+                    <select value={draft.leadId} onChange={(event) => selectLead(event.target.value)} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#050505]">
+                      <option value="" className="bg-white">Cliente cadastrado ou preenchimento manual</option>
+                      {leads.map((lead) => (
+                        <option key={lead.id} value={lead.id} className="bg-white">{lead.name || formatPhone(lead.phone) || "Cliente sem nome"}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <details className="group rounded-xl border border-black/[0.05] bg-white/70 px-3 py-2">
+                    <summary className="cursor-pointer list-none text-xs font-medium text-[#667085] marker:hidden">
+                      <span className="group-open:hidden">Preencher ou ajustar dados do cliente</span>
+                      <span className="hidden group-open:inline">Ocultar dados manuais do cliente</span>
+                    </summary>
+                    <div className="grid gap-2 pt-3">
+                      <Input value={draft.clientName} onChange={(event) => setDraft({ ...draft, clientName: event.target.value })} placeholder="Nome do cliente" aria-label="Nome do cliente" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <StructuredInput kind="phone" value={draft.clientPhone} onValueChange={(value) => setDraft({ ...draft, clientPhone: value })} placeholder="Telefone" aria-label="Telefone do cliente" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <Input value={draft.clientEmail} onChange={(event) => setDraft({ ...draft, clientEmail: event.target.value })} placeholder="E-mail" aria-label="E-mail do cliente" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                    </div>
+                  </details>
+                </div>
+
+                <div className="grid gap-2.5 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-3.5">
+                  <p className="text-sm font-semibold text-[#050505]">Imóvel</p>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Selecionar imóvel
+                    <select value={draft.propertyId} onChange={(event) => selectProperty(event.target.value)} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#050505]">
+                      <option value="" className="bg-white">Imóvel cadastrado ou preenchimento manual</option>
+                      {properties.map((property) => (
+                        <option key={property.id} value={property.id} className="bg-white">{property.title}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {draft.propertyId && draft.propertyTitle ? (
+                    <p className="truncate text-xs text-[#667085]">{draft.propertyTitle}{draft.propertyNeighborhood || draft.propertyCity ? ` · ${[draft.propertyNeighborhood, draft.propertyCity].filter(Boolean).join(", ")}` : ""}</p>
+                  ) : null}
+                  <details className="group rounded-xl border border-black/[0.05] bg-white/70 px-3 py-2">
+                    <summary className="cursor-pointer list-none text-xs font-medium text-[#667085] marker:hidden">
+                      <span className="group-open:hidden">Preencher ou ajustar dados do imóvel</span>
+                      <span className="hidden group-open:inline">Ocultar dados manuais do imóvel</span>
+                    </summary>
+                    <div className="grid gap-2 pt-3 sm:grid-cols-2">
+                      <Input value={draft.propertyTitle} onChange={(event) => setDraft({ ...draft, propertyTitle: event.target.value })} placeholder="Imóvel" aria-label="Nome do imóvel" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <Input value={draft.propertyCode} onChange={(event) => setDraft({ ...draft, propertyCode: event.target.value })} placeholder="Código" aria-label="Código do imóvel" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <Input value={draft.propertyNeighborhood} onChange={(event) => setDraft({ ...draft, propertyNeighborhood: event.target.value })} placeholder="Bairro" aria-label="Bairro do imóvel" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <Input value={draft.propertyCity} onChange={(event) => setDraft({ ...draft, propertyCity: event.target.value })} placeholder="Cidade" aria-label="Cidade do imóvel" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <Input value={draft.propertyType} onChange={(event) => setDraft({ ...draft, propertyType: event.target.value })} placeholder="Tipo" aria-label="Tipo do imóvel" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <StructuredInput kind="decimal" value={draft.propertyArea} onValueChange={(value) => setDraft({ ...draft, propertyArea: value })} placeholder="Metragem" aria-label="Área do imóvel" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <StructuredInput kind="quantity" value={draft.propertyBedrooms} onValueChange={(value) => setDraft({ ...draft, propertyBedrooms: value })} placeholder="Dormitórios" aria-label="Dormitórios" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <StructuredInput kind="quantity" value={draft.propertyParkingSpots} onValueChange={(value) => setDraft({ ...draft, propertyParkingSpots: value })} placeholder="Vagas" aria-label="Vagas" className="h-9 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                      <select aria-label="Finalidade do imóvel" value={draft.propertyPurpose} onChange={(event) => setDraft({ ...draft, propertyPurpose: event.target.value })} className="h-9 min-w-0 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#050505] sm:col-span-2">
+                        <option value="venda" className="bg-white">Venda</option>
+                        <option value="locação" className="bg-white">Locação</option>
+                      </select>
+                    </div>
+                  </details>
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-sm font-semibold text-[#050505]">Dados do imóvel</p>
-                <select value={draft.propertyId} onChange={(event) => selectProperty(event.target.value)} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505]">
-                  <option value="" className="bg-white">Imóvel cadastrado ou preenchimento manual</option>
-                  {properties.map((property) => (
-                    <option key={property.id} value={property.id} className="bg-white">{property.title}</option>
-                  ))}
-                </select>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Input value={draft.propertyTitle} onChange={(event) => setDraft({ ...draft, propertyTitle: event.target.value })} placeholder="Imóvel" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <StructuredInput kind="currency" value={draft.propertyPrice} onValueChange={(value) => setDraft({ ...draft, propertyPrice: value })} placeholder="Valor" aria-label="Valor do imóvel" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyCode} onChange={(event) => setDraft({ ...draft, propertyCode: event.target.value })} placeholder="Código/ID" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyNeighborhood} onChange={(event) => setDraft({ ...draft, propertyNeighborhood: event.target.value })} placeholder="Bairro" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyCity} onChange={(event) => setDraft({ ...draft, propertyCity: event.target.value })} placeholder="Cidade" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.propertyType} onChange={(event) => setDraft({ ...draft, propertyType: event.target.value })} placeholder="Tipo" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <StructuredInput kind="decimal" value={draft.propertyArea} onValueChange={(value) => setDraft({ ...draft, propertyArea: value })} placeholder="Metragem" aria-label="Área do imóvel" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <StructuredInput kind="quantity" value={draft.propertyBedrooms} onValueChange={(value) => setDraft({ ...draft, propertyBedrooms: value })} placeholder="Dormitórios" aria-label="Dormitórios" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <StructuredInput kind="quantity" value={draft.propertyParkingSpots} onValueChange={(value) => setDraft({ ...draft, propertyParkingSpots: value })} placeholder="Vagas" aria-label="Vagas" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <select value={draft.propertyPurpose} onChange={(event) => setDraft({ ...draft, propertyPurpose: event.target.value })} className="h-10 min-w-0 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm text-[#050505]">
-                    <option value="venda" className="bg-white">Venda</option>
-                    <option value="locação" className="bg-white">Locação</option>
-                  </select>
+              <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-3.5">
+                <div>
+                  <p className="text-sm font-semibold text-[#050505]">Condições da proposta</p>
+                  <p className="mt-0.5 text-xs text-[#667085]">O valor do imóvel selecionado pode ser ajustado para esta proposta.</p>
                 </div>
-              </div>
-
-              <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <p className="text-sm font-semibold text-[#050505]">Condições</p>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Input value={draft.entry} onChange={(event) => setDraft({ ...draft, entry: event.target.value })} placeholder="Entrada" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Parcelamento" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.paymentMethod} onChange={(event) => setDraft({ ...draft, paymentMethod: event.target.value })} placeholder="Forma de pagamento" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
-                  <Input value={draft.validity} onChange={(event) => setDraft({ ...draft, validity: event.target.value })} placeholder="Validade da proposta" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] md:col-span-2" />
+                <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Valor da proposta
+                    <StructuredInput kind="currency" value={draft.propertyPrice} onValueChange={(value) => setDraft({ ...draft, propertyPrice: value })} placeholder="R$ 0,00" aria-label="Valor da proposta" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Entrada
+                    <Input value={draft.entry} onChange={(event) => setDraft({ ...draft, entry: event.target.value })} placeholder="Ex.: R$ 80.000" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Parcelamento
+                    <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Ex.: 24 parcelas" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Forma de pagamento
+                    <Input value={draft.paymentMethod} onChange={(event) => setDraft({ ...draft, paymentMethod: event.target.value })} placeholder="Ex.: financiamento" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Validade
+                    <Input value={draft.validity} onChange={(event) => setDraft({ ...draft, validity: event.target.value })} placeholder="Ex.: 10 dias" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                  </label>
                 </div>
-                <Textarea value={draft.conditions} onChange={(event) => setDraft({ ...draft, conditions: event.target.value })} placeholder="Observações" className="min-h-24 rounded-xl border-black/[0.06] bg-white/80 text-[#050505]" />
+                <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                  Observações
+                  <Textarea value={draft.conditions} onChange={(event) => setDraft({ ...draft, conditions: event.target.value })} placeholder="Condições adicionais e observações da proposta" className="min-h-20 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                </label>
               </div>
 
               <Button type="button" disabled={isSaving} onClick={createProposal} className="h-10 rounded-xl bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
