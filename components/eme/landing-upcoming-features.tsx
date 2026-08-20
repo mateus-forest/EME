@@ -19,11 +19,11 @@ export function LandingUpcomingFeatures() {
         3 novidades a caminho
       </h2>
 
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         {upcomingFeatures.map((lines) => (
           <article
             key={lines[0]}
-            className="flex h-[124px] w-[84px] flex-col items-center rounded-[15px] border border-white/60 bg-white/55 px-2 pb-4 pt-3 text-center shadow-[0_14px_35px_-24px_rgba(35,43,47,0.3)] backdrop-blur-md"
+            className="flex h-[110px] w-[74px] flex-col items-center rounded-[13px] border border-white/60 bg-white/55 px-1.5 pb-3.5 pt-2.5 text-center shadow-[0_14px_35px_-24px_rgba(35,43,47,0.3)] backdrop-blur-md"
           >
             <span className="rounded-full bg-[#ffe2a3] px-1.5 py-[3px] text-[6px] font-semibold uppercase leading-none tracking-[0.04em] text-[#f0a000]">
               Em breve
@@ -31,11 +31,11 @@ export function LandingUpcomingFeatures() {
 
             <LoaderCircle
               aria-hidden="true"
-              className="mt-[13px] size-[18px] animate-spin text-[#ffb000] [animation-duration:1.8s]"
+              className="mt-3 size-4 animate-spin text-[#ffb000] [animation-duration:1.8s]"
               strokeWidth={1.7}
             />
 
-            <p className="mt-auto text-[10px] font-medium leading-[1.15] tracking-[-0.02em] text-[#242b2f]">
+            <p className="mt-auto text-[9px] font-medium leading-[1.15] tracking-[-0.02em] text-[#242b2f]">
               {lines.map((line) => (
                 <span key={line} className="block">
                   {line}
