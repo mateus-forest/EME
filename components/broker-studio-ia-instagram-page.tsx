@@ -57,6 +57,14 @@ type CreditBlockState = {
 } | null
 
 const goalOptions: CampaignGoal[] = ["Venda", "Captacao", "Lancamento", "Alto padrao", "Investimento", "Aluguel"]
+const goalLabels: Record<CampaignGoal, string> = {
+  Venda: "Venda",
+  Captacao: "Captação",
+  Lancamento: "Lançamento",
+  "Alto padrao": "Alto padrão",
+  Investimento: "Investimento",
+  Aluguel: "Aluguel",
+}
 const campaignProviderOptions = getStudioCapabilityProviders("campaign.structured_content", ["active"])
 
 const stepLabels: Array<{ id: StudioStep; label: string }> = [
@@ -501,7 +509,7 @@ export function BrokerStudioIaInstagramPage() {
                               onClick={() => setSelectedGoal(goal)}
                               className={`rounded-full border px-4 py-2 text-sm transition-colors ${selectedGoal === goal ? "border-[#009b3a]/25 bg-[#eef9f1] text-[#009b3a]" : "border-black/[0.06] bg-white text-[#5F6B7A] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
                             >
-                              {goal}
+                              {goalLabels[goal]}
                             </button>
                           ))}
                         </div>
