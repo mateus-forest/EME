@@ -15,14 +15,18 @@ export function Hero() {
         className="absolute inset-0"
         style={{
           WebkitMaskImage:
-            'linear-gradient(to bottom, black 0%, black 84%, rgba(0,0,0,0.98) 88%, rgba(0,0,0,0.9) 92%, rgba(0,0,0,0.7) 95%, rgba(0,0,0,0.38) 98%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 91%, rgba(0,0,0,0.98) 94%, rgba(0,0,0,0.82) 97%, rgba(0,0,0,0.45) 99%, transparent 100%)',
           maskImage:
-            'linear-gradient(to bottom, black 0%, black 84%, rgba(0,0,0,0.98) 88%, rgba(0,0,0,0.9) 92%, rgba(0,0,0,0.7) 95%, rgba(0,0,0,0.38) 98%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 91%, rgba(0,0,0,0.98) 94%, rgba(0,0,0,0.82) 97%, rgba(0,0,0,0.45) 99%, transparent 100%)',
         }}
       >
         <HeroVideoBackground />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/25" />
+        <div
+          data-hero-bottom-shade
+          className="absolute inset-x-0 bottom-0 h-[16%] bg-gradient-to-b from-transparent via-black/20 to-black/70"
+        />
       </div>
 
       <div className="relative z-10 flex flex-1 items-center">
