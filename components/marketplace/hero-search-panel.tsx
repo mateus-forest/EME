@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { SlidersHorizontal, Zap } from 'lucide-react'
 import { ConversationalSearch } from '@/components/marketplace/conversational-search'
 import { MarketplaceFiltersDialog } from '@/components/marketplace/search/marketplace-filters-dialog'
+import { useMarketplaceSearchLoading } from '@/components/marketplace/search/cinematic-search-loading'
 import {
   emptyMarketplaceFilters,
   filtersToSearchParams,
@@ -13,6 +14,7 @@ import {
 
 export function HeroSearchPanel() {
   const router = useRouter()
+  const { startSearchLoading } = useMarketplaceSearchLoading()
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<MarketplaceFilters>({ ...emptyMarketplaceFilters })
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -21,6 +23,7 @@ export function HeroSearchPanel() {
     const params = filtersToSearchParams(nextFilters)
     if (value.trim()) params.set('q', value.trim())
     const search = params.toString()
+    startSearchLoading()
     router.push(search ? `/imoveis/busca?${search}` : '/imoveis/busca')
   }
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import { useMarketplaceSearchLoading } from '@/components/marketplace/search/cinematic-search-loading'
 import { cn } from '@/lib/utils'
 
 export function ConversationalSearch({
@@ -26,6 +27,7 @@ export function ConversationalSearch({
   onSubmitQuery?: (value: string) => void
 }) {
   const router = useRouter()
+  const { startSearchLoading } = useMarketplaceSearchLoading()
   const [internalValue, setInternalValue] = useState('')
   const [composing, setComposing] = useState(false)
   const value = controlledValue ?? internalValue
@@ -41,6 +43,7 @@ export function ConversationalSearch({
     if (query) params.set('q', query)
     if (purpose) params.set('finalidade', purpose)
     const qs = params.toString()
+    startSearchLoading()
     router.push(qs ? `/imoveis/busca?${qs}` : '/imoveis/busca')
   }
 

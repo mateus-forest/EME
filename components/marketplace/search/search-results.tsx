@@ -41,6 +41,7 @@ import type { ResultsView } from '@/components/marketplace/search/view-toggle'
 import { cn } from '@/lib/utils'
 import { EmeLoader } from '@/components/marketplace/eme-loader'
 import { trackMarketplaceEvent } from '@/lib/marketplace/analytics'
+import { useMarketplaceSearchLoading } from '@/components/marketplace/search/cinematic-search-loading'
 
 type Phase = 'loading' | 'ready' | 'error'
 const MAX_COMPARE = 3
@@ -58,6 +59,7 @@ export function SearchResults({
   results: SearchResult[]
   brokers: BrokerProfile[]
 }) {
+  const { finishSearchLoading, startSearchLoading } = useMarketplaceSearchLoading()
   const [query, setQuery] = useState(initialQuery?.trim() || '')
   const [filters, setFilters] = useState<MarketplaceFilters>(() => initialFilters)
   const [sort, setSort] = useState<SortValue>('compatibilidade')
@@ -77,10 +79,16 @@ export function SearchResults({
   const topRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (phase !== 'loading') return
-    const t = setTimeout(() => setPhase('ready'), 180)
-    return () => clearTimeout(t)
-  }, [phase])
+    if (phase !== 'loading') {
+      finishSearchLoading()
+      return
+    }
+    const frame = window.requestAnimationFrame(() => {
+      setPhase('ready')
+      finishSearchLoading()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [finishSearchLoading, phase])
 
   function runSearch(nextQuery?: string) {
     const resolvedQuery = nextQuery?.trim() || query
@@ -90,6 +98,7 @@ export function SearchResults({
     const params = filtersToSearchParams(nextFilters)
     if (resolvedQuery) params.set('q', resolvedQuery)
     window.history.replaceState(null, '', `/imoveis/busca?${params.toString()}`)
+    startSearchLoading()
     setPhase('loading')
   }
 
@@ -175,6 +184,7 @@ export function SearchResults({
     if (activeQuery) params.set('q', activeQuery)
     const search = params.toString()
     window.history.replaceState(null, '', search ? `/imoveis/busca?${search}` : '/imoveis/busca')
+    startSearchLoading()
     setPhase('loading')
   }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { AssistantProvider } from '@/components/marketplace/assistant/assistant-provider'
+import { CinematicSearchLoadingProvider } from '@/components/marketplace/search/cinematic-search-loading'
 import './marketplace.css'
 import { getMarketplaceBrokers, getMarketplaceProperties } from '@/lib/marketplace/server-data'
 
@@ -15,7 +16,9 @@ export default async function MarketplaceLayout({ children }: { children: ReactN
   const [properties, brokers] = await Promise.all([getMarketplaceProperties(), getMarketplaceBrokers()])
   return (
     <div className="marketplace-shell">
-      <AssistantProvider properties={properties} brokers={brokers}>{children}</AssistantProvider>
+      <CinematicSearchLoadingProvider>
+        <AssistantProvider properties={properties} brokers={brokers}>{children}</AssistantProvider>
+      </CinematicSearchLoadingProvider>
     </div>
   )
 }
