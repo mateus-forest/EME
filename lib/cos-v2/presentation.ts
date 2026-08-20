@@ -5,6 +5,7 @@ import {
   sanitizeCosResponseText,
 } from "@/lib/cos/response-view-model"
 import type { CosExecutionPlan, CosExecutionPlanResult } from "@/lib/cos/types"
+import { humanizeCosV2Response } from "@/lib/cos-v2/response-language"
 import type { CosV2HelpTopic, CosV2Interpretation } from "@/lib/cos-v2/types"
 
 const DOMAIN_OVERVIEWS: Record<CosV2Interpretation["primaryDomain"], string> = {
@@ -16,12 +17,16 @@ const DOMAIN_OVERVIEWS: Record<CosV2Interpretation["primaryDomain"], string> = {
 }
 
 const HELP_ANSWERS: Record<CosV2HelpTopic, string> = {
-  first_steps: "Para começar no EME, revise sua conta e segurança, cadastre os primeiros clientes, adicione seus imóveis e organize os compromissos. Depois, você pode navegar pelas áreas ou pedir ao COS a próxima tarefa em linguagem natural.",
-  using_cos: "Converse com o COS em linguagem natural e diga o objetivo, por exemplo: “cadastre a Marina”, “busque imóveis até 800 mil” ou “agende uma visita amanhã às 15h”. Ele usa o contexto, pergunta só o indispensável e pede confirmação quando a ação é sensível.",
-  registering_properties: "Você pode cadastrar imóveis pela área de Imóveis, por importação/IA ou pedindo ao COS para criar um rascunho em linguagem natural. No COS, informe o valor; tipo, localização, características e fotos podem ser complementados depois, antes da publicação.",
-  managing_clients: "Clientes é onde você organiza seus contatos e negociações. Posso ajudar a cadastrar, localizar, atualizar informações, acompanhar histórico e relacionar imóveis e documentos.",
-  proposals: "Propostas reúne as condições comerciais apresentadas aos clientes. Posso consultar as propostas existentes ou criar um rascunho quando o cliente e o imóvel estiverem identificados.",
+  first_steps: "O EME organiza sua operação em um só lugar. Você pode configurar sua conta, cadastrar clientes e imóveis e planejar compromissos. O COS pode orientar cada etapa e executar as ações disponíveis. Se quiser, diga por qual área prefere começar.",
+  using_cos: "O COS ajuda você a consultar informações e realizar tarefas em linguagem natural. Você pode pedir para localizar clientes e imóveis, criar propostas ou organizar compromissos. Quando faltar algum dado, ele pergunta somente o necessário e confirma ações sensíveis. Se quiser, diga agora o que precisa fazer.",
+  registering_properties: "Você pode cadastrar um imóvel manualmente, usando IA ou por importação. Depois, complete os dados e fotos. Quando estiver pronto, pode publicá-lo no Catálogo e, se cumprir os requisitos, também no Marketplace. Se quiser, posso iniciar um cadastro com você agora.",
+  managing_clients: "Na área de Clientes você acompanha seus contatos e negociações. Pode cadastrar clientes, atualizar dados, registrar interesses, mudar a etapa do atendimento, consultar o histórico e relacionar imóveis, documentos e propostas. Se quiser, posso localizar ou cadastrar um cliente para você.",
+  proposals: "Na área de Propostas você organiza as condições comerciais apresentadas aos clientes. Pode consultar documentos existentes e gerar uma proposta usando os dados do cliente, do imóvel e da negociação. O COS pode localizar propostas ou iniciar uma nova. Se quiser, diga qual cliente e imóvel deseja usar.",
   general: DOMAIN_OVERVIEWS.general,
+}
+
+function finalizeV2Response<T>(response: T) {
+  return humanizeCosV2Response(response)
 }
 
 export function getCosV2DomainOverview(domain: CosV2Interpretation["primaryDomain"]) {
@@ -46,10 +51,10 @@ export function buildCosV2ContextResponse(interpretation: CosV2Interpretation) {
   const text = canonicalMissingQuestion(interpretation.missingData) ||
     sanitizeCosResponseText(interpretation.clarificationQuestion) ||
     "Entendi. Vou considerar isso no próximo passo."
-  return buildCosSimpleResponseViewModel({
+  return finalizeV2Response(buildCosSimpleResponseViewModel({
     kind: interpretation.missingData.length > 0 || interpretation.clarificationQuestion ? "awaiting_input" : "explanation",
     text,
-  })
+  }))
 }
 
 export function buildCosV2ValidationResponse(interpretation: CosV2Interpretation, errors: string[]) {
@@ -63,15 +68,15 @@ export function buildCosV2ValidationResponse(interpretation: CosV2Interpretation
       : lowConfidence
         ? sanitizeCosResponseText(interpretation.clarificationQuestion) || "Qual ação você quer fazer?"
         : "Não consegui validar esse pedido. Diga o que você quer fazer e com qual item."
-  return buildCosSimpleResponseViewModel({ kind: "awaiting_input", text })
+  return finalizeV2Response(buildCosSimpleResponseViewModel({ kind: "awaiting_input", text }))
 }
 
 export function buildCosV2ConfirmationResponse(plan: CosExecutionPlan) {
-  return buildCosConfirmationResponseViewModel({
+  return finalizeV2Response(buildCosConfirmationResponseViewModel({
     prompt: plan.confirmationMessage ?? "Confirma esta ação?",
     capabilityTitle: plan.primaryStep.plan.capability.title,
     action: plan.primaryStep.action,
-  })
+  }))
 }
 
 export function buildCosV2ExecutionResponse(input: {
@@ -82,14 +87,14 @@ export function buildCosV2ExecutionResponse(input: {
 }) {
   const response = buildCosExecutionResponseViewModel({ message: input.message, plan: input.plan, result: input.result })
   if (input.result.status === "completed" && input.objectiveKind === "query") {
-    return { ...response, kind: "query_result" as const, title: "Resultado da consulta", interactionType: "result" as const }
+    return finalizeV2Response({ ...response, kind: "query_result" as const, title: "Resultado da consulta", interactionType: "result" as const })
   }
-  return response
+  return finalizeV2Response(response)
 }
 
 export function buildCosV2CancelledResponse(hadWorkflow: boolean) {
-  return buildCosSimpleResponseViewModel({
+  return finalizeV2Response(buildCosSimpleResponseViewModel({
     kind: "cancelled",
     text: hadWorkflow ? "Tudo bem. Não vou continuar com isso." : "Tudo bem. Não há nenhuma ação em andamento.",
-  })
+  }))
 }
