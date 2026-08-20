@@ -4,6 +4,11 @@ type ProposalLead = {
   name?: string | null
   phone?: string | null
   email?: string | null
+  cpfCnpj?: string | null
+  documents?: Array<{
+    label?: string | null
+    name?: string | null
+  }>
 } | null
 
 type ProposalProperty = {
@@ -142,6 +147,7 @@ export function buildProposalHtml(input: {
   broker?: ProposalBroker
   conditions?: {
     entry?: string | null
+    financing?: string | null
     installments?: string | null
     paymentMethod?: string | null
     notes?: string | null
@@ -787,6 +793,7 @@ export function buildProposalHtml(input: {
               <div class="condition-grid">
                 ${renderDataItem("Valor", price, true)}
                 ${renderDataItem("Entrada", conditions?.entry, true)}
+                ${renderDataItem("Financiamento", conditions?.financing, true)}
                 ${renderDataItem("Parcelamento", conditions?.installments, true)}
                 ${renderDataItem("Forma de pagamento", conditions?.paymentMethod, true)}
               </div>
@@ -807,6 +814,8 @@ export function buildProposalHtml(input: {
                 ${renderDataItem("Nome", leadName, true)}
                 ${renderDataItem("Telefone", lead?.phone)}
                 ${renderDataItem("E-mail", lead?.email)}
+                ${renderDataItem("CPF / CNPJ", lead?.cpfCnpj)}
+                ${renderDataItem("Documentos", lead?.documents?.map((document) => document.label || document.name).filter(Boolean).join(", "))}
               </div>
             </section>
 

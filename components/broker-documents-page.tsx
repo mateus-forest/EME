@@ -30,6 +30,14 @@ type LeadOption = {
   name: string
   phone: string
   email: string
+  identification?: {
+    cpfCnpj?: string
+  }
+  documents?: Array<{
+    id: string
+    label: string
+    name: string
+  }>
 }
 
 type PropertyOption = {
@@ -37,6 +45,7 @@ type PropertyOption = {
   publicCode: number | null
   title: string
   formattedPrice: string
+  location?: string
   city: string
   neighborhood: string
   bedrooms: number
@@ -44,6 +53,8 @@ type PropertyOption = {
   type: string
   purpose: string
   legal?: {
+    street?: string
+    number?: string
     privateArea?: string
     totalArea?: string
   }
@@ -80,6 +91,22 @@ function statusLabel(status: string) {
   return "Rascunho"
 }
 
+function propertyTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    APARTMENT: "Apartamento",
+    HOUSE: "Casa",
+    COMMERCIAL: "Comercial",
+    LAND: "Terreno",
+    RURAL: "Rural",
+    OTHER: "Outro",
+  }
+  return labels[value.toUpperCase()] ?? value
+}
+
+function propertyPurposeLabel(value: string) {
+  return value.toLowerCase().includes("loc") || value.toUpperCase() === "RENT" ? "Locação" : "Venda"
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -106,6 +133,7 @@ const emptyDraft = {
   propertyBedrooms: "",
   propertyParkingSpots: "",
   entry: "",
+  financing: "",
   installments: "",
   paymentMethod: "",
   conditions: "",
@@ -311,11 +339,20 @@ export function BrokerDocumentsPage() {
     }
   }
 
+  const selectedLead = leads.find((lead) => lead.id === draft.leadId)
+  const selectedProperty = properties.find((property) => property.id === draft.propertyId)
+  const selectedPropertyLocation = selectedProperty?.location || [draft.propertyNeighborhood, draft.propertyCity].filter(Boolean).join(", ")
+  const selectedPropertyFeatures = [
+    draft.propertyArea ? `${draft.propertyArea} m²` : "",
+    Number(draft.propertyBedrooms) > 0 ? `${draft.propertyBedrooms} dormitório${Number(draft.propertyBedrooms) === 1 ? "" : "s"}` : "",
+    Number(draft.propertyParkingSpots) > 0 ? `${draft.propertyParkingSpots} vaga${Number(draft.propertyParkingSpots) === 1 ? "" : "s"}` : "",
+  ].filter(Boolean)
+
   return (
     <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden">
-      <section data-testid="proposal-workspace" className="grid min-w-0 max-w-full gap-3 xl:h-[min(54rem,calc(100dvh-8rem))] xl:min-h-[38rem] xl:grid-cols-[minmax(22rem,.75fr)_minmax(0,1.25fr)] xl:items-stretch">
+      <section data-testid="proposal-workspace" className="grid min-w-0 max-w-full gap-3 xl:h-[calc(100dvh-8rem)] xl:min-h-[34rem] xl:grid-cols-[18rem_minmax(0,1fr)] xl:items-stretch">
         <Card className="flex min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
-          <CardHeader className="gap-3 border-b border-[var(--broker-border)] px-4 py-4">
+          <CardHeader className="gap-2.5 border-b border-[var(--broker-border)] px-3 py-3.5">
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-lg text-[#050505]">
                 <FileText className="size-4 text-[#009b3a]" />
@@ -339,7 +376,7 @@ export function BrokerDocumentsPage() {
               ))}
             </div>
           </CardHeader>
-          <CardContent className="eme-subtle-scrollbar grid max-h-[32rem] min-h-0 content-start gap-1.5 overflow-y-auto overscroll-contain p-2.5 xl:max-h-none xl:flex-1">
+          <CardContent className="eme-subtle-scrollbar grid max-h-[32rem] min-h-0 content-start gap-1 overflow-y-auto overscroll-contain p-2 xl:max-h-none xl:flex-1">
             {feedback ? <p className="rounded-xl border border-black/[0.06] bg-[#fbfbf8] p-3 text-sm text-[#009b3a]">{feedback}</p> : null}
             {isLoading ? (
               <EmeLoading compact message="Carregando documentos..." />
@@ -350,7 +387,7 @@ export function BrokerDocumentsPage() {
                   type="button"
                   aria-pressed={selectedDocument?.id === document.id}
                   onClick={() => setSelectedDocument(document)}
-                  className={`min-w-0 max-w-full rounded-xl border px-3 py-2 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}
+                  className={`min-w-0 max-w-full rounded-xl border px-2.5 py-1.5 text-left transition ${selectedDocument?.id === document.id ? "border-[#009b3a]/25 bg-[#009b3a]/[0.08]" : "border-[var(--broker-border)] bg-[var(--broker-surface-muted)] hover:bg-[#f2f5f1]"}`}
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-4 text-[#050505]">{document.title}</p>
@@ -369,7 +406,7 @@ export function BrokerDocumentsPage() {
           </CardContent>
         </Card>
 
-        <div className="eme-subtle-scrollbar grid min-h-0 min-w-0 max-w-full content-start gap-3 overflow-x-hidden xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
+        <div className="eme-subtle-scrollbar grid min-h-0 min-w-0 max-w-full content-start gap-3 overflow-x-hidden pb-2 xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
           <Card
             ref={composerRef}
             tabIndex={-1}
@@ -405,6 +442,32 @@ export function BrokerDocumentsPage() {
                       ))}
                     </select>
                   </label>
+                  {selectedLead ? (
+                    <div className="grid gap-2 rounded-xl border border-[#009b3a]/10 bg-white/80 p-3 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">Nome</p>
+                        <p className="mt-0.5 break-words text-xs font-semibold text-[#344054]">{selectedLead.name || "Não informado"}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">Telefone</p>
+                        <p className="mt-0.5 break-words text-xs text-[#475467]">{formatPhone(selectedLead.phone) || "Não informado"}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">E-mail</p>
+                        <p className="mt-0.5 break-all text-xs text-[#475467]">{selectedLead.email || "Não informado"}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">CPF / CNPJ</p>
+                        <p className="mt-0.5 break-words text-xs text-[#475467]">{selectedLead.identification?.cpfCnpj || "Não informado"}</p>
+                      </div>
+                      {selectedLead.documents?.length ? (
+                        <div className="min-w-0 sm:col-span-2 lg:col-span-1 2xl:col-span-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">Documentos</p>
+                          <p className="mt-0.5 break-words text-xs text-[#475467]">{selectedLead.documents.map((document) => document.label || document.name).join(", ")}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <details className="group rounded-xl border border-black/[0.05] bg-white/70 px-3 py-2">
                     <summary className="cursor-pointer list-none text-xs font-medium text-[#667085] marker:hidden">
                       <span className="group-open:hidden">Preencher ou ajustar dados do cliente</span>
@@ -429,8 +492,21 @@ export function BrokerDocumentsPage() {
                       ))}
                     </select>
                   </label>
-                  {draft.propertyId && draft.propertyTitle ? (
-                    <p className="truncate text-xs text-[#667085]">{draft.propertyTitle}{draft.propertyNeighborhood || draft.propertyCity ? ` · ${[draft.propertyNeighborhood, draft.propertyCity].filter(Boolean).join(", ")}` : ""}</p>
+                  {selectedProperty && draft.propertyTitle ? (
+                    <div className="grid gap-2 rounded-xl border border-[#009b3a]/10 bg-white/80 p-3">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words text-xs font-semibold text-[#344054]">{draft.propertyTitle}</p>
+                          <p className="mt-0.5 break-words text-[11px] leading-4 text-[#667085]">{selectedPropertyLocation || "Localização não informada"}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-[#009b3a]/10 px-2 py-1 text-[10px] font-semibold text-[#007f31]">{draft.propertyPrice || "Valor não informado"}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 text-[10px] text-[#475467]">
+                        <span className="rounded-full border border-black/[0.06] bg-white px-2 py-1">{propertyPurposeLabel(draft.propertyPurpose)}</span>
+                        <span className="rounded-full border border-black/[0.06] bg-white px-2 py-1">{propertyTypeLabel(draft.propertyType)}</span>
+                        {selectedPropertyFeatures.map((feature) => <span key={feature} className="rounded-full border border-black/[0.06] bg-white px-2 py-1">{feature}</span>)}
+                      </div>
+                    </div>
                   ) : null}
                   <details className="group rounded-xl border border-black/[0.05] bg-white/70 px-3 py-2">
                     <summary className="cursor-pointer list-none text-xs font-medium text-[#667085] marker:hidden">
@@ -467,7 +543,11 @@ export function BrokerDocumentsPage() {
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
                     Entrada
-                    <Input value={draft.entry} onChange={(event) => setDraft({ ...draft, entry: event.target.value })} placeholder="Ex.: R$ 80.000" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                    <StructuredInput kind="currency" value={draft.entry} onValueChange={(value) => setDraft({ ...draft, entry: value })} placeholder="R$ 0,00" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
+                    Financiamento
+                    <StructuredInput kind="currency" value={draft.financing} onValueChange={(value) => setDraft({ ...draft, financing: value })} placeholder="R$ 0,00" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
                     Parcelamento
@@ -488,9 +568,11 @@ export function BrokerDocumentsPage() {
                 </label>
               </div>
 
-              <Button type="button" disabled={isSaving} onClick={createProposal} className="h-10 rounded-xl bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
-                {isSaving ? "Gerando..." : "Gerar proposta"}
-              </Button>
+              <div className="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-black/[0.05] bg-white/95 p-4 backdrop-blur">
+                <Button type="button" disabled={isSaving} onClick={createProposal} className="h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
+                  {isSaving ? "Gerando..." : "Gerar e salvar proposta"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

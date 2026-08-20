@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { parseCurrencyInputToCents } from "@/lib/currency"
-import { parsePropertyLegalData } from "@/lib/legal-entities"
+import { parseEntityDocuments, parseLeadIdentification, parsePropertyLegalData } from "@/lib/legal-entities"
 import {
   buildProposalHtml,
   sanitizeProposalDisplayText,
@@ -130,15 +130,19 @@ export async function POST(request: NextRequest) {
       parkingSpots: Number(body?.propertyParkingSpots) || 0,
     }
     const [lead, property] = await Promise.all([
-      leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true, email: true } }) : null,
+      leadId ? prisma.lead.findFirst({ where: { id: leadId, brokerId: user.broker.id }, select: { id: true, name: true, phone: true, email: true, legalData: true, documentsData: true } }) : null,
       propertyId ? prisma.property.findFirst({ where: { id: propertyId, brokerId: user.broker.id }, select: { id: true, publicCode: true, title: true, description: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true, imageUrls: true, legalData: true } }) : null,
     ])
+    const leadIdentification = lead ? parseLeadIdentification(lead.legalData) : null
+    const leadDocuments = lead ? parseEntityDocuments(lead.documentsData) : []
     const proposalLead = lead
       ? {
           ...lead,
           name: manualLead.name || lead.name,
           phone: manualLead.phone || lead.phone,
           email: manualLead.email || lead.email,
+          cpfCnpj: leadIdentification?.cpfCnpj || null,
+          documents: leadDocuments.map((document) => ({ label: document.label, name: document.name })),
         }
       : (manualLead.name || manualLead.phone || manualLead.email ? manualLead : null)
     const propertyLegal = property ? parsePropertyLegalData(property.legalData) : null
@@ -168,6 +172,7 @@ export async function POST(request: NextRequest) {
       broker: { name: user.name, phone: user.broker.phone, email: user.email, city: proposalProperty?.city, creci: user.broker.creci, photoUrl: user.photoUrl },
       conditions: {
         entry: cleanText(body?.entry, 120),
+        financing: cleanText(body?.financing, 120),
         installments: cleanText(body?.installments, 200),
         paymentMethod: cleanText(body?.paymentMethod, 160),
         notes: cleanText(body?.conditions ?? body?.notes, 700),
