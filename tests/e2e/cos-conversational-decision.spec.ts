@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 
-import { applyCosAiDialogueInterpretation, evaluateCosAiDialogueInterpretationTrigger, listCosRoutableCapabilityDescriptors, resolveCosDialogueDecision } from "@/lib/cos/conversation-decision"
+import { applyCosAiDialogueInterpretation, evaluateCosAiDialogueInterpretationTrigger, isCosDialogueDecisionAuthoritativeForCapability, listCosRoutableCapabilityDescriptors, resolveCosDialogueDecision } from "@/lib/cos/conversation-decision"
+import { buildCosContextResponse } from "@/lib/cos/conversation"
 import { createCosNormalizedContext } from "@/lib/cos/context"
 import { findCosExecutionRecipe } from "@/lib/cos/execution-recipes"
 import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
@@ -570,6 +571,54 @@ test.describe("COS — linguagem natural e continuidade operacional", () => {
     expect(capabilities.selectedCapabilityId).toBe("help.use_cos")
   })
 
+  test("ajuda por área e orientação inicial permanecem explicativas", () => {
+    const clients = decide("Como funciona Clientes?")
+    expect(clients).toMatchObject({
+      dialogueAct: "explain",
+      primaryDomain: "lead",
+      selectedCapabilityId: "help.manage_clients",
+      needsClarification: false,
+    })
+
+    const firstSteps = decide("Como começo?")
+    expect(firstSteps).toMatchObject({
+      dialogueAct: "explain",
+      selectedCapabilityId: "help.first_steps",
+      needsClarification: false,
+    })
+  })
+
+  test("relato de contexto não inicia operação e pergunta somente a referência ausente", () => {
+    const result = decide("Tenho um cliente procurando sala comercial.")
+
+    expect(result).toMatchObject({
+      dialogueAct: "context",
+      primaryDomain: "lead",
+      selectedCapabilityId: "general.chat",
+      selectedAction: "general",
+      needsClarification: false,
+    })
+    expect(result.secondaryDomains).toContain("property")
+    expect(buildCosContextResponse(result)).toBe("Qual cliente?")
+
+    for (const operationalQuery of ["Quero buscar imóveis em Curitiba.", "Preciso ver meus clientes."]) {
+      expect(decide(operationalQuery).dialogueAct).toBe("query")
+    }
+  })
+
+  test("decisão válida é autoritativa para o Planner", () => {
+    const decision = decide("Mostre meus clientes.")
+    expect(decision.selectedCapabilityId).not.toBeNull()
+    expect(isCosDialogueDecisionAuthoritativeForCapability({
+      decision,
+      capabilityId: decision.selectedCapabilityId!,
+    })).toBe(true)
+    expect(isCosDialogueDecisionAuthoritativeForCapability({
+      decision,
+      capabilityId: "contract.list",
+    })).toBe(false)
+  })
+
   test("recomendação de divulgação usa o Studio sem iniciar geração", () => {
     const property = entity("property", "property-studio", "Solar Comercial")
     const result = decide("Preciso divulgar mais esse imóvel. O que você recomenda?", {
@@ -666,6 +715,33 @@ test.describe("COS — cobertura do Registry e perguntas de capacidade", () => {
 })
 
 test.describe("COS — interpretação semântica validada", () => {
+  test("aceita relato contextual sem convertê-lo em operação", () => {
+    const baseline = decide("Tenho um cliente procurando sala comercial.")
+    const validated = applyCosAiDialogueInterpretation({
+      baseline,
+      interpretation: semanticInterpretation({
+        dialogueAct: "context",
+        objective: { mode: "respond", summary: "registrar contexto de busca do cliente", targetCapabilityId: "general.chat" },
+        primaryDomain: "lead",
+        secondaryDomains: ["property"],
+        references: [],
+        confidence: 0.94,
+      }),
+      surface: "portal",
+      workspace: null,
+      snapshot: null,
+      activeWorkflow: null,
+    })
+
+    expect(validated.accepted).toBe(true)
+    expect(validated.decision).toMatchObject({
+      dialogueAct: "context",
+      selectedCapabilityId: "general.chat",
+      selectedAction: "general",
+      needsClarification: false,
+    })
+  })
+
   test("usa a alternativa do working set sem aceitar ids inventados", () => {
     const currentSnapshot = propertySelectionSnapshot()
     const baseline = decide("Faz com o outro.", { snapshot: currentSnapshot })

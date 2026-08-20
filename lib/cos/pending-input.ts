@@ -268,7 +268,7 @@ export function shouldPreserveCosPendingWorkflow(input: {
 }) {
   return input.hasActiveWorkflow &&
     input.workflowDecision === "start_new" &&
-    ["query", "explain", "capability_question", "switch_topic", "return_topic"].includes(input.dialogueAct) &&
+    ["query", "explain", "capability_question", "context", "switch_topic", "return_topic"].includes(input.dialogueAct) &&
     !input.actionMutatesData &&
     !input.rejectionStartsNewAction &&
     !input.explicitlyDefersActiveWorkflow

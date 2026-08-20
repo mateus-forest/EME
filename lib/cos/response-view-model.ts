@@ -85,8 +85,62 @@ function interactionTypeForKind(kind: CosResponseKind): CosResponseInteractionTy
   return "result"
 }
 
+const INTERNAL_STATUS_LABELS: Record<string, string> = {
+  PENDING: "pendente",
+  PROCESSING: "em andamento",
+  RUNNING: "em andamento",
+  COMPLETED: "concluído",
+  FAILED: "não concluído",
+  CANCELLED: "cancelado",
+  CANCELED: "cancelado",
+  PAUSED: "pausado",
+  NEW: "novo",
+  CONTACTED: "contatado",
+  NEGOTIATING: "em negociação",
+  WON: "ganho",
+  LOST: "perdido",
+  ARCHIVED: "arquivado",
+  DRAFT: "rascunho",
+  PUBLISHED: "publicado",
+  SOLD: "vendido",
+  RENTED: "alugado",
+  ACTIVE: "ativo",
+  INACTIVE: "inativo",
+  OPEN: "aberto",
+  CLOSED: "encerrado",
+  SIGNED: "assinado",
+  SENT: "enviado",
+  EXPIRED: "expirado",
+}
+
+export function sanitizeCosResponseText(value: string | null | undefined) {
+  return (value ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(new RegExp(`\\b(?:${Object.keys(INTERNAL_STATUS_LABELS).join("|")})\\b`, "g"), (status) => INTERNAL_STATUS_LABELS[status] ?? "")
+    .replace(/\b(?:CREATE|UPDATE|DELETE|GET|LIST|PUBLISH|UNPUBLISH|ARCHIVE|STUDIO|CONTRACT|MARK|SEND|SHARE|FIND|LEAD|PROPERTY|AGENDA)_[A-Z0-9_]+\b/g, "")
+    .replace(/\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/g, "")
+    .replace(/\bProperty\b/gi, "imóvel")
+    .replace(/\bLead\b/gi, "cliente")
+    .replace(/\bAgendaEvent\b/gi, "compromisso")
+    .replace(/\bBrokerDocument\b/gi, "documento")
+    .replace(/\bcapabilities\b/gi, "recursos")
+    .replace(/\bcapability\b/gi, "recurso")
+    .replace(/\bworkflows?\b/gi, "fluxo")
+    .replace(/\bintents?\b/gi, "pedido")
+    .replace(/\bactions?\b/gi, "ações")
+    .replace(/\bgeneral\b/gi, "orientação")
+    .replace(/\bRegistry\b/gi, "EME")
+    .replace(/\bhandlers?\b/gi, "recursos")
+    .replace(/\bdescriptors?\b/gi, "regras")
+    .replace(/\bpayload\b/gi, "dados")
+    .replace(/[ \t]+([,.;:!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n[ \t]+/g, "\n")
+    .trim()
+}
+
 function cleanResponseText(value: string | null | undefined) {
-  return (value ?? "").replace(/\r\n/g, "\n").trim()
+  return sanitizeCosResponseText(value)
 }
 
 function isSafeFailureText(value: string) {
@@ -133,7 +187,7 @@ function buildPendingView(pending: CosPendingInput | null) {
 }
 
 function successfulKind(decision: CosDialogueDecision | null | undefined): CosResponseKind {
-  if (decision?.dialogueAct === "explain" || decision?.dialogueAct === "capability_question") {
+  if (["explain", "capability_question", "context"].includes(decision?.dialogueAct ?? "")) {
     return "explanation"
   }
   if (decision?.dialogueAct === "query" || decision?.dialogueAct === "select" || decision?.dialogueAct === "return_topic") {

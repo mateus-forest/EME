@@ -32,6 +32,18 @@ export const COS_DECISION_CONFIDENCE = {
   ambiguityMargin: 0.08,
 } as const
 
+export function isCosDialogueDecisionAuthoritativeForCapability(input: {
+  decision: CosDialogueDecision | null | undefined
+  capabilityId: CosCapabilityId
+}) {
+  return Boolean(
+    input.decision &&
+    input.decision.source !== "fallback" &&
+    input.decision.selectedCapabilityId === input.capabilityId &&
+    !input.decision.needsClarification,
+  )
+}
+
 const INTERNAL_ONLY_CAPABILITIES = new Set<CosCapabilityId>()
 
 const GENERIC_TOKENS = new Set([
@@ -53,6 +65,14 @@ const NATURAL_MUTATION_VERBS = new Set([
   "troca", "troque", "trocar", "tira", "tire", "tirar", "coloca", "coloque", "colocar",
   "monta", "monte", "montar", "passa", "passe", "passar", "faz", "faca", "usar", "usa",
 ])
+
+const NATURAL_QUERY_COMMANDS = new Set([
+  "abre", "abra", "abrir", "analisa", "analise", "analisar", "busca", "busque", "buscar", "consulta", "consulte", "consultar",
+  "encontra", "encontre", "encontrar", "lista", "liste", "listar", "localiza", "localize", "localizar", "mostra", "mostre", "mostrar",
+  "procura", "procure", "procurar", "revisa", "revise", "revisar", "ver",
+])
+
+const ORIENTATION_SIGNAL = /\b(?:como (?:comeco|comecar)|por onde (?:comeco|comecar)|primeiros passos|sou nov[oa])\b/
 
 function normalizeText(value: string) {
   return value
@@ -260,6 +280,14 @@ function hasNaturalQueryVerb(message: string) {
   return /\b(?:procur\w*|busc\w*|encontr\w*|localiz\w*|consult\w*|abr(?:e|ir)|mostr\w*|list\w*|analis\w*|revis\w*)\b/.test(message)
 }
 
+function hasNaturalQueryCommand(message: string) {
+  const tokens = message.split(/\s+/).filter(Boolean)
+  if (NATURAL_QUERY_COMMANDS.has(tokens[0] ?? "")) return true
+  if (!["me", "quero", "gostaria", "preciso"].includes(tokens[0] ?? "")) return false
+  const commandIndex = tokens[1] === "de" ? 2 : 1
+  return NATURAL_QUERY_COMMANDS.has(tokens[commandIndex] ?? "")
+}
+
 function hasSingleTokenLeadTarget(message: string) {
   const tokens = message.split(/\s+/).filter(Boolean)
   const boundaries = new Set([
@@ -321,6 +349,9 @@ function preferredConversationDomain(input: {
   const contextualAct = ["provide_input", "correct", "confirm", "reject", "cancel", "select"].includes(input.act)
   if (contextualAct) {
     return input.topicDomain ?? (input.contextDescriptor ? descriptorDomain(input.contextDescriptor) : null) ?? pendingDomain(input.pendingInput) ?? input.referenceDomain
+  }
+  if (input.act === "context") {
+    return input.mentionedDomains.find((domain) => domain !== "help") ?? input.topicDomain ?? input.referenceDomain
   }
   if (input.act === "capability_question" && input.contextDescriptor && /\b(isso|esse|essa|custa|creditos?)\b/.test(message)) {
     return descriptorDomain(input.contextDescriptor)
@@ -513,6 +544,7 @@ function inferDialogueAct(input: {
   }
 
   if (/\b(qual a diferenca|qual e a diferenca|como funciona|como funcionam|como (?:cadastro|excluo|publico|crio|faco)|o que e|o que precisa|o que acontece se|o que significa|por que precisa|onde ficam|me explica|me explique|quero entender)\b/.test(message) ||
+    ORIENTATION_SIGNAL.test(message) ||
     /^(?:quantas?|quantos?)\b.*\b(?:precisa|exige|necessari[oa]s?)\b/.test(message) ||
     (/^por que\b/.test(message) && !/\b(meu|minha|nao consigo|nao aparece|\d+\s*(?:%|por cento))\b/.test(message)) ||
     /^(?:o|a)\s+\w+(?:\s+\w+){0,3}\s+consegue\b.*\b(?:eme|sistema)\b/.test(message) ||
@@ -530,7 +562,7 @@ function inferDialogueAct(input: {
     return { act: "execute" as const, confidence: 0.9, evidence: ["active_lead_contact_followup"] }
   }
   const querySignal = input.hasQuestionMark || hasOperationalQuestionStructure(message) || hasNaturalQueryVerb(message) || hasAny(message, [
-    "tenho ", "qual ", "quais ", "quanto ", "quantos ", "quantas ", "como esta", "como ficam", "me mostra", "mostre", "mostrar", "liste", "listar",
+    "qual ", "quais ", "quanto ", "quantos ", "quantas ", "como esta", "como ficam", "me mostra", "mostre", "mostrar", "liste", "listar",
     "buscar", "busque", "encontre", "consultar", "ver meus", "ver minhas", "proximo compromisso", "so ate", "e com", "antes disso",
   ])
   const switchSignal = /\b(agora|vamos falar|mudando de assunto)\b/.test(message) || /^(?:e\s+)?(?:os|as|quantos|quantas)\b/.test(message)
@@ -560,6 +592,14 @@ function inferDialogueAct(input: {
     return { act: "query" as const, confidence: 0.9, evidence: ["question_overrides_operational_verb"] }
   }
   if (executeSignal) return { act: "execute" as const, confidence: 0.9, evidence: ["explicit_execution_verb"] }
+
+  if (
+    input.mentionedDomains.some((domain) => domain !== "help") &&
+    !hasNaturalQueryCommand(message)
+  ) {
+    return { act: "context" as const, confidence: 0.88, evidence: ["declarative_context"] }
+  }
+
   if (querySignal) return { act: "query" as const, confidence: 0.88, evidence: ["query_structure"] }
 
   if (input.referenceResolved) return { act: "query" as const, confidence: 0.78, evidence: ["resolved_reference"] }
@@ -589,6 +629,7 @@ function capabilitySearchText(descriptor: CosCapabilityDescriptor) {
 
 function helpCapabilityBoost(descriptor: CosCapabilityDescriptor, domains: CosConversationDomain[], message: string) {
   if (!descriptor.id.startsWith("help.")) return 0
+  if (descriptor.id === "help.first_steps" && ORIENTATION_SIGNAL.test(message)) return 16
   if (domains.includes("property") && descriptor.id === "help.register_properties") return 9
   if (domains.includes("lead") && descriptor.id === "help.manage_clients") return 9
   if ((domains.includes("contract") || domains.includes("proposal")) && descriptor.id === "help.contracts_proposals") return 9
@@ -830,10 +871,11 @@ export function applyCosAiDialogueInterpretation(input: {
     : null
   if (requestedCapabilityId && !descriptor) validationErrors.push(`capability_not_in_registry:${requestedCapabilityId}`)
   if (descriptor && !descriptor.surfaces.includes(input.surface)) validationErrors.push(`capability_not_allowed_on_surface:${descriptor.id}`)
-  if (descriptor && descriptorDomain(descriptor) !== input.interpretation.primaryDomain && !input.interpretation.secondaryDomains.includes(descriptorDomain(descriptor))) {
+  const contextualGeneralResponse = descriptor?.id === "general.chat" && input.interpretation.dialogueAct === "context"
+  if (descriptor && !contextualGeneralResponse && descriptorDomain(descriptor) !== input.interpretation.primaryDomain && !input.interpretation.secondaryDomains.includes(descriptorDomain(descriptor))) {
     validationErrors.push(`capability_domain_mismatch:${descriptor.id}`)
   }
-  if (descriptor?.id === "general.chat" && !["social", "capability_question"].includes(input.interpretation.dialogueAct)) {
+  if (descriptor?.id === "general.chat" && !["social", "capability_question", "context"].includes(input.interpretation.dialogueAct)) {
     validationErrors.push("general_chat_is_not_operational_fallback")
   }
 
@@ -1185,6 +1227,13 @@ export function resolveCosDialogueDecision(input: {
     selectedCapabilityId = descriptor.id
     selectedAction = descriptor.action
     objectiveMode = "respond"
+  } else if (act === "context") {
+    const descriptor = getCosCapabilityDescriptorById("general.chat")!
+    candidates = [directCandidate(descriptor, ["declarative_context"])]
+    selectedCapabilityId = descriptor.id
+    selectedAction = descriptor.action
+    objectiveMode = "respond"
+    source = "registry"
   } else if (unsupportedContractReview || unsupportedNativeSignature || unsupportedCatalogAccountDiagnosis) {
     objectiveMode = act === "explain" ? "explain" : "query"
     source = "registry"

@@ -313,12 +313,8 @@ function buildWorkflowDetailOptions(workflow: CosWorkflow | null): CosResponseOp
   return null
 }
 
-// Algumas capabilities (ex: os topicos guiados de ajuda em lib/cos/capabilities/help/manage.ts)
-// ja devolvem metadata.options prontas no formato CosResponseOption, sem passar pelo mecanismo de
-// pendingInput/workflow. Sem essa checagem, options: responseOptions (mais abaixo) sempre
-// sobrescrevia esse valor com o resultado de buildStructuredNextStepOptions — que nao tem nenhum
-// caso para acoes "help_*" e retorna null — apagando as opcoes reais e fazendo a lista de topicos
-// (ex: "Escolha como deseja cadastrar o imovel") cair para texto solto no chat.
+// Opções fornecidas pela capability só chegam à apresentação quando representam uma escolha
+// explicitamente solicitada. Seleções necessárias do workflow são tratadas separadamente.
 function parseCapabilityProvidedOptions(value: unknown): CosResponseOption[] | null {
   if (!Array.isArray(value)) return null
 
@@ -340,37 +336,6 @@ function parseCapabilityProvidedOptions(value: unknown): CosResponseOption[] | n
     )
 
   return options.length > 0 ? options : null
-}
-
-function buildIntentClarificationOptions(
-  candidates:
-    | Array<{
-        action: AssessorAction
-        confidence: number
-        reason: string
-      }>
-    | undefined,
-): CosResponseOption[] | null {
-  if (!candidates?.length) return null
-
-  const unique = new Map<string, CosResponseOption>()
-  for (const candidate of candidates.slice(0, 3)) {
-    if (!unique.has(candidate.action)) {
-      unique.set(
-        candidate.action,
-        buildStructuredOption({
-          id: candidate.action,
-          actionId: `intent:${candidate.action}`,
-          action: candidate.action,
-          message: getCosCapabilityLabel(candidate.action),
-          label: getCosCapabilityLabel(candidate.action),
-        }),
-      )
-    }
-  }
-
-  const options = Array.from(unique.values())
-  return options.length > 1 ? options : null
 }
 
 function buildDecisionAudit(input: {
@@ -525,120 +490,6 @@ function buildNaturalClarificationResponse(input: {
     default:
       return "O que você quer fazer e com qual item?"
   }
-}
-
-function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
-  const propertyId = typeof metadata.propertyId === "string" ? metadata.propertyId : null
-  const leadId = typeof metadata.leadId === "string" ? metadata.leadId : null
-  const propertyStatus = typeof metadata.propertyStatus === "string" ? metadata.propertyStatus : null
-  const deleted = metadata.deleted === true
-
-  if (deleted || action === "ARCHIVE_PROPERTY") {
-    return [
-      { id: "next_find_property_after_delete", label: "Buscar imóveis" },
-      { id: "next_create_property_after_delete", label: "Criar imóvel" },
-      { id: "next_campaign_after_delete", label: "Criar campanha para outro imóvel" },
-    ]
-  }
-
-  if (action === "UNPUBLISH_PROPERTY" || propertyStatus === "PAUSED") {
-    return [
-      { id: "next_republish_property", label: "Publicar novamente" },
-      { id: "next_edit_property", label: "Editar imóvel" },
-      { id: "next_delete_property", label: "Excluir imóvel" },
-    ]
-  }
-
-  if (action === "createPropertyDraft" || action === "PUBLISH_PROPERTY" || action === "searchProperties") {
-    return [
-      { id: "next_campaign", label: "Gerar campanha" },
-      { id: "next_catalog", label: "Compartilhar catálogo" },
-      { id: "next_proposal", label: "Criar proposta" },
-    ]
-  }
-
-  if (action === "createLead" || action === "FIND_LEAD" || action === "UPDATE_LEAD" || Boolean(leadId)) {
-    return [
-      { id: "next_find_property", label: "Buscar imóveis" },
-      { id: "next_create_proposal", label: "Criar proposta" },
-      { id: "next_client_timeline", label: "Ver histórico" },
-    ]
-  }
-
-  if (action === "CREATE_PROPOSAL") {
-    return [
-      { id: "next_create_contract", label: "Criar contrato" },
-      { id: "next_share_catalog", label: "Compartilhar catálogo" },
-    ]
-  }
-
-  if (propertyId) {
-    return [
-      { id: "next_campaign_property", label: "Gerar campanha" },
-      { id: "next_contract_property", label: "Criar contrato" },
-      { id: "next_catalog_property", label: "Compartilhar catálogo" },
-    ]
-  }
-
-  return null
-}
-
-function buildStructuredFastActionOptions(options: Array<{ id: string; label: string; action?: AssessorAction; href?: string }> | undefined): CosResponseOption[] | null {
-  if (!options?.length) return null
-
-  const normalized = options
-    .filter((option) => option.id && option.label)
-    .map((option) =>
-      buildStructuredOption({
-        id: option.id,
-        actionId: `clarify:${option.id}`,
-        selectedOptionId: option.id,
-        message: option.label,
-        label: option.label,
-        action: option.action,
-        href: option.href,
-      }),
-    )
-
-  return normalized.length > 0 ? normalized : null
-}
-
-function buildStructuredNextStepOptions(action: AssessorAction, metadata: Prisma.InputJsonObject): CosResponseOption[] | null {
-  const options = buildNextStepOptions(action, metadata)
-  if (!options?.length) return null
-
-  return options.map((option) => {
-    switch (option.id) {
-      case "next_find_property_after_delete":
-      case "next_find_property":
-        return buildStructuredOption({ ...option, actionId: "next:searchProperties", action: "searchProperties", message: option.message ?? option.label })
-      case "next_create_property_after_delete":
-      case "next_edit_property":
-        return buildStructuredOption({ ...option, actionId: "next:createPropertyDraft", action: "createPropertyDraft", message: option.message ?? option.label })
-      case "next_campaign_after_delete":
-      case "next_campaign":
-      case "next_campaign_property":
-        return buildStructuredOption({ ...option, actionId: "next:STUDIO_GENERATE_CAMPAIGN", action: "STUDIO_GENERATE_CAMPAIGN", message: option.message ?? option.label })
-      case "next_republish_property":
-        return buildStructuredOption({ ...option, actionId: "next:PUBLISH_PROPERTY", action: "PUBLISH_PROPERTY", message: option.message ?? option.label })
-      case "next_delete_property":
-        return buildStructuredOption({ ...option, actionId: "next:ARCHIVE_PROPERTY", action: "ARCHIVE_PROPERTY", message: option.message ?? option.label })
-      case "next_catalog":
-      case "next_share_catalog":
-      case "next_catalog_property":
-        return buildStructuredOption({ ...option, actionId: "next:SHARE_CATALOG", action: "SHARE_CATALOG", message: option.message ?? option.label })
-      case "next_proposal":
-      case "next_create_proposal":
-        return buildStructuredOption({ ...option, actionId: "next:CREATE_PROPOSAL", action: "CREATE_PROPOSAL", message: option.message ?? option.label })
-      case "next_create_contract":
-      case "next_contract_property":
-        return buildStructuredOption({ ...option, actionId: "next:CREATE_CONTRACT", action: "CREATE_CONTRACT", message: option.message ?? option.label })
-      case "next_client_timeline":
-        return buildStructuredOption({ ...option, actionId: "next:LEAD_TIMELINE", action: "LEAD_TIMELINE", message: option.message ?? option.label })
-      default:
-        return buildStructuredOption({ ...option, actionId: `next:${option.id}`, message: option.message ?? option.label })
-    }
-  })
 }
 
 function resolveStructuredSelectionMessage(workflow: CosWorkflow | null, selectedOptionId: string | null) {
@@ -960,7 +811,7 @@ export async function POST(request: NextRequest) {
       memory: conversationMemory,
       attachments,
     })
-    if (["social", "explain", "capability_question"].includes(preflightDialogueDecision.dialogueAct)) {
+    if (["social", "explain", "capability_question", "context"].includes(preflightDialogueDecision.dialogueAct)) {
       creditsUsed = 0
     }
 
@@ -1159,7 +1010,14 @@ export async function POST(request: NextRequest) {
 
     if (fastAction.kind === "clarify") {
       const brokerCredits = await getBrokerCredits(user.broker.id)
+      const responseView = buildCosSimpleResponseViewModel({
+        kind: "awaiting_input",
+        text: fastAction.reply,
+      })
+      const responseText = responseView.text
       const interactionMetadata = {
+        responseView: responseView as unknown as Prisma.InputJsonObject,
+        interactionType: responseView.interactionType,
         source: metadataSource,
         parsedIntent: "general",
         actionName: "general",
@@ -1171,7 +1029,7 @@ export async function POST(request: NextRequest) {
         },
         conversationId: conversationDocument?.id ?? conversationIdFromBody,
         displayMessage,
-        options: buildStructuredFastActionOptions(fastAction.options),
+        options: null,
         decisionAudit: buildDecisionAudit({
           fastAction,
           requestedAction,
@@ -1190,7 +1048,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             brokerId: user.broker.id,
             prompt: message,
-            response: fastAction.reply,
+            response: responseText,
             actionType: "general",
             creditsUsed: 0,
             channel: "assessor_eme",
@@ -1207,7 +1065,7 @@ export async function POST(request: NextRequest) {
             channel: "assessor_eme",
             direction: "broker_to_ai",
             message,
-            response: fastAction.reply,
+            response: responseText,
             detectedIntent: "general",
             actionType: "general",
             actionStatus: "needs_clarification",
@@ -1219,7 +1077,8 @@ export async function POST(request: NextRequest) {
       ])
 
       return NextResponse.json({
-        response: fastAction.reply,
+        response: responseText,
+        responseView,
         action: "general",
         actionStatus: "needs_clarification",
         metadata: interactionMetadata,
@@ -1297,94 +1156,94 @@ export async function POST(request: NextRequest) {
     )
 
     if (!isCancellation && !isBoundPendingConfirmationResponse && shouldClarifyBeforeExecution) {
-      const clarificationOptions = buildIntentClarificationOptions(intentResolution.candidates)
-      if (clarificationOptions || dialogueDecision.needsClarification) {
-        const brokerCredits = await getBrokerCredits(user.broker.id)
-        const clarificationResponse = clarificationOptions
-          ? "Quero ter certeza antes de seguir.\n\nVocê quis dizer uma destas ações?"
-          : runtimeClarificationReason === "selection_context_missing"
-            ? "Preciso saber a qual item você está se referindo. Mostre a lista novamente ou informe o nome do cliente, imóvel, proposta ou contrato."
-            : runtimeClarificationReason === "return_topic_not_found"
-              ? "Não encontrei esse assunto entre os tópicos recentes. Diga qual cliente, imóvel, proposta ou contrato você quer retomar."
-              : buildNaturalClarificationResponse({
-                  reason: runtimeClarificationReason,
-                  primaryDomain: dialogueDecision.primaryDomain,
-                  hasActiveLead: Boolean(conversationSnapshot.activeEntities.lead?.id || workspace?.entity === "lead"),
-                  semanticQuestion: dialogueDecision.semanticInterpretation?.clarificationQuestion,
-                })
-        const interactionMetadata = {
-          source: metadataSource,
-          parsedIntent: "general",
-          actionName: "general",
-          brokerId: user.broker.id,
-          visualAction: "Aclaracao de intencao",
-          intentResolution,
-          conversationId: conversationDocument?.id ?? conversationIdFromBody,
-          displayMessage,
-          options: clarificationOptions,
-          decisionAudit: buildDecisionAudit({
-            fastAction,
-            requestedAction,
-            effectiveRequestedAction,
-            resolvedRequestedAction,
-            dialogueDecision,
-            knowledgeContext,
-            intentResolution: {
-              requestedAction: intentResolution.requestedAction,
-              confidence: intentResolution.confidence,
-              reason: intentResolution.reason,
-              workflowDecision: intentResolution.workflowDecision,
-              candidates: intentResolution.candidates,
-            },
-            executionPlan: null,
-          }),
-        } as Prisma.InputJsonObject
+      const brokerCredits = await getBrokerCredits(user.broker.id)
+      const clarificationText = runtimeClarificationReason === "selection_context_missing"
+        ? "Preciso saber a qual item você está se referindo. Mostre a lista novamente ou informe o nome do cliente, imóvel, proposta ou contrato."
+        : runtimeClarificationReason === "return_topic_not_found"
+          ? "Não encontrei esse assunto entre os tópicos recentes. Diga qual cliente, imóvel, proposta ou contrato você quer retomar."
+          : buildNaturalClarificationResponse({
+              reason: runtimeClarificationReason,
+              primaryDomain: dialogueDecision.primaryDomain,
+              hasActiveLead: Boolean(conversationSnapshot.activeEntities.lead?.id || workspace?.entity === "lead"),
+              semanticQuestion: dialogueDecision.semanticInterpretation?.clarificationQuestion,
+            })
+      const responseView = buildCosSimpleResponseViewModel({ kind: "awaiting_input", text: clarificationText })
+      const clarificationResponse = responseView.text
+      const interactionMetadata = {
+        responseView: responseView as unknown as Prisma.InputJsonObject,
+        interactionType: responseView.interactionType,
+        source: metadataSource,
+        parsedIntent: "general",
+        actionName: "general",
+        brokerId: user.broker.id,
+        visualAction: "Aclaracao de intencao",
+        intentResolution,
+        conversationId: conversationDocument?.id ?? conversationIdFromBody,
+        displayMessage,
+        options: null,
+        decisionAudit: buildDecisionAudit({
+          fastAction,
+          requestedAction,
+          effectiveRequestedAction,
+          resolvedRequestedAction,
+          dialogueDecision,
+          knowledgeContext,
+          intentResolution: {
+            requestedAction: intentResolution.requestedAction,
+            confidence: intentResolution.confidence,
+            reason: intentResolution.reason,
+            workflowDecision: intentResolution.workflowDecision,
+            candidates: intentResolution.candidates,
+          },
+          executionPlan: null,
+        }),
+      } as Prisma.InputJsonObject
 
-        const [updatedConversation] = await Promise.all([
-          touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
-          prisma.aiAssistantInteraction.create({
-            data: {
-              userId: user.id,
-              brokerId: user.broker.id,
-              prompt: message,
-              response: clarificationResponse,
-              actionType: "general",
-              creditsUsed: 0,
-              channel: "assessor_eme",
-              intent: "general",
-              actionStatus: "needs_clarification",
-              metadata: interactionMetadata,
-              errorMessage: null,
-            },
-          }),
-          prisma.emeMessage.create({
-            data: {
-              userId: user.id,
-              brokerId: user.broker.id,
-              channel: "assessor_eme",
-              direction: "broker_to_ai",
-              message,
-              response: clarificationResponse,
-              detectedIntent: "general",
-              actionType: "general",
-              actionStatus: "needs_clarification",
-              metadata: interactionMetadata,
-              errorMessage: null,
-              creditsUsed: 0,
-            },
-          }),
-        ])
+      const [updatedConversation] = await Promise.all([
+        touchCosConversation({ conversation: conversationDocument, message: displayMessage || message }),
+        prisma.aiAssistantInteraction.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            prompt: message,
+            response: clarificationResponse,
+            actionType: "general",
+            creditsUsed: 0,
+            channel: "assessor_eme",
+            intent: "general",
+            actionStatus: "needs_clarification",
+            metadata: interactionMetadata,
+            errorMessage: null,
+          },
+        }),
+        prisma.emeMessage.create({
+          data: {
+            userId: user.id,
+            brokerId: user.broker.id,
+            channel: "assessor_eme",
+            direction: "broker_to_ai",
+            message,
+            response: clarificationResponse,
+            detectedIntent: "general",
+            actionType: "general",
+            actionStatus: "needs_clarification",
+            metadata: interactionMetadata,
+            errorMessage: null,
+            creditsUsed: 0,
+          },
+        }),
+      ])
 
-        return NextResponse.json({
-          response: clarificationResponse,
-          action: "general",
-          actionStatus: "needs_clarification",
-          metadata: interactionMetadata,
-          creditsUsed: 0,
-          conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
-          ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
-        })
-      }
+      return NextResponse.json({
+        response: clarificationResponse,
+        responseView,
+        action: "general",
+        actionStatus: "needs_clarification",
+        metadata: interactionMetadata,
+        creditsUsed: 0,
+        conversation: updatedConversation ? serializeConversation(updatedConversation) : null,
+        ...(brokerCredits ? creditsResponse(brokerCredits) : { credits: { balance: 0, usedThisMonth: 0 }, aiAssistantEnabled: true }),
+      })
     }
 
     if (isWorkflowDetailsRequest || effectiveRequestedAction === "workflow_details") {
@@ -2132,17 +1991,12 @@ export async function POST(request: NextRequest) {
           result: executionResult,
           status: actionStatus === "error" ? "error" : workflowToPersist.status === "awaiting_input" ? "awaiting_input" : "success",
         })
-    // actionMetadata (executionResult.metadata) e um resumo agregado do plano inteiro — nao
-    // carrega o metadata.options que a proria capability devolveu (ex: os topicos guiados de
-    // lib/cos/capabilities/help/manage.ts). Esse fica aninhado no resultado de cada step
-    // individual, entao precisa ser lido de la (o ultimo step executado e o que gerou responseText).
+    // Apenas escolhas solicitadas pela capability e seleções necessárias do workflow viram opções.
+    // Sugestões genéricas de próximo passo ficam no texto quando forem realmente úteis.
     const primaryStepMetadata = (executionResult?.executedSteps.at(-1)?.result?.metadata ?? {}) as Prisma.InputJsonObject
     const responseOptions =
       parseCapabilityProvidedOptions(primaryStepMetadata.options) ??
-      buildWorkflowDetailOptions(updatedWorkflow) ??
-      (actionStatus === "success" && updatedWorkflow.status !== "awaiting_input"
-        ? buildStructuredNextStepOptions(action, actionMetadata)
-        : null)
+      buildWorkflowDetailOptions(updatedWorkflow)
     const plannedCapabilities = (executionPlan?.steps ?? workflow.steps).map((step) => step.capabilityId)
     const executedCapabilities = executionResult?.executedSteps.map((step) => step.capabilityId) ?? []
     const skippedCapabilities = plannedCapabilities.filter((capabilityId) => !executedCapabilities.includes(capabilityId))

@@ -9,15 +9,15 @@ import {
   parseCosKnowledgeDocument,
 } from "@/lib/cos/knowledge/loader.server"
 import {
-  buildCosGroundedKnowledgeFallback,
   buildCosKnowledgeAudit,
   COS_KNOWLEDGE_LIMITS,
   formatCosKnowledgeContext,
   isDetailedCosKnowledgeRequest,
-  normalizeCosGroundedAnswer,
   retrieveCosKnowledge,
+  selectCosKnowledgeFacts,
   shouldRetrieveCosKnowledge,
 } from "@/lib/cos/knowledge/retrieval"
+import { buildCosGroundedHelpResponse, normalizeCosGroundedResponse } from "@/lib/cos/response-formatter"
 import type {
   CosCapabilityId,
   CosConversationDomain,
@@ -229,7 +229,7 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
     expect(context.chunks.some((chunk) => ["studio", "financeiro", "contratos"].includes(chunk.sourceId))).toBe(false)
   })
 
-  test("respostas de orientação sintetizam o Livro sem despejar texto ou linguagem interna", async () => {
+  test("Knowledge entrega fatos relevantes e a Response Layer os apresenta sem texto cru", async () => {
     const cases = [
       {
         message: "Como usar o COS?",
@@ -267,7 +267,11 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
       expect(context.knowledgeMiss, example.message).toBe(false)
       expect(context.selectedDocuments.map((document) => document.id)).toEqual(expect.arrayContaining([...example.expectedDocuments]))
 
-      const answer = buildCosGroundedKnowledgeFallback({ message: example.message, context })
+      const facts = selectCosKnowledgeFacts({ message: example.message, context })
+      expect(facts.length).toBeGreaterThan(0)
+      expect(facts.length).toBeLessThanOrEqual(3)
+
+      const answer = buildCosGroundedHelpResponse({ message: example.message, context })
       expect(answer.length).toBeGreaterThan(20)
       expect(answer.length).toBeLessThanOrEqual(520)
       expect(answer).not.toMatch(/(?:```|\|---|\[[^\]]+ ·|\b(?:general|capability|workflow|registry|handler|descriptor|actions?)\b)/i)
@@ -286,8 +290,20 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
       "Terceira frase útil.",
       "Quarta frase útil.",
     ].join(" ")
-    expect(normalizeCosGroundedAnswer(source, false)).not.toContain("Quarta frase")
-    expect(normalizeCosGroundedAnswer(source, true)).toContain("Quarta frase")
+    expect(normalizeCosGroundedResponse(source, false)).not.toContain("Quarta frase")
+    expect(normalizeCosGroundedResponse(source, true)).toContain("Quarta frase")
+  })
+
+  test("ajuda de Clientes explica a área, suas possibilidades e oferece ajuda", async () => {
+    const message = "Como funciona Clientes?"
+    const context = await retrieveCosKnowledge({ message, decision: decide(message) })
+    const answer = buildCosGroundedHelpResponse({ message, context })
+
+    expect(answer).toMatch(/^Clientes\b/)
+    expect(answer).toMatch(/contato|interesse|histórico/i)
+    expect(answer).toMatch(/Você pode|posso ajudar/i)
+    expect(answer).toContain("Se quiser, posso ajudar")
+    expect(answer).not.toMatch(/Livro|Registry|capability|workflow|general|property|Lead/i)
   })
 
   test("contratos recupera a regra completa sem esconder a divergência do legado", async () => {

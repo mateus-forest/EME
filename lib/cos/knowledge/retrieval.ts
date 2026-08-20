@@ -381,30 +381,22 @@ export function isDetailedCosKnowledgeRequest(message: string) {
   return DETAILED_ANSWER_SIGNAL.test(normalizeCosKnowledgeText(message))
 }
 
-function cleanKnowledgeUnit(value: string) {
+function cleanKnowledgeFact(value: string) {
   if (INTERNAL_KNOWLEDGE_LANGUAGE.test(value)) return ""
   if (/^Somente as capabilit(?:y|ies) validadas do Registry\.?$/i.test(value.trim())) return ""
   return value
     .replace(/\[([^\]]+)]\([^)]*\)/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/\bProperty\b/gi, "imóvel")
-    .replace(/\bLead\b/gi, "cliente")
-    .replace(/\bAgendaEvent\b/gi, "compromisso")
-    .replace(/\bBrokerDocument\b/gi, "documento")
-    .replace(/\bCatalogEvent\b/gi, "evento do Catálogo")
-    .replace(/\bcapabilities\b/gi, "funções")
-    .replace(/\bcapability\b/gi, "função")
-    .replace(/\bRegistry\b/gi, "EME")
-    .replace(/\bworkflows?\b/gi, "fluxos")
-    .replace(/\bhandlers?\b/gi, "recursos")
-    .replace(/\bdescriptors?\b/gi, "regras")
-    .replace(/\bactions?\b/gi, "ações")
-    .replace(/\bgeneral\b/gi, "orientação")
-    .replace(/\b[A-Z][A-Z0-9_]{3,}\b/g, "")
-    .replace(/\s*→\s*/g, ", depois ")
     .replace(/\s+/g, " ")
     .replace(/\s+([,.;:!?])/g, "$1")
     .trim()
+}
+
+export type CosKnowledgeFact = {
+  text: string
+  sourceId: string
+  heading: string
+  order: number
 }
 
 function knowledgeUnits(context: CosKnowledgeContext) {
@@ -417,7 +409,7 @@ function knowledgeUnits(context: CosKnowledgeContext) {
       .map((line) => line.trim())
       .filter((line) => line && !/^(?:#|---|\|)/.test(line))
       .flatMap((line) => line.replace(/^[-*]\s+/, "").split(/(?<=[.!?])\s+/))
-      .map(cleanKnowledgeUnit)
+      .map(cleanKnowledgeFact)
       .filter((unit) => unit.length >= 18)
 
     return units.map((text, unitIndex) => ({
@@ -467,55 +459,18 @@ function unitScore(input: {
   return score
 }
 
-function naturalizeKnowledgeUnit(value: string) {
-  let text = value.trim()
-  if (/^O COS pode\b/i.test(text)) {
-    text = text.replace(/^O COS pode\b/i, "Posso").replace(/\s+conforme\b.*$/i, "")
-  }
-  text = text
-    .replace(/^Você pode perguntar, consultar dados, solicitar ações, corrigir um dado do fluxo, confirmar, rejeitar, cancelar, selecionar resultados, mudar e retomar tópicos\.?$/i, "Diga o que você quer consultar ou fazer. Se faltar algum dado, eu pergunto; quando necessário, peço confirmação.")
-    .replace(/^Cadastro, depois revisão dos dados\/mídias, depois publicação, depois atendimento e documentos\.?$/i, "Cadastre o imóvel, revise os dados e as mídias e publique quando estiver pronto.")
-    .replace(/^Cadastro e atendimento de clientes; criação e publicação de imóveis; propostas e contratos; compromissos; divulgação pública; geração de conteúdo; consultas operacionais\.?$/i, "No EME, você gerencia clientes e imóveis, cria propostas e contratos, organiza compromissos, publica e gera conteúdo.")
-    .replace(/^Criar manualmente\b/i, "Você pode criar manualmente")
-    .replace(/^Perguntar, consultar\b/i, "Você pode perguntar, consultar")
-    .replace(/^Centralizar clientes\b/i, "O EME centraliza clientes")
-    .replace(/^(Administrar|Publicar|Usar|Consultar)\b/, (verb) => `Você pode ${verb.toLowerCase()}`)
-    .trim()
-  if (!text) return ""
-  return /[.!?]$/.test(text) ? text : `${text}.`
-}
-
-function truncateKnowledgeAnswer(value: string, maxChars: number) {
-  if (value.length <= maxChars) return value
-  const candidate = value.slice(0, maxChars + 1)
-  const sentenceEnd = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("? "), candidate.lastIndexOf("! "), candidate.lastIndexOf("\n"))
-  if (sentenceEnd >= Math.floor(maxChars * 0.55)) return candidate.slice(0, sentenceEnd + 1).trim()
-  const wordEnd = candidate.lastIndexOf(" ")
-  return `${candidate.slice(0, wordEnd > 0 ? wordEnd : maxChars).trimEnd()}…`
-}
-
-export function normalizeCosGroundedAnswer(value: string, detailed: boolean) {
-  const maxUnits = detailed ? 8 : 3
-  const maxChars = detailed ? 1_600 : 520
-  const units = value
-    .replace(/```[\s\S]*?```/g, " ")
-    .split(/\r?\n|(?<=[.!?])\s+/)
-    .map((line) => cleanKnowledgeUnit(line.replace(/^#{1,6}\s+/, "").replace(/^(?:[-*]|\d+[.)])\s+/, "")))
-    .filter(Boolean)
-    .slice(0, maxUnits)
-    .map(naturalizeKnowledgeUnit)
-  return truncateKnowledgeAnswer(detailed ? units.map((unit) => `- ${unit}`).join("\n") : units.join(" "), maxChars)
-}
-
-export function buildCosGroundedKnowledgeFallback(input: {
+export function selectCosKnowledgeFacts(input: {
   message: string
   context: CosKnowledgeContext
-}) {
-  if (input.context.knowledgeMiss || input.context.chunks.length === 0) return ""
+  limit?: number
+}): CosKnowledgeFact[] {
+  if (input.context.knowledgeMiss || input.context.chunks.length === 0) return []
   const normalizedMessage = normalizeCosKnowledgeText(input.message)
   const detailed = isDetailedCosKnowledgeRequest(input.message)
   const comparison = /\b(?:diferenca|comparar|comparacao|distincao)\b/.test(normalizedMessage)
-  const procedure = PROCEDURE_SIGNAL.test(normalizedMessage) || /\bcomo (?:usar|utilizar|utilizo|uso)\b/.test(normalizedMessage)
+  const procedure = !/\bcomo funciona\b/.test(normalizedMessage) && (
+    PROCEDURE_SIGNAL.test(normalizedMessage) || /\bcomo (?:usar|utilizar|utilizo|uso)\b/.test(normalizedMessage)
+  )
   const capability = isCosGuidanceQuery(input.message, null)
   const queryTokens = tokenize(normalizedMessage).filter((token) => !GENERIC_PRODUCT_TOKENS.has(token))
   const candidates = knowledgeUnits(input.context)
@@ -534,14 +489,21 @@ export function buildCosGroundedKnowledgeFallback(input: {
         : candidates.find((candidate) => candidate.sourceId === document.id)
       add(sourceCandidate)
     }
+  } else {
+    const preferredHeadings = capability
+      ? ["o que o cos pode fazer", "o que o usuario pode fazer", "para que serve"]
+      : procedure
+        ? ["fluxos principais", "o que o usuario pode fazer", "para que serve"]
+        : ["o que e", "para que serve", "o que o usuario pode fazer"]
+    for (const heading of preferredHeadings) add(candidates.find((candidate) => candidate.heading === heading))
   }
-  const answerUnitLimit = detailed ? 8 : comparison ? Math.max(2, selected.length) : 2
-  if (detailed || !comparison || selected.length < 2) {
+  const answerUnitLimit = input.limit ?? (detailed ? 8 : comparison ? Math.max(2, selected.length) : 3)
+  if (selected.length < answerUnitLimit) {
     for (const candidate of candidates) {
       if (selected.length >= answerUnitLimit) break
       add(candidate)
     }
   }
 
-  return normalizeCosGroundedAnswer(selected.map((item) => item.text).join("\n"), detailed)
+  return selected.slice(0, answerUnitLimit).map(({ text, sourceId, heading, order }) => ({ text, sourceId, heading, order }))
 }

@@ -1,4 +1,4 @@
-import type { CosConversationMemory, CosWorkspaceContext } from "@/lib/cos/types"
+import type { CosConversationMemory, CosDialogueDecision, CosWorkspaceContext } from "@/lib/cos/types"
 
 export type CosSocialIntent =
   | "greeting"
@@ -18,14 +18,6 @@ type CosConversationResponseInput = {
   now?: Date
 }
 
-export const COS_GENERAL_CHAT_OPTIONS = [
-  { id: "general_clients", actionId: "general:clients", action: "FIND_LEAD", message: "Clientes", label: "Clientes" },
-  { id: "general_properties", actionId: "general:properties", action: "searchProperties", message: "Buscar imóveis", label: "Buscar imóveis" },
-  { id: "general_proposal", actionId: "general:proposal", action: "CREATE_PROPOSAL", message: "Criar proposta", label: "Criar proposta" },
-  { id: "general_contract", actionId: "general:contract", action: "CREATE_CONTRACT", message: "Novo contrato", label: "Novo contrato" },
-  { id: "general_agenda", actionId: "general:agenda", action: "CREATE_AGENDA_EVENT", message: "Agenda", label: "Agenda" },
-] as const
-
 export function normalizeConversationText(value: string) {
   return value
     .normalize("NFD")
@@ -43,6 +35,17 @@ export function getSafeFirstName(value: unknown) {
   const firstName = firstToken.replace(/[^\p{L}'’-]/gu, "")
   if (!firstName || firstName.length > 40) return null
   return firstName
+}
+
+export function buildCosContextResponse(decision: CosDialogueDecision) {
+  const domains = new Set([decision.primaryDomain, ...decision.secondaryDomains])
+  const identifiedLead = (
+    decision.reference.type === "lead" && Boolean(decision.reference.id || decision.reference.label)
+  ) || Boolean(
+    decision.semanticInterpretation?.entities.some((entity) => entity.type === "lead" && (entity.id || entity.label)),
+  )
+  if (domains.has("lead") && domains.has("property") && !identifiedLead) return "Qual cliente?"
+  return "Entendi. O que você quer fazer a partir disso?"
 }
 
 export function classifyCosSocialIntent(message: string): CosSocialIntent | null {

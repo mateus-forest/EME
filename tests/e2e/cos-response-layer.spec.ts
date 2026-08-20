@@ -6,6 +6,7 @@ import {
   buildCosExecutionResponseViewModel,
   buildCosSimpleResponseViewModel,
   parseCosResponseViewModel,
+  sanitizeCosResponseText,
 } from "@/lib/cos/response-view-model"
 import type {
   CosCapabilityDefinition,
@@ -547,5 +548,12 @@ test.describe("COS — Response Layer", () => {
     expect(parseCosResponseViewModel(JSON.parse(JSON.stringify(view)))).toEqual(view)
     expect(parseCosResponseViewModel({ schemaVersion: 99, kind: "success", text: "forjado" })).toBeNull()
     expect(parseCosResponseViewModel({ schemaVersion: 1, kind: "success", text: 123 })).toBeNull()
+  })
+
+  test("normaliza linguagem interna antes da apresentação", () => {
+    const text = sanitizeCosResponseText("general property capability workflow intent CREATE_PROPOSAL")
+
+    expect(text).not.toMatch(/\b(?:general|property|capability|workflow|intent|CREATE_PROPOSAL)\b/i)
+    expect(text).toContain("imóvel")
   })
 })

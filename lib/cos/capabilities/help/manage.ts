@@ -8,11 +8,14 @@ import { createOpenAIResponse } from "@/lib/openai-telemetry"
 
 import { loadHelpManualContext, type HelpTopic } from "@/lib/cos/capabilities/help/manual"
 import {
-  buildCosGroundedKnowledgeFallback,
-  formatCosKnowledgeContext,
   isDetailedCosKnowledgeRequest,
-  normalizeCosGroundedAnswer,
 } from "@/lib/cos/knowledge/retrieval"
+import {
+  buildCosGroundedHelpResponse,
+  formatCosKnowledgeFactsForResponse,
+  normalizeCosGroundedResponse,
+  normalizeCosHelpResponse,
+} from "@/lib/cos/response-formatter"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
 
 const HELP_SYSTEM_PROMPT = [
@@ -24,9 +27,12 @@ const HELP_SYSTEM_PROMPT = [
 
 const KNOWLEDGE_SYSTEM_PROMPT = [
   "Você é o assistente de suporte e orientação do EME, o Sistema Operacional do Corretor.",
-  "Use somente os trechos selecionados do Livro do EME como fonte factual e não invente funcionalidades.",
-  "Sintetize a resposta; não copie nem despeje os trechos recebidos.",
-  "Responda em português, de forma natural, direta e orientada à necessidade do corretor.",
+  "Use somente os fatos selecionados como base e não invente funcionalidades.",
+  "Nunca copie, enumere ou mencione a fonte recebida.",
+  "Para ajuda sobre uma área, diga primeiro o que ela é, depois o que permite fazer e termine oferecendo uma ajuda concreta do COS.",
+  "Para orientação inicial, resuma os principais caminhos do EME e ofereça um próximo passo concreto.",
+  "Para uma pergunta, responda diretamente sem iniciar, simular ou confirmar uma operação.",
+  "Responda em português, de forma natural e diretamente ligada ao que foi perguntado.",
   "Não mencione o Livro, as fontes ou termos internos como general, capability, workflow, Registry, handler, descriptor, actions ou enums.",
   "Use os termos de apresentação do produto: cliente, imóvel, compromisso, proposta e contrato.",
   "Perguntas de orientação nunca executam ações nem afirmam que dados foram alterados.",
@@ -101,7 +107,7 @@ const GUIDED_HELP_OPTIONS: Partial<Record<HelpTopic, GuidedHelpOption[]>> = {
 }
 
 function buildHelpFallbackResponse(manualContext: string, message: string) {
-  return normalizeCosGroundedAnswer(manualContext, isDetailedCosKnowledgeRequest(message))
+  return normalizeCosGroundedResponse(manualContext, isDetailedCosKnowledgeRequest(message))
 }
 
 function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
@@ -112,7 +118,7 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
     const guidedResponse = GUIDED_HELP_RESPONSES[topic]
     const showGuidedMenu = Boolean(guidedResponse) && (
       usesKnowledgeLayer
-        ? context?.decision?.source === "explicit_interface" || (topic === "general_question" && isGeneralQuestionMenuTrigger(message))
+        ? topic === "general_question" && context?.decision?.source === "explicit_interface" && isGeneralQuestionMenuTrigger(message)
         : topic !== "general_question" || isGeneralQuestionMenuTrigger(message)
     )
     if (showGuidedMenu && guidedResponse) {
@@ -142,10 +148,12 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
       }
     }
 
-    const manualContext = knowledge ? formatCosKnowledgeContext(knowledge) : await loadHelpManualContext(topic)
+    const manualContext = knowledge
+      ? formatCosKnowledgeFactsForResponse({ message, context: knowledge })
+      : await loadHelpManualContext(topic)
     const detailedAnswer = isDetailedCosKnowledgeRequest(message)
     const fallbackResponse = knowledge
-      ? buildCosGroundedKnowledgeFallback({ message, context: knowledge })
+      ? buildCosGroundedHelpResponse({ message, context: knowledge })
       : buildHelpFallbackResponse(manualContext, message)
     const safeFallbackResponse = fallbackResponse || SAFE_HELP_FALLBACK
     const knowledgeMetadata = knowledge
@@ -183,7 +191,7 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
           },
           instructions: `${knowledge ? KNOWLEDGE_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT} ${detailedAnswer ? DETAILED_ANSWER_INSTRUCTION : SHORT_ANSWER_INSTRUCTION}`,
           input: [
-            `${knowledge ? "Trechos relevantes do Livro do EME" : "Manual oficial do EME"}:\n\n${manualContext}`,
+            `${knowledge ? "Fatos relevantes do EME" : "Manual oficial do EME"}:\n\n${manualContext}`,
             `Pergunta do corretor: ${message}`,
           ].join("\n\n"),
         },
@@ -202,7 +210,9 @@ function createHelpCapability(topic: HelpTopic): CosCapabilityHandler {
         }
       }
 
-      const answer = normalizeCosGroundedAnswer(response.output_text, detailedAnswer)
+      const answer = knowledge
+        ? normalizeCosHelpResponse(response.output_text, detailedAnswer)
+        : normalizeCosGroundedResponse(response.output_text, detailedAnswer)
 
       return {
         response: answer || safeFallbackResponse,

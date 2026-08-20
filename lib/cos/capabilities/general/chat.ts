@@ -1,9 +1,9 @@
 import "server-only"
 
 import {
+  buildCosContextResponse,
   buildCosConversationResponse,
   classifyCosSocialIntent,
-  COS_GENERAL_CHAT_OPTIONS,
 } from "@/lib/cos/conversation"
 import { getCosCapabilityDescriptorById } from "@/lib/cos/capability-catalog"
 import type { CosCapabilityHandler } from "@/lib/cos/types"
@@ -26,6 +26,16 @@ const CAPABILITY_DOMAIN_RESPONSES = {
 export const generalChatCapability: CosCapabilityHandler = async ({ message, context }) => {
   const socialIntent = classifyCosSocialIntent(message)
   const decision = context?.decision
+
+  if (decision?.dialogueAct === "context") {
+    return {
+      response: buildCosContextResponse(decision),
+      metadata: {
+        noCharge: true,
+        source: "conversation_context",
+      },
+    }
+  }
 
   if (decision?.dialogueAct === "capability_question") {
     const usesRegistryAnswer = context?.surface === "portal" || context?.surface === "cos_home"
@@ -91,7 +101,6 @@ export const generalChatCapability: CosCapabilityHandler = async ({ message, con
       noCharge: true,
       source: socialIntent ? "general_chat_social" : "general_chat",
       conversationKind: socialIntent ?? "general",
-      options: [...COS_GENERAL_CHAT_OPTIONS],
     },
   }
 }

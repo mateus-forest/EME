@@ -148,6 +148,7 @@ export type CosDialogueAct =
   | "query"
   | "explain"
   | "capability_question"
+  | "context"
   | "correct"
   | "confirm"
   | "reject"

@@ -5,6 +5,7 @@ import { findCosExecutionRecipe, type CosExecutionRecipe } from "@/lib/cos/execu
 import { getCosCapabilityByAction } from "@/lib/cos/capability-registry"
 import { doesCosCapabilityRequireConfirmation, getCosCapabilityConfirmationMessage, getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
 import { planCosCapability } from "@/lib/cos/planner"
+import { isCosDialogueDecisionAuthoritativeForCapability } from "@/lib/cos/conversation-decision"
 import type {
   CosCapabilityId,
   CosCapabilityPlan,
@@ -544,6 +545,25 @@ export async function planCosExecution(input: {
       workspace,
       startedAt,
       recipe: matchedRecipe,
+    })
+  }
+
+  if (isCosDialogueDecisionAuthoritativeForCapability({
+    decision: input.context?.decision,
+    capabilityId: primaryCapabilityPlan.capabilityId,
+  })) {
+    return buildSingleExecutionPlan({
+      capabilityPlan: primaryCapabilityPlan,
+      message: input.message,
+      requestedAction: input.requestedAction,
+      pendingInput,
+      context: input.context ?? null,
+      intentConfidence: input.intentConfidence ?? null,
+      intentReason: input.intentReason ?? null,
+      surface,
+      workspace,
+      startedAt,
+      planner: "deterministic",
     })
   }
 
