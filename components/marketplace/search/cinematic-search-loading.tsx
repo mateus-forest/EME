@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   createContext,
   useCallback,
@@ -7,6 +8,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from 'react'
 import { cn } from '@/lib/utils'
@@ -37,21 +39,50 @@ export function useMarketplaceSearchLoading() {
   return useContext(SearchLoadingContext)
 }
 
+export function MarketplaceSearchLink({
+  href,
+  children,
+  className,
+  style,
+}: {
+  href: string
+  children: ReactNode
+  className?: string
+  style?: CSSProperties
+}) {
+  const { startSearchLoading } = useMarketplaceSearchLoading()
+  return (
+    <Link href={href} className={className} style={style} onClick={startSearchLoading}>
+      {children}
+    </Link>
+  )
+}
+
 export function CinematicSearchLoadingProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<LoadingPhase>('idle')
   const [messageIndex, setMessageIndex] = useState(0)
+  const [playbackKey, setPlaybackKey] = useState(0)
+  const [resultsReady, setResultsReady] = useState(false)
+  const [videoEnded, setVideoEnded] = useState(false)
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const startSearchLoading = useCallback(() => {
     if (exitTimer.current) clearTimeout(exitTimer.current)
     exitTimer.current = null
     setMessageIndex(0)
+    setResultsReady(false)
+    setVideoEnded(false)
+    setPlaybackKey((current) => current + 1)
     setPhase('active')
   }, [])
 
   const finishSearchLoading = useCallback(() => {
-    setPhase((current) => current === 'active' ? 'exiting' : current)
+    setResultsReady(true)
   }, [])
+
+  useEffect(() => {
+    if (phase === 'active' && resultsReady && videoEnded) setPhase('exiting')
+  }, [phase, resultsReady, videoEnded])
 
   useEffect(() => {
     if (phase !== 'active') return
@@ -90,7 +121,7 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
         <div
           className={cn(
             'fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-[#101712] transition-opacity duration-700 ease-out motion-reduce:transition-none',
-            phase === 'exiting' ? 'pointer-events-none opacity-0' : 'opacity-100',
+            phase === 'exiting' ? 'opacity-0' : 'opacity-100',
           )}
           role="status"
           aria-live="polite"
@@ -98,10 +129,13 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
           aria-label={loadingMessages[messageIndex]}
         >
           <video
+            key={playbackKey}
             autoPlay
             muted
             playsInline
             preload="auto"
+            onEnded={() => setVideoEnded(true)}
+            onError={() => setVideoEnded(true)}
             className="absolute inset-0 h-full w-full object-cover"
             aria-hidden="true"
           >

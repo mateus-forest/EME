@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronDown, SlidersHorizontal, Zap } from 'lucide-react'
 import { ConversationalSearch } from '@/components/marketplace/conversational-search'
+import { MarketplaceSearchLink } from '@/components/marketplace/search/cinematic-search-loading'
 import { HeroInsightCard } from '@/components/marketplace/sections/hero-insight-card'
 import { HeroVideoBackground } from '@/components/marketplace/sections/hero-video-background'
 
@@ -46,14 +47,14 @@ export function Hero() {
                 placeholder="Descreva onde e como você gostaria de viver..."
               />
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Link
+                <MarketplaceSearchLink
                   href="/imoveis/busca"
                   style={{ borderWidth: '0.5px', borderColor: 'rgba(255,255,255,0.12)' }}
                   className="inline-flex items-center gap-2 rounded-full border-solid bg-white/[0.07] px-4 py-2.5 text-sm font-medium text-white outline-none shadow-[0_8px_24px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all hover:bg-white/[0.12] focus-visible:ring-4 focus-visible:ring-white/20"
                 >
                   <Zap className="h-4 w-4 text-eme-300" aria-hidden="true" />
                   Usar busca rápida
-                </Link>
+                </MarketplaceSearchLink>
                 <Link
                   href="/imoveis/busca"
                   style={{ borderWidth: '0.5px', borderColor: 'rgba(255,255,255,0.12)' }}
