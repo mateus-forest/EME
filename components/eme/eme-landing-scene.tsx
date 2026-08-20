@@ -151,14 +151,14 @@ export function EmeLandingScene({
         className="absolute left-6 top-9 z-[60] hidden sm:block sm:left-12"
       />
 
+      <LandingUpcomingFeatures />
+
       <div
         className="absolute inset-0 flex items-center justify-center -translate-y-[72px] pt-4 transition-opacity duration-700 ease-out sm:pt-2"
         style={{ opacity: mounted ? 1 : 0 }}
       >
         {mounted && (
-      <LandingUpcomingFeatures />
-
-      <OrbitStage
+          <OrbitStage
             orbitAngle={angle}
             activeId={activeId}
             onHover={setActiveId}
