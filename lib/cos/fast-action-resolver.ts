@@ -6,6 +6,8 @@ import type { CosNormalizedContext, CosWorkspaceContext } from "@/lib/cos/types"
 export type FastActionOption = {
   id: string
   label: string
+  action?: AssessorAction
+  href?: string
 }
 
 export type FastActionResolution =
@@ -110,9 +112,9 @@ function buildCurrentEntityEditAction(
       confidence: 0.58,
       reply: "Escolha a ação para este imóvel.",
       options: [
-        { id: "editar_midias", label: "Atualizar mídias" },
-        { id: "melhorar_descricao", label: "Melhorar descrição" },
-        { id: "publicar_imovel", label: "Publicar imóvel" },
+        { id: "editar_midias", label: "Atualizar mídias", action: "UPDATE_PROPERTY_MEDIA" },
+        { id: "melhorar_descricao", label: "Melhorar descrição", action: "improvePropertyDescription" },
+        { id: "publicar_imovel", label: "Publicar imóvel", action: "PUBLISH_PROPERTY" },
       ],
       reason: "editar em contexto de imovel sem acao unica equivalente",
     }
@@ -168,9 +170,9 @@ export function resolveFastCosAction(input: {
       confidence: 0.18,
       reply: "Escolha a frente que deseja abrir.",
       options: [
-        { id: "security_clarify_property", label: "Imóveis" },
-        { id: "security_clarify_lead", label: "Clientes" },
-        { id: "security_clarify_contract", label: "Contratos" },
+        { id: "security_clarify_property", label: "Imóveis", href: "/corretor/imoveis" },
+        { id: "security_clarify_lead", label: "Clientes", href: "/corretor/clientes" },
+        { id: "security_clarify_contract", label: "Contratos", href: "/corretor/documentos/contratos" },
       ],
       reason: `security_guard:${securityAudit.reasons.join(",")}`,
     }
@@ -374,9 +376,9 @@ export function resolveFastCosAction(input: {
       confidence: 0.72,
       reply: "Escolha a ação para este imóvel.",
       options: [
-        { id: "editar_midias", label: "Atualizar mídias" },
-        { id: "melhorar_descricao", label: "Melhorar descrição" },
-        { id: "publicar_imovel", label: "Publicar imóvel" },
+        { id: "editar_midias", label: "Atualizar mídias", action: "UPDATE_PROPERTY_MEDIA" },
+        { id: "melhorar_descricao", label: "Melhorar descrição", action: "improvePropertyDescription" },
+        { id: "publicar_imovel", label: "Publicar imóvel", action: "PUBLISH_PROPERTY" },
       ],
       reason: "pedido de edicao de imovel exige desambiguacao",
     }
@@ -436,9 +438,9 @@ export function resolveFastCosAction(input: {
       confidence: 0.42,
       reply: "Escolha o módulo que deseja abrir.",
       options: [
-        { id: "abrir_clientes", label: "Clientes" },
-        { id: "abrir_imoveis", label: "Imóveis" },
-        { id: "abrir_contratos", label: "Contratos" },
+        { id: "abrir_clientes", label: "Clientes", href: "/corretor/clientes" },
+        { id: "abrir_imoveis", label: "Imóveis", href: "/corretor/imoveis" },
+        { id: "abrir_contratos", label: "Contratos", href: "/corretor/documentos/contratos" },
       ],
       reason: `comando curto sem contexto suficiente na pagina ${page ?? "desconhecida"}`,
     }

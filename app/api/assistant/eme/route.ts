@@ -13,6 +13,7 @@ import {
   type AssessorAction,
 } from "@/lib/eme-backend"
 import {
+  applyCosAiDialogueInterpretation,
   buildCosConversationSnapshot,
   cancelWorkflow,
   classifyCosPendingReply,
@@ -22,10 +23,12 @@ import {
   createCosNormalizedContext,
   createWorkflowFromExecutionPlan,
   doesCosCapabilityMutateData,
+  evaluateCosAiDialogueInterpretationTrigger,
   formatWorkflowOperationDetails,
   getActiveWorkflow,
   getConversationMemory,
   getConversationSnapshot,
+  generateCosAiDialogueInterpretation,
   getCosCapabilityConfirmationMessage,
   getCosCapabilityLabel,
   hasCosPendingRejectionFollowUp,
@@ -435,6 +438,7 @@ function buildDecisionAudit(input: {
             workflowDecision: input.dialogueDecision.workflowDecision,
             clarificationReason: input.dialogueDecision.clarificationReason,
             source: input.dialogueDecision.source,
+            semanticInterpretation: input.dialogueDecision.semanticInterpretation ?? null,
           }
         : null,
     knowledge: buildCosKnowledgeAudit(input.knowledgeContext),
@@ -484,7 +488,9 @@ function buildNaturalClarificationResponse(input: {
   reason: string | null
   primaryDomain: CosDialogueDecision["primaryDomain"]
   hasActiveLead: boolean
+  semanticQuestion?: string | null
 }) {
+  if (input.semanticQuestion?.trim()) return input.semanticQuestion.trim()
   switch (input.reason) {
     case "property_search_context_incomplete":
     case "property_search_location_missing":
@@ -512,8 +518,12 @@ function buildNaturalClarificationResponse(input: {
       return "Qual imóvel deve entrar na proposta?"
     case "performance_metric_ambiguous":
       return "Você quer comparar visualizações, contatos, conversões ou propostas?"
+    case "semantic_capability_unavailable":
+      return "Entendi o objetivo, mas essa ação ainda não está disponível no COS. Quer seguir por uma operação existente?"
+    case "semantic_confidence_below_risk_threshold":
+      return "Só para confirmar: qual ação você quer fazer?"
     default:
-      return "O que você quer fazer agora? Se houver um cliente ou imóvel envolvido, informe qual."
+      return "O que você quer fazer e com qual item?"
   }
 }
 
@@ -573,7 +583,7 @@ function buildNextStepOptions(action: AssessorAction, metadata: Prisma.InputJson
   return null
 }
 
-function buildStructuredFastActionOptions(options: Array<{ id: string; label: string }> | undefined): CosResponseOption[] | null {
+function buildStructuredFastActionOptions(options: Array<{ id: string; label: string; action?: AssessorAction; href?: string }> | undefined): CosResponseOption[] | null {
   if (!options?.length) return null
 
   const normalized = options
@@ -585,6 +595,8 @@ function buildStructuredFastActionOptions(options: Array<{ id: string; label: st
         selectedOptionId: option.id,
         message: option.label,
         label: option.label,
+        action: option.action,
+        href: option.href,
       }),
     )
 
@@ -1025,7 +1037,76 @@ export async function POST(request: NextRequest) {
       : contextualActiveWorkflow
         ? conversationMemory?.attachments ?? []
         : []
-    const baseNormalizedContext = createCosNormalizedContext({
+    let dialogueDecision = resolveCosDialogueDecision({
+      message: structuredSelectionMessage ?? decisionMessage,
+      requestedAction,
+      surface,
+      workspace,
+      snapshot: conversationSnapshot,
+      activeWorkflow: contextualActiveWorkflow,
+      memory: conversationMemory,
+      attachments: effectiveAttachments,
+    })
+    const semanticTrigger = evaluateCosAiDialogueInterpretationTrigger({
+      message: structuredSelectionMessage ?? decisionMessage,
+      requestedAction,
+      structuredInteraction: Boolean(optionActionId || selectedOptionId || body?.confirm || body?.cancel),
+      pendingInput: contextualActiveWorkflow?.pendingInput ?? conversationSnapshot.pendingInput,
+      decision: dialogueDecision,
+      attachments: effectiveAttachments,
+    })
+    if (semanticTrigger.shouldTry) {
+      const semanticResult = await runWithAiOperationContext(
+        {
+          route: "/api/assistant/eme",
+          source: metadataSource,
+          userId: user.id,
+          brokerId: user.broker.id,
+          planKey: user.plan ?? null,
+          conversationId: conversationDocument?.id ?? null,
+          workflowId: contextualActiveWorkflow?.id ?? null,
+        },
+        () => generateCosAiDialogueInterpretation({
+          message: structuredSelectionMessage ?? decisionMessage,
+          surface,
+          workspace,
+          snapshot: conversationSnapshot,
+          activeWorkflow: contextualActiveWorkflow,
+          pendingInput: contextualActiveWorkflow?.pendingInput ?? conversationSnapshot.pendingInput,
+          attachments: effectiveAttachments,
+          baselineDecision: dialogueDecision,
+          triggerReason: semanticTrigger.triggerReason ?? "semantic_context",
+        }),
+      )
+      if (semanticResult.accepted) {
+        const validated = applyCosAiDialogueInterpretation({
+          baseline: dialogueDecision,
+          interpretation: semanticResult.data,
+          surface,
+          workspace,
+          snapshot: conversationSnapshot,
+          activeWorkflow: contextualActiveWorkflow,
+        })
+        if (validated.accepted) dialogueDecision = validated.decision
+        console.info("[cos][semantic-interpreter]", {
+          status: validated.accepted ? "accepted" : "rejected",
+          triggerReason: semanticTrigger.triggerReason,
+          model: semanticResult.audit.model,
+          confidence: semanticResult.audit.confidence,
+          validationErrors: validated.validationErrors,
+          selectedCapabilityId: dialogueDecision.selectedCapabilityId,
+          source: dialogueDecision.source,
+        })
+      } else {
+        console.info("[cos][semantic-interpreter]", {
+          status: semanticResult.audit.status,
+          triggerReason: semanticTrigger.triggerReason,
+          fallbackReason: semanticResult.audit.fallbackReason,
+          validationErrors: semanticResult.audit.validationErrors,
+        })
+      }
+    }
+    const normalizedContext = createCosNormalizedContext({
       brokerId: user.broker.id,
       userId: user.id,
       actor: {
@@ -1037,22 +1118,9 @@ export async function POST(request: NextRequest) {
       workflow: contextualActiveWorkflow,
       memory: conversationMemory,
       snapshot: conversationSnapshot,
-      attachments: effectiveAttachments,
-    })
-    let dialogueDecision = resolveCosDialogueDecision({
-      message: structuredSelectionMessage ?? decisionMessage,
-      requestedAction,
-      surface,
-      workspace,
-      snapshot: conversationSnapshot,
-      activeWorkflow: contextualActiveWorkflow,
-      memory: conversationMemory,
-      attachments: effectiveAttachments,
-    })
-    const normalizedContext = {
-      ...baseNormalizedContext,
       decision: dialogueDecision,
-    }
+      attachments: effectiveAttachments,
+    })
     const contextualActionIsReadOnly = Boolean(
       contextualTurn.requestedAction && !doesCosCapabilityMutateData(contextualTurn.requestedAction),
     )
@@ -1242,6 +1310,7 @@ export async function POST(request: NextRequest) {
                   reason: runtimeClarificationReason,
                   primaryDomain: dialogueDecision.primaryDomain,
                   hasActiveLead: Boolean(conversationSnapshot.activeEntities.lead?.id || workspace?.entity === "lead"),
+                  semanticQuestion: dialogueDecision.semanticInterpretation?.clarificationQuestion,
                 })
         const interactionMetadata = {
           source: metadataSource,

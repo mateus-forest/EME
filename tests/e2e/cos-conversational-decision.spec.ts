@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test"
 
-import { listCosRoutableCapabilityDescriptors, resolveCosDialogueDecision } from "@/lib/cos/conversation-decision"
+import { applyCosAiDialogueInterpretation, evaluateCosAiDialogueInterpretationTrigger, listCosRoutableCapabilityDescriptors, resolveCosDialogueDecision } from "@/lib/cos/conversation-decision"
+import { createCosNormalizedContext } from "@/lib/cos/context"
 import { findCosExecutionRecipe } from "@/lib/cos/execution-recipes"
+import { resolveFastCosAction } from "@/lib/cos/fast-action-resolver"
 import { classifyCosPendingReply, createPendingInput, hasCosPendingRejectionFollowUp } from "@/lib/cos/pending-input"
 import type {
   CosConversationEntityReference,
   CosConversationSnapshot,
   CosPendingInput,
+  CosSemanticInterpretationInput,
   CosWorkflow,
 } from "@/lib/cos/types"
 
@@ -152,6 +155,33 @@ function propertySelectionSnapshot() {
       expiresAt: "2026-08-20T12:00:00.000Z",
     }],
   })
+}
+
+function semanticInterpretation(overrides: Partial<CosSemanticInterpretationInput> = {}): CosSemanticInterpretationInput {
+  return {
+    dialogueAct: "query",
+    objective: {
+      mode: "query",
+      summary: "consultar o outro imóvel da seleção",
+      targetCapabilityId: "property.get",
+    },
+    primaryDomain: "property",
+    secondaryDomains: [],
+    entities: [],
+    references: [{
+      expression: "o outro",
+      type: "property",
+      id: "property-2",
+      label: "Casa Moinhos",
+      relation: "alternative",
+    }],
+    filters: [],
+    corrections: [],
+    confidence: 0.93,
+    needsClarification: false,
+    clarificationQuestion: null,
+    ...overrides,
+  }
 }
 
 test.describe("COS — Decision Layer da Etapa 2C", () => {
@@ -631,6 +661,218 @@ test.describe("COS — cobertura do Registry e perguntas de capacidade", () => {
       expect(result.primaryDomain).toBe(scenario[1])
       expect(result.objective.targetCapabilityId).toBe(scenario[2])
       expect(result.selectedAction).toBe("general")
+    })
+  }
+})
+
+test.describe("COS — interpretação semântica validada", () => {
+  test("usa a alternativa do working set sem aceitar ids inventados", () => {
+    const currentSnapshot = propertySelectionSnapshot()
+    const baseline = decide("Faz com o outro.", { snapshot: currentSnapshot })
+    const validated = applyCosAiDialogueInterpretation({
+      baseline,
+      interpretation: semanticInterpretation(),
+      surface: "portal",
+      workspace: null,
+      snapshot: currentSnapshot,
+      activeWorkflow: null,
+    })
+
+    expect(validated.accepted).toBe(true)
+    expect(validated.decision.source).toBe("ai_interpretation")
+    expect(validated.decision.selectedCapabilityId).toBe("property.get")
+    expect(validated.decision.reference.id).toBe("property-2")
+
+    const context = createCosNormalizedContext({
+      brokerId: "broker",
+      userId: "user",
+      surface: "portal",
+      message: "Faz com o outro.",
+      workspace: null,
+      workflow: null,
+      memory: null,
+      snapshot: currentSnapshot,
+      decision: validated.decision,
+    })
+    expect(context.selectedEntityIds.property).toBe("property-2")
+
+    const invented = applyCosAiDialogueInterpretation({
+      baseline,
+      interpretation: semanticInterpretation({
+        references: [{
+          expression: "o outro",
+          type: "property",
+          id: "property-inventado",
+          label: "Imóvel inventado",
+          relation: "alternative",
+        }],
+      }),
+      surface: "portal",
+      workspace: null,
+      snapshot: currentSnapshot,
+      activeWorkflow: null,
+    })
+    expect(invented.decision.semanticInterpretation?.references[0].id).toBeNull()
+    expect(invented.decision.semanticInterpretation?.validationEvidence).toContain("reference_id_removed:property-inventado")
+  })
+
+  test("Registry, surface e limiar de mutação continuam soberanos", () => {
+    const currentSnapshot = propertySelectionSnapshot()
+    const baseline = decide("Publica aquele imóvel.", { snapshot: currentSnapshot })
+    const inventedCapability = applyCosAiDialogueInterpretation({
+      baseline,
+      interpretation: semanticInterpretation({
+        dialogueAct: "execute",
+        objective: { mode: "execute", summary: "publicar imóvel", targetCapabilityId: "property.magic" },
+      }),
+      surface: "portal",
+      workspace: null,
+      snapshot: currentSnapshot,
+      activeWorkflow: null,
+    })
+    expect(inventedCapability.accepted).toBe(false)
+    expect(inventedCapability.validationErrors).toContain("capability_not_in_registry:property.magic")
+
+    const lowConfidenceMutation = applyCosAiDialogueInterpretation({
+      baseline,
+      interpretation: semanticInterpretation({
+        dialogueAct: "execute",
+        objective: { mode: "execute", summary: "publicar imóvel", targetCapabilityId: "property.publish" },
+        confidence: 0.61,
+      }),
+      surface: "portal",
+      workspace: null,
+      snapshot: currentSnapshot,
+      activeWorkflow: null,
+    })
+    expect(lowConfidenceMutation.accepted).toBe(true)
+    expect(lowConfidenceMutation.decision.selectedAction).toBeNull()
+    expect(lowConfidenceMutation.decision.needsClarification).toBe(true)
+    expect(lowConfidenceMutation.decision.clarificationReason).toBe("semantic_confidence_below_risk_threshold")
+  })
+
+  test("preserva botões e pending simples no caminho determinístico", () => {
+    const contextual = decide("Procura alguma coisa boa pra ele.", {
+      snapshot: snapshot({ activeEntities: { lead: entity("lead", "lead-1", "Carlos") } }),
+    })
+    expect(evaluateCosAiDialogueInterpretationTrigger({
+      message: "Procura alguma coisa boa pra ele.",
+      pendingInput: null,
+      decision: contextual,
+      attachments: [],
+    })).toEqual({ shouldTry: true, triggerReason: "contextual_reference" })
+
+    const pendingWorkflow = phoneWorkflow()
+    const phoneDecision = decide("(11) 99999-0000", { workflow: pendingWorkflow })
+    expect(evaluateCosAiDialogueInterpretationTrigger({
+      message: "(11) 99999-0000",
+      pendingInput: pendingWorkflow.pendingInput,
+      decision: phoneDecision,
+      attachments: [],
+    }).shouldTry).toBe(false)
+
+    const structuredPendingCases = [
+      {
+        message: "850 mil",
+        pending: createPendingInput({
+          field: "price",
+          type: "currency",
+          action: "CREATE_PROPOSAL",
+          entity: "proposal",
+          capabilityId: "proposal.create",
+          now: new Date(NOW),
+        }),
+      },
+      {
+        message: "16h30",
+        pending: createPendingInput({
+          field: "time",
+          type: "time",
+          action: "CREATE_AGENDA_EVENT",
+          entity: "agenda",
+          capabilityId: "agenda.create",
+          now: new Date(NOW),
+        }),
+      },
+    ]
+    for (const pendingCase of structuredPendingCases) {
+      const activeWorkflow = workflow(pendingCase.pending.action, pendingCase.pending.capabilityId!, pendingCase.pending)
+      const decision = decide(pendingCase.message, { workflow: activeWorkflow })
+      expect(evaluateCosAiDialogueInterpretationTrigger({
+        message: pendingCase.message,
+        pendingInput: pendingCase.pending,
+        decision,
+        attachments: [],
+      }).shouldTry).toBe(false)
+    }
+
+    const selectionWorkflow = proposalWorkflow()
+    const selectionDecision = decide("1", { workflow: selectionWorkflow })
+    expect(evaluateCosAiDialogueInterpretationTrigger({
+      message: "1",
+      pendingInput: selectionWorkflow.pendingInput,
+      decision: selectionDecision,
+      attachments: [],
+    }).shouldTry).toBe(false)
+
+    const buttonDecision = decide("Publicar imóvel", {
+      snapshot: propertySelectionSnapshot(),
+      requestedAction: "PUBLISH_PROPERTY",
+    })
+    expect(evaluateCosAiDialogueInterpretationTrigger({
+      message: "Publicar imóvel",
+      requestedAction: "PUBLISH_PROPERTY",
+      structuredInteraction: true,
+      pendingInput: null,
+      decision: buttonDecision,
+      attachments: [],
+    }).shouldTry).toBe(false)
+  })
+
+  test("CTAs de desambiguação carregam ação ou navegação estruturada", () => {
+    const currentSnapshot = propertySelectionSnapshot()
+    const context = createCosNormalizedContext({
+      brokerId: "broker",
+      userId: "user",
+      surface: "portal",
+      message: "Editar imóvel",
+      workspace: { surface: "portal", page: "properties", entity: "property", entityId: "property-1", selection: [], metadata: {} },
+      workflow: null,
+      memory: null,
+      snapshot: currentSnapshot,
+    })
+    const edit = resolveFastCosAction({ message: "Editar imóvel", workspace: context.workspace, context })
+    expect(edit.kind).toBe("clarify")
+    if (edit.kind === "clarify") {
+      expect(edit.options.map((option) => option.action)).toEqual([
+        "UPDATE_PROPERTY_MEDIA",
+        "improvePropertyDescription",
+        "PUBLISH_PROPERTY",
+      ])
+    }
+
+    const navigation = resolveFastCosAction({ message: "Abrir", workspace: null, context: null })
+    expect(navigation.kind).toBe("clarify")
+    if (navigation.kind === "clarify") {
+      expect(navigation.options.every((option) => Boolean(option.href))).toBe(true)
+    }
+  })
+
+  for (const [message, triggerReason] of [
+    ["Antes disso, mostra o histórico daquele cliente.", "contextual_reference"],
+    ["Na verdade, troca o horário para 16h.", "contextual_correction"],
+    ["Cadastra a Ana e depois procura uma casa para ela.", "contextual_reference"],
+    ["Compara os dois e recomenda o melhor.", "recommendation_or_comparison"],
+  ] as const) {
+    test(`aciona IA semântica para: ${message}`, () => {
+      const currentSnapshot = propertySelectionSnapshot()
+      const decision = decide(message, { snapshot: currentSnapshot })
+      expect(evaluateCosAiDialogueInterpretationTrigger({
+        message,
+        pendingInput: null,
+        decision,
+        attachments: [],
+      })).toEqual({ shouldTry: true, triggerReason })
     })
   }
 })

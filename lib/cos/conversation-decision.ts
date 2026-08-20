@@ -1,6 +1,7 @@
 import { getCosCapabilityDescriptorByAliasOrAction, getCosCapabilityDescriptorById, listCosCapabilityCatalog } from "@/lib/cos/capability-catalog"
 import { classifyCosSocialIntent } from "@/lib/cos/conversation"
 import { resolveCosConversationReference } from "@/lib/cos/conversation-snapshot"
+import { evaluateCosDecisionSecurity } from "@/lib/cos/decision-security"
 import { classifyCosPendingReply, hasCosPendingRejectionFollowUp } from "@/lib/cos/pending-input"
 
 import type {
@@ -17,6 +18,8 @@ import type {
   CosDialogueDecision,
   CosDialogueDecisionCandidate,
   CosPendingInput,
+  CosSemanticInterpretation,
+  CosSemanticInterpretationInput,
   CosWorkflow,
   CosWorkspaceContext,
 } from "@/lib/cos/types"
@@ -65,6 +68,73 @@ function tokenize(value: string) {
   return normalizeText(value)
     .split(/\s+/)
     .filter((token) => token.length > 1 && !GENERIC_TOKENS.has(token))
+}
+
+function isDeterministicPendingReply(input: {
+  message: string
+  pendingInput: CosPendingInput | null
+  decision: CosDialogueDecision
+  attachments: CosAttachmentInput[]
+}) {
+  const pending = input.pendingInput
+  if (!pending) return false
+  if (["confirm", "reject", "cancel", "select"].includes(input.decision.dialogueAct)) return true
+  if (input.decision.dialogueAct !== "provide_input") return false
+
+  const normalized = normalizeText(input.message)
+  if (pending.type === "phone") return input.message.replace(/\D/g, "").length >= 10
+  if (["currency", "number", "date", "time"].includes(pending.type)) return /\d/.test(normalized)
+  if (pending.type === "selection") return /^\d{1,2}$/.test(normalized) || normalized.split(/\s+/).length <= 4
+  if (["attachments", "document", "imageUrls"].includes(pending.field)) return input.attachments.length > 0
+  return pending.type === "text" && normalized.split(/\s+/).length <= 5
+}
+
+export function evaluateCosAiDialogueInterpretationTrigger(input: {
+  message: string
+  requestedAction?: string | null
+  structuredInteraction?: boolean
+  pendingInput: CosPendingInput | null
+  decision: CosDialogueDecision
+  attachments: CosAttachmentInput[]
+}) {
+  const securityAudit = evaluateCosDecisionSecurity({
+    message: input.message,
+    attachments: input.attachments.map((attachment) => ({
+      name: attachment.name,
+      textContent: attachment.textContent,
+    })),
+  })
+  if (securityAudit.flagged) return { shouldTry: false, triggerReason: null }
+  if (input.requestedAction || input.structuredInteraction || input.decision.source === "explicit_interface") {
+    return { shouldTry: false, triggerReason: null }
+  }
+  if (["social", "confirm", "reject", "cancel", "select", "provide_input"].includes(input.decision.dialogueAct) &&
+      (input.decision.dialogueAct === "social" || isDeterministicPendingReply(input))) {
+    return { shouldTry: false, triggerReason: null }
+  }
+
+  const normalized = normalizeText(input.message)
+  const contextualSignals = /\b(aquele|aquela|aquilo|esse|essa|isso|ele|ela|dele|dela|outro|outra|anterior|antes disso|depois disso|voltando|retomando)\b/.test(normalized)
+  const correctionSignals = /\b(na verdade|corrig\w*|quis dizer|troca\w*|muda para|o correto|estava errado)\b/.test(normalized)
+  const compoundSignals = /\b(e depois|e tambem|alem disso|antes de|depois de|mas antes|ao mesmo tempo)\b/.test(normalized) ||
+    (input.decision.secondaryDomains.length > 0 && /\be\b/.test(normalized))
+  const recommendationSignals = /\b(recomend\w*|compar\w*|melhor opcao|alguma coisa boa|o que faz mais sentido|sugere|sugira)\b/.test(normalized)
+  const topicSignals = /\b(mudando de assunto|agora sobre|voltando|retomando|antes disso)\b/.test(normalized)
+
+  if (contextualSignals) return { shouldTry: true, triggerReason: "contextual_reference" }
+  if (correctionSignals) return { shouldTry: true, triggerReason: "contextual_correction" }
+  if (compoundSignals) return { shouldTry: true, triggerReason: "compound_request" }
+  if (recommendationSignals) return { shouldTry: true, triggerReason: "recommendation_or_comparison" }
+  if (topicSignals) return { shouldTry: true, triggerReason: "topic_transition" }
+  if (input.decision.needsClarification) return { shouldTry: true, triggerReason: "deterministic_ambiguity" }
+  if (input.decision.dialogueAct === "unknown" || input.decision.source === "fallback" || input.decision.selectedCapabilityId === "general.chat") {
+    return { shouldTry: true, triggerReason: "deterministic_fallback" }
+  }
+  if (input.decision.dialogueActConfidence < COS_DECISION_CONFIDENCE.high) {
+    return { shouldTry: true, triggerReason: "low_dialogue_confidence" }
+  }
+
+  return { shouldTry: false, triggerReason: null }
 }
 
 function tokensMatch(left: string, right: string) {
@@ -699,6 +769,201 @@ function directCandidate(descriptor: CosCapabilityDescriptor, evidence: string[]
     confidence: 0.99,
     evidence,
     mutatesData: descriptor.mutatesData,
+  }
+}
+
+function trustedSemanticEntities(input: {
+  snapshot: CosConversationSnapshot | null
+  workspace: CosWorkspaceContext | null
+}) {
+  const trusted = new Map<string, { type: CosConversationEntityType; id: string; label: string | null }>()
+  const add = (type: CosConversationEntityType | null, id: string | null | undefined, label?: string | null) => {
+    if (!type || !id) return
+    trusted.set(`${type}:${id}`, { type, id, label: label ?? null })
+  }
+
+  for (const entity of Object.values(input.snapshot?.activeEntities ?? {})) {
+    if (entity) add(entity.type, entity.id, entity.label)
+  }
+  for (const entity of input.snapshot?.recentEntities ?? []) add(entity.type, entity.id, entity.label)
+  for (const selection of input.snapshot?.selectionSets ?? []) {
+    for (const item of selection.items) add(item.entity.type, item.entity.id, item.entity.label)
+  }
+
+  const workspaceType = (entity: string | null | undefined): CosConversationEntityType | null => {
+    if (entity === "lead" || entity === "property" || entity === "contract" || entity === "agenda") return entity
+    if (entity === "document") return "proposal"
+    return null
+  }
+  add(workspaceType(input.workspace?.entity), input.workspace?.entityId)
+  for (const selection of input.workspace?.selection ?? []) {
+    add(workspaceType(selection.entity), selection.entityId, selection.label)
+  }
+
+  return trusted
+}
+
+function selectedEntityTypeForDescriptor(descriptor: CosCapabilityDescriptor): CosConversationEntityType | null {
+  if (descriptor.entity === "lead" || descriptor.entity === "property" || descriptor.entity === "contract" || descriptor.entity === "agenda") {
+    return descriptor.entity
+  }
+  if (descriptor.entity === "document") return descriptor.domain === "proposal" ? "proposal" : "contract"
+  return null
+}
+
+export function applyCosAiDialogueInterpretation(input: {
+  baseline: CosDialogueDecision
+  interpretation: CosSemanticInterpretationInput
+  surface: CosCapabilitySurface
+  workspace: CosWorkspaceContext | null
+  snapshot: CosConversationSnapshot | null
+  activeWorkflow: CosWorkflow | null
+}): { decision: CosDialogueDecision; accepted: boolean; validationErrors: string[] } {
+  const validationErrors: string[] = []
+  if (input.baseline.source === "explicit_interface") {
+    return { decision: input.baseline, accepted: false, validationErrors: ["explicit_interface_is_authoritative"] }
+  }
+
+  const requestedCapabilityId = input.interpretation.objective.targetCapabilityId
+  const descriptor = requestedCapabilityId
+    ? getCosCapabilityDescriptorById(requestedCapabilityId as CosCapabilityId)
+    : null
+  if (requestedCapabilityId && !descriptor) validationErrors.push(`capability_not_in_registry:${requestedCapabilityId}`)
+  if (descriptor && !descriptor.surfaces.includes(input.surface)) validationErrors.push(`capability_not_allowed_on_surface:${descriptor.id}`)
+  if (descriptor && descriptorDomain(descriptor) !== input.interpretation.primaryDomain && !input.interpretation.secondaryDomains.includes(descriptorDomain(descriptor))) {
+    validationErrors.push(`capability_domain_mismatch:${descriptor.id}`)
+  }
+  if (descriptor?.id === "general.chat" && !["social", "capability_question"].includes(input.interpretation.dialogueAct)) {
+    validationErrors.push("general_chat_is_not_operational_fallback")
+  }
+
+  const pendingRequiredAct = ["confirm", "reject", "cancel", "provide_input"].includes(input.interpretation.dialogueAct)
+  const pendingInput = input.activeWorkflow?.pendingInput ?? input.snapshot?.pendingInput ?? null
+  if (pendingRequiredAct && !pendingInput) validationErrors.push(`dialogue_act_without_pending:${input.interpretation.dialogueAct}`)
+  if (input.interpretation.dialogueAct === "select" && !pendingInput && !(input.snapshot?.selectionSets.length)) {
+    validationErrors.push("selection_without_working_set")
+  }
+  const mutationDialogueAllowed = ["execute", "correct", "switch_topic"].includes(input.interpretation.dialogueAct) ||
+    input.interpretation.objective.mode === "execute" || input.interpretation.objective.mode === "continue"
+  if (descriptor?.mutatesData && !mutationDialogueAllowed) validationErrors.push(`mutation_dialogue_mismatch:${descriptor.id}`)
+
+  const activeDescriptor = getCosCapabilityDescriptorByAliasOrAction(workflowAction(input.activeWorkflow))
+  const continuationAct = ["provide_input", "correct", "confirm", "reject", "cancel", "select"].includes(input.interpretation.dialogueAct)
+  if (input.activeWorkflow?.pendingInput && continuationAct && descriptor && activeDescriptor && descriptor.id !== activeDescriptor.id) {
+    validationErrors.push(`pending_workflow_mismatch:${activeDescriptor.id}:${descriptor.id}`)
+  }
+
+  const criticalValidationError = validationErrors.some((error) =>
+    error.startsWith("capability_not_in_registry:") ||
+    error.startsWith("capability_not_allowed_on_surface:") ||
+    error.startsWith("capability_domain_mismatch:") ||
+    error.startsWith("pending_workflow_mismatch:") ||
+    error.startsWith("dialogue_act_without_pending:") ||
+    error.startsWith("mutation_dialogue_mismatch:") ||
+    error === "selection_without_working_set" ||
+    error === "general_chat_is_not_operational_fallback",
+  )
+  if (criticalValidationError) {
+    return { decision: input.baseline, accepted: false, validationErrors }
+  }
+
+  const trusted = trustedSemanticEntities(input)
+  const validationEvidence = ["structured_output_valid", "registry_checked", `surface_checked:${input.surface}`]
+  const trustedEntity = (type: CosConversationEntityType, id: string | null) => id ? trusted.get(`${type}:${id}`) ?? null : null
+  const entities = input.interpretation.entities.map((entity) => {
+    const matched = trustedEntity(entity.type, entity.id)
+    if (entity.id && !matched) validationEvidence.push(`entity_id_removed:${entity.type}:${entity.id}`)
+    return { ...entity, id: matched?.id ?? null, label: matched?.label ?? entity.label }
+  })
+  const references = input.interpretation.references.map((reference) => {
+    const matched = reference.type ? trustedEntity(reference.type, reference.id) : null
+    if (reference.id && !matched) validationEvidence.push(`reference_id_removed:${reference.id}`)
+    return {
+      ...reference,
+      id: matched?.id ?? null,
+      label: matched?.label ?? reference.label,
+    }
+  })
+  const resolvedReference = references.find((reference) => reference.type && reference.id) ?? null
+  const reference = resolvedReference
+    ? {
+        type: resolvedReference.type,
+        id: resolvedReference.id,
+        label: resolvedReference.label,
+        reason: `ai_validated:${resolvedReference.relation}`,
+        ambiguousIds: [],
+      }
+    : input.baseline.reference
+
+  const confidenceThreshold = descriptor?.mutatesData
+    ? COS_DECISION_CONFIDENCE.mutationMinimum
+    : COS_DECISION_CONFIDENCE.queryMinimum
+  const confidenceAllowsCapability = input.interpretation.confidence >= confidenceThreshold
+  if (descriptor && !confidenceAllowsCapability) validationEvidence.push(`confidence_below_threshold:${confidenceThreshold}`)
+
+  const requiredEntityType = descriptor ? selectedEntityTypeForDescriptor(descriptor) : null
+  const hasRequiredReference = !requiredEntityType || Boolean(
+    reference.type === requiredEntityType && reference.id,
+  )
+  const selectionCanBeCollectedByHandler = descriptor?.id === "property.search" || descriptor?.id === "lead.find" || descriptor?.id === "proposal.create" || descriptor?.id === "contract.create" || descriptor?.id === "agenda.create"
+  const requiredReferenceMissing = Boolean(descriptor?.requiresSelection && !hasRequiredReference && !selectionCanBeCollectedByHandler)
+  if (requiredReferenceMissing) validationEvidence.push(`required_reference_missing:${requiredEntityType ?? "unknown"}`)
+
+  const selectedDescriptor = descriptor && confidenceAllowsCapability && !requiredReferenceMissing ? descriptor : null
+  const selectedCandidate = selectedDescriptor
+    ? [{
+        ...directCandidate(selectedDescriptor, ["ai_semantic_interpretation", ...validationEvidence]),
+        score: Number((input.interpretation.confidence * 100).toFixed(2)),
+        confidence: input.interpretation.confidence,
+      }]
+    : []
+  const semanticInterpretation: CosSemanticInterpretation = {
+    ...input.interpretation,
+    objective: {
+      ...input.interpretation.objective,
+      targetCapabilityId: descriptor?.id ?? null,
+    },
+    entities,
+    references,
+    validationEvidence,
+  }
+  const needsClarification = input.interpretation.needsClarification || !selectedDescriptor
+  const clarificationReason = input.interpretation.needsClarification
+    ? "semantic_clarification_requested"
+    : descriptor && !confidenceAllowsCapability
+      ? "semantic_confidence_below_risk_threshold"
+      : requiredReferenceMissing
+        ? "required_entity_unresolved"
+        : !descriptor
+          ? "semantic_capability_unavailable"
+          : null
+  const workflowDecision: CosDialogueDecision["workflowDecision"] = !input.activeWorkflow
+    ? selectedDescriptor ? "start_new" : "none"
+    : continuationAct && selectedDescriptor?.id === activeDescriptor?.id
+      ? "continue_workflow"
+      : "start_new"
+
+  return {
+    accepted: true,
+    validationErrors,
+    decision: {
+      ...input.baseline,
+      dialogueAct: input.interpretation.dialogueAct,
+      dialogueActConfidence: input.interpretation.confidence,
+      dialogueActEvidence: ["ai_semantic_interpretation", ...validationEvidence],
+      primaryDomain: input.interpretation.primaryDomain,
+      secondaryDomains: input.interpretation.secondaryDomains.filter((domain) => domain !== input.interpretation.primaryDomain),
+      objective: semanticInterpretation.objective,
+      reference,
+      selectedCapabilityId: selectedDescriptor?.id ?? null,
+      selectedAction: selectedDescriptor?.action ?? null,
+      candidateCapabilities: selectedCandidate,
+      workflowDecision,
+      needsClarification,
+      clarificationReason,
+      source: "ai_interpretation",
+      semanticInterpretation,
+    },
   }
 }
 

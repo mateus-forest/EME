@@ -228,6 +228,59 @@ export type CosDialogueDecisionCandidate = {
   mutatesData: boolean
 }
 
+export type CosSemanticEntity = {
+  type: CosConversationEntityType
+  id: string | null
+  label: string | null
+  role: "subject" | "beneficiary" | "target" | "comparison" | "context"
+}
+
+export type CosSemanticReference = {
+  expression: string
+  type: CosConversationEntityType | null
+  id: string | null
+  label: string | null
+  relation: "active" | "previous" | "alternative" | "selection" | "named" | "unknown"
+}
+
+export type CosSemanticFilter = {
+  field: string
+  operator: "eq" | "neq" | "lt" | "lte" | "gt" | "gte" | "contains" | "in" | "between"
+  value: string | number | boolean | null
+  secondaryValue: string | number | boolean | null
+}
+
+export type CosSemanticCorrection = {
+  field: string
+  from: string | null
+  to: string
+}
+
+export type CosSemanticInterpretationInput = {
+  dialogueAct: CosDialogueAct
+  objective: {
+    mode: "execute" | "query" | "explain" | "respond" | "continue" | "clarify"
+    summary: string
+    targetCapabilityId: string | null
+  }
+  primaryDomain: CosConversationDomain
+  secondaryDomains: CosConversationDomain[]
+  entities: CosSemanticEntity[]
+  references: CosSemanticReference[]
+  filters: CosSemanticFilter[]
+  corrections: CosSemanticCorrection[]
+  confidence: number
+  needsClarification: boolean
+  clarificationQuestion: string | null
+}
+
+export type CosSemanticInterpretation = Omit<CosSemanticInterpretationInput, "objective"> & {
+  objective: Omit<CosSemanticInterpretationInput["objective"], "targetCapabilityId"> & {
+    targetCapabilityId: CosCapabilityId | null
+  }
+  validationEvidence: string[]
+}
+
 export type CosDialogueDecision = {
   schemaVersion: 1
   dialogueAct: CosDialogueAct
@@ -253,7 +306,8 @@ export type CosDialogueDecision = {
   workflowDecision: "continue_workflow" | "start_new" | "none"
   needsClarification: boolean
   clarificationReason: string | null
-  source: "explicit_interface" | "dialogue_rules" | "snapshot_context" | "registry" | "fallback"
+  source: "explicit_interface" | "dialogue_rules" | "snapshot_context" | "registry" | "ai_interpretation" | "fallback"
+  semanticInterpretation?: CosSemanticInterpretation | null
 }
 
 export type CosCapabilityEntity =

@@ -8,15 +8,26 @@ function collectSelectedEntityIds(input: {
   workspace: CosWorkspaceContext | null
   memory: CosConversationMemory | null
   snapshot: CosConversationSnapshot | null
+  decision: CosDialogueDecision | null
 }) {
   const selected: Partial<Record<CosWorkspaceEntity, string>> = {}
   const workspaceSelection = input.workspace?.selection ?? []
 
-  for (const item of workspaceSelection) {
-    if (item.entityId) selected[item.entity] = item.entityId
+  const decisionReference = input.decision?.reference
+  if (decisionReference?.id && decisionReference.type) {
+    if (decisionReference.type === "proposal") {
+      selected.document = decisionReference.id
+    } else {
+      selected[decisionReference.type] = decisionReference.id
+      if (decisionReference.type === "contract") selected.document = decisionReference.id
+    }
   }
 
-  if (input.workspace?.entity && input.workspace.entityId) {
+  for (const item of workspaceSelection) {
+    if (item.entityId && !selected[item.entity]) selected[item.entity] = item.entityId
+  }
+
+  if (input.workspace?.entity && input.workspace.entityId && !selected[input.workspace.entity]) {
     selected[input.workspace.entity] = input.workspace.entityId
   }
 
@@ -81,6 +92,7 @@ export function createCosNormalizedContext(input: {
       workspace: input.workspace,
       memory: input.memory,
       snapshot: input.snapshot ?? null,
+      decision: input.decision ?? null,
     }),
   } satisfies CosNormalizedContext
 }

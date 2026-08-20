@@ -14,6 +14,9 @@ export {
 } from "@/lib/cos/capability-catalog"
 export { executeCosCapability, executeCosExecutionPlan } from "@/lib/cos/executor"
 export { createStepPlanForCapability, planCosExecution } from "@/lib/cos/execution-planner"
+export {
+  generateCosAiDialogueInterpretation,
+} from "@/lib/cos/ai-orchestrator"
 export { buildCosCapabilityInventoryMarkdown, getCosCapabilityInventory } from "@/lib/cos/inventory"
 export { normalizeCosAttachments, runCosAttachmentPipeline, splitCosAttachmentsByCategory } from "@/lib/cos/attachment-pipeline"
 export { createCosNormalizedContext } from "@/lib/cos/context"
@@ -69,7 +72,9 @@ export {
   COS_RECENT_MESSAGE_LIMIT,
 } from "@/lib/cos/conversation-snapshot"
 export {
+  applyCosAiDialogueInterpretation,
   COS_DECISION_CONFIDENCE,
+  evaluateCosAiDialogueInterpretationTrigger,
   listCosRoutableCapabilityDescriptors,
   resolveCosDialogueDecision,
 } from "@/lib/cos/conversation-decision"
@@ -95,6 +100,12 @@ export type {
   CosConversationDomain,
   CosDialogueAct,
   CosDialogueDecision,
+  CosSemanticCorrection,
+  CosSemanticEntity,
+  CosSemanticFilter,
+  CosSemanticInterpretation,
+  CosSemanticInterpretationInput,
+  CosSemanticReference,
   CosKnowledgeChunk,
   CosKnowledgeContext,
   CosKnowledgeDocumentRef,
