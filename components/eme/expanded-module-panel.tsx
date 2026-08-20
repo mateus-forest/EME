@@ -14,8 +14,8 @@ const MODAL_AR: Record<string, number> = {
   clientes: 1486 / 972,
   imoveis: 1480 / 962,
   catalogo: 1478 / 971,
-  "studio-ia": 1495 / 980,
-  propostas: 1469 / 965,
+  "studio-ia": 1536 / 1024,
+  propostas: 1536 / 1024,
   contratos: 1536 / 1024,
   agenda: 1452 / 941,
   marketplace: 1522 / 1033,
@@ -304,7 +304,7 @@ export function ExpandedModulePanel({
           animate={{ opacity: closing ? 0 : 1 }}
           transition={{ duration: 0.2, delay: closing ? 0 : 0.15 }}
         >
-          {module.id === "contratos" ? (
+          {module.id === "contratos" || module.id === "propostas" ? (
             <span className="flex size-11 items-center justify-center rounded-full border border-foreground/8 bg-white/95 text-foreground shadow-[0_10px_28px_rgba(22,34,27,0.12)]">
               <X className="size-5" aria-hidden />
             </span>
