@@ -406,11 +406,11 @@ export function BrokerDocumentsPage() {
           </CardContent>
         </Card>
 
-        <div className="eme-subtle-scrollbar grid min-h-0 min-w-0 max-w-full content-start gap-3 overflow-x-hidden pb-2 xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
+        <div className="eme-subtle-scrollbar flex min-h-0 min-w-0 max-w-full flex-col gap-3 overflow-x-hidden pb-2 xl:h-full xl:max-h-full xl:overflow-y-auto xl:overscroll-y-contain xl:pr-1 xl:[scrollbar-gutter:stable]">
           <Card
             ref={composerRef}
             tabIndex={-1}
-            className={`${isComposerOpen ? "grid" : "hidden"} min-w-0 scroll-mt-4 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)] outline-none`}
+            className={`${isComposerOpen ? "grid" : "hidden"} min-w-0 shrink-0 scroll-mt-4 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)] outline-none`}
           >
             <CardHeader className="flex-row items-center justify-between gap-3 border-b border-[var(--broker-border)] px-4 py-4">
               <div>
@@ -542,16 +542,16 @@ export function BrokerDocumentsPage() {
                     <StructuredInput kind="currency" value={draft.propertyPrice} onValueChange={(value) => setDraft({ ...draft, propertyPrice: value })} placeholder="R$ 0,00" aria-label="Valor da proposta" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
-                    Entrada
+                    Valor da entrada
                     <StructuredInput kind="currency" value={draft.entry} onValueChange={(value) => setDraft({ ...draft, entry: value })} placeholder="R$ 0,00" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
-                    Financiamento
+                    Valor financiado / financiamento
                     <StructuredInput kind="currency" value={draft.financing} onValueChange={(value) => setDraft({ ...draft, financing: value })} placeholder="R$ 0,00" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
-                    Parcelamento
-                    <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Ex.: 24 parcelas" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
+                    Quantidade / valor das parcelas
+                    <Input value={draft.installments} onChange={(event) => setDraft({ ...draft, installments: event.target.value })} placeholder="Ex.: 24x de R$ 5.000" className="h-10 min-w-0 rounded-xl border-black/[0.06] bg-white text-[#050505]" />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-[#667085]">
                     Forma de pagamento
@@ -568,7 +568,7 @@ export function BrokerDocumentsPage() {
                 </label>
               </div>
 
-              <div className="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-black/[0.05] bg-white/95 p-4 backdrop-blur">
+              <div className="-mx-4 -mb-4 mt-1 border-t border-black/[0.05] bg-white p-4">
                 <Button type="button" disabled={isSaving} onClick={createProposal} className="h-10 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
                   {isSaving ? "Gerando..." : "Gerar e salvar proposta"}
                 </Button>
@@ -576,7 +576,7 @@ export function BrokerDocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 max-w-full overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <Card className="min-w-0 max-w-full shrink-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
             <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
               <CardTitle className="break-words text-lg text-[#050505] [overflow-wrap:anywhere]">{selectedDocument?.title ?? "Prévia da proposta"}</CardTitle>
               <p className="text-xs text-[#667085]">Revise o documento selecionado antes de baixar ou marcar como assinado.</p>
@@ -594,10 +594,10 @@ export function BrokerDocumentsPage() {
                     <iframe
                       title={selectedDocument.title}
                       srcDoc={selectedDocument.content}
-                      className="block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white"
+                      className="pointer-events-none block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white"
                     />
                   ) : (
-                    <pre data-testid="proposal-preview" className="eme-subtle-scrollbar max-h-[min(26rem,54vh)] max-w-full overflow-auto whitespace-pre-wrap break-words rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A] [overflow-wrap:anywhere]">{selectedDocument.content}</pre>
+                    <pre data-testid="proposal-preview" className="max-w-full whitespace-pre-wrap break-words rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A] [overflow-wrap:anywhere]">{selectedDocument.content}</pre>
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <Button type="button" variant="ghost" onClick={() => void openDocument(false)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">
