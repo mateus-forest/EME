@@ -126,7 +126,7 @@ export const emeModules: EmeModule[] = [
     icon: Home,
     angle: 0,
     priorityMobile: true,
-    tagline: "Sua carteira de imóveis, sempre atualizada.",
+    tagline: "Seu jeito de cadastrar. A IA faz o resto.",
     longDescription:
       "Cadastre imóveis manualmente, com IA ou importe anúncios em segundos. O EME organiza toda sua carteira automaticamente para você vender mais.",
     benefits: [
@@ -136,7 +136,7 @@ export const emeModules: EmeModule[] = [
       { title: "Importação em massa de imóveis", description: "Suba toda sua carteira de uma só vez." },
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/imoveis.png",
+    mockup: "/modals/imoveis-2026.png",
   },
   {
     id: "catalogo",
@@ -156,7 +156,7 @@ export const emeModules: EmeModule[] = [
       { title: "Mais profissionalismo e credibilidade", description: "Sua marca apresentada com o padrão que você merece." },
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/catalogo.png",
+    mockup: "/modals/catalogo-2026.png",
     demoLabel: "Ver um exemplo de catálogo",
     demoHref: "/catalogo/mateusforest",
   },

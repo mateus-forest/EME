@@ -12,8 +12,8 @@ type Rect = { left: number; top: number; width: number; height: number }
 const MODAL_AR: Record<string, number> = {
   cos: 1448 / 932,
   clientes: 1486 / 972,
-  imoveis: 1480 / 962,
-  catalogo: 1478 / 971,
+  imoveis: 1536 / 1024,
+  catalogo: 1536 / 1024,
   "studio-ia": 1536 / 1024,
   propostas: 1536 / 1024,
   contratos: 1536 / 1024,
