@@ -4,11 +4,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowRight,
+  BadgeCheck,
   Check,
+  MapPin,
   MessageCircle,
   Minus,
   Paperclip,
   Send,
+  Star,
   X,
 } from 'lucide-react'
 import {
@@ -48,14 +51,123 @@ export type AssistantBroker = {
   image: string
   specialty: string
   verified: boolean
+  region?: string
+  creci?: string
+  about?: string
+  activeListings?: number
+  rating?: number
+  reviewCount?: number
+  transaction?: 'compra' | 'aluguel' | 'ambos'
+}
+
+type AssistantBrokerMatch = {
+  broker: AssistantBroker
+  area: string
+  score: number
 }
 
 const AssistantContext = createContext<AssistantContextValue | null>(null)
 
-const defaultInitialMessage = 'Olá. Conte o que procura e eu vou analisar os imóveis publicados no Marketplace EME.'
+const defaultInitialMessage = 'Olá. Conte o que procura e eu vou analisar os imóveis publicados e os corretores cadastrados no Marketplace EME.'
 
 const intentOptions = ['Quero comprar', 'Quero alugar', 'Ainda estou pesquisando']
 const priorityOptions = ['Pátio maior', 'Perto do centro', 'Imóvel mais novo']
+
+const brokerIntentPattern = /\b(corretor(?:a|es|as)?|profissiona(?:l|is)(?:\s+imobiliari[oa]s?)?|consultor(?:a|es|as)?\s+imobiliari[oa]s?|quem\s+(?:vende|trabalha\s+com)\s+imoveis|falar\s+com\s+(?:um|uma)?\s*(?:corretor|profissional))\b/
+const brokerSearchStopWords = new Set([
+  'a', 'as', 'com', 'corretor', 'corretora', 'corretoras', 'corretores', 'da', 'das', 'de', 'do', 'dos',
+  'e', 'em', 'falar', 'imobiliaria', 'imobiliarias', 'imobiliario', 'imobiliarios', 'imoveis', 'mais',
+  'na', 'nas', 'no', 'nos', 'o', 'os', 'para', 'por', 'profissionais', 'profissional', 'que', 'quem',
+  'quero', 'um', 'uma', 'vende',
+])
+
+function normalizeAssistantText(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
+}
+
+function meaningfulTokens(value: string) {
+  return normalizeAssistantText(value)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3 && !brokerSearchStopWords.has(token))
+}
+
+function isBrokerDiscoveryIntent(value: string) {
+  return brokerIntentPattern.test(normalizeAssistantText(value))
+}
+
+function brokerLocations(broker: AssistantBroker, properties: SearchProperty[]) {
+  const locations = properties
+    .filter((property) => property.brokerSlug === broker.slug)
+    .flatMap((property) => [property.city, property.neighborhood, property.region])
+  if (broker.region && !normalizeAssistantText(broker.region).includes('nao informada')) locations.unshift(broker.region)
+  return [...new Set(locations.map((location) => location?.trim()).filter((location): location is string => Boolean(location)))]
+}
+
+function inferBrokerLocation(text: string, brokers: AssistantBroker[], properties: SearchProperty[]) {
+  const query = normalizeAssistantText(text)
+  const queryTokens = new Set(meaningfulTokens(query))
+  const knownLocations = [...new Set(brokers.flatMap((broker) => brokerLocations(broker, properties)))]
+  const knownMatch = knownLocations
+    .map((location) => ({ location, normalized: normalizeAssistantText(location) }))
+    .filter(({ normalized }) => (
+      query.includes(normalized) || meaningfulTokens(normalized).some((token) => token.length >= 5 && queryTokens.has(token))
+    ))
+    .sort((left, right) => right.normalized.length - left.normalized.length)[0]
+
+  if (knownMatch) return knownMatch.location
+
+  const explicitLocation = query.match(/\b(?:em|na|no)\s+([a-z][a-z\s-]{2,60}?)(?:\?|!|\.|,|$)/)?.[1]
+    || query.match(/\b(?:corretor(?:a|es|as)?|profissiona(?:l|is))\s+(?:de|da|do)\s+([a-z][a-z\s-]{2,60}?)(?:\?|!|\.|,|$)/)?.[1]
+  return explicitLocation?.trim() || ''
+}
+
+function locationMatchesBroker(location: string, broker: AssistantBroker, properties: SearchProperty[]) {
+  if (!location) return true
+  const normalizedLocation = normalizeAssistantText(location)
+  const locationTokens = meaningfulTokens(normalizedLocation)
+  return brokerLocations(broker, properties).some((candidate) => {
+    const normalizedCandidate = normalizeAssistantText(candidate)
+    const candidateTokens = new Set(meaningfulTokens(normalizedCandidate))
+    return normalizedCandidate.includes(normalizedLocation)
+      || normalizedLocation.includes(normalizedCandidate)
+      || locationTokens.some((token) => token.length >= 5 && candidateTokens.has(token))
+  })
+}
+
+function findBrokerMatches(text: string, brokers: AssistantBroker[], properties: SearchProperty[]) {
+  const query = normalizeAssistantText(text)
+  const location = inferBrokerLocation(text, brokers, properties)
+  const locationTokens = new Set(meaningfulTokens(location))
+  const specialtyTokens = meaningfulTokens(query).filter((token) => !locationTokens.has(token))
+  const requiresVerified = /\b(verificad[oa]s?|creci|credenciad[oa]s?)\b/.test(query)
+  const valuesTrust = requiresVerified || /\b(confiavel|confiaveis|segur[oa]s?)\b/.test(query)
+
+  return brokers
+    .map((broker): AssistantBrokerMatch | null => {
+      const locations = brokerLocations(broker, properties)
+      const regionFit = locationMatchesBroker(location, broker, properties)
+      if ((location && !regionFit) || (requiresVerified && !broker.verified)) return null
+
+      const expertise = new Set(meaningfulTokens(`${broker.specialty} ${broker.about || ''}`))
+      const specialtyFit = specialtyTokens.filter((token) => expertise.has(token)).length
+      const rating = broker.reviewCount ? broker.rating || 0 : 0
+      const score = (regionFit && location ? 80 : 0)
+        + specialtyFit * 12
+        + (valuesTrust && broker.verified ? 14 : 0)
+        + rating * 2
+        + Math.min(broker.reviewCount || 0, 10)
+        + Math.min(broker.activeListings || 0, 10)
+
+      return {
+        broker,
+        area: locations[0] || broker.region || 'Área de atuação não informada',
+        score,
+      }
+    })
+    .filter((match): match is AssistantBrokerMatch => Boolean(match))
+    .sort((left, right) => right.score - left.score || left.broker.name.localeCompare(right.broker.name, 'pt-BR'))
+    .slice(0, 5)
+}
 export function useEmeAssistant() {
   const context = useContext(AssistantContext)
   if (!context) throw new Error('useEmeAssistant deve ser usado dentro de AssistantProvider')
@@ -146,6 +258,74 @@ function PropertySuggestion({
   )
 }
 
+function BrokerSuggestion({
+  match,
+  href,
+  onNavigate,
+  preventNavigation,
+}: {
+  match: AssistantBrokerMatch
+  href: string
+  onNavigate: () => void
+  preventNavigation: boolean
+}) {
+  const { broker, area } = match
+  const hasCreci = Boolean(broker.creci && !normalizeAssistantText(broker.creci).includes('nao informado'))
+  const hasReviews = Boolean(broker.reviewCount && broker.rating)
+
+  return (
+    <article className="min-w-[250px] flex-1 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[var(--shadow-soft)]">
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <Image
+            src={broker.image}
+            alt={broker.name}
+            width={56}
+            height={56}
+            className="h-14 w-14 shrink-0 rounded-full object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-1.5">
+              <h3 className="text-pretty text-sm font-semibold leading-snug text-foreground">{broker.name}</h3>
+              {broker.verified ? <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" /> : null}
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{broker.specialty}</p>
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+          <p className="flex items-start gap-1.5">
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <span>{area}</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {hasCreci ? <span className="rounded-full border border-border px-2.5 py-1">{broker.creci}</span> : null}
+            {broker.verified ? <span className="rounded-full bg-eme-50 px-2.5 py-1 font-medium text-primary">Verificado</span> : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1 font-medium text-foreground">
+              <Star className={cn('h-3.5 w-3.5 text-primary', hasReviews && 'fill-primary')} aria-hidden="true" />
+              {hasReviews ? `${broker.rating?.toFixed(1).replace('.', ',')} · ${broker.reviewCount} avaliações` : 'Perfil novo'}
+            </span>
+            {typeof broker.activeListings === 'number' ? <span>{broker.activeListings} imóveis ativos</span> : null}
+          </div>
+        </div>
+      </div>
+
+      <Link
+        href={href}
+        onClick={(event) => {
+          if (preventNavigation) event.preventDefault()
+          onNavigate()
+        }}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 border-t border-border/60 px-3 text-xs font-semibold text-primary transition-colors hover:bg-eme-50"
+      >
+        Ver perfil e entrar em contato <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </Link>
+    </article>
+  )
+}
+
 function QuickChoices({
   options,
   onChoose,
@@ -198,6 +378,7 @@ function AssistantPanel({
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
   const [matchedProperties, setMatchedProperties] = useState<SearchProperty[]>([])
+  const [matchedBrokers, setMatchedBrokers] = useState<AssistantBrokerMatch[]>([])
   const [handoff, setHandoff] = useState<SearchProperty | null>(null)
   const handoffBroker = handoff ? brokers.find((broker) => broker.slug === handoff.brokerSlug) : null
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -210,15 +391,39 @@ function AssistantPanel({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, thinking, handoff])
+  }, [messages, thinking, handoff, matchedBrokers, matchedProperties])
 
   function runAssistantSearch(text: string) {
     append('user', text)
     setHandoff(null)
     setThinking(true)
+
+    if (isBrokerDiscoveryIntent(text)) {
+      const location = inferBrokerLocation(text, brokers, properties)
+      const matches = findBrokerMatches(text, brokers, properties)
+      setMatchedProperties([])
+      setMatchedBrokers(matches)
+      window.setTimeout(() => {
+        if (!matches.length) {
+          append(
+            'assistant',
+            `Não encontrei corretor cadastrado${location ? ` com atuação compatível em ${location}` : ' compatível com esses critérios'} agora. Tente ampliar a região ou retirar um dos critérios para eu buscar novamente.`,
+          )
+        } else {
+          append(
+            'assistant',
+            `Encontrei ${matches.length} ${matches.length === 1 ? 'corretor cadastrado' : 'corretores cadastrados'}${location ? ` com atuação compatível em ${location}` : ''}. Ordenei os profissionais por aderência da área de atuação, especialidade e métricas públicas disponíveis.`,
+          )
+        }
+        setThinking(false)
+      }, 420)
+      return
+    }
+
     const broadSearch = text === 'Ainda estou pesquisando'
     const inferred = inferMarketplaceFilters(broadSearch ? '' : text, properties)
     const matches = filterSearchResults(properties, inferred, broadSearch ? '' : text).slice(0, 3)
+    setMatchedBrokers([])
     setMatchedProperties(matches)
     window.setTimeout(() => {
       if (!matches.length) {
@@ -305,6 +510,23 @@ function AssistantPanel({
               <QuickChoices options={intentOptions} onChoose={answer} />
               <QuickChoices options={priorityOptions} onChoose={answer} />
             </>
+          )}
+
+          {matchedBrokers.length > 0 && (
+            <div className="ml-0 flex gap-3 overflow-x-auto pb-1 pl-9 no-scrollbar sm:pl-9" aria-label="Corretores sugeridos pelo Assistente EME">
+              {matchedBrokers.map((match) => (
+                <BrokerSuggestion
+                  key={match.broker.slug}
+                  match={match}
+                  href={brokerHref(match.broker)}
+                  onNavigate={() => {
+                    onClose()
+                    onBrokerSelect?.(match.broker)
+                  }}
+                  preventNavigation={Boolean(onBrokerSelect)}
+                />
+              ))}
+            </div>
           )}
 
           {matchedProperties.length > 0 && (
