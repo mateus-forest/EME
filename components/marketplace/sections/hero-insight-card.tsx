@@ -16,6 +16,14 @@ const INSIGHTS = [
     title: 'Dentro do perfil',
     description: 'Faixa de preço e características alinhadas à sua busca.',
   },
+  {
+    title: 'Corretores Verificados',
+    description: 'Profissionais verificados para conduzir sua negociação com mais confiança.',
+  },
+  {
+    title: 'Segurança para quem vende e para quem compra',
+    description: 'Uma experiência mais segura em todas as etapas da negociação.',
+  },
 ]
 
 const ROTATION_INTERVAL_MS = 4_500

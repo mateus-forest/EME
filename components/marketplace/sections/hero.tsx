@@ -8,29 +8,29 @@ export function Hero() {
   return (
     <section
       data-marketplace-hero
-      className="relative flex min-h-[92vh] w-full flex-col overflow-hidden md:h-[80vh] md:min-h-[640px]"
+      className="relative flex min-h-[100svh] w-full flex-col overflow-hidden md:min-h-[760px] md:h-[90vh]"
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0"
         style={{
           WebkitMaskImage:
-            'linear-gradient(to bottom, black 0%, black 91%, rgba(0,0,0,0.98) 94%, rgba(0,0,0,0.82) 97%, rgba(0,0,0,0.45) 99%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 92%, rgba(0,0,0,0.98) 96%, rgba(0,0,0,0.9) 97.5%, rgba(0,0,0,0.72) 99%, transparent 100%)',
           maskImage:
-            'linear-gradient(to bottom, black 0%, black 91%, rgba(0,0,0,0.98) 94%, rgba(0,0,0,0.82) 97%, rgba(0,0,0,0.45) 99%, transparent 100%)',
+            'linear-gradient(to bottom, black 0%, black 92%, rgba(0,0,0,0.98) 96%, rgba(0,0,0,0.9) 97.5%, rgba(0,0,0,0.72) 99%, transparent 100%)',
         }}
       >
         <HeroVideoBackground />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/38 to-black/12" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/22" />
         <div
           data-hero-bottom-shade
-          className="absolute inset-x-0 bottom-0 h-[16%] bg-gradient-to-b from-transparent via-black/20 to-black/70"
+          className="absolute inset-x-0 bottom-0 h-[24%] bg-gradient-to-b from-transparent via-black/16 to-black/72"
         />
       </div>
 
       <div className="relative z-10 flex flex-1 items-center">
-        <div className="mx-auto w-full max-w-6xl px-5 pb-10 pt-32 md:px-8 md:pb-12 md:pt-40">
+        <div className="mx-auto w-full max-w-6xl px-5 pb-14 pt-36 md:px-8 md:pb-16 md:pt-44">
           <div className="max-w-2xl animate-rise">
             <h1 className="text-balance text-[2.35rem] font-normal leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.5rem]">
               Seu próximo imóvel começa pelo que importa para{' '}
