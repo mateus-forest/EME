@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 
 type Dashboard = {
   profile: BrokerProfile | null
-  settings: { slug: string; displayName: string; photoUrl: string; specialty: string; region: string; transactions: string; about: string }
+  settings: { slug: string; displayName: string; photoUrl: string; specialty: string; region: string; transactions: string; bio: string }
   publicPath: string | null
   properties: Array<{ id: string; title: string; marketplaceSlug: string; purpose: string; price: number; city: string; image: string }>
   leads: Array<{ id: string; name: string | null; phone: string | null; intent: string | null; status: string; createdAt: string }>
@@ -48,7 +48,7 @@ export function BrokerMarketplacePage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState({ specialty: '', region: '', transactions: 'BOTH', about: '' })
+  const [draft, setDraft] = useState({ specialty: '', region: '', transactions: 'BOTH', bio: '' })
   const [reply, setReply] = useState('')
   const [feedback, setFeedback] = useState('')
 
@@ -60,7 +60,7 @@ export function BrokerMarketplacePage() {
     if (dashboardResponse.ok) {
       const payload = await dashboardResponse.json()
       setData(payload)
-      setDraft({ specialty: payload.settings.specialty, region: payload.settings.region, transactions: payload.settings.transactions, about: payload.settings.about })
+      setDraft({ specialty: payload.settings.specialty, region: payload.settings.region, transactions: payload.settings.transactions, bio: payload.settings.bio })
     }
     if (conversationResponse.ok) {
       const payload = await conversationResponse.json()
@@ -134,7 +134,7 @@ export function BrokerMarketplacePage() {
                 <label className="text-sm font-medium text-[#344054]">Especialidade<input value={draft.specialty} onChange={(event) => setDraft({ ...draft, specialty: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] px-3 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
                 <label className="text-sm font-medium text-[#344054]">Atuação<select value={draft.transactions} onChange={(event) => setDraft({ ...draft, transactions: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 font-normal"><option value="BOTH">Compra e aluguel</option><option value="SALE">Compra</option><option value="RENT">Aluguel</option></select></label>
               </div>
-              <label className="mt-3 block text-sm font-medium text-[#344054]">Sobre o atendimento<textarea rows={2} value={draft.about} onChange={(event) => setDraft({ ...draft, about: event.target.value })} className="mt-1.5 w-full resize-none rounded-lg border border-black/[0.08] px-3 py-2 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
+              <label className="mt-3 block text-sm font-medium text-[#344054]">Apresentação / bio<textarea rows={3} value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} className="mt-1.5 w-full resize-none rounded-lg border border-black/[0.08] px-3 py-2 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
               <div className="mt-3 flex flex-wrap items-center gap-3"><button className="h-9 rounded-lg bg-[#009b3a] px-4 text-xs font-semibold text-white hover:bg-[#008633]">Salvar perfil</button>{feedback ? <span className="text-sm text-[#667085]">{feedback}</span> : null}</div>
             </BrokerSurface>
           </form>

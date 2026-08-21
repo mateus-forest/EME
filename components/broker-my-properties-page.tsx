@@ -105,6 +105,8 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
   const [saveFeedback, setSaveFeedback] = useState("")
+  const [saveError, setSaveError] = useState("")
+  const [saveSuccessFeedback, setSaveSuccessFeedback] = useState("")
   const [listFeedback, setListFeedback] = useState("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [isLoadingCep, setIsLoadingCep] = useState(false)
@@ -115,6 +117,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   } | null>(null)
   const dismissedRoutePropertyIdRef = useRef<string | null>(null)
   const pendingRoutePropertyIdRef = useRef<string | null>(null)
+  const saveSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activePropertiesCount = useMemo(
     () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
     [properties],
@@ -150,6 +153,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     dismissedRoutePropertyIdRef.current = null
     setEditingProperty(mapPropertyToEditable(property))
     setSaveFeedback("")
+    setSaveError("")
     setAiHighlights([])
     setIsEditModalOpen(true)
     if (routePropertyId !== property.id) {
@@ -159,6 +163,18 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
       pendingRoutePropertyIdRef.current = null
     }
   }, [routePropertyId, router])
+
+  const showSaveSuccess = useCallback((message: string) => {
+    if (saveSuccessTimeoutRef.current) clearTimeout(saveSuccessTimeoutRef.current)
+    setSaveSuccessFeedback(message)
+    saveSuccessTimeoutRef.current = setTimeout(() => setSaveSuccessFeedback(""), 3000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (saveSuccessTimeoutRef.current) clearTimeout(saveSuccessTimeoutRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (!routePropertyId) {
@@ -213,6 +229,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
       }
       setEditingProperty(null)
       setSaveFeedback("")
+      setSaveError("")
       setAiHighlights([])
     }
   }
@@ -278,12 +295,13 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
 
   async function saveChanges() {
     if (!editingProperty) return
+    setSaveError("")
     try {
-      const updatedProperty = await updateProperty(editingProperty.id, editingProperty)
-      setEditingProperty(mapPropertyToEditable(updatedProperty))
-      setSaveFeedback("Alterações salvas com sucesso")
+      await updateProperty(editingProperty.id, editingProperty)
+      closeEditModal(false)
+      showSaveSuccess("Alterações salvas com sucesso.")
     } catch (caughtError) {
-      setSaveFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar as alterações.")
+      setSaveError(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar as alterações.")
     }
   }
 
@@ -455,6 +473,13 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
 
   return (
     <>
+      {saveSuccessFeedback ? (
+        <div className="pointer-events-none fixed inset-x-0 top-24 z-[100] flex justify-center px-4" role="status" aria-live="polite">
+          <div className="w-fit max-w-[calc(100vw-2rem)] rounded-full border border-[#009b3a]/15 bg-[#eef9f1]/95 px-4 py-2.5 text-sm font-medium text-[#0b7a33] shadow-[0_20px_40px_rgba(15,23,42,0.10)] backdrop-blur-md">
+            {saveSuccessFeedback}
+          </div>
+        </div>
+      ) : null}
       <BrokerPageShell
         title="Imóveis"
         searchPlaceholder="Buscar por imóvel, bairro ou código"
@@ -850,6 +875,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                     </section>
 
                     {saveFeedback && <div className="rounded-[1.25rem] border border-[#009b3a]/20 bg-[#009b3a]/10 px-4 py-3 text-sm text-[#009b3a]">{saveFeedback}</div>}
+                    {saveError && <div role="alert" className="rounded-[1.25rem] border border-red-500/20 bg-red-50 px-4 py-3 text-sm text-red-700">{saveError}</div>}
                   </div>
                 </div>
                 <DialogFooter className="sticky bottom-0 border-t border-black/[0.06] bg-white/90 px-6 py-4 sm:justify-between">

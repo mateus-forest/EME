@@ -394,7 +394,8 @@ export function BrokerClientsPage() {
         throw new Error(data?.error || "Não foi possível salvar o cliente.")
       }
       syncClientInState(data.lead)
-      showToast("Cliente atualizado com sucesso.", "success")
+      closeClient()
+      showToast("Alterações salvas com sucesso.", "success")
     } catch (caughtError) {
       showToast(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar o cliente.", "error")
     } finally {

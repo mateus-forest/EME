@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowUpFromLine, AudioLines, FileText, ImagePlus, Images, Keyboard, Sparkles, Upload, type LucideIcon } from "lucide-react"
+import { ArrowUpFromLine, AudioLines, ChevronLeft, ChevronRight, FileText, ImagePlus, Images, Keyboard, Sparkles, Star, Trash2, Upload, type LucideIcon } from "lucide-react"
 
 import { AdImportPanel } from "@/components/ad-import-panel"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -342,14 +342,47 @@ export function BrokerNewPropertyPage() {
     }
   }
 
-  async function handleImageSelection(files: FileList | null) {
-    if (!files) return
+  function handleImageSelection(files: FileList | null) {
+    if (!files?.length) return
 
-    const nextFiles = Array.from(files).slice(0, 6)
+    const availableSlots = Math.max(0, 6 - selectedFiles.length)
+    if (availableSlots === 0) {
+      setPublishFeedback("Você pode adicionar até 6 imagens.")
+      return
+    }
+
+    const nextFiles = Array.from(files).slice(0, availableSlots)
     const nextImages = nextFiles.map((file) => URL.createObjectURL(file))
 
-    setSelectedFiles(nextFiles)
-    setImages(nextImages)
+    setSelectedFiles((current) => [...current, ...nextFiles])
+    setImages((current) => [...current, ...nextImages])
+    setIsPublished(false)
+    setPublishFeedback(files.length > availableSlots ? "Foram adicionadas as imagens disponíveis até o limite de 6." : "")
+  }
+
+  function moveSelectedImage(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= images.length || fromIndex === toIndex) return
+
+    setSelectedFiles((current) => {
+      const next = [...current]
+      const [file] = next.splice(fromIndex, 1)
+      if (file) next.splice(toIndex, 0, file)
+      return next
+    })
+    setImages((current) => {
+      const next = [...current]
+      const [image] = next.splice(fromIndex, 1)
+      if (image) next.splice(toIndex, 0, image)
+      return next
+    })
+    setIsPublished(false)
+  }
+
+  function removeSelectedImage(index: number) {
+    const image = images[index]
+    if (image?.startsWith("blob:")) URL.revokeObjectURL(image)
+    setSelectedFiles((current) => current.filter((_, currentIndex) => currentIndex !== index))
+    setImages((current) => current.filter((_, currentIndex) => currentIndex !== index))
     setIsPublished(false)
     setPublishFeedback("")
   }
@@ -754,7 +787,10 @@ export function BrokerNewPropertyPage() {
                 multiple
                 accept="image/*"
                 className="sr-only"
-                onChange={(event) => handleImageSelection(event.target.files)}
+                onChange={(event) => {
+                  handleImageSelection(event.target.files)
+                  event.currentTarget.value = ""
+                }}
               />
               <div className="flex size-14 items-center justify-center rounded-2xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
                 <ImagePlus className="size-6" />
@@ -782,6 +818,25 @@ export function BrokerNewPropertyPage() {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
+                    {index === 0 ? (
+                      <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#009b3a] px-2 py-1 text-[10px] font-semibold text-white shadow-sm">
+                        <Star className="size-3 fill-current" />Capa
+                      </span>
+                    ) : null}
+                    <div className="absolute inset-x-2 bottom-2 flex items-center justify-end gap-1 rounded-lg bg-black/55 p-1 backdrop-blur-sm">
+                      <button type="button" onClick={() => moveSelectedImage(index, 0)} disabled={index === 0} aria-label={`Definir imagem ${index + 1} como capa`} title="Definir como capa" className="flex size-7 items-center justify-center rounded-md text-white hover:bg-white/15 disabled:opacity-35">
+                        <Star className="size-3.5" />
+                      </button>
+                      <button type="button" onClick={() => moveSelectedImage(index, index - 1)} disabled={index === 0} aria-label={`Mover imagem ${index + 1} para a esquerda`} className="flex size-7 items-center justify-center rounded-md text-white hover:bg-white/15 disabled:opacity-35">
+                        <ChevronLeft className="size-3.5" />
+                      </button>
+                      <button type="button" onClick={() => moveSelectedImage(index, index + 1)} disabled={index === previewImages.length - 1} aria-label={`Mover imagem ${index + 1} para a direita`} className="flex size-7 items-center justify-center rounded-md text-white hover:bg-white/15 disabled:opacity-35">
+                        <ChevronRight className="size-3.5" />
+                      </button>
+                      <button type="button" onClick={() => removeSelectedImage(index)} aria-label={`Remover imagem ${index + 1}`} className="flex size-7 items-center justify-center rounded-md text-white hover:bg-red-500/70">
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

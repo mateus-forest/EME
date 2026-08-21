@@ -223,7 +223,7 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
     region: record.marketplaceRegion || 'Região não informada',
     regionSlug: normalizeText(record.marketplaceRegion).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'outras-regioes',
     specialty: record.marketplaceSpecialty || 'Atendimento imobiliário',
-    about: record.marketplaceAbout || record.description || '',
+    about: record.catalogBio || record.description || '',
     phone: record.phone || record.user.phone || '',
     image: record.user.photoUrl || '/marketplace/placeholder-user.jpg',
     activeListings: record._count.properties,
