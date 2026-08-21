@@ -112,12 +112,12 @@ export const emeModules: EmeModule[] = [
       "Centralize clientes, documentos, histórico e oportunidades. O EME acompanha cada contato desde o primeiro interesse até o fechamento do negócio.",
     benefits: [
       { title: "Cadastro completo de clientes", description: "Dados, preferências e contatos em um só lugar." },
-      { title: "Registro automático de leads do catálogo", description: "Todo interesse do catálogo vira cliente automaticamente." },
+      { title: "Registro automático de leads do catálogo e marketplace", description: "Todo interesse do catálogo vira cliente automaticamente." },
       { title: "Histórico e documentos centralizados", description: "Nada se perde entre conversas e etapas." },
       { title: "Acompanhamento do funil de atendimento", description: "Saiba exatamente em que fase está cada negociação." },
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/clientes.png",
+    mockup: "/modals/clientes-2026.png",
   },
   {
     id: "imoveis",
@@ -179,7 +179,7 @@ export const emeModules: EmeModule[] = [
       { title: "Biblioteca inteligente de conteúdos", description: "Acesse e reutilize materiais aprovados com facilidade." },
     ],
     cta: "Explorar módulo",
-    mockup: "/modals/studio-ia-2026.png",
+    mockup: "/modals/studio-ia-final.png",
   },
   {
     id: "propostas",
