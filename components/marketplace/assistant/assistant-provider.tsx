@@ -148,7 +148,7 @@ function findBrokerMatches(text: string, brokers: AssistantBroker[], properties:
       const regionFit = locationMatchesBroker(location, broker, properties)
       if ((location && !regionFit) || (requiresVerified && !broker.verified)) return null
 
-      const expertise = new Set(meaningfulTokens(`${broker.specialty} ${broker.about || ''}`))
+      const expertise = new Set(meaningfulTokens(broker.specialties.join(' ')))
       const specialtyFit = specialtyTokens.filter((token) => expertise.has(token)).length
       const rating = broker.reviewCount ? broker.rating || 0 : 0
       const score = (regionFit && location ? 80 : 0)
@@ -289,7 +289,7 @@ function BrokerSuggestion({
               <h3 className="text-pretty text-sm font-semibold leading-snug text-foreground">{broker.name}</h3>
               {broker.verified ? <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" /> : null}
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{broker.specialty}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{broker.specialties.join(' · ')}</p>
           </div>
         </div>
 
@@ -570,7 +570,7 @@ function AssistantPanel({
                     {handoffBroker.name}
                     {(!confirmedVerificationOnly || handoffBroker.verified) ? <Check className="h-3.5 w-3.5 text-primary" aria-label="Verificada" /> : null}
                   </p>
-                  <p className="text-xs text-muted-foreground">{handoffBroker.specialty}</p>
+                  <p className="text-xs text-muted-foreground">{handoffBroker.specialties.join(' · ')}</p>
                 </div>
               </div>
               <Link

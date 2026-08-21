@@ -62,16 +62,21 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
   const [featured, setFeatured] = useState('all')
   const [sheetOpen, setSheetOpen] = useState(false)
   const regionOptions = useMemo(() => [{ value: 'all', label: 'Todas as regiões' }, ...Array.from(new Map(brokers.map((broker) => [broker.regionSlug, broker.region])).entries()).map(([value, label]) => ({ value, label }))], [brokers])
-  const specialtyOptions = useMemo(() => [{ value: 'all', label: 'Todas as especialidades' }, ...Array.from(new Set(brokers.map((broker) => broker.specialty))).map((value) => ({ value, label: value }))], [brokers])
+  const specialtyOptions = useMemo(() => {
+    const specialties = Array.from(new Map(brokers.flatMap((broker) => broker.specialties).map((value) => [value.toLocaleLowerCase('pt-BR'), value])).values())
+      .sort((left, right) => left.localeCompare(right, 'pt-BR'))
+    return [{ value: 'all', label: 'Todas as especialidades' }, ...specialties.map((value) => ({ value, label: value.length > 40 ? `${value.slice(0, 40)}…` : value }))]
+  }, [brokers])
   const hasRealRatings = brokers.some((broker) => broker.reviewCount > 0 && broker.rating > 0)
   const hasFeatured = brokers.some((broker) => broker.featured)
 
   const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR')
+    const queryTokens = query.trim().toLocaleLowerCase('pt-BR').split(/\s+/).filter(Boolean)
     return brokers.filter((broker) => {
-      if (normalizedQuery && !`${broker.name} ${broker.region} ${broker.specialty}`.toLocaleLowerCase('pt-BR').includes(normalizedQuery)) return false
+      const searchable = `${broker.name} ${broker.region} ${broker.specialties.join(' ')}`.toLocaleLowerCase('pt-BR')
+      if (queryTokens.some((token) => !searchable.includes(token))) return false
       if (region !== 'all' && broker.regionSlug !== region) return false
-      if (specialty !== 'all' && broker.specialty !== specialty) return false
+      if (specialty !== 'all' && !broker.specialties.some((value) => value.toLocaleLowerCase('pt-BR') === specialty.toLocaleLowerCase('pt-BR'))) return false
       if (transaction !== 'all' && broker.transaction !== transaction && broker.transaction !== 'ambos') return false
       if (rating !== 'all' && broker.rating < Number(rating)) return false
       if (featured === 'featured' && !broker.featured) return false

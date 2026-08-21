@@ -83,7 +83,7 @@ export function PropertyContact({
                 <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" />
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">{creci}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{broker.specialty}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{broker.specialties.join(' · ')}</p>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BadgeCheck, MapPin, Star } from 'lucide-react'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
+import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-chips'
 
 const transactionLabel: Record<BrokerProfile['transaction'], string> = {
   compra: 'Atende compra',
@@ -41,7 +42,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
         </div>
       </div>
 
-      <p className="mt-4 text-pretty text-sm leading-relaxed text-foreground">{broker.specialty}</p>
+      <BrokerSpecialtyChips specialties={broker.specialties} className="mt-4" />
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-eme-50 px-2.5 py-1 text-xs font-medium text-primary">

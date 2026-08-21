@@ -253,7 +253,7 @@ model Broker {
   brandColor                String?
   logoUrl                   String?
   showAgencyWatermark       Boolean                    @default(true)
-  marketplaceSpecialty      String?
+  marketplaceSpecialties    String[]                   @default([])
   marketplaceRegion         String?
   marketplaceTransactions   String?                    @default("BOTH")
   marketplaceAbout          String?

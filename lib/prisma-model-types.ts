@@ -59,7 +59,7 @@ export type Broker = {
   brandColor: string | null
   logoUrl: string | null
   showAgencyWatermark: boolean
-  marketplaceSpecialty: string | null
+  marketplaceSpecialties: string[]
   marketplaceRegion: string | null
   marketplaceTransactions: string | null
   marketplaceAbout: string | null

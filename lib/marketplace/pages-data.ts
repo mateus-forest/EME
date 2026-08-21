@@ -54,7 +54,7 @@ export const regionLifestyles: Intent[] = [
 ]
 
 export type BrokerProfile = {
-  id: string; slug: string; name: string; creci: string; region: string; regionSlug: string; specialty: string; about: string; phone: string; image: string
+  id: string; slug: string; name: string; creci: string; region: string; regionSlug: string; specialties: string[]; about: string; phone: string; image: string
   activeListings: number; rating: number; reviewCount: number; reviews: BrokerReview[]; featured: boolean; verified: boolean; transaction: 'compra' | 'aluguel' | 'ambos'; propertyTypes: PropertyType[]
 }
 export type BrokerReview = {

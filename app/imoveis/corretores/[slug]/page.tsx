@@ -24,7 +24,7 @@ export async function generateMetadata({
   if (!broker) return { title: 'Corretor | EME Imóveis' }
   return {
     title: `${broker.name} | Corretores EME`,
-    description: `${broker.name} — ${broker.specialty} em ${broker.region}. Fale com um especialista verificado da rede EME.`,
+    description: `${broker.name} — ${broker.specialties.join(', ')} em ${broker.region}. Fale com um especialista verificado da rede EME.`,
   }
 }
 
@@ -89,7 +89,7 @@ export default async function BrokerProfilePage({
                     <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-label="Perfil verificado" />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{broker.creci}</p>
-                  <p className="mt-3 text-pretty leading-relaxed text-foreground">{broker.specialty}</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">{broker.specialties.map((specialty) => <span key={specialty} className="rounded-full border border-primary/15 bg-eme-50 px-2.5 py-1 text-xs font-medium text-primary">{specialty}</span>)}</div>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-eme-50 px-3 py-1 text-xs font-medium text-primary">
                       {transactionLabel[broker.transaction]}
@@ -122,7 +122,7 @@ export default async function BrokerProfilePage({
               <div className="mt-8">
                 <h2 className="text-lg font-semibold text-foreground">Sobre o atendimento</h2>
                 <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
-                  {broker.about || `${broker.name.split(' ')[0]} atua em ${broker.region} com foco em ${broker.specialty.toLowerCase()}. Acompanha cada etapa de perto, entende o que importa para você e indica caminhos com transparência — do primeiro contato à assinatura.`}
+                  {broker.about || `${broker.name.split(' ')[0]} atua em ${broker.region} com foco em ${broker.specialties.join(', ').toLowerCase()}. Acompanha cada etapa de perto, entende o que importa para você e indica caminhos com transparência — do primeiro contato à assinatura.`}
                 </p>
               </div>
             </div>

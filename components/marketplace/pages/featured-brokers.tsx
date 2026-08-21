@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BadgeCheck, MapPin, Star } from 'lucide-react'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
+import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-chips'
 
 export function FeaturedBrokers({ brokers }: { brokers: BrokerProfile[] }) {
   const featured = brokers.filter((broker) => broker.featured).slice(0, 3)
@@ -38,7 +39,7 @@ export function FeaturedBrokers({ brokers }: { brokers: BrokerProfile[] }) {
                 </p>
               </div>
             </div>
-            <p className="mt-4 text-sm font-medium text-foreground">{broker.specialty}</p>
+            <BrokerSpecialtyChips specialties={broker.specialties} className="mt-4" />
             <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
               {broker.region} · {broker.activeListings} imóveis ativos

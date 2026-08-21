@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BadgeCheck, MessageCircle, Star } from 'lucide-react'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
+import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-chips'
 
 export function BrokerCard({ broker }: { broker: BrokerProfile }) {
   return (
@@ -25,7 +26,7 @@ export function BrokerCard({ broker }: { broker: BrokerProfile }) {
           <h3 className="text-pretty text-base font-semibold leading-tight text-foreground">{broker.name}</h3>
           {broker.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" />}
         </div>
-        <p className="mt-1 text-pretty text-xs leading-snug text-muted-foreground">{broker.specialty}</p>
+        <BrokerSpecialtyChips specialties={broker.specialties} className="mt-1.5" />
         <p className="mt-1 text-xs text-muted-foreground">{broker.region}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1 font-medium text-foreground">

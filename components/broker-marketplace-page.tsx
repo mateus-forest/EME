@@ -14,13 +14,14 @@ import {
   BrokerSurface,
 } from '@/components/broker-portal-ui'
 import { MarketplaceMessageCard } from '@/components/marketplace/chat/marketplace-message-card'
+import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-chips'
 import { formatCurrencyBRLFromCents } from '@/lib/structured-fields'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { cn } from '@/lib/utils'
 
 type Dashboard = {
   profile: BrokerProfile | null
-  settings: { slug: string; displayName: string; photoUrl: string; specialty: string; region: string; transactions: string; bio: string }
+  settings: { slug: string; displayName: string; photoUrl: string; specialties: string[]; region: string; transactions: string; bio: string }
   publicPath: string | null
   properties: Array<{ id: string; title: string; marketplaceSlug: string; purpose: string; price: number; city: string; image: string }>
   leads: Array<{ id: string; name: string | null; phone: string | null; intent: string | null; status: string; createdAt: string }>
@@ -48,7 +49,7 @@ export function BrokerMarketplacePage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState({ specialty: '', region: '', transactions: 'BOTH', bio: '' })
+  const [draft, setDraft] = useState({ specialties: [''], region: '', transactions: 'BOTH', bio: '' })
   const [reply, setReply] = useState('')
   const [feedback, setFeedback] = useState('')
 
@@ -60,7 +61,7 @@ export function BrokerMarketplacePage() {
     if (dashboardResponse.ok) {
       const payload = await dashboardResponse.json()
       setData(payload)
-      setDraft({ specialty: payload.settings.specialty, region: payload.settings.region, transactions: payload.settings.transactions, bio: payload.settings.bio })
+      setDraft({ specialties: payload.settings.specialties.length ? payload.settings.specialties : [''], region: payload.settings.region, transactions: payload.settings.transactions, bio: payload.settings.bio })
     }
     if (conversationResponse.ok) {
       const payload = await conversationResponse.json()
@@ -75,12 +76,23 @@ export function BrokerMarketplacePage() {
   async function saveProfile(event: FormEvent) {
     event.preventDefault()
     setFeedback('')
+    const specialties = draft.specialties.map((value) => value.trim()).filter(Boolean)
+    if (specialties.some((value) => value.length > 40)) {
+      setFeedback('Cada especialidade deve ter no máximo 40 caracteres.')
+      return
+    }
+    const specialtyKeys = specialties.map((value) => value.toLocaleLowerCase('pt-BR'))
+    if (new Set(specialtyKeys).size !== specialtyKeys.length) {
+      setFeedback('Não é possível repetir a mesma especialidade.')
+      return
+    }
     const response = await fetch('/api/brokers/marketplace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) })
+    const payload = await response.json().catch(() => null)
     if (response.ok) {
-      setData(await response.json())
+      setData(payload)
       setEditing(false)
       setFeedback('Perfil atualizado.')
-    } else setFeedback('Não foi possível salvar o perfil.')
+    } else setFeedback(payload?.error || 'Não foi possível salvar o perfil.')
   }
 
   async function sendReply(event: FormEvent) {
@@ -129,10 +141,23 @@ export function BrokerMarketplacePage() {
         {editing ? (
           <form onSubmit={saveProfile}>
             <BrokerSurface padding="compact">
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="text-sm font-medium text-[#344054]">Região<input value={draft.region} onChange={(event) => setDraft({ ...draft, region: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] px-3 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
-                <label className="text-sm font-medium text-[#344054]">Especialidade<input value={draft.specialty} onChange={(event) => setDraft({ ...draft, specialty: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] px-3 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
                 <label className="text-sm font-medium text-[#344054]">Atuação<select value={draft.transactions} onChange={(event) => setDraft({ ...draft, transactions: event.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 font-normal"><option value="BOTH">Compra e aluguel</option><option value="SALE">Compra</option><option value="RENT">Aluguel</option></select></label>
+              </div>
+              <div className="mt-4 rounded-xl border border-black/[0.06] bg-[#fbfcfa] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div><p className="text-sm font-medium text-[#344054]">Especialidades</p><p className="mt-0.5 text-xs text-[#667085]">Adicione até 4 especialidades, com no máximo 40 caracteres cada.</p></div>
+                  <button type="button" disabled={draft.specialties.length >= 4} onClick={() => setDraft({ ...draft, specialties: [...draft.specialties, ''] })} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#009b3a]/20 bg-white px-2.5 text-xs font-semibold text-[#008633] hover:bg-[#eef9f1] disabled:cursor-not-allowed disabled:opacity-45"><Plus className="size-3.5" />Adicionar especialidade</button>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {draft.specialties.map((specialty, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1"><input maxLength={40} value={specialty} onChange={(event) => setDraft({ ...draft, specialties: draft.specialties.map((value, currentIndex) => currentIndex === index ? event.target.value : value) })} placeholder="Ex.: Lançamentos imobiliários" className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /><p className="mt-1 text-right text-[11px] text-[#7b8491]">{specialty.length}/40</p></div>
+                      <button type="button" aria-label={`Remover especialidade ${index + 1}`} onClick={() => setDraft({ ...draft, specialties: draft.specialties.length === 1 ? [''] : draft.specialties.filter((_, currentIndex) => currentIndex !== index) })} className="mb-4 flex size-9 shrink-0 items-center justify-center rounded-lg border border-black/[0.07] text-[#667085] hover:border-red-200 hover:bg-red-50 hover:text-red-600"><X className="size-4" /></button>
+                    </div>
+                  ))}
+                </div>
               </div>
               <label className="mt-3 block text-sm font-medium text-[#344054]">Apresentação / bio<textarea rows={3} value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} className="mt-1.5 w-full resize-none rounded-lg border border-black/[0.08] px-3 py-2 font-normal outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /></label>
               <div className="mt-3 flex flex-wrap items-center gap-3"><button className="h-9 rounded-lg bg-[#009b3a] px-4 text-xs font-semibold text-white hover:bg-[#008633]">Salvar perfil</button>{feedback ? <span className="text-sm text-[#667085]">{feedback}</span> : null}</div>
@@ -145,7 +170,7 @@ export function BrokerMarketplacePage() {
             <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-[#111827]">Preview do perfil público</h3><BrokerStatusPill tone="positive">Card | Perfil</BrokerStatusPill></div>
             {profile ? (
               <div className="mt-4 rounded-xl border border-black/[0.06] bg-[#fcfcfb] p-4">
-                <div className="flex items-center gap-3"><div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#f3f4f2]">{profile.image ? <Image src={profile.image} alt="" fill sizes="56px" className="object-cover" /> : null}</div><div className="min-w-0"><p className="truncate font-semibold text-[#111827]">{profile.name}</p><p className="truncate text-xs text-[#667085]">{profile.creci}</p><p className="mt-1 truncate text-xs text-[#008633]">{profile.specialty}</p></div></div>
+                <div className="flex items-center gap-3"><div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#f3f4f2]">{profile.image ? <Image src={profile.image} alt="" fill sizes="56px" className="object-cover" /> : null}</div><div className="min-w-0 flex-1"><p className="truncate font-semibold text-[#111827]">{profile.name}</p><p className="truncate text-xs text-[#667085]">{profile.creci}</p><BrokerSpecialtyChips specialties={profile.specialties} className="mt-1.5" /></div></div>
                 <p className="mt-3 line-clamp-4 text-sm leading-5 text-[#667085]">{profile.about || 'Complete o texto do perfil para apresentar seu atendimento.'}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#667085]"><span>{profile.activeListings} imóveis</span>{profile.reviewCount ? <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{profile.rating.toFixed(1)} ({profile.reviewCount})</span> : null}</div>
               </div>
