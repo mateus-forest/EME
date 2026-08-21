@@ -234,6 +234,7 @@ model Broker {
   creciValidationStatus     CreciValidationStatus      @default(PENDING)
   creciValidatedAt          DateTime?
   creciOfficialName         String?
+  creciOfficialRegistration String?
   creciProviderStatus       String?
   creciValidationProvider   CreciValidationProvider?
   creciNameMismatch         Boolean                    @default(false)

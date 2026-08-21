@@ -50,6 +50,7 @@ export type CreciValidationResult = {
   status: CreciValidationStatus
   reason: CreciValidationReason
   creci: string
+  officialRegistration: string | null
   state: CreciUf | null
   provider: CreciValidationProvider
   officialName: string | null
@@ -66,14 +67,47 @@ export function normalizeCreciUf(value: unknown): CreciUf | null {
   return CRECI_UF_OPTIONS.includes(normalized as CreciUf) ? (normalized as CreciUf) : null
 }
 
-export function normalizeCreciNumber(value: unknown) {
+export function normalizeCreciRegistration(value: unknown) {
   if (typeof value !== "string" && typeof value !== "number") return null
-  const digits = String(value).trim()
-  if (!/^\d+$/.test(digits)) return null
+  const normalized = String(value).trim().toUpperCase()
+  const match = normalized.match(/^0*(\d+)(?:[\s-]*([A-Z]{1,3}))?$/)
+  if (!match) return null
 
-  const parsed = Number(digits)
+  const parsed = Number(match[1])
   if (!Number.isSafeInteger(parsed) || parsed < 1) return null
-  return String(parsed)
+  const number = String(parsed)
+  const suffix = match[2] ?? null
+
+  return {
+    number,
+    suffix,
+    formatted: suffix ? `${number} ${suffix}` : number,
+  }
+}
+
+export function normalizeCreciNumber(value: unknown) {
+  return normalizeCreciRegistration(value)?.number ?? null
+}
+
+export function normalizeOfficialCreciRegistration(value: unknown) {
+  return normalizeCreciRegistration(value)?.formatted ?? null
+}
+
+export function areEquivalentCreciRegistrations(informed: unknown, official: unknown) {
+  const informedRegistration = normalizeCreciRegistration(informed)
+  const officialRegistration = normalizeCreciRegistration(official)
+
+  if (!informedRegistration || !officialRegistration) return false
+  if (informedRegistration.number !== officialRegistration.number) return false
+  if (
+    informedRegistration.suffix &&
+    officialRegistration.suffix &&
+    informedRegistration.suffix !== officialRegistration.suffix
+  ) {
+    return false
+  }
+
+  return true
 }
 
 function normalizeNameTokens(value: string) {

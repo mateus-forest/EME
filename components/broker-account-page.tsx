@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { Camera, CheckCircle2, CreditCard, LockKeyhole, Palette, ShieldCheck, UserRound } from "lucide-react"
+import { Camera, CheckCircle2, CircleX, Clock3, CreditCard, LockKeyhole, Palette, ShieldCheck, TriangleAlert, UserRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { AccountBillingSection } from "@/components/account-billing-section"
@@ -389,12 +389,13 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
               <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="creci" className="text-sm font-medium text-[#5F6B7A]">CRECI</Label>
-                  {profile.creciValidationStatus === "VERIFIED" && creci === profile.creci && creciUf === profile.creciUf ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-2 py-1 text-[11px] font-semibold text-[#007f31]">
-                      <ShieldCheck className="size-3.5" />
-                      CRECI verificado
-                    </span>
-                  ) : null}
+                  <CreciVerificationStatus
+                    status={
+                      creci === profile.creci && creciUf === profile.creciUf
+                        ? profile.creciValidationStatus
+                        : "PENDING"
+                    }
+                  />
                 </div>
                 <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2">
                   <select
@@ -595,6 +596,47 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
         </Button>
       </div>
     </form>
+  )
+}
+
+type CreciStatus = "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
+
+const CRECI_STATUS_PRESENTATION = {
+  VERIFIED: {
+    label: "CRECI verificado",
+    icon: CheckCircle2,
+    className: "border-[#009b3a]/20 bg-[#009b3a]/10 text-[#007f31]",
+  },
+  REJECTED: {
+    label: "CRECI não verificado",
+    icon: CircleX,
+    className: "border-red-200 bg-red-50 text-red-700",
+  },
+  REVIEW_REQUIRED: {
+    label: "Verificação necessária",
+    icon: TriangleAlert,
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  },
+  PENDING: {
+    label: "Verificação pendente",
+    icon: Clock3,
+    className: "border-black/[0.08] bg-[#f4f5f3] text-[#667085]",
+  },
+} satisfies Record<CreciStatus, { label: string; icon: typeof CheckCircle2; className: string }>
+
+function CreciVerificationStatus({ status }: { status: CreciStatus }) {
+  const presentation = CRECI_STATUS_PRESENTATION[status]
+  const Icon = presentation.icon
+
+  return (
+    <span
+      title={presentation.label}
+      aria-label={presentation.label}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${presentation.className}`}
+    >
+      <Icon className="size-3.5" />
+      {presentation.label}
+    </span>
   )
 }
 

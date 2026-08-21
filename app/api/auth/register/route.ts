@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
                 creciValidationStatus: creciValidation.status,
                 creciValidatedAt: creciValidation.checkedAt,
                 creciOfficialName: creciValidation.officialName,
+                creciOfficialRegistration: creciValidation.officialRegistration,
                 creciProviderStatus: creciValidation.providerStatus,
                 creciValidationProvider: creciValidation.provider,
                 creciNameMismatch: creciValidation.nameMismatch,

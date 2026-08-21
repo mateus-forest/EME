@@ -114,7 +114,10 @@ export async function PATCH(request: NextRequest) {
     if (creciChanged && !creciUf) {
       return NextResponse.json({ error: "Informe a UF do CRECI para validar a alteração." }, { status: 400 })
     }
-    const creciValidationRequired = creciChanged || (name !== user.name && Boolean(creciUf))
+    const creciValidationRequired =
+      creciChanged ||
+      (name !== user.name && Boolean(creciUf)) ||
+      user.broker.creciValidationStatus !== "VERIFIED"
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Informe um email válido." }, { status: 400 })
@@ -265,6 +268,7 @@ export async function PATCH(request: NextRequest) {
                 creciValidationStatus: creciValidation.status,
                 creciValidatedAt: creciValidation.checkedAt,
                 creciOfficialName: creciValidation.officialName,
+                creciOfficialRegistration: creciValidation.officialRegistration,
                 creciProviderStatus: creciValidation.providerStatus,
                 creciValidationProvider: creciValidation.provider,
                 creciNameMismatch: creciValidation.nameMismatch,
