@@ -91,6 +91,34 @@ type LeadDraft = {
   message: string
 }
 
+function FinancingField({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="grid min-w-0 gap-1 text-[11px] font-medium text-[#667085]"><span>{label}</span>{children}</label>
+}
+
+function parseCurrencyInputToCents(value: string) {
+  const digits = value.replace(/\D/g, "")
+  const parsed = Number(digits)
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+}
+
+function parseDecimalInput(value: string) {
+  const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".")
+  const parsed = Number.parseFloat(normalized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function calculateFixedInstallment(principalInCents: number, installments: number, monthlyRate: number) {
+  if (principalInCents <= 0 || installments <= 0) return 0
+  if (monthlyRate === 0) return Math.round(principalInCents / installments)
+
+  const factor = Math.pow(1 + monthlyRate, installments)
+  return Math.round(principalInCents * ((monthlyRate * factor) / (factor - 1)))
+}
+
+function formatCurrencyFromCents(value: number) {
+  return (value / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+}
+
 type CatalogAdvancedFilters = {
   type: string
   city: string
@@ -138,6 +166,9 @@ export function PublicCatalogLanding({
   const [showPortalBackButton, setShowPortalBackButton] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
+  const [financingEntry, setFinancingEntry] = useState("")
+  const [financingInstallments, setFinancingInstallments] = useState("360")
+  const [financingInterest, setFinancingInterest] = useState("0,89")
   const properties = useMemo(() => normalizeProperties(catalog), [catalog])
   const searchAnalysis = useMemo(() => analyzeSearch(search), [search])
   const visibleProperties = useMemo(
@@ -165,6 +196,19 @@ export function PublicCatalogLanding({
   const avatarUrl = kind === "broker" ? (catalog as PublicBrokerCatalogData).photoUrl : (catalog as PublicAgencyCatalogData).logoUrl
   const creci = kind === "broker" ? (catalog as PublicBrokerCatalogData).creci : ""
   const brokerCatalog = kind === "broker" ? catalog as PublicBrokerCatalogData : null
+  const propertyValue = selectedProperty?.priceValue ?? 0
+  const entryValue = Math.min(propertyValue, parseCurrencyInputToCents(financingEntry))
+  const financedValue = Math.max(0, propertyValue - entryValue)
+  const installmentCount = Math.min(600, Math.max(1, Number.parseInt(financingInstallments, 10) || 1))
+  const monthlyInterest = Math.max(0, parseDecimalInput(financingInterest)) / 100
+  const estimatedInstallment = calculateFixedInstallment(financedValue, installmentCount, monthlyInterest)
+
+  useEffect(() => {
+    if (!selectedProperty) return
+    setFinancingEntry("")
+    setFinancingInstallments("360")
+    setFinancingInterest("0,89")
+  }, [selectedProperty])
 
   useEffect(() => {
     void trackCatalogEvent({
@@ -775,18 +819,18 @@ export function PublicCatalogLanding({
       {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
-        <DialogContent showCloseButton className="max-h-[92vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.75rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:max-w-5xl">
+        <DialogContent showCloseButton className="max-h-[94dvh] max-w-[calc(100%-1rem)] overflow-hidden rounded-[1.5rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_32px_90px_rgba(15,23,42,0.2)] sm:max-w-6xl sm:rounded-[1.9rem]">
           {selectedProperty && (
-            <div className="grid max-h-[92vh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
-              <div className="border-b border-black/[0.06] p-4 lg:border-r lg:border-b-0 lg:p-5">
+            <div className="grid max-h-[94dvh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)]">
+              <div className="border-b border-black/[0.06] bg-[#fbfcfa] p-3 sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
-                <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[#f4f6f4]">
+                <div className="relative overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f4f6f4] shadow-[0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt={selectedProperty.title} className="aspect-[1.15/1] max-h-[62vh] w-full object-cover sm:aspect-[1.2/1]" />
+                    <img src={image} alt={selectedProperty.title} className="aspect-[4/3] max-h-[78dvh] w-full object-cover" />
                   ) : (
-                    <div className="aspect-[1.15/1] w-full sm:aspect-[1.2/1]">
+                    <div className="aspect-[4/3] w-full">
                       <CatalogImagePlaceholder />
                     </div>
                   )}
@@ -802,22 +846,37 @@ export function PublicCatalogLanding({
                   ) : null}
                 </div>
               </div>
-              <div className="flex min-w-0 flex-col p-5 lg:p-6">
+              <div className="flex min-w-0 flex-col p-4 sm:p-5 lg:p-6">
                 <p className="break-words text-sm text-[#6B7280]">{selectedProperty.location}</p>
-                <h3 className="mt-2 break-words text-2xl font-semibold leading-tight text-[#050505] sm:text-3xl">{selectedProperty.title}</h3>
-                <p className="mt-4 break-words text-2xl font-bold text-[#050505] sm:text-3xl">{selectedProperty.price || "Consulte valor"}</p>
-                <div className="mt-5 flex flex-wrap gap-3">
+                <h3 className="mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
+                <p className="mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
                   {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={`${selectedProperty.bedrooms} quartos`} /> : null}
                   {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={`${selectedProperty.bathrooms} banheiros`} /> : null}
                   {selectedProperty.parking > 0 ? <Feature icon={Car} label={`${selectedProperty.parking} vagas`} /> : null}
                 </div>
                 {selectedProperty.description ? (
-                  <div className="mt-6">
+                  <div className="mt-5">
                     <p className="text-sm font-medium text-[#374151]">Descrição</p>
-                    <p className="mt-3 break-words text-sm leading-7 text-[#6B7280]">{selectedProperty.description}</p>
+                    <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
-                <div className="mt-8 flex flex-col gap-2 sm:flex-row">
+                <section className="mt-5 rounded-2xl border border-[#dfe9e1] bg-[#f8fbf8] p-3.5 shadow-[0_10px_26px_rgba(31,70,45,.05)]">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-[#e9f7ed] text-[#118a3d]"><CircleDollarSign className="size-4" /></span>
+                    <div><h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4><p className="text-[11px] text-[#77817b]">Estimativa rápida para orientar sua análise.</p></div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2.5">
+                    <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
+                    <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                    <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className="h-9 rounded-lg border-black/[0.06] bg-[#f1f5f1] px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
+                    <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                    <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                    <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className="h-9 rounded-lg border-[#bcdcc5] bg-white px-2.5 text-xs font-semibold text-[#118a3d]" /></FinancingField>
+                  </div>
+                  <p className="mt-2.5 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
+                </section>
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                   <Button type="button" onClick={() => openLeadModal(selectedProperty)} className="h-11 flex-1 rounded-full bg-[#009b3a] text-base font-semibold text-white hover:bg-[#008633]">
                     <MessageCircle className="size-4" />
                     Tenho interesse

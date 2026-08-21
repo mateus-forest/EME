@@ -29,6 +29,7 @@ import {
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { cn } from "@/lib/utils"
 import { BrokerSpecialtyChips } from "@/components/broker-specialty-chips"
+import { WhatsappGlyph } from "@/components/marketplace/property/whatsapp-glyph"
 
 const PREMIUM_BANNER_FALLBACK = "/marketplace/images/hero-residence.png"
 
@@ -115,7 +116,6 @@ function CatalogNavLink({ href, active, children }: { href: string; active: bool
 export function BrokerProfileHero({
   catalog,
   priceRange,
-  onShare,
   onWhatsApp,
 }: {
   catalog: PublicBrokerCatalogData
@@ -150,9 +150,7 @@ export function BrokerProfileHero({
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,246,.86)_0%,rgba(248,250,246,.76)_34%,rgba(248,250,246,.45)_57%,rgba(248,250,246,.18)_73%,rgba(248,250,246,.05)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#f7fbf7] via-[#f7fbf7]/45 to-transparent" />
-        <div className="absolute -bottom-16 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-[#bdf3ce]/45 blur-[74px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.58)_0%,rgba(250,252,249,.3)_38%,rgba(250,252,249,.08)_68%,transparent_100%)]" />
 
         <div className="relative z-10 grid gap-5 px-4 pb-4 pt-5 text-center sm:px-6 sm:pt-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-8 lg:pt-8 lg:text-left">
           <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-36 lg:size-44 xl:size-52">
@@ -181,26 +179,19 @@ export function BrokerProfileHero({
               <p className="text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p>
             ) : null}
 
-            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 pt-1">
               {catalog.whatsApp ? (
                 <Button
                   type="button"
                   onClick={onWhatsApp}
-                  className="h-11 min-w-0 flex-1 rounded-full bg-[#159447] px-5 font-semibold text-white shadow-[0_12px_26px_rgba(21,148,71,.24)] hover:bg-[#107c39] sm:flex-none sm:px-6"
+                  aria-label="Falar pelo WhatsApp"
+                  title="Falar pelo WhatsApp"
+                  className="size-11 shrink-0 rounded-full bg-[#159447] p-0 text-white shadow-[0_12px_26px_rgba(21,148,71,.24)] hover:bg-[#107c39]"
                 >
-                  <MessageCircle className="size-4" />
-                  <span>WhatsApp</span>
+                  <WhatsappGlyph className="size-5" />
+                  <span className="sr-only">Falar pelo WhatsApp</span>
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onShare}
-                className="h-11 min-w-0 flex-1 rounded-full border border-[#dfe7e1] bg-white/92 px-5 font-semibold text-[#26302a] shadow-sm hover:bg-white sm:flex-none sm:px-6"
-              >
-                <Share2 className="size-4" />
-                <span>Compartilhar</span>
-              </Button>
             </div>
           </div>
         </div>
