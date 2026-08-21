@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { Camera, CheckCircle2, LockKeyhole, Palette, ShieldCheck, UserRound } from "lucide-react"
+import { Camera, CheckCircle2, CreditCard, LockKeyhole, Palette, ShieldCheck, UserRound } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { AccountBillingSection } from "@/components/account-billing-section"
 import { AccountSecuritySection } from "@/components/account-security-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,10 +18,70 @@ import { DEFAULT_STUDIO_ACCENT_COLOR } from "@/lib/studio-creative-renderer"
 import { normalizePhone, type StructuredInputKind } from "@/lib/structured-fields"
 import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 
+type AccountTab = "profile" | "security" | "billing"
+
+const ACCOUNT_TABS = [
+  { id: "profile", label: "Perfil", icon: UserRound },
+  { id: "security", label: "Segurança", icon: ShieldCheck },
+  { id: "billing", label: "Faturamento", icon: CreditCard },
+] satisfies Array<{ id: AccountTab; label: string; icon: typeof UserRound }>
+
 export function BrokerAccountPage() {
+  const [activeTab, setActiveTab] = useState<AccountTab>("profile")
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab")
+    if (requestedTab === "faturamento") setActiveTab("billing")
+    if (requestedTab === "seguranca") setActiveTab("security")
+  }, [])
+
+  function selectTab(tab: AccountTab) {
+    setActiveTab(tab)
+    const url = new URL(window.location.href)
+
+    if (tab === "profile") {
+      url.searchParams.delete("tab")
+    } else {
+      url.searchParams.set("tab", tab === "billing" ? "faturamento" : "seguranca")
+    }
+
+    window.history.replaceState({}, "", url.toString())
+  }
+
   return (
     <BrokerPageShell title="Conta">
-      <AccountForm />
+      <div className="grid gap-4">
+        <div
+          role="tablist"
+          aria-label="Seções da conta"
+          className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-1.5 shadow-[var(--broker-shadow)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {ACCOUNT_TABS.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => selectTab(tab.id)}
+                className={`flex min-w-fit flex-1 items-center justify-center gap-2 rounded-[1rem] px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  isActive
+                    ? "bg-[#009b3a] text-white shadow-md shadow-[#009b3a]/15"
+                    : "text-[#667085] hover:bg-[#f6f7f5] hover:text-[#111111]"
+                }`}
+              >
+                <Icon className="size-4" />
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {activeTab === "billing" ? <AccountBillingSection /> : <AccountForm section={activeTab} />}
+      </div>
     </BrokerPageShell>
   )
 }
@@ -83,7 +144,7 @@ function compressImageToDataUrl(file: File): Promise<string> {
   })
 }
 
-function AccountForm() {
+function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
   const { profile, saveProfile, isLoading } = useBrokerProfile()
   const [fullName, setFullName] = useState(profile.fullName)
   const [email, setEmail] = useState(profile.email)
@@ -118,28 +179,33 @@ function AccountForm() {
     setShowAgencyWatermark(profile.showAgencyWatermark)
   }, [profile])
 
+  useEffect(() => {
+    setErrors({})
+    setFeedback(null)
+  }, [section])
+
   function validate() {
     const nextErrors: Record<string, string> = {}
 
-    if (!fullName.trim()) nextErrors.fullName = "Informe seu nome completo."
-    if (!email.trim()) {
-      nextErrors.email = "Informe seu e-mail."
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      nextErrors.email = "Informe um e-mail válido."
-    }
-    if (!creci.trim()) nextErrors.creci = "Informe seu CRECI."
-    if ((creci.trim() !== profile.creci || creciUf !== profile.creciUf) && !creciUf) {
-      nextErrors.creciUf = "Informe a UF do CRECI."
-    }
-    if (!whatsApp.trim()) {
-      nextErrors.whatsApp = "Informe seu WhatsApp."
-    } else if (whatsApp.replace(/\D/g, "").length < 10) {
-      nextErrors.whatsApp = "Informe um WhatsApp válido com DDD."
+    if (section === "profile") {
+      if (!fullName.trim()) nextErrors.fullName = "Informe seu nome completo."
+      if (!email.trim()) {
+        nextErrors.email = "Informe seu e-mail."
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        nextErrors.email = "Informe um e-mail válido."
+      }
+      if (!creci.trim()) nextErrors.creci = "Informe seu CRECI."
+      if ((creci.trim() !== profile.creci || creciUf !== profile.creciUf) && !creciUf) {
+        nextErrors.creciUf = "Informe a UF do CRECI."
+      }
+      if (!whatsApp.trim()) {
+        nextErrors.whatsApp = "Informe seu WhatsApp."
+      } else if (whatsApp.replace(/\D/g, "").length < 10) {
+        nextErrors.whatsApp = "Informe um WhatsApp válido com DDD."
+      }
     }
 
-    const isChangingPassword = currentPassword.trim() || newPassword.trim() || confirmPassword.trim()
-
-    if (isChangingPassword) {
+    if (section === "security") {
       if (!currentPassword.trim()) nextErrors.currentPassword = "Informe sua senha atual."
       if (!newPassword.trim()) nextErrors.newPassword = "Informe a nova senha."
       if (!confirmPassword.trim()) {
@@ -177,13 +243,13 @@ function AccountForm() {
         brandColor,
         logoUrl,
         showAgencyWatermark,
-        currentPassword,
-        newPassword,
+        currentPassword: section === "security" ? currentPassword : "",
+        newPassword: section === "security" ? newPassword : "",
       })
 
-      if (currentPassword || newPassword || confirmPassword) {
+      if (section === "security") {
         setFeedbackTone("success")
-        setFeedback("Dados atualizados com sucesso. Senha alterada com sucesso.")
+        setFeedback("Senha alterada com sucesso.")
         setCurrentPassword("")
         setNewPassword("")
         setConfirmPassword("")
@@ -270,7 +336,9 @@ function AccountForm() {
         </div>
       )}
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
+      <div className={section === "profile" ? "grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]" : "grid gap-3"}>
+        {section === "profile" ? (
+          <>
         <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)] xl:row-span-2">
           <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
             <CardTitle className="flex items-center gap-2.5 text-lg text-[#050505]">
@@ -488,7 +556,8 @@ function AccountForm() {
             ) : null}
           </CardContent>
         </Card>
-
+          </>
+        ) : (
         <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
           <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
             <CardTitle className="flex items-center gap-2.5 text-lg text-[#050505]">
@@ -504,20 +573,25 @@ function AccountForm() {
             <Field id="confirmPassword" label="Confirmar nova senha" type="password" value={confirmPassword} onChange={setConfirmPassword} error={errors.confirmPassword} placeholder="Repita a nova senha" />
           </CardContent>
         </Card>
+        )}
       </div>
 
-      <AccountSecuritySection />
+      {section === "security" ? <AccountSecuritySection /> : null}
 
       <div className="flex flex-col gap-3 rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-4 shadow-[var(--broker-shadow)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 text-sm text-[#6B7280]">
           <span className="flex size-10 items-center justify-center rounded-2xl border border-black/[0.06] bg-white/80 text-[#5F6B7A]">
             <LockKeyhole className="size-4" />
           </span>
-          <p>Mantenha seus dados atualizados para acessar o portal com mais segurança.</p>
+          <p>
+            {section === "profile"
+              ? "Mantenha seus dados atualizados para personalizar sua presença no EME."
+              : "Use uma senha exclusiva e mantenha seus dispositivos de confiança sob controle."}
+          </p>
         </div>
 
         <Button disabled={isSaving || isLoading} className="h-11 rounded-xl bg-[#009b3a] px-5 text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 transition-all hover:bg-[#008633] hover:shadow-[#009b3a]/30">
-          {isSaving ? "Salvando..." : "Salvar alterações"}
+          {isSaving ? "Salvando..." : section === "profile" ? "Salvar perfil" : "Alterar senha"}
         </Button>
       </div>
     </form>
