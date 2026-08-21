@@ -133,10 +133,10 @@ export function SignupBrokerPage() {
             <Input
               id="creci"
               value={creci}
-              onChange={(event) => setCreci(event.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              inputMode="numeric"
-              pattern="[0-9]+"
+              onChange={(event) => setCreci(event.target.value)}
+              placeholder="123456 ou 123456 F"
+              inputMode="text"
+              pattern="[0-9]+(?:[ -]*[A-Za-z]{1,3})?"
               required
               className="h-12 rounded-xl border-[#E5E7EB] bg-white text-[#111111] placeholder:text-[#9CA3AF] focus-visible:border-[#00C853] focus-visible:ring-[#00C853]/25"
             />

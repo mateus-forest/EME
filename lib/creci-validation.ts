@@ -145,15 +145,23 @@ export function isOfficiallyInactiveCreciStatus(value: string) {
     .trim()
     .toUpperCase()
 
-  return normalized === "INATIVO" || normalized === "SUSPENSO" || normalized === "CANCELADO"
+  return (
+    normalized === "INATIVO" ||
+    normalized === "INACTIVE" ||
+    normalized === "SUSPENSO" ||
+    normalized === "SUSPENDED" ||
+    normalized === "CANCELADO" ||
+    normalized === "CANCELED" ||
+    normalized === "CANCELLED"
+  )
 }
 
 export function isOfficiallyActiveCreciStatus(value: string) {
-  return (
-    value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim()
-      .toUpperCase() === "ATIVO"
-  )
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+
+  return normalized === "ATIVO" || normalized === "ACTIVE"
 }

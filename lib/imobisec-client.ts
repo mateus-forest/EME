@@ -4,6 +4,7 @@ import {
   isOfficiallyActiveCreciStatus,
   isOfficiallyInactiveCreciStatus,
   normalizeCreciNumber,
+  normalizeCreciRegistration,
   normalizeOfficialCreciRegistration,
   normalizeCreciUf,
   type CreciValidationReason,
@@ -78,12 +79,13 @@ export async function validateCreciWithImobisec(
   const checkedAt = (options.now ?? (() => new Date()))()
   const state = normalizeCreciUf(input.state)
   const creci = normalizeCreciNumber(input.creci) ?? ""
+  const informedRegistration = normalizeOfficialCreciRegistration(input.creci) ?? ""
 
   if (!state || !creci) {
     return {
       status: "REJECTED",
       reason: "INVALID_INPUT",
-      creci,
+      creci: informedRegistration,
       officialRegistration: null,
       state,
       provider: "IMOBISEC",
@@ -96,7 +98,7 @@ export async function validateCreciWithImobisec(
 
   const apiKey = options.apiKey.trim()
   if (!apiKey) {
-    return pendingResult({ reason: "CONFIGURATION_ERROR", creci, state, checkedAt })
+    return pendingResult({ reason: "CONFIGURATION_ERROR", creci: informedRegistration, state, checkedAt })
   }
 
   const controller = new AbortController()
@@ -120,7 +122,7 @@ export async function validateCreciWithImobisec(
       return {
         status: "REJECTED",
         reason: response.status === 404 ? "NOT_FOUND" : "INVALID_INPUT",
-        creci,
+        creci: informedRegistration,
         officialRegistration: null,
         state,
         provider: "IMOBISEC",
@@ -140,6 +142,14 @@ export async function validateCreciWithImobisec(
     const providerStatus = typeof payload?.status === "string" && payload.status.trim() ? payload.status.trim() : null
     const responseState = normalizeCreciUf(payload?.state)
     const officialRegistration = normalizeOfficialCreciRegistration(payload?.creci)
+    const informedRegistrationParts = normalizeCreciRegistration(input.creci)
+    const officialRegistrationParts = normalizeCreciRegistration(payload?.creci)
+    const persistedRegistration =
+      officialRegistrationParts?.suffix
+        ? officialRegistrationParts.formatted
+        : informedRegistrationParts?.suffix
+          ? informedRegistrationParts.formatted
+          : officialRegistration ?? informedRegistration
     const responseCreciMatches = areEquivalentCreciRegistrations(input.creci, payload?.creci)
     const responseType = typeof payload?.type === "string" ? payload.type.trim().toUpperCase() : null
 
@@ -154,7 +164,7 @@ export async function validateCreciWithImobisec(
       return {
         status: "REVIEW_REQUIRED",
         reason: "AMBIGUOUS_RESPONSE",
-        creci,
+        creci: persistedRegistration,
         officialRegistration,
         state,
         provider: "IMOBISEC",
@@ -173,7 +183,7 @@ export async function validateCreciWithImobisec(
       return {
         status: "REJECTED",
         reason: "INACTIVE",
-        creci,
+        creci: persistedRegistration,
         officialRegistration,
         state,
         provider: "IMOBISEC",
@@ -188,7 +198,7 @@ export async function validateCreciWithImobisec(
       return {
         status: "REVIEW_REQUIRED",
         reason: "AMBIGUOUS_RESPONSE",
-        creci,
+        creci: persistedRegistration,
         officialRegistration,
         state,
         provider: "IMOBISEC",
@@ -202,7 +212,7 @@ export async function validateCreciWithImobisec(
     return {
       status: nameMismatch ? "REVIEW_REQUIRED" : "VERIFIED",
       reason: nameMismatch ? "NAME_MISMATCH" : "ACTIVE",
-      creci,
+      creci: persistedRegistration,
       officialRegistration,
       state,
       provider: "IMOBISEC",

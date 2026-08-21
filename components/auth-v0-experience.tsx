@@ -330,8 +330,8 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
                         label="Número do CRECI"
                         type="text"
                         value={creci}
-                        onChange={(value) => setCreci(value.replace(/\D/g, ""))}
-                        placeholder="123456"
+                        onChange={setCreci}
+                        placeholder="123456 ou 123456 F"
                         autoComplete="off"
                       />
                     </div>

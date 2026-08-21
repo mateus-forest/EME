@@ -258,12 +258,12 @@ export function AuthPanel({
                         <Field
                           label="Número do CRECI"
                           type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]+"
+                          inputMode="text"
+                          pattern="[0-9]+(?:[ -]*[A-Za-z]{1,3})?"
                           autoComplete="off"
-                          placeholder="123456"
+                          placeholder="123456 ou 123456 F"
                           value={creci}
-                          onChange={(event) => setCreci(event.target.value.replace(/\D/g, ""))}
+                          onChange={(event) => setCreci(event.target.value)}
                         />
                       </div>
                       <Field

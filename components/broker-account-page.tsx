@@ -411,10 +411,10 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
                   <Input
                     id="creci"
                     value={creci}
-                    onChange={(event) => setCreci(event.target.value.replace(/\D/g, ""))}
-                    inputMode="numeric"
-                    pattern="[0-9]+"
-                    placeholder="000000"
+                    onChange={(event) => setCreci(event.target.value)}
+                    inputMode="text"
+                    pattern="[0-9]+(?:[ -]*[A-Za-z]{1,3})?"
+                    placeholder="000000 ou 000000 F"
                     className="h-11 rounded-[1rem] border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF]"
                   />
                 </div>
