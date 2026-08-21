@@ -96,7 +96,9 @@ export function BrokerPublicCatalog({
     slug: initialCatalog.slug,
     name: initialCatalog.displayName,
     image: initialCatalog.photoUrl || "/marketplace/placeholder-user.jpg",
-    specialty: initialCatalog.description || "Atendimento imobiliário",
+    specialties: initialCatalog.specialties.length
+      ? initialCatalog.specialties
+      : [initialCatalog.description || "Atendimento imobiliário"],
     verified: initialCatalog.creciVerified,
   }
 

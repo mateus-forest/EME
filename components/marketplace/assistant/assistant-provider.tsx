@@ -49,7 +49,7 @@ export type AssistantBroker = {
   slug: string
   name: string
   image: string
-  specialty: string
+  specialties: string[]
   verified: boolean
   region?: string
   creci?: string

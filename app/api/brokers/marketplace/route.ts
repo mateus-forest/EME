@@ -6,6 +6,13 @@ import { getMarketplaceBroker } from '@/lib/marketplace/server-data'
 
 export const dynamic = 'force-dynamic'
 
+type MarketplaceProfilePayload = {
+  specialties?: unknown
+  region?: unknown
+  bio?: unknown
+  transactions?: unknown
+}
+
 async function payloadFor(brokerId: string, slug: string) {
   const [profile, settings, properties, leads, conversations, reviewCounts] = await Promise.all([
     getMarketplaceBroker(slug),
@@ -31,12 +38,12 @@ export async function PATCH(request: NextRequest) {
   if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER]); if (forbidden) return forbidden
   if (!user.broker) return NextResponse.json({ error: 'Perfil de corretor não encontrado.' }, { status: 404 })
-  const body = await request.json().catch(() => null)
-  const rawSpecialties = Array.isArray(body?.specialties) ? body.specialties : []
-  if (rawSpecialties.length > 4 || rawSpecialties.some((value) => typeof value !== 'string')) {
+  const body = (await request.json().catch(() => null)) as MarketplaceProfilePayload | null
+  const rawSpecialties: unknown[] = Array.isArray(body?.specialties) ? body.specialties : []
+  if (rawSpecialties.length > 4 || !rawSpecialties.every((value): value is string => typeof value === 'string')) {
     return NextResponse.json({ error: 'Informe no máximo 4 especialidades.' }, { status: 400 })
   }
-  const specialties = rawSpecialties.map((value: string) => value.trim()).filter(Boolean)
+  const specialties = rawSpecialties.map((value) => value.trim()).filter(Boolean)
   if (specialties.some((value) => value.length > 40)) {
     return NextResponse.json({ error: 'Cada especialidade deve ter no máximo 40 caracteres.' }, { status: 400 })
   }
@@ -46,7 +53,8 @@ export async function PATCH(request: NextRequest) {
   }
   const region = typeof body?.region === 'string' ? body.region.trim().slice(0, 120) : ''
   const bio = typeof body?.bio === 'string' ? body.bio.trim().slice(0, 2_500) : ''
-  const transactions = ['SALE', 'RENT', 'BOTH'].includes(body?.transactions) ? body.transactions : 'BOTH'
+  const transactionsInput = typeof body?.transactions === 'string' ? body.transactions : ''
+  const transactions = ['SALE', 'RENT', 'BOTH'].includes(transactionsInput) ? transactionsInput : 'BOTH'
   await prisma.broker.update({ where: { id: user.broker.id }, data: { marketplaceSpecialties: specialties, marketplaceRegion: region || null, catalogBio: bio || null, marketplaceTransactions: transactions } })
   return NextResponse.json(await payloadFor(user.broker.id, user.broker.catalogSlug))
 }
