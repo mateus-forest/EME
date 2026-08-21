@@ -18,11 +18,14 @@ import { EmeLoading } from "@/components/ui/eme-loading"
 type BillingInvoice = {
   id: string
   number: string | null
+  description: string
+  type: "Assinatura" | "Créditos IA" | "Expansão da Carteira" | "Pacote extra"
   createdAt: number
   amount: number
   currency: string
   status: string | null
   receiptUrl: string | null
+  documentLabel: "Abrir fatura" | "Abrir recibo"
 }
 
 type BillingSnapshot = {
@@ -284,8 +287,10 @@ export function AccountBillingSection() {
                   className="grid gap-3 rounded-[1rem] border border-black/[0.06] bg-[#fbfbf8] px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#111111]">{invoice.number ? `Fatura ${invoice.number}` : "Cobrança Stripe"}</p>
-                    <p className="mt-1 text-xs text-[#7B8491]">{formatDate(invoice.createdAt)}</p>
+                    <p className="truncate text-sm font-semibold text-[#111111]">{invoice.description}</p>
+                    <p className="mt-1 text-xs text-[#7B8491]">
+                      {invoice.type} · {formatDate(invoice.createdAt)}
+                    </p>
                   </div>
                   <p className="text-sm font-semibold text-[#111111]">{formatCurrency(invoice.amount, invoice.currency)}</p>
                   <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusTone(invoice.status)}`}>
@@ -294,7 +299,7 @@ export function AccountBillingSection() {
                   {invoice.receiptUrl ? (
                     <Button asChild type="button" variant="ghost" className="h-9 w-fit rounded-xl border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563]">
                       <a href={invoice.receiptUrl} target="_blank" rel="noreferrer">
-                        Abrir fatura
+                        {invoice.documentLabel}
                         <ExternalLink className="size-3.5" />
                       </a>
                     </Button>

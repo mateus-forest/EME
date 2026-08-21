@@ -6,6 +6,7 @@ import { syncBillingFromStripeSubscription } from "@/lib/billing"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { getStripeEnv } from "@/lib/env.server"
 import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
+import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
 import { prisma } from "@/lib/prisma"
 import { getStripeClient } from "@/lib/stripe-server"
 
@@ -31,6 +32,26 @@ type BillingIdentity = {
 type StripeLink = {
   customer: Stripe.Customer
   subscriptions: Stripe.Subscription[]
+}
+
+type InternalPackagePurchase = {
+  packageKey: string
+  packageType: string
+  quantity: number
+  metadata: unknown
+}
+
+type BillingCharge = {
+  id: string
+  number: string | null
+  description: string
+  type: "Assinatura" | "Créditos IA" | "Expansão da Carteira" | "Pacote extra"
+  createdAt: number
+  amount: number
+  currency: string
+  status: string | null
+  receiptUrl: string | null
+  documentLabel: "Abrir fatura" | "Abrir recibo"
 }
 
 function stripeErrorDetails(error: unknown) {
@@ -75,6 +96,149 @@ function noSubscriptionResponse(plan: { name: string; priceCents: number }) {
       hasSubscription: false,
     }),
   )
+}
+
+async function listAllInvoices(stripe: Stripe, customerId: string) {
+  const invoices: Stripe.Invoice[] = []
+  for await (const invoice of stripe.invoices.list({ customer: customerId, limit: 100 })) {
+    invoices.push(invoice)
+  }
+  return invoices
+}
+
+async function listAllCheckoutSessions(stripe: Stripe, customerId: string) {
+  const sessions: Stripe.Checkout.Session[] = []
+  for await (const session of stripe.checkout.sessions.list({
+    customer: customerId,
+    limit: 100,
+    expand: ["data.payment_intent.latest_charge"],
+  })) {
+    sessions.push(session)
+  }
+  return sessions
+}
+
+function stripeObjectId(value: unknown) {
+  if (typeof value === "string") return value
+  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") return value.id
+  return null
+}
+
+function metadataString(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== "object" || !(key in metadata)) return null
+  const value = (metadata as Record<string, unknown>)[key]
+  return typeof value === "string" ? value : null
+}
+
+function invoiceDescription(invoice: Stripe.Invoice) {
+  const rawDescription = invoice.lines.data[0]?.description?.trim() ?? "Assinatura EME"
+  const planName = rawDescription
+    .replace(/^\d+\s*[×x]\s*/i, "")
+    .replace(/\s+\(.*\)\s*$/, "")
+    .trim()
+  return `${planName || "Assinatura EME"} — mensalidade`
+}
+
+function checkoutReceiptUrl(session: Stripe.Checkout.Session) {
+  const paymentIntent = session.payment_intent
+  if (!paymentIntent || typeof paymentIntent === "string") return null
+  const charge = paymentIntent.latest_charge
+  if (!charge || typeof charge === "string" || charge.deleted) return null
+  return charge.receipt_url
+}
+
+function isExtraPackageKey(value: string): value is EmeExtraPackageKey {
+  return value in EME_EXTRA_PACKAGES
+}
+
+function packagePresentation(session: Stripe.Checkout.Session, internalPurchase: InternalPackagePurchase | null) {
+  const packageKey = session.metadata?.packageKey ?? internalPurchase?.packageKey ?? ""
+  const registeredPackage = isExtraPackageKey(packageKey) ? EME_EXTRA_PACKAGES[packageKey] : null
+  const packageType = internalPurchase?.packageType ?? registeredPackage?.type ?? session.metadata?.packageType ?? "extra"
+  const quantity = internalPurchase?.quantity ?? registeredPackage?.quantity ?? null
+  const formattedQuantity = quantity === null ? null : new Intl.NumberFormat("pt-BR").format(quantity)
+
+  if (packageType === "credit" && formattedQuantity) {
+    return { description: `+${formattedQuantity} Créditos IA`, type: "Créditos IA" as const }
+  }
+  if (packageType === "property" && formattedQuantity) {
+    return {
+      description: `+${formattedQuantity} imóveis — Expansão da Carteira`,
+      type: "Expansão da Carteira" as const,
+    }
+  }
+  return { description: "Pacote extra EME", type: "Pacote extra" as const }
+}
+
+function consolidateCharges({
+  invoices,
+  sessions,
+  internalPurchases,
+}: {
+  invoices: Stripe.Invoice[]
+  sessions: Stripe.Checkout.Session[]
+  internalPurchases: InternalPackagePurchase[]
+}) {
+  const invoiceIds = new Set(invoices.map((invoice) => invoice.id))
+  const internalBySession = new Map<string, InternalPackagePurchase>()
+  const internalByPaymentIntent = new Map<string, InternalPackagePurchase>()
+
+  for (const purchase of internalPurchases) {
+    const checkoutSessionId = metadataString(purchase.metadata, "checkoutSessionId")
+    const paymentIntentId = metadataString(purchase.metadata, "stripePaymentIntentId")
+    if (checkoutSessionId) internalBySession.set(checkoutSessionId, purchase)
+    if (paymentIntentId) internalByPaymentIntent.set(paymentIntentId, purchase)
+  }
+
+  const charges: BillingCharge[] = invoices
+    .filter((invoice) => invoice.amount_due > 0 || invoice.amount_paid > 0)
+    .map((invoice) => ({
+      id: invoice.id,
+      number: invoice.number,
+      description: invoiceDescription(invoice),
+      type: "Assinatura",
+      createdAt: invoice.created,
+      amount: invoice.amount_paid || invoice.amount_due,
+      currency: invoice.currency,
+      status: invoice.status,
+      receiptUrl: invoice.hosted_invoice_url ?? invoice.invoice_pdf,
+      documentLabel: "Abrir fatura",
+    }))
+  const seenPaymentIntents = new Set<string>()
+
+  for (const session of sessions) {
+    if (session.mode !== "payment" || session.payment_status !== "paid" || (session.amount_total ?? 0) <= 0) continue
+
+    const invoiceId = stripeObjectId(session.invoice)
+    if (invoiceId && invoiceIds.has(invoiceId)) continue
+
+    const paymentIntentId = stripeObjectId(session.payment_intent)
+    if (paymentIntentId && seenPaymentIntents.has(paymentIntentId)) continue
+
+    const internalPurchase =
+      internalBySession.get(session.id) ??
+      (paymentIntentId ? internalByPaymentIntent.get(paymentIntentId) : null) ??
+      null
+    const isPackagePayment = session.metadata?.checkoutType === "package" || Boolean(internalPurchase)
+    if (!isPackagePayment) continue
+
+    if (paymentIntentId) seenPaymentIntents.add(paymentIntentId)
+    const presentation = packagePresentation(session, internalPurchase)
+    charges.push({
+      id: session.id,
+      number: null,
+      description: presentation.description,
+      type: presentation.type,
+      createdAt: session.created,
+      amount: session.amount_total ?? 0,
+      currency: session.currency ?? "brl",
+      status: "paid",
+      receiptUrl: checkoutReceiptUrl(session),
+      documentLabel: "Abrir recibo",
+    })
+  }
+
+  return charges.sort((first, second) => second.createdAt - first.createdAt)
 }
 
 async function retrieveCustomer(stripe: Stripe, customerId: string) {
@@ -317,13 +481,34 @@ export async function GET() {
     const item = subscription?.items.data[0] ?? null
     const price = item?.price ?? null
     const quantity = item?.quantity ?? 1
-    const invoiceList = await stripe.invoices.list({ customer: link.customer.id, limit: 12 })
+    const [stripeInvoices, checkoutSessions, internalPurchases] = await Promise.all([
+      listAllInvoices(stripe, link.customer.id),
+      listAllCheckoutSessions(stripe, link.customer.id),
+      prisma.extraPackagePurchase.findMany({
+        where: {
+          brokerId: user.broker.id,
+          status: "completed",
+          amountCents: { gt: 0 },
+        },
+        select: {
+          packageKey: true,
+          packageType: true,
+          quantity: true,
+          metadata: true,
+        },
+      }),
+    ])
     const paymentMethod = await paymentMethodSummary(
       stripe,
       subscription?.default_payment_method ?? link.customer.invoice_settings.default_payment_method,
       user.id,
     )
     const resolvedPlanName = await productName(stripe, price?.product, planSnapshot.plan.name, user.id)
+    const billingCharges = consolidateCharges({
+      invoices: stripeInvoices,
+      sessions: checkoutSessions,
+      internalPurchases,
+    })
 
     return withNoStore(
       NextResponse.json({
@@ -339,15 +524,7 @@ export async function GET() {
           cancelAtPeriodEnd: subscription?.cancel_at_period_end ?? false,
         },
         paymentMethod,
-        invoices: invoiceList.data.map((invoice) => ({
-          id: invoice.id,
-          number: invoice.number,
-          createdAt: invoice.created,
-          amount: invoice.amount_paid || invoice.amount_due,
-          currency: invoice.currency,
-          status: invoice.status,
-          receiptUrl: invoice.hosted_invoice_url ?? invoice.invoice_pdf,
-        })),
+        invoices: billingCharges,
         portalAvailable: true,
         hasSubscription: Boolean(subscription && MANAGEABLE_STATUSES.has(subscription.status)),
       }),
