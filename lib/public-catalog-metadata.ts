@@ -14,7 +14,7 @@ export const CATALOG_OG_IMAGE_TYPE = "image/png"
 
 // Increment this whenever the generated composition changes so social crawlers
 // cannot keep serving bytes from an older renderer under the same image URL.
-const CATALOG_OG_IMAGE_RENDER_VERSION = "2"
+const CATALOG_OG_IMAGE_RENDER_VERSION = "3"
 
 export function getAppBaseUrl() {
   return "https://www.meueme.com"
@@ -24,12 +24,51 @@ export function toAbsoluteCatalogUrl(pathname: string) {
   return toPublicWebUrl(pathname)
 }
 
-export function getCatalogDescription(catalog?: PublicBrokerCatalogData | null) {
-  return catalog?.description?.trim() || DEFAULT_CATALOG_DESCRIPTION
+function cleanSpecialty(value: string) {
+  return value
+    .replace(/^[\s\u2705\u2713\u2714\u2022\-]+/u, "")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
-export function getBrokerCatalogTitle(catalog?: PublicBrokerCatalogData | null) {
-  return catalog?.displayName?.trim() ? `Catálogo de imóveis | ${catalog.displayName.trim()}` : "Catálogo de imóveis | EME"
+function truncateDescription(value: string, maxLength = 155) {
+  if (value.length <= maxLength) return value
+  return `${value.slice(0, maxLength - 3).trimEnd()}...`
+}
+
+type CatalogSocialProfile = Pick<PublicBrokerCatalogData, "displayName" | "description" | "specialties">
+
+export function getBrokerCatalogSpecialty(
+  catalog?: Pick<CatalogSocialProfile, "description" | "specialties"> | null,
+) {
+  const headline = catalog?.description
+    ?.split(/[|\n]/, 1)[0]
+    ?.replace(/\s+/g, " ")
+    .trim()
+
+  if (headline) return headline
+
+  const specialty = catalog?.specialties
+    ?.map(cleanSpecialty)
+    .find(Boolean)
+
+  return specialty
+    ? `Especialista em ${specialty.toLocaleLowerCase("pt-BR")}`
+    : "Atendimento imobiliário personalizado"
+}
+
+export function getCatalogDescription(catalog?: CatalogSocialProfile | null) {
+  if (!catalog) return DEFAULT_CATALOG_DESCRIPTION
+
+  return truncateDescription(
+    `${getBrokerCatalogSpecialty(catalog)}. Conheça o catálogo de ${catalog.displayName} e fale diretamente com o corretor.`,
+  )
+}
+
+export function getBrokerCatalogTitle(catalog?: Pick<CatalogSocialProfile, "displayName"> | null) {
+  return catalog?.displayName?.trim()
+    ? `Catálogo de imóveis de ${catalog.displayName.trim()} | EME`
+    : "Catálogo de imóveis | EME"
 }
 
 export function getBrokerCatalogCanonicalUrl(slug: string) {
@@ -39,10 +78,10 @@ export function getBrokerCatalogCanonicalUrl(slug: string) {
 function buildOgImageVersion(catalog?: PublicBrokerCatalogData | null) {
   const source = JSON.stringify({
     renderer: CATALOG_OG_IMAGE_RENDER_VERSION,
-    bannerUrl: catalog?.bannerUrl?.trim() || "fallback",
     photoUrl: catalog?.photoUrl?.trim() || "fallback",
     title: getBrokerCatalogTitle(catalog),
     description: getCatalogDescription(catalog),
+    specialties: catalog?.specialties ?? [],
   })
 
   return createHash("sha1").update(source).digest("hex").slice(0, 12)

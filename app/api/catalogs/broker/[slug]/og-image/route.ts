@@ -1,11 +1,18 @@
 import React from "react"
 import { ImageResponse } from "next/og"
 import { NextRequest } from "next/server"
+import sharp from "sharp"
 
 import { prisma } from "@/lib/prisma"
-import { CATALOG_OG_IMAGE_HEIGHT, CATALOG_OG_IMAGE_WIDTH } from "@/lib/public-catalog-metadata"
+import {
+  CATALOG_OG_IMAGE_HEIGHT,
+  CATALOG_OG_IMAGE_WIDTH,
+  getBrokerCatalogSpecialty,
+  getBrokerCatalogTitle,
+} from "@/lib/public-catalog-metadata"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 type OgImageRouteContext = {
   params: Promise<{ slug: string }>
@@ -50,6 +57,32 @@ async function resolveBrokerPhotoDataUrl(photoUrl: string) {
   }
 
   return null
+}
+
+async function normalizeBrokerPhotoForOg(photoDataUrl: string | null) {
+  if (!photoDataUrl) return null
+
+  const match = photoDataUrl.match(/^data:image\/[a-zA-Z0-9.+-]+;base64,([\s\S]+)$/)
+  if (!match) return null
+
+  try {
+    const normalizedPhoto = await sharp(Buffer.from(match[1], "base64"))
+      .rotate()
+      .resize(576, CATALOG_OG_IMAGE_HEIGHT, {
+        fit: "cover",
+        position: "attention",
+      })
+      .png({ compressionLevel: 9 })
+      .toBuffer()
+
+    return `data:image/png;base64,${normalizedPhoto.toString("base64")}`
+  } catch (error) {
+    console.error("[catalog-og] Failed to normalize broker photo", error)
+
+    return /^data:image\/(?:png|jpe?g|gif);base64,/i.test(photoDataUrl)
+      ? photoDataUrl
+      : null
+  }
 }
 
 function getInitials(name: string) {
@@ -230,12 +263,18 @@ export async function GET(_request: NextRequest, { params }: OgImageRouteContext
   })
 
   const brokerName = broker?.user.name?.trim() || "EME"
-  const description =
-    broker?.catalogHeadline?.trim() ||
-    broker?.description?.trim() ||
-    "Encontre imoveis disponiveis, busque por bairro, valor ou estilo e fale diretamente com o corretor."
-  const title = brokerName ? `Catalogo de imoveis | ${brokerName}` : "Catalogo de imoveis | EME"
-  const brokerPhoto = await resolveBrokerPhotoDataUrl(broker?.user.photoUrl ?? "")
+  const socialCatalog = {
+    displayName: brokerName,
+    description: broker?.catalogHeadline?.trim() || broker?.description?.trim() || "",
+    specialties: Array.isArray(broker?.catalogSpecialties)
+      ? broker.catalogSpecialties.filter((value: unknown): value is string => typeof value === "string")
+      : [],
+  }
+  const description = getBrokerCatalogSpecialty(socialCatalog)
+  const title = getBrokerCatalogTitle(socialCatalog)
+  const brokerPhoto = await normalizeBrokerPhotoForOg(
+    await resolveBrokerPhotoDataUrl(broker?.user.photoUrl ?? ""),
+  )
   const brokerInitials = getInitials(brokerName)
 
   return new ImageResponse(
