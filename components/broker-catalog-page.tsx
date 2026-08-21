@@ -20,6 +20,7 @@ import {
 
 import { BrokerPageShell } from '@/components/broker-page-shell'
 import { BrokerPageIntro, BrokerStatusPill, BrokerSurface } from '@/components/broker-portal-ui'
+import { BrokerSpecialtyChips } from '@/components/broker-specialty-chips'
 import { useBrokerCatalogSettings } from '@/components/use-broker-catalog-settings'
 import { useBrokerProperties } from '@/components/use-broker-properties'
 import { compressImageToDataUrl } from '@/lib/client-image'
@@ -40,7 +41,6 @@ export function BrokerCatalogPage() {
   const [feedback, setFeedback] = useState('')
   const [copied, setCopied] = useState(false)
   const [citiesText, setCitiesText] = useState('')
-  const [specialtiesText, setSpecialtiesText] = useState('')
   const [differentialsText, setDifferentialsText] = useState('')
   const photoInput = useRef<HTMLInputElement | null>(null)
   const bannerInput = useRef<HTMLInputElement | null>(null)
@@ -49,7 +49,6 @@ export function BrokerCatalogPage() {
   useEffect(() => {
     setDraft(settings)
     setCitiesText(settings.cities.join(', '))
-    setSpecialtiesText(settings.specialties.join(', '))
     setDifferentialsText(settings.differentials.join('\n'))
   }, [settings])
   const publicPath = useMemo(() => buildBrokerCatalogPath(draft.slug), [draft.slug])
@@ -165,7 +164,7 @@ export function BrokerCatalogPage() {
           <form onSubmit={submit} className="grid gap-4">
             <fieldset disabled={saving || uploading !== null} className="contents">
             <BrokerSurface padding="compact">
-              <SectionHeading title="Identidade" description="Foto, nome, endereço e apresentação curta do catálogo." />
+              <SectionHeading title="Identidade" description="Foto, nome e endereço público do catálogo." />
 
               <div className="mt-5 flex items-center gap-3">
                 <button type="button" onClick={() => photoInput.current?.click()} className="group relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-black/[0.08] bg-[#f5f6f3]">
@@ -179,7 +178,6 @@ export function BrokerCatalogPage() {
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <Field label="Nome público"><input required maxLength={120} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} className={inputClass} /></Field>
                 <Field label="Endereço do catálogo"><div className="flex h-10 items-center overflow-hidden rounded-lg border border-black/[0.09] bg-white focus-within:border-[#009b3a]/45 focus-within:ring-2 focus-within:ring-[#009b3a]/8"><span className="border-r border-black/[0.06] bg-[#f7f8f5] px-3 text-xs text-[#667085]">/catalogo/</span><input required value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} className="min-w-0 flex-1 px-3 text-sm outline-none" /></div></Field>
-                <div className="sm:col-span-2"><Field label="Especialidade / apresentação curta"><input maxLength={180} value={draft.headline} onChange={(event) => setDraft({ ...draft, headline: event.target.value })} placeholder="Ex.: Especialista em imóveis de alto padrão" className={inputClass} /></Field></div>
               </div>
 
               <div className="mt-4 rounded-xl border border-black/[0.06] bg-[#f8faf8] p-4">
@@ -221,7 +219,11 @@ export function BrokerCatalogPage() {
               <SectionHeading title="Sobre o corretor" description="Conte sua trajetória e os pontos que diferenciam seu atendimento." />
               <div className="mt-5 grid gap-4">
                 <Field label="Apresentação / bio"><textarea maxLength={2500} rows={7} value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} placeholder="Apresente sua experiência, seu jeito de atender e o mercado em que atua." className={textareaClass} /></Field>
-                <Field label="Especialidades" hint="Separe por vírgulas ou linhas."><textarea rows={3} value={specialtiesText} onChange={(event) => { setSpecialtiesText(event.target.value); setDraft({ ...draft, specialties: parseList(event.target.value) }) }} placeholder="Alto padrão, Frente mar, Coberturas" className={textareaClass} /></Field>
+                <div className="rounded-xl border border-black/[0.06] bg-[#f8faf8] p-4">
+                  <p className="text-sm font-medium text-[#344054]">Especialidades</p>
+                  <p className="mt-1 text-xs text-[#667085]">Sincronizadas com o perfil do Marketplace.</p>
+                  <BrokerSpecialtyChips specialties={draft.specialties} compact emptyLabel="Nenhuma especialidade cadastrada no Marketplace." className="mt-3" />
+                </div>
                 <Field label="Diferenciais" hint="Cada linha vira um item no perfil público."><textarea rows={4} value={differentialsText} onChange={(event) => { setDifferentialsText(event.target.value); setDraft({ ...draft, differentials: parseList(event.target.value) }) }} placeholder={'Atendimento consultivo e personalizado\nCuradoria rigorosa de imóveis'} className={textareaClass} /></Field>
               </div>
             </BrokerSurface>
@@ -259,7 +261,7 @@ export function BrokerCatalogPage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-white via-white/88 to-white/10" />
                     <div className="relative flex min-h-52 items-center gap-4 p-5">
                       <div className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#eef1ec] shadow-md">{draft.photoUrl ? <Image src={draft.photoUrl} alt="" fill sizes="80px" className="object-cover" /> : null}</div>
-                      <div className="min-w-0"><p className="flex items-center gap-1.5 truncate text-lg font-semibold text-[#050505]">{draft.displayName || 'Seu nome'}{draft.creciVerified ? <BadgeCheck className="size-4 text-[#16a34a]" /> : null}</p><p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#58625c]">{draft.headline || 'Sua especialidade aparecerá aqui.'}</p></div>
+                      <div className="min-w-0"><p className="flex items-center gap-1.5 truncate text-lg font-semibold text-[#050505]">{draft.displayName || 'Seu nome'}{draft.creciVerified ? <BadgeCheck className="size-4 text-[#16a34a]" /> : null}</p><BrokerSpecialtyChips specialties={draft.specialties} compact emptyLabel="Suas especialidades aparecerão aqui." className="mt-2" /></div>
                     </div>
                   </div>
                   <div className="grid gap-3 p-4 sm:grid-cols-3">{isLoading ? <p className="col-span-full py-6 text-center text-sm text-[#667085]">Carregando imóveis...</p> : published.length ? published.slice(0, 3).map((property) => <article key={property.id} className="min-w-0 overflow-hidden rounded-xl border border-black/[0.06]"><div className="relative aspect-[4/3] bg-[#eef1ec]">{property.images[0] ? <Image src={property.images[0]} alt="" fill sizes="180px" className="object-cover" /> : null}</div><div className="p-3"><p className="truncate text-xs font-semibold text-[#050505]">{property.title}</p><p className="mt-1 truncate text-[11px] text-[#667085]">{property.location}</p><p className="mt-2 text-xs font-semibold text-[#009b3a]">{property.price}</p></div></article>) : <div className="col-span-full rounded-xl border border-dashed border-black/[0.1] px-4 py-8 text-center text-sm text-[#667085]">Os imóveis publicados aparecerão nesta prévia.</div>}</div>

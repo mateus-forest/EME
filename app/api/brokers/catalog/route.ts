@@ -62,7 +62,7 @@ function serialize(user: AuthenticatedCatalogUser) {
       serviceArea: broker?.catalogServiceArea ?? "",
       cities: stringList(broker?.catalogCities),
       priceRange: broker?.catalogPriceRange ?? "",
-      specialties: stringList(broker?.catalogSpecialties),
+      specialties: stringList(broker?.marketplaceSpecialties),
       differentials: stringList(broker?.catalogDifferentials),
       videoUrl: broker?.catalogVideoUrl ?? "",
       creci: broker?.creci ?? "",
@@ -112,9 +112,6 @@ export async function PATCH(request: NextRequest) {
     const serviceArea = cleanText(body?.serviceArea, user.broker.catalogServiceArea ?? "", 180)
     const cities = body?.cities === undefined ? stringList(user.broker.catalogCities) : stringList(body.cities)
     const priceRange = cleanText(body?.priceRange, user.broker.catalogPriceRange ?? "", 120)
-    const specialties = body?.specialties === undefined
-      ? stringList(user.broker.catalogSpecialties)
-      : stringList(body.specialties)
     const differentials = body?.differentials === undefined
       ? stringList(user.broker.catalogDifferentials)
       : stringList(body.differentials)
@@ -155,7 +152,6 @@ export async function PATCH(request: NextRequest) {
           catalogServiceArea: serviceArea || null,
           catalogCities: cities,
           catalogPriceRange: priceRange || null,
-          catalogSpecialties: specialties,
           catalogDifferentials: differentials,
           catalogVideoUrl: videoUrl || null,
         },

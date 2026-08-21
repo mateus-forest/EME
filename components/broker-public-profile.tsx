@@ -28,6 +28,7 @@ import {
 } from "@/lib/public-catalog-url"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { cn } from "@/lib/utils"
+import { BrokerSpecialtyChips } from "@/components/broker-specialty-chips"
 
 const PREMIUM_BANNER_FALLBACK = "/marketplace/images/hero-residence.png"
 
@@ -175,11 +176,7 @@ export function BrokerProfileHero({
               ) : null}
             </div>
 
-            {catalog.description ? (
-              <p className="text-[1rem] font-medium leading-snug text-[#2f3833] sm:text-[1.05rem]">
-                {catalog.description}
-              </p>
-            ) : null}
+            <BrokerSpecialtyChips specialties={catalog.specialties} compact />
             {creciLabel(catalog) ? (
               <p className="text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p>
             ) : null}
@@ -270,9 +267,7 @@ export function BrokerAboutContent({ catalog, onContact }: { catalog: PublicBrok
         {hasSpecialties ? (
           <article className="rounded-[1.6rem] border border-[#e8eee9] bg-white p-6 shadow-[0_16px_42px_rgba(43,61,52,.055)]">
             <SectionTitle icon={Star}>Especialidades</SectionTitle>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {catalog.specialties.map((specialty) => <span key={specialty} className="rounded-full border border-[#dceadf] bg-[#f5fbf6] px-4 py-2 text-sm font-medium text-[#287543]">{specialty}</span>)}
-            </div>
+            <BrokerSpecialtyChips specialties={catalog.specialties} className="mt-4" />
           </article>
         ) : null}
       </div>

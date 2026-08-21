@@ -200,7 +200,7 @@ export async function getPublicBrokerCatalogBySlug(slug: string): Promise<Public
     serviceArea: broker.catalogServiceArea ?? "",
     cities: stringList(broker.catalogCities),
     priceRange: broker.catalogPriceRange ?? "",
-    specialties: stringList(broker.catalogSpecialties),
+    specialties: broker.marketplaceSpecialties,
     differentials: stringList(broker.catalogDifferentials),
     videoUrl: broker.catalogVideoUrl ?? "",
     creci: broker.creci ?? "",

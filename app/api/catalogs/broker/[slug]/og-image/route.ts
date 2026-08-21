@@ -8,7 +8,6 @@ import {
   CATALOG_OG_IMAGE_HEIGHT,
   CATALOG_OG_IMAGE_WIDTH,
   getBrokerCatalogSpecialty,
-  getBrokerCatalogTitle,
 } from "@/lib/public-catalog-metadata"
 
 export const dynamic = "force-dynamic"
@@ -68,7 +67,7 @@ async function normalizeBrokerPhotoForOg(photoDataUrl: string | null) {
   try {
     const normalizedPhoto = await sharp(Buffer.from(match[1], "base64"))
       .rotate()
-      .resize(576, CATALOG_OG_IMAGE_HEIGHT, {
+      .resize(660, CATALOG_OG_IMAGE_HEIGHT, {
         fit: "cover",
         position: "attention",
       })
@@ -146,7 +145,7 @@ function buildOgImageElement(input: {
     },
     div(
       {
-        width: "48%",
+        width: "55%",
         height: "100%",
         display: "flex",
         overflow: "hidden",
@@ -158,12 +157,12 @@ function buildOgImageElement(input: {
     ),
     div(
       {
-        width: "52%",
+        width: "45%",
         height: "100%",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        padding: "58px 60px",
+        padding: "52px 48px",
         background:
           "radial-gradient(circle at 16% 18%, rgba(0,155,58,0.08), transparent 24%), linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%)",
       },
@@ -199,7 +198,21 @@ function buildOgImageElement(input: {
         "span",
         {
           style: {
-            marginTop: 28,
+            marginTop: 26,
+            fontSize: 22,
+            lineHeight: 1.2,
+            fontWeight: 700,
+            color: "#0f8b3e",
+            display: "flex",
+          },
+        },
+        "Catálogo de imóveis",
+      ),
+      React.createElement(
+        "span",
+        {
+          style: {
+            marginTop: 10,
             fontSize: 56,
             lineHeight: 1.08,
             fontWeight: 800,
@@ -215,7 +228,7 @@ function buildOgImageElement(input: {
         {
           style: {
             marginTop: 18,
-            fontSize: 26,
+            fontSize: 24,
             lineHeight: 1.42,
             fontWeight: 500,
             color: "#5b6774",
@@ -266,12 +279,10 @@ export async function GET(_request: NextRequest, { params }: OgImageRouteContext
   const socialCatalog = {
     displayName: brokerName,
     description: broker?.catalogHeadline?.trim() || broker?.description?.trim() || "",
-    specialties: Array.isArray(broker?.catalogSpecialties)
-      ? broker.catalogSpecialties.filter((value: unknown): value is string => typeof value === "string")
-      : [],
+    specialties: broker?.marketplaceSpecialties ?? [],
   }
   const description = getBrokerCatalogSpecialty(socialCatalog)
-  const title = getBrokerCatalogTitle(socialCatalog)
+  const title = brokerName
   const brokerPhoto = await normalizeBrokerPhotoForOg(
     await resolveBrokerPhotoDataUrl(broker?.user.photoUrl ?? ""),
   )

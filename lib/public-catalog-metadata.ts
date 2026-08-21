@@ -14,7 +14,7 @@ export const CATALOG_OG_IMAGE_TYPE = "image/png"
 
 // Increment this whenever the generated composition changes so social crawlers
 // cannot keep serving bytes from an older renderer under the same image URL.
-const CATALOG_OG_IMAGE_RENDER_VERSION = "3"
+const CATALOG_OG_IMAGE_RENDER_VERSION = "4"
 
 export function getAppBaseUrl() {
   return "https://www.meueme.com"
@@ -39,35 +39,30 @@ function truncateDescription(value: string, maxLength = 155) {
 type CatalogSocialProfile = Pick<PublicBrokerCatalogData, "displayName" | "description" | "specialties">
 
 export function getBrokerCatalogSpecialty(
-  catalog?: Pick<CatalogSocialProfile, "description" | "specialties"> | null,
+  catalog?: Pick<CatalogSocialProfile, "specialties"> | null,
 ) {
-  const headline = catalog?.description
-    ?.split(/[|\n]/, 1)[0]
-    ?.replace(/\s+/g, " ")
-    .trim()
-
-  if (headline) return headline
-
-  const specialty = catalog?.specialties
+  const specialties = catalog?.specialties
     ?.map(cleanSpecialty)
-    .find(Boolean)
+    .filter(Boolean) ?? []
+  const visible = specialties.slice(0, 2)
+  const remaining = Math.max(0, specialties.length - visible.length)
 
-  return specialty
-    ? `Especialista em ${specialty.toLocaleLowerCase("pt-BR")}`
-    : "Atendimento imobiliário personalizado"
+  if (!visible.length) return "Atendimento imobiliário"
+
+  return `${visible.join(" • ")}${remaining ? ` +${remaining}` : ""}`
 }
 
 export function getCatalogDescription(catalog?: CatalogSocialProfile | null) {
   if (!catalog) return DEFAULT_CATALOG_DESCRIPTION
 
-  return truncateDescription(
-    `${getBrokerCatalogSpecialty(catalog)}. Conheça o catálogo de ${catalog.displayName} e fale diretamente com o corretor.`,
-  )
+  return catalog.specialties.length
+    ? truncateDescription(`Especialidades: ${getBrokerCatalogSpecialty(catalog)}.`)
+    : truncateDescription(`Catálogo de imóveis de ${catalog.displayName}.`)
 }
 
 export function getBrokerCatalogTitle(catalog?: Pick<CatalogSocialProfile, "displayName"> | null) {
   return catalog?.displayName?.trim()
-    ? `Catálogo de imóveis de ${catalog.displayName.trim()} | EME`
+    ? `Catálogo de imóveis de ${catalog.displayName.trim()}`
     : "Catálogo de imóveis | EME"
 }
 

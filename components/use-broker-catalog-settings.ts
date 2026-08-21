@@ -136,7 +136,6 @@ export function useBrokerCatalogSettings() {
         serviceArea: nextSettings.serviceArea,
         cities: nextSettings.cities,
         priceRange: nextSettings.priceRange,
-        specialties: nextSettings.specialties,
         differentials: nextSettings.differentials,
         videoUrl: nextSettings.videoUrl,
       }),
