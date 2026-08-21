@@ -50,6 +50,10 @@ type BillingSnapshot = {
   hasSubscription: boolean
 }
 
+function isBillingSnapshot(value: BillingSnapshot | { error?: string }): value is BillingSnapshot {
+  return "plan" in value && "invoices" in value && Array.isArray(value.invoices)
+}
+
 const subscriptionStatusLabels: Record<string, string> = {
   active: "Ativa",
   trialing: "Período de teste",
@@ -124,7 +128,7 @@ export function AccountBillingSection() {
       const response = await fetch("/api/stripe/billing", { credentials: "include", cache: "no-store" })
       const data = (await response.json().catch(() => null)) as BillingSnapshot | { error?: string } | null
 
-      if (!response.ok || !data || "error" in data) {
+      if (!response.ok || !data || !isBillingSnapshot(data)) {
         throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o faturamento.")
       }
 

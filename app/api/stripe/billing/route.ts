@@ -143,7 +143,7 @@ function checkoutReceiptUrl(session: Stripe.Checkout.Session) {
   const paymentIntent = session.payment_intent
   if (!paymentIntent || typeof paymentIntent === "string") return null
   const charge = paymentIntent.latest_charge
-  if (!charge || typeof charge === "string" || charge.deleted) return null
+  if (!charge || typeof charge === "string") return null
   return charge.receipt_url
 }
 
@@ -201,7 +201,7 @@ function consolidateCharges({
       amount: invoice.amount_paid || invoice.amount_due,
       currency: invoice.currency,
       status: invoice.status,
-      receiptUrl: invoice.hosted_invoice_url ?? invoice.invoice_pdf,
+      receiptUrl: invoice.hosted_invoice_url ?? invoice.invoice_pdf ?? null,
       documentLabel: "Abrir fatura",
     }))
   const seenPaymentIntents = new Set<string>()
