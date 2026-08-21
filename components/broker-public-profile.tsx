@@ -80,9 +80,9 @@ export function BrokerCatalogHeader({
 
           <div className="ml-auto flex items-center gap-2">
             <AssistantLauncher labelClassName="hidden sm:inline" />
-            <button type="button" onClick={onShare} className="flex size-10 items-center justify-center rounded-full border border-[#e5ebe6] bg-white text-[#3b4540] shadow-sm transition hover:-translate-y-0.5 hover:text-[#11863d] sm:w-auto sm:gap-2 sm:px-4" aria-label="Compartilhar catálogo">
+            {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-10 items-center justify-center rounded-full border border-[#cde4d3] bg-[#159447] text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#107c39]" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4.5" /></button> : null}
+            <button type="button" onClick={onShare} className="flex size-10 items-center justify-center rounded-full border border-[#e5ebe6] bg-white text-[#3b4540] shadow-sm transition hover:-translate-y-0.5 hover:text-[#11863d]" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
               <Share2 className="size-4" />
-              <span className="hidden sm:inline">Compartilhar</span>
             </button>
           </div>
         </div>
@@ -116,7 +116,6 @@ function CatalogNavLink({ href, active, children }: { href: string; active: bool
 export function BrokerProfileHero({
   catalog,
   priceRange,
-  onWhatsApp,
 }: {
   catalog: PublicBrokerCatalogData
   priceRange: string
@@ -150,7 +149,7 @@ export function BrokerProfileHero({
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.58)_0%,rgba(250,252,249,.3)_38%,rgba(250,252,249,.08)_68%,transparent_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.72)_0%,rgba(250,252,249,.48)_42%,rgba(250,252,249,.18)_72%,rgba(250,252,249,.04)_88%,transparent_100%)]" />
 
         <div className="relative z-10 grid gap-5 px-4 pb-4 pt-5 text-center sm:px-6 sm:pt-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-8 lg:pt-8 lg:text-left">
           <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-36 lg:size-44 xl:size-52">
@@ -174,25 +173,11 @@ export function BrokerProfileHero({
               ) : null}
             </div>
 
-            <BrokerSpecialtyChips specialties={catalog.specialties} compact />
+            <BrokerSpecialtyChips specialties={catalog.specialties} compact singleLine />
             {creciLabel(catalog) ? (
               <p className="text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p>
             ) : null}
 
-            <div className="flex items-center gap-2 pt-1">
-              {catalog.whatsApp ? (
-                <Button
-                  type="button"
-                  onClick={onWhatsApp}
-                  aria-label="Falar pelo WhatsApp"
-                  title="Falar pelo WhatsApp"
-                  className="size-11 shrink-0 rounded-full bg-[#159447] p-0 text-white shadow-[0_12px_26px_rgba(21,148,71,.24)] hover:bg-[#107c39]"
-                >
-                  <WhatsappGlyph className="size-5" />
-                  <span className="sr-only">Falar pelo WhatsApp</span>
-                </Button>
-              ) : null}
-            </div>
           </div>
         </div>
       </div>
@@ -204,17 +189,17 @@ export function BrokerProfileHero({
               key={label}
               className={cn(
                 "relative grid items-center overflow-hidden rounded-[1.2rem] border border-[#ebf0ec] bg-white/97 px-3 py-3 backdrop-blur",
-                wideMobile && "col-span-2 py-2.5 lg:col-span-1 lg:py-3",
+                wideMobile && "col-span-2 py-2.5 sm:col-span-2 lg:col-span-2 lg:py-2.5",
               )}
             >
               <div className={cn(
                 "flex items-center justify-center text-center",
-                wideMobile ? "gap-3 lg:flex-col lg:gap-1.5" : "flex-col gap-1.5",
+                wideMobile ? "flex-col gap-1" : "flex-col gap-1.5",
               )}>
                 <span className="flex size-7 items-center justify-center rounded-full border border-[#dfece2] bg-[#f5fbf6] text-[#159447]">
                   <Icon className="size-3.5" />
                 </span>
-                <span className={cn("flex min-w-0 flex-col", wideMobile ? "items-start text-left lg:items-center lg:text-center" : "items-center")}>
+                <span className="flex min-w-0 flex-col items-center text-center">
                   <strong className={cn(
                     "text-sm font-semibold leading-snug text-[#151b17] sm:text-base",
                     wideMobile ? "max-w-full whitespace-nowrap tracking-[-0.02em]" : "line-clamp-2",

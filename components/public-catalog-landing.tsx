@@ -8,6 +8,7 @@ import {
   Bed,
   Building2,
   Car,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
@@ -169,6 +170,7 @@ export function PublicCatalogLanding({
   const [financingEntry, setFinancingEntry] = useState("")
   const [financingInstallments, setFinancingInstallments] = useState("360")
   const [financingInterest, setFinancingInterest] = useState("0,89")
+  const [financingOpen, setFinancingOpen] = useState(false)
   const properties = useMemo(() => normalizeProperties(catalog), [catalog])
   const searchAnalysis = useMemo(() => analyzeSearch(search), [search])
   const visibleProperties = useMemo(
@@ -208,6 +210,7 @@ export function PublicCatalogLanding({
     setFinancingEntry("")
     setFinancingInstallments("360")
     setFinancingInterest("0,89")
+    setFinancingOpen(false)
   }, [selectedProperty])
 
   useEffect(() => {
@@ -537,8 +540,8 @@ export function PublicCatalogLanding({
               </Button>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
-              {quickSuggestions.map((suggestion) => (
+            <div className="mt-3 grid grid-cols-6 gap-1.5 sm:flex sm:flex-wrap">
+              {quickSuggestions.map((suggestion, index) => (
                 <button
                   key={suggestion}
                   type="button"
@@ -550,7 +553,10 @@ export function PublicCatalogLanding({
 
                     setSearch(suggestion)
                   }}
-                  className="inline-flex h-7 items-center gap-1 rounded-full border border-[#efe8df] bg-white px-2.5 text-[10.5px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5] sm:h-auto sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[13px]"
+                  className={cn(
+                    "inline-flex h-7 items-center justify-center gap-1 rounded-full border border-[#efe8df] bg-white px-2 text-[10px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5] sm:h-8 sm:px-3 sm:text-xs",
+                    index < 4 ? "col-span-3" : "col-span-2",
+                  )}
                 >
                   {getSuggestionIcon(suggestion)}
                   {suggestion}
@@ -861,20 +867,25 @@ export function PublicCatalogLanding({
                     <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
-                <section className="mt-5 rounded-2xl border border-[#dfe9e1] bg-[#f8fbf8] p-3.5 shadow-[0_10px_26px_rgba(31,70,45,.05)]">
-                  <div className="flex items-center gap-2">
+                <section className={cn("mt-5 rounded-2xl border border-[#dfe9e1] bg-[#f8fbf8] shadow-[0_10px_26px_rgba(31,70,45,.05)] transition-colors", financingOpen ? "p-3.5" : "p-3")}>
+                  <button type="button" onClick={() => setFinancingOpen((current) => !current)} aria-expanded={financingOpen} aria-controls="catalog-financing-simulator" className="flex w-full items-center gap-2 text-left">
                     <span className="flex size-8 items-center justify-center rounded-full bg-[#e9f7ed] text-[#118a3d]"><CircleDollarSign className="size-4" /></span>
-                    <div><h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4><p className="text-[11px] text-[#77817b]">Estimativa rápida para orientar sua análise.</p></div>
+                    <h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4>
+                    <ChevronDown className={cn("ml-auto size-4 text-[#6f7a73] transition-transform duration-300", financingOpen && "rotate-180")} />
+                  </button>
+                  <div id="catalog-financing-simulator" className={cn("grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out", financingOpen ? "mt-3 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0")}>
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
+                        <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                        <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className="h-9 rounded-lg border-black/[0.06] bg-[#f1f5f1] px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
+                        <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                        <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                        <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className="h-9 rounded-lg border-[#bcdcc5] bg-white px-2.5 text-xs font-semibold text-[#118a3d]" /></FinancingField>
+                      </div>
+                      <p className="mt-2.5 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
+                    </div>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2.5">
-                    <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
-                    <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                    <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className="h-9 rounded-lg border-black/[0.06] bg-[#f1f5f1] px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
-                    <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                    <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-9 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                    <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className="h-9 rounded-lg border-[#bcdcc5] bg-white px-2.5 text-xs font-semibold text-[#118a3d]" /></FinancingField>
-                  </div>
-                  <p className="mt-2.5 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
                 </section>
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                   <Button type="button" onClick={() => openLeadModal(selectedProperty)} className="h-11 flex-1 rounded-full bg-[#009b3a] text-base font-semibold text-white hover:bg-[#008633]">
@@ -1480,7 +1491,7 @@ function CatalogImagePlaceholder() {
 }
 
 function getSuggestionIcon(suggestion: string) {
-  const iconClassName = "size-3.5 text-[#6a6a6a] sm:size-4"
+  const iconClassName = "size-3 text-[#6a6a6a] sm:size-3.5"
   if (suggestion === "Mais filtros") return <SlidersHorizontal className={iconClassName} />
   if (suggestion === "Até R$ 1 milhão") return <CircleDollarSign className={iconClassName} />
   if (suggestion === "Frente mar") return <Sparkles className={iconClassName} />

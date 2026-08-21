@@ -258,7 +258,7 @@ export function BrokerCatalogPage() {
                   <div className="relative min-h-52 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={draft.bannerUrl || '/marketplace/images/hero-residence.png'} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.58)_0%,rgba(250,252,249,.3)_38%,rgba(250,252,249,.08)_68%,transparent_100%)]" />
+                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.72)_0%,rgba(250,252,249,.48)_42%,rgba(250,252,249,.18)_72%,rgba(250,252,249,.04)_88%,transparent_100%)]" />
                     <div className="relative flex min-h-52 items-center gap-4 p-5">
                       <div className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#eef1ec] shadow-md">{draft.photoUrl ? <Image src={draft.photoUrl} alt="" fill sizes="80px" className="object-cover" /> : null}</div>
                       <div className="min-w-0"><p className="flex items-center gap-1.5 truncate text-lg font-semibold text-[#050505]">{draft.displayName || 'Seu nome'}{draft.creciVerified ? <BadgeCheck className="size-4 text-[#16a34a]" /> : null}</p><BrokerSpecialtyChips specialties={draft.specialties} compact emptyLabel="Suas especialidades aparecerão aqui." className="mt-2" /></div>
