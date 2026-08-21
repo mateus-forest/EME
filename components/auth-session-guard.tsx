@@ -3,7 +3,13 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
-import { clearLegacyAuthState, fetchCurrentUser, getDefaultRouteByRole, type AuthRole } from "@/lib/auth-client"
+import {
+  AuthSessionRequestError,
+  clearLegacyAuthState,
+  fetchCurrentUser,
+  getDefaultRouteByRole,
+  type AuthRole,
+} from "@/lib/auth-client"
 import { EmeLoading } from "@/components/ui/eme-loading"
 
 export function AuthSessionGuard({
@@ -27,11 +33,16 @@ export function AuthSessionGuard({
       try {
         user = await fetchCurrentUser()
       } catch (error) {
-        console.error("[auth][guard] session check failed", {
+        console.warn("[auth][guard] session check unavailable", {
           message: error instanceof Error ? error.message : "unknown",
+          status: error instanceof AuthSessionRequestError ? error.status : null,
         })
         if (!cancelled) {
-          setSessionError("Não foi possível validar sua sessão agora. Tente recarregar a página.")
+          setSessionError(
+            error instanceof AuthSessionRequestError
+              ? error.message
+              : "Não foi possível validar sua sessão agora. Tente recarregar a página.",
+          )
         }
         return
       }

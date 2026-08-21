@@ -12,6 +12,16 @@ export type AuthenticatedUser = {
   agencyId: string | null
 }
 
+export class AuthSessionRequestError extends Error {
+  readonly status: number | null
+
+  constructor(message: string, status: number | null, options?: ErrorOptions) {
+    super(message, options)
+    this.name = "AuthSessionRequestError"
+    this.status = status
+  }
+}
+
 const LEGACY_AUTH_KEYS = [
   "eme-user-type",
   "eme-user-session",
@@ -43,15 +53,20 @@ export async function fetchCurrentUser() {
     credentials: "include",
     cache: "no-store",
   }).catch((error: unknown) => {
-    throw error instanceof Error ? error : new Error("Não foi possível validar a sessão.")
+    throw new AuthSessionRequestError(
+      "Não foi possível conectar ao serviço de autenticação.",
+      null,
+      { cause: error },
+    )
   })
 
   if (!response.ok) {
-    if (response.status >= 500) {
-      throw new Error("Não foi possível validar a sessão agora.")
-    }
+    if (response.status === 401 || response.status === 403) return null
 
-    return null
+    throw new AuthSessionRequestError(
+      "Não foi possível validar sua sessão agora. Tente recarregar a página.",
+      response.status,
+    )
   }
 
   const data = (await response.json()) as { user: AuthenticatedUser }
