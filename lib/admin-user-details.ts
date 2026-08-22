@@ -4,29 +4,118 @@ import { EME_PLANS, normalizeEmePlanKey } from "@/lib/eme-plans"
 import { prisma } from "@/lib/prisma"
 import type { AdminUserDetails } from "@/lib/admin-user-details-contract"
 
+const DETAILS_BLOCK_TIMEOUT_MS = 5000
+
 function planLabel(value: string | null | undefined) {
   const key = normalizeEmePlanKey(value)
   return EME_PLANS[key]?.name ?? "Free"
 }
 
+async function safeDetailsBlock<T>(
+  block: string,
+  query: () => Promise<T>,
+  fallback: T,
+  unavailableBlocks: string[],
+): Promise<T> {
+  const startedAt = Date.now()
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    const result = await Promise.race([
+      query(),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Block timed out after ${DETAILS_BLOCK_TIMEOUT_MS}ms`)),
+          DETAILS_BLOCK_TIMEOUT_MS,
+        )
+      }),
+    ])
+    const durationMs = Date.now() - startedAt
+    if (durationMs >= 1500) console.warn("[admin][user-details][slow-block]", { block, durationMs })
+    return result
+  } catch (error) {
+    unavailableBlocks.push(block)
+    console.error("[admin][user-details][block-failed]", {
+      block,
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    return fallback
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+
+function latestDate(values: Array<Date | null | undefined>) {
+  return values
+    .filter((value): value is Date => Boolean(value))
+    .sort((left, right) => right.getTime() - left.getTime())[0] ?? null
+}
+
 export async function getAdminUserDetails(userId: string): Promise<AdminUserDetails | null> {
+  const startedAt = Date.now()
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { trustedDevices: { orderBy: { trustedAt: "desc" } }, broker: { include: { planAccount: true } } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      plan: true,
+      subscriptionStatus: true,
+      stripeCustomerId: true,
+      createdAt: true,
+      trustedDevices: {
+        orderBy: { trustedAt: "desc" },
+        select: {
+          id: true,
+          label: true,
+          browser: true,
+          platform: true,
+          lastAccessAt: true,
+          trustedAt: true,
+          revokedAt: true,
+        },
+      },
+      broker: {
+        select: {
+          id: true,
+          status: true,
+          creci: true,
+          creciUf: true,
+          creciOfficialRegistration: true,
+          creciValidationStatus: true,
+          aiCreditsBalance: true,
+          aiCreditsUsedThisMonth: true,
+          aiLastInteractionAt: true,
+          catalogSlug: true,
+          marketplaceSpecialties: true,
+          marketplaceRegion: true,
+          marketplaceAbout: true,
+          planAccount: { select: { planKey: true } },
+        },
+      },
+    },
   })
   if (!user) return null
 
-  const baseUser = {
+  const lastAccessAt = latestDate([
+    user.broker?.aiLastInteractionAt,
+    ...user.trustedDevices.map((device) => device.lastAccessAt ?? device.trustedAt),
+  ])
+  const baseUser: AdminUserDetails["user"] = {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
-    status: user.status,
+    status: user.broker?.status ?? null,
     createdAt: user.createdAt.toISOString(),
-    lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+    lastAccessAt: lastAccessAt?.toISOString() ?? null,
   }
-  const devices = user.trustedDevices.map((device) => ({
+  const devices: AdminUserDetails["devices"] = user.trustedDevices.map((device) => ({
     id: device.id,
+    label: device.label,
+    browser: device.browser,
+    platform: device.platform,
     status: device.revokedAt ? "Revogado" : "Confiável",
     lastAccessAt: device.lastAccessAt?.toISOString() ?? null,
   }))
@@ -41,34 +130,43 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
       marketplace: { publishedProperties: 0, views: 0, leads: 0, conversations: 0, profileStatus: "Sem corretor vinculado" },
       billing: { subscriptionStatus: user.subscriptionStatus, stripeLinked: Boolean(user.stripeCustomerId), localSubscriptionStatus: null, recentPurchases: [] },
       clients: [],
+      unavailableBlocks: [],
     }
   }
 
-  const [properties, clients, proposalCount, contractCount, cosInteractions, studioCampaigns, studioAssets, aiAggregate, aiOperations, catalogViews, catalogShares, marketplaceConversations, subscription, purchases] = await Promise.all([
-    prisma.property.findMany({ where: { brokerId: broker.id }, select: { id: true, published: true, marketplacePublished: true, viewsCount: true } }),
-    prisma.lead.findMany({ where: { brokerId: broker.id }, select: { id: true, name: true, status: true, source: true, createdAt: true, property: { select: { title: true } } }, orderBy: { createdAt: "desc" } }),
-    prisma.brokerDocument.count({ where: { brokerId: broker.id, type: "proposal" } }),
-    prisma.contractTemplateInstance.count({ where: { brokerId: broker.id } }),
-    prisma.aiAssistantInteraction.count({ where: { brokerId: broker.id } }),
-    prisma.studioCampaign.count({ where: { brokerId: broker.id } }),
-    prisma.studioCampaignAsset.count({ where: { campaign: { brokerId: broker.id } } }),
-    prisma.aiOperationTelemetry.aggregate({ where: { brokerId: broker.id }, _sum: { creditsConsumed: true, costBrl: true } }),
-    prisma.aiOperationTelemetry.count({ where: { brokerId: broker.id } }),
-    prisma.catalogEvent.count({ where: { brokerId: broker.id, eventType: { in: ["catalog_view", "profile_view"] } } }),
-    prisma.catalogEvent.count({ where: { brokerId: broker.id, eventType: { in: ["catalog_share", "share"] } } }),
-    prisma.marketplaceConversation.count({ where: { brokerId: broker.id } }),
-    prisma.subscription.findFirst({ where: { ownerType: "BROKER", ownerId: broker.id }, orderBy: { updatedAt: "desc" } }),
-    prisma.extraPackagePurchase.findMany({ where: { brokerId: broker.id, status: "COMPLETED" }, select: { id: true, kind: true, quantity: true, amountCents: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }),
+  const unavailableBlocks: string[] = []
+  const [properties, clients, proposalCount, contractCount] = await Promise.all([
+    safeDetailsBlock("imóveis", () => prisma.property.findMany({ where: { brokerId: broker.id }, select: { id: true, published: true, marketplacePublished: true, viewsCount: true } }), [], unavailableBlocks),
+    safeDetailsBlock("clientes", () => prisma.lead.findMany({ where: { brokerId: broker.id }, select: { id: true, name: true, status: true, source: true, createdAt: true, property: { select: { title: true } } }, orderBy: { createdAt: "desc" } }), [], unavailableBlocks),
+    safeDetailsBlock("propostas", () => prisma.brokerDocument.count({ where: { brokerId: broker.id, type: "proposal" } }), 0, unavailableBlocks),
+    safeDetailsBlock("contratos", () => prisma.contractTemplateInstance.count({ where: { brokerId: broker.id } }), 0, unavailableBlocks),
+  ])
+  const [cosInteractions, studioCampaigns, studioAssets, aiAggregate] = await Promise.all([
+    safeDetailsBlock("COS", () => prisma.aiAssistantInteraction.count({ where: { brokerId: broker.id } }), 0, unavailableBlocks),
+    safeDetailsBlock("Studio IA", () => prisma.studioCampaign.count({ where: { brokerId: broker.id } }), 0, unavailableBlocks),
+    safeDetailsBlock("assets do Studio IA", () => prisma.studioCampaignAsset.count({ where: { campaign: { brokerId: broker.id } } }), 0, unavailableBlocks),
+    safeDetailsBlock("consumo de IA", () => prisma.aiOperationTelemetry.aggregate({ where: { brokerId: broker.id }, _sum: { creditsConsumed: true, costBrl: true } }), { _sum: { creditsConsumed: null, costBrl: null } }, unavailableBlocks),
+  ])
+  const [aiOperations, catalogViews, catalogShares, marketplaceConversations] = await Promise.all([
+    safeDetailsBlock("operações de IA", () => prisma.aiOperationTelemetry.count({ where: { brokerId: broker.id } }), 0, unavailableBlocks),
+    safeDetailsBlock("acessos do Catálogo", () => prisma.catalogEvent.count({ where: { brokerId: broker.id, eventType: { in: ["catalog_view", "profile_view"] } } }), 0, unavailableBlocks),
+    safeDetailsBlock("compartilhamentos do Catálogo", () => prisma.catalogEvent.count({ where: { brokerId: broker.id, eventType: { in: ["catalog_share", "share"] } } }), 0, unavailableBlocks),
+    safeDetailsBlock("conversas do Marketplace", () => prisma.marketplaceConversation.count({ where: { brokerId: broker.id } }), 0, unavailableBlocks),
+  ])
+  const [subscription, purchases] = await Promise.all([
+    safeDetailsBlock("assinatura", () => prisma.subscription.findFirst({ where: { ownerType: "BROKER", ownerId: broker.id } }), null, unavailableBlocks),
+    safeDetailsBlock("cobranças", () => prisma.extraPackagePurchase.findMany({ where: { brokerId: broker.id }, select: { id: true, packageKey: true, packageType: true, quantity: true, amountCents: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }), [], unavailableBlocks),
   ])
 
   const publishedProperties = properties.filter((property) => property.published)
   const marketplaceProperties = properties.filter((property) => property.marketplacePublished)
-  return {
+  const marketplaceConfigured = broker.marketplaceSpecialties.length > 0 || Boolean(broker.marketplaceRegion || broker.marketplaceAbout)
+  const details: AdminUserDetails = {
     user: baseUser,
     account: {
       plan: planLabel(broker.planAccount?.planKey ?? user.plan),
       brokerStatus: broker.status,
-      creci: [broker.creciState, broker.creciOfficialRegistration || broker.creciNumber].filter(Boolean).join(" / ") || null,
+      creci: [broker.creciUf, broker.creciOfficialRegistration || broker.creci].filter(Boolean).join(" / ") || null,
       creciStatus: broker.creciValidationStatus,
       creditsBalance: broker.aiCreditsBalance,
       creditsUsed: broker.aiCreditsUsedThisMonth,
@@ -100,14 +198,35 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
       views: marketplaceProperties.reduce((sum, property) => sum + property.viewsCount, 0),
       leads: clients.filter((client) => client.source.toLowerCase().includes("marketplace")).length,
       conversations: marketplaceConversations,
-      profileStatus: broker.marketplaceProfilePublished ? "Publicado" : "Não publicado",
+      profileStatus: marketplaceConfigured ? "Configurado" : "Não configurado",
     },
     billing: {
       subscriptionStatus: user.subscriptionStatus,
       stripeLinked: Boolean(user.stripeCustomerId),
       localSubscriptionStatus: subscription?.status ?? null,
-      recentPurchases: purchases.map((purchase) => ({ id: purchase.id, type: purchase.kind, quantity: purchase.quantity, amountCents: purchase.amountCents, status: purchase.status, createdAt: purchase.createdAt.toISOString() })),
+      recentPurchases: purchases.map((purchase) => ({
+        id: purchase.id,
+        type: purchase.packageType || purchase.packageKey,
+        quantity: purchase.quantity,
+        amountCents: purchase.amountCents,
+        status: purchase.status,
+        createdAt: purchase.createdAt.toISOString(),
+      })),
     },
-    clients: clients.map((client) => ({ id: client.id, name: client.name, status: client.status, source: client.source, createdAt: client.createdAt.toISOString(), property: client.property?.title ?? null })),
+    clients: clients.map((client) => ({
+      id: client.id,
+      name: client.name,
+      status: client.status,
+      source: client.source,
+      createdAt: client.createdAt.toISOString(),
+      property: client.property?.title ?? null,
+    })),
+    unavailableBlocks,
   }
+  console.info("[admin][user-details][completed]", {
+    userId,
+    durationMs: Date.now() - startedAt,
+    unavailableBlocks,
+  })
+  return details
 }

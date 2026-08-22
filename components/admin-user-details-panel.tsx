@@ -7,7 +7,7 @@ function money(value: number) {
 }
 
 function Definition({ label, value }: { label: string; value: string | number | null }) {
-  return <div className="min-w-0 rounded-xl bg-slate-50 p-3"><span className="block text-[11px] uppercase tracking-wide text-slate-500">{label}</span><strong className="mt-1 block break-words text-sm text-slate-900">{value ?? "Não informado"}</strong></div>
+  return <div className="min-w-0 rounded-xl bg-slate-50 p-3"><span className="block text-[11px] uppercase tracking-wide text-slate-500">{label}</span><strong className="mt-1 block [overflow-wrap:anywhere] text-sm text-slate-900">{value ?? "Não informado"}</strong></div>
 }
 
 export function AdminUserDetailsPanel({ data, loading, error }: { data: AdminUserDetails | null; loading: boolean; error: string | null }) {
@@ -17,17 +17,36 @@ export function AdminUserDetailsPanel({ data, loading, error }: { data: AdminUse
 
   return (
     <div className="space-y-6">
+      {data.unavailableBlocks.length ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Alguns dados estão temporariamente indisponíveis: {data.unavailableBlocks.join(", ")}.
+        </div>
+      ) : null}
       <section>
         <h3 className="mb-3 text-sm font-semibold text-slate-900">Conta e acesso</h3>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Definition label="E-mail" value={data.user.email} />
           <Definition label="Plano / status" value={`${data.account.plan} · ${data.billing.subscriptionStatus}`} />
-          <Definition label="Último acesso" value={data.user.lastLoginAt ? new Date(data.user.lastLoginAt).toLocaleString("pt-BR") : "Sem registro"} />
+          <Definition label="Último acesso" value={data.user.lastAccessAt ? new Date(data.user.lastAccessAt).toLocaleString("pt-BR") : "Sem registro"} />
           <Definition label="CRECI" value={`${data.account.creci ?? "Não informado"} · ${data.account.creciStatus ?? "Sem status"}`} />
           <Definition label="Créditos disponíveis" value={data.account.creditsBalance} />
           <Definition label="Créditos usados" value={data.account.creditsUsed} />
           <Definition label="Dispositivos" value={data.devices.length} />
           <Definition label="Stripe" value={data.billing.stripeLinked ? "Conta vinculada" : "Sem vínculo"} />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Dispositivos conectados</h3>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {data.devices.map((device) => (
+            <div key={device.id} className="min-w-0 rounded-xl border border-slate-200 p-3 text-sm">
+              <strong className="block [overflow-wrap:anywhere] text-slate-900">{device.label}</strong>
+              <span className="mt-1 block text-xs text-slate-500">{[device.browser, device.platform].filter(Boolean).join(" · ") || "Detalhes não informados"}</span>
+              <span className="mt-2 block text-xs text-slate-600">{device.status} · {device.lastAccessAt ? new Date(device.lastAccessAt).toLocaleString("pt-BR") : "sem acesso registrado"}</span>
+            </div>
+          ))}
+          {!data.devices.length ? <p className="text-sm text-slate-500">Nenhum dispositivo confiável registrado.</p> : null}
         </div>
       </section>
 
@@ -58,13 +77,26 @@ export function AdminUserDetailsPanel({ data, loading, error }: { data: AdminUse
         <div className="max-h-72 overflow-auto rounded-2xl border border-slate-200">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Cliente</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Origem</th><th className="px-4 py-3">Data</th><th className="px-4 py-3">Imóvel vinculado</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{data.clients.map((client) => <tr key={client.id}><td className="px-4 py-3 font-medium">{client.name}</td><td className="px-4 py-3">{client.status}</td><td className="px-4 py-3">{client.source}</td><td className="whitespace-nowrap px-4 py-3">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</td><td className="max-w-[240px] break-words px-4 py-3">{client.property ?? "Sem imóvel vinculado"}</td></tr>)}</tbody>
+            <tbody className="divide-y divide-slate-100">{data.clients.map((client) => <tr key={client.id}><td className="px-4 py-3 font-medium">{client.name ?? "Não informado"}</td><td className="px-4 py-3">{client.status}</td><td className="px-4 py-3">{client.source}</td><td className="whitespace-nowrap px-4 py-3">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</td><td className="max-w-[240px] break-words px-4 py-3">{client.property ?? "Sem imóvel vinculado"}</td></tr>)}</tbody>
           </table>
           {!data.clients.length ? <p className="p-6 text-center text-sm text-slate-500">Nenhum cliente cadastrado para este usuário.</p> : null}
         </div>
       </section>
 
-      <section><h3 className="mb-2 text-sm font-semibold text-slate-900">Cobrança e pacotes</h3><p className="text-sm text-slate-600">Assinatura local: {data.billing.localSubscriptionStatus ?? "sem assinatura"}. Compras reais registradas: {data.billing.recentPurchases.length}.</p></section>
+      <section>
+        <h3 className="mb-2 text-sm font-semibold text-slate-900">Cobrança e pacotes</h3>
+        <p className="text-sm text-slate-600">Assinatura local: {data.billing.localSubscriptionStatus ?? "sem assinatura"}. Compras reais registradas: {data.billing.recentPurchases.length}.</p>
+        {data.billing.recentPurchases.length ? (
+          <div className="mt-3 space-y-2">
+            {data.billing.recentPurchases.map((purchase) => (
+              <div key={purchase.id} className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <span className="min-w-0 [overflow-wrap:anywhere]">{purchase.type} · {purchase.quantity} unidade(s)</span>
+                <span className="whitespace-nowrap text-xs text-slate-500">{money(purchase.amountCents / 100)} · {purchase.status} · {new Date(purchase.createdAt).toLocaleDateString("pt-BR")}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
     </div>
   )
 }

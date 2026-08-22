@@ -1,6 +1,6 @@
 export type AdminUserClientDetail = {
   id: string
-  name: string
+  name: string | null
   status: string
   source: string
   createdAt: string
@@ -8,9 +8,9 @@ export type AdminUserClientDetail = {
 }
 
 export type AdminUserDetails = {
-  user: { id: string; name: string; email: string; role: string; status: string; createdAt: string; lastLoginAt: string | null }
+  user: { id: string; name: string; email: string; role: string; status: string | null; createdAt: string; lastAccessAt: string | null }
   account: { plan: string; brokerStatus: string | null; creci: string | null; creciStatus: string | null; creditsBalance: number; creditsUsed: number }
-  devices: Array<{ id: string; status: string; lastAccessAt: string | null }>
+  devices: Array<{ id: string; label: string; browser: string | null; platform: string | null; status: string; lastAccessAt: string | null }>
   operation: {
     properties: number
     publishedProperties: number
@@ -33,4 +33,5 @@ export type AdminUserDetails = {
     recentPurchases: Array<{ id: string; type: string; quantity: number; amountCents: number; status: string; createdAt: string }>
   }
   clients: AdminUserClientDetail[]
+  unavailableBlocks: string[]
 }

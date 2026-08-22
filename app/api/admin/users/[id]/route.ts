@@ -19,6 +19,7 @@ const userInclude = {
 } as const
 
 export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const startedAt = Date.now()
   const { error, user: admin } = await getAuthenticatedUser()
   if (error || !admin) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(admin.role, [UserRole.ADMIN])
@@ -28,6 +29,11 @@ export async function GET(_: NextRequest, context: { params: Promise<{ id: strin
   try {
     const details = await getAdminUserDetails(id)
     if (!details) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 })
+    console.info("[admin][users][details][response]", {
+      userId: id,
+      durationMs: Date.now() - startedAt,
+      unavailableBlocks: details.unavailableBlocks,
+    })
     return NextResponse.json(details)
   } catch (detailsError) {
     console.error("[admin][users][details] failed", { userId: id, error: detailsError })
