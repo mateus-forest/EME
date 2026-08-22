@@ -19,7 +19,7 @@ type VisualAssetDescriptor =
   | { kind: "synthetic-image"; src: string; filename: string }
   | { kind: "text"; src: string; filename: string }
 
-export type StudioEditableFieldKind = "text" | "textarea" | "tags" | "currency"
+export type StudioEditableFieldKind = "text" | "textarea" | "tags" | "currency" | "select"
 
 export type StudioEditableField = {
   id: string
@@ -27,6 +27,7 @@ export type StudioEditableField = {
   kind: StudioEditableFieldKind
   placeholder: string
   value: string
+  options?: Array<{ value: string; label: string }>
 }
 
 type StudioLibraryThumbnailResolution = {
@@ -187,28 +188,27 @@ export function formatStudioCurrencyInput(value: string) {
   return `R$ ${groupedInteger},${cents}`
 }
 
-function buildEditableFeatureFields(content: Record<string, unknown>): StudioEditableField[] {
-  const features = Array.isArray(content.features)
+function buildEditableFeatureFields(
+  campaign: StudioCampaignRecord,
+  content: Record<string, unknown>,
+): StudioEditableField[] {
+  const options = getStudioPropertyFeatureOptions(campaign)
+  const savedFeatures = Array.isArray(content.features)
     ? content.features.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 4)
     : []
-  const placeholders = [
-    "Ex.: Jardins, São Paulo",
-    "Ex.: 3 banheiros",
-    "Ex.: 2 vagas",
-    "Ex.: 245 m² de área útil",
-  ]
+  const availableValues = new Set(options.map((option) => option.value))
+  const selectedFeatures = Array.isArray(content.features)
+    ? savedFeatures.filter((feature) => availableValues.has(feature))
+    : options.slice(0, 4).map((option) => option.value)
 
-  return placeholders.map((placeholder, index) => ({
+  return Array.from({ length: 4 }, (_, index) => ({
     id: `feature${index + 1}`,
     label: `Característica ${index + 1}`,
-    kind: "text",
-    placeholder,
-    value: features[index] ?? "",
+    kind: "select",
+    placeholder: "Selecione uma característica",
+    value: selectedFeatures[index] ?? "",
+    options,
   }))
-}
-
-function joinLocationParts(...parts: Array<string | null | undefined>) {
-  return parts.map((item) => item?.trim()).filter((item): item is string => Boolean(item)).join(", ")
 }
 
 function resolveVisualAssetDescriptor(
@@ -411,14 +411,7 @@ export function getEditableStudioAssetFields(
         placeholder: "Deixe em branco para usar o padrao automatico (acao + localizacao)",
         value: readString(content.title),
       },
-      {
-        id: "location",
-        label: "Localizacao",
-        kind: "text",
-        placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
-        value: readString(content.location),
-      },
-      ...buildEditableFeatureFields(content),
+      ...buildEditableFeatureFields(campaign, content),
       {
         id: "price",
         label: "Investimento",
@@ -452,14 +445,7 @@ export function getEditableStudioAssetFields(
         placeholder: "Deixe em branco para usar o padrao automatico (acao + localizacao)",
         value: readString(content.title) || [readString(content.line1), readString(content.line2)].filter(Boolean).join(" "),
       },
-      {
-        id: "location",
-        label: "Localizacao",
-        kind: "text",
-        placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
-        value: readString(content.location),
-      },
-      ...buildEditableFeatureFields(content),
+      ...buildEditableFeatureFields(campaign, content),
       {
         id: "price",
         label: "Investimento",
@@ -564,7 +550,9 @@ export function applyEditedStudioAssetFields(
 
     nextContent.features = [normalized.feature1, normalized.feature2, normalized.feature3, normalized.feature4]
       .filter((item): item is string => typeof item === "string" && item.length > 0)
+      .filter((item, index, items) => items.indexOf(item) === index)
       .slice(0, 4)
+    delete nextContent.location
     delete nextContent.feature1
     delete nextContent.feature2
     delete nextContent.feature3
@@ -582,3 +570,4 @@ export function applyEditedStudioAssetFields(
     ...normalized,
   }
 }
+import { getStudioPropertyFeatureOptions } from "@/lib/studio-creative-renderer"

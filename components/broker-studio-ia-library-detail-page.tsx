@@ -429,7 +429,25 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                   editableFields.map((field) => (
                     <label key={field.id} className="grid gap-2">
                       <span className="text-sm font-medium text-[#44505f]">{field.label}</span>
-                      {field.kind === "textarea" || field.kind === "tags" ? (
+                      {field.kind === "select" ? (
+                        <select
+                          value={editValues[field.id] ?? ""}
+                          onChange={(event) => setEditValues((current) => ({ ...current, [field.id]: event.target.value }))}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-[#101828] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                          <option value="">{field.placeholder}</option>
+                          {(field.options ?? []).map((option) => {
+                            const selectedInAnotherField = Object.entries(editValues).some(
+                              ([key, value]) => key !== field.id && /^feature[1-4]$/.test(key) && value === option.value,
+                            )
+                            return (
+                              <option key={option.value} value={option.value} disabled={selectedInAnotherField}>
+                                {option.label}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      ) : field.kind === "textarea" || field.kind === "tags" ? (
                         <Textarea
                           value={editValues[field.id] ?? ""}
                           onChange={(event) => setEditValues((current) => ({ ...current, [field.id]: event.target.value }))}

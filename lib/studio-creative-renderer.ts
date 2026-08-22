@@ -37,6 +37,39 @@ export type StudioCreativeBranding = {
   showAgencyWatermark: boolean
 }
 
+export type StudioPropertyFeatureOption = {
+  value: string
+  label: string
+}
+
+export function getStudioPropertyFeatureOptions(
+  campaign: StudioCampaignRecord,
+): StudioPropertyFeatureOption[] {
+  const property = campaign.property
+  if (!property) return []
+
+  const options: StudioPropertyFeatureOption[] = []
+  const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
+  const areaLabel = readAreaLabel(campaign)
+
+  if (location) options.push({ value: location, label: `Localização: ${location}` })
+  if (areaLabel) options.push({ value: `${areaLabel}|Área útil`, label: `${areaLabel} de área útil` })
+  if (property.bedrooms > 0) {
+    const label = property.bedrooms === 1 ? "quarto" : "quartos"
+    options.push({ value: `${property.bedrooms}|${label}`, label: `${property.bedrooms} ${label}` })
+  }
+  if (property.bathrooms > 0) {
+    const label = property.bathrooms === 1 ? "banheiro" : "banheiros"
+    options.push({ value: `${property.bathrooms}|${label}`, label: `${property.bathrooms} ${label}` })
+  }
+  if (property.parkingSpots > 0) {
+    const label = property.parkingSpots === 1 ? "vaga" : "vagas"
+    options.push({ value: `${property.parkingSpots}|${label}`, label: `${property.parkingSpots} ${label}` })
+  }
+
+  return options
+}
+
 type StudioCreativePayload = {
   width: number
   height: number
@@ -310,7 +343,7 @@ async function renderInstagramFeedTemplate(
   const panelWidth = Math.min(payload.width - 136, Math.max(catalogConfig ? 790 : 620, metricPanelBox.width))
   const panelHeight = Math.max(126, metricPanelBox.height)
   const panelY = payload.height - panelHeight - 42
-  const featureY = Math.min(Math.max(700, purposeY + badgeBox.height + 34), panelY - 148)
+  const featureY = panelY - 144
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -367,7 +400,7 @@ async function renderInstagramFeedTemplate(
     payload.brokerLogoDataUri
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 1010,
-          bottomY: 1010,
+          bottomY: 890,
           width: 240,
           height: 192,
           opacity: PERSONAL_WATERMARK_OPACITY,
@@ -375,7 +408,7 @@ async function renderInstagramFeedTemplate(
       : payload.showAgencyWatermark && payload.agencyName
         ? renderAgencyWatermark(textRuns, {
             rightX: 1010,
-            bottomY: 1010,
+            bottomY: 890,
             boxWidth: 130,
             boxHeight: 104,
             logoDataUri: payload.agencyLogoDataUri,
@@ -429,7 +462,7 @@ async function renderInstagramStoryTemplate(
   const panelWidth = Math.min(payload.width - 160, Math.max(catalogConfig ? 790 : 620, metricPanelBox.width))
   const panelHeight = Math.max(142, metricPanelBox.height)
   const panelY = 1500
-  const featureY = Math.min(Math.max(1150, purposeY + badgeBox.height + 44), panelY - 154)
+  const featureY = panelY - 148
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -774,7 +807,7 @@ function renderBrokerHeader(
 
 // Translucent enough to read as a watermark rather than a solid logo badge, opaque enough to
 // still be recognizable over a bright patch of the property photo.
-const PERSONAL_WATERMARK_OPACITY = 0.32
+const PERSONAL_WATERMARK_OPACITY = 0.2
 
 // Bottom-right personal watermark — a broker's own logo (personal brand or their own uploaded
 // imobiliária mark, no Agency entity involved). A true watermark: no frame/background box, just
@@ -1122,8 +1155,8 @@ function mapPropertyPurposeLabel(value: string | null | undefined) {
   return "OPORTUNIDADE"
 }
 
-function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
-  return readPreferredString(content, ["location"]) || [campaign.property?.neighborhood, campaign.property?.city].filter(Boolean).join("\n")
+function resolveDisplayLocation(campaign: StudioCampaignRecord, _content: Record<string, unknown>) {
+  return [campaign.property?.neighborhood, campaign.property?.city].filter(Boolean).join("\n")
 }
 
 // Area is intentionally not derived here anymore — it has its own dedicated spec slot
@@ -1132,7 +1165,13 @@ function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<
 // location plus these never exceed the template's 4-item budget.
 function resolveDisplayFeatures(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   const explicit = normalizeStringList(content.features)
-  if (Array.isArray(content.features)) return explicit.slice(0, 4)
+  if (Array.isArray(content.features)) {
+    const availableValues = new Set(getStudioPropertyFeatureOptions(campaign).map((option) => option.value))
+    return explicit
+      .filter((feature) => availableValues.has(feature))
+      .filter((feature, index, features) => features.indexOf(feature) === index)
+      .slice(0, 4)
+  }
 
   const derived: string[] = []
   if ((campaign.property?.bathrooms ?? 0) > 0) {
@@ -1188,6 +1227,8 @@ function buildFeatureItem(feature: string): StudioFeatureItem {
   const normalized = feature.trim()
   const [line1, line2] = normalized.includes("|")
     ? normalized.split("|").map((item) => item.trim())
+    : normalized.includes(",")
+      ? normalized.split(",", 2).map((item) => item.trim())
     : splitFeatureLines(normalized)
 
   return {
