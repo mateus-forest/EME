@@ -85,6 +85,7 @@ type AssistantMessageResponse = {
   ctaHref?: string
   ctaLabel?: string
   error?: string
+  code?: string
   confirmRequired?: boolean
   interactionType?: CosInteractionType
   responseView?: unknown
@@ -138,6 +139,7 @@ type ConversationDetailResponse = {
   messages?: CosConversationItem[]
   pendingConfirmation?: PendingConfirmation | null
   error?: string
+  code?: string
 }
 
 type ConversationListResponse = {
@@ -173,6 +175,54 @@ type CosConversationCache = {
 
 const COS_CONVERSATION_CACHE_KEY = "eme-cos-conversation-cache"
 const INITIAL_CONVERSATION_PAGE_SIZE = 15
+const COS_CONVERSATION_NOT_FOUND_CODE = "COS_CONVERSATION_NOT_FOUND"
+
+class CosConversationApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null,
+  ) {
+    super(message)
+    this.name = "CosConversationApiError"
+  }
+}
+
+function isConversationNotFound(input: { status: number; code?: string | null; error?: string | null }) {
+  if (input.status !== 404) return false
+  if (input.code === COS_CONVERSATION_NOT_FOUND_CODE) return true
+
+  const normalizedMessage = repairLegacyCosText(input.error ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+  return normalizedMessage === "conversa nao encontrada."
+}
+
+function isConversationNotFoundError(error: unknown): error is CosConversationApiError {
+  return error instanceof CosConversationApiError && isConversationNotFound({
+    status: error.status,
+    code: error.code,
+    error: error.message,
+  })
+}
+
+async function requestConversationDetail(conversationId: string) {
+  const response = await fetch(`/api/assistant/eme/conversations/${encodeURIComponent(conversationId)}`, {
+    credentials: "include",
+    cache: "no-store",
+  })
+  const data = (await response.json().catch(() => null)) as ConversationDetailResponse | null
+  if (!response.ok) {
+    throw new CosConversationApiError(
+      repairLegacyCosText(data?.error || "Não foi possível abrir a conversa."),
+      response.status,
+      data?.code ?? null,
+    )
+  }
+  return data
+}
 
 function normalizeInteractionType(value: unknown): CosInteractionType | undefined {
   return value === "confirmation" ||
@@ -390,6 +440,7 @@ export function useCosConversations({
   const queuedNavigationHrefRef = useRef<string | null>(null)
   const conversationListRequestIdRef = useRef(0)
   const openConversationRequestIdRef = useRef(0)
+  const invalidConversationRecoveryRef = useRef<Promise<string> | null>(null)
   const loadedConversationCountRef = useRef(initialCacheRef.current?.conversations.length || INITIAL_CONVERSATION_PAGE_SIZE)
 
   const resolvedWorkspaceContext = useMemo(
@@ -410,6 +461,16 @@ export function useCosConversations({
 
     router.push(href)
   }, [router])
+
+  const replaceConversationUrl = useCallback((conversationId: string) => {
+    if (source !== "cos_home" || typeof window === "undefined") return
+
+    const params = new URLSearchParams(window.location.search)
+    if (conversationId) params.set("conversa", conversationId)
+    else params.delete("conversa")
+    const query = params.toString()
+    router.replace(`${pathname || "/corretor"}${query ? `?${query}` : ""}`, { scroll: false })
+  }, [pathname, router, source])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -471,53 +532,13 @@ export function useCosConversations({
     return nextPendingConfirmation
   }, [suppressedPendingConfirmation])
 
-  const openConversation = useCallback(async (
-    conversationId: string,
-    options?: {
-      preserveVisibleConversation?: boolean
-      skipLoadingState?: boolean
-    },
-  ) => {
-    const requestId = ++openConversationRequestIdRef.current
-    if (!options?.skipLoadingState) {
-      setIsConversationLoading(true)
-    }
-    setChatFeedback("")
+  const applyConversationDetail = useCallback((conversationId: string, data: ConversationDetailResponse | null) => {
+    setConversation((data?.messages ?? []).map(normalizeConversationItem))
+    setPendingConfirmation(getVisiblePendingConfirmation({
+      conversationId,
+      pendingConfirmation: data?.pendingConfirmation ?? null,
+    }))
     setActiveConversationId(conversationId)
-    if (!options?.preserveVisibleConversation) {
-      setConversation([])
-      setPendingConfirmation(null)
-    }
-
-    try {
-      const response = await fetch(`/api/assistant/eme/conversations/${conversationId}`, {
-        credentials: "include",
-        cache: "no-store",
-      })
-      const data = (await response.json().catch(() => null)) as ConversationDetailResponse | null
-      if (!response.ok) throw new Error(repairLegacyCosText(data?.error || "Não foi possível abrir a conversa."))
-
-      if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
-        return
-      }
-
-      setConversation((data?.messages ?? []).map(normalizeConversationItem))
-      setPendingConfirmation(getVisiblePendingConfirmation({
-        conversationId,
-        pendingConfirmation: data?.pendingConfirmation ?? null,
-      }))
-      setActiveConversationId(conversationId)
-    } catch (caughtError) {
-      if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) {
-        return
-      }
-      setChatFeedback(repairLegacyCosText(caughtError instanceof Error ? caughtError.message : "Não foi possível abrir a conversa."))
-    } finally {
-      if (isMountedRef.current && requestId === openConversationRequestIdRef.current) {
-        setIsConversationLoading(false)
-        window.setTimeout(() => inputRef.current?.focus(), 0)
-      }
-    }
   }, [getVisiblePendingConfirmation])
 
   const createConversation = useCallback(async () => {
@@ -550,6 +571,107 @@ export function useCosConversations({
     window.setTimeout(() => inputRef.current?.focus(), 0)
     return normalizedConversation
   }, [])
+
+  const recoverInvalidConversation = useCallback(async (invalidConversationId: string) => {
+    if (invalidConversationRecoveryRef.current) return invalidConversationRecoveryRef.current
+
+    const recoverableConversationId = activeConversationId && activeConversationId !== invalidConversationId
+      ? activeConversationId
+      : ""
+    const recovery = (async () => {
+      openConversationRequestIdRef.current += 1
+      setActiveConversationId("")
+      setPendingConfirmation(null)
+      setSuppressedPendingConfirmation(null)
+      setConversations((current) => current.filter((item) => item.id !== invalidConversationId))
+
+      let recoveredConversationId = ""
+      let reusedActiveConversation = false
+      if (recoverableConversationId) {
+        try {
+          const data = await requestConversationDetail(recoverableConversationId)
+          if (!isMountedRef.current) return recoverableConversationId
+          applyConversationDetail(recoverableConversationId, data)
+          recoveredConversationId = recoverableConversationId
+          reusedActiveConversation = true
+        } catch (caughtError) {
+          if (!isConversationNotFoundError(caughtError)) throw caughtError
+        }
+      }
+
+      if (!recoveredConversationId) {
+        const created = await createConversation()
+        recoveredConversationId = created.id
+      }
+
+      if (isMountedRef.current) {
+        replaceConversationUrl(recoveredConversationId)
+        setChatFeedback(
+          reusedActiveConversation
+            ? "A conversa anterior não está mais disponível. Retomei sua conversa ativa."
+            : "A conversa anterior não está mais disponível. Iniciei uma nova conversa.",
+        )
+      }
+      return recoveredConversationId
+    })()
+
+    invalidConversationRecoveryRef.current = recovery
+    try {
+      return await recovery
+    } finally {
+      if (invalidConversationRecoveryRef.current === recovery) {
+        invalidConversationRecoveryRef.current = null
+      }
+      if (isMountedRef.current) {
+        setIsConversationLoading(false)
+        window.setTimeout(() => inputRef.current?.focus(), 0)
+      }
+    }
+  }, [activeConversationId, applyConversationDetail, createConversation, replaceConversationUrl])
+
+  const openConversation = useCallback(async (
+    conversationId: string,
+    options?: {
+      preserveVisibleConversation?: boolean
+      skipLoadingState?: boolean
+    },
+  ) => {
+    const requestId = ++openConversationRequestIdRef.current
+    if (!options?.skipLoadingState) {
+      setIsConversationLoading(true)
+    }
+    setChatFeedback("")
+    if (!options?.preserveVisibleConversation) {
+      setConversation([])
+      setPendingConfirmation(null)
+    }
+
+    try {
+      const data = await requestConversationDetail(conversationId)
+      if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) return undefined
+
+      applyConversationDetail(conversationId, data)
+      return conversationId
+    } catch (caughtError) {
+      if (!isMountedRef.current || requestId !== openConversationRequestIdRef.current) return undefined
+
+      let feedbackError = caughtError
+      if (isConversationNotFoundError(caughtError)) {
+        try {
+          return await recoverInvalidConversation(conversationId)
+        } catch (recoveryError) {
+          feedbackError = recoveryError
+        }
+      }
+      setChatFeedback(repairLegacyCosText(feedbackError instanceof Error ? feedbackError.message : "Não foi possível abrir a conversa."))
+      return undefined
+    } finally {
+      if (isMountedRef.current && requestId === openConversationRequestIdRef.current) {
+        setIsConversationLoading(false)
+        window.setTimeout(() => inputRef.current?.focus(), 0)
+      }
+    }
+  }, [applyConversationDetail, recoverInvalidConversation])
 
   const renameConversation = useCallback(async (conversationId: string, title: string) => {
     const response = await fetch(`/api/assistant/eme/conversations/${conversationId}`, {
@@ -585,11 +707,12 @@ export function useCosConversations({
       setPendingConfirmation(null)
       setSuppressedPendingConfirmation(null)
 
-      if (nextConversations[0]) {
-        await openConversation(nextConversations[0].id)
-      }
+      const nextConversationId = nextConversations[0]
+        ? await openConversation(nextConversations[0].id)
+        : (await createConversation()).id
+      if (nextConversationId) replaceConversationUrl(nextConversationId)
     }
-  }, [activeConversationId, conversations, openConversation])
+  }, [activeConversationId, conversations, createConversation, openConversation, replaceConversationUrl])
 
   const sendCosMessage = useCallback(async (
     messageToSend: string,
@@ -753,7 +876,7 @@ export function useCosConversations({
     }
 
     try {
-      const response = await fetch("/api/assistant/eme", {
+      const postMessage = (conversationId: string) => fetch("/api/assistant/eme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -768,12 +891,19 @@ export function useCosConversations({
           cancel: Boolean(resolvedOptions?.cancel),
           attachments: resolvedOptions?.attachments ?? [],
           source,
-          conversationId: activeConversationId || undefined,
+          conversationId: conversationId || undefined,
           workspace: messageWorkspaceContext,
         }),
       })
 
-      const data = (await response.json().catch(() => null)) as AssistantMessageResponse | null
+      let response = await postMessage(activeConversationId)
+      let data = (await response.json().catch(() => null)) as AssistantMessageResponse | null
+      if (isConversationNotFound({ status: response.status, code: data?.code, error: data?.error }) && activeConversationId) {
+        const recoveredConversationId = await recoverInvalidConversation(activeConversationId)
+        setConversation((current) => [...current, optimisticUserMessage])
+        response = await postMessage(recoveredConversationId)
+        data = (await response.json().catch(() => null)) as AssistantMessageResponse | null
+      }
       if (data?.credits) setAssistantCredits(data.credits)
       if (!response.ok) {
         if (data?.creditsBlocked) {
@@ -945,7 +1075,7 @@ export function useCosConversations({
       setIsSending(false)
       window.setTimeout(() => inputRef.current?.focus(), 0)
     }
-  }, [activeConversationId, assistantCredits.balance, assistantEnabled, conversation, conversations, isBootstrappingConversation, isConversationLoading, isSending, loadConversations, navigateToFastActionHref, pathname, pendingConfirmation, resolvedWorkspaceContext, setAssistantCredits, source])
+  }, [activeConversationId, assistantCredits.balance, assistantEnabled, conversation, conversations, isBootstrappingConversation, isConversationLoading, isSending, loadConversations, navigateToFastActionHref, pathname, pendingConfirmation, recoverInvalidConversation, resolvedWorkspaceContext, setAssistantCredits, source])
 
   useEffect(() => {
     if (isBootstrappingConversation || isConversationLoading) return

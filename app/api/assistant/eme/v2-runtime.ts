@@ -404,7 +404,12 @@ export async function handleCosV2Post(request: NextRequest) {
           },
           select: { id: true, title: true, content: true, createdAt: true, updatedAt: true },
         })
-    if (!conversation) return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
+    if (!conversation) {
+      return NextResponse.json(
+        { error: "Conversa não encontrada.", code: "COS_CONVERSATION_NOT_FOUND" },
+        { status: 404 },
+      )
+    }
 
     let activeWorkflow = getActiveWorkflow(conversation.content)
     const memory = getConversationMemory(conversation.content)
@@ -794,6 +799,12 @@ export async function handleCosV2Post(request: NextRequest) {
     }
     if (caughtError instanceof Error && caughtError.message.includes("CONVERSATION_CONFLICT")) {
       return NextResponse.json({ error: "A conversa mudou enquanto a ação era processada. Atualize e tente novamente." }, { status: 409 })
+    }
+    if (caughtError instanceof Error && caughtError.message.includes("CONVERSATION_NOT_FOUND")) {
+      return NextResponse.json(
+        { error: "Conversa não encontrada.", code: "COS_CONVERSATION_NOT_FOUND" },
+        { status: 404 },
+      )
     }
     return NextResponse.json({ error: "Não foi possível concluir essa conversa agora." }, { status: 500 })
   }

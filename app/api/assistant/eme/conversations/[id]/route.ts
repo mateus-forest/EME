@@ -238,7 +238,14 @@ async function getConversationOrError(id: string) {
   })
 
   if (!conversation) {
-    return { error: NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 }), user: null, conversation: null }
+    return {
+      error: NextResponse.json(
+        { error: "Conversa não encontrada.", code: "COS_CONVERSATION_NOT_FOUND" },
+        { status: 404 },
+      ),
+      user: null,
+      conversation: null,
+    }
   }
 
   return { error: null, user, conversation }
@@ -251,7 +258,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const resolved = await getConversationOrError(id)
     if (resolved.error) return resolved.error
     if (!resolved.conversation || !resolved.user?.broker) {
-      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Conversa não encontrada.", code: "COS_CONVERSATION_NOT_FOUND" }, { status: 404 })
     }
 
     const rows = await prisma.emeMessage.findMany({
@@ -299,7 +306,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const resolved = await getConversationOrError(id)
     if (resolved.error) return resolved.error
     if (!resolved.conversation) {
-      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Conversa não encontrada.", code: "COS_CONVERSATION_NOT_FOUND" }, { status: 404 })
     }
 
     const body = await request.json().catch(() => null)
@@ -331,7 +338,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const resolved = await getConversationOrError(id)
     if (resolved.error) return resolved.error
     if (!resolved.conversation || !resolved.user?.broker) {
-      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
+      return NextResponse.json({ error: "Conversa não encontrada.", code: "COS_CONVERSATION_NOT_FOUND" }, { status: 404 })
     }
 
     await prisma.$transaction([
