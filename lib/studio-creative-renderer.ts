@@ -29,6 +29,7 @@ export type StudioCreativeBranding = {
   brokerName: string | null
   brokerPhotoDataUri: string | null
   brokerCreci: string | null
+  catalogUrl: string | null
   brokerLogoDataUri: string | null
   agencyName: string | null
   agencyLogoDataUri: string | null
@@ -46,10 +47,12 @@ type StudioCreativePayload = {
   location: string
   areaLabel: string | null
   features: string[]
+  featuresAreCustom: boolean
   price: string
   metricLabel: string
   metricSupport: string
   ctaLabel: string
+  catalogUrl: string
   propertyImageSrc: string | null
   gradientId: string
   waveId: string
@@ -248,10 +251,12 @@ function buildStudioCreativePayload(input: {
     location,
     areaLabel,
     features,
+    featuresAreCustom: Array.isArray(content.features),
     price,
-    metricLabel: metric.label === "PREÇO" ? badgeLabel : metric.label,
+    metricLabel: "INVESTIMENTO",
     metricSupport: metric.support,
     ctaLabel,
+    catalogUrl: readPreferredString(content, ["catalogUrl"]) || input.branding.catalogUrl || "",
     propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
     gradientId: `studio-gradient-${gradientToken}`,
     waveId: `studio-wave-${gradientToken}`,
@@ -276,12 +281,15 @@ async function renderInstagramFeedTemplate(
   const titleLayout = fitMultilineText(payload.title, 520, 68, 46, 2)
   const locationItem = buildLocationFeature(payload.location)
   const areaItem = buildAreaFeature(payload.areaLabel)
-  const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
+  const featureItems = (payload.featuresAreCustom
+    ? payload.features.map((feature) => buildFeatureItem(feature))
+    : [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))])
     .filter((item): item is StudioFeatureItem => Boolean(item))
     .slice(0, 4)
 
   const ctaLayout = fitMultilineText(payload.ctaLabel, CTA_MAX_WIDTH, CTA_MAX_FONT_SIZE, CTA_MIN_FONT_SIZE, CTA_MAX_LINES)
-  const ctaConfig = { lines: ctaLayout.lines, fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
+  const ctaConfig = { lines: splitCtaLines(ctaLayout.lines), fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
+  const catalogConfig = buildCatalogConfig(payload.catalogUrl)
 
   const [badgeBox, metricPanelBox] = await Promise.all([
     computeBadgeBox(measure, payload.purposeLabel),
@@ -291,17 +299,18 @@ async function renderInstagramFeedTemplate(
       metricValueFontSize: 36,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
+      catalog: catalogConfig,
     }),
   ])
 
   const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
-  const dividerY = Math.max(535, Math.round(titleBottom + 28))
-  const purposeY = dividerY + 28
-  const panelWidth = Math.max(620, metricPanelBox.width)
+  const dividerY = Math.max(510, Math.round(titleBottom + 18))
+  const purposeY = dividerY + 20
+  const panelWidth = Math.min(payload.width - 136, Math.max(catalogConfig ? 790 : 620, metricPanelBox.width))
   const panelHeight = Math.max(126, metricPanelBox.height)
-  const panelY = payload.height - panelHeight - 54
-  const featureY = Math.min(Math.max(700, purposeY + badgeBox.height + 42), panelY - 158)
+  const panelY = payload.height - panelHeight - 42
+  const featureY = Math.min(Math.max(700, purposeY + badgeBox.height + 34), panelY - 148)
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -346,27 +355,29 @@ async function renderInstagramFeedTemplate(
       width: panelWidth,
       height: panelHeight,
       stackColumnWidth: metricPanelBox.stackColumnWidth,
+      ctaColumnWidth: metricPanelBox.ctaColumnWidth,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
       metricValueFontSize: 36,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
+      catalog: catalogConfig,
       accentColor: payload.accentColor,
     }),
     payload.brokerLogoDataUri
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 1010,
           bottomY: 1010,
-          width: 200,
-          height: 160,
+          width: 240,
+          height: 192,
           opacity: PERSONAL_WATERMARK_OPACITY,
         })
       : payload.showAgencyWatermark && payload.agencyName
         ? renderAgencyWatermark(textRuns, {
             rightX: 1010,
             bottomY: 1010,
-            boxWidth: 108,
-            boxHeight: 86,
+            boxWidth: 130,
+            boxHeight: 104,
             logoDataUri: payload.agencyLogoDataUri,
             agencyName: payload.agencyName,
             creci: payload.brokerCreci,
@@ -389,12 +400,15 @@ async function renderInstagramStoryTemplate(
   const titleLayout = fitMultilineText(payload.title, 560, 78, 52, 2)
   const locationItem = buildLocationFeature(payload.location)
   const areaItem = buildAreaFeature(payload.areaLabel)
-  const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
+  const featureItems = (payload.featuresAreCustom
+    ? payload.features.map((feature) => buildFeatureItem(feature))
+    : [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))])
     .filter((item): item is StudioFeatureItem => Boolean(item))
     .slice(0, 4)
 
   const ctaLayout = fitMultilineText(payload.ctaLabel, CTA_MAX_WIDTH, 20, 16, CTA_MAX_LINES)
-  const ctaConfig = { lines: ctaLayout.lines, fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
+  const ctaConfig = { lines: splitCtaLines(ctaLayout.lines), fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
+  const catalogConfig = buildCatalogConfig(payload.catalogUrl)
 
   const [badgeBox, metricPanelBox] = await Promise.all([
     computeBadgeBox(measure, payload.purposeLabel),
@@ -404,17 +418,18 @@ async function renderInstagramStoryTemplate(
       metricValueFontSize: 40,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
+      catalog: catalogConfig,
     }),
   ])
 
   const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
-  const dividerY = Math.max(850, Math.round(titleBottom + 32))
-  const purposeY = dividerY + 36
-  const panelWidth = Math.max(620, metricPanelBox.width)
+  const dividerY = Math.max(820, Math.round(titleBottom + 20))
+  const purposeY = dividerY + 24
+  const panelWidth = Math.min(payload.width - 160, Math.max(catalogConfig ? 790 : 620, metricPanelBox.width))
   const panelHeight = Math.max(142, metricPanelBox.height)
   const panelY = 1500
-  const featureY = Math.min(Math.max(1150, purposeY + badgeBox.height + 60), panelY - 188)
+  const featureY = Math.min(Math.max(1150, purposeY + badgeBox.height + 44), panelY - 154)
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
@@ -452,34 +467,36 @@ async function renderInstagramStoryTemplate(
     renderMultilineText(textRuns, titleLayout.lines, 82, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(82, dividerY, 104, payload.accentColor),
     renderBadge(textRuns, payload.purposeLabel, 82, purposeY, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
-    renderFeatureRow(textRuns, featureItems, 82, featureY, 218, payload.accentColor),
+    renderFeatureRow(textRuns, featureItems, 82, featureY, 205, payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 80,
       y: panelY,
       width: panelWidth,
       height: panelHeight,
       stackColumnWidth: metricPanelBox.stackColumnWidth,
+      ctaColumnWidth: metricPanelBox.ctaColumnWidth,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
       metricValueFontSize: 40,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
+      catalog: catalogConfig,
       accentColor: payload.accentColor,
     }),
     payload.brokerLogoDataUri
       ? renderPersonalWatermark(payload.brokerLogoDataUri, {
           rightX: 998,
           bottomY: 1850,
-          width: 280,
-          height: 220,
+          width: 336,
+          height: 264,
           opacity: PERSONAL_WATERMARK_OPACITY,
         })
       : payload.showAgencyWatermark && payload.agencyName
         ? renderAgencyWatermark(textRuns, {
             rightX: 998,
             bottomY: 1850,
-            boxWidth: 150,
-            boxHeight: 118,
+            boxWidth: 180,
+            boxHeight: 142,
             logoDataUri: payload.agencyLogoDataUri,
             agencyName: payload.agencyName,
             creci: payload.brokerCreci,
@@ -501,25 +518,12 @@ function renderBackgroundImage(imageSrc: string | null, width: number, height: n
 }
 
 function renderLeftOverlay(width: number, height: number, portrait: boolean) {
-  if (portrait) {
-    return `<path d="M0 0 H560 C612 272 600 766 482 1162 C412 1410 208 1718 0 ${height} Z" fill="rgba(0,0,0,0.3)" />`
-  }
-
-  return `<path d="M0 0 H534 C594 210 604 506 542 784 C482 960 288 1046 0 ${height} Z" fill="rgba(0,0,0,0.3)" />`
+  const opacity = portrait ? 0.05 : 0.04
+  return `<rect width="${width}" height="${height}" fill="rgba(0,0,0,${opacity})" />`
 }
 
-function renderBottomWave(width: number, height: number, waveId: string, portrait: boolean, accentColor: string) {
-  if (portrait) {
-    return [
-      `<path d="M628 ${height} C756 ${height - 146} 898 ${height - 218} ${width} ${height - 168} L${width} ${height} Z" fill="url(#${waveId})" />`,
-      `<path d="M628 ${height} C760 ${height - 150} 908 ${height - 222} ${width} ${height - 176}" fill="none" stroke="${accentRgba(accentColor, 0.72)}" stroke-width="2.2" />`,
-    ].join("")
-  }
-
-  return [
-    `<path d="M820 ${height} C928 ${height - 120} 1012 ${height - 136} ${width} ${height - 102} L${width} ${height} Z" fill="url(#${waveId})" />`,
-    `<path d="M818 ${height} C926 ${height - 124} 1018 ${height - 142} ${width} ${height - 108}" fill="none" stroke="${accentRgba(accentColor, 0.72)}" stroke-width="2" />`,
-  ].join("")
+function renderBottomWave(width: number, height: number, waveId: string, _portrait: boolean, _accentColor: string) {
+  return `<rect width="${width}" height="${height}" fill="url(#${waveId})" />`
 }
 
 const BADGE_ICON_LEFT_PAD = 22
@@ -579,6 +583,7 @@ async function computeMetricPanelBox(
     metricValueFontSize: number
     metricSupport: string
     cta?: { lines: string[]; fontSize: number; lineHeight: number }
+    catalog?: { label: string; url: string }
   },
 ) {
   const labelFontSize = 16
@@ -610,10 +615,21 @@ async function computeMetricPanelBox(
       input.cta.fontSize * (STUDIO_FONT_ASCENT_RATIO + STUDIO_FONT_DESCENT_RATIO)
   }
 
-  const contentHeight = Math.max(stackHeight, ctaHeight, input.cta ? CALENDAR_ICON_HEIGHT : 0)
+  let catalogColumnWidth = 0
+  let catalogHeight = 0
+  if (input.catalog) {
+    const [catalogLabelBox, catalogUrlBox] = await Promise.all([
+      measure(input.catalog.label, 17, "500", 0),
+      measure(input.catalog.url, 15, "400", 0),
+    ])
+    catalogColumnWidth = Math.ceil(Math.max(catalogLabelBox.width, catalogUrlBox.width))
+    catalogHeight = 17 + 10 + 15
+  }
+
+  const contentHeight = Math.max(stackHeight, ctaHeight, catalogHeight, input.cta ? CALENDAR_ICON_HEIGHT : 0)
   const height = Math.round(contentHeight + PANEL_VERTICAL_PADDING * 2)
 
-  const width = input.cta
+  const ctaWidth = input.cta
     ? PANEL_PADDING_X +
       stackColumnWidth +
       PANEL_DIVIDER_GAP * 2 +
@@ -622,8 +638,11 @@ async function computeMetricPanelBox(
       ctaColumnWidth +
       PANEL_PADDING_X
     : PANEL_PADDING_X * 2 + stackColumnWidth
+  const width = input.catalog
+    ? ctaWidth - PANEL_PADDING_X + PANEL_DIVIDER_GAP * 2 + catalogColumnWidth + PANEL_PADDING_X
+    : ctaWidth
 
-  return { width: Math.round(width), height, stackColumnWidth }
+  return { width: Math.round(width), height, stackColumnWidth, ctaColumnWidth }
 }
 
 // The badge's pill height is driven by BADGE_ICON_HEIGHT (see computeBadgeBox), not by the
@@ -657,12 +676,14 @@ function renderBadge(
     renderSingleLineText(
       runs,
       label,
-      x + pillX + 28,
+      x + pillX + (width - pillX) / 2,
       y + labelBaselineY,
       BADGE_FONT_SIZE,
       "500",
       accentColor,
       0.12,
+      "middle",
+      true,
     ),
   ].join("")
 }
@@ -753,7 +774,7 @@ function renderBrokerHeader(
 
 // Translucent enough to read as a watermark rather than a solid logo badge, opaque enough to
 // still be recognizable over a bright patch of the property photo.
-const PERSONAL_WATERMARK_OPACITY = 0.5
+const PERSONAL_WATERMARK_OPACITY = 0.32
 
 // Bottom-right personal watermark — a broker's own logo (personal brand or their own uploaded
 // imobiliária mark, no Agency entity involved). A true watermark: no frame/background box, just
@@ -848,11 +869,11 @@ const FEATURE_ICON_SCALE = 0.7
 function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, columnWidth: number, accentColor: string) {
   const isStory = columnWidth >= 200
   const cardWidth = columnWidth - 12
-  const cardHeight = isStory ? 158 : 140
-  const iconScale = isStory ? 0.82 : FEATURE_ICON_SCALE
+  const cardHeight = isStory ? 144 : 140
+  const iconScale = isStory ? 0.72 : FEATURE_ICON_SCALE
   const iconWidth = 56 * iconScale
   const iconY = isStory ? 22 : 18
-  const textTop = isStory ? 104 : 88
+  const textTop = isStory ? 91 : 88
 
   return items
     .map((item, index) => {
@@ -896,6 +917,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   // divider and CTA column are placed at the exact edge of that content, with a fixed gap on each
   // side, instead of a fraction of the panel's total width.
   stackColumnWidth: number
+  ctaColumnWidth: number
   metricLabel: string
   metricValue: string
   metricValueFontSize: number
@@ -903,6 +925,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
   // Story's panel has no calendar/CTA section at all (see the two approved reference images side
   // by side) — omit entirely rather than rendering an empty divider.
   cta?: { lines: string[]; fontSize: number; lineHeight: number }
+  catalog?: { label: string; url: string }
   accentColor: string
 }) {
   const dividerX = input.cta ? Math.round(PANEL_PADDING_X + input.stackColumnWidth + PANEL_DIVIDER_GAP) : 0
@@ -932,16 +955,24 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
 
   const ctaIconY = input.cta ? centerIconY(input.height, CALENDAR_ICON_TOP, CALENDAR_ICON_HEIGHT) : 0
   const ctaTextY = input.cta ? centerTextBlockY(input.height, input.cta.fontSize, input.cta.lineHeight, input.cta.lines.length) : 0
+  const catalogDividerX = input.catalog && input.cta
+    ? iconX + CALENDAR_ICON_WIDTH + PANEL_ICON_TEXT_GAP + input.ctaColumnWidth + PANEL_DIVIDER_GAP
+    : 0
+  const catalogTextX = catalogDividerX + PANEL_DIVIDER_GAP
+  const catalogLabelY = centerTextBlockY(input.height, 17, 27, 2)
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="26" fill="rgba(7,7,7,0.64)" stroke="rgba(255,255,255,0.28)" stroke-width="1.4" />`,
+    `<rect width="${input.width}" height="${input.height}" rx="26" fill="rgba(7,7,7,0.58)" stroke="rgba(255,255,255,0.28)" stroke-width="1.4" />`,
     `<path d="M28 1 H${input.width - 28}" stroke="rgba(255,255,255,0.2)" stroke-width="1" />`,
     input.cta
       ? [
           `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
           renderFeatureIcon("calendar", iconX, ctaIconY, input.accentColor),
         ].join("")
+      : "",
+    input.catalog
+      ? `<rect x="${catalogDividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`
       : "",
     "</g>",
     renderSingleLineText(runs, input.metricLabel, input.x + panelPaddingX, input.y + labelY, labelFontSize, "500", "#dddddd", 0.04),
@@ -961,6 +992,12 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
           input.cta.lineHeight,
           0,
         )
+      : "",
+    input.catalog
+      ? [
+          renderSingleLineText(runs, input.catalog.label, input.x + catalogTextX, input.y + catalogLabelY, 17, "500", "#ffffff"),
+          renderSingleLineText(runs, input.catalog.url, input.x + catalogTextX, input.y + catalogLabelY + 27, 15, "400", input.accentColor),
+        ].join("")
       : "",
   ].join("")
 }
@@ -1039,6 +1076,34 @@ function resolveDisplayCta(content: Record<string, unknown>) {
   return custom || "Agende sua visita"
 }
 
+function splitCtaLines(lines: string[]) {
+  if (lines.length !== 1) return lines
+  const words = lines[0].trim().split(/\s+/).filter(Boolean)
+  if (words.length < 2) return lines
+  const splitAt = Math.max(1, Math.floor(words.length / 2))
+  return [words.slice(0, splitAt).join(" "), words.slice(splitAt).join(" ")]
+}
+
+function buildCatalogConfig(value: string) {
+  const url = formatCatalogDisplayUrl(value)
+  return url ? { label: "Confira no Catálogo", url } : undefined
+}
+
+function formatCatalogDisplayUrl(value: string) {
+  const normalized = value.trim()
+  if (!normalized) return ""
+
+  let display = normalized.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "")
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(normalized) ? normalized : `https://${normalized}`)
+    display = `${parsed.host.replace(/^www\./i, "")}${parsed.pathname}`.replace(/\/$/, "")
+  } catch {
+    // Keep the user-provided value when it is not a complete URL.
+  }
+
+  return display.length > 42 ? `${display.slice(0, 41).trimEnd()}…` : display
+}
+
 // Uppercase, bold action word for the new title. A grammatically correct Portuguese preposition
 // ("NOS Jardins" vs "NO Centro" vs "NA Vila Madalena") depends on the location name's gender and
 // number, which isn't data we have — using "•" as a separator avoids guessing wrong on properties
@@ -1067,7 +1132,7 @@ function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<
 // location plus these never exceed the template's 4-item budget.
 function resolveDisplayFeatures(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   const explicit = normalizeStringList(content.features)
-  if (explicit.length > 0) return explicit.slice(0, 2)
+  if (Array.isArray(content.features)) return explicit.slice(0, 4)
 
   const derived: string[] = []
   if ((campaign.property?.bathrooms ?? 0) > 0) {
@@ -1153,6 +1218,7 @@ function inferFeatureIcon(value: string): StudioFeatureItem["icon"] {
   if (normalized.includes("vaga") || normalized.includes("garag") || normalized.includes("estacion")) return "car"
   if (normalized.includes("dorm") || normalized.includes("suite") || normalized.includes("quarto")) return "bed"
   if (normalized.includes("m2") || normalized.includes("m²") || normalized.includes("area")) return "area"
+  if (normalized.includes(",") || normalized.includes("bairro") || normalized.includes("cidade")) return "location"
   return "area"
 }
 

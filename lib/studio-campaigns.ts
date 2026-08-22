@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client"
 import { deletePropertyStorageFile } from "@/lib/property-storage"
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/lib/prisma-enums"
+import { buildBrokerCatalogUrl } from "@/lib/public-catalog-url"
 
 export type StudioCampaignKind =
   | "INSTAGRAM"
@@ -114,6 +115,7 @@ const studioCampaignInclude = {
   broker: {
     select: {
       creci: true,
+      catalogSlug: true,
       brandColor: true,
       logoUrl: true,
       showAgencyWatermark: true,
@@ -235,6 +237,9 @@ function resolveCampaignBranding(
     brokerName: campaign.broker?.user.name ?? null,
     brokerPhotoUrl: campaign.broker?.user.photoUrl ?? null,
     brokerCreci: campaign.broker?.creci ?? null,
+    catalogUrl: campaign.broker?.catalogSlug
+      ? buildBrokerCatalogUrl(campaign.broker.catalogSlug)
+      : null,
     brokerLogoUrl: campaign.broker?.logoUrl ?? null,
     agencyName: agency?.name ?? null,
     agencyLogoUrl: agency?.logoUrl ?? null,

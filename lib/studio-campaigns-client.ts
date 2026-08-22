@@ -57,6 +57,7 @@ export type StudioCampaignRecord = {
     brokerName: string | null
     brokerPhotoUrl: string | null
     brokerCreci: string | null
+    catalogUrl: string | null
     brokerLogoUrl: string | null
     agencyName: string | null
     agencyLogoUrl: string | null

@@ -46,6 +46,7 @@ import {
 import {
   applyEditedStudioAssetFields,
   extractTextFromAsset,
+  formatStudioCurrencyInput,
   getAssetActionLabels,
   getAssetDownloadDescriptor,
   getEditableStudioAssetFields,
@@ -439,6 +440,14 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
                         <Input
                           value={editValues[field.id] ?? ""}
                           onChange={(event) => setEditValues((current) => ({ ...current, [field.id]: event.target.value }))}
+                          onBlur={() => {
+                            if (field.kind !== "currency") return
+                            setEditValues((current) => ({
+                              ...current,
+                              [field.id]: formatStudioCurrencyInput(current[field.id] ?? ""),
+                            }))
+                          }}
+                          inputMode={field.kind === "currency" ? "numeric" : undefined}
                           placeholder={field.placeholder}
                         />
                       )}

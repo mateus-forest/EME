@@ -64,6 +64,7 @@ export async function GET(
       brokerName: campaign.branding.brokerName,
       brokerPhotoDataUri,
       brokerCreci: campaign.branding.brokerCreci,
+      catalogUrl: campaign.branding.catalogUrl,
       brokerLogoDataUri,
       agencyName: campaign.branding.agencyName,
       agencyLogoDataUri,

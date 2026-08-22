@@ -19,7 +19,7 @@ type VisualAssetDescriptor =
   | { kind: "synthetic-image"; src: string; filename: string }
   | { kind: "text"; src: string; filename: string }
 
-export type StudioEditableFieldKind = "text" | "textarea" | "tags"
+export type StudioEditableFieldKind = "text" | "textarea" | "tags" | "currency"
 
 export type StudioEditableField = {
   id: string
@@ -172,8 +172,39 @@ function formatEditablePrice(value: number | null | undefined) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value / 100)
+}
+
+export function formatStudioCurrencyInput(value: string) {
+  const [integerPart = "", decimalPart = ""] = value.trim().split(",", 2)
+  const integerDigits = integerPart.replace(/\D/g, "").replace(/^0+(?=\d)/, "")
+  if (!integerDigits) return ""
+
+  const groupedInteger = integerDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  const cents = `${decimalPart.replace(/\D/g, "")}00`.slice(0, 2)
+  return `R$ ${groupedInteger},${cents}`
+}
+
+function buildEditableFeatureFields(content: Record<string, unknown>): StudioEditableField[] {
+  const features = Array.isArray(content.features)
+    ? content.features.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 4)
+    : []
+  const placeholders = [
+    "Ex.: Jardins, São Paulo",
+    "Ex.: 3 banheiros",
+    "Ex.: 2 vagas",
+    "Ex.: 245 m² de área útil",
+  ]
+
+  return placeholders.map((placeholder, index) => ({
+    id: `feature${index + 1}`,
+    label: `Característica ${index + 1}`,
+    kind: "text",
+    placeholder,
+    value: features[index] ?? "",
+  }))
 }
 
 function joinLocationParts(...parts: Array<string | null | undefined>) {
@@ -387,36 +418,32 @@ export function getEditableStudioAssetFields(
         placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
         value: readString(content.location),
       },
-      {
-        id: "features",
-        label: "Caracteristicas",
-        kind: "tags",
-        placeholder: "Area privativa\n3 banheiros\n2 vagas",
-        value: Array.isArray(content.features)
-          ? content.features.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join("\n")
-          : "",
-      },
+      ...buildEditableFeatureFields(content),
       {
         id: "price",
-        label: "Preco",
-        kind: "text",
-        placeholder: formatEditablePrice(campaign.property?.price) || "R$ 1.780.000",
-        value: readString(content.price),
+        label: "Investimento",
+        kind: "currency",
+        placeholder: "R$ 1.780.000,00",
+        value: formatStudioCurrencyInput(readString(content.price) || formatEditablePrice(campaign.property?.price)),
       },
       {
         id: "cta",
         label: "CTA",
         kind: "text",
         placeholder: "Agende sua visita",
-        value: readString(content.cta),
+        value: readString(content.cta) || "Agende sua visita",
+      },
+      {
+        id: "catalogUrl",
+        label: "Link do catálogo",
+        kind: "text",
+        placeholder: "https://meueme.com/catalogo/seu-catalogo",
+        value: readString(content.catalogUrl) || campaign.branding.catalogUrl || "",
       },
     ]
   }
 
   if (asset.assetKey === "story") {
-    // No "cta" field here: the Story template has no CTA/calendar section in its price panel
-    // (see lib/studio-creative-renderer.ts renderInstagramStoryTemplate) — offering it would
-    // resurrect exactly the "field with no renderer effect" problem this cleanup exists to fix.
     return [
       {
         id: "title",
@@ -432,21 +459,27 @@ export function getEditableStudioAssetFields(
         placeholder: joinLocationParts(campaign.property?.neighborhood, campaign.property?.city) || "Jardins, Sao Paulo - SP",
         value: readString(content.location),
       },
-      {
-        id: "features",
-        label: "Caracteristicas",
-        kind: "tags",
-        placeholder: "Area privativa\n3 banheiros\n2 vagas",
-        value: Array.isArray(content.features)
-          ? content.features.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join("\n")
-          : "",
-      },
+      ...buildEditableFeatureFields(content),
       {
         id: "price",
-        label: "Preco",
+        label: "Investimento",
+        kind: "currency",
+        placeholder: "R$ 1.780.000,00",
+        value: formatStudioCurrencyInput(readString(content.price) || formatEditablePrice(campaign.property?.price)),
+      },
+      {
+        id: "cta",
+        label: "CTA",
         kind: "text",
-        placeholder: formatEditablePrice(campaign.property?.price) || "R$ 1.780.000",
-        value: readString(content.price),
+        placeholder: "Agende sua visita",
+        value: readString(content.cta) || "Agende sua visita",
+      },
+      {
+        id: "catalogUrl",
+        label: "Link do catálogo",
+        kind: "text",
+        placeholder: "https://meueme.com/catalogo/seu-catalogo",
+        value: readString(content.catalogUrl) || campaign.branding.catalogUrl || "",
       },
     ]
   }
@@ -529,12 +562,13 @@ export function applyEditedStudioAssetFields(
       ...normalized,
     } as Record<string, unknown>
 
-    if (typeof normalized.features === "string") {
-      nextContent.features = normalized.features
-        .split(/\r?\n|,/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-    }
+    nextContent.features = [normalized.feature1, normalized.feature2, normalized.feature3, normalized.feature4]
+      .filter((item): item is string => typeof item === "string" && item.length > 0)
+      .slice(0, 4)
+    delete nextContent.feature1
+    delete nextContent.feature2
+    delete nextContent.feature3
+    delete nextContent.feature4
 
     return nextContent
   }
