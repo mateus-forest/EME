@@ -40,6 +40,7 @@ type StudioCreativePayload = {
   width: number
   height: number
   badgeLabel: string
+  purposeLabel: string
   eyebrow: string
   title: string
   location: string
@@ -233,6 +234,7 @@ function buildStudioCreativePayload(input: {
   const price = resolveDisplayPrice(input.campaign, content)
   const metric = resolveMetric(content)
   const badgeLabel = resolveCampaignBadge(input.campaign)
+  const purposeLabel = mapPropertyPurposeLabel(input.campaign.property?.purpose)
   const ctaLabel = resolveDisplayCta(content)
   const gradientToken = sanitizeFileName(`${input.campaign.id}-${input.asset.id}-${input.template.id}`)
 
@@ -240,13 +242,14 @@ function buildStudioCreativePayload(input: {
     width: input.template.width,
     height: input.template.height,
     badgeLabel,
+    purposeLabel,
     eyebrow,
     title,
     location,
     areaLabel,
     features,
     price,
-    metricLabel: metric.label,
+    metricLabel: metric.label === "PREÇO" ? badgeLabel : metric.label,
     metricSupport: metric.support,
     ctaLabel,
     propertyImageSrc: input.propertyImageSrc || resolveCampaignImage(input.campaign),
@@ -269,8 +272,8 @@ async function renderInstagramFeedTemplate(
 ): Promise<StudioCreativeRenderResult> {
   const textRuns: StudioTextRun[] = []
   const eyebrowFontSize = 20
-  const eyebrowY = 270
-  const titleLayout = fitMultilineText(payload.title, 500, 64, 44, 2)
+  const eyebrowY = 390
+  const titleLayout = fitMultilineText(payload.title, 520, 68, 46, 2)
   const locationItem = buildLocationFeature(payload.location)
   const areaItem = buildAreaFeature(payload.areaLabel)
   const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
@@ -281,65 +284,71 @@ async function renderInstagramFeedTemplate(
   const ctaConfig = { lines: ctaLayout.lines, fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
 
   const [badgeBox, metricPanelBox] = await Promise.all([
-    computeBadgeBox(measure, payload.badgeLabel),
+    computeBadgeBox(measure, payload.purposeLabel),
     computeMetricPanelBox(measure, {
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
-      metricValueFontSize: 38,
+      metricValueFontSize: 36,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
     }),
   ])
 
-  const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 10, titleLayout.fontSize)
+  const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
-  const dividerY = Math.max(500, Math.round(titleBottom + 28))
+  const dividerY = Math.max(535, Math.round(titleBottom + 28))
+  const purposeY = dividerY + 28
+  const panelWidth = Math.max(620, metricPanelBox.width)
+  const panelHeight = Math.max(126, metricPanelBox.height)
+  const panelY = payload.height - panelHeight - 54
+  const featureY = Math.min(Math.max(700, purposeY + badgeBox.height + 42), panelY - 158)
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
-    `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="0.88" y2="0.82">`,
-    `<stop offset="0%" stop-color="rgba(2,14,7,0.92)" />`,
-    `<stop offset="36%" stop-color="rgba(3,16,9,0.78)" />`,
-    `<stop offset="62%" stop-color="rgba(4,18,10,0.46)" />`,
-    `<stop offset="100%" stop-color="rgba(5,18,10,0.04)" />`,
+    `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="1" y2="0">`,
+    `<stop offset="0%" stop-color="rgba(3,3,3,0.9)" />`,
+    `<stop offset="38%" stop-color="rgba(4,4,4,0.72)" />`,
+    `<stop offset="68%" stop-color="rgba(5,5,5,0.24)" />`,
+    `<stop offset="100%" stop-color="rgba(5,5,5,0.08)" />`,
     "</linearGradient>",
     `<radialGradient id="${payload.waveId}" cx="94%" cy="100%" r="68%">`,
-    `<stop offset="0%" stop-color="${accentRgba(payload.accentColor, 0.24)}" />`,
-    `<stop offset="60%" stop-color="${accentRgba(payload.accentColor, 0.08)}" />`,
+    `<stop offset="0%" stop-color="${accentRgba(payload.accentColor, 0.12)}" />`,
+    `<stop offset="60%" stop-color="${accentRgba(payload.accentColor, 0.04)}" />`,
     `<stop offset="100%" stop-color="${accentRgba(payload.accentColor, 0)}" />`,
     "</radialGradient>",
     "</defs>",
     renderBackgroundImage(payload.propertyImageSrc, payload.width, payload.height),
+    `<rect width="${payload.width}" height="${payload.height}" fill="rgba(0,0,0,0.14)" />`,
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, false),
     renderBottomWave(payload.width, payload.height, payload.waveId, false, payload.accentColor),
-    renderBadge(textRuns, payload.badgeLabel, 68, 58, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
     renderBrokerHeader(textRuns, {
-      rightX: 1010,
-      topY: 40,
-      avatarRadius: 40,
-      nameFontSize: 23,
-      detailFontSize: 15,
+      rightX: 1006,
+      topY: 42,
+      avatarRadius: 50,
+      nameFontSize: 25,
+      detailFontSize: 17,
       photoDataUri: payload.brokerPhotoDataUri,
       name: payload.brokerName,
       agencyName: payload.agencyName,
       creci: payload.brokerCreci,
       accentColor: payload.accentColor,
     }),
-    renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "700", payload.accentColor, 0.16),
+    renderSingleLineText(textRuns, payload.eyebrow, 70, eyebrowY, eyebrowFontSize, "500", payload.accentColor, 0.18),
     renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(70, dividerY, 96, payload.accentColor),
-    renderFeatureRow(textRuns, featureItems, 70, dividerY + 64, 175, payload.accentColor),
+    renderBadge(textRuns, payload.purposeLabel, 70, purposeY, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
+    renderFeatureRow(textRuns, featureItems, 70, featureY, 170, payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 68,
-      y: 905,
-      width: metricPanelBox.width,
-      height: metricPanelBox.height,
+      y: panelY,
+      width: panelWidth,
+      height: panelHeight,
       stackColumnWidth: metricPanelBox.stackColumnWidth,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
-      metricValueFontSize: 38,
+      metricValueFontSize: 36,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
       accentColor: payload.accentColor,
@@ -376,75 +385,85 @@ async function renderInstagramStoryTemplate(
 ): Promise<StudioCreativeRenderResult> {
   const textRuns: StudioTextRun[] = []
   const eyebrowFontSize = 22
-  const eyebrowY = 390
-  const titleLayout = fitMultilineText(payload.title, 420, 72, 50, 2)
+  const eyebrowY = 650
+  const titleLayout = fitMultilineText(payload.title, 560, 78, 52, 2)
   const locationItem = buildLocationFeature(payload.location)
   const areaItem = buildAreaFeature(payload.areaLabel)
   const featureItems = [locationItem, areaItem, ...payload.features.map((feature) => buildFeatureItem(feature))]
     .filter((item): item is StudioFeatureItem => Boolean(item))
     .slice(0, 4)
 
+  const ctaLayout = fitMultilineText(payload.ctaLabel, CTA_MAX_WIDTH, 20, 16, CTA_MAX_LINES)
+  const ctaConfig = { lines: ctaLayout.lines, fontSize: ctaLayout.fontSize, lineHeight: ctaLayout.lineHeight }
+
   const [badgeBox, metricPanelBox] = await Promise.all([
-    computeBadgeBox(measure, payload.badgeLabel),
+    computeBadgeBox(measure, payload.purposeLabel),
     computeMetricPanelBox(measure, {
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
       metricValueFontSize: 40,
       metricSupport: payload.metricSupport,
+      cta: ctaConfig,
     }),
   ])
 
   const titleY = stackTextBlockY(eyebrowY, 0, eyebrowFontSize, 12, titleLayout.fontSize)
   const titleBottom = titleY + titleLayout.blockHeight + titleLayout.fontSize * STUDIO_FONT_DESCENT_RATIO
-  const dividerY = Math.max(720, Math.round(titleBottom + 32))
-  const featureSpacing = featureItems.length > 3 ? 122 : 140
+  const dividerY = Math.max(850, Math.round(titleBottom + 32))
+  const purposeY = dividerY + 36
+  const panelWidth = Math.max(620, metricPanelBox.width)
+  const panelHeight = Math.max(142, metricPanelBox.height)
+  const panelY = 1500
+  const featureY = Math.min(Math.max(1150, purposeY + badgeBox.height + 60), panelY - 188)
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${payload.width} ${payload.height}" width="${payload.width}" height="${payload.height}">`,
     "<defs>",
-    `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="0.92" y2="0.88">`,
-    `<stop offset="0%" stop-color="rgba(2,14,7,0.94)" />`,
-    `<stop offset="34%" stop-color="rgba(3,16,9,0.82)" />`,
-    `<stop offset="62%" stop-color="rgba(4,18,10,0.5)" />`,
-    `<stop offset="100%" stop-color="rgba(5,18,10,0.05)" />`,
+    `<linearGradient id="${payload.gradientId}" x1="0" y1="0" x2="1" y2="0">`,
+    `<stop offset="0%" stop-color="rgba(3,3,3,0.92)" />`,
+    `<stop offset="42%" stop-color="rgba(4,4,4,0.76)" />`,
+    `<stop offset="72%" stop-color="rgba(5,5,5,0.28)" />`,
+    `<stop offset="100%" stop-color="rgba(5,5,5,0.08)" />`,
     "</linearGradient>",
     `<radialGradient id="${payload.waveId}" cx="96%" cy="100%" r="70%">`,
-    `<stop offset="0%" stop-color="${accentRgba(payload.accentColor, 0.22)}" />`,
-    `<stop offset="62%" stop-color="${accentRgba(payload.accentColor, 0.08)}" />`,
+    `<stop offset="0%" stop-color="${accentRgba(payload.accentColor, 0.12)}" />`,
+    `<stop offset="62%" stop-color="${accentRgba(payload.accentColor, 0.04)}" />`,
     `<stop offset="100%" stop-color="${accentRgba(payload.accentColor, 0)}" />`,
     "</radialGradient>",
     "</defs>",
     renderBackgroundImage(payload.propertyImageSrc, payload.width, payload.height),
+    `<rect width="${payload.width}" height="${payload.height}" fill="rgba(0,0,0,0.16)" />`,
     `<rect width="${payload.width}" height="${payload.height}" fill="url(#${payload.gradientId})" />`,
     renderLeftOverlay(payload.width, payload.height, true),
     renderBottomWave(payload.width, payload.height, payload.waveId, true, payload.accentColor),
-    renderBadge(textRuns, payload.badgeLabel, 80, 92, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
     renderBrokerHeader(textRuns, {
       rightX: 998,
       topY: 50,
-      avatarRadius: 54,
-      nameFontSize: 28,
-      detailFontSize: 18,
+      avatarRadius: 62,
+      nameFontSize: 30,
+      detailFontSize: 20,
       photoDataUri: payload.brokerPhotoDataUri,
       name: payload.brokerName,
       agencyName: payload.agencyName,
       creci: payload.brokerCreci,
       accentColor: payload.accentColor,
     }),
-    renderSingleLineText(textRuns, payload.eyebrow, 82, eyebrowY, eyebrowFontSize, "700", payload.accentColor, 0.16),
+    renderSingleLineText(textRuns, payload.eyebrow, 82, eyebrowY, eyebrowFontSize, "500", payload.accentColor, 0.18),
     renderMultilineText(textRuns, titleLayout.lines, 82, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(82, dividerY, 104, payload.accentColor),
-    renderFeatureStack(textRuns, featureItems, 82, dividerY + 72, 360, payload.accentColor, featureSpacing),
+    renderBadge(textRuns, payload.purposeLabel, 82, purposeY, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
+    renderFeatureRow(textRuns, featureItems, 82, featureY, 218, payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 80,
-      y: 1560,
-      width: metricPanelBox.width,
-      height: metricPanelBox.height,
+      y: panelY,
+      width: panelWidth,
+      height: panelHeight,
       stackColumnWidth: metricPanelBox.stackColumnWidth,
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
       metricValueFontSize: 40,
       metricSupport: payload.metricSupport,
+      cta: ctaConfig,
       accentColor: payload.accentColor,
     }),
     payload.brokerLogoDataUri
@@ -483,10 +502,10 @@ function renderBackgroundImage(imageSrc: string | null, width: number, height: n
 
 function renderLeftOverlay(width: number, height: number, portrait: boolean) {
   if (portrait) {
-    return `<path d="M0 0 H560 C612 272 600 766 482 1162 C412 1410 208 1718 0 ${height} Z" fill="rgba(2,12,7,0.38)" />`
+    return `<path d="M0 0 H560 C612 272 600 766 482 1162 C412 1410 208 1718 0 ${height} Z" fill="rgba(0,0,0,0.3)" />`
   }
 
-  return `<path d="M0 0 H534 C594 210 604 506 542 784 C482 960 288 1046 0 ${height} Z" fill="rgba(2,12,7,0.38)" />`
+  return `<path d="M0 0 H534 C594 210 604 506 542 784 C482 960 288 1046 0 ${height} Z" fill="rgba(0,0,0,0.3)" />`
 }
 
 function renderBottomWave(width: number, height: number, waveId: string, portrait: boolean, accentColor: string) {
@@ -541,8 +560,8 @@ async function computeBadgeBox(measure: StudioTextMeasurer, label: string) {
   const { width: textWidth, height: labelInkHeight } = await measure(label, BADGE_FONT_SIZE, "500", 0.01)
   const textInkHeight = BADGE_FONT_SIZE * (STUDIO_FONT_ASCENT_RATIO + STUDIO_FONT_DESCENT_RATIO)
 
-  const width = BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP + Math.ceil(textWidth) + BADGE_ICON_LEFT_PAD
-  const height = Math.round(Math.max(BADGE_ICON_HEIGHT, textInkHeight) + BADGE_VERTICAL_PADDING * 2)
+  const width = Math.round(BADGE_ICON_LEFT_PAD * 0.82) + BADGE_ICON_TEXT_GAP + Math.ceil(textWidth) + BADGE_VERTICAL_PADDING * 2
+  const height = Math.round(Math.max(BADGE_ICON_HEIGHT * 0.5, textInkHeight) + BADGE_VERTICAL_PADDING * 2)
 
   return { width, height, labelInkHeight }
 }
@@ -627,21 +646,23 @@ function renderBadge(
   accentColor: string,
 ) {
   const labelBaselineY = Math.round(BADGE_FONT_SIZE * STUDIO_FONT_ASCENT_RATIO + (height - labelInkHeight) / 2)
+  const pillX = Math.round(BADGE_ICON_WIDTH * 0.47)
 
   return [
     `<g transform="translate(${x} ${y})">`,
-    `<rect width="${width}" height="${height}" rx="${Math.round(height / 2)}" fill="${accentRgba(accentColor, 0.74)}" stroke="${accentRgba(accentColor, 0.88)}" stroke-width="2.1" />`,
-    renderFeatureIcon("badge", BADGE_ICON_LEFT_PAD, centerIconY(height, 0, BADGE_ICON_HEIGHT), "#ffffff"),
+    `<rect x="0" y="10" width="3" height="${height - 20}" rx="1.5" fill="${accentColor}" />`,
+    `<rect x="${pillX}" width="${width - pillX}" height="${height}" rx="${Math.round(height / 2)}" fill="rgba(7,7,7,0.34)" stroke="${accentRgba(accentColor, 0.68)}" stroke-width="1.5" />`,
+    `<path d="M${pillX + 18} 1 H${width - 18}" stroke="rgba(255,255,255,0.18)" stroke-width="1" />`,
     "</g>",
     renderSingleLineText(
       runs,
       label,
-      x + BADGE_ICON_LEFT_PAD + BADGE_ICON_WIDTH + BADGE_ICON_TEXT_GAP,
+      x + pillX + 28,
       y + labelBaselineY,
       BADGE_FONT_SIZE,
       "500",
-      "#ffffff",
-      0.01,
+      accentColor,
+      0.12,
     ),
   ].join("")
 }
@@ -718,18 +739,14 @@ function renderBrokerHeader(
   // breathing-room constant between the avatar and the text block, independent of font size.
   const nameY = avatarCy + input.avatarRadius + HEADER_TEXT_TOP_GAP + Math.round(input.nameFontSize * STUDIO_FONT_ASCENT_RATIO)
   const detailY = nameY + Math.round(input.detailFontSize * 1.5)
-  const detailText = input.agencyName
-    ? `${input.agencyName} | CRECI ${input.creci || "-"}`
-    : input.creci
-      ? `CRECI ${input.creci}`
-      : ""
+  const detailText = input.creci ? `CRECI ${input.creci}` : input.agencyName?.trim() || ""
 
   return [
     `<circle cx="${avatarCx}" cy="${avatarCy}" r="${input.avatarRadius + 3}" fill="none" stroke="${input.accentColor}" stroke-width="3" />`,
     avatarContent,
-    renderSingleLineText(runs, displayName, avatarCx, nameY, input.nameFontSize, "700", "#ffffff", 0, "middle"),
+    renderSingleLineText(runs, displayName, avatarCx, nameY, input.nameFontSize, "400", "#ffffff", 0, "middle"),
     detailText
-      ? renderSingleLineText(runs, detailText, avatarCx, detailY, input.detailFontSize, "500", "#e6e6e6", 0, "middle")
+      ? renderSingleLineText(runs, detailText, avatarCx, detailY, input.detailFontSize, "500", input.accentColor, 0, "middle")
       : "",
   ].join("")
 }
@@ -829,48 +846,42 @@ const FEATURE_ICON_SCALE = 0.7
 // were mathematically even. A constant column width keeps the same visual rhythm regardless of
 // how many items are actually present; the row is simply shorter with fewer of them.
 function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, columnWidth: number, accentColor: string) {
+  const isStory = columnWidth >= 200
+  const cardWidth = columnWidth - 12
+  const cardHeight = isStory ? 158 : 140
+  const iconScale = isStory ? 0.82 : FEATURE_ICON_SCALE
+  const iconWidth = 56 * iconScale
+  const iconY = isStory ? 22 : 18
+  const textTop = isStory ? 104 : 88
+
   return items
     .map((item, index) => {
       const originX = x + index * columnWidth
       const lines = [item.line1, item.line2].filter(Boolean) as string[]
-      const textLayout = fitMultilineText(lines.join("\n"), columnWidth - 50, 15, 12, 3)
+      const textLayout = fitMultilineText(lines.join("\n"), cardWidth - 24, isStory ? 17 : 15, isStory ? 14 : 12, 2)
+      const firstBaselineY = y + textTop + Math.round(textLayout.fontSize * STUDIO_FONT_ASCENT_RATIO)
 
       return [
         `<g transform="translate(${originX} ${y})">`,
-        renderFeatureIcon(item.icon, 0, 0, accentColor, FEATURE_ICON_SCALE),
-        index < items.length - 1
-          ? `<rect x="${columnWidth - 20}" y="4" width="1.2" height="92" fill="rgba(255,255,255,0.22)" />`
-          : "",
+        `<rect width="${cardWidth}" height="${cardHeight}" rx="20" fill="rgba(7,7,7,0.48)" stroke="rgba(255,255,255,0.3)" stroke-width="1.2" />`,
+        `<path d="M20 1 H${cardWidth - 20}" stroke="rgba(255,255,255,0.2)" stroke-width="1" />`,
+        renderFeatureIcon(item.icon, (cardWidth - iconWidth) / 2, iconY, accentColor, iconScale),
         "</g>",
-        renderMultilineText(runs, textLayout.lines, originX, y + 84, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
-      ].join("")
-    })
-    .join("")
-}
-
-function renderFeatureStack(
-  runs: StudioTextRun[],
-  items: StudioFeatureItem[],
-  x: number,
-  y: number,
-  width: number,
-  accentColor: string,
-  spacing = 140,
-) {
-  const dividerY = spacing - 24
-
-  return items
-    .map((item, index) => {
-      const offsetY = index * spacing
-      const groupY = y + offsetY
-      const textLayout = fitMultilineText([item.line1, item.line2].filter(Boolean).join("\n"), width - 96, 16, 13, 3)
-
-      return [
-        `<g transform="translate(${x} ${groupY})">`,
-        renderFeatureIcon(item.icon, 0, 6, accentColor, FEATURE_ICON_SCALE),
-        index < items.length - 1 ? `<rect x="0" y="${dividerY}" width="${width}" height="1.2" fill="rgba(255,255,255,0.22)" />` : "",
-        "</g>",
-        renderMultilineText(runs, textLayout.lines, x + 100, groupY + 40, textLayout.fontSize, "400", "#ffffff", textLayout.lineHeight, 0),
+        textLayout.lines
+          .map((line, lineIndex) =>
+            renderSingleLineText(
+              runs,
+              line,
+              originX + cardWidth / 2,
+              firstBaselineY + lineIndex * textLayout.lineHeight,
+              textLayout.fontSize,
+              "400",
+              "#ffffff",
+              0,
+              "middle",
+            ),
+          )
+          .join(""),
       ].join("")
     })
     .join("")
@@ -924,7 +935,8 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
 
   return [
     `<g transform="translate(${input.x} ${input.y})">`,
-    `<rect width="${input.width}" height="${input.height}" rx="30" fill="rgba(5,14,8,0.42)" stroke="${accentRgba(input.accentColor, 0.72)}" stroke-width="1.6" />`,
+    `<rect width="${input.width}" height="${input.height}" rx="26" fill="rgba(7,7,7,0.64)" stroke="rgba(255,255,255,0.28)" stroke-width="1.4" />`,
+    `<path d="M28 1 H${input.width - 28}" stroke="rgba(255,255,255,0.2)" stroke-width="1" />`,
     input.cta
       ? [
           `<rect x="${dividerX}" y="26" width="1.2" height="${input.height - 52}" fill="rgba(255,255,255,0.24)" />`,
@@ -932,8 +944,8 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
         ].join("")
       : "",
     "</g>",
-    renderSingleLineText(runs, input.metricLabel, input.x + panelPaddingX, input.y + labelY, labelFontSize, "500", "#ffffff", 0.01),
-    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "700", input.accentColor, 0, "start", true),
+    renderSingleLineText(runs, input.metricLabel, input.x + panelPaddingX, input.y + labelY, labelFontSize, "500", "#dddddd", 0.04),
+    renderSingleLineText(runs, input.metricValue, input.x + panelPaddingX, input.y + valueY, input.metricValueFontSize, "500", input.accentColor, 0),
     supportY !== null
       ? renderSingleLineText(runs, input.metricSupport, input.x + panelPaddingX, input.y + supportY, supportFontSize, "400", "#ffffff", 0)
       : "",
@@ -944,7 +956,7 @@ function renderMetricPanel(runs: StudioTextRun[], input: {
           input.x + iconX + CALENDAR_ICON_WIDTH + PANEL_ICON_TEXT_GAP,
           input.y + ctaTextY,
           input.cta.fontSize,
-          "700",
+          "500",
           "#ffffff",
           input.cta.lineHeight,
           0,
@@ -1006,7 +1018,10 @@ function resolveCampaignBadge(campaign: StudioCampaignRecord) {
 // free text that caused the original overlap/truncation bugs was made to.
 function resolveDisplayTitle(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
   const custom = readPreferredString(content, ["title"])
-  if (custom) return custom.toUpperCase()
+  if (custom) return custom
+
+  const propertyTitle = campaign.property?.title?.trim()
+  if (propertyTitle) return normalizeStudioText(propertyTitle)
 
   const action = mapPropertyAction(campaign.property?.purpose)
   const location = campaign.property?.neighborhood?.trim() || campaign.property?.city?.trim()
@@ -1021,7 +1036,7 @@ function resolveDisplayTitle(campaign: StudioCampaignRecord, content: Record<str
 // is consumed (renderInstagramFeedTemplate), via the same fitMultilineText used for title/features.
 function resolveDisplayCta(content: Record<string, unknown>) {
   const custom = readPreferredString(content, ["cta"])
-  return (custom || "Agende sua visita").toUpperCase()
+  return custom || "Agende sua visita"
 }
 
 // Uppercase, bold action word for the new title. A grammatically correct Portuguese preposition
@@ -1033,6 +1048,13 @@ function mapPropertyAction(value: string | null | undefined) {
   if (normalized.includes("RENT") || normalized.includes("LOC")) return "PARA LOCAÇÃO"
   if (normalized.includes("SALE") || normalized.includes("VEND")) return "À VENDA"
   return "EM DESTAQUE"
+}
+
+function mapPropertyPurposeLabel(value: string | null | undefined) {
+  const normalized = (value || "").toUpperCase()
+  if (normalized.includes("RENT") || normalized.includes("LOC")) return "LOCAÇÃO"
+  if (normalized.includes("SALE") || normalized.includes("VEND")) return "VENDA"
+  return "OPORTUNIDADE"
 }
 
 function resolveDisplayLocation(campaign: StudioCampaignRecord, content: Record<string, unknown>) {
