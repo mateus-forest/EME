@@ -38,6 +38,7 @@ export function AdminPageShell({
   return (
     <SidebarProvider
       defaultOpen
+      className="w-full min-w-0 max-w-none overflow-x-hidden"
       style={
         {
           "--sidebar-width": "15rem",
@@ -45,10 +46,10 @@ export function AdminPageShell({
         } as CSSProperties
       }
     >
-      <div className="pwa-safe-shell relative min-h-screen overflow-hidden bg-[#f3f0ea] text-[#050505] sm:bg-[#f6f8f6]">
+      <div className="pwa-safe-shell relative min-h-screen w-full min-w-0 max-w-none overflow-x-hidden bg-[#f3f0ea] text-[#050505] sm:bg-[#f6f8f6]">
         <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(0,155,58,0.10),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_30%)]" />
 
-        <div className="relative z-0 flex min-h-screen flex-col">
+        <div className="relative z-0 flex min-h-screen w-full min-w-0 flex-col">
           <header className="sticky top-0 z-20 border-b border-black/[0.05] bg-[#f3f0ea]/94 backdrop-blur-2xl sm:border-black/[0.06] sm:bg-white/88">
             <div className="px-4 py-3 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
@@ -112,11 +113,11 @@ export function AdminPageShell({
             </div>
           </header>
 
-          <div className="flex min-h-0 flex-1 gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5">
+          <div className="flex min-h-0 w-full min-w-0 flex-1 gap-0 px-0 py-0 sm:gap-3 sm:px-4 sm:py-3 lg:px-5">
             <AdminSidebar />
 
-            <main className="min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none sm:rounded-[1.75rem] sm:border sm:border-black/[0.06] sm:bg-white/92 sm:shadow-[0_22px_50px_rgba(15,23,42,0.08)]">
-              <div className="h-full max-w-full overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+            <main className="w-full min-w-0 max-w-full flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none sm:rounded-[1.75rem] sm:border sm:border-black/[0.06] sm:bg-white/92 sm:shadow-[0_22px_50px_rgba(15,23,42,0.08)]">
+              <div className="h-full w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
                 {children}
               </div>
             </main>

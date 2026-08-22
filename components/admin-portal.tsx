@@ -13,6 +13,7 @@ import {
 } from "@/components/admin-insights-ui"
 import { AdminPageShell } from "@/components/admin-page-shell"
 import { useAdminInsights } from "@/components/use-admin-insights"
+import { Button } from "@/components/ui/button"
 import { EmeLoading } from "@/components/ui/eme-loading"
 
 function formatCurrency(value: number) {
@@ -20,15 +21,18 @@ function formatCurrency(value: number) {
 }
 
 export function AdminPortal() {
-  const { insights, isLoading, error } = useAdminInsights()
+  const { insights, isLoading, error, refresh } = useAdminInsights()
 
   return (
     <AdminPageShell title="Admin EME" subtitle="Visão consolidada da base, do Studio IA e da operação comercial ativa">
       {isLoading && !insights ? <EmeLoading message="Carregando dashboards do Admin..." /> : null}
 
       {error ? (
-        <div className="mb-5 rounded-[1.25rem] border border-[#f3d4d4] bg-[#fff3f3] px-4 py-3 text-sm text-[#b42318]">
-          {error}
+        <div className="mb-5 flex flex-col gap-3 rounded-[1.25rem] border border-[#f3d4d4] bg-[#fff3f3] px-4 py-3 text-sm text-[#b42318] sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <Button type="button" variant="outline" disabled={isLoading} onClick={() => void refresh()} className="shrink-0 border-[#e9bcbc] bg-white text-[#9f241c] hover:bg-[#fff8f8]">
+            {isLoading ? "Consultando..." : "Tentar novamente"}
+          </Button>
         </div>
       ) : null}
 

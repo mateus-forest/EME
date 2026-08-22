@@ -11,11 +11,10 @@ import {
   CreditCard,
   LayoutDashboard,
   LogOut,
-  MapPinned,
   MessagesSquare,
-  MessageSquareText,
   ShieldCheck,
   Sparkles,
+  Store,
   Users,
   Wand2,
 } from "lucide-react"
@@ -41,10 +40,9 @@ import {
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
+  { label: "Marketplace", icon: Store, href: "/admin/marketplace" },
   { label: "Usuários", icon: Users, href: "/admin/usuarios" },
   { label: "COS", icon: MessagesSquare, href: "/admin/cos" },
-  { label: "Avaliações", icon: MessageSquareText, href: "/admin/avaliacoes-marketplace" },
-  { label: "Regiões", icon: MapPinned, href: "/admin/regioes-marketplace" },
   { label: "Studio IA", icon: Wand2, href: "/admin/studio-ia" },
   { label: "Consumo IA", icon: Sparkles, href: "/admin/consumo-ia" },
   { label: "Bonificações", icon: Sparkles, href: "/admin/bonificacoes" },
