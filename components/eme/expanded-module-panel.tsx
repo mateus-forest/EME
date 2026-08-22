@@ -208,7 +208,7 @@ export function ExpandedModulePanel({
         </motion.div>
 
         <motion.div
-          className="absolute inset-0 flex flex-col md:hidden"
+          className="absolute inset-0 isolate flex flex-col overflow-hidden bg-white md:hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: closing ? 0 : 1 }}
           transition={{ duration: closing ? 0.16 : 0.32, delay: closing ? 0 : 0.12 }}
@@ -224,7 +224,7 @@ export function ExpandedModulePanel({
 
           <div
             data-mobile-module-scroll
-            className="eme-hidden-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-5"
+            className="eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-5"
             style={{
               paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
               paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))",
@@ -246,7 +246,7 @@ export function ExpandedModulePanel({
 
             <div
               data-mobile-module-mockup
-              className="relative mt-5 w-full overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
+              className="relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
               style={{ aspectRatio }}
             >
               <Image

@@ -1,3 +1,5 @@
+"use client"
+
 import { cn } from "@/lib/utils"
 
 export function BrokerSpecialtyChips({
@@ -44,7 +46,15 @@ export function BrokerSpecialtyChips({
         </span>
       ))}
       {remaining > 0 ? (
-        <details className="group relative shrink-0 self-center">
+        <details
+          className="group relative shrink-0 self-center"
+          onToggle={(event) => {
+            if (!event.currentTarget.open) return
+            const summary = event.currentTarget.querySelector("summary")
+            if (!summary) return
+            event.currentTarget.style.setProperty("--specialty-popover-top", `${summary.getBoundingClientRect().bottom + 6}px`)
+          }}
+        >
           <summary className={cn(
             "cursor-pointer list-none whitespace-nowrap rounded-full marker:hidden",
             hero
@@ -55,10 +65,10 @@ export function BrokerSpecialtyChips({
             {hero ? `+${remaining}` : `+${remaining} ${remaining === 1 ? "especialidade" : "especialidades"}`}
           </summary>
           <div className={cn(
-            "invisible absolute left-0 top-[calc(100%+.4rem)] z-30 grid min-w-48 gap-1.5 rounded-xl border border-[#dfe7e1] bg-white p-2 opacity-0 shadow-[0_14px_34px_rgba(35,55,43,.16)] transition group-hover:visible group-hover:opacity-100 group-open:visible group-open:opacity-100",
+            "invisible fixed inset-x-2 top-[var(--specialty-popover-top)] z-[80] mx-auto grid w-auto min-w-0 max-w-[min(18rem,calc(100vw-1rem))] gap-1.5 rounded-xl border border-[#dfe7e1] bg-white p-2 opacity-0 shadow-[0_14px_34px_rgba(35,55,43,.16)] transition group-hover:visible group-hover:opacity-100 group-open:visible group-open:opacity-100 sm:absolute sm:inset-x-auto sm:left-0 sm:top-[calc(100%+.4rem)] sm:mx-0 sm:w-max sm:min-w-48",
             liquidGlass && "border-white/65 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_1px_0_0_rgba(255,255,255,.38),0_8px_20px_rgba(25,54,38,.11)] backdrop-blur-[22px] backdrop-saturate-[1.5] supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.66),rgba(255,255,255,.36))]",
           )}>
-            {hidden.map((specialty) => <span key={specialty} className={cn("rounded-lg bg-[#f5fbf6] px-2.5 py-1.5 text-xs font-medium text-[#287543]", liquidGlass && "border border-white/75 bg-white/72")}>{specialty}</span>)}
+            {hidden.map((specialty) => <span key={specialty} className={cn("max-w-full break-words rounded-lg bg-[#f5fbf6] px-2.5 py-1.5 text-xs font-medium text-[#287543]", liquidGlass && "border border-white/75 bg-white/72")}>{specialty}</span>)}
           </div>
         </details>
       ) : null}

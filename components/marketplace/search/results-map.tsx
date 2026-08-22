@@ -5,7 +5,17 @@ import { MapPin, Minus, Plus } from 'lucide-react'
 import type { SearchResult } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'
 
-const shortPrice = (value: number) => `R$ ${Math.round(value / 1000)} mil`
+const compactPriceFormatter = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const shortPrice = (value: number) => {
+  const normalizedValue = Number.isFinite(value) ? Math.max(0, value) : 0
+  if (normalizedValue >= 1_000_000) return `R$ ${compactPriceFormatter.format(normalizedValue / 1_000_000)} mi`
+  if (normalizedValue >= 1_000) return `R$ ${compactPriceFormatter.format(normalizedValue / 1_000)} mil`
+  return `R$ ${compactPriceFormatter.format(normalizedValue)}`
+}
 
 export function ResultsMap({ results, highlighted, onHover, onSelect, className }: {
   results: SearchResult[]

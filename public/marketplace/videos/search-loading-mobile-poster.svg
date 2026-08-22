@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2b22"/>
+      <stop offset=".48" stop-color="#102018"/>
+      <stop offset="1" stop-color="#08110c"/>
+    </linearGradient>
+    <radialGradient id="light" cx=".5" cy=".34" r=".66">
+      <stop offset="0" stop-color="#79c88d" stop-opacity=".26"/>
+      <stop offset=".5" stop-color="#2d7445" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#0b1710" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <rect width="1080" height="1920" fill="url(#light)"/>
+  <path d="M120 1380C350 1240 650 1210 960 1320V1920H120Z" fill="#07100b" fill-opacity=".45"/>
+  <text x="540" y="930" text-anchor="middle" fill="#fff" fill-opacity=".76" font-family="Arial, sans-serif" font-size="74" font-weight="700" letter-spacing="18">EME</text>
+</svg>

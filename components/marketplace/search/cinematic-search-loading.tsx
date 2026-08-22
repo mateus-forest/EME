@@ -19,6 +19,7 @@ type LoadingPhase = 'idle' | 'preparing' | 'playing' | 'holding' | 'exiting'
 
 type SearchVideoSource = {
   src: string
+  poster: string
   width: number
   height: number
 }
@@ -43,11 +44,13 @@ const SearchLoadingContext = createContext<SearchLoadingContextValue>({
 const MESSAGE_INTERVAL_MS = 1_800
 const MOBILE_VIDEO: SearchVideoSource = {
   src: '/marketplace/videos/search-loading-mobile.mp4',
+  poster: '/marketplace/videos/search-loading-mobile-poster.svg',
   width: 2160,
   height: 3840,
 }
 const DESKTOP_VIDEO: SearchVideoSource = {
   src: '/marketplace/videos/search-loading-desktop.mp4',
+  poster: '/marketplace/videos/search-loading-desktop-poster.svg',
   width: 1280,
   height: 720,
 }
@@ -117,9 +120,21 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
     const frame = window.requestAnimationFrame(() => {
       const video = videoRef.current
       if (!video) return
-      playbackStartedRef.current = true
-      setPhase('playing')
-      void video.play()
+      video.muted = true
+      video.defaultMuted = true
+      video.playsInline = true
+      video.controls = false
+      try {
+        video.currentTime = 0
+      } catch {
+        // O arquivo pronto permanece no primeiro quadro disponível.
+      }
+      void video.play().then(() => {
+        playbackStartedRef.current = true
+        setPhase('playing')
+      }).catch(() => {
+        playbackStartedRef.current = false
+      })
     })
     return () => window.cancelAnimationFrame(frame)
   }, [phase, videoCanPlay])
@@ -157,6 +172,8 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
     <SearchLoadingContext.Provider value={{ startSearchLoading, finishSearchLoading }}>
       <link rel="preload" as="video" href={MOBILE_VIDEO.src} type="video/mp4" media="(max-width: 767px)" />
       <link rel="preload" as="video" href={DESKTOP_VIDEO.src} type="video/mp4" media="(min-width: 768px)" />
+      <link rel="preload" as="image" href={MOBILE_VIDEO.poster} media="(max-width: 767px)" />
+      <link rel="preload" as="image" href={DESKTOP_VIDEO.poster} media="(min-width: 768px)" />
       {children}
       {sceneMounted ? (
         <div
@@ -170,22 +187,40 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
           aria-busy="true"
           aria-label={loadingMessages[messageIndex]}
         >
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url("${videoSource.poster}")` }}
+            aria-hidden="true"
+          />
           <video
-            ref={videoRef}
+            ref={(node) => {
+              videoRef.current = node
+              if (node) {
+                node.muted = true
+                node.defaultMuted = true
+                node.playsInline = true
+                node.controls = false
+              }
+            }}
             src={videoSource.src}
+            poster={videoSource.poster}
             width={videoSource.width}
             height={videoSource.height}
             autoPlay
             muted
             playsInline
+            controls={false}
+            disablePictureInPicture
             preload="auto"
+            onLoadedData={handleVideoCanPlay}
             onCanPlay={handleVideoCanPlay}
             onCanPlayThrough={handleVideoCanPlay}
             onEnded={handleVideoEnded}
             className={cn(
-              'absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-200',
+              'absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-350',
               videoCanPlay ? 'opacity-100' : 'opacity-0',
             )}
+            onContextMenu={(event) => event.preventDefault()}
             aria-hidden="true"
           />
 

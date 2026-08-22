@@ -6,11 +6,11 @@ const upcomingFeatures = [
   ["Biblioteca", "de criativos"],
 ] as const
 
-export function LandingUpcomingFeatures() {
+export function LandingUpcomingFeatures({ className }: { className?: string }) {
   return (
     <section
       aria-labelledby="landing-upcoming-title"
-      className="absolute bottom-[clamp(2rem,8.25vh,5rem)] left-[clamp(2rem,6.65vw,7rem)] z-20"
+      className={`absolute bottom-[clamp(2rem,8.25vh,5rem)] left-[clamp(2rem,6.65vw,7rem)] z-20 ${className || ""}`}
     >
       <h2
         id="landing-upcoming-title"

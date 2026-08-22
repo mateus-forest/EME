@@ -120,21 +120,6 @@ function initials(value?: string | null) {
   return (parts[0]?.[0] ?? "E") + (parts[1]?.[0] ?? "M")
 }
 
-function digitsOnly(value?: string | null) {
-  return (value || "").replace(/\D+/g, "")
-}
-
-function buildWhatsAppUrl(phone?: string | null) {
-  const digits = digitsOnly(phone)
-  if (!digits) return ""
-  return `https://wa.me/${digits}`
-}
-
-function buildQrCodeUrl(value: string) {
-  if (!value) return ""
-  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${encodeURIComponent(value)}`
-}
-
 function extractPropertyHighlights(description?: string | null) {
   const text = (description || "").toLowerCase()
   if (!text) return []
@@ -192,10 +177,6 @@ export function buildProposalHtml(input: {
   const propertyType = propertyTypeLabel(property?.type)
   const brokerPhoto = broker?.photoUrl?.trim()
   const propertyImage = property?.imageUrl?.trim()
-  const brokerWhatsappUrl = buildWhatsAppUrl(broker?.phone)
-  const brokerQrCodeUrl = buildQrCodeUrl(brokerWhatsappUrl)
-  const proposalOnlineUrl = ""
-  const proposalQrCodeUrl = buildQrCodeUrl(proposalOnlineUrl)
   const finalNotes = conditions?.notes || input.notes || "—"
   const installmentSummary = conditions?.installmentCount ? `${conditions.installmentCount}x` : conditions?.installments
   const monthlyInterestSummary = typeof conditions?.monthlyInterestRate === "number"
@@ -331,7 +312,7 @@ export function buildProposalHtml(input: {
     }
     .property-name {
       margin: 6px 0 0;
-      font-size: 50px;
+      font-size: clamp(27px, 4.2vw, 50px);
       line-height: 0.96;
       font-weight: 720;
       letter-spacing: -0.055em;
@@ -372,6 +353,8 @@ export function buildProposalHtml(input: {
       line-height: 0.9;
       font-weight: 760;
       letter-spacing: -0.065em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .price-caption {
       color: var(--text-soft);
@@ -621,7 +604,7 @@ export function buildProposalHtml(input: {
     }
     .footer-grid {
       display: grid;
-      grid-template-columns: 1.1fr 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 24px;
       align-items: start;
     }
@@ -642,6 +625,8 @@ export function buildProposalHtml(input: {
       font-size: 18px;
       font-weight: 680;
       line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .footer-note {
       color: var(--text-soft);
@@ -795,7 +780,7 @@ export function buildProposalHtml(input: {
                 ${renderDataItem("Tipo", propertyType)}
                 ${renderDataItem("Bairro", property?.neighborhood)}
                 ${renderDataItem("Cidade", property?.city)}
-                ${renderDataItem("Metragem", property?.area)}
+                ${renderDataItem("Metragem", property?.area ? /\bm(?:²|2)\b/i.test(String(property.area)) ? property.area : `${property.area} m²` : null)}
                 ${renderDataItem("Dormitórios", property?.bedrooms)}
                 ${renderDataItem("Vagas", property?.parkingSpots)}
               </div>
@@ -894,37 +879,6 @@ export function buildProposalHtml(input: {
               <div class="footer-note">${escapeHtml(finalNotes)}</div>
             </div>
 
-            <div class="footer-column">
-              <div class="footer-title">Visualizar proposta online</div>
-              ${
-                proposalOnlineUrl
-                  ? `
-                <div class="qr-card">
-                  <div class="qr-title">Acesse a proposta online</div>
-                  <div class="qr-box"><img src="${proposalQrCodeUrl}" alt="QR Code da proposta" /></div>
-                  <div class="footer-note">Acesse a proposta digitalmente.</div>
-                  <div class="footer-link">${escapeHtml(proposalOnlineUrl)}</div>
-                </div>
-              `
-                  : `<div class="qr-empty">Visualização online não disponível nesta geração.</div>`
-              }
-            </div>
-
-            <div class="footer-column">
-              <div class="footer-title">Fale diretamente com o corretor</div>
-              ${
-                brokerWhatsappUrl
-                  ? `
-                <div class="qr-card">
-                  <div class="qr-title">Fale diretamente com o corretor</div>
-                  <div class="qr-box"><img src="${brokerQrCodeUrl}" alt="QR Code para falar com o corretor" /></div>
-                  <div class="footer-note">Converse diretamente com o corretor responsável.</div>
-                  <div class="footer-link">${escapeHtml(brokerWhatsappUrl)}</div>
-                </div>
-              `
-                  : `<div class="qr-empty">Contato instantâneo indisponível sem telefone do corretor.</div>`
-              }
-            </div>
           </div>
           <div class="signature-line">Documento gerado automaticamente pelo EME &bull; Soluções Imobiliárias</div>
         </footer>

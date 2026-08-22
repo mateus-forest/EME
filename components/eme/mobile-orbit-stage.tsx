@@ -10,6 +10,7 @@ const MOBILE_ORBIT = {
   radiusX: 210,
   verticalLift: 128,
   sideLift: 18,
+  offsetY: 24,
   radiusZ: 92,
   backScale: 0.76,
   frontScale: 1,
@@ -62,7 +63,7 @@ export function MobileOrbitStage({
         const rawDepth = clamp((front + 1) / 2, 0, 1)
         const depth = smoothstep(rawDepth)
         const x = lateral * MOBILE_ORBIT.radiusX
-        const y = front * MOBILE_ORBIT.verticalLift + (1 - Math.abs(front)) * MOBILE_ORBIT.sideLift
+        const y = front * MOBILE_ORBIT.verticalLift + (1 - Math.abs(front)) * MOBILE_ORBIT.sideLift + MOBILE_ORBIT.offsetY
         const z = front * MOBILE_ORBIT.radiusZ
         const scale = mix(MOBILE_ORBIT.backScale, MOBILE_ORBIT.frontScale, depth)
         const baseOpacity = mix(MOBILE_ORBIT.backOpacity, MOBILE_ORBIT.frontOpacity, depth)
@@ -132,7 +133,7 @@ export function MobileOrbitStage({
           className="absolute left-1/2 top-1/2"
           style={{
             zIndex: 34,
-            transform: "translate(-50%, -50%) translateY(-58px)",
+            transform: "translate(-50%, -50%) translateY(-24px)",
             transformStyle: "preserve-3d",
             pointerEvents: frozen ? "none" : undefined,
           }}
@@ -157,7 +158,7 @@ export function MobileOrbitStage({
             transformStyle: "preserve-3d",
           }}
         >
-          <div className="relative aspect-[5/2] w-[232px]">
+          <div className="relative aspect-[5/2] w-[254px]">
             <div
               aria-hidden
               className="absolute inset-x-[12%] bottom-[3%] h-[12%] rounded-full bg-foreground/10 blur-[7px]"

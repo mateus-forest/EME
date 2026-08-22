@@ -40,6 +40,10 @@ export function HeroVideoBackground() {
 
   const playVideo = useCallback(async (video: HTMLVideoElement | null) => {
     if (!video) return false
+    video.muted = true
+    video.defaultMuted = true
+    video.playsInline = true
+    video.controls = false
     try {
       await video.play()
       return true
@@ -81,8 +85,19 @@ export function HeroVideoBackground() {
       }
     }
 
+    const resumePlayback = () => {
+      if (document.hidden) return
+      void playVideo(videoRefs.current[activeSlot])
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pageshow', resumePlayback)
+    window.addEventListener('focus', resumePlayback)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pageshow', resumePlayback)
+      window.removeEventListener('focus', resumePlayback)
+    }
   }, [activeSlot, crossfading, playVideo, reduced])
 
   const beginCrossfade = useCallback(
@@ -182,16 +197,30 @@ export function HeroVideoBackground() {
             key={slot}
             ref={(node) => {
               videoRefs.current[slot] = node
+              if (node) {
+                node.muted = true
+                node.defaultMuted = true
+                node.playsInline = true
+                node.controls = false
+              }
             }}
             src={SOURCES[slotSources[slot]]}
             autoPlay={isActive}
             muted
             playsInline
+            controls={false}
+            disablePictureInPicture
             preload="auto"
             onTimeUpdate={handleTimeUpdate(slot)}
             onEnded={isActive ? () => void beginCrossfade(slot) : undefined}
+            onLoadedData={() => {
+              if (isActive) void playVideo(videoRefs.current[slot])
+            }}
             onCanPlay={() => {
-              if (isActive) return
+              if (isActive) {
+                void playVideo(videoRefs.current[slot])
+                return
+              }
               const currentVideo = videoRefs.current[activeSlot]
               if (
                 currentVideo?.ended ||
@@ -206,6 +235,7 @@ export function HeroVideoBackground() {
               if (isActive) finishCrossfade(slot)
             }}
             style={{ willChange: 'opacity' }}
+            onContextMenu={(event) => event.preventDefault()}
             className={`absolute inset-0 h-full w-full object-cover [transition:opacity_2400ms_cubic-bezier(0.4,0,0.2,1)] ${
               visible ? 'opacity-100' : 'opacity-0'
             }`}

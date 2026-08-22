@@ -8,6 +8,7 @@ import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import { LandingActivity } from "@/components/eme/landing-activity"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
+import { LandingUpcomingFeatures } from "@/components/eme/landing-upcoming-features"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 /**
@@ -177,7 +178,7 @@ export function EmeMobileExperience({
 
       <div
         ref={stageRef}
-        className="absolute inset-0 flex touch-none items-center justify-center -translate-y-[18px] transition-opacity duration-700 ease-out"
+        className="absolute inset-0 flex touch-none translate-y-[10px] items-center justify-center transition-opacity duration-700 ease-out"
         style={{ opacity: mounted ? 1 : 0 }}
       >
         {mounted ? (
@@ -190,6 +191,10 @@ export function EmeMobileExperience({
           />
         ) : null}
       </div>
+
+      {!selected && !authOpen ? (
+        <LandingUpcomingFeatures className="!bottom-[max(4.25rem,calc(env(safe-area-inset-bottom)+3.5rem))] !left-3 z-[55] origin-bottom-left scale-[0.76]" />
+      ) : null}
 
       <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
         <div
