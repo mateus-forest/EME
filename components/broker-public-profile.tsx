@@ -165,15 +165,17 @@ export function BrokerProfileHero({
 
             <div className="relative z-10 min-w-0 max-w-[38rem] space-y-3 pb-2 text-center lg:pt-4 lg:text-left lg:pb-0">
               <div className="flex flex-wrap items-start justify-center gap-2.5 lg:justify-start">
-                <h1 className="max-w-full text-[2rem] font-semibold leading-tight tracking-[-0.04em] text-[#08110b] [text-shadow:0_1px_18px_rgba(255,255,255,.7)] sm:text-[2.35rem] lg:text-[3.2rem]">
+                <h1 className="max-w-full text-[2rem] font-light leading-tight tracking-[-0.04em] text-[#08110b] [text-shadow:0_1px_18px_rgba(255,255,255,.7)] sm:text-[2.35rem] lg:text-[3.2rem]">
                   {catalog.displayName}
                 </h1>
+                {catalog.creciVerified ? (
+                  <BadgeCheck className="mt-1.5 size-5 shrink-0 fill-[#17a24c] text-white sm:size-6 lg:mt-2" aria-label="CRECI verificado" />
+                ) : null}
               </div>
 
-              <BrokerSpecialtyChips specialties={catalog.specialties} compact singleLine className="justify-center lg:justify-start" />
+              <BrokerSpecialtyChips specialties={catalog.specialties} compact hero className="w-full justify-center lg:w-auto lg:justify-start" />
               {creciLabel(catalog) ? (
-                <p className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full border border-white/80 bg-white/78 px-3 py-1 text-sm font-semibold text-[#294536] shadow-[0_5px_16px_rgba(42,70,52,.09)] backdrop-blur-sm lg:mx-0 lg:font-medium lg:italic">
-                  {catalog.creciVerified ? <BadgeCheck className="size-4.5 fill-[#17a24c] text-white" aria-label="CRECI verificado" /> : null}
+                <p className="mx-auto inline-flex items-center justify-center rounded-full border border-white/75 bg-white/68 px-2 py-0.5 text-[11px] font-medium italic text-[#486154] backdrop-blur-sm sm:text-xs lg:mx-0">
                   {creciLabel(catalog)}
                 </p>
               ) : null}
