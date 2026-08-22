@@ -9,6 +9,7 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { serializeAdminUser } from "@/lib/admin-contract"
+import { getAdminUserDetails } from "@/lib/admin-user-details"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
@@ -16,6 +17,23 @@ const userInclude = {
   broker: true,
   ownedAgency: true,
 } as const
+
+export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { error, user: admin } = await getAuthenticatedUser()
+  if (error || !admin) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  const forbidden = ensureRole(admin.role, [UserRole.ADMIN])
+  if (forbidden) return forbidden
+
+  const { id } = await context.params
+  try {
+    const details = await getAdminUserDetails(id)
+    if (!details) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 })
+    return NextResponse.json(details)
+  } catch (detailsError) {
+    console.error("[admin][users][details] failed", { userId: id, error: detailsError })
+    return NextResponse.json({ error: "Não foi possível carregar os detalhes operacionais." }, { status: 500 })
+  }
+}
 
 function parseStatus(value: unknown) {
   if (value === "Ativo" || value === "Ativa") return "active"

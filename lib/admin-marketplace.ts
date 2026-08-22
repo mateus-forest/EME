@@ -10,7 +10,7 @@ function imageCount(value: unknown) {
     : 0
 }
 
-function qualityIssues(property: {
+export function getAdminMarketplaceQualityIssues(property: {
   description: string | null
   imageUrls: unknown
   neighborhood: string | null
@@ -92,7 +92,7 @@ export async function getAdminMarketplaceReport(): Promise<AdminMarketplaceRepor
   ])
 
   const ads: AdminMarketplaceAd[] = properties.map((property) => {
-    const issues = qualityIssues(property)
+    const issues = getAdminMarketplaceQualityIssues(property)
     return {
       id: property.id,
       title: property.title,

@@ -1,39 +1,50 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useSearchParams } from "next/navigation"
 import { Mail, MessageCircleMore, Search, ShieldCheck, Sparkles, Users } from "lucide-react"
 
 import {
   AdminBadge,
   AdminDataTable,
-  AdminDefinitionGrid,
   AdminMetricCard,
   AdminMetricGrid,
   AdminSurface,
 } from "@/components/admin-insights-ui"
 import { AdminPageShell } from "@/components/admin-page-shell"
+import { AdminUserDetailsPanel } from "@/components/admin-user-details-panel"
 import { deleteAdminUser, type AdminUserRecord, updateAdminUser, useAdminUsers } from "@/components/use-admin-data"
-import { useAdminInsights } from "@/components/use-admin-insights"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
+import type { AdminUserDetails } from "@/lib/admin-user-details-contract"
 
 const typeFilters = ["Todos", "Corretor", "Operação", "Admin"] as const
 const statusFilters = ["Todos", "Ativo", "Inativo"] as const
 const planFilters = ["Todos", "Free", "Pro", "Scale", "Admin"] as const
 
 export function AdminUsersPage() {
+  const searchParams = useSearchParams()
   const [users, setUsers] = useAdminUsers()
-  const { insights } = useAdminInsights()
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<(typeof typeFilters)[number]>("Todos")
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
   const [planFilter, setPlanFilter] = useState<(typeof planFilters)[number]>("Todos")
   const [selectedUser, setSelectedUser] = useState<AdminUserRecord | null>(null)
+  const [userDetails, setUserDetails] = useState<AdminUserDetails | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<AdminUserRecord | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+
+  useEffect(() => {
+    const requestedUserId = searchParams.get("user")
+    if (!requestedUserId || selectedUser) return
+    const requestedUser = users.find((user) => user.id === requestedUserId)
+    if (requestedUser) setSelectedUser(requestedUser)
+  }, [searchParams, selectedUser, users])
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -50,7 +61,31 @@ export function AdminUsersPage() {
     })
   }, [planFilter, search, statusFilter, typeFilter, users])
 
-  const selectedInsight = insights?.users.items.find((item) => item.id === selectedUser?.id)
+  useEffect(() => {
+    if (!selectedUser) {
+      setUserDetails(null)
+      setDetailsError(null)
+      return
+    }
+    const controller = new AbortController()
+    setDetailsLoading(true)
+    setDetailsError(null)
+    fetch(`/api/admin/users/${selectedUser.id}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const payload: unknown = await response.json()
+        if (!response.ok || !payload || typeof payload !== "object" || !("operation" in payload)) {
+          const message = payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : "Não foi possível carregar os detalhes."
+          throw new Error(message)
+        }
+        setUserDetails(payload as AdminUserDetails)
+      })
+      .catch((loadError) => {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") return
+        setDetailsError(loadError instanceof Error ? loadError.message : "Falha ao carregar detalhes.")
+      })
+      .finally(() => { if (!controller.signal.aborted) setDetailsLoading(false) })
+    return () => controller.abort()
+  }, [selectedUser])
 
   async function handleToggleStatus(user: AdminUserRecord) {
     const nextStatus = user.status === "Ativo" ? "Inativo" : "Ativo"
@@ -167,7 +202,7 @@ export function AdminUsersPage() {
                 {user.status}
               </AdminBadge>,
               <span key={`${user.id}-plan`} className="text-[#111827]">{user.plan}</span>,
-              <span key={`${user.id}-mail`} className="text-[#111827]">{user.email}</span>,
+              <span key={`${user.id}-mail`} className="max-w-[260px] break-all text-[#111827]">{user.email}</span>,
               <span key={`${user.id}-created`}>{user.createdAt}</span>,
               <div key={`${user.id}-actions`} className="flex flex-wrap justify-end gap-2">
                 <ActionButton label="Detalhes" onClick={() => setSelectedUser(user)} />
@@ -181,7 +216,7 @@ export function AdminUsersPage() {
       </div>
 
       <Dialog open={Boolean(selectedUser)} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-3xl border-black/[0.06] bg-white text-[#050505]">
+        <DialogContent className="max-h-[90dvh] max-w-5xl overflow-x-hidden overflow-y-auto border-black/[0.06] bg-white text-[#050505]">
           {selectedUser ? (
             <>
               <DialogHeader>
@@ -191,28 +226,7 @@ export function AdminUsersPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <AdminDefinitionGrid
-                columns={3}
-                items={[
-                  { label: "Tipo", value: selectedUser.type },
-                  { label: "Status", value: selectedUser.status },
-                  { label: "Plano", value: selectedUser.plan },
-                  { label: "Email", value: selectedUser.email },
-                  { label: "WhatsApp", value: selectedUser.whatsApp },
-                  { label: "Criação", value: selectedUser.createdAt },
-                  { label: "Créditos atuais", value: String(selectedInsight?.creditsBalance ?? 0) },
-                  { label: "Créditos usados", value: String(selectedInsight?.creditsUsed ?? 0) },
-                  { label: "Studio IA", value: `${selectedInsight?.studioActions ?? 0} ações` },
-                  { label: "Imagens", value: String(selectedInsight?.imageGenerations ?? 0) },
-                  { label: "Vídeos", value: String(selectedInsight?.videoGenerations ?? 0) },
-                  { label: "COS", value: `${selectedInsight?.cosActions ?? 0} ações` },
-                  { label: "Último acesso", value: selectedInsight?.lastAccess ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedInsight.lastAccess)) : "Sem atividade recente" },
-                  { label: "Dispositivos", value: selectedInsight?.devicesLabel || "Sem telemetria" },
-                  { label: "Histórico", value: selectedInsight?.historyLabel || "Sem histórico adicional" },
-                  { label: "Assinatura", value: selectedInsight?.subscriptionLabel || "Sem assinatura ativa" },
-                  { label: "Financeiro", value: selectedInsight?.financeLabel || "Sem dados financeiros" },
-                ]}
-              />
+              <AdminUserDetailsPanel data={userDetails} loading={detailsLoading} error={detailsError} />
 
               <div className="mt-4 flex flex-wrap gap-3">
                 <a href={`mailto:${selectedUser.email}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#111827]">

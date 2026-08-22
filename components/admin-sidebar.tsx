@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   AlertTriangle,
   BarChart3,
+  BookOpen,
   Calculator,
   ChevronLeft,
   CreditCard,
@@ -41,6 +42,7 @@ import {
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
   { label: "Marketplace", icon: Store, href: "/admin/marketplace" },
+  { label: "Catálogos", icon: BookOpen, href: "/admin/catalogos" },
   { label: "Usuários", icon: Users, href: "/admin/usuarios" },
   { label: "COS", icon: MessagesSquare, href: "/admin/cos" },
   { label: "Studio IA", icon: Wand2, href: "/admin/studio-ia" },

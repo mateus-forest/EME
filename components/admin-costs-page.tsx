@@ -1,136 +1,70 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Calculator, Eye, Receipt, UserRound } from "lucide-react"
-
-import { AdminEmptyState, AdminStructureCards } from "@/components/admin-empty-state"
+import {
+  AdminMetricCard,
+  AdminMetricGrid,
+  AdminSurface,
+} from "@/components/admin-insights-ui"
 import { AdminPageShell } from "@/components/admin-page-shell"
-import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
-import { useAdminBrokers, type AdminBrokerRecord } from "@/components/use-admin-data"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useAdminAiOperations } from "@/components/use-admin-ai-operations"
 
-const ESTIMATED_COST_PER_CREDIT = 0.08
-
-function formatBRL(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+function money(value: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
 }
 
 export function AdminCostsPage() {
-  const [brokers] = useAdminBrokers()
-  const [selectedBroker, setSelectedBroker] = useState<AdminBrokerRecord | null>(null)
-  const summary = useMemo(() => {
-    const usedCredits = brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0)
-    const activeUsers = brokers.filter((broker) => broker.aiCreditsUsedThisMonth > 0).length
-    const totalCost = usedCredits * ESTIMATED_COST_PER_CREDIT
-
-    return {
-      totalCost,
-      activeUsers,
-      averageUserCost: activeUsers > 0 ? totalCost / activeUsers : 0,
-      averageActionCost: usedCredits > 0 ? totalCost / usedCredits : 0,
-    }
-  }, [brokers])
-  const hasCosts = summary.totalCost > 0
+  const { data, loading, error, retry } = useAdminAiOperations(365)
+  const imageCost = data?.categories.find((item) => item.label === "Imagem")?.costBrl ?? 0
+  const videoCost = data?.categories.find((item) => item.label === "Vídeo")?.costBrl ?? 0
+  const textCost = data?.categories.find((item) => item.label === "Texto")?.costBrl ?? 0
 
   return (
-    <AdminPageShell title="Custos" subtitle="Estimativas operacionais de IA e créditos">
-      <div className="grid gap-6">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Custo estimado de IA" value={formatBRL(summary.totalCost)} icon={Receipt} />
-          <Metric label="Custo mensal estimado" value={formatBRL(summary.totalCost)} icon={Calculator} />
-          <Metric label="Custo médio por usuário" value={formatBRL(summary.averageUserCost)} icon={UserRound} />
-          <Metric label="Custo médio por ação" value={formatBRL(summary.averageActionCost)} icon={Calculator} />
-        </section>
+    <AdminPageShell
+      eyebrow="Operação"
+      title="Custos"
+      description="Custos efetivamente registrados na telemetria dos providers. Ausência de custo não é convertida em estimativa silenciosa."
+    >
+      {loading ? <AdminSurface><p className="text-sm text-slate-500">Carregando custos registrados...</p></AdminSurface> : null}
+      {error ? <AdminSurface><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
+      {data ? (
+        <>
+          <AdminMetricGrid>
+            <AdminMetricCard label="Custo IA registrado" value={money(data.summary.recordedCostBrl)} />
+            <AdminMetricCard label="Texto / COS" value={money(textCost)} />
+            <AdminMetricCard label="Imagens" value={money(imageCost)} />
+            <AdminMetricCard label="Vídeos" value={money(videoCost)} />
+          </AdminMetricGrid>
 
-        <ResponsiveCollapsibleSection title="Custos" defaultMobileOpen>
-          {hasCosts ? (
-            <Card className="rounded-[1.75rem] border-black/[0.06] bg-white py-0 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-              <CardHeader className="px-6 py-5">
-                <CardTitle className="text-xl text-[#111111]">Custo por corretor</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 p-6 pt-0">
-                {brokers.map((broker) => (
-                  <div
-                    key={broker.id}
-                    className="flex flex-col gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 lg:flex-row lg:items-center lg:justify-between"
-                  >
-                    <div>
-                      <p className="font-semibold text-[#111111]">{broker.name}</p>
-                      <p className="mt-1 text-sm text-[#6B7280]">{broker.aiCreditsUsedThisMonth} créditos usados no mês</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-black/[0.06] bg-white px-3 py-1 text-xs text-[#5F6B7A]">
-                        {formatBRL(broker.aiCreditsUsedThisMonth * ESTIMATED_COST_PER_CREDIT)}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setSelectedBroker(broker)}
-                        className="h-8 rounded-xl border border-black/[0.06] bg-white px-3 text-xs text-[#4B5563] hover:bg-white hover:text-[#111111]"
-                      >
-                        <Eye className="size-3.5" />
-                        Detalhes
-                      </Button>
-                    </div>
+          <AdminSurface>
+            <div className="mb-5"><h2 className="text-lg font-semibold text-slate-900">Custos por provider e modelo</h2><p className="mt-1 text-sm text-slate-500">OpenAI, Grok/xAI, Pedra, Luma e demais providers aparecem quando há operação registrada.</p></div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {data.providers.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div><strong className="text-sm text-slate-900">{item.label}</strong><p className="mt-1 text-xs text-slate-500">{item.operations} operações · {item.credits} créditos</p></div>
+                    <strong className="text-sm text-emerald-700">{money(item.costBrl)}</strong>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          ) : (
-            <AdminEmptyState
-              icon={Receipt}
-              title="Custos prontos para acompanhamento"
-              description="Ainda não há consumo de IA suficiente para calcular custos reais. A estrutura fica pronta para custo estimado, custo por corretor e média por ação."
-            >
-              <AdminStructureCards items={["Custo estimado de IA", "Custo por usuário/corretor", "Custo médio por atendimento ou ação"]} />
-            </AdminEmptyState>
-          )}
-        </ResponsiveCollapsibleSection>
-      </div>
+                  {item.unpricedOperations > 0 ? <p className="mt-3 text-xs text-amber-700">{item.unpricedOperations} operações sem custo registrado pelo provider.</p> : null}
+                </div>
+              ))}
+            </div>
+          </AdminSurface>
 
-      <Dialog open={Boolean(selectedBroker)} onOpenChange={(open) => !open && setSelectedBroker(null)}>
-        <DialogContent className="max-w-lg border-black/[0.06] bg-white text-[#111111]">
-          {selectedBroker ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedBroker.name}</DialogTitle>
-                <DialogDescription className="text-[#6B7280]">Detalhes do custo estimado de IA por corretor.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-3 rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
-                <Info label="Créditos usados no mês" value={String(selectedBroker.aiCreditsUsedThisMonth)} />
-                <Info label="Custo estimado" value={formatBRL(selectedBroker.aiCreditsUsedThisMonth * ESTIMATED_COST_PER_CREDIT)} />
-              </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+          <AdminSurface>
+            <div className="mb-5"><h2 className="text-lg font-semibold text-slate-900">Critério de consolidação</h2><p className="mt-1 text-sm text-slate-500">Somente valores persistidos como custo real entram nos totais.</p></div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {data.categories.map((item) => (
+                <div key={item.label} className="rounded-2xl bg-slate-50 p-4">
+                  <span className="text-xs uppercase tracking-wide text-slate-500">{item.label}</span>
+                  <strong className="mt-2 block text-xl text-slate-900">{money(item.costBrl)}</strong>
+                  <span className="mt-1 block text-xs text-slate-500">{item.operations} operações</span>
+                </div>
+              ))}
+            </div>
+            {data.summary.unpricedOperations > 0 ? <p className="mt-4 text-sm text-amber-700">{data.summary.unpricedOperations} operações não possuem custo persistido e não foram estimadas como reais.</p> : null}
+          </AdminSurface>
+        </>
+      ) : null}
     </AdminPageShell>
-  )
-}
-
-function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Receipt }) {
-  return (
-    <Card className="rounded-[1.5rem] border-black/[0.06] bg-white py-0 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-      <CardContent className="flex items-start justify-between gap-4 p-4">
-        <div>
-          <p className="text-sm text-[#6B7280]">{label}</p>
-          <p className="mt-2 text-3xl font-semibold text-[#111111]">{value}</p>
-        </div>
-        <div className="flex size-10 items-center justify-center rounded-2xl border border-[#009b3a]/16 bg-[#eef9f1] text-[#009b3a]">
-          <Icon className="size-5" />
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-[0.16em] text-[#98A2B3]">{label}</p>
-      <p className="mt-2 text-sm text-[#111111]">{value}</p>
-    </div>
   )
 }

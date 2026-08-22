@@ -2,11 +2,27 @@ import "server-only"
 
 import type { AdminActivityItem, AdminAlertItem, AdminInsights, AdminMetricPoint, AdminTrendRow } from "@/lib/admin-insights-contract"
 import { EME_PLANS, normalizeEmePlanKey } from "@/lib/eme-plans"
+import { getAdminMarketplaceQualityIssues } from "@/lib/admin-marketplace"
 import { prisma } from "@/lib/prisma"
 import { SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
 
 const ESTIMATED_COST_PER_CREDIT = 0.08
 const ESTIMATED_HOURLY_SAVINGS_BRL = 55
+
+async function safeAdminQuery<T>(
+  label: string,
+  query: Promise<T>,
+  fallback: T,
+  failures: string[],
+): Promise<T> {
+  try {
+    return await query
+  } catch (error) {
+    failures.push(label)
+    console.error(`[admin][dashboard] ${label} failed`, error)
+    return fallback
+  }
+}
 
 function startOfDay(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -151,6 +167,11 @@ function buildAlertItems(input: {
   studioFailures: number
   nearLimitUsers: number
   pendingStudioReviews: number
+  unverifiedCreci: number
+  reviewRequiredCreci: number
+  catalogProblems: number
+  readinessLost: number
+  queryFailures: string[]
 }): AdminAlertItem[] {
   const items: AdminAlertItem[] = []
 
@@ -217,12 +238,39 @@ function buildAlertItems(input: {
     })
   }
 
-  if (!items.length) {
+  if (input.reviewRequiredCreci > 0 || input.unverifiedCreci > 0) {
     items.push({
-      id: "healthy",
-      title: "Operação saudável",
-      description: "Nenhum alerta crítico foi identificado com os dados atuais da plataforma.",
-      severity: "low",
+      id: "creci-review",
+      title: "Cadastros com CRECI pendente",
+      description: `${input.reviewRequiredCreci} exigem revisão e ${input.unverifiedCreci} ainda não estão verificados.`,
+      severity: "medium",
+    })
+  }
+
+  if (input.catalogProblems > 0) {
+    items.push({
+      id: "catalog-problems",
+      title: "Catálogos precisam de atenção",
+      description: `${input.catalogProblems} catálogos ativos estão sem imóveis publicados ou fora do padrão operacional.`,
+      severity: "medium",
+    })
+  }
+
+  if (input.readinessLost > 0) {
+    items.push({
+      id: "readiness-lost",
+      title: "Anúncios perderam readiness",
+      description: `${input.readinessLost} imóveis publicados possuem pendências de qualidade ou elegibilidade.`,
+      severity: "high",
+    })
+  }
+
+  if (input.queryFailures.length > 0) {
+    items.push({
+      id: "dashboard-partial-data",
+      title: "Dados administrativos parcialmente indisponíveis",
+      description: `Falha isolada em: ${input.queryFailures.join(", ")}. As demais áreas continuam disponíveis.`,
+      severity: "high",
     })
   }
 
@@ -234,6 +282,7 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
   const today = startOfDay(now)
   const last7Days = addDays(today, -6)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const queryFailures: string[] = []
 
   const [
     users,
@@ -249,7 +298,7 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
     studioCampaigns,
     aiTelemetry,
   ] = await Promise.all([
-    prisma.user.findMany({
+    safeAdminQuery("usuários", prisma.user.findMany({
       include: {
         broker: {
           include: {
@@ -259,12 +308,12 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         ownedAgency: true,
         trustedDevices: {
           where: { revokedAt: null },
-          select: { id: true },
+          select: { id: true, lastAccessAt: true, trustedAt: true },
         },
       },
       orderBy: { createdAt: "desc" },
-    }),
-    prisma.broker.findMany({
+    }), [], queryFailures),
+    safeAdminQuery("corretores", prisma.broker.findMany({
       include: {
         user: true,
         planAccount: true,
@@ -279,48 +328,48 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         },
       },
       orderBy: { createdAt: "desc" },
-    }),
-    prisma.subscription.findMany({
+    }), [], queryFailures),
+    safeAdminQuery("assinaturas", prisma.subscription.findMany({
       where: { ownerType: "BROKER" },
       orderBy: { createdAt: "desc" },
-    }),
-    prisma.aiAssistantInteraction.findMany({
+    }), [], queryFailures),
+    safeAdminQuery("interações COS", prisma.aiAssistantInteraction.findMany({
+      include: {
+        broker: { include: { user: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("documentos", prisma.brokerDocument.findMany({
+      include: {
+        broker: { include: { user: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("clientes", prisma.lead.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("agenda", prisma.agendaEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("buscas", prisma.searchEvent.findMany({
+      include: {
+        broker: { include: { user: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("créditos IA", prisma.aiCreditTransaction.findMany({
       include: {
         broker: { include: { user: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 1200,
-    }),
-    prisma.brokerDocument.findMany({
-      include: {
-        broker: { include: { user: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-    prisma.lead.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-    prisma.agendaEvent.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-    prisma.searchEvent.findMany({
-      include: {
-        broker: { include: { user: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-    prisma.aiCreditTransaction.findMany({
-      include: {
-        broker: { include: { user: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 2400,
-    }),
-    prisma.extraPackagePurchase.findMany({
+    }), [], queryFailures),
+    safeAdminQuery("pacotes extras", prisma.extraPackagePurchase.findMany({
       where: {
         metadata: {
           path: ["source"],
@@ -335,41 +384,140 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-    prisma.studioCampaign.findMany({
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("Studio IA", prisma.studioCampaign.findMany({
       include: {
         broker: { include: { user: true } },
         assets: true,
       },
       orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-    prisma.aiOperationTelemetry.findMany({
+      take: 600,
+    }), [], queryFailures),
+    safeAdminQuery("telemetria IA", prisma.aiOperationTelemetry.findMany({
       orderBy: { createdAt: "desc" },
-      take: 2400,
-    }),
+      take: 1200,
+    }), [], queryFailures),
+  ])
+
+  const [
+    exactUserCount,
+    exactActivePropertyCount,
+    exactClientCount,
+    exactProposalCount,
+    exactConversationCount,
+    exactStudioCampaignCount,
+    exactStudioAssetCount,
+    exactAiOperationCount,
+    openAiRecordedCost,
+    allRecordedCost,
+    activeDeviceUsers,
+    activeInteractionUsers,
+    activeStudioUsers,
+    activeTelemetryUsers,
+    catalogBrokers,
+    publicationProperties,
+  ] = await Promise.all([
+    safeAdminQuery("total de usuários", prisma.user.count({ where: { role: { in: [UserRole.BROKER, UserRole.ADMIN, UserRole.AGENCY] } } }), users.length, queryFailures),
+    safeAdminQuery("imóveis ativos", prisma.property.count({ where: { published: true } }), 0, queryFailures),
+    safeAdminQuery("total de clientes", prisma.lead.count(), leads.length, queryFailures),
+    safeAdminQuery("total de propostas", prisma.brokerDocument.count({ where: { type: "proposal" } }), documents.filter((item) => item.type === "proposal").length, queryFailures),
+    safeAdminQuery("total de conversas", prisma.brokerDocument.count({ where: { type: "cos_conversation" } }), documents.filter((item) => item.type === "cos_conversation").length, queryFailures),
+    safeAdminQuery("total de campanhas", prisma.studioCampaign.count(), studioCampaigns.length, queryFailures),
+    safeAdminQuery("total de assets", prisma.studioCampaignAsset.count(), studioCampaigns.reduce((sum, campaign) => sum + campaign.assets.length, 0), queryFailures),
+    safeAdminQuery("total de operações IA", prisma.aiOperationTelemetry.count(), aiTelemetry.length, queryFailures),
+    safeAdminQuery("custo OpenAI", prisma.aiOperationTelemetry.aggregate({
+      where: { provider: { equals: "openai", mode: "insensitive" } },
+      _sum: { costBrl: true },
+    }).then((result) => Number(result._sum.costBrl ?? 0)), 0, queryFailures),
+    safeAdminQuery("custo total IA", prisma.aiOperationTelemetry.aggregate({
+      _sum: { costBrl: true },
+    }).then((result) => Number(result._sum.costBrl ?? 0)), 0, queryFailures),
+    safeAdminQuery("atividade por dispositivo", prisma.trustedDevice.findMany({
+      where: { revokedAt: null, user: { role: { in: [UserRole.BROKER, UserRole.ADMIN, UserRole.AGENCY] } }, OR: [{ lastAccessAt: { gte: today } }, { trustedAt: { gte: today } }] },
+      select: { userId: true },
+      distinct: ["userId"],
+    }), [], queryFailures),
+    safeAdminQuery("atividade no COS", prisma.aiAssistantInteraction.findMany({
+      where: { createdAt: { gte: today } },
+      select: { broker: { select: { userId: true } } },
+      distinct: ["brokerId"],
+    }), [], queryFailures),
+    safeAdminQuery("atividade no Studio", prisma.studioCampaign.findMany({
+      where: { createdAt: { gte: today }, createdByUserId: { not: null } },
+      select: { createdByUserId: true },
+      distinct: ["createdByUserId"],
+    }), [], queryFailures),
+    safeAdminQuery("atividade na telemetria", prisma.aiOperationTelemetry.findMany({
+      where: { createdAt: { gte: today }, userId: { not: null } },
+      select: { userId: true },
+      distinct: ["userId"],
+    }), [], queryFailures),
+    safeAdminQuery("saúde dos catálogos", prisma.broker.findMany({
+      select: {
+        id: true,
+        status: true,
+        catalogSlug: true,
+        creciValidationStatus: true,
+        _count: { select: { properties: { where: { published: true } } } },
+      },
+    }), [], queryFailures),
+    safeAdminQuery("readiness de publicação", prisma.property.findMany({
+      where: { OR: [{ published: true }, { marketplacePublished: true }] },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        images: true,
+        neighborhood: true,
+        city: true,
+        state: true,
+        published: true,
+        marketplacePublished: true,
+        viewsCount: true,
+        leadsCount: true,
+        publishedAt: true,
+        updatedAt: true,
+        broker: {
+          select: {
+            catalogSlug: true,
+            creciValidationStatus: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    }), [], queryFailures),
   ])
 
   const proposals = documents.filter((item) => item.type === "proposal")
   const conversations = documents.filter((item) => item.type === "cos_conversation")
-  const activeUsersToday = brokers.filter((item) => item.aiLastInteractionAt && item.aiLastInteractionAt >= today)
-  const activePropertyCount = brokers.reduce((sum, broker) => sum + broker._count.properties, 0)
+  const activeUserIds = new Set<string>()
+  activeDeviceUsers.forEach((item) => activeUserIds.add(item.userId))
+  activeInteractionUsers.forEach((item) => activeUserIds.add(item.broker.userId))
+  activeStudioUsers.forEach((item) => item.createdByUserId && activeUserIds.add(item.createdByUserId))
+  activeTelemetryUsers.forEach((item) => item.userId && activeUserIds.add(item.userId))
+  brokers.forEach((broker) => {
+    if (broker.aiLastInteractionAt && broker.aiLastInteractionAt >= today) activeUserIds.add(broker.userId)
+  })
+  const activeUsersToday = [...activeUserIds]
+  const activePropertyCount = exactActivePropertyCount
   const cosFailures = interactions.filter((item) => item.actionStatus && item.actionStatus !== "completed").length
   const totalCreditsConsumed = brokers.reduce((sum, broker) => sum + broker.aiCreditsUsedThisMonth, 0)
   const totalCreditsBalance = brokers.reduce((sum, broker) => sum + broker.aiCreditsBalance, 0)
   const nearLimitUsers = brokers.filter((broker) => broker.aiCreditsBalance <= 10 && broker.aiCreditsUsedThisMonth > 0).length
-  const paidBrokers = brokers.filter((broker) => inferBrokerPlanKey(broker) !== "free")
-  const monthlyRevenue = paidBrokers.reduce((sum, broker) => sum + EME_PLANS[inferBrokerPlanKey(broker)].priceCents / 100, 0)
-  const monthlySeries = bucketByMonth(
-    paidBrokers.map((broker) => broker.createdAt ?? now).filter((item): item is Date => Boolean(item)),
-    6,
+  const activeSubscriptionBrokerIds = new Set(
+    subscriptions
+      .filter((subscription) => subscription.status === SubscriptionStatus.ACTIVE)
+      .map((subscription) => subscription.ownerId),
   )
-  const openAiCost = aiTelemetry
-    .filter((item) => item.provider?.toLowerCase() === "openai" && item.costBrl !== null)
-    .reduce((sum, item) => sum + Number(item.costBrl ?? 0), 0)
-  const totalOperationCost = aiTelemetry.reduce((sum, item) => sum + Number(item.costBrl ?? 0), 0)
-  const totalOperations = aiTelemetry.length
+  const paidBrokers = brokers.filter(
+    (broker) => inferBrokerPlanKey(broker) !== "free" && activeSubscriptionBrokerIds.has(broker.id),
+  )
+  const monthlyRevenue = paidBrokers.reduce((sum, broker) => sum + EME_PLANS[inferBrokerPlanKey(broker)].priceCents / 100, 0)
+  const monthlySeries = [{ label: now.toLocaleDateString("pt-BR", { month: "short" }), value: monthlyRevenue }]
+  const openAiCost = openAiRecordedCost
+  const totalOperationCost = allRecordedCost
+  const totalOperations = exactAiOperationCount
   const studioAssets = studioCampaigns.flatMap((campaign) =>
     campaign.assets.map((asset) => ({
       ...asset,
@@ -443,7 +591,15 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         videoGenerations: brokerVideos,
         studioActions: brokerAssets.length,
         cosActions: brokerInteractions.length,
-        lastAccess: formatDate(broker?.aiLastInteractionAt ?? null),
+        lastAccess: formatDate(
+          [
+            broker?.aiLastInteractionAt ?? null,
+            user.lastLoginAt ?? null,
+            ...user.trustedDevices.map((device) => device.lastAccessAt ?? device.trustedAt),
+          ]
+            .filter((value): value is Date => Boolean(value))
+            .sort((a, b) => b.getTime() - a.getTime())[0] ?? null,
+        ),
         devicesLabel: `${user.trustedDevices.length} dispositivo(s) confiável(is)`,
         historyLabel: broker ? `${brokerInteractions.length} interações e ${brokerAssets.length} assets do Studio IA` : "Conta sem operação de corretor",
         subscriptionLabel: user.role === UserRole.ADMIN ? "Conta administrativa" : `${normalizeCommercialPlanLabel(broker?.planAccount?.planKey ?? user.plan)} em operação`,
@@ -491,11 +647,19 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
 
   const adminBonusTransactions = creditTransactions.filter((item) => item.type === "admin_bonus")
   const adminPropertyBonuses = extraPackagePurchases
+  const reviewRequiredCreci = catalogBrokers.filter((broker) => broker.creciValidationStatus === "REVIEW_REQUIRED").length
+  const unverifiedCreci = catalogBrokers.filter((broker) => broker.creciValidationStatus !== "VERIFIED").length
+  const catalogProblems = catalogBrokers.filter(
+    (broker) => broker.status !== "INACTIVE" && (!broker.catalogSlug || broker._count.properties === 0 || broker.creciValidationStatus !== "VERIFIED"),
+  ).length
+  const readinessLost = publicationProperties.filter(
+    (property) => getAdminMarketplaceQualityIssues(property).length > 0,
+  ).length
 
   return {
     generatedAt: now.toISOString(),
     users: {
-      total: usersItems.length,
+      total: exactUserCount,
       newLast7Days: users.filter((item) => item.createdAt >= last7Days).length,
       activeToday: activeUsersToday.length,
       blocked: usersItems.filter((item) => item.status === "Inativo").length,
@@ -509,8 +673,8 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
       active: brokers.filter((broker) => broker.status !== "INACTIVE").length,
       inactive: brokers.filter((broker) => broker.status === "INACTIVE").length,
       properties: activePropertyCount,
-      leads: leads.length,
-      proposals: proposals.length,
+      leads: exactClientCount,
+      proposals: exactProposalCount,
       agenda: agendaEvents.length,
       revenue: monthlyRevenue,
       creditsBalance: totalCreditsBalance,
@@ -569,7 +733,7 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
     },
     cos: {
       conversationsToday: conversations.filter((item) => item.createdAt >= today).length,
-      conversationsTotal: conversations.length,
+      conversationsTotal: exactConversationCount,
       messages: interactions.length,
       commandsExecuted: interactions.length,
       propertySearches: searchEvents.length + interactions.filter((item) => item.actionType === "searchProperties").length,
@@ -588,9 +752,9 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
       ranking: topRowsFromMap(cosUsageByBroker, 8, cosUsageByBrokerDetail),
     },
     studioIa: {
-      campaigns: studioCampaigns.length,
-      libraryItems: studioCampaigns.length,
-      libraryAssets: studioAssets.length,
+      campaigns: exactStudioCampaignCount,
+      libraryItems: exactStudioCampaignCount,
+      libraryAssets: exactStudioAssetCount,
       imagesCreated: studioAssets.filter((asset) => asset.type === "IMAGE" || asset.type === "THUMBNAIL").length,
       videosCreated: studioAssets.filter((asset) => asset.type === "VIDEO").length,
       postsCreated: studioAssets.filter((asset) => asset.assetKey === "post_feed" || asset.assetKey === "carousel").length,
@@ -645,9 +809,9 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
     analytics: {
       activeUsers: activeUsersToday.length,
       properties: activePropertyCount,
-      clients: leads.length,
-      proposals: proposals.length,
-      studioIa: studioCampaigns.length,
+      clients: exactClientCount,
+      proposals: exactProposalCount,
+      studioIa: exactStudioCampaignCount,
       cos: interactions.length,
       videos: studioAssets.filter((asset) => asset.type === "VIDEO").length,
       images: studioAssets.filter((asset) => asset.type === "IMAGE" || asset.type === "THUMBNAIL").length,
@@ -666,6 +830,11 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         studioFailures,
         nearLimitUsers,
         pendingStudioReviews,
+        unverifiedCreci,
+        reviewRequiredCreci,
+        catalogProblems,
+        readinessLost,
+        queryFailures,
       }),
     },
     bonuses: {
