@@ -1,7 +1,10 @@
+import type { Compatibility } from '@/lib/marketplace/search-data'
+
 // Contratos e conteúdo editorial. Imóveis e corretores são carregados de server-data.
 
 export type Property = {
-  slug: string; title: string; city: string; state: string; price: number; bedrooms: number; area: number; parking: number; image: string; badge?: string; featured?: boolean
+  slug: string; title: string; city: string; state: string; price: number; bedrooms: number; area: number; parking: number; image: string
+  compatibility: Compatibility; reasons: string[]; priceSuffix?: string; priceDetail?: string; commercial?: boolean
 }
 export type Lifestyle = { slug: string; title: string; icon: 'space' | 'nearby' | 'invest' | 'ready'; image: string }
 export type Feature = { title: string; description: string; icon: 'search' | 'sparkles' | 'compare' | 'phone' }

@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { parsePropertyLegalData } from '@/lib/legal-entities'
 import type { Property } from '@/lib/marketplace/data'
-import type { BrokerProfile, MarketplaceRegion, Rental } from '@/lib/marketplace/pages-data'
+import type { BrokerProfile, MarketplaceRegion } from '@/lib/marketplace/pages-data'
 import type { PropertyDetail, SimilarProperty } from '@/lib/marketplace/property-detail'
 import { ensureMarketplaceRegionMedia } from '@/lib/marketplace/region-media'
 import { marketplaceRegionSlug as buildMarketplaceRegionSlug, normalizeMarketplaceRegion } from '@/lib/marketplace/region-media-contract'
@@ -159,11 +159,12 @@ export async function getMarketplacePropertyCards(limit?: number, purpose?: 'SAL
     area: property.area,
     parking: property.parking,
     image: property.image,
-    featured: false,
+    compatibility: property.compatibility,
+    reasons: property.reasons,
   }))
 }
 
-export async function getMarketplaceRentals(limit?: number): Promise<Rental[]> {
+export async function getMarketplaceRentals(limit?: number): Promise<Property[]> {
   const records = await prisma.property.findMany({
     where: { ...marketplacePropertyWhere(), purpose: 'RENT' },
     include: marketplacePropertyInclude,
@@ -177,12 +178,15 @@ export async function getMarketplaceRentals(limit?: number): Promise<Rental[]> {
       title: mapped.title,
       city: mapped.city,
       state: mapped.state,
-      monthly: mapped.price,
+      price: mapped.price,
       bedrooms: mapped.bedrooms,
       area: mapped.area,
       parking: mapped.parking,
       image: mapped.image,
-      featured: false,
+      compatibility: mapped.compatibility,
+      reasons: mapped.reasons,
+      priceSuffix: '/mês',
+      commercial: mapped.propertyType === 'comercial',
     }
   })
 }
@@ -283,7 +287,8 @@ export async function getMarketplaceBrokerPropertyCards(brokerId: string, limit 
       area: property.area,
       parking: property.parking,
       image: property.image,
-      featured: false,
+      compatibility: property.compatibility,
+      reasons: property.reasons,
     } satisfies Property
   })
 }
@@ -375,7 +380,9 @@ export async function getMarketplacePropertyDetail(slug: string) {
       price: mapped.price,
       bedrooms: mapped.bedrooms,
       area: mapped.area,
+      parking: mapped.parking,
       compatibility: mapped.compatibility,
+      reasons: mapped.reasons,
       image: mapped.image,
     }
   })

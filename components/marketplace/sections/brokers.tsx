@@ -16,7 +16,7 @@ export function BrokersSection({ brokers }: { brokers: BrokerProfile[] }) {
         />
       </Reveal>
 
-      <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 md:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:mt-10 md:grid-cols-2">
         {visible.map((broker, i) => (
           <Reveal key={broker.slug} delay={i * 90}>
             <BrokerCard broker={broker} />

@@ -10,5 +10,6 @@ export type PropertyDetail = {
   gallery: string[]; environments: EnvironmentPhoto[]; brokerSlug: string; brokerCreci: string; map: { x: number; y: number }
 }
 export type SimilarProperty = {
-  slug: string; title: string; city: string; state: string; price: number; bedrooms: number; area: number; compatibility: Compatibility; image: string
+  slug: string; title: string; city: string; state: string; price: number; bedrooms: number; area: number; parking: number
+  compatibility: Compatibility; reasons: string[]; image: string
 }

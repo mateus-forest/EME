@@ -7,7 +7,7 @@ import {
   brokerTransactionOptions,
   type BrokerProfile,
 } from '@/lib/marketplace/pages-data'
-import { BrokerProfileCard } from '@/components/marketplace/pages/broker-profile-card'
+import { BrokerCard } from '@/components/marketplace/broker-card'
 import { cn } from '@/lib/utils'
 import {
   CATALOG_GLASS_SURFACE_CLASS,
@@ -152,7 +152,7 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
           <p className="mb-4 text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? 'especialista encontrado' : 'especialistas encontrados'}</p>
           {filtered.length ? (
             <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2">
-              {filtered.map((broker) => <BrokerProfileCard key={broker.slug} broker={broker} />)}
+              {filtered.map((broker) => <BrokerCard key={broker.slug} broker={broker} />)}
             </div>
           ) : (
             <div className={cn(CATALOG_GLASS_SURFACE_CLASS, 'rounded-[1.75rem] border-dashed p-10 text-center')}>

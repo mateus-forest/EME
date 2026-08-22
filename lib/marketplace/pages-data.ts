@@ -18,10 +18,6 @@ export const buyIntents: Intent[] = [
   { slug: 'pronto-para-morar', label: 'Pronto para morar', image: '/marketplace/images/result-gramado.png' },
 ]
 
-export type Rental = {
-  slug: string; title: string; city: string; state: string; monthly: number; condo?: number
-  bedrooms: number; area: number; parking: number; image: string; badge?: string; commercial?: boolean; featured?: boolean
-}
 export const rentTypes: TypeEntry[] = [
   { slug: 'casa', label: 'Casas', count: 0 },
   { slug: 'apartamento', label: 'Apartamentos', count: 0 },
@@ -65,4 +61,3 @@ export const brokerTransactionOptions = [
   { value: 'compra', label: 'Comprar' },
   { value: 'aluguel', label: 'Alugar' },
 ]
-export const formatMonthly = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)

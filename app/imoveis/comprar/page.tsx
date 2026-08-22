@@ -35,7 +35,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function ComprarPage() {
   const [buyProperties, searchResults, regions] = await Promise.all([getMarketplacePropertyCards(5, 'SALE'), getMarketplaceProperties(), getMarketplaceRegions()])
-  const [featured, ...rest] = buyProperties
   const buyResults = searchResults.filter((property) => property.purpose === 'compra')
   const realBuyTypes = buyTypes.map((type) => ({ ...type, count: buyResults.filter((property) => property.propertyType === type.slug).length }))
 
@@ -90,14 +89,9 @@ export default async function ComprarPage() {
           <QuickFilters groups={quickFilters} purpose="compra" />
         </div>
 
-        {featured ? <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <Reveal className="lg:col-span-2 lg:row-span-2">
-            <div className="h-full">
-              <PropertyCard property={featured} featured />
-            </div>
-          </Reveal>
-          {rest.slice(0, 4).map((property, i) => (
-            <Reveal key={property.slug} delay={(i + 1) * 80} className="lg:col-span-1">
+        {buyProperties.length ? <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+          {buyProperties.map((property, i) => (
+            <Reveal key={property.slug} delay={i * 80}>
               <div className="h-full">
                 <PropertyCard property={property} />
               </div>

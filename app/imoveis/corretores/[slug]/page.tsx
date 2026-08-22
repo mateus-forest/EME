@@ -143,7 +143,7 @@ export default async function BrokerProfilePage({
                 support="Uma seleção da carteira ativa deste especialista."
               />
             </Reveal>
-            <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
               {brokerListings.map((property, i) => (
                 <Reveal key={property.slug} delay={i * 90}>
                   <PropertyCard property={property} />

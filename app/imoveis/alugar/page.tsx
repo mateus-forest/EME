@@ -9,7 +9,7 @@ import { RegionHighlights } from '@/components/marketplace/pages/region-highligh
 import { QuickFilters } from '@/components/marketplace/pages/quick-filters'
 import { HelpCta } from '@/components/marketplace/pages/help-cta'
 import { ConversationalSearch } from '@/components/marketplace/conversational-search'
-import { RentalCard } from '@/components/marketplace/rental-card'
+import { PropertyCard } from '@/components/marketplace/property-card'
 import { SectionHeading } from '@/components/marketplace/section-heading'
 import { Reveal } from '@/components/marketplace/reveal'
 import { rentTypes, rentIntents } from '@/lib/marketplace/pages-data'
@@ -35,7 +35,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function AlugarPage() {
   const [rentals, searchResults, regions] = await Promise.all([getMarketplaceRentals(5), getMarketplaceProperties(), getMarketplaceRegions()])
-  const [featured, ...rest] = rentals
   const rentResults = searchResults.filter((property) => property.purpose === 'aluguel')
   const realRentTypes = rentTypes.map((type) => ({ ...type, count: type.slug === 'mobiliado' ? rentResults.filter((property) => property.furnished).length : rentResults.filter((property) => property.propertyType === type.slug).length }))
 
@@ -90,16 +89,11 @@ export default async function AlugarPage() {
           <QuickFilters groups={quickFilters} purpose="aluguel" />
         </div>
 
-        {featured ? <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <Reveal className="lg:col-span-2 lg:row-span-2">
-            <div className="h-full">
-              <RentalCard rental={featured} featured />
-            </div>
-          </Reveal>
-          {rest.slice(0, 4).map((rental, i) => (
-            <Reveal key={rental.slug} delay={(i + 1) * 80} className="lg:col-span-1">
+        {rentals.length ? <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+          {rentals.map((rental, i) => (
+            <Reveal key={rental.slug} delay={i * 80}>
               <div className="h-full">
-                <RentalCard rental={rental} />
+                <PropertyCard property={rental} />
               </div>
             </Reveal>
           ))}

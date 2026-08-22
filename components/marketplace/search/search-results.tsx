@@ -25,9 +25,8 @@ import { BrokerCard } from '@/components/marketplace/broker-card'
 import { SearchInterpretation } from '@/components/marketplace/search/search-interpretation'
 import { ResultsToolbar, type QuickFilters } from '@/components/marketplace/search/results-toolbar'
 import { MarketplaceFiltersDialog } from '@/components/marketplace/search/marketplace-filters-dialog'
-import { ResultsPropertyCard } from '@/components/marketplace/search/results-property-card'
+import { PropertyCard } from '@/components/marketplace/property-card'
 import { ResultsMap } from '@/components/marketplace/search/results-map'
-import { AlternativePropertyCard } from '@/components/marketplace/search/alternative-card'
 import { CompareTray } from '@/components/marketplace/search/compare-tray'
 import { ComparisonPanel } from '@/components/marketplace/search/comparison-panel'
 import { LeadAssistancePanel } from '@/components/marketplace/search/lead-assistance-panel'
@@ -252,11 +251,11 @@ export function SearchResults({
                 onHelp={() => setLeadOpen(true)}
               />
             ) : (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="grid grid-cols-1 items-stretch gap-5">
                 {filtered.map((result, i) => (
                   <Reveal key={result.slug} delay={i * 70}>
-                    <ResultsPropertyCard
-                      result={result}
+                    <PropertyCard
+                      property={result}
                       favorite={favorites.has(result.slug)}
                       onToggleFavorite={toggleFavorite}
                       selected={compare.includes(result.slug)}
@@ -382,7 +381,14 @@ export function SearchResults({
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
           {results.filter((item) => (!filters.purpose || item.purpose === filters.purpose) && !filtered.some((match) => match.id === item.id)).slice(0, 2).map((alternative, i) => (
             <Reveal key={alternative.slug} delay={i * 90}>
-              <AlternativePropertyCard alternative={{ ...alternative, reason: alternative.reasons[0] || 'Outra opção publicada no Marketplace' }} />
+              <PropertyCard
+                property={alternative}
+                favorite={favorites.has(alternative.slug)}
+                onToggleFavorite={toggleFavorite}
+                selected={compare.includes(alternative.slug)}
+                onToggleCompare={toggleCompare}
+                compareDisabled={!compare.includes(alternative.slug) && compare.length >= MAX_COMPARE}
+              />
             </Reveal>
           ))}
         </div>
@@ -396,7 +402,7 @@ export function SearchResults({
             support="Profissionais da rede EME que atendem o contexto da sua busca."
           />
         </Reveal>
-        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
           {rankedBrokers.slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 90} className="flex flex-col gap-2">
               {i === 0 && filtered.some((property) => property.brokerSlug === broker.slug) && (
