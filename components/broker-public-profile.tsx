@@ -151,7 +151,7 @@ export function BrokerProfileHero({
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.86)_0%,rgba(250,252,249,.74)_46%,rgba(250,252,249,.48)_70%,rgba(250,252,249,.20)_88%,rgba(250,252,249,.05)_97%,transparent_100%)]" />
 
-          <div className="relative z-10 grid gap-5 px-4 pb-5 pt-7 text-center sm:px-6 sm:pb-7 sm:pt-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-9 lg:pt-10 lg:text-left">
+          <div className="relative z-10 grid gap-5 px-4 pb-5 pt-7 text-center sm:px-6 sm:pb-7 sm:pt-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-5 lg:pb-9 lg:pt-10 lg:text-left">
           <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-36 lg:size-44 xl:size-52">
             {catalog.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -163,16 +163,16 @@ export function BrokerProfileHero({
             )}
           </div>
 
-            <div className="relative z-10 min-w-0 max-w-[38rem] space-y-3 pb-2 text-center lg:pb-0">
-              <div className="flex flex-wrap items-start justify-center gap-2.5">
+            <div className="relative z-10 min-w-0 max-w-[38rem] space-y-3 pb-2 text-center lg:pt-4 lg:text-left lg:pb-0">
+              <div className="flex flex-wrap items-start justify-center gap-2.5 lg:justify-start">
                 <h1 className="max-w-full text-[2rem] font-semibold leading-tight tracking-[-0.04em] text-[#08110b] [text-shadow:0_1px_18px_rgba(255,255,255,.7)] sm:text-[2.35rem] lg:text-[3.2rem]">
                   {catalog.displayName}
                 </h1>
               </div>
 
-              <BrokerSpecialtyChips specialties={catalog.specialties} compact singleLine className="justify-center" />
+              <BrokerSpecialtyChips specialties={catalog.specialties} compact singleLine className="justify-center lg:justify-start" />
               {creciLabel(catalog) ? (
-                <p className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full border border-white/80 bg-white/78 px-3 py-1 text-sm font-semibold text-[#294536] shadow-[0_5px_16px_rgba(42,70,52,.09)] backdrop-blur-sm">
+                <p className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full border border-white/80 bg-white/78 px-3 py-1 text-sm font-semibold text-[#294536] shadow-[0_5px_16px_rgba(42,70,52,.09)] backdrop-blur-sm lg:mx-0 lg:font-medium lg:italic">
                   {catalog.creciVerified ? <BadgeCheck className="size-4.5 fill-[#17a24c] text-white" aria-label="CRECI verificado" /> : null}
                   {creciLabel(catalog)}
                 </p>
