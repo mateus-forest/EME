@@ -59,9 +59,9 @@ export function BrokerCatalogHeader({
   const catalogPath = buildBrokerCatalogPath(catalog.slug)
 
   return (
-    <header className="sticky top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-5">
-      <div className="mx-auto max-w-[1280px] rounded-[1.4rem] border border-white/70 bg-white/88 px-3 shadow-[0_18px_55px_rgba(40,58,49,.09)] backdrop-blur-2xl sm:px-5">
-        <div className="relative flex h-[68px] items-center gap-3">
+      <header className="sticky top-0 z-50 px-2 pt-2 sm:px-5 sm:pt-5">
+        <div className="mx-auto max-w-[1280px] rounded-[1.4rem] border border-white/70 bg-white/88 px-2 shadow-[0_18px_55px_rgba(40,58,49,.09)] backdrop-blur-2xl sm:px-5">
+          <div className="relative flex h-[64px] items-center gap-1.5 sm:h-[68px] sm:gap-3">
           <Link
             href={catalogPath}
             className="flex shrink-0 items-center rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30"
@@ -78,11 +78,11 @@ export function BrokerCatalogHeader({
             </button>
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
-            <AssistantLauncher labelClassName="hidden sm:inline" />
-            {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-10 items-center justify-center rounded-full border border-[#cde4d3] bg-[#159447] text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#107c39]" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4.5" /></button> : null}
-            <button type="button" onClick={onShare} className="flex size-10 items-center justify-center rounded-full border border-[#e5ebe6] bg-white text-[#3b4540] shadow-sm transition hover:-translate-y-0.5 hover:text-[#11863d]" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
-              <Share2 className="size-4" />
+            <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+              <AssistantLauncher labelClassName="hidden sm:inline" />
+              {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-[#cde4d3] bg-[#159447] text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#107c39] sm:size-10" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
+              <button type="button" onClick={onShare} className="flex size-9 items-center justify-center rounded-full border border-[#e5ebe6] bg-white text-[#3b4540] shadow-sm transition hover:-translate-y-0.5 hover:text-[#11863d] sm:size-10" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
+                <Share2 className="size-4" />
             </button>
           </div>
         </div>
@@ -149,9 +149,9 @@ export function BrokerProfileHero({
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.72)_0%,rgba(250,252,249,.48)_42%,rgba(250,252,249,.18)_72%,rgba(250,252,249,.04)_88%,transparent_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.86)_0%,rgba(250,252,249,.74)_46%,rgba(250,252,249,.48)_70%,rgba(250,252,249,.20)_88%,rgba(250,252,249,.05)_97%,transparent_100%)]" />
 
-        <div className="relative z-10 grid gap-5 px-4 pb-4 pt-5 text-center sm:px-6 sm:pt-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-8 lg:pt-8 lg:text-left">
+          <div className="relative z-10 grid gap-5 px-4 pb-5 pt-7 text-center sm:px-6 sm:pb-7 sm:pt-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-9 lg:pt-10 lg:text-left">
           <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-36 lg:size-44 xl:size-52">
             {catalog.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -163,20 +163,20 @@ export function BrokerProfileHero({
             )}
           </div>
 
-          <div className="relative z-10 min-w-0 max-w-[38rem] space-y-3 pb-2 lg:pb-0">
-            <div className="flex flex-wrap items-start justify-center gap-2.5 sm:justify-start">
-              <h1 className="max-w-full text-[2rem] leading-tight tracking-[-0.04em] text-[#0f1411] sm:text-[2.35rem] lg:text-[3.2rem]">
-                {catalog.displayName}
-              </h1>
-              {catalog.creciVerified ? (
-                <BadgeCheck className="mt-2 size-6 fill-[#17a24c] text-white sm:size-7" aria-label="CRECI verificado" />
-              ) : null}
-            </div>
+            <div className="relative z-10 min-w-0 max-w-[38rem] space-y-3 pb-2 text-center lg:pb-0">
+              <div className="flex flex-wrap items-start justify-center gap-2.5">
+                <h1 className="max-w-full text-[2rem] font-semibold leading-tight tracking-[-0.04em] text-[#08110b] [text-shadow:0_1px_18px_rgba(255,255,255,.7)] sm:text-[2.35rem] lg:text-[3.2rem]">
+                  {catalog.displayName}
+                </h1>
+              </div>
 
-            <BrokerSpecialtyChips specialties={catalog.specialties} compact singleLine />
-            {creciLabel(catalog) ? (
-              <p className="text-sm font-medium text-[#5f6a64]">{creciLabel(catalog)}</p>
-            ) : null}
+              <BrokerSpecialtyChips specialties={catalog.specialties} compact singleLine className="justify-center" />
+              {creciLabel(catalog) ? (
+                <p className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full border border-white/80 bg-white/78 px-3 py-1 text-sm font-semibold text-[#294536] shadow-[0_5px_16px_rgba(42,70,52,.09)] backdrop-blur-sm">
+                  {catalog.creciVerified ? <BadgeCheck className="size-4.5 fill-[#17a24c] text-white" aria-label="CRECI verificado" /> : null}
+                  {creciLabel(catalog)}
+                </p>
+              ) : null}
 
           </div>
         </div>
@@ -189,7 +189,7 @@ export function BrokerProfileHero({
               key={label}
               className={cn(
                 "relative grid items-center overflow-hidden rounded-[1.2rem] border border-[#ebf0ec] bg-white/97 px-3 py-3 backdrop-blur",
-                wideMobile && "col-span-2 py-2.5 sm:col-span-2 lg:col-span-2 lg:py-2.5",
+                wideMobile && "col-span-2 py-2.5 sm:col-span-2 lg:col-span-1 lg:py-2.5",
               )}
             >
               <div className={cn(
