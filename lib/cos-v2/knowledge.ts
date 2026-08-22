@@ -81,7 +81,7 @@ export async function retrieveCosV2Knowledge(input: {
 }) {
   const helpKnowledge = input.helpTopic ? HELP_KNOWLEDGE[input.helpTopic] : null
   const normalizedMessage = normalizeCosKnowledgeText(input.message)
-  const operationalDocumentIds = OPERATIONAL_DOMAIN_SIGNAL.test(normalizedMessage)
+  const operationalDocumentIds = !helpKnowledge && OPERATIONAL_DOMAIN_SIGNAL.test(normalizedMessage)
     ? [OPERATIONAL_KNOWLEDGE_DOCUMENT_ID]
     : []
   const documentIds = [...new Set([

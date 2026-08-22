@@ -92,6 +92,26 @@ export type CosV2CompactContext = {
     id: string
     label: string | null
   }>
+  recentEntities: Array<{
+    type: string
+    id: string
+    label: string | null
+  }>
+  currentTopic: {
+    domain: string
+    label: string
+    entityType: string | null
+    selectionSetId: string | null
+  } | null
+  selectionSets: Array<{
+    id: string
+    type: string
+    items: Array<{
+      index: number
+      id: string
+      label: string | null
+    }>
+  }>
   pending: {
     capabilityId: string | null
     action: string

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 
 import { cosGoldenV1Conversations, COS_GOLDEN_V1_METADATA } from "@/lib/cos/evals/conversations/golden-v1"
 import { resolveCosV2Capability, validateCosV2Interpretation } from "@/lib/cos-v2/capabilities"
+import { getCosV2StructuredContextEntities } from "@/lib/cos-v2/context"
 import { retrieveCosV2Knowledge } from "@/lib/cos-v2/knowledge"
 import { buildCosV2ContextResponse, getCosV2DomainOverview, getCosV2HelpAnswer } from "@/lib/cos-v2/presentation"
 import type { CosConversationSnapshot } from "@/lib/cos/types"
@@ -162,6 +163,96 @@ test("dados ativos no Snapshot eliminam uma pergunta faltante sugerida pela IA",
 
   expect(validated.interpretation.missingData).toEqual([])
   expect(validated.interpretation.clarificationQuestion).toBeNull()
+})
+
+test("quick action reutiliza cliente e imóvel ativos quando a capability aceita esse contexto", () => {
+  const activeLead = {
+    type: "lead" as const,
+    id: "lead-marina",
+    label: "Marina",
+    source: "execution" as const,
+    lastMentionedAt: NOW,
+    confidence: 1,
+    evidence: "conversation-context",
+  }
+  const activeProperty = {
+    type: "property" as const,
+    id: "property-office",
+    label: "Sala Comercial",
+    source: "execution" as const,
+    lastMentionedAt: NOW,
+    confidence: 1,
+    evidence: "conversation-context",
+  }
+  const currentSnapshot = snapshot({
+    activeEntities: { lead: activeLead, property: activeProperty },
+    recentEntities: [activeProperty, activeLead],
+  })
+  const capability = resolveCosV2Capability("CREATE_PROPOSAL", "portal")
+  const entities = getCosV2StructuredContextEntities({ snapshot: currentSnapshot, capability })
+  const validated = validateCosV2Interpretation({
+    message: "Quero gerar uma proposta.",
+    interpretation: interpretation({
+      source: "structured_action",
+      primaryDomain: "proposals",
+      intendedAction: "proposal.create",
+      steps: [{ action: "proposal.create", goal: "Gerar proposta" }],
+      entities,
+    }),
+    surface: "portal",
+    snapshot: currentSnapshot,
+    workspace: null,
+  })
+
+  expect(validated.payload.leadId).toBe(activeLead.id)
+  expect(validated.payload.propertyId).toBe(activeProperty.id)
+})
+
+test("referência ao item anterior usa o conjunto real do ConversationSnapshot", () => {
+  const previousLead = {
+    type: "lead" as const,
+    id: "lead-previous",
+    label: "Marina",
+    source: "selection" as const,
+    lastMentionedAt: NOW,
+    confidence: 1,
+    evidence: "selection",
+  }
+  const activeLead = {
+    ...previousLead,
+    id: "lead-current",
+    label: "Marcela",
+  }
+  const currentSnapshot = snapshot({
+    activeEntities: { lead: activeLead },
+    recentEntities: [activeLead, previousLead],
+    selectionSets: [{
+      id: "lead-options",
+      type: "lead",
+      items: [
+        { index: 0, entity: previousLead },
+        { index: 1, entity: activeLead },
+      ],
+      query: "Mar",
+      topicId: null,
+      createdAt: NOW,
+      expiresAt: "2026-08-15T13:00:00.000Z",
+    }],
+  })
+  const validated = validateCosV2Interpretation({
+    message: "Mostre o cliente anterior.",
+    interpretation: interpretation({
+      objective: { kind: "query", summary: "Consultar o cliente anterior." },
+      intendedAction: "lead.find",
+      steps: [{ action: "lead.find", goal: "Consultar cliente" }],
+    }),
+    surface: "portal",
+    snapshot: currentSnapshot,
+    workspace: null,
+  })
+
+  expect(validated.payload.leadId).toBe(previousLead.id)
+  expect(validated.evidence).toContain("snapshot_reference:selection_ordinal")
 })
 
 test("consulta não pode transformar capability mutável em operação escondida", () => {
@@ -359,10 +450,11 @@ test("ajuda usa respostas específicas por tópico", () => {
   const properties = getCosV2HelpAnswer("registering_properties")
 
   expect(new Set([firstSteps, usingCos, properties]).size).toBe(3)
-  expect(firstSteps).toContain("começar no EME")
+  expect(firstSteps).toContain("O EME organiza sua operação")
   expect(usingCos).toContain("linguagem natural")
-  expect(properties).toContain("importação/IA")
-  expect(properties).toContain("rascunho")
+  expect(properties).toContain("usando IA")
+  expect(properties).toContain("por importação")
+  expect(properties).toContain("publicá-lo no Catálogo")
 })
 
 test("Knowledge recupera somente os capítulos do tópico de ajuda", async () => {

@@ -1,4 +1,5 @@
 import { evaluateCosDecisionSecurity } from "@/lib/cos/decision-security"
+import { resolveCosConversationReference } from "@/lib/cos/conversation-snapshot"
 import {
   getCosCapabilityDescriptorByAliasOrAction,
   getCosCapabilityDescriptorById,
@@ -151,6 +152,55 @@ function missingDataIsAlreadyKnown(field: string, snapshot: CosConversationSnaps
   return false
 }
 
+function conversationEntityTypeToV2(value: string): CosV2EntityType | null {
+  if (value === "lead") return "client"
+  if (value === "property") return "property"
+  if (value === "proposal") return "proposal"
+  if (value === "agenda") return "appointment"
+  return null
+}
+
+function relationFromReferenceReason(reason: string): CosV2Interpretation["references"][number]["relation"] {
+  if (reason.includes("alternative")) return "alternative"
+  if (reason.includes("selection") || reason.includes("ordinal")) return "selection"
+  if (reason.includes("previous") || reason.includes("recent")) return "previous"
+  return "active"
+}
+
+function applySnapshotReference(input: {
+  message: string
+  interpretation: CosV2Interpretation
+  snapshot: CosConversationSnapshot
+}) {
+  const resolution = resolveCosConversationReference(input.message, input.snapshot)
+  const type = resolution.entity ? conversationEntityTypeToV2(resolution.entity.type) : null
+  if (!resolution.entity || !type) return { interpretation: input.interpretation, reason: null }
+
+  let applied = false
+  const references = input.interpretation.references.map((reference) => {
+    if (reference.id || (reference.type && reference.type !== type)) return reference
+    applied = true
+    return {
+      ...reference,
+      type,
+      id: resolution.entity!.id,
+      relation: relationFromReferenceReason(resolution.reason),
+    }
+  })
+  if (!applied) {
+    references.push({
+      expression: resolution.entity.label ?? input.message.slice(0, 180),
+      type,
+      id: resolution.entity.id,
+      relation: relationFromReferenceReason(resolution.reason),
+    })
+  }
+  return {
+    interpretation: { ...input.interpretation, references },
+    reason: resolution.reason,
+  }
+}
+
 function buildPayload(input: {
   interpretation: CosV2Interpretation
   descriptors: CosCapabilityDescriptor[]
@@ -231,7 +281,7 @@ export function validateCosV2Interpretation(input: {
   if (security.flagged) errors.push(...security.reasons)
 
   const continuationDescriptor = contextualContinuationCapability(input)
-  const interpretation: CosV2Interpretation = continuationDescriptor
+  const baseInterpretation: CosV2Interpretation = continuationDescriptor
     ? {
         ...input.interpretation,
         objective: { kind: "execute", summary: input.interpretation.objective.summary },
@@ -240,6 +290,13 @@ export function validateCosV2Interpretation(input: {
       }
     : input.interpretation
   if (continuationDescriptor) evidence.push(`contextual_continuation:${continuationDescriptor.id}`)
+  const contextualReference = applySnapshotReference({
+    message: input.message,
+    interpretation: baseInterpretation,
+    snapshot: input.snapshot,
+  })
+  const interpretation = contextualReference.interpretation
+  if (contextualReference.reason) evidence.push(`snapshot_reference:${contextualReference.reason}`)
 
   const requestedSteps = interpretation.steps.length > 0
     ? interpretation.steps.map((step) => step.action)

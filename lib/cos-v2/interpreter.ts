@@ -9,6 +9,7 @@ import { getOpenAIEnv } from "@/lib/env.server"
 import { getOpenAIClient } from "@/lib/openai-server"
 import { createOpenAIResponse } from "@/lib/openai-telemetry"
 import { listCosV2Capabilities, resolveCosV2Capability } from "@/lib/cos-v2/capabilities"
+import { getCosV2StructuredContextEntities } from "@/lib/cos-v2/context"
 import type { CosV2CompactContext, CosV2Domain, CosV2Interpretation, CosV2TurnInput } from "@/lib/cos-v2/types"
 
 const turnSchema = z.object({
@@ -114,6 +115,17 @@ function structuredHelp(action: string) {
   return null
 }
 
+function pendingSelectionEntityType(input: CosV2TurnInput): CosV2Interpretation["entities"][number]["type"] | null {
+  const pending = input.pendingInput
+  if (!pending) return null
+  const descriptor = resolveCosV2Capability(pending.capabilityId ?? pending.action, input.surface)
+  if (pending.entity === "lead" || descriptor?.entity === "lead") return "client"
+  if (pending.entity === "property" || descriptor?.entity === "property") return "property"
+  if (pending.entity === "agenda" || descriptor?.entity === "agenda") return "appointment"
+  if (pending.entity === "proposal" || (descriptor?.entity === "document" && descriptor.domain === "proposal")) return "proposal"
+  return null
+}
+
 function deterministicInterpretation(input: CosV2TurnInput): CosV2Interpretation | null {
   const pending = input.pendingInput
 
@@ -140,14 +152,17 @@ function deterministicInterpretation(input: CosV2TurnInput): CosV2Interpretation
   if (input.selectedOptionId && pending?.type === "selection") {
     const selected = (pending.options ?? []).find((option) => option.id === input.selectedOptionId)
     if (!selected) return null
+    const selectedType = pendingSelectionEntityType(input)
     return baseInterpretation({
       turnType: "selection",
       source: "pending",
       objective: { kind: "execute", summary: `Continuar com ${selected.label}.` },
       intendedAction: pending.capabilityId ?? pending.action,
       primaryDomain: pending.capabilityId ? domainForCapabilityId(pending.capabilityId) : "general",
-      entities: [],
-      references: [{ expression: selected.label, type: null, id: selected.id, relation: "selection" }],
+      entities: selectedType
+        ? [{ type: selectedType, id: selected.id, name: selected.label, role: "target" }]
+        : [],
+      references: [{ expression: selected.label, type: selectedType, id: selected.id, relation: "selection" }],
       providedData: [{ field: pending.field, value: selected.id }],
     })
   }
@@ -199,6 +214,7 @@ function deterministicInterpretation(input: CosV2TurnInput): CosV2Interpretation
     }
     const descriptor = resolveCosV2Capability(input.structuredAction, input.surface)
     const capabilityId = descriptor?.id ?? input.structuredAction
+    const contextEntities = getCosV2StructuredContextEntities({ snapshot: input.snapshot, capability: descriptor })
     return baseInterpretation({
       turnType: "execution",
       source: "structured_action",
@@ -207,6 +223,13 @@ function deterministicInterpretation(input: CosV2TurnInput): CosV2Interpretation
         summary: descriptor?.title ?? "Executar a ação estruturada solicitada.",
       },
       primaryDomain: descriptor ? domainForCapabilityId(descriptor.id) : "general",
+      entities: contextEntities,
+      references: contextEntities.map((entity) => ({
+        expression: entity.name ?? "item em contexto",
+        type: entity.type,
+        id: entity.id,
+        relation: "active" as const,
+      })),
       intendedAction: capabilityId,
       steps: [{ action: capabilityId, goal: descriptor?.title ?? "Ação solicitada" }],
     })
@@ -250,6 +273,9 @@ function promptForTurn(input: CosV2TurnInput, context: CosV2CompactContext) {
       "turnType=question nunca usa objective.kind=execute; turnType=context sempre usa objective.kind=context.",
       "Para 'tenho um cliente interessado em uma sala comercial', mantenha contexto comercial e, sem cliente ativo, pergunte somente 'Qual cliente?'.",
       "Use somente ids de entidades presentes no contexto. Nunca invente ids.",
+      "Resolva expressões como 'esse cliente', 'esse imóvel', 'ela' e 'ele' usando activeEntities e recentEntities.",
+      "Use selectionSets para referências como 'o anterior', ordinais e alternativas. Se houver ambiguidade real, pergunte; não escolha por suposição.",
+      "Quando uma entidade única do contexto já satisfizer o dado exigido, continue com ela em vez de oferecer um menu genérico.",
       "Use intendedAction e steps somente com ids da lista de capabilities.",
       "Use o inputContract da capability como autoridade: missingData contém somente requiredInputs ausentes; optionalInputs nunca impedem execução.",
       "Se os requiredInputs estiverem presentes, use turnType=execution e objective.kind=execute/query para deixar o handler validar e executar.",
