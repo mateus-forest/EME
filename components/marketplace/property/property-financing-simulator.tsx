@@ -34,6 +34,9 @@ export function PropertyFinancingSimulator({ price }: { price: number }) {
     () => calculateFixedInstallmentCents(financedValueCents, installmentCount, parseMonthlyRate(monthlyInterest)),
     [financedValueCents, installmentCount, monthlyInterest],
   )
+  const estimatedInstallmentLabel = typeof estimatedInstallmentCents === 'number' && Number.isFinite(estimatedInstallmentCents)
+    ? formatCurrencyFromCents(estimatedInstallmentCents)
+    : '—'
   const inputClass = cn(CATALOG_INPUT_CLASS, 'h-10 w-full min-w-0 px-3 text-sm')
 
   return (
@@ -64,7 +67,7 @@ export function PropertyFinancingSimulator({ price }: { price: number }) {
                 Juros mensais (%)
                 <input value={monthlyInterest} onChange={(event) => setMonthlyInterest(event.target.value.replace(/[^\d,.]/g, '').slice(0, 8))} inputMode="decimal" className={inputClass} aria-label="Juros mensais em percentual" />
               </label>
-              <ReadOnlyField label="Parcela estimada" value={formatCurrencyFromCents(estimatedInstallmentCents)} emphasis />
+              <ReadOnlyField label="Parcela estimada" value={estimatedInstallmentLabel} emphasis />
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
               Esta é apenas uma simulação. Condições, taxas e valores devem ser confirmados com a instituição financeira.
