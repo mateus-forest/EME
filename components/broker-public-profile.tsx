@@ -29,6 +29,13 @@ import {
 } from "@/lib/public-catalog-url"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import { cn } from "@/lib/utils"
+import {
+  CATALOG_DIALOG_SURFACE_CLASS,
+  CATALOG_GLASS_SURFACE_CLASS,
+  CATALOG_ICON_SURFACE_CLASS,
+  CATALOG_PRIMARY_CTA_CLASS,
+  CATALOG_SECONDARY_CTA_CLASS,
+} from "@/lib/catalog-visual-system"
 import { BrokerSpecialtyChips } from "@/components/broker-specialty-chips"
 import { WhatsappGlyph } from "@/components/marketplace/property/whatsapp-glyph"
 
@@ -81,7 +88,7 @@ export function BrokerCatalogHeader({
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               <AssistantLauncher
-                className="relative !size-9 !shrink-0 !gap-0 !rounded-full !border-[#e9e5dd] !bg-white/78 !p-0 !shadow-[0_4px_12px_rgba(43,39,32,.08)] !backdrop-blur-[16px] hover:!bg-white sm:!size-10 [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
+                className="relative !size-9 !shrink-0 !justify-center !gap-0 !rounded-full !border-[#e9e5dd] !bg-white/78 !p-0 !shadow-[0_4px_12px_rgba(43,39,32,.08)] !backdrop-blur-[16px] hover:!bg-white sm:!size-10 [&>*:first-child]:!m-0 [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
                 labelClassName="sr-only"
               />
               {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-[#0d7137]/10 bg-[#0d7137] text-white shadow-[0_5px_14px_rgba(13,113,55,.18)] transition hover:-translate-y-0.5 hover:bg-[#095f2d] sm:size-10" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
@@ -230,17 +237,17 @@ export function BrokerAboutContent({ catalog, onContact }: { catalog: PublicBrok
   const hasDifferentials = catalog.differentials.length > 0
 
   return (
-    <section className="mx-auto grid max-w-[1280px] gap-5 px-3 pb-14 pt-8 sm:px-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,.85fr)]">
+    <section className="mx-auto grid max-w-[1240px] gap-5 px-3 pb-14 pt-8 sm:px-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,.85fr)] xl:px-0">
       <div className="grid content-start gap-5">
         {hasBiography ? (
-          <article className="rounded-[1.6rem] border border-[#e8eee9] bg-white p-6 shadow-[0_16px_42px_rgba(43,61,52,.055)] sm:p-8">
+          <article className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.6rem] p-6 sm:p-8")}>
             <SectionTitle icon={Sparkles}>Sobre o corretor</SectionTitle>
             <div className="mt-5 whitespace-pre-line text-[15px] leading-7 text-[#56605a]">{catalog.bio}</div>
           </article>
         ) : null}
 
         {catalog.videoUrl ? (
-          <article className="rounded-[1.6rem] border border-[#e8eee9] bg-white p-4 shadow-[0_16px_42px_rgba(43,61,52,.055)] sm:p-6">
+          <article className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.6rem] p-4 sm:p-6")}>
             <h2 className="px-1 text-lg font-semibold text-[#172019]">Vídeo de apresentação</h2>
             <div className="mt-4 flex min-h-48 items-center justify-center overflow-hidden rounded-[1.1rem] bg-[#101411]">
               <video src={catalog.videoUrl} controls preload="metadata" playsInline className="h-auto max-h-[680px] w-auto max-w-full object-contain" aria-label={`Vídeo de apresentação de ${catalog.displayName}`} />
@@ -249,7 +256,7 @@ export function BrokerAboutContent({ catalog, onContact }: { catalog: PublicBrok
         ) : null}
 
         {hasSpecialties ? (
-          <article className="rounded-[1.6rem] border border-[#e8eee9] bg-white p-6 shadow-[0_16px_42px_rgba(43,61,52,.055)]">
+          <article className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.6rem] p-6")}>
             <SectionTitle icon={Star}>Especialidades</SectionTitle>
             <BrokerSpecialtyChips specialties={catalog.specialties} liquidGlass className="mt-4" />
           </article>
@@ -258,7 +265,7 @@ export function BrokerAboutContent({ catalog, onContact }: { catalog: PublicBrok
 
       <aside className="grid content-start gap-5">
         {hasArea ? (
-          <article className="rounded-[1.6rem] border border-[#e8eee9] bg-white p-6 shadow-[0_16px_42px_rgba(43,61,52,.055)]">
+          <article className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.6rem] p-6")}>
             <SectionTitle icon={MapPin}>Atuação</SectionTitle>
             {catalog.serviceArea ? <p className="mt-4 text-sm leading-6 text-[#66706a]">{catalog.serviceArea}</p> : null}
             {catalog.cities.length ? (
@@ -270,19 +277,19 @@ export function BrokerAboutContent({ catalog, onContact }: { catalog: PublicBrok
         ) : null}
 
         {hasDifferentials ? (
-          <article className="rounded-[1.6rem] border border-[#e8eee9] bg-white p-6 shadow-[0_16px_42px_rgba(43,61,52,.055)]">
+          <article className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.6rem] p-6")}>
             <SectionTitle icon={Star}>Diferenciais</SectionTitle>
             <ul className="mt-4 grid gap-3">
-              {catalog.differentials.map((differential) => <li key={differential} className="flex gap-3 text-sm leading-6 text-[#4f5953]"><span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#159447]"><CheckCircle2 className="size-4" /></span><span>{differential}</span></li>)}
+              {catalog.differentials.map((differential) => <li key={differential} className="flex gap-3 text-sm leading-6 text-[#4f5953]"><span className={cn(CATALOG_ICON_SURFACE_CLASS, "mt-0.5 size-7 shrink-0")}><CheckCircle2 className="size-4" /></span><span>{differential}</span></li>)}
             </ul>
           </article>
         ) : null}
 
-        <article id="contato" className="scroll-mt-32 rounded-[1.6rem] border border-[#e8eee9] bg-white p-6 shadow-[0_16px_42px_rgba(43,61,52,.055)]">
+        <article id="contato" className={cn(CATALOG_GLASS_SURFACE_CLASS, "scroll-mt-32 rounded-[1.6rem] p-6")}>
           <SectionTitle icon={MessageCircle}>Atendimento</SectionTitle>
           <p className="mt-4 text-sm leading-6 text-[#66706a]">Fale diretamente com {catalog.displayName} pelos canais informados no perfil.</p>
           <ContactRows catalog={catalog} />
-          <Button type="button" onClick={onContact} className="mt-5 h-11 w-full rounded-xl bg-[#159447] font-semibold text-white hover:bg-[#107c39]">Ver opções de contato</Button>
+          <Button type="button" onClick={onContact} className={cn(CATALOG_PRIMARY_CTA_CLASS, "mt-5 h-11 w-full font-semibold")}>Ver opções de contato</Button>
         </article>
       </aside>
     </section>
@@ -310,13 +317,13 @@ export function BrokerContactDialog({ open, onOpenChange, catalog }: { open: boo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="marketplace-shell marketplace-popover max-w-[calc(100%-1.5rem)] rounded-[1.5rem] border-[#e4ebe5] bg-white p-6 text-[#19211c] shadow-[0_28px_75px_rgba(32,48,39,.18)] sm:max-w-md">
+      <DialogContent className={cn("marketplace-shell marketplace-popover max-w-[calc(100%-1.5rem)] rounded-[1.5rem] p-6 sm:max-w-md", CATALOG_DIALOG_SURFACE_CLASS)}>
         <DialogTitle className="text-2xl font-semibold tracking-[-0.04em]">Fale com {catalog.displayName}</DialogTitle>
         <DialogDescription className="text-[#68726c]">Escolha o canal mais conveniente para iniciar o contato.</DialogDescription>
         <ContactRows catalog={catalog} />
         <div className="mt-3 grid gap-2">
-          {whatsappUrl ? <Button asChild className="h-11 rounded-xl bg-[#159447] font-semibold text-white hover:bg-[#107c39]"><a href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" />Falar no WhatsApp</a></Button> : null}
-          {catalog.email ? <Button asChild variant="ghost" className="h-11 rounded-xl border border-[#e3eae4] text-[#344038] hover:bg-[#f5f8f5]"><a href={`mailto:${catalog.email}`}><Mail className="size-4" />Enviar e-mail</a></Button> : null}
+          {whatsappUrl ? <Button asChild className={cn(CATALOG_PRIMARY_CTA_CLASS, "h-11 font-semibold")}><a href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" />Falar no WhatsApp</a></Button> : null}
+          {catalog.email ? <Button asChild variant="ghost" className={cn(CATALOG_SECONDARY_CTA_CLASS, "h-11")}><a href={`mailto:${catalog.email}`}><Mail className="size-4" />Enviar e-mail</a></Button> : null}
         </div>
       </DialogContent>
     </Dialog>

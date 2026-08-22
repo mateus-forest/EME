@@ -44,6 +44,15 @@ import { StructuredInput } from "@/components/ui/structured-input"
 import { normalizePhone } from "@/lib/structured-fields"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import {
+  CATALOG_DIALOG_SURFACE_CLASS,
+  CATALOG_GLASS_SURFACE_CLASS,
+  CATALOG_ICON_SURFACE_CLASS,
+  CATALOG_INPUT_CLASS,
+  CATALOG_PAGE_BACKGROUND_CLASS,
+  CATALOG_PRIMARY_CTA_CLASS,
+  CATALOG_SECONDARY_CTA_CLASS,
+} from "@/lib/catalog-visual-system"
 import { WhatsappGlyph } from "@/components/marketplace/property/whatsapp-glyph"
 import {
   BrokerAboutContent,
@@ -399,7 +408,7 @@ export function PublicCatalogLanding({
   }
 
   return (
-    <main className={kind === "broker" ? "min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_88%_5%,rgba(232,222,207,.38),transparent_30%),linear-gradient(180deg,#f7f5f1_0%,#f2f0eb_100%)] font-[family-name:var(--font-geist-sans)] text-[#1f2937]" : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}>
+    <main className={kind === "broker" ? CATALOG_PAGE_BACKGROUND_CLASS : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}>
       {brokerCatalog ? (
         <BrokerCatalogHeader
           catalog={brokerCatalog}
@@ -819,7 +828,7 @@ export function PublicCatalogLanding({
             )) : null}
           </>
         ) : (
-          <div className="rounded-[1.75rem] border border-black/[0.05] bg-white px-6 py-16 text-center text-sm text-[#6B7280] shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
+          <div className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.75rem] px-6 py-16 text-center text-sm text-[#6B7280]")}>
             Nenhum imóvel encontrado para essa busca.
           </div>
         )) : null}
@@ -828,13 +837,13 @@ export function PublicCatalogLanding({
       {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
-        <DialogContent showCloseButton className="box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-[1.5rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_32px_90px_rgba(15,23,42,0.2)] sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl lg:overflow-hidden">
+        <DialogContent showCloseButton className={cn("box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-[1.5rem] p-0 sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl lg:overflow-hidden", CATALOG_DIALOG_SURFACE_CLASS)}>
           {selectedProperty && (
             <div className="grid w-full min-w-0 max-w-full overflow-x-hidden lg:max-h-[94dvh] lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)] lg:overflow-y-auto">
-              <div className="min-w-0 max-w-full overflow-x-hidden border-b border-black/[0.06] bg-[#fbfcfa] p-3 sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
+              <div className="min-w-0 max-w-full overflow-x-hidden border-b border-white/70 bg-white/34 p-3 backdrop-blur-[12px] sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
-                  <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f4f6f4] shadow-[0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
+                  <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.25rem] border border-white/80 bg-[#ecebe7]/70 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={image} alt={selectedProperty.title} className="aspect-[4/3] max-h-[78dvh] w-full object-cover" />
@@ -845,10 +854,10 @@ export function PublicCatalogLanding({
                   )}
                   {selectedProperty.images.length > 1 ? (
                     <>
-                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className="absolute left-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#050505] shadow-sm backdrop-blur-sm hover:bg-white">
+                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className={cn(CATALOG_ICON_SURFACE_CLASS, "absolute left-4 top-1/2 size-10 -translate-y-1/2 text-[#050505] hover:bg-white")}>
                         <ChevronLeft className="size-5" />
                       </button>
-                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === selectedProperty.images.length - 1 ? 0 : current + 1)} className="absolute right-4 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#050505] shadow-sm backdrop-blur-sm hover:bg-white">
+                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === selectedProperty.images.length - 1 ? 0 : current + 1)} className={cn(CATALOG_ICON_SURFACE_CLASS, "absolute right-4 top-1/2 size-10 -translate-y-1/2 text-[#050505] hover:bg-white")}>
                         <ChevronRight className="size-5" />
                       </button>
                     </>
@@ -869,7 +878,7 @@ export function PublicCatalogLanding({
                           className={cn(
                             "relative aspect-[4/3] w-[76px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#eef2ef] transition sm:w-[92px]",
                             currentImageIndex === index
-                              ? "border-[#159447] shadow-[0_5px_14px_rgba(21,148,71,.16)]"
+                              ? "border-[#b38a3b] shadow-[0_5px_14px_rgba(179,138,59,.16)]"
                               : "border-white opacity-75 hover:opacity-100",
                           )}
                         >
@@ -895,32 +904,32 @@ export function PublicCatalogLanding({
                     <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
-                <section className="mt-5 w-full min-w-0 max-w-full rounded-2xl border border-[#dfe9e1] bg-[#f8fbf8] p-2.5 shadow-[0_10px_26px_rgba(31,70,45,.05)] lg:p-3">
+                <section className={cn(CATALOG_GLASS_SURFACE_CLASS, "mt-5 w-full min-w-0 max-w-full rounded-2xl p-2.5 lg:p-3")}>
                   <button type="button" onClick={() => setFinancingOpen((current) => !current)} aria-expanded={financingOpen} aria-controls="catalog-financing-simulator" className="flex w-full items-center gap-2 text-left">
-                    <span className="flex size-8 items-center justify-center rounded-full bg-[#e9f7ed] text-[#118a3d]"><CircleDollarSign className="size-4" /></span>
+                    <span className={cn(CATALOG_ICON_SURFACE_CLASS, "size-8")}><CircleDollarSign className="size-4" /></span>
                     <h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4>
                     <ChevronDown className={cn("ml-auto size-4 text-[#6f7a73] transition-transform duration-300", financingOpen && "rotate-180")} />
                   </button>
                   <div id="catalog-financing-simulator" className={cn("grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out", financingOpen ? "mt-2.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0")}>
                     <div className="min-h-0 overflow-hidden">
                       <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-2 lg:gap-2">
-                        <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
-                        <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                        <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-[#f1f5f1] px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
-                        <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                        <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                        <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className="h-[34px] w-full min-w-0 rounded-lg border-[#bcdcc5] bg-white px-2.5 text-xs font-semibold text-[#118a3d]" /></FinancingField>
+                        <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-semibold text-[#0d7137]")} /></FinancingField>
                       </div>
                       <p className="mt-2 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
                     </div>
                   </div>
                 </section>
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className="h-11 flex-1 rounded-full bg-[#009b3a] text-base font-semibold text-white hover:bg-[#008633]">
+                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "h-11 flex-1 text-base font-semibold")}>
                     <MessageCircle className="size-4" />
                     Tenho interesse
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className="h-11 rounded-full border border-black/[0.06] bg-white px-5 text-[#4B5563] hover:bg-[#f8faf8] hover:text-[#050505]">
+                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className={cn(CATALOG_SECONDARY_CTA_CLASS, "h-11 px-5 text-[#4B5563]")}>
                     <Share2 className="size-4" />
                     Compartilhar
                   </Button>
@@ -932,7 +941,7 @@ export function PublicCatalogLanding({
       </Dialog>
 
       <Dialog open={!!leadDraft} onOpenChange={(open) => !open && setLeadDraft(null)}>
-        <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-black/[0.05] bg-white text-[#1f2937] shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:max-w-lg">
+        <DialogContent className={cn("max-w-[calc(100%-1.5rem)] rounded-[1.75rem] sm:max-w-lg", CATALOG_DIALOG_SURFACE_CLASS)}>
           {leadDraft ? (
             <>
               <DialogTitle className="text-2xl text-[#050505]">Gostou deste imóvel?</DialogTitle>
@@ -942,20 +951,20 @@ export function PublicCatalogLanding({
               <div className="grid gap-4 py-2">
                 <label className="grid gap-2">
                   <span className="text-sm font-medium text-[#374151]">Nome</span>
-                  <Input value={leadDraft.name} onChange={(event) => setLeadDraft((current) => current ? { ...current, name: event.target.value } : current)} className="h-11 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
+                  <Input value={leadDraft.name} onChange={(event) => setLeadDraft((current) => current ? { ...current, name: event.target.value } : current)} className={cn(CATALOG_INPUT_CLASS, "h-11 text-[#050505]")} />
                 </label>
                 <label className="grid gap-2">
                   <span className="text-sm font-medium text-[#374151]">Telefone</span>
-                  <StructuredInput kind="phone" value={leadDraft.phone} onValueChange={(value) => setLeadDraft((current) => current ? { ...current, phone: value } : current)} aria-label="Telefone" className="h-11 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
+                  <StructuredInput kind="phone" value={leadDraft.phone} onValueChange={(value) => setLeadDraft((current) => current ? { ...current, phone: value } : current)} aria-label="Telefone" className={cn(CATALOG_INPUT_CLASS, "h-11 text-[#050505]")} />
                 </label>
                 <label className="grid gap-2">
                   <span className="text-sm font-medium text-[#374151]">Mensagem</span>
-                  <Textarea value={leadDraft.message} onChange={(event) => setLeadDraft((current) => current ? { ...current, message: event.target.value } : current)} className="min-h-24 rounded-xl border-black/[0.08] bg-[#f8faf8] text-[#050505]" />
+                  <Textarea value={leadDraft.message} onChange={(event) => setLeadDraft((current) => current ? { ...current, message: event.target.value } : current)} className={cn(CATALOG_INPUT_CLASS, "min-h-24 text-[#050505]")} />
                 </label>
                 {leadFeedback ? <p className="text-sm text-[#009b3a]">{leadFeedback}</p> : null}
               </div>
               <DialogFooter>
-                <Button type="button" onClick={submitLead} disabled={isSavingLead} className="h-11 w-full rounded-xl bg-[#009b3a] text-base font-semibold text-white hover:bg-[#008633] disabled:opacity-60">
+                <Button type="button" onClick={submitLead} disabled={isSavingLead} className={cn(CATALOG_PRIMARY_CTA_CLASS, "h-11 w-full text-base font-semibold disabled:opacity-60")}>
                   {isSavingLead ? "Salvando..." : "Continuar no WhatsApp"}
                 </Button>
               </DialogFooter>
@@ -1502,8 +1511,8 @@ function InlineSpec({ icon: Icon, value }: { icon: typeof Bed; value: string }) 
 
 function Feature({ icon: Icon, label }: { icon: typeof Bed; label: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#f8faf8] px-3 py-1.5 text-sm text-[#5F6B7A]">
-      <Icon className="size-4 text-[#009b3a]" />
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/58 px-3 py-1.5 text-sm text-[#5F6B7A] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_3px_10px_rgba(37,43,37,.04)] backdrop-blur-[12px]">
+      <Icon className="size-4 text-[#0d7137]" />
       <span>{label}</span>
     </div>
   )
