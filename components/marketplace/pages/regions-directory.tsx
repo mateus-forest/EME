@@ -5,6 +5,8 @@ import { Search, X } from 'lucide-react'
 import type { RegionDetail } from '@/lib/marketplace/pages-data'
 import { RegionFeatureCard } from '@/components/marketplace/pages/region-feature-card'
 import { Reveal } from '@/components/marketplace/reveal'
+import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
+import { cn } from '@/lib/utils'
 
 // Busca local por cidade, bairro ou região, filtrando os destaques exibidos.
 export function RegionsDirectory({ regions }: { regions: RegionDetail[] }) {
@@ -22,7 +24,7 @@ export function RegionsDirectory({ regions }: { regions: RegionDetail[] }) {
   return (
     <div>
       <div className="mx-auto max-w-xl">
-        <div className="group flex items-center gap-2 rounded-full border border-border bg-card p-2 pl-5 shadow-[var(--shadow-soft)] transition-all duration-300 focus-within:border-primary/40 focus-within:shadow-[var(--shadow-float)] focus-within:ring-4 focus-within:ring-primary/10">
+        <div className={cn(CATALOG_GLASS_SURFACE_CLASS, 'marketplace-field group flex items-center gap-2 overflow-visible rounded-full p-2 pl-5 transition-all duration-300')}>
           <Search className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <input
             type="text"
@@ -54,7 +56,7 @@ export function RegionsDirectory({ regions }: { regions: RegionDetail[] }) {
       </div>
 
       {results.length === 0 && (
-        <div className="mx-auto mt-10 max-w-md rounded-[1.75rem] border border-border/70 bg-card p-8 text-center shadow-[var(--shadow-soft)]">
+        <div className={cn(CATALOG_GLASS_SURFACE_CLASS, 'mx-auto mt-10 max-w-md rounded-[1.75rem] p-8 text-center')}>
           <p className="text-base font-medium text-foreground">Nenhuma região encontrada</p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Tente outro nome de cidade, bairro ou região da serra e dos campos.

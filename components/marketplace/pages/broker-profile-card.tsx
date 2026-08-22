@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { BadgeCheck, MapPin, Star } from 'lucide-react'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-chips'
+import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
+import { cn } from '@/lib/utils'
 
 const transactionLabel: Record<BrokerProfile['transaction'], string> = {
   compra: 'Atende compra',
@@ -12,13 +14,10 @@ const transactionLabel: Record<BrokerProfile['transaction'], string> = {
 
 export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
   return (
-    <Link
-      href={`/imoveis/corretores/${broker.slug}`}
-      aria-label={`Ver perfil de ${broker.name}`}
-      className="group flex flex-col rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-float)]"
-    >
+    <article className={cn(CATALOG_GLASS_SURFACE_CLASS, 'marketplace-card group relative flex h-full min-h-[300px] flex-col overflow-visible rounded-[1.75rem] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]')}>
+      <Link href={`/imoveis/corretores/${broker.slug}`} aria-label={`Ver perfil de ${broker.name}`} className="absolute inset-0 z-10 rounded-[1.75rem]" />
       <div className="flex items-center gap-4">
-        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl">
+        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_8px_20px_rgba(35,39,34,.1)]">
           <Image
             src={broker.image || '/marketplace/placeholder-user.jpg'}
             alt={broker.name}
@@ -42,7 +41,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
         </div>
       </div>
 
-      <BrokerSpecialtyChips specialties={broker.specialties} className="mt-4" />
+      <BrokerSpecialtyChips specialties={broker.specialties} className="mt-4 min-h-8" />
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-eme-50 px-2.5 py-1 text-xs font-medium text-primary">
@@ -53,7 +52,7 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
         </span>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-4">
+      <div className="pointer-events-none mt-auto flex items-center justify-between border-t border-border/60 pt-4">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
           <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden="true" />
           {broker.reviewCount > 0 ? `${broker.rating.toFixed(1).replace('.', ',')} · ${broker.reviewCount} avaliações` : 'Perfil novo · sem avaliações'}
@@ -62,6 +61,6 @@ export function BrokerProfileCard({ broker }: { broker: BrokerProfile }) {
           Ver perfil &rarr;
         </span>
       </div>
-    </Link>
+    </article>
   )
 }

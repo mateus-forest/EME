@@ -27,7 +27,7 @@ export function SimilarProperties({ properties }: { properties: SimilarProperty[
           <Link
             key={item.slug}
             href={`/imoveis/imovel/${item.slug}`}
-            className="group flex flex-col overflow-hidden rounded-[1.5rem] border border-border/70 bg-card shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]"
+            className="marketplace-card group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-white/80 bg-card shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]"
           >
             <div className="relative aspect-[16/10] overflow-hidden">
               <Image
@@ -40,14 +40,14 @@ export function SimilarProperties({ properties }: { properties: SimilarProperty[
               <CompatibilityBadge level={item.compatibility} className="absolute left-3 top-3 shadow-[var(--shadow-soft)]" />
             </div>
             <div className="flex flex-1 flex-col p-5">
-              <h3 className="text-pretty text-base font-semibold leading-snug text-foreground">
+              <h3 className="line-clamp-2 min-h-[2.75rem] text-pretty text-base font-semibold leading-snug text-foreground">
                 {item.title}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {item.city} · {item.state}
               </p>
               <p className="mt-3 text-lg font-semibold text-foreground">{formatPrice(item.price)}</p>
-              <div className="mt-4 flex items-center gap-4 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+              <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-4 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <BedDouble className="h-4 w-4" aria-hidden="true" />
                   {item.bedrooms} quartos

@@ -52,7 +52,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ slug: s
   ].slice(0, 3)
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="marketplace-page flex min-h-svh flex-col">
       <Header />
       <InterestProvider property={property} brokerName={broker.name} brokerPhone={broker.phone}>
         <PropertyViewTracker propertyId={property.propertyId} />

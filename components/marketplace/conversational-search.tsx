@@ -2,9 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { Search, Sparkles } from 'lucide-react'
 import { useMarketplaceSearchLoading } from '@/components/marketplace/search/cinematic-search-loading'
 import { cn } from '@/lib/utils'
+import {
+  CATALOG_GLASS_SURFACE_CLASS,
+  CATALOG_PRIMARY_CTA_CLASS,
+} from '@/lib/catalog-visual-system'
 
 export function ConversationalSearch({
   placeholder,
@@ -63,8 +67,8 @@ export function ConversationalSearch({
         submit()
       }}
       className={cn(
-        'group flex items-center gap-2 rounded-full border border-border/80 bg-card shadow-[var(--shadow-soft)] transition-[border-color,box-shadow] duration-200',
-        'focus-within:border-primary/25 focus-within:shadow-[0_8px_26px_rgba(16,24,20,0.08)] focus-within:ring-2 focus-within:ring-primary/5',
+        CATALOG_GLASS_SURFACE_CLASS,
+        'marketplace-field group flex items-center gap-2 overflow-visible rounded-full transition-[border-color,box-shadow] duration-200',
         lg ? 'p-2.5 pl-5' : 'p-2 pl-4',
         className,
       )}
@@ -99,11 +103,12 @@ export function ConversationalSearch({
         type="submit"
         aria-label="Buscar imóveis"
         className={cn(
-          'flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_12px_rgba(35,120,55,0.22)] transition-[background-color,transform] duration-200 hover:scale-[1.03] hover:bg-eme-600 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+          CATALOG_PRIMARY_CTA_CLASS,
+          'flex shrink-0 items-center justify-center transition-transform duration-200 hover:scale-[1.03] active:scale-95',
           lg ? 'h-12 w-12' : 'h-11 w-11',
         )}
       >
-        <ArrowRight className={cn(lg ? 'h-5 w-5' : 'h-5 w-5')} aria-hidden="true" />
+        <Search className={cn(lg ? 'h-5 w-5' : 'h-5 w-5')} aria-hidden="true" />
       </button>
     </form>
   )

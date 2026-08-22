@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { BedDouble, Car, Heart, Maximize, Store } from 'lucide-react'
 import { formatMonthly, type Rental } from '@/lib/marketplace/pages-data'
 import { cn } from '@/lib/utils'
+import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
 
 // Cartão de imóvel para locação: valor mensal em destaque e condomínio quando aplicável.
 export function RentalCard({
@@ -18,7 +19,7 @@ export function RentalCard({
   const [favorite, setFavorite] = useState(false)
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]">
+    <article className={cn(CATALOG_GLASS_SURFACE_CLASS, 'marketplace-card group flex h-full flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]')}>
       <div
         className={cn(
           'relative overflow-hidden',
@@ -58,9 +59,9 @@ export function RentalCard({
       </div>
 
       <div className={cn('flex flex-col p-5', featured ? 'flex-none' : 'flex-1')}>
-        <div className={cn(featured ? '' : 'flex-1')}>
+        <div className={cn('min-w-0', featured ? '' : 'flex-1')}>
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-pretty text-base font-medium text-foreground">
+            <h3 className="line-clamp-2 min-h-[2.75rem] min-w-0 flex-1 text-pretty text-base font-medium leading-snug text-foreground">
               <Link
                 href={`/imoveis/imovel/${rental.slug}`}
                 className="outline-none transition-colors hover:text-primary focus-visible:text-primary"
@@ -68,7 +69,7 @@ export function RentalCard({
                 {rental.title}
               </Link>
             </h3>
-            <div className="shrink-0 text-right">
+            <div className="max-w-[48%] shrink-0 text-right">
               <p className="text-lg font-semibold tracking-tight text-foreground">
                 {formatMonthly(rental.monthly)}
                 <span className="text-sm font-normal text-muted-foreground">/mês</span>
@@ -82,12 +83,12 @@ export function RentalCard({
               )}
             </div>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
             {rental.city} · {rental.state}
           </p>
         </div>
 
-        <div className="mt-5 flex items-center gap-4 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+        <div className="mt-5 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-4 text-sm text-muted-foreground">
           {rental.commercial ? (
             <span className="inline-flex items-center gap-1.5">
               <Store className="h-4 w-4 text-primary/70" aria-hidden="true" />

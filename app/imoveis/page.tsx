@@ -21,7 +21,7 @@ export default async function HomePage() {
     getMarketplaceRegions(),
   ])
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
+    <div className="marketplace-page min-h-screen overflow-x-hidden">
       <Header />
       <main>
         <Hero />

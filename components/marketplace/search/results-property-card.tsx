@@ -7,6 +7,7 @@ import { BedDouble, Car, Check, ChevronDown, Heart, Maximize } from 'lucide-reac
 import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
 import { CompatibilityBadge } from '@/components/marketplace/search/compatibility-badge'
 import { cn } from '@/lib/utils'
+import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
 
 export function ResultsPropertyCard({
   result,
@@ -35,7 +36,8 @@ export function ResultsPropertyCard({
       onMouseEnter={() => onHover(result.slug)}
       onMouseLeave={() => onHover(null)}
       className={cn(
-        'group flex flex-col overflow-hidden rounded-[1.75rem] border bg-card transition-all duration-300',
+        CATALOG_GLASS_SURFACE_CLASS,
+        'marketplace-card group flex h-full flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300',
         highlighted
           ? '-translate-y-1 border-primary/40 shadow-[var(--shadow-float)] ring-1 ring-primary/20'
           : 'border-border/70 shadow-[var(--shadow-soft)] hover:-translate-y-1 hover:shadow-[var(--shadow-float)]',
@@ -79,7 +81,7 @@ export function ResultsPropertyCard({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-pretty text-base font-medium leading-snug text-foreground">
+            <h3 className="line-clamp-2 min-h-[2.75rem] text-pretty text-base font-medium leading-snug text-foreground">
               <Link
                 href={`/imoveis/imovel/${result.slug}`}
                 className="outline-none transition-colors hover:text-primary focus-visible:text-primary"
@@ -87,7 +89,7 @@ export function ResultsPropertyCard({
                 {result.title}
               </Link>
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
               {result.city} · {result.state}
             </p>
           </div>
@@ -96,7 +98,7 @@ export function ResultsPropertyCard({
           </p>
         </div>
 
-        <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="mt-4 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <BedDouble className="h-4 w-4 text-primary/70" aria-hidden="true" />
             {result.bedrooms} quartos

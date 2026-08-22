@@ -471,9 +471,9 @@ function AssistantPanel({
       role="dialog"
       aria-modal="true"
       aria-labelledby="eme-assistant-title"
-      className="fixed inset-0 z-[80] flex h-[100dvh] flex-col overflow-hidden bg-background shadow-[0_24px_80px_rgba(25,38,31,.22)] md:inset-y-5 md:left-auto md:right-5 md:h-auto md:w-[min(540px,calc(100vw-2.5rem))] md:rounded-[1.75rem] md:border md:border-border/70"
+      className="marketplace-panel fixed inset-0 z-[80] flex h-[100dvh] flex-col overflow-hidden shadow-[0_24px_80px_rgba(25,38,31,.18)] md:inset-y-5 md:left-auto md:right-5 md:h-auto md:w-[min(540px,calc(100vw-2.5rem))] md:rounded-[1.75rem] md:border md:border-white/80"
     >
-      <header className="flex min-h-20 items-center gap-3 border-b border-border/60 bg-background/95 px-5 backdrop-blur-xl md:px-6">
+      <header className="flex min-h-20 items-center gap-3 border-b border-white/70 bg-white/38 px-5 backdrop-blur-xl md:px-6">
         <AssistantMark size="lg" />
         <div className="min-w-0 flex-1">
           <h2 id="eme-assistant-title" className="text-lg font-semibold tracking-tight text-foreground">
@@ -592,8 +592,8 @@ function AssistantPanel({
         </div>
       </div>
 
-      <form onSubmit={submit} className="border-t border-border/60 bg-background p-3.5 md:p-4">
-        <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card p-2 shadow-[var(--shadow-soft)] focus-within:border-primary/25 focus-within:ring-2 focus-within:ring-primary/5">
+      <form onSubmit={submit} className="border-t border-white/70 bg-white/32 p-3.5 backdrop-blur-[14px] md:p-4">
+        <div className="marketplace-field flex items-center gap-2 rounded-2xl p-2">
           <button
             type="button"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

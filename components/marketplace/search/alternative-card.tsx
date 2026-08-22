@@ -7,7 +7,7 @@ export function AlternativePropertyCard({ alternative }: { alternative: Alternat
   return (
     <Link
       href={`/imoveis/imovel/${alternative.slug}`}
-      className="group flex items-center gap-4 overflow-hidden rounded-[1.5rem] border border-border/70 bg-card p-3 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]"
+      className="marketplace-card group flex h-full items-center gap-4 overflow-hidden rounded-[1.5rem] border border-white/80 bg-card p-3 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]"
     >
       <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-[1.1rem] sm:h-28 sm:w-36">
         <Image

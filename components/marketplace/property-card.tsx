@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { BedDouble, Car, Heart, Maximize } from 'lucide-react'
 import { formatPrice, type Property } from '@/lib/marketplace/data'
 import { cn } from '@/lib/utils'
+import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
 
 export function PropertyCard({
   property,
@@ -19,7 +20,8 @@ export function PropertyCard({
   return (
     <article
       className={cn(
-        'group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]',
+        CATALOG_GLASS_SURFACE_CLASS,
+        'marketplace-card group flex h-full flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]',
       )}
     >
       <div
@@ -61,9 +63,9 @@ export function PropertyCard({
       </div>
 
       <div className={cn('flex flex-col p-5', featured ? 'flex-none' : 'flex-1')}>
-        <div className={cn(featured ? '' : 'flex-1')}>
+        <div className={cn('min-w-0', featured ? '' : 'flex-1')}>
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-pretty text-base font-medium text-foreground">
+            <h3 className="line-clamp-2 min-h-[2.75rem] min-w-0 flex-1 text-pretty text-base font-medium leading-snug text-foreground">
               <Link
                 href={`/imoveis/imovel/${property.slug}`}
                 className="outline-none transition-colors hover:text-primary focus-visible:text-primary"
@@ -71,16 +73,16 @@ export function PropertyCard({
                 {property.title}
               </Link>
             </h3>
-            <p className="shrink-0 text-lg font-semibold tracking-tight text-foreground">
+            <p className="max-w-[46%] shrink-0 text-right text-lg font-semibold tracking-tight text-foreground">
               {formatPrice(property.price)}
             </p>
           </div>
-          <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+          <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
             {property.city} · {property.state}
           </p>
         </div>
 
-        <div className="mt-5 flex items-center gap-4 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+        <div className="mt-5 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-4 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <BedDouble className="h-4 w-4 text-primary/70" aria-hidden="true" />
             {property.bedrooms} quartos

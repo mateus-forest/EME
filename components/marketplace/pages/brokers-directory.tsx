@@ -9,6 +9,11 @@ import {
 } from '@/lib/marketplace/pages-data'
 import { BrokerProfileCard } from '@/components/marketplace/pages/broker-profile-card'
 import { cn } from '@/lib/utils'
+import {
+  CATALOG_GLASS_SURFACE_CLASS,
+  CATALOG_INPUT_CLASS,
+  CATALOG_SECONDARY_CTA_CLASS,
+} from '@/lib/catalog-visual-system'
 
 const ratingOptions = [
   { value: 'all', label: 'Todas as avaliações' },
@@ -29,9 +34,9 @@ function Segmented({ label, options, value, onChange }: {
   onChange: (value: string) => void
 }) {
   return (
-    <div>
+    <div className="w-full">
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-start justify-start gap-2">
         {options.map((option) => (
           <button
             key={option.value}
@@ -39,7 +44,7 @@ function Segmented({ label, options, value, onChange }: {
             onClick={() => onChange(option.value)}
             aria-pressed={value === option.value}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-sm transition-colors',
+              'inline-flex min-h-8 max-w-full items-center rounded-full border px-2.5 py-1 text-left text-xs leading-4 transition-colors',
               value === option.value
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-eme-50',
@@ -119,13 +124,13 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nome, região ou especialidade"
             aria-label="Buscar corretores"
-            className="h-12 w-full rounded-full border border-border bg-card pl-11 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className={cn(CATALOG_INPUT_CLASS, 'h-12 w-full rounded-full pl-11 pr-4 text-sm')}
           />
         </div>
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-eme-50 lg:hidden"
+          className={cn(CATALOG_SECONDARY_CTA_CLASS, 'inline-flex h-12 shrink-0 items-center justify-center gap-2 px-5 text-sm lg:hidden')}
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           Filtros
@@ -135,7 +140,7 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[240px_1fr]">
         <aside className="hidden lg:block">
-          <div className="sticky top-24 rounded-[1.75rem] border border-border/70 bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className={cn(CATALOG_GLASS_SURFACE_CLASS, 'sticky top-24 overflow-visible rounded-[1.75rem] p-6')}>
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Filtrar</h3>
               {activeFilters > 0 && <button type="button" onClick={reset} className="text-xs font-medium text-primary hover:underline">Limpar</button>}
@@ -146,11 +151,11 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
         <div>
           <p className="mb-4 text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? 'especialista encontrado' : 'especialistas encontrados'}</p>
           {filtered.length ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2">
               {filtered.map((broker) => <BrokerProfileCard key={broker.slug} broker={broker} />)}
             </div>
           ) : (
-            <div className="rounded-[1.75rem] border border-dashed border-border bg-card p-10 text-center">
+            <div className={cn(CATALOG_GLASS_SURFACE_CLASS, 'rounded-[1.75rem] border-dashed p-10 text-center')}>
               <p className="text-sm text-muted-foreground">Nenhum especialista encontrado com esses filtros.</p>
               <button type="button" onClick={() => { reset(); setQuery('') }} className="mt-4 text-sm font-medium text-primary hover:underline">Limpar filtros</button>
             </div>
@@ -161,7 +166,7 @@ export function BrokersDirectory({ brokers }: { brokers: BrokerProfile[] }) {
       {sheetOpen && createPortal(
         <div className="marketplace-shell marketplace-overlay fixed inset-0 z-[100] lg:hidden" role="dialog" aria-modal="true" aria-label="Filtros de corretores">
           <button type="button" aria-label="Fechar filtros" onClick={() => setSheetOpen(false)} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
-          <div className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-[1.75rem] bg-card p-6 shadow-[var(--shadow-float)]">
+          <div className={cn(CATALOG_GLASS_SURFACE_CLASS, 'marketplace-panel absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-[1.75rem] p-6')}>
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-base font-semibold text-foreground">Filtrar corretores</h2>
               <button type="button" onClick={() => setSheetOpen(false)} aria-label="Fechar" className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground">

@@ -24,7 +24,7 @@ export default async function BuscarPage({
   const estado = params.estado === 'erro' || params.estado === 'vazio' ? params.estado : undefined
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="marketplace-page flex min-h-svh flex-col">
       <Header />
       <main id="conteudo" className="flex-1">
         <Suspense fallback={null}>

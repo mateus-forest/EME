@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { buildQuickSearchHref } from '@/lib/marketplace/search-filters'
+import { CATALOG_SECONDARY_CTA_CLASS } from '@/lib/catalog-visual-system'
+import { cn } from '@/lib/utils'
 
 // Filtros rápidos (cidade, tipo, valor, quartos) apresentados como chips que abrem a busca.
 export function QuickFilters({
@@ -15,7 +17,7 @@ export function QuickFilters({
         <Link
           key={`${chip.param}-${chip.value}`}
           href={buildQuickSearchHref(purpose, chip.param, chip.value)}
-          className="inline-flex shrink-0 items-center rounded-full border border-border bg-card px-4 py-2 text-sm text-muted-foreground shadow-[var(--shadow-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground"
+          className={cn(CATALOG_SECONDARY_CTA_CLASS, 'marketplace-chip inline-flex h-9 shrink-0 items-center px-3.5 text-xs text-muted-foreground hover:-translate-y-0.5 hover:text-foreground')}
         >
           {chip.label}
         </Link>

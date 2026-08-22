@@ -10,6 +10,10 @@ import {
 import { StructuredInput } from '@/components/ui/structured-input'
 import { searchIntents } from '@/lib/marketplace/search-intents'
 import { cn } from '@/lib/utils'
+import {
+  CATALOG_DIALOG_SURFACE_CLASS,
+  CATALOG_INPUT_CLASS,
+} from '@/lib/catalog-visual-system'
 
 const propertyTypes = [
   { value: 'casa', label: 'Casa' },
@@ -84,8 +88,7 @@ export function MarketplaceFiltersDialog({
     }))
   }
 
-  const fieldClass =
-    'h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10'
+  const fieldClass = cn(CATALOG_INPUT_CLASS, 'h-11 w-full px-3 text-sm')
 
   return createPortal(
     <div className="marketplace-shell marketplace-overlay fixed inset-0 z-[100] flex items-end justify-center bg-transparent p-0 sm:items-center sm:p-6">
@@ -99,7 +102,7 @@ export function MarketplaceFiltersDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="marketplace-filters-title"
-        className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] bg-background shadow-[var(--shadow-float)] sm:max-w-2xl sm:rounded-[1.75rem]"
+        className={cn(CATALOG_DIALOG_SURFACE_CLASS, 'marketplace-panel relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] sm:max-w-2xl sm:rounded-[1.75rem]')}
       >
         <header className="flex items-start justify-between gap-4 border-b border-border/70 px-5 py-4 sm:px-6 sm:py-5">
           <div>
@@ -241,7 +244,7 @@ export function MarketplaceFiltersDialog({
                       aria-pressed={active}
                       onClick={() => toggleFeature(option.value)}
                       className={cn(
-                        'rounded-full border px-4 py-2 text-sm transition-colors',
+                        'rounded-full border px-3 py-1.5 text-xs transition-colors',
                         active
                           ? 'border-primary/35 bg-eme-50 font-medium text-eme-700'
                           : 'border-border bg-card text-foreground hover:bg-secondary',
@@ -266,7 +269,7 @@ export function MarketplaceFiltersDialog({
                       aria-pressed={active}
                       onClick={() => toggleIntent(intent.slug)}
                       className={cn(
-                        'rounded-full border px-4 py-2 text-sm transition-colors',
+                        'rounded-full border px-3 py-1.5 text-xs transition-colors',
                         active
                           ? 'border-primary/35 bg-eme-50 font-medium text-eme-700'
                           : 'border-border bg-card text-foreground hover:bg-secondary',
@@ -281,7 +284,7 @@ export function MarketplaceFiltersDialog({
           </div>
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-border/70 bg-background px-5 py-4 sm:px-6">
+        <footer className="flex items-center justify-between gap-3 border-t border-white/70 bg-white/35 px-5 py-4 backdrop-blur-[14px] sm:px-6">
           <button
             type="button"
             onClick={() => setDraft({ ...emptyMarketplaceFilters, features: [], intentions: [] })}

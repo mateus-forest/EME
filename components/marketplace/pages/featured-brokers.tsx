@@ -21,7 +21,7 @@ export function FeaturedBrokers({ brokers }: { brokers: BrokerProfile[] }) {
             key={broker.slug}
             href={`/imoveis/corretores/${broker.slug}`}
             aria-label={`Ver perfil de ${broker.name}`}
-            className="group min-w-[82vw] snap-start rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-float)] sm:min-w-[320px] md:min-w-0"
+            className="marketplace-card group h-full min-w-[82vw] snap-start rounded-[1.75rem] border border-white/80 bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-float)] sm:min-w-[320px] md:min-w-0"
           >
             <div className="flex items-center gap-4">
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl">

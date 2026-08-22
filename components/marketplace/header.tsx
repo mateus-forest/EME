@@ -72,8 +72,8 @@ export function Header() {
         overHero
           ? 'border-0 bg-transparent'
           : scrolled || open
-            ? 'border-b border-border/60 bg-background/88 shadow-[0_8px_30px_rgba(16,24,20,0.035)] backdrop-blur-xl'
-            : 'border-b border-transparent bg-background/55 backdrop-blur-md',
+            ? 'marketplace-header-glass border-b'
+            : 'marketplace-header-glass border-b border-transparent',
       )}
     >
       <div className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 md:h-20 md:px-8">
@@ -180,7 +180,7 @@ export function Header() {
       <div className={cn('md:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')}>
         <div
           className={cn(
-            'absolute inset-x-0 top-full z-40 h-[calc(100dvh-4rem)] overflow-y-auto bg-background transition-all duration-300',
+            'marketplace-panel absolute inset-x-0 top-full z-40 h-[calc(100dvh-4rem)] overflow-y-auto transition-all duration-300',
             open ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0',
           )}
         >

@@ -5,6 +5,7 @@ import { Check, Pencil, Sparkles, X } from 'lucide-react'
 import type { Criterion } from '@/lib/marketplace/search-data'
 import { SearchCriteriaChip } from '@/components/marketplace/search/search-criteria-chip'
 import { cn } from '@/lib/utils'
+import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
 
 export function SearchInterpretation({
   query,
@@ -44,10 +45,11 @@ export function SearchInterpretation({
       {/* Campo da busca — mesmo padrão da home, em escala de resultados */}
       <div
         className={cn(
-          'group flex items-center gap-3 rounded-2xl border bg-card p-2 pl-4 shadow-[var(--shadow-soft)] transition-all duration-300',
+          CATALOG_GLASS_SURFACE_CLASS,
+          'marketplace-field group flex items-center gap-3 overflow-visible rounded-2xl p-2 pl-4 transition-all duration-300',
           editing
-            ? 'border-primary/25 shadow-[0_8px_26px_rgba(16,24,20,0.08)] ring-2 ring-primary/5'
-            : 'border-border',
+            ? 'border-[#cfc8bc]'
+            : 'border-white/80',
         )}
       >
         <Sparkles className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
