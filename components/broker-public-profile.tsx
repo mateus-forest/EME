@@ -60,7 +60,7 @@ export function BrokerCatalogHeader({
 
   return (
       <header className="sticky top-0 z-50 px-2 pt-2 sm:px-5 sm:pt-5">
-        <div className="relative mx-auto max-w-[1280px] overflow-hidden rounded-[1.4rem] border border-white/70 bg-white/88 px-2 shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.22),0_24px_68px_rgba(28,55,39,.16),0_5px_16px_rgba(28,55,39,.07)] backdrop-blur-[30px] backdrop-saturate-[1.75] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent supports-[backdrop-filter]:bg-white/40 sm:px-5 lg:supports-[backdrop-filter]:bg-white/54">
+        <div className="relative mx-auto max-w-[1280px] overflow-hidden rounded-[1.4rem] border border-white/70 bg-white/88 px-2 shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.16),0_12px_32px_rgba(28,55,39,.11)] backdrop-blur-[22px] backdrop-saturate-[1.4] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/85 before:to-transparent supports-[backdrop-filter]:bg-white/52 sm:px-5 lg:supports-[backdrop-filter]:bg-white/62">
           <div className="relative flex h-[64px] items-center gap-1.5 sm:h-[68px] sm:gap-3">
           <Link
             href={catalogPath}
@@ -80,11 +80,11 @@ export function BrokerCatalogHeader({
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               <AssistantLauncher
-                className="relative !size-9 !shrink-0 !gap-0 !rounded-full !border-white/70 !bg-white/86 !p-0 !shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.2),0_12px_30px_rgba(24,54,37,.18)] !backdrop-blur-[24px] !backdrop-saturate-[1.7] supports-[backdrop-filter]:!bg-white/34 hover:!border-white hover:!shadow-[inset_0_1px_0_rgba(255,255,255,1),0_15px_34px_rgba(24,54,37,.21)] sm:!size-10 lg:supports-[backdrop-filter]:!bg-white/48 [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
+                className="relative !size-9 !shrink-0 !gap-0 !rounded-full !border-white/70 !bg-white/86 !p-0 !shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.16),0_7px_16px_rgba(24,54,37,.11)] !backdrop-blur-[16px] !backdrop-saturate-[1.4] supports-[backdrop-filter]:!bg-white/52 hover:!border-white hover:!shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_8px_18px_rgba(24,54,37,.13)] sm:!size-10 lg:supports-[backdrop-filter]:!bg-white/62 [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
                 labelClassName="sr-only"
               />
-              {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-white/65 bg-[#159447]/88 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.52),inset_0_-1px_0_rgba(0,84,36,.16),0_13px_31px_rgba(13,119,53,.27)] backdrop-blur-[24px] backdrop-saturate-[1.7] transition hover:-translate-y-0.5 hover:bg-[#107c39]/88 supports-[backdrop-filter]:bg-[#159447]/68 sm:size-10 lg:supports-[backdrop-filter]:bg-[#159447]/78" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
-              <button type="button" onClick={onShare} className="flex size-9 items-center justify-center rounded-full border border-white/70 bg-white/86 text-[#334039] shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.2),0_12px_30px_rgba(24,54,37,.18)] backdrop-blur-[24px] backdrop-saturate-[1.7] transition hover:-translate-y-0.5 hover:border-white hover:text-[#11863d] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_15px_34px_rgba(24,54,37,.21)] supports-[backdrop-filter]:bg-white/34 sm:size-10 lg:supports-[backdrop-filter]:bg-white/48" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
+              {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-white/65 bg-[#159447]/88 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.42),inset_0_-1px_0_rgba(0,84,36,.12),0_8px_18px_rgba(13,119,53,.18)] backdrop-blur-[16px] backdrop-saturate-[1.4] transition hover:-translate-y-0.5 hover:bg-[#107c39]/88 supports-[backdrop-filter]:bg-[#159447]/76 sm:size-10 lg:supports-[backdrop-filter]:bg-[#159447]/82" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
+              <button type="button" onClick={onShare} className="flex size-9 items-center justify-center rounded-full border border-white/70 bg-white/86 text-[#334039] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.16),0_7px_16px_rgba(24,54,37,.11)] backdrop-blur-[16px] backdrop-saturate-[1.4] transition hover:-translate-y-0.5 hover:border-white hover:text-[#11863d] hover:shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_8px_18px_rgba(24,54,37,.13)] supports-[backdrop-filter]:bg-white/52 sm:size-10 lg:supports-[backdrop-filter]:bg-white/62" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
                 <Share2 className="size-4" />
             </button>
           </div>
@@ -108,7 +108,7 @@ function CatalogNavLink({ href, active, children }: { href: string; active: bool
       className={cn(
         "relative shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition sm:px-4 sm:text-sm",
         active
-          ? "border-white/70 bg-white/84 text-[#111713] shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.18),0_10px_25px_rgba(28,57,40,.15)] backdrop-blur-[22px] backdrop-saturate-[1.65] supports-[backdrop-filter]:bg-white/30 lg:supports-[backdrop-filter]:bg-white/44"
+          ? "border-white/70 bg-white/84 text-[#111713] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_-1px_0_rgba(255,255,255,.14),0_6px_14px_rgba(28,57,40,.09)] backdrop-blur-[15px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/50 lg:supports-[backdrop-filter]:bg-white/60"
           : "border-transparent text-[#4c5551] hover:border-white/70 hover:bg-white/45 hover:text-[#11863d]",
       )}
     >
@@ -157,7 +157,7 @@ export function BrokerProfileHero({
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.86)_0%,rgba(250,252,249,.74)_46%,rgba(250,252,249,.48)_70%,rgba(250,252,249,.20)_88%,rgba(250,252,249,.05)_97%,transparent_100%)]" />
 
           <div className="relative z-10 grid gap-5 px-4 pb-5 pt-7 text-center sm:px-6 sm:pb-7 sm:pt-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-5 lg:pb-9 lg:pt-10 lg:text-left">
-          <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-white shadow-[0_18px_45px_rgba(27,47,36,.16)] sm:size-36 lg:size-44 xl:size-52">
+          <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/80 bg-white/60 shadow-[inset_0_2px_3px_rgba(255,255,255,.92),inset_0_-2px_5px_rgba(45,91,65,.10),0_10px_28px_rgba(27,47,36,.15),0_0_18px_rgba(104,194,151,.16)] ring-1 ring-white/55 before:pointer-events-none before:absolute before:inset-0 before:z-10 before:rounded-full before:shadow-[inset_0_2px_2px_rgba(255,255,255,.88),inset_0_-2px_4px_rgba(56,107,76,.10)] sm:size-36 lg:size-44 xl:size-52">
             {catalog.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={catalog.photoUrl} alt={catalog.displayName} className="h-full w-full object-cover object-center" />
@@ -180,7 +180,7 @@ export function BrokerProfileHero({
 
               <BrokerSpecialtyChips specialties={catalog.specialties} compact hero liquidGlass className="w-full justify-center lg:w-auto lg:justify-start" />
               {creciLabel(catalog) ? (
-                <p className="mx-auto inline-flex items-center justify-center rounded-full border border-white/70 bg-white/86 px-2 py-0.5 text-[11px] font-medium italic text-[#334d3f] shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.2),0_10px_26px_rgba(25,57,39,.15)] backdrop-blur-[24px] backdrop-saturate-[1.7] supports-[backdrop-filter]:bg-white/34 sm:text-xs lg:mx-0 lg:supports-[backdrop-filter]:bg-white/48">
+                <p className="mx-auto inline-flex items-center justify-center rounded-full border border-white/70 bg-white/86 px-2 py-0.5 text-[11px] font-medium italic text-[#334d3f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_-1px_0_rgba(255,255,255,.14),0_6px_14px_rgba(25,57,39,.09)] backdrop-blur-[16px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/50 sm:text-xs lg:mx-0 lg:supports-[backdrop-filter]:bg-white/60">
                   {creciLabel(catalog)}
                 </p>
               ) : null}
@@ -195,7 +195,7 @@ export function BrokerProfileHero({
             <div
               key={label}
               className={cn(
-                "relative grid items-center overflow-hidden rounded-[1.2rem] border border-white/70 bg-white/84 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.2),0_18px_44px_rgba(26,57,39,.15),0_4px_12px_rgba(26,57,39,.06)] backdrop-blur-[28px] backdrop-saturate-[1.7] before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent supports-[backdrop-filter]:bg-white/34 lg:supports-[backdrop-filter]:bg-white/50",
+                "relative grid items-center overflow-hidden rounded-[1.2rem] border border-white/70 bg-white/84 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.14),0_10px_24px_rgba(26,57,39,.10)] backdrop-blur-[18px] backdrop-saturate-[1.4] before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/80 before:to-transparent supports-[backdrop-filter]:bg-white/52 lg:supports-[backdrop-filter]:bg-white/62",
                 wideMobile && "col-span-2 py-2.5 sm:col-span-2 lg:col-span-1 lg:py-2.5",
               )}
             >
@@ -203,7 +203,7 @@ export function BrokerProfileHero({
                 "flex items-center justify-center text-center",
                 wideMobile ? "flex-col gap-1" : "flex-col gap-1.5",
               )}>
-                <span className="relative flex size-7 items-center justify-center rounded-full border border-white/75 bg-white/76 text-[#128b41] shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.18),0_8px_20px_rgba(23,92,49,.14)] backdrop-blur-[18px] backdrop-saturate-[1.6] supports-[backdrop-filter]:bg-white/28">
+                <span className="relative flex size-7 items-center justify-center rounded-full border border-white/70 bg-white/76 text-[#128b41] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_-1px_0_rgba(255,255,255,.12),0_5px_12px_rgba(23,92,49,.09)] backdrop-blur-[12px] backdrop-saturate-[1.3] supports-[backdrop-filter]:bg-white/50">
                   <Icon className="size-3.5" />
                 </span>
                 <span className="flex min-w-0 flex-col items-center text-center">
