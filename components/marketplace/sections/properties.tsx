@@ -15,7 +15,7 @@ export function PropertiesSection({ properties }: { properties: Property[] }) {
         />
       </Reveal>
 
-      {featured ? <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 lg:h-[780px] lg:grid-cols-3 lg:grid-rows-2">
+      {featured ? <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 lg:h-[700px] lg:grid-cols-3 lg:grid-rows-2">
         <Reveal className="lg:col-span-2 lg:row-span-2 lg:min-h-0">
           <div className="h-full">
             <PropertyCard property={featured} featured compact home />

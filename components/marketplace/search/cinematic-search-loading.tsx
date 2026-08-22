@@ -129,11 +129,17 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
       } catch {
         // O arquivo pronto permanece no primeiro quadro disponível.
       }
+      playbackStartedRef.current = true
       void video.play().then(() => {
-        playbackStartedRef.current = true
         setPhase('playing')
       }).catch(() => {
         playbackStartedRef.current = false
+        setVideoCanPlay(false)
+        try {
+          video.load()
+        } catch {
+          // O próximo evento real de mídia fará uma nova tentativa.
+        }
       })
     })
     return () => window.cancelAnimationFrame(frame)

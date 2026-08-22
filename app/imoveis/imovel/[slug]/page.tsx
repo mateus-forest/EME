@@ -9,7 +9,7 @@ import { PropertyGallery } from '@/components/marketplace/property/property-gall
 import { PropertyEssentials } from '@/components/marketplace/property/property-essentials'
 import { PropertyCompatibility } from '@/components/marketplace/property/property-compatibility'
 import { BrokerPanel } from '@/components/marketplace/property/broker-panel'
-import { PropertyEnvironments } from '@/components/marketplace/property/property-environments'
+import { PropertyFinancingSimulator } from '@/components/marketplace/property/property-financing-simulator'
 import { BeforeDeciding } from '@/components/marketplace/property/before-deciding'
 import { PropertyLocation } from '@/components/marketplace/property/property-location'
 import { PropertyCompare } from '@/components/marketplace/property/property-compare'
@@ -73,7 +73,11 @@ export default async function ImovelPage({ params }: { params: Promise<{ slug: s
             </div>
           </section>
 
-          {property.environments.length ? <section className="bg-surface"><div className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20"><PropertyEnvironments environments={property.environments} summary={property.summary} highlights={property.highlights} /></div></section> : null}
+          <section className="bg-surface">
+            <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-8 md:py-14">
+              <PropertyFinancingSimulator price={property.price} />
+            </div>
+          </section>
 
           <section className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8 md:py-20">
             <div className="grid grid-cols-1 gap-x-10 gap-y-14 lg:grid-cols-2">

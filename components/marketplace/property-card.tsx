@@ -93,9 +93,9 @@ export function PropertyCard({
             ? 'min-h-[430px] max-w-none lg:min-h-0'
             : 'min-h-[620px] max-w-none'
           : home
-            ? 'min-h-[380px] max-w-[440px]'
+            ? 'min-h-[360px] max-w-[440px] lg:min-h-0'
           : compact
-            ? 'min-h-[430px] max-w-[440px]'
+            ? 'h-[430px] min-h-[430px] max-w-[440px]'
             : 'min-h-[690px] max-w-[560px]',
         highlighted
           ? '-translate-y-1 border-primary/40 shadow-[var(--shadow-float)] ring-1 ring-primary/20'
@@ -151,7 +151,7 @@ export function PropertyCard({
       </div>
 
       <div className={cn('flex flex-1 flex-col', home ? 'min-h-0 p-3' : compact ? 'min-h-0 p-4' : 'min-h-[360px] p-5 sm:p-6')}>
-        <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-start', home ? 'min-h-[52px] gap-2.5' : compact ? 'min-h-[60px] gap-3' : 'min-h-[76px] gap-4')}>
+        <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-start', home ? 'min-h-[46px] gap-2.5' : compact ? 'min-h-[60px] gap-3' : 'min-h-[76px] gap-4')}>
           <div className="min-w-0">
             <h3 className={cn('line-clamp-2 text-pretty font-semibold leading-snug tracking-[-0.01em] text-foreground', compact ? 'min-h-10 text-base' : 'min-h-[2.75rem] text-lg')}>
               <Link
@@ -175,7 +175,7 @@ export function PropertyCard({
           </div>
         </div>
 
-        <div className={cn('grid grid-cols-3 items-center text-muted-foreground', home ? 'mt-2 min-h-8 gap-1.5 text-[11px]' : compact ? 'mt-3 min-h-9 gap-2 text-xs' : 'mt-5 min-h-12 gap-2 text-sm sm:gap-4')}>
+        <div className={cn('grid grid-cols-3 items-center text-muted-foreground', home ? 'mt-1.5 min-h-7 gap-1.5 text-[11px]' : compact ? 'mt-3 min-h-9 gap-2 text-xs' : 'mt-5 min-h-12 gap-2 text-sm sm:gap-4')}>
           <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
             {property.commercial ? <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : <BedDouble className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />}
             <span className="truncate">{property.commercial ? 'Comercial' : `${property.bedrooms} ${property.bedrooms === 1 ? 'quarto' : 'quartos'}`}</span>
@@ -190,13 +190,13 @@ export function PropertyCard({
           </span>
         </div>
 
-        <div className={cn('border-t border-border/70', home ? 'mt-2 pt-2' : compact ? 'mt-3 pt-3' : 'mt-5 pt-4')}>
+        <div className={cn('border-t border-border/70', home ? 'mt-1.5 pt-1.5' : compact ? 'mt-3 pt-3' : 'mt-5 pt-4')}>
           <button
             type="button"
             aria-expanded={open}
             aria-controls={reasonsId}
             onClick={() => setOpen((value) => !value)}
-            className={cn('flex w-full items-center justify-between gap-3 text-left font-semibold text-foreground', home ? 'min-h-7 text-[11px]' : compact ? 'min-h-8 text-xs' : 'min-h-9 text-sm')}
+            className={cn('flex w-full items-center justify-between gap-3 text-left font-semibold text-foreground', home ? 'min-h-6 text-[11px]' : compact ? 'min-h-8 text-xs' : 'min-h-9 text-sm')}
           >
             Por que combina com você
             <ChevronDown
@@ -218,7 +218,7 @@ export function PropertyCard({
           ) : null}
         </div>
 
-        <div className={cn('mt-auto grid grid-cols-2', home ? 'gap-2 pt-2' : compact ? 'gap-2 pt-3' : 'gap-3 pt-5')}>
+        <div className={cn('mt-auto grid grid-cols-2', home ? 'gap-2 pt-1.5' : compact ? 'gap-2 pt-3' : 'gap-3 pt-5')}>
           {hasControlledComparison ? (
             <button
               type="button"
@@ -228,7 +228,7 @@ export function PropertyCard({
               onClick={() => onToggleCompare?.(property.slug)}
               className={cn(
                 'inline-flex items-center justify-center gap-2 border font-semibold transition-colors',
-                home ? 'min-h-9 rounded-xl px-2 text-[11px]' : compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm',
+                home ? 'min-h-8 rounded-xl px-2 text-[11px]' : compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm',
                 selected ? 'border-primary bg-eme-50 text-primary' : 'border-border/90 bg-white/40 text-foreground hover:border-primary/35 hover:bg-eme-50',
                 compareDisabled && 'cursor-not-allowed opacity-45',
               )}
@@ -238,7 +238,7 @@ export function PropertyCard({
           ) : (
             <Link
               href={`/imoveis/comparar?imoveis=${encodeURIComponent(property.slug)}`}
-              className={cn('inline-flex items-center justify-center gap-2 border border-border/90 bg-white/40 font-semibold text-foreground transition-colors hover:border-primary/35 hover:bg-eme-50', home ? 'min-h-9 rounded-xl px-2 text-[11px]' : compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm')}
+              className={cn('inline-flex items-center justify-center gap-2 border border-border/90 bg-white/40 font-semibold text-foreground transition-colors hover:border-primary/35 hover:bg-eme-50', home ? 'min-h-8 rounded-xl px-2 text-[11px]' : compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm')}
             >
               {compareContent}
             </Link>
@@ -246,7 +246,7 @@ export function PropertyCard({
 
           <Link
             href={`/imoveis/imovel/${property.slug}`}
-            className={cn('inline-flex items-center justify-center gap-2 border border-border/90 bg-white/40 font-semibold text-primary transition-colors hover:border-primary/35 hover:bg-eme-50', home ? 'min-h-9 rounded-xl px-2 text-[11px]' : compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm')}
+            className={cn('inline-flex items-center justify-center gap-2 border border-border/90 bg-white/40 font-semibold text-primary transition-colors hover:border-primary/35 hover:bg-eme-50', home ? 'min-h-8 rounded-xl px-2 text-[11px]' : compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm')}
           >
             Ver imóvel
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

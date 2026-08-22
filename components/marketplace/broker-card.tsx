@@ -17,7 +17,7 @@ export function BrokerCard({ broker, compact = false, home = false }: { broker: 
       className={cn(
         CATALOG_GLASS_SURFACE_CLASS,
         'marketplace-card group relative mx-auto flex h-full w-full flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]',
-        compact ? 'min-h-[292px] max-w-[390px] p-4' : 'min-h-[430px] max-w-[560px] p-5 sm:p-6',
+        compact ? 'h-[300px] min-h-[300px] max-w-[390px] p-4' : 'h-[450px] min-h-[450px] max-w-[560px] p-5 sm:p-6',
       )}
     >
       <Link
