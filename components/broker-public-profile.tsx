@@ -60,7 +60,7 @@ export function BrokerCatalogHeader({
 
   return (
       <header className="sticky top-0 z-50 px-2 pt-2 sm:px-5 sm:pt-5">
-        <div className="relative mx-auto max-w-[1280px] overflow-hidden rounded-[1.4rem] border border-white/70 bg-white/88 px-2 shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.16),0_12px_32px_rgba(28,55,39,.11)] backdrop-blur-[22px] backdrop-saturate-[1.4] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/85 before:to-transparent supports-[backdrop-filter]:bg-white/52 sm:px-5 lg:supports-[backdrop-filter]:bg-white/62">
+        <div className="relative mx-auto max-w-[1280px] overflow-hidden rounded-[1.4rem] border border-white/65 bg-white/88 px-2 shadow-[inset_0_1px_0_rgba(255,255,255,.95),inset_1px_0_0_rgba(255,255,255,.46),inset_0_-1px_0_rgba(255,255,255,.14),0_10px_26px_rgba(28,55,39,.11)] backdrop-blur-[26px] backdrop-saturate-[1.55] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/90 before:to-transparent supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(135deg,rgba(255,255,255,.48),rgba(255,255,255,.24))] sm:px-5 lg:supports-[backdrop-filter]:bg-[linear-gradient(135deg,rgba(255,255,255,.58),rgba(255,255,255,.33))]">
           <div className="relative flex h-[64px] items-center gap-1.5 sm:h-[68px] sm:gap-3">
           <Link
             href={catalogPath}
@@ -80,11 +80,11 @@ export function BrokerCatalogHeader({
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               <AssistantLauncher
-                className="relative !size-9 !shrink-0 !gap-0 !rounded-full !border-white/70 !bg-white/86 !p-0 !shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.16),0_7px_16px_rgba(24,54,37,.11)] !backdrop-blur-[16px] !backdrop-saturate-[1.4] supports-[backdrop-filter]:!bg-white/52 hover:!border-white hover:!shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_8px_18px_rgba(24,54,37,.13)] sm:!size-10 lg:supports-[backdrop-filter]:!bg-white/62 [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
+                className="relative !size-9 !shrink-0 !gap-0 !rounded-full !border-white/65 !bg-white/86 !p-0 !shadow-[inset_0_1px_0_rgba(255,255,255,.94),inset_1px_0_0_rgba(255,255,255,.38),0_6px_14px_rgba(24,54,37,.10)] !backdrop-blur-[20px] !backdrop-saturate-[1.5] supports-[backdrop-filter]:!bg-white/0 supports-[backdrop-filter]:!bg-[linear-gradient(145deg,rgba(255,255,255,.52),rgba(255,255,255,.24))] hover:!border-white hover:!shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_7px_16px_rgba(24,54,37,.12)] sm:!size-10 lg:supports-[backdrop-filter]:!bg-[linear-gradient(145deg,rgba(255,255,255,.60),rgba(255,255,255,.34))] [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
                 labelClassName="sr-only"
               />
-              {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-white/65 bg-[#159447]/88 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.42),inset_0_-1px_0_rgba(0,84,36,.12),0_8px_18px_rgba(13,119,53,.18)] backdrop-blur-[16px] backdrop-saturate-[1.4] transition hover:-translate-y-0.5 hover:bg-[#107c39]/88 supports-[backdrop-filter]:bg-[#159447]/76 sm:size-10 lg:supports-[backdrop-filter]:bg-[#159447]/82" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
-              <button type="button" onClick={onShare} className="flex size-9 items-center justify-center rounded-full border border-white/70 bg-white/86 text-[#334039] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.16),0_7px_16px_rgba(24,54,37,.11)] backdrop-blur-[16px] backdrop-saturate-[1.4] transition hover:-translate-y-0.5 hover:border-white hover:text-[#11863d] hover:shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_8px_18px_rgba(24,54,37,.13)] supports-[backdrop-filter]:bg-white/52 sm:size-10 lg:supports-[backdrop-filter]:bg-white/62" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
+              {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-white/60 bg-[#159447]/88 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.48),inset_1px_0_0_rgba(255,255,255,.18),0_7px_16px_rgba(13,119,53,.17)] backdrop-blur-[20px] backdrop-saturate-[1.5] transition hover:-translate-y-0.5 hover:bg-[#107c39]/82 supports-[backdrop-filter]:bg-[#159447]/64 sm:size-10 lg:supports-[backdrop-filter]:bg-[#159447]/72" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
+              <button type="button" onClick={onShare} className="flex size-9 items-center justify-center rounded-full border border-white/65 bg-white/86 text-[#334039] shadow-[inset_0_1px_0_rgba(255,255,255,.94),inset_1px_0_0_rgba(255,255,255,.38),0_6px_14px_rgba(24,54,37,.10)] backdrop-blur-[20px] backdrop-saturate-[1.5] transition hover:-translate-y-0.5 hover:border-white hover:text-[#11863d] hover:shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_7px_16px_rgba(24,54,37,.12)] supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.52),rgba(255,255,255,.24))] sm:size-10 lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.60),rgba(255,255,255,.34))]" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
                 <Share2 className="size-4" />
             </button>
           </div>
@@ -108,7 +108,7 @@ function CatalogNavLink({ href, active, children }: { href: string; active: bool
       className={cn(
         "relative shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition sm:px-4 sm:text-sm",
         active
-          ? "border-white/70 bg-white/84 text-[#111713] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_-1px_0_rgba(255,255,255,.14),0_6px_14px_rgba(28,57,40,.09)] backdrop-blur-[15px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/50 lg:supports-[backdrop-filter]:bg-white/60"
+          ? "border-white/65 bg-white/84 text-[#111713] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_1px_0_0_rgba(255,255,255,.36),0_5px_12px_rgba(28,57,40,.09)] backdrop-blur-[19px] backdrop-saturate-[1.5] supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.50),rgba(255,255,255,.22))] lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.58),rgba(255,255,255,.32))]"
           : "border-transparent text-[#4c5551] hover:border-white/70 hover:bg-white/45 hover:text-[#11863d]",
       )}
     >
@@ -157,7 +157,7 @@ export function BrokerProfileHero({
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,252,249,.86)_0%,rgba(250,252,249,.74)_46%,rgba(250,252,249,.48)_70%,rgba(250,252,249,.20)_88%,rgba(250,252,249,.05)_97%,transparent_100%)]" />
 
           <div className="relative z-10 grid gap-5 px-4 pb-5 pt-7 text-center sm:px-6 sm:pb-7 sm:pt-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-5 lg:pb-9 lg:pt-10 lg:text-left">
-          <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/80 bg-white/60 shadow-[inset_0_2px_3px_rgba(255,255,255,.92),inset_0_-2px_5px_rgba(45,91,65,.10),0_10px_28px_rgba(27,47,36,.15),0_0_18px_rgba(104,194,151,.16)] ring-1 ring-white/55 before:pointer-events-none before:absolute before:inset-0 before:z-10 before:rounded-full before:shadow-[inset_0_2px_2px_rgba(255,255,255,.88),inset_0_-2px_4px_rgba(56,107,76,.10)] sm:size-36 lg:size-44 xl:size-52">
+          <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-4 border-white/75 bg-white/45 shadow-[inset_0_2px_3px_rgba(255,255,255,.96),inset_2px_0_3px_rgba(255,255,255,.46),inset_0_-2px_5px_rgba(45,91,65,.11),0_9px_24px_rgba(27,47,36,.15),0_0_14px_rgba(104,194,151,.17)] ring-1 ring-white/60 before:pointer-events-none before:absolute before:inset-0 before:z-10 before:rounded-full before:shadow-[inset_0_2px_2px_rgba(255,255,255,.92),inset_0_-2px_4px_rgba(56,107,76,.10)] after:pointer-events-none after:absolute after:inset-[3px] after:z-10 after:rounded-full after:bg-[linear-gradient(135deg,rgba(255,255,255,.22),transparent_36%,rgba(55,132,89,.04)_70%,rgba(255,255,255,.12))] sm:size-36 lg:size-44 xl:size-52">
             {catalog.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={catalog.photoUrl} alt={catalog.displayName} className="h-full w-full object-cover object-center" />
@@ -180,7 +180,7 @@ export function BrokerProfileHero({
 
               <BrokerSpecialtyChips specialties={catalog.specialties} compact hero liquidGlass className="w-full justify-center lg:w-auto lg:justify-start" />
               {creciLabel(catalog) ? (
-                <p className="mx-auto inline-flex items-center justify-center rounded-full border border-white/70 bg-white/86 px-2 py-0.5 text-[11px] font-medium italic text-[#334d3f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_-1px_0_rgba(255,255,255,.14),0_6px_14px_rgba(25,57,39,.09)] backdrop-blur-[16px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/50 sm:text-xs lg:mx-0 lg:supports-[backdrop-filter]:bg-white/60">
+                <p className="mx-auto inline-flex items-center justify-center rounded-full border border-white/65 bg-white/86 px-2 py-0.5 text-[11px] font-medium italic text-[#334d3f] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_1px_0_0_rgba(255,255,255,.36),0_5px_12px_rgba(25,57,39,.09)] backdrop-blur-[19px] backdrop-saturate-[1.5] supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.50),rgba(255,255,255,.22))] sm:text-xs lg:mx-0 lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.58),rgba(255,255,255,.32))]">
                   {creciLabel(catalog)}
                 </p>
               ) : null}
@@ -195,7 +195,7 @@ export function BrokerProfileHero({
             <div
               key={label}
               className={cn(
-                "relative grid items-center overflow-hidden rounded-[1.2rem] border border-white/70 bg-white/84 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_0_-1px_0_rgba(255,255,255,.14),0_10px_24px_rgba(26,57,39,.10)] backdrop-blur-[18px] backdrop-saturate-[1.4] before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/80 before:to-transparent supports-[backdrop-filter]:bg-white/52 lg:supports-[backdrop-filter]:bg-white/62",
+                "relative grid items-center overflow-hidden rounded-[1.2rem] border border-white/65 bg-white/84 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.94),inset_1px_0_0_rgba(255,255,255,.38),inset_0_-1px_0_rgba(255,255,255,.12),0_9px_22px_rgba(26,57,39,.10)] backdrop-blur-[22px] backdrop-saturate-[1.5] before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/85 before:to-transparent supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.50),rgba(255,255,255,.25))] lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.60),rgba(255,255,255,.34))]",
                 wideMobile && "col-span-2 py-2.5 sm:col-span-2 lg:col-span-1 lg:py-2.5",
               )}
             >
@@ -203,7 +203,7 @@ export function BrokerProfileHero({
                 "flex items-center justify-center text-center",
                 wideMobile ? "flex-col gap-1" : "flex-col gap-1.5",
               )}>
-                <span className="relative flex size-7 items-center justify-center rounded-full border border-white/70 bg-white/76 text-[#128b41] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_-1px_0_rgba(255,255,255,.12),0_5px_12px_rgba(23,92,49,.09)] backdrop-blur-[12px] backdrop-saturate-[1.3] supports-[backdrop-filter]:bg-white/50">
+                <span className="relative flex size-7 items-center justify-center rounded-full border border-white/65 bg-white/76 text-[#128b41] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_1px_0_0_rgba(255,255,255,.32),0_4px_10px_rgba(23,92,49,.09)] backdrop-blur-[16px] backdrop-saturate-[1.45] supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.50),rgba(255,255,255,.22))]">
                   <Icon className="size-3.5" />
                 </span>
                 <span className="flex min-w-0 flex-col items-center text-center">
@@ -324,13 +324,13 @@ export function BrokerContactDialog({ open, onOpenChange, catalog }: { open: boo
 
 export function BrokerCatalogFooterContact({ catalog, onContact }: { catalog: PublicBrokerCatalogData; onContact: () => void }) {
   return (
-    <section id="contato" className="scroll-mt-32 rounded-[1.5rem] border border-[#e5ebe6] bg-white px-5 py-5 shadow-[0_14px_36px_rgba(43,61,52,.05)] sm:px-7">
+    <section id="contato" className="relative scroll-mt-32 overflow-hidden rounded-[1.5rem] border border-white/65 bg-white/88 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,.94),inset_1px_0_0_rgba(255,255,255,.36),0_9px_22px_rgba(43,61,52,.09)] backdrop-blur-[22px] backdrop-saturate-[1.5] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/85 before:to-transparent supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.52),rgba(255,255,255,.27))] sm:px-7 lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.62),rgba(255,255,255,.38))]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#edf9f1] text-[#159447]"><MessageCircle className="size-5" /></span>
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/65 bg-white/76 text-[#159447] shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_4px_10px_rgba(30,85,49,.09)] backdrop-blur-[16px] supports-[backdrop-filter]:bg-white/38"><MessageCircle className="size-5" /></span>
           <div><h3 className="font-semibold text-[#172019]">Ainda não encontrou o imóvel ideal?</h3><p className="mt-1 text-sm text-[#717b75]">Receba novas oportunidades diretamente pelo WhatsApp.</p></div>
         </div>
-        <Button type="button" onClick={onContact} variant="ghost" className="h-11 rounded-full border border-[#bfe0c8] px-5 font-semibold text-[#178b42] hover:bg-[#f1faf4]">Falar com o corretor</Button>
+        <Button type="button" onClick={onContact} variant="ghost" className="h-11 rounded-full border border-white/65 bg-white/70 px-5 font-semibold text-[#178b42] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_4px_10px_rgba(30,85,49,.08)] backdrop-blur-[16px] hover:bg-white/78 supports-[backdrop-filter]:bg-white/36">Falar com o corretor</Button>
       </div>
     </section>
   )

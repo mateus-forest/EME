@@ -509,7 +509,7 @@ export function PublicCatalogLanding({
         ) : null}
 
         {!profileOnly && !listingOnly ? (
-        <section className={kind === "broker" ? "mx-3 rounded-[1.6rem] border border-[#e8eee9] bg-white px-5 py-6 shadow-[0_18px_46px_rgba(43,61,52,.055)] sm:mx-5 sm:px-7 sm:py-7 lg:px-10" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
+        <section className={kind === "broker" ? "relative mx-3 overflow-hidden rounded-[1.6rem] border border-white/65 bg-white/88 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,.94),inset_1px_0_0_rgba(255,255,255,.36),0_9px_22px_rgba(43,61,52,.09)] backdrop-blur-[22px] backdrop-saturate-[1.5] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/85 before:to-transparent supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.52),rgba(255,255,255,.27))] sm:mx-5 sm:px-7 sm:py-7 lg:px-10 lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.62),rgba(255,255,255,.38))]" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
           <div className="mx-auto max-w-none">
             <h2 className="text-[1.3rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
               Encontre seu próximo imóvel
@@ -528,7 +528,7 @@ export function PublicCatalogLanding({
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Ex.: apartamento em Porto Alegre até 900 mil com 2 quartos e vaga"
-                  className="h-[3rem] rounded-[0.95rem] border-transparent bg-white pl-11 pr-4 text-[13px] text-[#111111] shadow-[inset_0_0_0_1px_rgba(224,217,208,0.9),0_10px_24px_rgba(15,23,42,0.04)] placeholder:text-[#9a9a9a] focus-visible:ring-1 focus-visible:ring-[#d8d0c8] sm:h-[3.6rem] sm:rounded-[1rem] sm:pl-12 sm:text-base"
+                  className="h-[3rem] rounded-[0.95rem] border-white/60 bg-white/82 pl-11 pr-4 text-[13px] text-[#111111] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_1px_0_0_rgba(255,255,255,.30),0_6px_14px_rgba(15,23,42,.07)] backdrop-blur-[18px] backdrop-saturate-[1.45] placeholder:text-[#7f8883] focus-visible:ring-1 focus-visible:ring-white/80 supports-[backdrop-filter]:bg-white/38 sm:h-[3.6rem] sm:rounded-[1rem] sm:pl-12 sm:text-base"
                 />
               </div>
               <Button
@@ -554,7 +554,7 @@ export function PublicCatalogLanding({
                     setSearch(suggestion)
                   }}
                   className={cn(
-                      "inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[#efe8df] bg-white px-2 text-[10px] font-medium text-[#2f2f2f] shadow-[0_3px_10px_rgba(15,23,42,0.025)] transition hover:border-[#dad2ca] hover:bg-[#faf8f5] sm:h-8 sm:px-3 sm:text-xs",
+                      "inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-white/65 bg-white/82 px-2 text-[10px] font-medium text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_1px_0_0_rgba(255,255,255,.30),0_4px_10px_rgba(15,23,42,.06)] backdrop-blur-[16px] backdrop-saturate-[1.45] transition hover:border-white hover:bg-white/62 supports-[backdrop-filter]:bg-white/34 sm:h-8 sm:px-3 sm:text-xs",
                     index < 4 ? "col-span-3" : "col-span-2",
                   )}
                 >
@@ -708,7 +708,7 @@ export function PublicCatalogLanding({
                 <article
                   key={property.id}
                   id={`imovel-${property.id}`}
-                  className={kind === "broker" ? "min-w-0 overflow-hidden rounded-[1.15rem] border border-[#e7ece8] bg-white shadow-[0_12px_30px_rgba(43,61,52,.055)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(43,61,52,.1)]" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
+                  className={kind === "broker" ? "min-w-0 overflow-hidden rounded-[1.15rem] border border-white/60 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,.88),0_9px_22px_rgba(43,61,52,.07)] backdrop-blur-[12px] backdrop-saturate-[1.25] transition-all duration-300 hover:-translate-y-1 hover:shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_13px_28px_rgba(43,61,52,.10)] supports-[backdrop-filter]:bg-white/72" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
                 >
                   <div className="relative">
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
@@ -720,7 +720,7 @@ export function PublicCatalogLanding({
                         <CatalogImagePlaceholder />
                       )}
                       <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/28 via-black/10 to-transparent" />
-                      <div className="absolute left-4 top-4 rounded-full border border-white/90 bg-white/96 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-sm backdrop-blur-sm">
+                      <div className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/82 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_4px_10px_rgba(15,23,42,.07)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58">
                         {matchLabel}
                       </div>
                     </div>
@@ -730,7 +730,7 @@ export function PublicCatalogLanding({
                     onClick={() => toggleFavorite(property.id)}
                     aria-label={favoriteIds.has(property.id) ? `Remover ${property.title} dos favoritos` : `Favoritar ${property.title}`}
                     aria-pressed={favoriteIds.has(property.id)}
-                    className={kind === "broker" ? "absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
+                    className={kind === "broker" ? "absolute right-3 top-3 flex size-9 items-center justify-center rounded-full border border-white/65 bg-white/82 text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(15,23,42,.10)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
                   >
                     <Heart className={cn(kind === "broker" ? "size-4" : "size-5", favoriteIds.has(property.id) && "fill-[#159447] text-[#159447]")} />
                   </button>
@@ -763,13 +763,13 @@ export function PublicCatalogLanding({
                     </div>
 
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="inline-flex w-fit rounded-full border border-[#ebe3da] bg-[#fbfaf8] px-3.5 py-1.5 text-xs font-medium text-[#636363]">
+                      <span className="inline-flex w-fit rounded-full border border-white/60 bg-white/78 px-3.5 py-1.5 text-xs font-medium text-[#636363] shadow-[inset_0_1px_0_rgba(255,255,255,.86)] backdrop-blur-[12px] supports-[backdrop-filter]:bg-white/55">
                         {property.type === "Bolsao" ? "Bolsão" : property.type}
                       </span>
                       <Button
                         type="button"
                         onClick={() => openLeadModal(property)}
-                        className="h-11 rounded-full border border-[#dce9df] bg-[#fcfffd] px-6 text-sm font-medium text-[#2f8f4f] shadow-[0_8px_18px_rgba(61,151,81,0.08)] hover:bg-[#f3fbf5]"
+                        className="h-11 rounded-full border border-white/65 bg-white/78 px-6 text-sm font-medium text-[#2f8f4f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(61,151,81,.08)] backdrop-blur-[14px] hover:bg-white/68 supports-[backdrop-filter]:bg-white/50"
                       >
                         <MessageCircle className="size-4" />
                         Tenho interesse
