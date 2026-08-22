@@ -430,7 +430,13 @@ export function useCosConversations({
   } | null>(() => initialCacheRef.current?.suppressedPendingConfirmation ?? null)
   const [chatFeedback, setChatFeedback] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [isConversationLoading, setIsConversationLoading] = useState(false)
+  const [isConversationLoading, setIsConversationLoading] = useState(() =>
+    Boolean(
+      initialCacheRef.current &&
+      initialConversationId &&
+      initialConversationId !== initialCacheRef.current.activeConversationId
+    ),
+  )
   const [hasMoreConversations, setHasMoreConversations] = useState(false)
   const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState(false)
   const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(() => !initialCacheRef.current)
@@ -469,7 +475,10 @@ export function useCosConversations({
     if (conversationId) params.set("conversa", conversationId)
     else params.delete("conversa")
     const query = params.toString()
-    router.replace(`${pathname || "/corretor"}${query ? `?${query}` : ""}`, { scroll: false })
+    router.replace(
+      `${pathname || "/corretor"}${query ? `?${query}` : ""}`,
+      { scroll: false },
+    )
   }, [pathname, router, source])
 
   useEffect(() => {
@@ -1171,7 +1180,7 @@ export function useCosConversations({
     loadConversations()
       .then((items) => {
         const preferredConversationId =
-          initialConversationId && items.some((item) => item.id === initialConversationId)
+          initialConversationId
             ? initialConversationId
             : cached?.activeConversationId && items.some((item) => item.id === cached.activeConversationId)
             ? cached.activeConversationId

@@ -64,7 +64,7 @@ type GuidedHelpOption = Prisma.InputJsonObject & {
 const GUIDED_HELP_RESPONSES: Partial<Record<HelpTopic, string>> = {
   first_steps: "Escolha por onde deseja começar.",
   register_properties: "Escolha como deseja cadastrar o imóvel.",
-  manage_clients: "Escolha a frente de clientes que deseja seguir.",
+  manage_clients: "Na área de Clientes você acompanha seus contatos e negociações. Pode cadastrar clientes, atualizar dados, registrar interesses, mudar o status do atendimento, consultar o histórico e relacionar imóveis, documentos e propostas. Se quiser, posso localizar ou cadastrar um cliente para você.",
   contracts_proposals: "Escolha o fluxo que deseja abrir.",
   marketing_studio: "Escolha a frente do Studio IA.",
   general_question: "Sobre o que você quer tirar dúvida?",

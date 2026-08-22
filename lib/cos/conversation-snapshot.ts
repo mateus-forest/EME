@@ -739,6 +739,23 @@ export function resolveCosConversationReference(message: string, snapshot: CosCo
     ...snapshot.selectionSets,
   ].find((set, index, all) => all.findIndex((candidate) => candidate.id === set.id) === index && (!type || set.type === type)) ?? null
 
+  if (ordinal !== null && ordinal < 0 && (!selectionSet || /\banterior\b/.test(normalized))) {
+    const recentType = type ?? topic?.entityType ?? null
+    const recentCandidates = snapshot.recentEntities
+      .filter((entity) => !recentType || entity.type === recentType)
+      .filter((entity, index, all) => all.findIndex((candidate) => candidate.type === entity.type && candidate.id === entity.id) === index)
+    const index = Math.abs(ordinal) - 1
+    const entity = recentCandidates[index] ?? null
+    return {
+      entity,
+      selectionSet: null,
+      ambiguous: [],
+      reason: entity
+        ? ordinal === -1 ? "active_recent_ordinal" : "previous_recent_ordinal"
+        : "recent_ordinal_out_of_range",
+    }
+  }
+
   if (ordinal !== null && selectionSet) {
     const index = ordinal < 0 ? selectionSet.items.length + ordinal : ordinal
     return {

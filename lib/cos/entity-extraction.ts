@@ -19,6 +19,9 @@ const RESIDUAL_INSTRUCTION_PATTERN =
 const NAME_MARKER_PATTERN =
   /\b(?:chamad[oa]|nomead[oa]|apelidad[oa]|de nome|nome)\b[:]?\s+["']?([\p{L}][\p{L}'’-]*(?:[ \t]+[\p{L}][\p{L}'’-]*){0,3})["']?/iu
 
+const LEADING_CLIENT_WITH_DETAILS_PATTERN =
+  /^\s*(?:(?:cliente|lead|contato)\s+)?["']?([\p{L}][\p{L}\p{N}'’-]*(?:[ \t]+[\p{L}\p{N}][\p{L}\p{N}'’-]*){0,3})["']?\s*(?=,|;|\b(?:telefone|celular|whatsapp|e-?mail)\b)/iu
+
 function collapseWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim()
 }
@@ -54,11 +57,27 @@ export type ExtractedClientIdentity = {
   confident: boolean
 }
 
+function extractPhone(message: string) {
+  const markedPhone = message.match(
+    /\b(?:telefone|celular|whatsapp)\b\s*[:=-]?\s*(\+?\d[\d\s().-]{7,}\d)/iu,
+  )?.[1]
+  const standalonePhone = message.match(/(?:^|[^\d])(\+?\d[\d\s().-]{8,}\d)(?=$|[^\d])/u)?.[1]
+  const digits = (markedPhone ?? standalonePhone ?? "").replace(/\D/g, "")
+  return /^\d{10,13}$/.test(digits) ? digits : ""
+}
+
 // Never returns raw command text as `name` - if no reliable value is found, `name` is left
 // empty so the caller can treat it as a pending field instead of a bogus create.
 export function extractClientIdentity(message: string): ExtractedClientIdentity {
-  const phoneMatch = message.replace(/\D/g, "").match(/(\d{10,13})/)
-  const phone = phoneMatch?.[1] ?? ""
+  const phone = extractPhone(message)
+
+  const leadingDetailsMatch = message.match(LEADING_CLIENT_WITH_DETAILS_PATTERN)
+  if (leadingDetailsMatch?.[1]) {
+    const candidate = collapseWhitespace(leadingDetailsMatch[1])
+    if (candidate && !RESIDUAL_INSTRUCTION_PATTERN.test(candidate)) {
+      return { name: titleCase(candidate), phone, confident: true }
+    }
+  }
 
   const markerMatch = message.match(NAME_MARKER_PATTERN)
   if (markerMatch?.[1]) {

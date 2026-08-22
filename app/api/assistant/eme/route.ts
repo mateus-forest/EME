@@ -884,6 +884,17 @@ export async function POST(request: NextRequest) {
     })
     const contextualActiveWorkflow = contextualTurn.workflow
     const structuredSelectionMessage = resolveStructuredSelectionMessage(contextualActiveWorkflow, selectedOptionId)
+    const structuredSelectionAction =
+      structuredSelectionMessage &&
+      selectedOptionId &&
+      contextualActiveWorkflow &&
+      optionActionId === `workflow_selection:${contextualActiveWorkflow.id}:${selectedOptionId}`
+        ? contextualActiveWorkflow.pendingInput?.action ??
+          contextualActiveWorkflow.steps[contextualActiveWorkflow.currentStep]?.action ??
+          contextualActiveWorkflow.executionPlan.requestedAction ??
+          null
+        : null
+    const runtimeRequestedAction = structuredSelectionAction ?? requestedAction
     // Anexos pertencem ao turno que os enviou ou ao workflow ainda ativo. Depois que o fluxo
     // termina, não reaproveite arquivos antigos em uma nova intenção: isso evitava que um PDF,
     // vídeo ou imagem mudasse silenciosamente o domínio de mensagens posteriores.
@@ -894,7 +905,7 @@ export async function POST(request: NextRequest) {
         : []
     let dialogueDecision = resolveCosDialogueDecision({
       message: structuredSelectionMessage ?? decisionMessage,
-      requestedAction,
+      requestedAction: runtimeRequestedAction,
       surface,
       workspace,
       snapshot: conversationSnapshot,
@@ -904,7 +915,7 @@ export async function POST(request: NextRequest) {
     })
     const semanticTrigger = evaluateCosAiDialogueInterpretationTrigger({
       message: structuredSelectionMessage ?? decisionMessage,
-      requestedAction,
+      requestedAction: runtimeRequestedAction,
       structuredInteraction: Boolean(optionActionId || selectedOptionId || body?.confirm || body?.cancel),
       pendingInput: contextualActiveWorkflow?.pendingInput ?? conversationSnapshot.pendingInput,
       decision: dialogueDecision,
@@ -987,7 +998,7 @@ export async function POST(request: NextRequest) {
     const decisionAllowsFastFallback = !dialogueDecision.selectedAction ||
       (dialogueDecision.source === "fallback" && dialogueDecision.selectedAction === "general")
     const fastAction =
-      !requestedAction &&
+      !runtimeRequestedAction &&
       !contextualRequestedAction &&
       decisionAllowsFastFallback &&
       !isCancellation &&
@@ -1005,7 +1016,7 @@ export async function POST(request: NextRequest) {
         ? null
         : dialogueDecision.selectedAction
     const effectiveRequestedAction =
-      requestedAction ||
+      runtimeRequestedAction ||
       decisionSelectedAction ||
       contextualRequestedAction ||
       (fastAction.kind === "workflow_action" || fastAction.kind === "workflow_details" ? fastAction.action : null) ||
@@ -1101,7 +1112,7 @@ export async function POST(request: NextRequest) {
       memory: conversationMemory,
       context: normalizedContext,
       decision: dialogueDecision,
-      isExplicitAction: Boolean(requestedAction),
+      isExplicitAction: Boolean(runtimeRequestedAction),
     })
     dialogueDecision = intentResolution.dialogueDecision
     const knowledgeContext = await retrieveCosKnowledge({
@@ -1965,7 +1976,9 @@ export async function POST(request: NextRequest) {
       explicitlyDefersActiveWorkflow,
     })
     const isSocialTurn = dialogueDecision.dialogueAct === "social"
-    const workflowToPersist = (isSocialTurn || preservesActiveWorkflow) && activeWorkflow ? activeWorkflow : updatedWorkflow
+    const workflowToPersist = (
+      isSocialTurn || (preservesActiveWorkflow && updatedWorkflow.status !== "awaiting_input")
+    ) && activeWorkflow ? activeWorkflow : updatedWorkflow
     const nextConversationMemory = buildConversationMemory({
       current: conversationMemory,
       workflow: workflowToPersist,

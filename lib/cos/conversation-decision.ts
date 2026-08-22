@@ -543,7 +543,7 @@ function inferDialogueAct(input: {
     return { act: "cancel" as const, confidence: 0.98, evidence: ["isolated_cancel_marker", "active_context"] }
   }
 
-  if (/\b(qual a diferenca|qual e a diferenca|como funciona|como funcionam|como (?:cadastro|excluo|publico|crio|faco)|o que e|o que precisa|o que acontece se|o que significa|por que precisa|onde ficam|me explica|me explique|quero entender)\b/.test(message) ||
+  if (/\b(qual a diferenca|qual e a diferenca|como funciona|como funcionam|como (?:cadastro|cadastrar|excluo|publico|crio|faco|gerencio|gerenciar|administro|administrar|uso|usar)|o que e|o que precisa|o que acontece se|o que significa|por que precisa|onde ficam|me explica|me explique|quero entender)\b/.test(message) ||
     ORIENTATION_SIGNAL.test(message) ||
     /^(?:quantas?|quantos?)\b.*\b(?:precisa|exige|necessari[oa]s?)\b/.test(message) ||
     (/^por que\b/.test(message) && !/\b(meu|minha|nao consigo|nao aparece|\d+\s*(?:%|por cento))\b/.test(message)) ||
@@ -674,7 +674,7 @@ function semanticCapabilityBoost(descriptor: CosCapabilityDescriptor, message: s
   if (descriptor.id === "property.create" && (/\bcadastr\w*\b.{0,30}\bimovel\b/.test(message) || /\b(novo imovel|cri\w* um imovel)\b/.test(message))) add(12, "property_create")
   if (descriptor.id === "proposal.create" && /\b(?:cri\w*|ger\w*|faz|monta\w*)\b.{0,30}\bproposta\b|\bproposta\b/.test(message)) add(12, "proposal_create")
   if (descriptor.id === "contract.create" && /\b(?:cri\w*|ger\w*|monta\w*)\b.{0,30}\bcontrato\b/.test(message)) add(12, "contract_create")
-  if (descriptor.id === "property.search" && /\b(mostr\w*|busc\w*|procur\w*|encontr\w*|list\w*|imoveis em|algo\b.*\b(?:pra|pro|para)|alguma coisa)\b/.test(message)) add(11, "property_search")
+  if (descriptor.id === "property.search" && /\b(mostr\w*|bus(?:c|qu)\w*|procur\w*|encontr\w*|list\w*|imoveis em|algo\b.*\b(?:pra|pro|para)|alguma coisa)\b/.test(message)) add(11, "property_search")
   if (descriptor.id === "lead.find" && /\b(mostr\w*|busc\w*|procur\w*|encontr\w*|abr\w*|cliente|cadastro)\b/.test(message)) add(8, "lead_query")
   if (descriptor.id === "lead.update" && referenceType === "lead" && /\b(telefon\w*|email|sobrenome|atualiz\w*|troc\w*|errad\w*)\b/.test(message)) add(10, "lead_update")
   if (descriptor.id === "lead.delete" && /\b(exclu\w*|apag\w*|delet\w*|remov\w*)\b/.test(message)) add(12, "lead_delete")
@@ -927,7 +927,13 @@ export function applyCosAiDialogueInterpretation(input: {
     }
   })
   const resolvedReference = references.find((reference) => reference.type && reference.id) ?? null
-  const reference = resolvedReference
+  const preservesDeterministicOrdinalReference = Boolean(
+    input.baseline.reference.id &&
+    /(?:selection_ordinal|recent_ordinal)$/.test(input.baseline.reference.reason),
+  )
+  const reference = preservesDeterministicOrdinalReference
+    ? input.baseline.reference
+    : resolvedReference
     ? {
         type: resolvedReference.type,
         id: resolvedReference.id,
@@ -1153,6 +1159,8 @@ export function resolveCosDialogueDecision(input: {
   const unsupportedNativeSignature = primaryDomain === "contract" && /\bassin(?:a|e|ar)\b/.test(normalized) && !/\bmarc\w*\b.*\bassinad\w*\b/.test(normalized)
   const unsupportedCatalogAccountDiagnosis = primaryDomain === "catalog" && domains.includes("account") && /\b(?:nao consigo|bloquead\w*|creci)\b.*\bpublic\w*|\bpublic\w*.*\b(?:nao consigo|bloquead\w*|creci)\b/.test(normalized)
   const studioRecommendation = act === "query" && primaryDomain === "studio" && /\brecomend\w*\b/.test(normalized)
+  const namedPropertySearch = act === "query" && primaryDomain === "property" &&
+    /\b(?:bus(?:c|qu)\w*|procur\w*|encontr\w*)\b.*\bimove(?:l|is)\s+(?:chamad[oa]s?|de nome|intitulad[oa]s?)\b/.test(normalized)
   if (requestedDescriptor) {
     candidates = [directCandidate(requestedDescriptor, ["requested_action_explicit"])]
     selectedCapabilityId = requestedDescriptor.id
@@ -1244,6 +1252,13 @@ export function resolveCosDialogueDecision(input: {
     selectedAction = descriptor.action
     objectiveMode = "query"
     source = "registry"
+  } else if (namedPropertySearch) {
+    const descriptor = getCosCapabilityDescriptorById("property.search")!
+    candidates = [directCandidate(descriptor, ["named_property_search"])]
+    selectedCapabilityId = descriptor.id
+    selectedAction = descriptor.action
+    objectiveMode = "query"
+    source = "dialogue_rules"
   } else if (act === "capability_question") {
     const targetOperation = hasAny(normalized, ["buscar", "consultar", "mostrar", "listar", "ver "]) ? "query" : "execute"
     candidates = toDecisionCandidates(scoreCandidates({ message: normalized, act, domains, surface: input.surface, referenceType: referenceEntity?.type ?? null, contextCapabilityId: contextDescriptor?.id ?? null, targetOperation }))
@@ -1301,7 +1316,8 @@ export function resolveCosDialogueDecision(input: {
   )
   const hasClientBeneficiary = /\b(?:pra|pro)\b/.test(normalized) ||
     /\bpara\s+(?!(?:aluguel|comprar|investimento|locacao|morar|temporada|venda)\b)[\p{L}]{2,}\b/u.test(normalized)
-  const unresolvedClientSearch = selectedCapabilityId === "property.search" && (
+  const requestsRecentProperties = /\b(?:meus\s+)?(?:ultimos|recentes)\s+imoveis(?:\s+cadastrados)?\b/u.test(normalized)
+  const unresolvedClientSearch = selectedCapabilityId === "property.search" && !requestsRecentProperties && (
     (hasClientBeneficiary && !referenceEntity) ||
     !/\b(?:apartamento|casa|terreno|sala|comercial|residencial|em\s+[\p{L}]+|ate\s+\d)\b/u.test(normalized)
   )

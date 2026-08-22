@@ -115,9 +115,14 @@ export function BrokerPortal() {
   })
 
   useEffect(() => {
-    if (!requestedConversationId || requestedConversationId === activeConversationId || isBootstrappingConversation) return
+    if (
+      !requestedConversationId ||
+      requestedConversationId === activeConversationId ||
+      isBootstrappingConversation ||
+      isConversationLoading
+    ) return
     void openConversation(requestedConversationId)
-  }, [activeConversationId, isBootstrappingConversation, openConversation, requestedConversationId])
+  }, [activeConversationId, isBootstrappingConversation, isConversationLoading, openConversation, requestedConversationId])
 
   useEffect(() => {
     if (requestedConversationId || !activeConversationId || isBootstrappingConversation) return

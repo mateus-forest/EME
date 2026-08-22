@@ -74,7 +74,7 @@ function buildIntentConfirmationMessage(input: {
   intentReason?: string | null
 }) {
   const title = input.capabilityPlan.capability.title
-  return `Quero confirmar antes de continuar.\n\nVoce deseja seguir com ${title.toLowerCase()}?`
+  return `Quero confirmar antes de continuar.\n\nVocê deseja seguir com ${title.toLowerCase()}?`
 }
 
 function buildTelemetry(input: {
@@ -151,6 +151,7 @@ function buildSingleExecutionPlan(input: {
 
   const resolutionMs = Date.now() - input.startedAt
   const requiresIntentConfirmation = Boolean(
+    input.capabilityPlan.capability.mutatesData &&
     input.requestedAction &&
     typeof input.intentConfidence === "number" &&
     input.intentConfidence >= 0.6 &&
@@ -230,6 +231,7 @@ function buildRecipeExecutionPlan(input: {
   )
 
   const requiresIntentConfirmation = Boolean(
+    steps.some((step) => step.plan.capability.mutatesData) &&
     input.requestedAction &&
     typeof input.intentConfidence === "number" &&
     input.intentConfidence >= 0.6 &&
@@ -337,6 +339,7 @@ function buildAiExecutionPlan(input: {
   )
 
   const requiresIntentConfirmation = Boolean(
+    steps.some((step) => step.plan.capability.mutatesData) &&
     input.requestedAction &&
     typeof input.intentConfidence === "number" &&
     input.intentConfidence >= 0.6 &&

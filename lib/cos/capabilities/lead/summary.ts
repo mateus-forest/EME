@@ -25,15 +25,17 @@ function parseLeadStatusFromText(message: string): LeadStatus {
 export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload, pendingInput, context }) => {
   const pendingLeadData = pendingInput?.action === "createLead" ? pendingInput.parsedData ?? {} : {}
   const extracted = extractClientIdentity(message)
+  const isCollectingName = pendingInput?.action === "createLead" && pendingInput.field === "name"
   const name =
+    (isCollectingName ? cleanText(extracted.name, 120) : "") ||
     cleanText(payload?.name, 120) ||
     cleanText(pendingLeadData.extractedName, 120) ||
     cleanText(pendingLeadData.name, 120) ||
     cleanText(extracted.name, 120)
   const phone =
     cleanText(payload?.phone, 40) ||
-    cleanText(pendingLeadData.phone, 40) ||
-    cleanText(extracted.phone, 40)
+    cleanText(extracted.phone, 40) ||
+    cleanText(pendingLeadData.phone, 40)
 
   if (!name) {
     const pending = createPendingInput({

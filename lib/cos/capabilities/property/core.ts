@@ -22,6 +22,11 @@ function formatPropertyLocationLabel(city?: string | null, neighborhood?: string
   return [city, neighborhood].filter((part) => Boolean(part && part.trim())).join(", ")
 }
 
+function requestsRecentProperties(message: string) {
+  const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  return /\b(?:meus\s+)?(?:ultimos|recentes)\s+imoveis(?:\s+cadastrados)?\b/.test(normalized)
+}
+
 export const createPropertyDraftCapability: CosCapabilityHandler = async ({ brokerId, userId, message, payload }) => {
   const legacyResult = await createPropertyDraftRecord({
     brokerId,
@@ -157,7 +162,10 @@ export const searchPropertiesCapability: CosCapabilityHandler = async ({ brokerI
     searchMessage = [previousQuery, message].filter(Boolean).join(" ")
   }
 
-  const searchResult = await searchBrokerProperties(brokerId, searchMessage)
+  const searchResult = await searchBrokerProperties(
+    brokerId,
+    requestsRecentProperties(searchMessage) ? "" : searchMessage,
+  )
   const properties = searchResult.results
   const filters = searchResult.filters as Record<string, unknown>
   if (filters.priceOutOfRange === true) {
