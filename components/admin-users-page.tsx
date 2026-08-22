@@ -14,6 +14,7 @@ import {
 import { AdminPageShell } from "@/components/admin-page-shell"
 import { AdminUserDetailsPanel } from "@/components/admin-user-details-panel"
 import { deleteAdminUser, type AdminUserRecord, updateAdminUser, useAdminUsers } from "@/components/use-admin-data"
+import { useAdminInsights } from "@/components/use-admin-insights"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ const planFilters = ["Todos", "Free", "Pro", "Scale", "Admin"] as const
 export function AdminUsersPage() {
   const searchParams = useSearchParams()
   const [users, setUsers] = useAdminUsers()
+  const { insights } = useAdminInsights()
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<(typeof typeFilters)[number]>("Todos")
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>("Todos")
