@@ -44,6 +44,7 @@ import { StructuredInput } from "@/components/ui/structured-input"
 import { normalizePhone } from "@/lib/structured-fields"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { WhatsappGlyph } from "@/components/marketplace/property/whatsapp-glyph"
 import {
   BrokerAboutContent,
   BrokerCatalogFooterContact,
@@ -398,7 +399,7 @@ export function PublicCatalogLanding({
   }
 
   return (
-    <main className={kind === "broker" ? "min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_0%_22%,rgba(196,244,210,.58),transparent_26%),radial-gradient(circle_at_100%_0%,rgba(210,235,249,.72),transparent_28%),#f8f8f5] font-[family-name:var(--font-geist-sans)] text-[#1f2937]" : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}>
+    <main className={kind === "broker" ? "min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_88%_5%,rgba(232,222,207,.38),transparent_30%),linear-gradient(180deg,#f7f5f1_0%,#f2f0eb_100%)] font-[family-name:var(--font-geist-sans)] text-[#1f2937]" : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}>
       {brokerCatalog ? (
         <BrokerCatalogHeader
           catalog={brokerCatalog}
@@ -413,7 +414,7 @@ export function PublicCatalogLanding({
         </div>
       ) : null}
 
-      <div className={kind === "broker" ? cn("mx-auto grid max-w-[1320px] min-w-0 gap-7 px-1 pb-6 sm:gap-9 sm:px-2 lg:gap-10", listingOnly && "pt-6") : "mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12"}>
+      <div className={kind === "broker" ? cn("mx-auto grid max-w-[1240px] min-w-0 gap-5 px-3 pb-8 pt-4 sm:gap-6 sm:px-5 xl:px-0", listingOnly && "pt-6") : "mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12"}>
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
@@ -509,16 +510,16 @@ export function PublicCatalogLanding({
         ) : null}
 
         {!profileOnly && !listingOnly ? (
-        <section className={kind === "broker" ? "relative mx-3 overflow-hidden rounded-[1.6rem] border border-white/65 bg-white/88 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,.94),inset_1px_0_0_rgba(255,255,255,.36),0_9px_22px_rgba(43,61,52,.09)] backdrop-blur-[22px] backdrop-saturate-[1.5] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/85 before:to-transparent supports-[backdrop-filter]:bg-white/0 supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.52),rgba(255,255,255,.27))] sm:mx-5 sm:px-7 sm:py-7 lg:px-10 lg:supports-[backdrop-filter]:bg-[linear-gradient(145deg,rgba(255,255,255,.62),rgba(255,255,255,.38))]" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
+        <section className={kind === "broker" ? "relative overflow-hidden rounded-[1.15rem] border border-white/80 bg-white/70 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_10px_26px_rgba(57,50,41,.07)] backdrop-blur-[18px] sm:px-8 sm:py-8 lg:px-10" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
           <div className="mx-auto max-w-none">
-            <h2 className="text-[1.3rem] font-semibold tracking-[-0.05em] text-[#111111] sm:text-[2.35rem]">
+            <h2 className="text-[1.3rem] font-semibold tracking-[-0.045em] text-[#111111] sm:text-[2rem]">
               Encontre seu próximo imóvel
             </h2>
             <p className="mt-1.5 text-[13px] leading-5 text-[#6b6b6b] sm:mt-2 sm:text-[0.98rem] sm:leading-7">
               Busque por bairro, cidade ou característica.
             </p>
 
-            <div className="mt-4 grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_170px]">
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px]">
               <div className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-[#9a9a9a] sm:left-5 sm:size-5" />
                 <Input
@@ -528,15 +529,16 @@ export function PublicCatalogLanding({
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Ex.: apartamento em Porto Alegre até 900 mil com 2 quartos e vaga"
-                  className="h-[3rem] rounded-[0.95rem] border-white/60 bg-white/82 pl-11 pr-4 text-[13px] text-[#111111] shadow-[inset_0_1px_0_rgba(255,255,255,.92),inset_1px_0_0_rgba(255,255,255,.30),0_6px_14px_rgba(15,23,42,.07)] backdrop-blur-[18px] backdrop-saturate-[1.45] placeholder:text-[#7f8883] focus-visible:ring-1 focus-visible:ring-white/80 supports-[backdrop-filter]:bg-white/38 sm:h-[3.6rem] sm:rounded-[1rem] sm:pl-12 sm:text-base"
+                  className="h-[3rem] rounded-[0.85rem] border-[#e7e3dc] bg-white/78 pl-11 pr-4 text-[13px] text-[#111111] shadow-[0_6px_15px_rgba(55,49,41,.07)] placeholder:text-[#7f817f] focus-visible:ring-1 focus-visible:ring-[#d9d2c6] sm:h-[3.55rem] sm:pl-12 sm:text-[15px]"
                 />
               </div>
               <Button
                 type="button"
                 onClick={submitSearch}
-                className="h-[3rem] rounded-[0.95rem] bg-[#17181d] px-5 text-sm font-medium text-white shadow-[0_14px_30px_rgba(23,24,29,0.16)] hover:bg-[#111216] sm:h-[3.6rem] sm:rounded-[1rem] sm:px-6 sm:text-base"
+                className="h-[3rem] rounded-[0.85rem] bg-[#153d30] px-5 text-sm font-medium text-white shadow-[0_10px_22px_rgba(21,61,48,.16)] hover:bg-[#102f25] sm:h-[3.55rem] sm:px-6 sm:text-[15px]"
               >
                 Buscar
+                <ChevronRight className="size-4 text-[#c99b49]" />
               </Button>
             </div>
 
@@ -554,7 +556,7 @@ export function PublicCatalogLanding({
                     setSearch(suggestion)
                   }}
                   className={cn(
-                      "inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-white/65 bg-white/82 px-2 text-[10px] font-medium text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_1px_0_0_rgba(255,255,255,.30),0_4px_10px_rgba(15,23,42,.06)] backdrop-blur-[16px] backdrop-saturate-[1.45] transition hover:border-white hover:bg-white/62 supports-[backdrop-filter]:bg-white/34 sm:h-8 sm:px-3 sm:text-xs",
+                      "inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[#e6e2db] bg-white/64 px-2 text-[10px] font-medium text-[#303330] shadow-[0_3px_9px_rgba(53,47,39,.05)] transition hover:border-[#d8d1c7] hover:bg-white/82 sm:h-8 sm:px-3 sm:text-xs",
                     index < 4 ? "col-span-3" : "col-span-2",
                   )}
                 >
@@ -689,30 +691,31 @@ export function PublicCatalogLanding({
 
         {!profileOnly ? (visibleProperties.length > 0 ? (
           <>
-            <div className={kind === "broker" ? "mx-3 flex items-center justify-between gap-4 sm:mx-5" : "flex items-center justify-between gap-4"}>
+            <div className={kind === "broker" ? "flex items-center justify-between gap-4 px-4" : "flex items-center justify-between gap-4"}>
               <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2rem]">
                 {listingOnly ? "Todos os imóveis" : "Imóveis em destaque"}
               </h2>
               {!listingOnly ? (
                 <Link
                   href={listingPath}
-                  className="text-sm font-medium text-[#202020] transition hover:text-[#009b3a] sm:text-base"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[#343632] transition hover:text-[#0d7137] sm:text-[15px]"
                 >
                   {kind === "broker" ? "Ver todos os imóveis" : "Ver todos"}
+                  {kind === "broker" ? <ChevronRight className="size-4 text-[#b38a3b]" /> : null}
                 </Link>
               ) : null}
             </div>
 
-            <section id="imoveis" className={kind === "broker" ? "mx-3 grid min-w-0 scroll-mt-32 grid-cols-1 gap-5 sm:mx-5 md:grid-cols-2 lg:grid-cols-3" : "grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2"}>
+            <section id="imoveis" className={kind === "broker" ? "grid min-w-0 scroll-mt-32 auto-rows-fr grid-cols-1 gap-5 px-4 md:grid-cols-2 lg:grid-cols-3" : "grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2"}>
               {visibleProperties.map(({ property, matchLabel }) => (
                 <article
                   key={property.id}
                   id={`imovel-${property.id}`}
-                  className={kind === "broker" ? "min-w-0 overflow-hidden rounded-[1.15rem] border border-white/60 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,.88),0_9px_22px_rgba(43,61,52,.07)] backdrop-blur-[12px] backdrop-saturate-[1.25] transition-all duration-300 hover:-translate-y-1 hover:shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_13px_28px_rgba(43,61,52,.10)] supports-[backdrop-filter]:bg-white/72" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
+                  className={kind === "broker" ? "flex h-full min-w-0 flex-col overflow-hidden rounded-[1rem] border border-[#e9e5dd] bg-white/76 shadow-[0_8px_22px_rgba(57,50,41,.07)] backdrop-blur-[12px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_13px_28px_rgba(57,50,41,.10)]" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
                 >
                   <div className="relative">
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                    <div className={kind === "broker" ? "relative aspect-[16/9] overflow-hidden bg-[#eef2f0]" : "relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]"}>
+                    <div className={kind === "broker" ? "relative aspect-[2.2/1] overflow-hidden bg-[#eef2f0]" : "relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]"}>
                       {property.images[0]?.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
@@ -736,7 +739,7 @@ export function PublicCatalogLanding({
                   </button>
                   </div>
 
-                  <div className={kind === "broker" ? "grid gap-4 p-4" : "grid gap-6 p-6 sm:p-7"}>
+                  <div className={kind === "broker" ? "flex flex-1 flex-col gap-4 p-4" : "grid gap-6 p-6 sm:p-7"}>
                     <div className={kind === "broker" ? "grid gap-2" : "grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"}>
                       <div className="min-w-0">
                         <h3 className={kind === "broker" ? "line-clamp-2 text-base font-semibold leading-snug tracking-[-0.02em] text-[#111111]" : "line-clamp-2 text-[2rem] font-semibold leading-tight tracking-[-0.05em] text-[#111111]"}>
@@ -762,16 +765,16 @@ export function PublicCatalogLanding({
                       {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={`${property.bathrooms} banheiros`} /> : null}
                     </div>
 
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", kind === "broker" && "mt-auto")}>
                       <span className="inline-flex w-fit rounded-full border border-white/60 bg-white/78 px-3.5 py-1.5 text-xs font-medium text-[#636363] shadow-[inset_0_1px_0_rgba(255,255,255,.86)] backdrop-blur-[12px] supports-[backdrop-filter]:bg-white/55">
                         {property.type === "Bolsao" ? "Bolsão" : property.type}
                       </span>
                       <Button
                         type="button"
                         onClick={() => openLeadModal(property)}
-                        className="h-11 rounded-full border border-white/65 bg-white/78 px-6 text-sm font-medium text-[#2f8f4f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(61,151,81,.08)] backdrop-blur-[14px] hover:bg-white/68 supports-[backdrop-filter]:bg-white/50"
+                        className="h-9 rounded-full border border-[#dfe7e1] bg-white/70 px-4 text-xs font-medium text-[#176f3b] shadow-[0_3px_9px_rgba(32,91,53,.06)] hover:bg-white"
                       >
-                        <MessageCircle className="size-4" />
+                        <WhatsappGlyph className="size-4" />
                         Tenho interesse
                       </Button>
                     </div>
@@ -781,7 +784,7 @@ export function PublicCatalogLanding({
             </section>
 
             {!listingOnly ? (brokerCatalog ? (
-              <div className="mx-3 sm:mx-5"><BrokerCatalogFooterContact catalog={brokerCatalog} onContact={() => setContactOpen(true)} /></div>
+              <div><BrokerCatalogFooterContact catalog={brokerCatalog} onContact={() => setContactOpen(true)} /></div>
             ) : (
             <section className="rounded-[1.9rem] border border-[#ece5dc] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
