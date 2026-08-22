@@ -8,6 +8,7 @@ import { SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
 
 const ESTIMATED_COST_PER_CREDIT = 0.08
 const ESTIMATED_HOURLY_SAVINGS_BRL = 55
+const ADMIN_METRIC_TIMEOUT_MS = 5000
 
 async function safeAdminQuery<T>(
   label: string,
@@ -15,12 +16,57 @@ async function safeAdminQuery<T>(
   fallback: T,
   failures: string[],
 ): Promise<T> {
+  const startedAt = Date.now()
+  let timeout: ReturnType<typeof setTimeout> | undefined
   try {
-    return await query
+    const result = await Promise.race([
+      query,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Metric query timed out after ${ADMIN_METRIC_TIMEOUT_MS}ms`)),
+          ADMIN_METRIC_TIMEOUT_MS,
+        )
+      }),
+    ])
+    const durationMs = Date.now() - startedAt
+    if (durationMs >= 1500) {
+      console.warn("[admin][insights][slow-query]", { metric: label, durationMs })
+    }
+    return result
   } catch (error) {
     failures.push(label)
-    console.error(`[admin][dashboard] ${label} failed`, error)
+    console.error("[admin][insights][query-failed]", {
+      metric: label,
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : "unknown",
+    })
     return fallback
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+
+export class AdminInsightsDatabaseUnavailableError extends Error {
+  constructor(message = "Database unavailable for admin insights") {
+    super(message)
+    this.name = "AdminInsightsDatabaseUnavailableError"
+  }
+}
+
+export async function assertAdminInsightsDatabaseReady(timeoutMs = 4000) {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new AdminInsightsDatabaseUnavailableError()), timeoutMs)
+      }),
+    ])
+  } catch (error) {
+    if (error instanceof AdminInsightsDatabaseUnavailableError) throw error
+    throw new AdminInsightsDatabaseUnavailableError(error instanceof Error ? error.message : undefined)
+  } finally {
+    if (timeout) clearTimeout(timeout)
   }
 }
 
@@ -289,14 +335,6 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
     brokers,
     subscriptions,
     interactions,
-    documents,
-    leads,
-    agendaEvents,
-    searchEvents,
-    creditTransactions,
-    extraPackagePurchases,
-    studioCampaigns,
-    aiTelemetry,
   ] = await Promise.all([
     safeAdminQuery("usuários", prisma.user.findMany({
       include: {
@@ -340,6 +378,9 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
       orderBy: { createdAt: "desc" },
       take: 600,
     }), [], queryFailures),
+  ])
+
+  const [documents, leads, agendaEvents, searchEvents] = await Promise.all([
     safeAdminQuery("documentos", prisma.brokerDocument.findMany({
       include: {
         broker: { include: { user: true } },
@@ -362,6 +403,9 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
       orderBy: { createdAt: "desc" },
       take: 600,
     }), [], queryFailures),
+  ])
+
+  const [creditTransactions, extraPackagePurchases, studioCampaigns, aiTelemetry] = await Promise.all([
     safeAdminQuery("créditos IA", prisma.aiCreditTransaction.findMany({
       include: {
         broker: { include: { user: true } },
@@ -405,27 +449,21 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
     exactActivePropertyCount,
     exactClientCount,
     exactProposalCount,
-    exactConversationCount,
-    exactStudioCampaignCount,
-    exactStudioAssetCount,
-    exactAiOperationCount,
-    openAiRecordedCost,
-    allRecordedCost,
-    activeDeviceUsers,
-    activeInteractionUsers,
-    activeStudioUsers,
-    activeTelemetryUsers,
-    catalogBrokers,
-    publicationProperties,
   ] = await Promise.all([
     safeAdminQuery("total de usuários", prisma.user.count({ where: { role: { in: [UserRole.BROKER, UserRole.ADMIN, UserRole.AGENCY] } } }), users.length, queryFailures),
     safeAdminQuery("imóveis ativos", prisma.property.count({ where: { published: true } }), 0, queryFailures),
     safeAdminQuery("total de clientes", prisma.lead.count(), leads.length, queryFailures),
     safeAdminQuery("total de propostas", prisma.brokerDocument.count({ where: { type: "proposal" } }), documents.filter((item) => item.type === "proposal").length, queryFailures),
+  ])
+
+  const [exactConversationCount, exactStudioCampaignCount, exactStudioAssetCount, exactAiOperationCount] = await Promise.all([
     safeAdminQuery("total de conversas", prisma.brokerDocument.count({ where: { type: "cos_conversation" } }), documents.filter((item) => item.type === "cos_conversation").length, queryFailures),
     safeAdminQuery("total de campanhas", prisma.studioCampaign.count(), studioCampaigns.length, queryFailures),
     safeAdminQuery("total de assets", prisma.studioCampaignAsset.count(), studioCampaigns.reduce((sum, campaign) => sum + campaign.assets.length, 0), queryFailures),
     safeAdminQuery("total de operações IA", prisma.aiOperationTelemetry.count(), aiTelemetry.length, queryFailures),
+  ])
+
+  const [openAiRecordedCost, allRecordedCost, activeDeviceUsers, activeInteractionUsers] = await Promise.all([
     safeAdminQuery("custo OpenAI", prisma.aiOperationTelemetry.aggregate({
       where: { provider: { equals: "openai", mode: "insensitive" } },
       _sum: { costBrl: true },
@@ -433,7 +471,7 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
     safeAdminQuery("custo total IA", prisma.aiOperationTelemetry.aggregate({
       _sum: { costBrl: true },
     }).then((result) => Number(result._sum.costBrl ?? 0)), 0, queryFailures),
-    safeAdminQuery("atividade por dispositivo", prisma.trustedDevice.findMany({
+    safeAdminQuery("atividade por dispositivo", prisma.userTrustedDevice.findMany({
       where: { revokedAt: null, user: { role: { in: [UserRole.BROKER, UserRole.ADMIN, UserRole.AGENCY] } }, OR: [{ lastAccessAt: { gte: today } }, { trustedAt: { gte: today } }] },
       select: { userId: true },
       distinct: ["userId"],
@@ -443,8 +481,11 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
       select: { broker: { select: { userId: true } } },
       distinct: ["brokerId"],
     }), [], queryFailures),
+  ])
+
+  const [activeStudioUsers, activeTelemetryUsers, catalogBrokers] = await Promise.all([
     safeAdminQuery("atividade no Studio", prisma.studioCampaign.findMany({
-      where: { createdAt: { gte: today }, createdByUserId: { not: null } },
+      where: { createdAt: { gte: today } },
       select: { createdByUserId: true },
       distinct: ["createdByUserId"],
     }), [], queryFailures),
@@ -462,21 +503,22 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         _count: { select: { properties: { where: { published: true } } } },
       },
     }), [], queryFailures),
-    safeAdminQuery("readiness de publicação", prisma.property.findMany({
+  ])
+
+  const publicationProperties = await safeAdminQuery("readiness de publicação", prisma.property.findMany({
       where: { OR: [{ published: true }, { marketplacePublished: true }] },
       select: {
         id: true,
         title: true,
         description: true,
-        images: true,
+        imageUrls: true,
         neighborhood: true,
         city: true,
-        state: true,
+        marketplaceSlug: true,
         published: true,
         marketplacePublished: true,
         viewsCount: true,
         leadsCount: true,
-        publishedAt: true,
         updatedAt: true,
         broker: {
           select: {
@@ -486,15 +528,14 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
           },
         },
       },
-    }), [], queryFailures),
-  ])
+    }), [], queryFailures)
 
   const proposals = documents.filter((item) => item.type === "proposal")
   const conversations = documents.filter((item) => item.type === "cos_conversation")
   const activeUserIds = new Set<string>()
   activeDeviceUsers.forEach((item) => activeUserIds.add(item.userId))
   activeInteractionUsers.forEach((item) => activeUserIds.add(item.broker.userId))
-  activeStudioUsers.forEach((item) => item.createdByUserId && activeUserIds.add(item.createdByUserId))
+  activeStudioUsers.forEach((item) => activeUserIds.add(item.createdByUserId))
   activeTelemetryUsers.forEach((item) => item.userId && activeUserIds.add(item.userId))
   brokers.forEach((broker) => {
     if (broker.aiLastInteractionAt && broker.aiLastInteractionAt >= today) activeUserIds.add(broker.userId)
@@ -594,7 +635,6 @@ export async function getAdminMasterInsights(): Promise<AdminInsights> {
         lastAccess: formatDate(
           [
             broker?.aiLastInteractionAt ?? null,
-            user.lastLoginAt ?? null,
             ...user.trustedDevices.map((device) => device.lastAccessAt ?? device.trustedAt),
           ]
             .filter((value): value is Date => Boolean(value))
