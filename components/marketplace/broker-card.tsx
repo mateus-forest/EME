@@ -6,7 +6,7 @@ import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-
 import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
 import { cn } from '@/lib/utils'
 
-export function BrokerCard({ broker }: { broker: BrokerProfile }) {
+export function BrokerCard({ broker, compact = false }: { broker: BrokerProfile; compact?: boolean }) {
   const reviewLabel = broker.reviewCount > 0
     ? `${broker.reviewCount} ${broker.reviewCount === 1 ? 'avaliação publicada' : 'avaliações publicadas'}`
     : 'Sem avaliações publicadas'
@@ -16,7 +16,8 @@ export function BrokerCard({ broker }: { broker: BrokerProfile }) {
       data-marketplace-broker-card
       className={cn(
         CATALOG_GLASS_SURFACE_CLASS,
-        'marketplace-card group relative mx-auto flex h-full min-h-[430px] w-full max-w-[560px] flex-col overflow-hidden rounded-[1.75rem] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)] sm:p-6',
+        'marketplace-card group relative mx-auto flex h-full w-full flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-float)]',
+        compact ? 'min-h-[292px] max-w-[390px] p-4' : 'min-h-[430px] max-w-[560px] p-5 sm:p-6',
       )}
     >
       <Link
@@ -25,57 +26,57 @@ export function BrokerCard({ broker }: { broker: BrokerProfile }) {
         className="absolute inset-0 z-10 rounded-[1.75rem]"
       />
 
-      <div className="pointer-events-none grid min-h-[238px] grid-cols-[minmax(128px,42%)_minmax(0,1fr)] gap-4 sm:gap-5">
-        <div className="relative aspect-[4/5] w-full self-start overflow-visible rounded-[1.5rem]">
-          <div className="absolute inset-0 overflow-hidden rounded-[1.5rem] border border-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_8px_20px_rgba(35,39,34,.1)]">
+      <div className={cn('pointer-events-none grid', compact ? 'min-h-[148px] grid-cols-[104px_minmax(0,1fr)] gap-3' : 'min-h-[238px] grid-cols-[minmax(128px,42%)_minmax(0,1fr)] gap-4 sm:gap-5')}>
+        <div className={cn('relative aspect-[4/5] w-full self-start overflow-visible', compact ? 'rounded-[1.25rem]' : 'rounded-[1.5rem]')}>
+          <div className={cn('absolute inset-0 overflow-hidden border border-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_8px_20px_rgba(35,39,34,.1)]', compact ? 'rounded-[1.25rem]' : 'rounded-[1.5rem]')}>
             <Image
               src={broker.image || '/marketplace/placeholder-user.jpg'}
               alt={broker.name}
               fill
-              sizes="(max-width: 640px) 42vw, 230px"
+              sizes={compact ? '104px' : '(max-width: 640px) 42vw, 230px'}
               className="object-cover"
             />
           </div>
           {broker.verified ? (
-            <span className="absolute -bottom-2 -right-2 flex h-11 w-11 items-center justify-center rounded-full border-4 border-white/90 bg-white text-primary shadow-[var(--shadow-soft)]" aria-label="Perfil verificado">
-              <ShieldCheck className="h-6 w-6 fill-primary text-white" aria-hidden="true" />
+            <span className={cn('absolute flex items-center justify-center rounded-full border-white/90 bg-white text-primary shadow-[var(--shadow-soft)]', compact ? '-bottom-1.5 -right-1.5 h-8 w-8 border-[3px]' : '-bottom-2 -right-2 h-11 w-11 border-4')} aria-label="Perfil verificado">
+              <ShieldCheck className={cn('fill-primary text-white', compact ? 'h-4 w-4' : 'h-6 w-6')} aria-hidden="true" />
             </span>
           ) : null}
         </div>
 
         <div className="flex min-w-0 flex-col">
           <div className="flex min-w-0 items-start gap-1.5">
-            <h3 className="line-clamp-2 min-w-0 text-pretty text-lg font-semibold leading-tight tracking-[-0.015em] text-foreground sm:text-xl">
+            <h3 className={cn('line-clamp-2 min-w-0 text-pretty font-semibold leading-tight tracking-[-0.015em] text-foreground', compact ? 'text-base' : 'text-lg sm:text-xl')}>
               {broker.name}
             </h3>
-            {broker.verified ? <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 fill-primary text-white" aria-label="Perfil verificado" /> : null}
+            {broker.verified ? <BadgeCheck className={cn('mt-0.5 shrink-0 fill-primary text-white', compact ? 'h-4 w-4' : 'h-5 w-5')} aria-label="Perfil verificado" /> : null}
           </div>
-          <p className="mt-2 line-clamp-1 text-xs text-muted-foreground sm:text-sm">{broker.creci}</p>
-          <BrokerSpecialtyChips specialties={broker.specialties} className="mt-4" />
-          <p className="mt-auto flex min-w-0 items-center gap-1.5 pb-1 text-xs text-muted-foreground sm:text-sm">
-            <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className={cn('line-clamp-1 text-muted-foreground', compact ? 'mt-1 text-[11px]' : 'mt-2 text-xs sm:text-sm')}>{broker.creci}</p>
+          <BrokerSpecialtyChips specialties={broker.specialties} className={compact ? 'mt-2' : 'mt-4'} />
+          <p className={cn('mt-auto flex min-w-0 items-center gap-1.5 pb-1 text-muted-foreground', compact ? 'text-[11px]' : 'text-xs sm:text-sm')}>
+            <MapPin className={cn('shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} aria-hidden="true" />
             <span className="line-clamp-2">{broker.region}</span>
           </p>
         </div>
       </div>
 
-      <div className="pointer-events-none mt-5 grid min-h-[72px] grid-cols-2 border-y border-border/70 py-4">
-        <span className="inline-flex items-center justify-center gap-2 border-r border-border/70 px-2 text-sm font-semibold text-foreground">
-          <Star className="h-5 w-5 fill-primary text-primary" aria-hidden="true" />
+      <div className={cn('pointer-events-none grid grid-cols-2 border-y border-border/70', compact ? 'mt-3 min-h-12 py-3' : 'mt-5 min-h-[72px] py-4')}>
+        <span className={cn('inline-flex items-center justify-center gap-2 border-r border-border/70 px-2 font-semibold text-foreground', compact ? 'text-xs' : 'text-sm')}>
+          <Star className={cn('fill-primary text-primary', compact ? 'h-4 w-4' : 'h-5 w-5')} aria-hidden="true" />
           {broker.reviewCount > 0 ? broker.rating.toFixed(1).replace('.', ',') : 'Perfil novo'}
         </span>
-        <span className="inline-flex items-center justify-center px-2 text-center text-sm text-muted-foreground">
+        <span className={cn('inline-flex items-center justify-center px-2 text-center text-muted-foreground', compact ? 'text-xs' : 'text-sm')}>
           {broker.activeListings} {broker.activeListings === 1 ? 'imóvel ativo' : 'imóveis ativos'}
         </span>
       </div>
 
-      <div className="pointer-events-none mt-auto flex min-h-[62px] items-end justify-between gap-3 pt-4">
-        <span className="inline-flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-          <MessageCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <div className={cn('pointer-events-none mt-auto flex items-end justify-between gap-3', compact ? 'min-h-11 pt-3' : 'min-h-[62px] pt-4')}>
+        <span className={cn('inline-flex min-w-0 items-center gap-2 text-muted-foreground', compact ? 'text-xs' : 'text-sm')}>
+          <MessageCircle className={cn('shrink-0', compact ? 'h-4 w-4' : 'h-5 w-5')} aria-hidden="true" />
           <span className="line-clamp-2">{reviewLabel}</span>
         </span>
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f1f5f0] text-primary transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true">
-          <ArrowRight className="h-5 w-5" />
+        <span className={cn('flex shrink-0 items-center justify-center rounded-xl bg-[#f1f5f0] text-primary transition-transform duration-300 group-hover:translate-x-0.5', compact ? 'h-9 w-9' : 'h-11 w-11')} aria-hidden="true">
+          <ArrowRight className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
         </span>
       </div>
     </article>

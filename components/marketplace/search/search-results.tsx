@@ -251,11 +251,12 @@ export function SearchResults({
                 onHelp={() => setLeadOpen(true)}
               />
             ) : (
-              <div className="grid grid-cols-1 items-stretch gap-5">
+              <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {filtered.map((result, i) => (
                   <Reveal key={result.slug} delay={i * 70}>
                     <PropertyCard
                       property={result}
+                      compact
                       favorite={favorites.has(result.slug)}
                       onToggleFavorite={toggleFavorite}
                       selected={compare.includes(result.slug)}
@@ -383,6 +384,7 @@ export function SearchResults({
             <Reveal key={alternative.slug} delay={i * 90}>
               <PropertyCard
                 property={alternative}
+                compact
                 favorite={favorites.has(alternative.slug)}
                 onToggleFavorite={toggleFavorite}
                 selected={compare.includes(alternative.slug)}
@@ -402,7 +404,7 @@ export function SearchResults({
             support="Profissionais da rede EME que atendem o contexto da sua busca."
           />
         </Reveal>
-        <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
           {rankedBrokers.slice(0, 3).map((broker, i) => (
             <Reveal key={broker.slug} delay={i * 90} className="flex flex-col gap-2">
               {i === 0 && filtered.some((property) => property.brokerSlug === broker.slug) && (
@@ -411,7 +413,7 @@ export function SearchResults({
                   Atende o imóvel mais compatível
                 </span>
               )}
-              <BrokerCard broker={broker} />
+              <BrokerCard broker={broker} compact />
             </Reveal>
           ))}
         </div>

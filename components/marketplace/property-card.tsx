@@ -39,6 +39,8 @@ export type MarketplacePropertyCardItem = {
 
 export function PropertyCard({
   property,
+  featured = false,
+  compact = false,
   favorite,
   onToggleFavorite,
   selected = false,
@@ -48,6 +50,8 @@ export function PropertyCard({
   onHover,
 }: {
   property: MarketplacePropertyCardItem
+  featured?: boolean
+  compact?: boolean
   favorite?: boolean
   onToggleFavorite?: (slug: string) => void
   selected?: boolean
@@ -81,13 +85,27 @@ export function PropertyCard({
       onMouseLeave={() => onHover?.(null)}
       className={cn(
         CATALOG_GLASS_SURFACE_CLASS,
-        'marketplace-card group mx-auto flex h-full min-h-[690px] w-full max-w-[560px] flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300',
+        'marketplace-card group mx-auto flex h-full w-full flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300',
+        featured
+          ? 'min-h-[620px] max-w-none'
+          : compact
+            ? 'min-h-[430px] max-w-[440px]'
+            : 'min-h-[690px] max-w-[560px]',
         highlighted
           ? '-translate-y-1 border-primary/40 shadow-[var(--shadow-float)] ring-1 ring-primary/20'
           : 'hover:-translate-y-1 hover:shadow-[var(--shadow-float)]',
       )}
     >
-      <div className="relative aspect-[4/3] shrink-0 overflow-hidden">
+      <div
+        className={cn(
+          'relative shrink-0 overflow-hidden',
+          featured
+            ? 'aspect-[4/3] lg:aspect-auto lg:min-h-[360px] lg:flex-1'
+            : compact
+              ? 'aspect-[16/9]'
+              : 'aspect-[4/3]',
+        )}
+      >
         <Link
           href={`/imoveis/imovel/${property.slug}`}
           className="absolute inset-0"
@@ -97,14 +115,14 @@ export function PropertyCard({
             src={property.image || '/marketplace/placeholder.svg'}
             alt={property.title}
             fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 560px"
+            sizes={featured ? '(max-width: 1024px) 100vw, 66vw' : '(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 560px'}
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
           />
         </Link>
 
         <CompatibilityBadge
           level={property.compatibility}
-          className="absolute left-4 top-4 shadow-[var(--shadow-soft)]"
+          className={cn('absolute shadow-[var(--shadow-soft)]', compact ? 'left-3 top-3' : 'left-4 top-4')}
         />
 
         <button
@@ -112,19 +130,22 @@ export function PropertyCard({
           onClick={toggleFavorite}
           aria-pressed={isFavorite}
           aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/85 bg-white/90 text-foreground shadow-[var(--shadow-soft)] backdrop-blur-md transition-transform hover:scale-105 active:scale-95"
+          className={cn(
+            'absolute flex items-center justify-center rounded-full border border-white/85 bg-white/90 text-foreground shadow-[var(--shadow-soft)] backdrop-blur-md transition-transform hover:scale-105 active:scale-95',
+            compact ? 'right-3 top-3 h-9 w-9' : 'right-4 top-4 h-11 w-11',
+          )}
         >
           <Heart
-            className={cn('h-5 w-5 transition-colors', isFavorite && 'fill-primary text-primary')}
+            className={cn(compact ? 'h-4 w-4' : 'h-5 w-5', 'transition-colors', isFavorite && 'fill-primary text-primary')}
             aria-hidden="true"
           />
         </button>
       </div>
 
-      <div className="flex min-h-[360px] flex-1 flex-col p-5 sm:p-6">
-        <div className="grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+      <div className={cn('flex flex-1 flex-col', compact ? 'min-h-0 p-4' : 'min-h-[360px] p-5 sm:p-6')}>
+        <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-start', compact ? 'min-h-[60px] gap-3' : 'min-h-[76px] gap-4')}>
           <div className="min-w-0">
-            <h3 className="line-clamp-2 min-h-[2.75rem] text-pretty text-lg font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            <h3 className={cn('line-clamp-2 text-pretty font-semibold leading-snug tracking-[-0.01em] text-foreground', compact ? 'min-h-10 text-base' : 'min-h-[2.75rem] text-lg')}>
               <Link
                 href={`/imoveis/imovel/${property.slug}`}
                 className="outline-none transition-colors hover:text-primary focus-visible:text-primary"
@@ -132,13 +153,13 @@ export function PropertyCard({
                 {property.title}
               </Link>
             </h3>
-            <p className="mt-2 flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <p className={cn('flex min-w-0 items-center gap-1.5 text-muted-foreground', compact ? 'mt-1.5 text-xs' : 'mt-2 text-sm')}>
+              <MapPin className={cn('shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} aria-hidden="true" />
               <span className="truncate">{property.city} - {property.state}</span>
             </p>
           </div>
-          <div className="max-w-[12rem] shrink-0 text-right">
-            <p className="whitespace-nowrap text-xl font-semibold tracking-tight text-foreground">
+          <div className={cn('shrink-0 text-right', compact ? 'max-w-[9rem]' : 'max-w-[12rem]')}>
+            <p className={cn('whitespace-nowrap font-semibold tracking-tight text-foreground', compact ? 'text-lg' : 'text-xl')}>
               {formatPrice(property.price)}
               {property.priceSuffix ? <span className="ml-0.5 text-xs font-normal text-muted-foreground">{property.priceSuffix}</span> : null}
             </p>
@@ -146,7 +167,7 @@ export function PropertyCard({
           </div>
         </div>
 
-        <div className="mt-5 grid min-h-12 grid-cols-3 items-center gap-2 text-sm text-muted-foreground sm:gap-4">
+        <div className={cn('grid grid-cols-3 items-center text-muted-foreground', compact ? 'mt-3 min-h-9 gap-2 text-xs' : 'mt-5 min-h-12 gap-2 text-sm sm:gap-4')}>
           <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
             {property.commercial ? <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : <BedDouble className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />}
             <span className="truncate">{property.commercial ? 'Comercial' : `${property.bedrooms} ${property.bedrooms === 1 ? 'quarto' : 'quartos'}`}</span>
@@ -161,13 +182,13 @@ export function PropertyCard({
           </span>
         </div>
 
-        <div className="mt-5 border-t border-border/70 pt-4">
+        <div className={cn('border-t border-border/70', compact ? 'mt-3 pt-3' : 'mt-5 pt-4')}>
           <button
             type="button"
             aria-expanded={open}
             aria-controls={reasonsId}
             onClick={() => setOpen((value) => !value)}
-            className="flex min-h-9 w-full items-center justify-between gap-3 text-left text-sm font-semibold text-foreground"
+            className={cn('flex w-full items-center justify-between gap-3 text-left font-semibold text-foreground', compact ? 'min-h-8 text-xs' : 'min-h-9 text-sm')}
           >
             Por que combina com você
             <ChevronDown
@@ -176,7 +197,7 @@ export function PropertyCard({
             />
           </button>
           {open ? (
-            <ul id={reasonsId} className="mt-2 max-h-24 space-y-1.5 overflow-y-auto pr-2 text-sm text-muted-foreground">
+            <ul id={reasonsId} className={cn('mt-2 space-y-1.5 overflow-y-auto pr-2 text-muted-foreground', compact ? 'max-h-20 text-xs' : 'max-h-24 text-sm')}>
               {property.reasons.map((reason) => (
                 <li key={reason} className="flex items-start gap-2">
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-eme-50 text-primary" aria-hidden="true">
@@ -189,7 +210,7 @@ export function PropertyCard({
           ) : null}
         </div>
 
-        <div className="mt-auto grid grid-cols-2 gap-3 pt-5">
+        <div className={cn('mt-auto grid grid-cols-2', compact ? 'gap-2 pt-3' : 'gap-3 pt-5')}>
           {hasControlledComparison ? (
             <button
               type="button"
@@ -198,7 +219,8 @@ export function PropertyCard({
               disabled={compareDisabled}
               onClick={() => onToggleCompare?.(property.slug)}
               className={cn(
-                'inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition-colors',
+                'inline-flex items-center justify-center gap-2 border font-semibold transition-colors',
+                compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm',
                 selected ? 'border-primary bg-eme-50 text-primary' : 'border-border/90 bg-white/40 text-foreground hover:border-primary/35 hover:bg-eme-50',
                 compareDisabled && 'cursor-not-allowed opacity-45',
               )}
@@ -208,7 +230,7 @@ export function PropertyCard({
           ) : (
             <Link
               href={`/imoveis/comparar?imoveis=${encodeURIComponent(property.slug)}`}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-border/90 bg-white/40 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:bg-eme-50"
+              className={cn('inline-flex items-center justify-center gap-2 border border-border/90 bg-white/40 font-semibold text-foreground transition-colors hover:border-primary/35 hover:bg-eme-50', compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm')}
             >
               {compareContent}
             </Link>
@@ -216,7 +238,7 @@ export function PropertyCard({
 
           <Link
             href={`/imoveis/imovel/${property.slug}`}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-border/90 bg-white/40 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/35 hover:bg-eme-50"
+            className={cn('inline-flex items-center justify-center gap-2 border border-border/90 bg-white/40 font-semibold text-primary transition-colors hover:border-primary/35 hover:bg-eme-50', compact ? 'min-h-10 rounded-xl px-3 text-xs' : 'min-h-12 rounded-2xl px-4 text-sm')}
           >
             Ver imóvel
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
