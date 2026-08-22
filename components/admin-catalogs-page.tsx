@@ -43,12 +43,11 @@ export function AdminCatalogsPage() {
 
   return (
     <AdminPageShell
-      eyebrow="Operação pública"
       title="Catálogos"
-      description="Disponibilidade, publicação e performance dos catálogos reais dos corretores."
+      subtitle="Disponibilidade, publicação e performance dos catálogos reais dos corretores."
     >
-      {loading ? <AdminSurface><p className="text-sm text-slate-500">Carregando catálogos...</p></AdminSurface> : null}
-      {error ? <AdminSurface><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
+      {loading ? <AdminSurface title="Carregando catálogos"><p className="text-sm text-slate-500">Carregando catálogos...</p></AdminSurface> : null}
+      {error ? <AdminSurface title="Não foi possível carregar"><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
       {data ? (
         <>
           <AdminMetricGrid>
@@ -62,9 +61,8 @@ export function AdminCatalogsPage() {
 
           {feedback ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{feedback}</div> : null}
 
-          <AdminSurface>
-            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div><h2 className="text-lg font-semibold text-slate-900">Gestão de catálogos</h2><p className="mt-1 text-sm text-slate-500">Abra a superfície pública, o usuário responsável ou envie uma orientação administrativa.</p></div>
+          <AdminSurface title="Gestão de catálogos" subtitle="Abra a superfície pública, o usuário responsável ou envie uma orientação administrativa.">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-end">
               <div className="flex flex-col gap-2 sm:flex-row">
                 <label className="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search className="size-4 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Corretor, e-mail, slug ou CRECI" className="h-10 min-w-0 bg-transparent text-sm outline-none sm:w-64" /></label>
                 <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"><option>Todos</option><option>Ativo</option><option>Inativo</option><option>Atenção</option></select>
@@ -79,12 +77,11 @@ export function AdminCatalogsPage() {
           </AdminSurface>
 
           <div className="grid gap-5 xl:grid-cols-2">
-            <AdminSurface><h2 className="text-lg font-semibold text-slate-900">Catálogos mais acessados</h2><div className="mt-4 space-y-3">{data.topAccessed.map((catalog, index) => <div key={catalog.brokerId} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span><strong className="mr-2 text-slate-400">{index + 1}</strong>{catalog.brokerName}</span><strong>{catalog.views} acessos</strong></div>)}</div></AdminSurface>
-            <AdminSurface><h2 className="text-lg font-semibold text-slate-900">Melhor conversão</h2><div className="mt-4 space-y-3">{data.topConversion.map((catalog, index) => <div key={catalog.brokerId} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span><strong className="mr-2 text-slate-400">{index + 1}</strong>{catalog.brokerName}</span><strong>{catalog.conversion}%</strong></div>)}</div></AdminSurface>
+            <AdminSurface title="Catálogos mais acessados"><div className="space-y-3">{data.topAccessed.map((catalog, index) => <div key={catalog.brokerId} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span><strong className="mr-2 text-slate-400">{index + 1}</strong>{catalog.brokerName}</span><strong>{catalog.views} acessos</strong></div>)}</div></AdminSurface>
+            <AdminSurface title="Melhor conversão"><div className="space-y-3">{data.topConversion.map((catalog, index) => <div key={catalog.brokerId} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span><strong className="mr-2 text-slate-400">{index + 1}</strong>{catalog.brokerName}</span><strong>{catalog.conversion}%</strong></div>)}</div></AdminSurface>
           </div>
 
-          <AdminSurface>
-            <h2 className="text-lg font-semibold text-slate-900">Cobertura Admin x Portal do Corretor</h2><p className="mt-1 text-sm text-slate-500">Lacunas objetivas encontradas na leitura das rotas atuais, sem alterar o Portal.</p>
+          <AdminSurface title="Cobertura Admin x Portal do Corretor" subtitle="Lacunas objetivas encontradas na leitura das rotas atuais, sem alterar o Portal.">
             <div className="mt-5 grid gap-3 md:grid-cols-2">{data.coverage.map((item) => <div key={item.domain} className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center justify-between gap-3"><strong className="text-sm text-slate-900">{item.domain}</strong><span className={`rounded-full px-2 py-1 text-xs ${item.status === "Coberto" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{item.status}</span></div><p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p></div>)}</div>
           </AdminSurface>
         </>

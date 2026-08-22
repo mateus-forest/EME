@@ -34,12 +34,11 @@ export function AdminAiConsumptionPage() {
 
   return (
     <AdminPageShell
-      eyebrow="Inteligência artificial"
       title="Consumo IA"
-      description="Operações reais registradas por provider, modelo, módulo e usuário. Custos sem telemetria permanecem identificados como indisponíveis."
+      subtitle="Operações reais registradas por provider, modelo, módulo e usuário. Custos sem telemetria permanecem identificados como indisponíveis."
     >
-      {loading ? <AdminSurface><p className="text-sm text-slate-500">Carregando telemetria de IA...</p></AdminSurface> : null}
-      {error ? <AdminSurface><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
+      {loading ? <AdminSurface title="Carregando telemetria"><p className="text-sm text-slate-500">Carregando telemetria de IA...</p></AdminSurface> : null}
+      {error ? <AdminSurface title="Não foi possível carregar"><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
       {data ? (
         <>
           <AdminMetricGrid>
@@ -49,8 +48,7 @@ export function AdminAiConsumptionPage() {
             <AdminMetricCard label="Usuários com consumo" value={data.summary.activeUsers.toLocaleString("pt-BR")} />
           </AdminMetricGrid>
 
-          <AdminSurface>
-            <div className="mb-5"><h2 className="text-lg font-semibold text-slate-900">Histórico de operações</h2><p className="mt-1 text-sm text-slate-500">Filtre para entender campanhas, imagens, vídeos, COS e consumo por usuário.</p></div>
+          <AdminSurface title="Histórico de operações" subtitle="Filtre para entender campanhas, imagens, vídeos, COS e consumo por usuário.">
             <div className="mb-5 grid gap-3 md:grid-cols-4">
               <select value={period} onChange={(event) => setPeriod(Number(event.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                 <option value={7}>Últimos 7 dias</option>

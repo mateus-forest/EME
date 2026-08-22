@@ -20,12 +20,11 @@ export function AdminCostsPage() {
 
   return (
     <AdminPageShell
-      eyebrow="Operação"
       title="Custos"
-      description="Custos efetivamente registrados na telemetria dos providers. Ausência de custo não é convertida em estimativa silenciosa."
+      subtitle="Custos efetivamente registrados na telemetria dos providers. Ausência de custo não é convertida em estimativa silenciosa."
     >
-      {loading ? <AdminSurface><p className="text-sm text-slate-500">Carregando custos registrados...</p></AdminSurface> : null}
-      {error ? <AdminSurface><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
+      {loading ? <AdminSurface title="Carregando custos"><p className="text-sm text-slate-500">Carregando custos registrados...</p></AdminSurface> : null}
+      {error ? <AdminSurface title="Não foi possível carregar"><p className="text-sm text-red-700">{error}</p><button type="button" onClick={retry} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Tentar novamente</button></AdminSurface> : null}
       {data ? (
         <>
           <AdminMetricGrid>
@@ -35,8 +34,7 @@ export function AdminCostsPage() {
             <AdminMetricCard label="Vídeos" value={money(videoCost)} />
           </AdminMetricGrid>
 
-          <AdminSurface>
-            <div className="mb-5"><h2 className="text-lg font-semibold text-slate-900">Custos por provider e modelo</h2><p className="mt-1 text-sm text-slate-500">OpenAI, Grok/xAI, Pedra, Luma e demais providers aparecem quando há operação registrada.</p></div>
+          <AdminSurface title="Custos por provider e modelo" subtitle="OpenAI, Grok/xAI, Pedra, Luma e demais providers aparecem quando há operação registrada.">
             <div className="grid gap-3 lg:grid-cols-2">
               {data.providers.map((item) => (
                 <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -50,8 +48,7 @@ export function AdminCostsPage() {
             </div>
           </AdminSurface>
 
-          <AdminSurface>
-            <div className="mb-5"><h2 className="text-lg font-semibold text-slate-900">Critério de consolidação</h2><p className="mt-1 text-sm text-slate-500">Somente valores persistidos como custo real entram nos totais.</p></div>
+          <AdminSurface title="Critério de consolidação" subtitle="Somente valores persistidos como custo real entram nos totais.">
             <div className="grid gap-3 md:grid-cols-3">
               {data.categories.map((item) => (
                 <div key={item.label} className="rounded-2xl bg-slate-50 p-4">

@@ -39,7 +39,10 @@ export async function getAdminCatalogsReport(): Promise<AdminCatalogsReport> {
     eventsByBroker.set(event.brokerId, current)
   })
   const leadsByBroker = new Map<string, number>()
-  catalogLeads.forEach((lead) => leadsByBroker.set(lead.brokerId, (leadsByBroker.get(lead.brokerId) ?? 0) + 1))
+  catalogLeads.forEach((lead) => {
+    if (!lead.brokerId) return
+    leadsByBroker.set(lead.brokerId, (leadsByBroker.get(lead.brokerId) ?? 0) + 1)
+  })
 
   const catalogs: AdminCatalogRow[] = brokers.map((broker) => {
     const brokerEvents = eventsByBroker.get(broker.id) ?? []
@@ -64,7 +67,7 @@ export async function getAdminCatalogsReport(): Promise<AdminCatalogsReport> {
       slug: broker.catalogSlug,
       publicPath: `/catalogo/${broker.catalogSlug}`,
       status,
-      creci: [broker.creciState, broker.creciOfficialRegistration || broker.creciNumber].filter(Boolean).join(" / ") || "Não informado",
+      creci: [broker.creciUf, broker.creciOfficialRegistration || broker.creci].filter(Boolean).join(" / ") || "Não informado",
       creciStatus: broker.creciValidationStatus,
       publishedProperties,
       views,
