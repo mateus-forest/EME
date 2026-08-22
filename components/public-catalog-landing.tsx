@@ -825,13 +825,13 @@ export function PublicCatalogLanding({
       {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
-        <DialogContent showCloseButton className="max-h-[94dvh] max-w-[calc(100%-1rem)] overflow-hidden rounded-[1.5rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_32px_90px_rgba(15,23,42,0.2)] sm:max-w-6xl sm:rounded-[1.9rem]">
+        <DialogContent showCloseButton className="box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-[1.5rem] border-black/[0.05] bg-white p-0 text-[#1f2937] shadow-[0_32px_90px_rgba(15,23,42,0.2)] sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl lg:overflow-hidden">
           {selectedProperty && (
-            <div className="grid max-h-[94dvh] min-w-0 overflow-y-auto lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)]">
-              <div className="border-b border-black/[0.06] bg-[#fbfcfa] p-3 sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
+            <div className="grid w-full min-w-0 max-w-full overflow-x-hidden lg:max-h-[94dvh] lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)] lg:overflow-y-auto">
+              <div className="min-w-0 max-w-full overflow-x-hidden border-b border-black/[0.06] bg-[#fbfcfa] p-3 sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
-                  <div className="relative overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f4f6f4] shadow-[0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
+                  <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#f4f6f4] shadow-[0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={image} alt={selectedProperty.title} className="aspect-[4/3] max-h-[78dvh] w-full object-cover" />
@@ -853,7 +853,7 @@ export function PublicCatalogLanding({
                   </div>
                   {selectedProperty.images.length > 1 ? (
                     <div
-                      className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className="mt-3 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                       aria-label="Galeria de imagens do imóvel"
                     >
                       {selectedProperty.images.map((propertyImage, index) => (
@@ -877,7 +877,7 @@ export function PublicCatalogLanding({
                     </div>
                   ) : null}
                 </div>
-              <div className="flex min-w-0 flex-col p-4 sm:p-5 lg:p-6">
+              <div className="flex w-full min-w-0 max-w-full flex-col overflow-x-hidden p-4 sm:p-5 lg:p-6">
                 <p className="break-words text-sm text-[#6B7280]">{selectedProperty.location}</p>
                 <h3 className="mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
                 <p className="mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
@@ -892,7 +892,7 @@ export function PublicCatalogLanding({
                     <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
-                <section className="mt-5 rounded-2xl border border-[#dfe9e1] bg-[#f8fbf8] p-3 shadow-[0_10px_26px_rgba(31,70,45,.05)]">
+                <section className="mt-5 w-full min-w-0 max-w-full rounded-2xl border border-[#dfe9e1] bg-[#f8fbf8] p-2.5 shadow-[0_10px_26px_rgba(31,70,45,.05)] lg:p-3">
                   <button type="button" onClick={() => setFinancingOpen((current) => !current)} aria-expanded={financingOpen} aria-controls="catalog-financing-simulator" className="flex w-full items-center gap-2 text-left">
                     <span className="flex size-8 items-center justify-center rounded-full bg-[#e9f7ed] text-[#118a3d]"><CircleDollarSign className="size-4" /></span>
                     <h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4>
@@ -900,13 +900,13 @@ export function PublicCatalogLanding({
                   </button>
                   <div id="catalog-financing-simulator" className={cn("grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out", financingOpen ? "mt-2.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0")}>
                     <div className="min-h-0 overflow-hidden">
-                      <div className="grid grid-cols-2 gap-2">
-                        <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className="h-[34px] rounded-lg border-black/[0.06] bg-white px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
-                        <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className="h-[34px] rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                        <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className="h-[34px] rounded-lg border-black/[0.06] bg-[#f1f5f1] px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
-                        <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className="h-[34px] rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                        <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-[34px] rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
-                        <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className="h-[34px] rounded-lg border-[#bcdcc5] bg-white px-2.5 text-xs font-semibold text-[#118a3d]" /></FinancingField>
+                      <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-2 lg:gap-2">
+                        <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
+                        <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                        <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-[#f1f5f1] px-2.5 text-xs font-medium text-[#344054]" /></FinancingField>
+                        <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                        <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className="h-[34px] w-full min-w-0 rounded-lg border-black/[0.06] bg-white px-2.5 text-xs text-[#344054]" /></FinancingField>
+                        <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className="h-[34px] w-full min-w-0 rounded-lg border-[#bcdcc5] bg-white px-2.5 text-xs font-semibold text-[#118a3d]" /></FinancingField>
                       </div>
                       <p className="mt-2 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
                     </div>
