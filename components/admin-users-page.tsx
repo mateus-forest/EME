@@ -218,30 +218,31 @@ export function AdminUsersPage() {
       </div>
 
       <Dialog open={Boolean(selectedUser)} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-h-[90dvh] max-w-5xl overflow-x-hidden overflow-y-auto border-black/[0.06] bg-white text-[#050505]">
+        <DialogContent className="flex h-[90dvh] w-[88vw] max-w-[88vw] flex-col gap-0 overflow-hidden border-black/[0.06] bg-white p-0 text-[#050505] sm:max-w-[88vw]">
           {selectedUser ? (
             <>
-              <DialogHeader>
+              <DialogHeader className="shrink-0 border-b border-black/[0.06] px-6 py-5 pr-14 lg:px-8">
                 <DialogTitle>{selectedUser.name}</DialogTitle>
                 <DialogDescription className="text-[#6B7280]">
                   Visão completa de plano, atividade e contexto operacional da conta.
                 </DialogDescription>
               </DialogHeader>
 
-              <AdminUserDetailsPanel data={userDetails} loading={detailsLoading} error={detailsError} />
-
-              <div className="mt-4 flex flex-wrap gap-3">
-                <a href={`mailto:${selectedUser.email}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#111827]">
-                  <Mail className="size-4" />
-                  Email
-                </a>
-                <a href={createWhatsAppUrl(selectedUser.whatsApp, `Olá, ${selectedUser.name}. Estamos revisando seu cadastro no Admin EME.`)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#d7ebdd] bg-[#eef9f1] px-4 text-sm text-[#0f7a35] hover:bg-[#e6f6eb]">
-                  <MessageCircleMore className="size-4" />
-                  WhatsApp
-                </a>
+              <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-[#fbfbf8] px-4 py-5 sm:px-6 lg:px-8">
+                <AdminUserDetailsPanel data={userDetails} loading={detailsLoading} error={detailsError} />
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="shrink-0 flex-col items-stretch justify-between gap-3 border-t border-black/[0.06] bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+                <div className="flex flex-wrap gap-2">
+                  <a href={`mailto:${selectedUser.email}`} className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/[0.06] bg-[#fbfbf8] px-4 text-sm text-[#4B5563] hover:bg-white hover:text-[#111827]">
+                    <Mail className="size-4" />
+                    Email
+                  </a>
+                  <a href={createWhatsAppUrl(selectedUser.whatsApp, `Olá, ${selectedUser.name}. Estamos revisando seu cadastro no Admin EME.`)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#d7ebdd] bg-[#eef9f1] px-4 text-sm text-[#0f7a35] hover:bg-[#e6f6eb]">
+                    <MessageCircleMore className="size-4" />
+                    WhatsApp
+                  </a>
+                </div>
                 <Button type="button" variant="ghost" onClick={() => { setEditingUser(selectedUser); setSelectedUser(null) }} className="h-10 rounded-xl border border-black/[0.06] bg-white px-4 text-[#4B5563] hover:bg-white hover:text-[#111827]">
                   Editar usuário
                 </Button>
