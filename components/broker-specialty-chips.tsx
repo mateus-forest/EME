@@ -41,9 +41,14 @@ export function BrokerSpecialtyChips({
         </span>
       ))}
       {remaining > 0 ? (
-        <details className="group relative shrink-0">
-          <summary className={cn("cursor-pointer list-none whitespace-nowrap rounded-full text-[#7a837e] marker:hidden hover:text-[#287543]", hero ? "px-1 text-[9px] italic sm:text-[10px]" : compact ? "px-1.5 text-[10px] italic" : "px-1.5 text-xs italic")}>
-            +{remaining} {remaining === 1 ? "especialidade" : "especialidades"}
+        <details className="group relative shrink-0 self-center">
+          <summary className={cn(
+            "cursor-pointer list-none whitespace-nowrap rounded-full marker:hidden",
+            hero
+              ? "inline-flex items-center border border-[#dceadf] bg-[#f5fbf6] px-2 py-0.5 text-[10px] font-medium leading-4 text-[#287543] hover:border-[#c8dfcd] hover:bg-[#edf8ef] sm:px-2.5 sm:text-[11px]"
+              : compact ? "px-1.5 text-[10px] italic text-[#7a837e] hover:text-[#287543]" : "px-1.5 text-xs italic text-[#7a837e] hover:text-[#287543]",
+          )}>
+            {hero ? `+${remaining}` : `+${remaining} ${remaining === 1 ? "especialidade" : "especialidades"}`}
           </summary>
           <div className="invisible absolute left-0 top-[calc(100%+.4rem)] z-30 grid min-w-48 gap-1.5 rounded-xl border border-[#dfe7e1] bg-white p-2 opacity-0 shadow-[0_14px_34px_rgba(35,55,43,.16)] transition group-hover:visible group-hover:opacity-100 group-open:visible group-open:opacity-100">
             {hidden.map((specialty) => <span key={specialty} className="rounded-lg bg-[#f5fbf6] px-2.5 py-1.5 text-xs font-medium text-[#287543]">{specialty}</span>)}
