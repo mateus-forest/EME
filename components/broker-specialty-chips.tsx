@@ -5,6 +5,7 @@ export function BrokerSpecialtyChips({
   compact = false,
   singleLine = false,
   hero = false,
+  liquidGlass = false,
   emptyLabel,
   className,
 }: {
@@ -12,6 +13,7 @@ export function BrokerSpecialtyChips({
   compact?: boolean
   singleLine?: boolean
   hero?: boolean
+  liquidGlass?: boolean
   emptyLabel?: string
   className?: string
 }) {
@@ -35,6 +37,7 @@ export function BrokerSpecialtyChips({
               ? "max-w-full px-2 py-0.5 text-center text-[10px] leading-4 sm:px-2.5 sm:text-[11px]"
               : compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
             singleLine && !hero && "min-w-0 max-w-[9rem] truncate sm:max-w-[12rem]",
+            liquidGlass && "relative overflow-hidden border-white/70 bg-white/88 text-[#1d6638] shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.24),0_10px_26px_rgba(25,56,38,.14)] backdrop-blur-[26px] backdrop-saturate-[1.65] before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px before:bg-white/95 supports-[backdrop-filter]:bg-white/36 lg:supports-[backdrop-filter]:bg-white/50",
           )}
         >
           {specialty}
@@ -47,11 +50,15 @@ export function BrokerSpecialtyChips({
             hero
               ? "inline-flex items-center border border-[#dceadf] bg-[#f5fbf6] px-2 py-0.5 text-[10px] font-medium leading-4 text-[#287543] hover:border-[#c8dfcd] hover:bg-[#edf8ef] sm:px-2.5 sm:text-[11px]"
               : compact ? "px-1.5 text-[10px] italic text-[#7a837e] hover:text-[#287543]" : "px-1.5 text-xs italic text-[#7a837e] hover:text-[#287543]",
+            liquidGlass && "relative overflow-hidden border border-white/70 bg-white/88 text-[#1d6638] shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(255,255,255,.24),0_10px_26px_rgba(25,56,38,.14)] backdrop-blur-[26px] backdrop-saturate-[1.65] before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px before:bg-white/95 supports-[backdrop-filter]:bg-white/36 hover:border-white hover:bg-white/58 lg:supports-[backdrop-filter]:bg-white/50",
           )}>
             {hero ? `+${remaining}` : `+${remaining} ${remaining === 1 ? "especialidade" : "especialidades"}`}
           </summary>
-          <div className="invisible absolute left-0 top-[calc(100%+.4rem)] z-30 grid min-w-48 gap-1.5 rounded-xl border border-[#dfe7e1] bg-white p-2 opacity-0 shadow-[0_14px_34px_rgba(35,55,43,.16)] transition group-hover:visible group-hover:opacity-100 group-open:visible group-open:opacity-100">
-            {hidden.map((specialty) => <span key={specialty} className="rounded-lg bg-[#f5fbf6] px-2.5 py-1.5 text-xs font-medium text-[#287543]">{specialty}</span>)}
+          <div className={cn(
+            "invisible absolute left-0 top-[calc(100%+.4rem)] z-30 grid min-w-48 gap-1.5 rounded-xl border border-[#dfe7e1] bg-white p-2 opacity-0 shadow-[0_14px_34px_rgba(35,55,43,.16)] transition group-hover:visible group-hover:opacity-100 group-open:visible group-open:opacity-100",
+            liquidGlass && "border-white/75 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_18px_42px_rgba(25,54,38,.19)] backdrop-blur-[28px] backdrop-saturate-[1.65] supports-[backdrop-filter]:bg-white/58",
+          )}>
+            {hidden.map((specialty) => <span key={specialty} className={cn("rounded-lg bg-[#f5fbf6] px-2.5 py-1.5 text-xs font-medium text-[#287543]", liquidGlass && "border border-white/75 bg-white/72")}>{specialty}</span>)}
           </div>
         </details>
       ) : null}
