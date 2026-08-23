@@ -34,12 +34,12 @@ const ACTIVE_PROPERTY_WHERE = {
 }
 
 function planFromLegacyBilling(user?: BrokerBillingUser | null): EmePlanKey {
-  if (
-    user?.plan === BILLING_PLAN.BROKER &&
-    user.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
-  ) {
-    return "pro"
+  if (user?.subscriptionStatus !== BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE) {
+    return "free"
   }
+
+  if (user.plan === BILLING_PLAN.AGENCY) return "scale"
+  if (user.plan === BILLING_PLAN.BROKER) return "pro"
 
   return "free"
 }
@@ -117,161 +117,263 @@ function resolveCreditBuckets({
   }
 }
 
-async function grantInitialPlanCredits({
-  brokerId,
-  planKey,
-}: {
-  brokerId: string
-  planKey: EmePlanKey
-}) {
-  const plan = EME_PLANS[planKey]
-  const initialGrantedAt = new Date()
-  const currentPeriodStart = getCurrentPeriodStart(initialGrantedAt)
-
-  return prisma.$transaction(async (tx) => {
-    const claimedInitialGrant = await tx.brokerPlanAccount.updateMany({
-      where: {
-        brokerId,
-        initialCreditsGrantedAt: null,
-      },
-      data: {
-        planKey,
-        initialCreditsGrantedAt: initialGrantedAt,
-        currentPeriodCreditsGrantedAt: currentPeriodStart,
-      },
-    })
-
-    if (claimedInitialGrant.count === 0) {
-      return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
-    }
-
-    const broker = await tx.broker.findUniqueOrThrow({
-      where: { id: brokerId },
-      select: {
-        aiCreditsBalance: true,
-        aiCreditsUsedThisMonth: true,
-      },
-    })
-
-    const { extraCredits } = resolveCreditBuckets({
-      balance: broker.aiCreditsBalance,
-      usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: plan.monthlyAiCredits,
-    })
-    const nextBalance = extraCredits + plan.initialAiCredits
-    const grantedAmount = Math.max(0, nextBalance - broker.aiCreditsBalance)
-
-    const updatedBroker = await tx.broker.update({
-      where: { id: brokerId },
-      data: {
-        aiCreditsBalance: nextBalance,
-        aiCreditsUsedThisMonth: 0,
-        aiMonthlyUsage: 0,
-      },
-      select: { aiCreditsBalance: true },
-    })
-
-    await tx.aiCreditTransaction.create({
-      data: {
-        brokerId,
-        type: "plan_initial_grant",
-        amount: grantedAmount,
-        balanceAfter: updatedBroker.aiCreditsBalance,
-        description: `${plan.name}: creditos IA iniciais`,
-        metadata: {
-          planKey: plan.key,
-          monthlyCredits: plan.monthlyAiCredits,
-          initialCredits: plan.initialAiCredits,
-          extraCreditsCarried: extraCredits,
-        } satisfies Prisma.InputJsonObject,
-      },
-    })
-
-    return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
-  })
+function getCurrentPeriodEnd(periodStart: Date) {
+  const periodEnd = new Date(periodStart)
+  periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
+  return periodEnd
 }
 
-async function renewMonthlyPlanCreditsIfNeeded({
-  brokerId,
-  account,
-}: {
-  brokerId: string
-  account: BrokerPlanAccountRecord
-}) {
-  const planKey = normalizeEmePlanKey(account.planKey)
-  const plan = EME_PLANS[planKey]
-  const currentPeriodStart = getCurrentPeriodStart()
+function isSameStripePeriod(
+  account: Pick<
+    BrokerPlanAccountRecord,
+    "currentStripeSubscriptionId" | "currentStripePeriodStart" | "currentStripePeriodEnd"
+  >,
+  subscriptionId: string,
+  periodStart: Date,
+  periodEnd: Date,
+) {
+  return (
+    account.currentStripeSubscriptionId === subscriptionId &&
+    account.currentStripePeriodStart?.getTime() === periodStart.getTime() &&
+    account.currentStripePeriodEnd?.getTime() === periodEnd.getTime()
+  )
+}
 
-  if (isSamePeriodMonth(account.currentPeriodCreditsGrantedAt, currentPeriodStart)) {
-    return account
+async function ensureFreePlanCreditsForCurrentPeriod(brokerId: string) {
+  const account = await ensureBrokerPlanAccount(brokerId)
+  if (normalizeEmePlanKey(account.planKey) !== "free") return account
+
+  const periodStart = getCurrentPeriodStart()
+  const periodEnd = getCurrentPeriodEnd(periodStart)
+  const monthlyCredits = EME_PLANS.free.monthlyAiCredits
+  const alreadyCurrent =
+    account.currentPeriodGrantPlanKey === "free" &&
+    account.currentStripeSubscriptionId === null &&
+    isSamePeriodMonth(account.currentStripePeriodStart, periodStart) &&
+    (account.currentPeriodGrantedCredits ?? 0) >= monthlyCredits
+
+  if (alreadyCurrent) return account
+
+  const grantKey = "free-period:" + brokerId + ":" + periodStart.toISOString()
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existingGrant = await tx.aiCreditTransaction.findUnique({
+        where: { grantKey },
+        select: { id: true },
+      })
+      if (existingGrant) {
+        return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
+      }
+
+      const [currentAccount, broker] = await Promise.all([
+        tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } }),
+        tx.broker.findUniqueOrThrow({
+          where: { id: brokerId },
+          select: {
+            aiCreditsBalance: true,
+            aiCreditsUsedThisMonth: true,
+          },
+        }),
+      ])
+
+      const currentPlanKey = normalizeEmePlanKey(currentAccount.planKey)
+      if (currentPlanKey !== "free") return currentAccount
+
+      if (
+        currentAccount.currentPeriodGrantPlanKey === "free" &&
+        currentAccount.currentStripeSubscriptionId === null &&
+        isSamePeriodMonth(currentAccount.currentStripePeriodStart, periodStart) &&
+        currentAccount.currentPeriodGrantedCredits >= monthlyCredits
+      ) {
+        return currentAccount
+      }
+
+      const previousAllocation =
+        currentAccount.currentPeriodGrantedCredits ||
+        EME_PLANS[currentPlanKey].monthlyAiCredits
+      const previousMonthlyRemaining = Math.max(
+        0,
+        previousAllocation - broker.aiCreditsUsedThisMonth,
+      )
+      const extraCredits = Math.max(
+        0,
+        broker.aiCreditsBalance - previousMonthlyRemaining,
+      )
+      const nextBalance = extraCredits + monthlyCredits
+      const now = new Date()
+
+      await tx.broker.update({
+        where: { id: brokerId },
+        data: {
+          aiCreditsBalance: nextBalance,
+          aiCreditsUsedThisMonth: 0,
+        },
+      })
+
+      const updatedAccount = await tx.brokerPlanAccount.update({
+        where: { brokerId },
+        data: {
+          planKey: "free",
+          initialCreditsGrantedAt:
+            currentAccount.initialCreditsGrantedAt ?? now,
+          currentPeriodCreditsGrantedAt: now,
+          currentStripeSubscriptionId: null,
+          currentStripePeriodStart: periodStart,
+          currentStripePeriodEnd: periodEnd,
+          currentPeriodGrantedCredits: monthlyCredits,
+          currentPeriodGrantPlanKey: "free",
+        },
+      })
+
+      await tx.aiCreditTransaction.create({
+        data: {
+          brokerId,
+          grantKey,
+          type: "plan_period_grant",
+          amount: nextBalance - broker.aiCreditsBalance,
+          balanceAfter: nextBalance,
+          description: "Créditos mensais do plano Free",
+          metadata: {
+            planKey: "free",
+            periodStart: periodStart.toISOString(),
+            periodEnd: periodEnd.toISOString(),
+          },
+        },
+      })
+
+      return updatedAccount
+    })
+  } catch (error) {
+    if (!isPrismaUniqueConstraintError(error)) throw error
+    return prisma.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
   }
-
-  return prisma.$transaction(async (tx) => {
-    const claimedRenewal = await tx.brokerPlanAccount.updateMany({
-      where: {
-        brokerId,
-        OR: [
-          { currentPeriodCreditsGrantedAt: null },
-          { currentPeriodCreditsGrantedAt: { lt: currentPeriodStart } },
-        ],
-      },
-      data: {
-        planKey,
-        currentPeriodCreditsGrantedAt: currentPeriodStart,
-      },
-    })
-
-    if (claimedRenewal.count === 0) {
-      return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
-    }
-
-    const broker = await tx.broker.findUniqueOrThrow({
-      where: { id: brokerId },
-      select: {
-        aiCreditsBalance: true,
-        aiCreditsUsedThisMonth: true,
-      },
-    })
-
-    const { extraCredits, monthlyRemaining } = resolveCreditBuckets({
-      balance: broker.aiCreditsBalance,
-      usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: plan.monthlyAiCredits,
-    })
-    const nextBalance = extraCredits + plan.monthlyAiCredits
-    const delta = nextBalance - broker.aiCreditsBalance
-
-    const updatedBroker = await tx.broker.update({
-      where: { id: brokerId },
-      data: {
-        aiCreditsBalance: nextBalance,
-        aiCreditsUsedThisMonth: 0,
-        aiMonthlyUsage: 0,
-      },
-      select: { aiCreditsBalance: true },
-    })
-
-    await tx.aiCreditTransaction.create({
-      data: {
-        brokerId,
-        type: "plan_monthly_grant",
-        amount: delta,
-        balanceAfter: updatedBroker.aiCreditsBalance,
-        description: `${plan.name}: renovacao mensal de creditos IA`,
-        metadata: {
-          planKey: plan.key,
-          monthlyCredits: plan.monthlyAiCredits,
-          extraCreditsCarried: extraCredits,
-          expiredMonthlyCredits: monthlyRemaining,
-          renewedOnceForPeriod: currentPeriodStart.toISOString(),
-        } satisfies Prisma.InputJsonObject,
-      },
-    })
-
-    return tx.brokerPlanAccount.findUniqueOrThrow({ where: { brokerId } })
-  })
 }
 
+export async function grantBrokerPlanCreditsForPaidPeriod(input: {
+  brokerId: string
+  subscriptionId: string
+  planKey: Extract<EmePlanKey, "pro" | "scale">
+  periodStart: Date
+  periodEnd: Date
+  stripeInvoiceId: string
+  stripeEventId: string
+}) {
+  const monthlyCredits = EME_PLANS[input.planKey].monthlyAiCredits
+  const grantKey = [
+    "stripe-period",
+    input.brokerId,
+    input.subscriptionId,
+    input.periodStart.toISOString(),
+    input.planKey,
+  ].join(":")
+
+  await ensureBrokerPlanAccount(input.brokerId)
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existingGrant = await tx.aiCreditTransaction.findUnique({
+        where: { grantKey },
+        select: { id: true },
+      })
+      if (existingGrant) return { applied: false, grantKey }
+
+      const [account, broker] = await Promise.all([
+        tx.brokerPlanAccount.findUniqueOrThrow({
+          where: { brokerId: input.brokerId },
+        }),
+        tx.broker.findUniqueOrThrow({
+          where: { id: input.brokerId },
+          select: {
+            aiCreditsBalance: true,
+            aiCreditsUsedThisMonth: true,
+          },
+        }),
+      ])
+
+      const samePeriod = isSameStripePeriod(
+        account,
+        input.subscriptionId,
+        input.periodStart,
+        input.periodEnd,
+      )
+      const previousAllocation = samePeriod
+        ? account.currentPeriodGrantedCredits
+        : account.currentPeriodGrantedCredits ||
+          EME_PLANS[normalizeEmePlanKey(account.planKey)].monthlyAiCredits
+      const previousMonthlyRemaining = Math.max(
+        0,
+        previousAllocation - broker.aiCreditsUsedThisMonth,
+      )
+      const extraCredits = Math.max(
+        0,
+        broker.aiCreditsBalance - previousMonthlyRemaining,
+      )
+      const nextUsed = samePeriod ? broker.aiCreditsUsedThisMonth : 0
+      const targetMonthlyRemaining = Math.max(0, monthlyCredits - nextUsed)
+      const calculatedBalance = extraCredits + targetMonthlyRemaining
+      const nextBalance = samePeriod
+        ? Math.max(broker.aiCreditsBalance, calculatedBalance)
+        : calculatedBalance
+      const grantedAllocation = samePeriod
+        ? Math.max(previousAllocation, monthlyCredits)
+        : monthlyCredits
+      const now = new Date()
+
+      await tx.broker.update({
+        where: { id: input.brokerId },
+        data: {
+          aiCreditsBalance: nextBalance,
+          aiCreditsUsedThisMonth: nextUsed,
+        },
+      })
+
+      await tx.brokerPlanAccount.update({
+        where: { brokerId: input.brokerId },
+        data: {
+          planKey: input.planKey,
+          initialCreditsGrantedAt: account.initialCreditsGrantedAt ?? now,
+          currentPeriodCreditsGrantedAt: now,
+          currentStripeSubscriptionId: input.subscriptionId,
+          currentStripePeriodStart: input.periodStart,
+          currentStripePeriodEnd: input.periodEnd,
+          currentPeriodGrantedCredits: grantedAllocation,
+          currentPeriodGrantPlanKey: input.planKey,
+        },
+      })
+
+      await tx.aiCreditTransaction.create({
+        data: {
+          brokerId: input.brokerId,
+          grantKey,
+          type: "plan_period_grant",
+          amount: nextBalance - broker.aiCreditsBalance,
+          balanceAfter: nextBalance,
+          description:
+            "Créditos do período pago do plano " + EME_PLANS[input.planKey].label,
+          metadata: {
+            planKey: input.planKey,
+            subscriptionId: input.subscriptionId,
+            stripeInvoiceId: input.stripeInvoiceId,
+            stripeEventId: input.stripeEventId,
+            periodStart: input.periodStart.toISOString(),
+            periodEnd: input.periodEnd.toISOString(),
+          },
+        },
+      })
+
+      return {
+        applied: true,
+        grantKey,
+        amount: nextBalance - broker.aiCreditsBalance,
+        balanceAfter: nextBalance,
+      }
+    })
+  } catch (error) {
+    if (!isPrismaUniqueConstraintError(error)) throw error
+    return { applied: false, grantKey }
+  }
+}
 async function countBrokerActiveProperties(brokerId: string) {
   return prisma.property.count({
     where: {
@@ -345,23 +447,28 @@ export async function syncBrokerPlanAccountFromStripe(input: {
   subscriptionStatus: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED"
 }) {
   if (input.subscriptionStatus === "PAST_DUE") {
-    // Pagamento em atraso não é cancelamento: mantém o plano atual até o Stripe
-    // efetivamente cancelar a assinatura (evita downgrade preventivo indevido).
     return ensureBrokerPlanAccount(input.brokerId)
   }
 
-  const targetPlanKey: EmePlanKey =
-    input.subscriptionStatus === "CANCELED" ? "free" : (input.planKey ?? "pro")
+  let targetPlanKey: EmePlanKey = "free"
+  if (input.subscriptionStatus !== "CANCELED") {
+    if (input.planKey === null) throw new Error("UNKNOWN_STRIPE_PLAN")
+    targetPlanKey = input.planKey
+  }
 
   await prisma.brokerPlanAccount.upsert({
     where: { brokerId: input.brokerId },
-    create: { brokerId: input.brokerId, planKey: targetPlanKey },
-    update: { planKey: targetPlanKey },
+    create: {
+      brokerId: input.brokerId,
+      planKey: targetPlanKey,
+    },
+    update: {
+      planKey: targetPlanKey,
+    },
   })
 
   return ensureBrokerPlanAccount(input.brokerId)
 }
-
 export async function ensureBrokerPlanAccount(brokerId: string) {
   const broker = await prisma.broker.findUnique({
     where: { id: brokerId },
@@ -379,17 +486,24 @@ export async function ensureBrokerPlanAccount(brokerId: string) {
   if (!broker) throw new Error("BROKER_NOT_FOUND")
 
   const defaultPlanKey = planFromLegacyBilling(broker.user)
+  const freePeriodStart = getCurrentPeriodStart()
+  const freePeriodEnd = getCurrentPeriodEnd(freePeriodStart)
   let account = await prisma.brokerPlanAccount.upsert({
     where: { brokerId },
     create: {
       brokerId,
       planKey: defaultPlanKey,
+      ...(defaultPlanKey === "free"
+        ? {
+            initialCreditsGrantedAt: new Date(),
+            currentPeriodCreditsGrantedAt: new Date(),
+            currentStripePeriodStart: freePeriodStart,
+            currentStripePeriodEnd: freePeriodEnd,
+            currentPeriodGrantedCredits: EME_PLANS.free.monthlyAiCredits,
+            currentPeriodGrantPlanKey: "free",
+          }
+        : {}),
     },
-    // Deliberadamente um no-op: nunca sobrescreve planKey de uma conta já existente.
-    // A única escrita pós-criação é syncBrokerPlanAccountFromStripe (a partir do
-    // webhook do Stripe), que sempre roda seu próprio upsert com o planKey real
-    // ANTES de chamar ensureBrokerPlanAccount — então quando este upsert roda aqui,
-    // a linha já existe com o planKey correto e este update:{} não conflita com ele.
     update: {},
   })
 
@@ -401,19 +515,8 @@ export async function ensureBrokerPlanAccount(brokerId: string) {
     })
   }
 
-  if (!account.initialCreditsGrantedAt) {
-    return grantInitialPlanCredits({
-      brokerId,
-      planKey: normalizedPlanKey,
-    })
-  }
-
-  return renewMonthlyPlanCreditsIfNeeded({
-    brokerId,
-    account,
-  })
+  return account
 }
-
 export async function getBrokerPlanSnapshot(brokerId: string) {
   const account = await ensureBrokerPlanAccount(brokerId)
   const planKey = normalizeEmePlanKey(account.planKey)
@@ -485,9 +588,14 @@ export async function canCreateBrokerProperties(brokerId: string, amount = 1) {
   }
 }
 
-export async function canPublishBrokerProperty(brokerId: string) {
+export async function canPublishBrokerProperty(
+  brokerId: string,
+  increasesActivePropertyCount = false,
+) {
   const snapshot = await getBrokerPlanSnapshot(brokerId)
-  const allowed = snapshot.propertyCount + 1 <= snapshot.propertyLimit
+  const additionalProperties = increasesActivePropertyCount ? 1 : 0
+  const allowed =
+    snapshot.propertyCount + additionalProperties <= snapshot.propertyLimit
 
   return {
     allowed,
@@ -512,6 +620,7 @@ export async function hasBrokerAiCredits(brokerId: string, amountOrAction: numbe
     typeof amountOrAction === "number"
       ? normalizeCredits(amountOrAction)
       : getEmeCreditCost(amountOrAction)
+  await ensureFreePlanCreditsForCurrentPeriod(brokerId)
   const credits = await getBrokerAiCreditBalance(brokerId)
 
   return {
@@ -541,7 +650,7 @@ export async function consumeBrokerAiCredits({
     return getBrokerAiCreditBalance(brokerId)
   }
 
-  await ensureBrokerPlanAccount(brokerId)
+  await ensureFreePlanCreditsForCurrentPeriod(brokerId)
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.broker.updateMany({

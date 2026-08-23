@@ -260,7 +260,7 @@ model Broker {
   marketplaceFeatured       Boolean                    @default(false)
   marketplaceRating         Decimal?                   @db.Decimal(2, 1)
   marketplaceReviewCount    Int                        @default(0)
-  aiCreditsBalance          Int                        @default(10)
+  aiCreditsBalance          Int                        @default(30)
   aiCreditsUsedThisMonth    Int                        @default(0)
   aiAssistantEnabled        Boolean                    @default(true)
   aiMonthlyUsage            Int                        @default(0)
@@ -695,6 +695,11 @@ model BrokerPlanAccount {
   propertyExtraLimit            Int       @default(0)
   initialCreditsGrantedAt       DateTime?
   currentPeriodCreditsGrantedAt DateTime?
+  currentStripeSubscriptionId   String?
+  currentStripePeriodStart      DateTime?
+  currentStripePeriodEnd        DateTime?
+  currentPeriodGrantedCredits   Int       @default(0)
+  currentPeriodGrantPlanKey     String?
   createdAt                     DateTime  @default(now())
   updatedAt                     DateTime  @updatedAt
   broker                        Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
@@ -705,6 +710,7 @@ model BrokerPlanAccount {
 model AiCreditTransaction {
   id           String   @id @default(cuid())
   brokerId     String
+  grantKey     String?  @unique
   type         String
   amount       Int
   balanceAfter Int

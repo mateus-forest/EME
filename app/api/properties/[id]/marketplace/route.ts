@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserRole } from '@/lib/prisma-enums'
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from '@/lib/auth-route'
+import { enforceBrokerMarketplaceAccess } from '@/lib/billing-enforcement'
 import { slugify } from '@/lib/catalog-slug'
 import { serializeProperty } from '@/lib/property-contract'
 import {
@@ -43,6 +44,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ error: 'Informe se o imóvel deve aparecer no Marketplace.' }, { status: 400 })
     }
     if (body.published && !property.marketplacePublished) {
+      if (user.broker) {
+        const billingBlocked = await enforceBrokerMarketplaceAccess(user)
+        if (billingBlocked) return billingBlocked
+      }
+
       const readiness = await assessPropertyPublicationReadiness(property, { baseUrl: request.nextUrl.origin })
       if (!readiness.marketplaceReady) {
         return NextResponse.json(propertyPublicationBlockedResponse(readiness, 'marketplace'), { status: 422 })

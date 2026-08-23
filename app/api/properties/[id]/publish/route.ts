@@ -5,6 +5,7 @@ import {
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceBrokerPropertyPublication } from "@/lib/billing-enforcement"
+import { isEmeActivePropertyStatus } from "@/lib/eme-plans"
 import { mapPropertyStatus, serializeProperty } from "@/lib/property-contract"
 import {
   assessCatalogReadiness,
@@ -66,7 +67,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         return NextResponse.json(propertyPublicationBlockedResponse(readiness, "catalog"), { status: 422 })
       }
 
-      const billingBlocked = await enforceBrokerPropertyPublication(user)
+      const billingBlocked = await enforceBrokerPropertyPublication(user, {
+        increasesActivePropertyCount: !isEmeActivePropertyStatus(property.status),
+      })
       if (billingBlocked) return billingBlocked
     }
 

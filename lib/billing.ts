@@ -218,14 +218,21 @@ export function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
 
 export async function syncBillingFromStripeSubscription(subscription: Stripe.Subscription) {
   const userId = typeof subscription.metadata.userId === "string" ? subscription.metadata.userId : ""
-  const mappedPlan = mapStripePlan(subscription.metadata.plan)
   const priceId = subscription.items.data[0]?.price?.id ?? null
-  const plan = mappedPlan === BILLING_PLAN.NONE ? mapStripePriceIdToPlan(priceId) : mappedPlan
+  const plan = mapStripePriceIdToPlan(priceId)
   const emePlanKey = mapStripePriceIdToEmePlanKey(priceId)
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null
   const status = mapStripeStatusToSubscriptionStatus(subscription.status)
 
-  if (!userId || plan === BILLING_PLAN.NONE) {
+  if (plan === BILLING_PLAN.NONE || emePlanKey === null) {
+    console.error("[billing] Stripe subscription has an unmapped Price ID", {
+      subscriptionId: subscription.id,
+      priceId,
+    })
+    return null
+  }
+
+  if (!userId) {
     const user = await prisma.user.findFirst({
       where: { stripeSubscriptionId: subscription.id },
     })

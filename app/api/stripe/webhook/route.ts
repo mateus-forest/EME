@@ -1,10 +1,16 @@
 import type Stripe from "stripe"
 import { NextRequest, NextResponse } from "next/server"
 
-import { syncBillingFromStripeSubscription } from "@/lib/billing"
+import {
+  mapStripePriceIdToEmePlanKey,
+  syncBillingFromStripeSubscription,
+} from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
-import { registerExtraPackagePurchase } from "@/lib/eme-plan-service"
+import {
+  grantBrokerPlanCreditsForPaidPeriod,
+  registerExtraPackagePurchase,
+} from "@/lib/eme-plan-service"
 import { prisma } from "@/lib/prisma"
 import { getStripeClient } from "@/lib/stripe-server"
 
@@ -22,15 +28,77 @@ function stripeObjectId(value: unknown) {
 
 function invoiceSubscriptionId(invoice: Stripe.Invoice) {
   const legacySubscription = (invoice as Stripe.Invoice & { subscription?: unknown }).subscription
-  return stripeObjectId(legacySubscription)
+  if (legacySubscription) return stripeObjectId(legacySubscription)
+
+  const invoiceWithParent = invoice as Stripe.Invoice & {
+    parent?: {
+      subscription_details?: {
+        subscription?: string | Stripe.Subscription | null
+      } | null
+    } | null
+  }
+  return stripeObjectId(
+    invoiceWithParent.parent?.subscription_details?.subscription,
+  )
 }
 
-async function syncInvoiceSubscription(stripe: Stripe, invoice: Stripe.Invoice) {
+async function syncInvoiceSubscription(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+  options: { grantPaidPeriod: boolean; eventId: string },
+) {
   const subscriptionId = invoiceSubscriptionId(invoice)
   if (!subscriptionId) return null
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-  return syncBillingFromStripeSubscription(subscription)
+  const syncedUser = await syncBillingFromStripeSubscription(subscription)
+  if (!options.grantPaidPeriod || subscription.status !== "active") {
+    return syncedUser
+  }
+
+  const priceId = subscription.items.data[0]?.price?.id ?? null
+  const planKey = mapStripePriceIdToEmePlanKey(priceId)
+  if (planKey !== "pro" && planKey !== "scale") {
+    console.error("[api][stripe][webhook][invoice] unmapped paid Price ID", {
+      eventId: options.eventId,
+      invoiceId: invoice.id,
+      subscriptionId,
+      priceId,
+    })
+    return syncedUser
+  }
+
+  const subscriptionItem = subscription.items.data[0]
+  if (!subscriptionItem?.current_period_start || !subscriptionItem.current_period_end) {
+    throw new Error("STRIPE_SUBSCRIPTION_PERIOD_MISSING")
+  }
+
+  const metadataUserId =
+    typeof subscription.metadata.userId === "string"
+      ? subscription.metadata.userId
+      : ""
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { stripeSubscriptionId: subscriptionId },
+        ...(metadataUserId ? [{ id: metadataUserId }] : []),
+      ],
+    },
+    select: { broker: { select: { id: true } } },
+  })
+  if (!user?.broker) return syncedUser
+
+  await grantBrokerPlanCreditsForPaidPeriod({
+    brokerId: user.broker.id,
+    subscriptionId,
+    planKey,
+    periodStart: new Date(subscriptionItem.current_period_start * 1000),
+    periodEnd: new Date(subscriptionItem.current_period_end * 1000),
+    stripeInvoiceId: invoice.id,
+    stripeEventId: options.eventId,
+  })
+
+  return syncedUser
 }
 
 async function fulfillPackageCheckout(eventId: string, session: Stripe.Checkout.Session) {
@@ -136,8 +204,17 @@ export async function POST(request: NextRequest) {
 
       case "invoice.paid":
       case "invoice.payment_succeeded":
+        await syncInvoiceSubscription(stripe, event.data.object as Stripe.Invoice, {
+          grantPaidPeriod: true,
+          eventId: event.id,
+        })
+        break
+
       case "invoice.payment_failed":
-        await syncInvoiceSubscription(stripe, event.data.object as Stripe.Invoice)
+        await syncInvoiceSubscription(stripe, event.data.object as Stripe.Invoice, {
+          grantPaidPeriod: false,
+          eventId: event.id,
+        })
         break
 
       default:

@@ -2,7 +2,12 @@ import { NextResponse } from "next/server"
 
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
-import { canCreateBrokerProperties, canPublishBrokerProperty, createPropertyLimitErrorPayload } from "@/lib/eme-plan-service"
+import {
+  canCreateBrokerProperties,
+  canPublishBrokerProperty,
+  createPropertyLimitErrorPayload,
+  getBrokerPlanSnapshot,
+} from "@/lib/eme-plan-service"
 
 type AuthenticatedUser = User & {
   broker: { id: string } | null
@@ -52,15 +57,45 @@ export async function enforceBrokerPropertyCreation(user: AuthenticatedUser, amo
   )
 }
 
-export async function enforceBrokerPropertyPublication(user: AuthenticatedUser) {
+export async function enforceBrokerPropertyPublication(
+  user: AuthenticatedUser,
+  options: { increasesActivePropertyCount?: boolean } = {},
+) {
   if (isBillingBypassEnabled()) {
     return null
   }
 
   if (user.broker) {
-    const limit = await canPublishBrokerProperty(user.broker.id)
+    const limit = await canPublishBrokerProperty(
+      user.broker.id,
+      options.increasesActivePropertyCount ?? false,
+    )
     if (limit.allowed) return null
     return NextResponse.json(createPropertyLimitErrorPayload(), { status: 403 })
+  }
+
+  return createBillingBlockedResponse(
+    billingMessages.brokerInactive,
+    "/corretor/plano",
+    "Regularizar plano",
+  )
+}
+
+export async function enforceBrokerMarketplaceAccess(user: AuthenticatedUser) {
+  if (isBillingBypassEnabled()) return null
+
+  if (user.broker) {
+    const snapshot = await getBrokerPlanSnapshot(user.broker.id)
+    if (snapshot.plan.features.includes("marketplace")) return null
+
+    return NextResponse.json(
+      {
+        error: "O Marketplace está disponível nos planos Pro e Scale.",
+        code: "MARKETPLACE_PLAN_REQUIRED",
+        planKey: snapshot.planKey,
+      },
+      { status: 403 },
+    )
   }
 
   return createBillingBlockedResponse(
