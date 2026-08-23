@@ -69,6 +69,10 @@ function normalizeCredits(value: number) {
   return Math.max(0, Math.trunc(value))
 }
 
+function isPrismaUniqueConstraintError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002")
+}
+
 function hasActivePlanSubscription(user?: BrokerBillingUser | null) {
   return user?.subscriptionStatus === BILLING_USER_SUBSCRIPTION_STATUS.ACTIVE
 }
@@ -666,19 +670,28 @@ export async function registerExtraPackagePurchase({
   brokerId,
   userId,
   packageKey,
+  stripeCheckoutSessionId,
+  stripePaymentIntentId,
+  stripeFulfilledEventId,
+  amountCents,
   status = "registered",
   metadata,
 }: {
   brokerId: string
   userId: string
   packageKey: EmeExtraPackageKey
+  stripeCheckoutSessionId: string
+  stripePaymentIntentId?: string | null
+  stripeFulfilledEventId: string
+  amountCents?: number | null
   status?: string
   metadata?: Prisma.InputJsonObject
 }) {
   const pack = EME_EXTRA_PACKAGES[packageKey]
   if (!pack) throw new Error("INVALID_EXTRA_PACKAGE")
 
-  return prisma.$transaction(async (tx) => {
+  try {
+    return await prisma.$transaction(async (tx) => {
     await tx.brokerPlanAccount.upsert({
       where: { brokerId },
       create: { brokerId, planKey: "free" },
@@ -691,8 +704,11 @@ export async function registerExtraPackagePurchase({
         packageKey,
         packageType: pack.type,
         quantity: pack.quantity,
-        amountCents: pack.priceCents,
+        amountCents: typeof amountCents === "number" ? Math.max(0, Math.trunc(amountCents)) : pack.priceCents,
         status,
+        stripeCheckoutSessionId,
+        stripePaymentIntentId: stripePaymentIntentId ?? null,
+        stripeFulfilledEventId,
         metadata,
       },
     })
@@ -745,8 +761,18 @@ export async function registerExtraPackagePurchase({
       }
     }
 
-    return purchase
-  })
+      return { purchase, applied: status === "completed" }
+    })
+  } catch (error) {
+    if (!isPrismaUniqueConstraintError(error)) throw error
+
+    const purchase = await prisma.extraPackagePurchase.findUnique({
+      where: { stripeCheckoutSessionId },
+    })
+    if (!purchase) throw error
+
+    return { purchase, applied: false }
+  }
 }
 
 export async function applyAdminBonus({

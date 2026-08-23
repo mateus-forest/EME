@@ -61,6 +61,13 @@ export async function POST(request: NextRequest) {
 
   try {
     if (payload.packageKey) {
+      if (user.role !== UserRole.BROKER || !user.broker) {
+        return NextResponse.json(
+          { error: "Pacotes extras estão disponíveis apenas para contas de corretor elegíveis." },
+          { status: 403 },
+        )
+      }
+
       if (!isExtraPackageKey(payload.packageKey)) {
         return NextResponse.json({ error: "Pacote inválido para checkout." }, { status: 400 })
       }
@@ -146,6 +153,67 @@ export async function POST(request: NextRequest) {
         { error: `Price ID principal do plano não configurado (${variableName}).` },
         { status: 500 },
       )
+    }
+
+    if (user.role === UserRole.BROKER) {
+      const currentPlan = await getBrokerPlanSnapshot(user.broker!.id)
+
+      if (currentPlan.planKey !== "free") {
+        if (!user.stripeCustomerId || !user.stripeSubscriptionId) {
+          return NextResponse.json(
+            { error: "Sua assinatura paga precisa ser reconciliada com o Stripe antes do upgrade." },
+            { status: 409 },
+          )
+        }
+
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId)
+        if (!new Set(["active", "trialing"]).has(subscription.status)) {
+          return NextResponse.json(
+            { error: "A assinatura atual não está ativa para receber upgrade." },
+            { status: 409 },
+          )
+        }
+
+        const subscriptionCustomerId =
+          typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id
+        if (subscriptionCustomerId !== user.stripeCustomerId) {
+          return NextResponse.json(
+            { error: "A assinatura atual não pertence ao Customer Stripe vinculado à conta." },
+            { status: 409 },
+          )
+        }
+
+        if (subscription.items.data.length !== 1) {
+          return NextResponse.json(
+            { error: "A assinatura possui uma composição que exige reconciliação administrativa." },
+            { status: 409 },
+          )
+        }
+
+        const item = subscription.items.data[0]
+        if (!item || item.price.id === priceId) {
+          return NextResponse.json({ error: "O plano selecionado já está ativo." }, { status: 409 })
+        }
+
+        const returnUrl = `${origin}${portalPath}?checkout=success`
+        const portalSession = await stripe.billingPortal.sessions.create({
+          customer: user.stripeCustomerId,
+          return_url: returnUrl,
+          flow_data: {
+            type: "subscription_update_confirm",
+            after_completion: {
+              type: "redirect",
+              redirect: { return_url: returnUrl },
+            },
+            subscription_update_confirm: {
+              subscription: subscription.id,
+              items: [{ id: item.id, price: priceId, quantity: item.quantity ?? 1 }],
+            },
+          },
+        })
+
+        return NextResponse.json({ url: portalSession.url })
+      }
     }
 
     // planLabel identifica o ROLE da conta para o sync legado (User.plan), não o
