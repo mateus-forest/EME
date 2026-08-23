@@ -88,8 +88,8 @@ test.describe("formatadores e parsers estruturados", () => {
 test("campo monetário do Marketplace mascara colagem, backspace e limpeza", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/imoveis")
-  await page.getByRole("button", { name: "Buscar por filtros" }).click()
-  const input = page.getByRole("dialog", { name: "Buscar por filtros" }).getByLabel(/nimo$/)
+  await page.getByRole("button", { name: "Explorar por filtros" }).click()
+  const input = page.getByRole("dialog", { name: "Explorar por filtros" }).getByLabel(/mínimo$/i)
 
   await expect(input).toHaveAttribute("inputmode", "numeric")
   await input.fill("500000")

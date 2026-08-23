@@ -12,7 +12,7 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 const broker = {
-  id: 'broker-1', slug: 'corretor-real', name: 'Corretora Real', creci: 'CRECI 12345-F', region: 'Centro', regionSlug: 'centro', specialty: 'Residencial', about: 'Atendimento consultivo.', phone: '5554999999999', image: '/marketplace/placeholder-user.jpg', activeListings: 2, rating: 4.8, reviewCount: 5, reviews: [], featured: false, verified: true, transaction: 'ambos', propertyTypes: [],
+  id: 'broker-1', slug: 'corretor-real', name: 'Corretora Real', creci: 'CRECI 12345-F', region: 'Centro', regionSlug: 'centro', specialties: ['Residencial'], bio: 'Atendimento consultivo.', phone: '5554999999999', image: '/marketplace/placeholder-user.jpg', activeListings: 2, rating: 4.8, reviewCount: 5, reviews: [], featured: false, verified: true, transaction: 'ambos', propertyTypes: [],
 }
 
 test.describe('Comunicação e descoberta do Marketplace', () => {
@@ -65,7 +65,7 @@ test.describe('Comunicação e descoberta do Marketplace', () => {
       body: `Mensagem persistida ${index + 1} com conteúdo suficiente para validar a rolagem interna da conversa.`,
       createdAt: new Date(Date.now() + index * 1000).toISOString(),
     }))
-    await page.route('**/api/brokers/marketplace', (route) => route.fulfill({ json: { profile: broker, settings: { slug: broker.slug, displayName: broker.name, photoUrl: broker.image, specialty: broker.specialty, region: broker.region, transactions: 'BOTH', about: broker.about }, publicPath: `/imoveis/corretores/${broker.slug}`, properties: [{ id: 'property-1', title: 'Apartamento real', marketplaceSlug: 'apartamento-real', purpose: 'SALE', price: 500000, city: 'Centro', image: '/marketplace/placeholder.svg' }], leads: [{ id: 'lead-1', name: 'Cliente Real', phone: '5554999999999', intent: 'Compra', status: 'NEW', createdAt: new Date().toISOString() }], counts: { conversations: 1, properties: 1, leads: 1, reviews: { PENDING_REVIEW: 1 } } } }))
+    await page.route('**/api/brokers/marketplace', (route) => route.fulfill({ json: { profile: broker, settings: { slug: broker.slug, displayName: broker.name, photoUrl: broker.image, specialties: broker.specialties, region: broker.region, transactions: 'BOTH', bio: broker.bio }, publicPath: `/imoveis/corretores/${broker.slug}`, properties: [{ id: 'property-1', title: 'Apartamento real', marketplaceSlug: 'apartamento-real', purpose: 'SALE', price: 500000, city: 'Centro', image: '/marketplace/placeholder.svg' }], leads: [{ id: 'lead-1', name: 'Cliente Real', phone: '5554999999999', intent: 'Compra', status: 'NEW', createdAt: new Date().toISOString() }], counts: { conversations: 1, properties: 1, leads: 1, reviews: { PENDING_REVIEW: 1 } } } }))
     await page.route('**/api/brokers/marketplace/conversations', (route) => route.fulfill({ json: { conversations: [
       { id: 'conversation-1', customerName: 'Cliente Real', customerPhone: '5554999999999', status: 'OPEN', property: { title: 'Apartamento real' }, lastMessageAt: new Date().toISOString(), reviewRequestedAt: null, messages },
       { id: 'conversation-2', customerName: 'Cliente Encerrado', customerPhone: '5554888888888', status: 'CLOSED', property: { title: 'Casa encerrada' }, lastMessageAt: new Date().toISOString(), reviewRequestedAt: new Date().toISOString(), messages: [{ id: 'closed-message', sender: 'CUSTOMER', body: 'Atendimento finalizado.', createdAt: new Date().toISOString() }] },
@@ -104,7 +104,7 @@ test.describe('Comunicação e descoberta do Marketplace', () => {
     const messages: Array<{ id: string; sender: string; kind: string; body: string; metadata?: unknown; createdAt: string }> = [
       { id: 'message-1', sender: 'CUSTOMER', kind: 'TEXT', body: 'Pode me enviar as opções?', createdAt: new Date().toISOString() },
     ]
-    const dashboard = { profile: broker, settings: { slug: broker.slug, displayName: broker.name, photoUrl: broker.image, specialty: broker.specialty, region: broker.region, transactions: 'BOTH', about: broker.about }, publicPath: `/imoveis/corretores/${broker.slug}`, properties: [], leads: [], counts: { conversations: 1, properties: 1, leads: 1, reviews: {} } }
+    const dashboard = { profile: broker, settings: { slug: broker.slug, displayName: broker.name, photoUrl: broker.image, specialties: broker.specialties, region: broker.region, transactions: 'BOTH', bio: broker.bio }, publicPath: `/imoveis/corretores/${broker.slug}`, properties: [], leads: [], counts: { conversations: 1, properties: 1, leads: 1, reviews: {} } }
     const conversations = () => [{ id: 'conversation-1', customerName: 'Cliente Real', customerPhone: '5554999999999', status: 'OPEN', property: { title: 'Apartamento publicado' }, lastMessageAt: new Date().toISOString(), reviewRequestedAt: null, messages }]
     await page.route('**/api/brokers/marketplace', (route) => route.fulfill({ json: dashboard }))
     await page.route('**/api/brokers/marketplace/conversations', (route) => route.fulfill({ json: { conversations: conversations() } }))

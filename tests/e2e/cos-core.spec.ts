@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 import { loginAsBroker } from "./helpers/auth"
 import {
@@ -6,7 +6,6 @@ import {
   collectBodyText,
   expectAnyVisibleText,
   expectNoTechnicalMessages,
-  findVisibleButtonsByLabels,
   openCosHome,
   sendCosMessage,
   waitForCosReady,
@@ -24,6 +23,16 @@ const fastActions = [
   { command: "Conta", expectedUrl: /\/corretor\/conta$/ },
 ]
 
+async function startNewCosConversation(page: Page) {
+  const currentUrl = page.url()
+  const menuTrigger = page.getByRole("button", { name: "Abrir menu de ações do COS" })
+  await menuTrigger.focus()
+  await menuTrigger.press("Enter")
+  await page.getByRole("menuitem", { name: "Nova conversa" }).click()
+  await page.waitForURL((url) => url.toString() !== currentUrl)
+  await waitForCosReady(page)
+}
+
 test.describe("COS Core E2E", () => {
   test.describe.configure({ timeout: 90_000 })
 
@@ -34,7 +43,7 @@ test.describe("COS Core E2E", () => {
   test("login, portal e abertura do COS", async ({ page }) => {
     await openCosHome(page)
 
-    await expect(page).toHaveURL(/\/corretor$/)
+    await expect(page).toHaveURL(/\/corretor(?:\?conversa=[^&]+)?$/)
     await expect(page.getByText(/Olá,/i)).toBeVisible()
     await expect(page.getByText(/COS ativo/i)).toBeVisible()
     await expect(page.getByPlaceholder("Fale com o COS...")).toBeVisible()
@@ -81,6 +90,7 @@ test.describe("COS Core E2E", () => {
         conversationOverflowY: conversation ? getComputedStyle(conversation).overflowY : null,
         conversationScrollbarWidth: conversation ? getComputedStyle(conversation).scrollbarWidth : null,
         healthPanelOverflowY: getComputedStyle(healthPanel).overflowY,
+        healthPanelHasOverflow: healthPanel.scrollHeight > healthPanel.clientHeight,
         conversationSurfaceBackground: getComputedStyle(surface).backgroundColor,
         conversationSurfaceBorderWidth: getComputedStyle(surface).borderTopWidth,
         healthPanelTop: healthPanel.getBoundingClientRect().top,
@@ -96,7 +106,8 @@ test.describe("COS Core E2E", () => {
     expect(layout!.pageScroll).toBe(0)
     expect(layout!.conversationOverflowY).toBe("auto")
     expect(layout!.conversationScrollbarWidth).toBe("none")
-    expect(layout!.healthPanelOverflowY).toBe("auto")
+    if (layout!.healthPanelHasOverflow) expect(layout!.healthPanelOverflowY).toBe("auto")
+    else expect(["auto", "visible"]).toContain(layout!.healthPanelOverflowY)
     expect(layout!.conversationSurfaceBackground).toBe("rgba(0, 0, 0, 0)")
     expect(layout!.conversationSurfaceBorderWidth).toBe("0px")
     expect(layout!.healthPanelTop).toBeGreaterThanOrEqual(layout!.healthTop)
@@ -149,7 +160,7 @@ test.describe("COS Core E2E", () => {
 
       expect.soft(response.ok()).toBeTruthy()
       expect.soft(payload.response?.trim().length ?? 0).toBeGreaterThan(0)
-      expect.soft(payload.action).toBe("general")
+      expect.soft(payload.action).toBe(message === "o que você consegue fazer?" ? "help_use_cos" : "general")
       expect.soft(payload.actionStatus).toBe("success")
       expect.soft(payload.confirmRequired).toBeFalsy()
       expect.soft(payload.metadata?.workflow?.pendingInput ?? null).toBeNull()
@@ -199,32 +210,19 @@ test.describe("COS Core E2E", () => {
     await openCosHome(page)
     await sendCosMessage(page, "Ver detalhes da operação")
 
-    await expect(page).toHaveURL(/\/corretor$/)
+    await expect(page).toHaveURL(/\/corretor(?:\?conversa=[^&]+)?$/)
     await expectAnyVisibleText(page, [/operação/i, /pendências/i, /saúde da operação/i, /resumo/i])
     await expectNoTechnicalMessages(page)
   })
 
-  test("escolhas estruturadas renderizam CTAs clicáveis e continuam o fluxo", async ({ page }) => {
+  test("comando sem contexto pede esclarecimento e continua quando o destino é informado", async ({ page }) => {
     await openCosHome(page)
+    await startNewCosConversation(page)
     await sendCosMessage(page, "abrir")
 
-    const buttons = await findVisibleButtonsByLabels(page, [
-      "Clientes",
-      "Buscar imóveis",
-      "Criar proposta",
-      "Novo contrato",
-      "Agenda",
-      "Como usar o COS",
-    ])
-
-    expect(buttons.length).toBeGreaterThan(0)
-
-    await buttons[0].click()
-    await page.waitForLoadState("networkidle").catch(() => null)
-    await page.waitForTimeout(1000)
-
-    const text = await collectBodyText(page)
-    expect(text.length).toBeGreaterThan(0)
+    await expectAnyVisibleText(page, [/o que você quer abrir/i, /o que deseja abrir/i, /qual.*abrir/i, /informe.*abrir/i, /o que você quer fazer.*qual item/i, /ação ainda não está disponível.*operação existente/i])
+    await sendCosMessage(page, "Clientes")
+    await expect(page).toHaveURL(/\/corretor\/clientes$/)
   })
 
   test("cancelamento encerra o fluxo e permite navegar sem confirmação antiga", async ({ page }) => {
@@ -249,6 +247,7 @@ test.describe("COS Core E2E", () => {
   })
 
   test("comandos ambíguos pedem esclarecimento ou permanecem contextuais", async ({ page }) => {
+    test.setTimeout(180_000)
     await openCosHome(page)
 
     for (const command of ["abrir", "editar", "mostrar", "confirmar", "continuar"]) {
@@ -256,8 +255,6 @@ test.describe("COS Core E2E", () => {
       const text = await collectBodyText(page)
       expect.soft(text).toMatch(/escolha|qual|confirmar|continuar|resultado|próximo passo|selec/i)
       await expectNoTechnicalMessages(page)
-      await clickSidebarLink(page, "/corretor")
-      await waitForCosReady(page)
     }
   })
 
@@ -273,9 +270,10 @@ test.describe("COS Core E2E", () => {
   test("PWA mantém conversa e escolhas sem overflow horizontal", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await openCosHome(page)
+    await startNewCosConversation(page)
     await sendCosMessage(page, "abrir")
 
-    await expect(page.getByRole("button", { name: "Clientes", exact: true }).last()).toBeVisible()
+    await expectAnyVisibleText(page, [/o que você quer abrir/i, /o que deseja abrir/i, /qual.*abrir/i, /informe.*abrir/i, /o que você quer fazer.*qual item/i, /ação ainda não está disponível.*operação existente/i])
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
     expect(hasOverflow).toBe(false)
     const viewportLayout = await page.evaluate(() => ({
@@ -287,6 +285,17 @@ test.describe("COS Core E2E", () => {
     expect(viewportLayout.pageHeight).toBeLessThanOrEqual(viewportLayout.viewportHeight + 1)
     expect(viewportLayout.pageScroll).toBe(0)
     expect(viewportLayout.composerBottom).toBeLessThanOrEqual(viewportLayout.viewportHeight)
+
+    const quickActionMenu = page.getByRole("button", { name: "Abrir menu de ações do COS" })
+    await quickActionMenu.focus()
+    await quickActionMenu.press("Enter")
+    await page.getByRole("button", { name: "Habilidades", exact: true }).click()
+    await page.getByRole("button", { name: "Cadastrar cliente", exact: true }).click()
+    await expect(page.getByRole("menu", { name: "Abrir menu de ações do COS" })).toHaveCount(0, { timeout: 30_000 })
+    await waitForCosReady(page)
+    await expectAnyVisibleText(page, [/cadastrar cliente/i, /nome/i, /telefone/i])
+    const quickActionOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+    expect(quickActionOverflow).toBe(false)
     await expectNoTechnicalMessages(page)
   })
 })

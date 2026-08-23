@@ -83,7 +83,7 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
           broker: { name: "Corretor Teste", phone: "11999999999", email: "corretor@example.com", creci: "12345" },
           conditions: {
             entry: String(submittedPayload.entry),
-            installments: String(submittedPayload.installments),
+            installments: `${String(submittedPayload.installmentCount)} parcelas de ${String(submittedPayload.installmentValue)}`,
             paymentMethod: String(submittedPayload.paymentMethod),
             notes: String(submittedPayload.conditions),
             validity: String(submittedPayload.validity),
@@ -117,19 +117,32 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
     await expect(page.getByLabel("Selecionar imóvel")).toBeVisible()
     await expect(page.getByLabel("Valor da proposta")).toBeVisible()
     await expect(page.getByLabel("Entrada")).toBeVisible()
-    await expect(page.getByLabel("Parcelamento")).toBeVisible()
+    await expect(page.getByLabel("Valor financiado calculado")).toBeVisible()
+    await expect(page.getByLabel("Quantidade de parcelas")).toBeVisible()
+    await expect(page.getByLabel("Juros mensais")).toBeVisible()
+    await expect(page.getByLabel("Valor estimado da parcela calculado")).toBeVisible()
     await expect(page.getByLabel("Forma de pagamento")).toBeVisible()
     await expect(page.getByLabel("Observações")).toBeVisible()
 
     await page.getByLabel("Selecionar cliente").selectOption("lead-1")
     await page.getByLabel("Selecionar imóvel").selectOption("property-1")
     await expect(page.getByLabel("Valor da proposta")).toHaveValue(/R\$\s810\.000,00/)
-    await page.getByLabel("Entrada").fill("R$ 160.000,00")
-    await page.getByLabel("Parcelamento").fill("24 parcelas")
+    await page.getByLabel("Entrada").fill("160000")
+    await expect(page.getByLabel("Entrada")).toHaveValue(/R\$\s160\.000,00/)
+    await expect(page.getByLabel("Valor financiado calculado")).toHaveValue(/R\$\s650\.000,00/)
+    const entryValue = await page.getByLabel("Entrada").inputValue()
+    const financingValue = await page.getByLabel("Valor financiado calculado").inputValue()
+    await page.getByLabel("Quantidade de parcelas").fill("24")
+    await expect(page.getByLabel("Quantidade de parcelas")).toHaveValue("24")
+    await page.getByLabel("Juros mensais").fill("0,89")
+    await expect(page.getByLabel("Juros mensais")).toHaveValue(/0,89%/)
+    const calculatedInstallment = await page.getByLabel("Valor estimado da parcela calculado").inputValue()
+    expect(calculatedInstallment).toMatch(/R\$\s*[\d.]+,\d{2}/)
+    expect(calculatedInstallment).not.toMatch(/R\$\s*0,00/)
     await page.getByLabel("Forma de pagamento").fill("Financiamento bancário")
     await page.getByLabel("Validade").fill("10 dias")
     await page.getByLabel("Observações").fill("Entrega das chaves após a entrada.")
-    await page.getByRole("button", { name: "Gerar proposta" }).click()
+    await page.getByRole("button", { name: "Gerar e salvar proposta" }).click()
 
     await expect.poll(() => submittedPayload).not.toBeNull()
     expect(submittedPayload).toMatchObject({
@@ -145,8 +158,11 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
       propertyArea: "82",
       propertyBedrooms: "3",
       propertyParkingSpots: "2",
-      entry: "R$ 160.000,00",
-      installments: "24 parcelas",
+      entry: entryValue,
+      financing: financingValue,
+      installmentCount: 24,
+      monthlyInterestRate: 0.89,
+      installmentValue: calculatedInstallment,
       paymentMethod: "Financiamento bancário",
       validity: "10 dias",
       conditions: "Entrega das chaves após a entrada.",
@@ -164,9 +180,21 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
     const proposalFrame = page.frameLocator('iframe[title="Proposta Marina + Apartamento Central"]')
     await expect(proposalFrame.getByText("Apartamento Central").first()).toBeVisible()
     await expect(proposalFrame.getByText("R$ 160.000,00").first()).toBeVisible()
-    await expect(proposalFrame.getByText("24 parcelas").first()).toBeVisible()
+    await expect(proposalFrame.getByText(/24 parcelas de/).first()).toBeVisible()
+    await expect(proposalFrame.getByText(calculatedInstallment).first()).toBeVisible()
     await expect(proposalFrame.getByText("Financiamento bancário").first()).toBeVisible()
     await expect(proposalFrame.getByText("Entrega das chaves após a entrada.").first()).toBeVisible()
+
+    let pdfCreditRequested = false
+    await page.route("**/api/brokers/documents/proposal-created/pdf-credit", (route) => {
+      pdfCreditRequested = true
+      return route.fulfill({ json: { ok: true } })
+    })
+    const popupPromise = page.waitForEvent("popup")
+    await page.getByRole("button", { name: "Baixar PDF" }).click()
+    const popup = await popupPromise
+    await expect.poll(() => pdfCreditRequested).toBe(true)
+    await popup.close()
   })
 
   test("mantém proposta longa dentro do workspace no desktop e no mobile", async ({ page }) => {
@@ -193,6 +221,12 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
       await expect(page.getByText(proposalDocument.title).first()).toBeVisible()
       const preview = page.getByTestId("proposal-preview")
       await expect(preview).toBeVisible()
+      const openAction = page.getByRole("button", { name: "Abrir", exact: true })
+      await openAction.scrollIntoViewIfNeeded()
+      await expect(openAction).toBeVisible()
+      await expect(page.getByRole("button", { name: "Baixar PDF" })).toBeVisible()
+      await expect(page.getByRole("button", { name: "Copiar texto" })).toBeVisible()
+      await expect(page.getByRole("button", { name: "Marcar assinado" })).toBeVisible()
       const layout = await page.evaluate(() => {
         const preview = document.querySelector<HTMLElement>('[data-testid="proposal-preview"]')
         const workspace = document.querySelector<HTMLElement>('[data-testid="proposal-workspace"]')
@@ -202,14 +236,15 @@ test.describe("Propostas — apresentação legítima e workspace limitado", () 
           viewportWidth: document.documentElement.clientWidth,
           previewWidth: preview.scrollWidth,
           previewClientWidth: preview.clientWidth,
-          previewHeight: preview.getBoundingClientRect().height,
+          previewRect: preview.getBoundingClientRect().toJSON(),
+          workspaceRect: workspace.getBoundingClientRect().toJSON(),
           workspaceWidth: workspace.getBoundingClientRect().width,
         }
       })
       expect(layout).not.toBeNull()
       expect(layout!.pageWidth).toBeLessThanOrEqual(layout!.viewportWidth + 1)
       expect(layout!.previewClientWidth).toBeLessThanOrEqual(layout!.workspaceWidth)
-      expect(layout!.previewHeight).toBeLessThanOrEqual(viewport.height * 0.55)
+      expect(layout!.previewRect.width).toBeLessThanOrEqual(layout!.workspaceRect.width + 1)
       expect(layout!.previewWidth).toBeGreaterThanOrEqual(layout!.previewClientWidth)
     }
   })

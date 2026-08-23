@@ -7,14 +7,41 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(size.scroll).toBeLessThanOrEqual(size.client + 1)
 }
 
+async function completeCinematicSearch(page: Page, expectedSource: string) {
+  const scene = page.locator('[role="status"][aria-busy="true"]')
+  await expect(scene).toBeVisible()
+  await expect(scene).toHaveAttribute('aria-busy', 'true')
+
+  const video = scene.locator('video')
+  await expect(video).toHaveAttribute('src', expectedSource)
+  const mediaState = await video.evaluate((element) => {
+    const media = element as HTMLVideoElement
+    return {
+      autoPlay: media.autoplay,
+      muted: media.muted,
+      playsInline: media.playsInline,
+      controls: media.controls,
+      preload: media.preload,
+      poster: media.poster,
+    }
+  })
+  expect(mediaState).toMatchObject({ autoPlay: true, muted: true, playsInline: true, controls: false, preload: 'auto' })
+  expect(mediaState.poster).toContain(expectedSource.replace('.mp4', '-poster.svg'))
+
+  await video.dispatchEvent('ended')
+  await expect(scene).toHaveClass(/opacity-0/, { timeout: 20_000 })
+  await scene.dispatchEvent('transitionend', { propertyName: 'opacity' })
+  await expect(scene).toHaveCount(0)
+}
+
 test.describe('Marketplace público', () => {
   test.setTimeout(90_000)
 
   test('filtros claros usam máscara BRL e persistem valores numéricos', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto('/imoveis')
-    await page.getByRole('button', { name: 'Buscar por filtros' }).click()
-    const dialog = page.getByRole('dialog', { name: 'Buscar por filtros' })
+    await page.getByRole('button', { name: 'Explorar por filtros' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Explorar por filtros' })
     const minimum = dialog.getByLabel('Mínimo')
     const maximum = dialog.getByLabel('Máximo')
     await minimum.fill('7500')
@@ -24,6 +51,8 @@ test.describe('Marketplace público', () => {
     await dialog.getByRole('button', { name: 'Ver imóveis' }).click()
     await expect(page).toHaveURL(/precoMin=7500/)
     await expect(page).toHaveURL(/precoMax=1200000/)
+    await completeCinematicSearch(page, '/marketplace/videos/search-loading-desktop.mp4')
+    await expect(page.getByTestId('results-area')).toBeVisible()
   })
 
   test('preserva intenções na URL, chips, refresh e ajuste de busca', async ({ page }) => {
@@ -84,11 +113,15 @@ test.describe('Marketplace público', () => {
   test('mobile preserva bottom sheets e mapa sem overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/imoveis')
-    await page.getByRole('button', { name: 'Buscar por filtros' }).click()
-    await expect(page.getByRole('dialog', { name: 'Buscar por filtros' })).toBeVisible()
+    await page.getByRole('button', { name: 'Explorar por filtros' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Explorar por filtros' })
+    await expect(dialog).toBeVisible()
     await expectNoHorizontalOverflow(page)
-    await page.getByRole('button', { name: 'Fechar', exact: true }).click()
-    await page.goto('/imoveis/busca')
+    await dialog.getByLabel('Quartos').fill('2')
+    await dialog.getByRole('button', { name: 'Ver imóveis' }).click()
+    await expect(page).toHaveURL(/\/imoveis\/busca/)
+    await expect(page).toHaveURL(/quartos=2/)
+    await completeCinematicSearch(page, '/marketplace/videos/search-loading-mobile.mp4')
     await expect(page.getByRole('tab', { name: 'Lista' })).toBeVisible({ timeout: 20_000 })
     await page.getByRole('tab', { name: 'Mapa' }).click()
     await expectNoHorizontalOverflow(page)
@@ -115,7 +148,7 @@ test.describe('Marketplace público', () => {
 
     await page.setViewportSize({ width: 1440, height: 960 })
     await page.reload()
-    const configuration = await page.getByRole('heading', { name: 'Configuração' }).boundingBox()
+    const configuration = await page.getByRole('heading', { name: 'Identidade' }).boundingBox()
     const preview = await page.getByRole('heading', { name: 'Preview do catálogo' }).boundingBox()
     expect(preview!.x).toBeGreaterThan(configuration!.x)
     await expectNoHorizontalOverflow(page)
@@ -146,18 +179,17 @@ test.describe('Marketplace público', () => {
       { autoPlay: true, muted: true, playsInline: true, preload: 'auto' },
       { autoPlay: false, muted: true, playsInline: true, preload: 'auto' },
     ])
-    const quickSearchAction = page.getByRole('link', { name: 'Usar busca rápida' })
-    await expect(quickSearchAction).toHaveAttribute('href', '/imoveis/busca')
+    const quickSearchAction = page.getByRole('button', { name: 'Usar busca rápida' })
     await expect(quickSearchAction).toHaveAttribute('style', /border-width:\s*0\.5px/)
-    await expect(page.getByRole('link', { name: 'Explorar por filtros' })).toHaveAttribute('href', '/imoveis/busca')
+    await expect(page.getByRole('button', { name: 'Explorar por filtros' })).toHaveAttribute('style', /border-width:\s*0\.5px/)
     const videoLayer = page.locator('[data-marketplace-hero] > div[aria-hidden="true"]').first()
     const videoLayerMask = await videoLayer.evaluate((element) => getComputedStyle(element).maskImage)
     expect(videoLayerMask).toContain('linear-gradient')
-    await expect(videoLayer).toHaveAttribute('style', /black 91%/)
+    await expect(videoLayer).toHaveAttribute('style', /black 92%/)
     const bottomShade = videoLayer.locator('[data-hero-bottom-shade]')
-    await expect(bottomShade).toHaveClass(/h-\[16%\]/)
+    await expect(bottomShade).toHaveClass(/h-\[24%\]/)
     await expect(bottomShade).toHaveClass(/from-transparent/)
-    await expect(bottomShade).toHaveClass(/to-black\/70/)
+    await expect(bottomShade).toHaveClass(/to-black\/72/)
     const hero = await page.locator('[data-marketplace-hero]').boundingBox()
     const nextSectionHeading = await page.getByRole('heading', { name: 'Descubra do seu jeito' }).boundingBox()
     expect(nextSectionHeading!.y - (hero!.y + hero!.height)).toBeLessThan(100)
@@ -176,6 +208,16 @@ test.describe('Marketplace público', () => {
     await explorer.getByRole('button', { name: 'Suíte' }).click()
     await expect(page.getByAltText('Ambiente ilustrativo: Suíte')).toBeVisible()
     await expectNoHorizontalOverflow(page)
+  })
+
+  test('busca rápida reutiliza o loading cinematográfico e abre os resultados', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 960 })
+    await page.goto('/imoveis')
+
+    await page.getByRole('button', { name: 'Usar busca rápida' }).click()
+    await expect(page).toHaveURL(/\/imoveis\/busca/)
+    await completeCinematicSearch(page, '/marketplace/videos/search-loading-desktop.mp4')
+    await expect(page.getByTestId('results-area')).toBeVisible()
   })
 
   test('Assistente EME abre limpo e usa a busca publicada', async ({ page }) => {
@@ -301,6 +343,7 @@ test.describe('Marketplace público', () => {
     await brokerLink.click()
 
     await expect(page.getByRole('heading', { name: 'Avaliações de clientes' })).toBeVisible()
-    await expect(page.getByText(/Nenhuma avaliação publicada|Resumo disponível/)).toBeVisible()
+    const profileText = await page.locator('body').innerText()
+    expect(profileText).toMatch(/Nenhuma avaliação publicada|Resumo disponível|\d+(?:[.,]\d+)?\s+avaliaç(?:ão|ões)/i)
   })
 })

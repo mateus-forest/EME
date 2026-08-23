@@ -30,14 +30,15 @@ export async function sendCosMessage(page: Page, message: string) {
 }
 
 export async function waitForCosSettled(page: Page, startUrl?: string) {
+  const startPathname = startUrl ? new URL(startUrl).pathname : null
   await Promise.race([
     expect(getCosSendButton(page)).toBeEnabled({ timeout: 30000 }),
-    startUrl
-      ? page.waitForURL((url) => url.toString() !== startUrl, { timeout: 30000 })
+    startPathname
+      ? page.waitForURL((url) => url.pathname !== startPathname, { timeout: 30000 })
       : new Promise(() => undefined),
   ]).catch(async () => {
     await page.waitForLoadState("networkidle").catch(() => null)
-    if (startUrl && page.url() !== startUrl) return
+    if (startPathname && new URL(page.url()).pathname !== startPathname) return
     await expect(getCosSendButton(page)).toBeEnabled({ timeout: 30000 })
   })
   await page.waitForTimeout(800)

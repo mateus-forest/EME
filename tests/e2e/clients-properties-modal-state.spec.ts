@@ -196,10 +196,10 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await dialog.getByRole("button", { name: "Salvar cliente" }).click()
 
     await expect.poll(() => savedStatus).toBe("NEGOTIATING")
-    await expect(dialog.getByRole("combobox", { name: "Status comercial" })).toContainText("Em negociação")
-    await dialog.getByRole("button", { name: "Close" }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByText("Alterações salvas com sucesso.")).toBeVisible()
     await page.getByRole("button", { name: "Em negociação", exact: true }).click()
-    await expect(page.getByText(client.name, { exact: true })).toBeVisible()
+    await expect(page.getByText(client.name, { exact: true }).filter({ visible: true })).toBeVisible()
 
     await page.getByRole("button", { name: "Ver cliente" }).click()
     await expect(page.getByRole("dialog").getByRole("combobox", { name: "Status comercial" })).toContainText("Em negociação")
@@ -235,7 +235,8 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await dialog.getByRole("button", { name: "Cadastrar cliente" }).click()
 
     await expect.poll(() => createdStatus).toBe("LOST")
-    await expect(page.getByText("Cliente com status inicial", { exact: true })).toBeVisible()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByText("Cliente com status inicial", { exact: true }).filter({ visible: true })).toBeVisible()
   })
 
   test("cliente fecha uma vez, não reabre após refetch e mantém a lista", async ({ page }) => {
@@ -248,7 +249,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     })
 
     await page.goto("/corretor/clientes")
-    await expect(page.getByText(client.name, { exact: true })).toBeVisible()
+    await expect(page.getByText(client.name, { exact: true }).filter({ visible: true })).toBeVisible()
     await page.getByRole("button", { name: "Ver cliente" }).click()
     await expect(page).toHaveURL(new RegExp(`/corretor/clientes/${client.id}$`))
 
@@ -267,7 +268,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await expect.poll(() => leadRequests).toBeGreaterThan(1)
     await page.waitForTimeout(250)
     await expect(dialog).toHaveCount(0)
-    await expect(page.getByText(client.name, { exact: true })).toBeVisible()
+    await expect(page.getByText(client.name, { exact: true }).filter({ visible: true })).toBeVisible()
   })
 
   test("imóvel fecha sem remontar a lista ou reabrir após sincronização", async ({ page }) => {
@@ -365,7 +366,8 @@ test.describe("estado dos modais de clientes e imóveis", () => {
       },
     })
 
-    await dialog.getByRole("button", { name: "Close" }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByText("Alterações salvas com sucesso.")).toBeVisible()
     await page.getByRole("button", { name: `Mais ações para ${property.title}` }).click()
     await page.getByRole("menuitem", { name: "Editar imóvel" }).click()
     await expect(page.getByRole("dialog").getByRole("textbox", { name: "Matrícula", exact: true })).toHaveValue("12.345")
