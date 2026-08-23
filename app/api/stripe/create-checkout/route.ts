@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "O plano selecionado já está ativo." }, { status: 409 })
         }
 
-        const returnUrl = `${origin}${portalPath}?checkout=success`
+        const returnUrl = `${origin}/corretor/conta?tab=faturamento&checkout=success`
         const portalSession = await stripe.billingPortal.sessions.create({
           customer: user.stripeCustomerId,
           return_url: returnUrl,
