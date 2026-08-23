@@ -5,7 +5,7 @@ import {
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceBrokerPropertyPublication } from "@/lib/billing-enforcement"
-import { isEmeActivePropertyStatus } from "@/lib/eme-plans"
+import { publicationIncreasesActivePropertyCount } from "@/lib/billing-lifecycle-policy"
 import { mapPropertyStatus, serializeProperty } from "@/lib/property-contract"
 import {
   assessCatalogReadiness,
@@ -68,7 +68,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
 
       const billingBlocked = await enforceBrokerPropertyPublication(user, {
-        increasesActivePropertyCount: !isEmeActivePropertyStatus(property.status),
+        increasesActivePropertyCount: publicationIncreasesActivePropertyCount(
+          property.status,
+        ),
       })
       if (billingBlocked) return billingBlocked
     }

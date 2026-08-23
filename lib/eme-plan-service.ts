@@ -18,6 +18,7 @@ import {
   type EmePlanKey,
 } from "@/lib/eme-plans"
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
+import { buildStripePeriodGrantKey } from "@/lib/billing-lifecycle-policy"
 import { prisma } from "@/lib/prisma"
 
 type BrokerBillingUser = {
@@ -260,13 +261,7 @@ export async function grantBrokerPlanCreditsForPaidPeriod(input: {
   stripeEventId: string
 }) {
   const monthlyCredits = EME_PLANS[input.planKey].monthlyAiCredits
-  const grantKey = [
-    "stripe-period",
-    input.brokerId,
-    input.subscriptionId,
-    input.periodStart.toISOString(),
-    input.planKey,
-  ].join(":")
+  const grantKey = buildStripePeriodGrantKey(input)
 
   await ensureBrokerPlanAccount(input.brokerId)
 
@@ -350,7 +345,7 @@ export async function grantBrokerPlanCreditsForPaidPeriod(input: {
           amount: nextBalance - broker.aiCreditsBalance,
           balanceAfter: nextBalance,
           description:
-            "Créditos do período pago do plano " + EME_PLANS[input.planKey].label,
+            "Créditos do período pago do plano " + EME_PLANS[input.planKey].name,
           metadata: {
             planKey: input.planKey,
             subscriptionId: input.subscriptionId,

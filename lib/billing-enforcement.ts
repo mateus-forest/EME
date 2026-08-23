@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
 import { isBillingBypassEnabled } from "@/lib/billing-config"
+import { canPlanAccessMarketplace } from "@/lib/billing-lifecycle-policy"
 import {
   canCreateBrokerProperties,
   canPublishBrokerProperty,
@@ -86,7 +87,7 @@ export async function enforceBrokerMarketplaceAccess(user: AuthenticatedUser) {
 
   if (user.broker) {
     const snapshot = await getBrokerPlanSnapshot(user.broker.id)
-    if (snapshot.plan.features.includes("marketplace")) return null
+    if (canPlanAccessMarketplace(snapshot.planKey)) return null
 
     return NextResponse.json(
       {

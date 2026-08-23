@@ -11,6 +11,7 @@ import {
   type BrokerCheckoutPlanKey,
 } from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
+import { resolveSubscriptionChangeMode } from "@/lib/billing-lifecycle-policy"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
 import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
 import { getStripeClient } from "@/lib/stripe-server"
@@ -157,8 +158,19 @@ export async function POST(request: NextRequest) {
 
     if (user.role === UserRole.BROKER) {
       const currentPlan = await getBrokerPlanSnapshot(user.broker!.id)
+      const changeMode = resolveSubscriptionChangeMode(
+        currentPlan.planKey,
+        planKey,
+      )
 
-      if (currentPlan.planKey !== "free") {
+      if (changeMode === "invalid") {
+        return NextResponse.json(
+          { error: "A alteração de plano solicitada não é válida." },
+          { status: 409 },
+        )
+      }
+
+      if (changeMode === "update_existing") {
         if (!user.stripeCustomerId || !user.stripeSubscriptionId) {
           return NextResponse.json(
             { error: "Sua assinatura paga precisa ser reconciliada com o Stripe antes do upgrade." },

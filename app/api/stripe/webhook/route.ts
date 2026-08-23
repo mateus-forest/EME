@@ -6,6 +6,10 @@ import {
   syncBillingFromStripeSubscription,
 } from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
+import {
+  isConfirmedStripePayment,
+  shouldGrantStripePaidPeriod,
+} from "@/lib/billing-lifecycle-policy"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
 import {
   grantBrokerPlanCreditsForPaidPeriod,
@@ -52,7 +56,7 @@ async function syncInvoiceSubscription(
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
   const syncedUser = await syncBillingFromStripeSubscription(subscription)
-  if (!options.grantPaidPeriod || subscription.status !== "active") {
+  if (!options.grantPaidPeriod) {
     return syncedUser
   }
 
@@ -65,6 +69,16 @@ async function syncInvoiceSubscription(
       subscriptionId,
       priceId,
     })
+    return syncedUser
+  }
+
+  if (
+    !shouldGrantStripePaidPeriod({
+      eventType: "invoice.paid",
+      subscriptionStatus: subscription.status,
+      planKey,
+    })
+  ) {
     return syncedUser
   }
 
@@ -102,7 +116,7 @@ async function syncInvoiceSubscription(
 }
 
 async function fulfillPackageCheckout(eventId: string, session: Stripe.Checkout.Session) {
-  if (session.payment_status !== "paid") {
+  if (!isConfirmedStripePayment(session.payment_status)) {
     console.info("[api][stripe][webhook][package] awaiting confirmed payment", {
       eventId,
       checkoutSessionId: session.id,

@@ -9,6 +9,7 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { getStripeEnv } from "@/lib/env.server"
+import { resolveStrictStripePlanKey } from "@/lib/billing-lifecycle-policy"
 import {
   resolveEmePlanUpgradeTarget,
   type EmeExtraPackageKey,
@@ -53,11 +54,10 @@ export function mapStripePriceIdToEmePlanKey(priceId: string | null | undefined)
   if (!normalizedPriceId) return null
 
   const stripeEnv = getStripeEnv()
-
-  if (normalizedPriceId === stripeEnv.scalePriceId) return "scale"
-  if (normalizedPriceId === stripeEnv.proPriceId) return "pro"
-
-  return null
+  return resolveStrictStripePlanKey(normalizedPriceId, {
+    pro: stripeEnv.proPriceId,
+    scale: stripeEnv.scalePriceId,
+  })
 }
 
 export function getCheckoutPriceIdForPackage(packageKey: EmeExtraPackageKey) {
