@@ -192,7 +192,7 @@ export async function disableTrustedDevice() {
 
   if (!response.ok) {
     const data = await parseJson<{ error?: string }>(response)
-    throw new Error(data?.error || "Nao foi possivel remover este dispositivo confiavel.")
+    throw new Error(data?.error || "Não foi possível remover este dispositivo confiável.")
   }
 }
 

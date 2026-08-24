@@ -23,6 +23,7 @@ import { AssistantLauncher } from "@/components/marketplace/assistant/assistant-
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import type { PublicBrokerCatalogData } from "@/lib/public-catalog"
+import { formatPhone } from "@/lib/structured-fields"
 import {
   buildBrokerCatalogPath,
   buildBrokerCatalogUrl,
@@ -160,6 +161,9 @@ export function BrokerProfileHero({
         <img
           src={catalog.bannerUrl || PREMIUM_BANNER_FALLBACK}
           alt=""
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(249,248,245,.97)_0%,rgba(249,248,245,.91)_25%,rgba(249,248,245,.70)_45%,rgba(249,248,245,.30)_64%,rgba(249,248,245,.07)_78%,transparent_88%)]" />
@@ -303,7 +307,7 @@ function SectionTitle({ icon: Icon, children }: { icon: typeof Star; children: s
 function ContactRows({ catalog }: { catalog: PublicBrokerCatalogData }) {
   return (
     <div className="mt-4 grid gap-2.5 text-sm text-[#3f4943]">
-      {catalog.phone ? <a href={`tel:${catalog.phone}`} className="flex items-center gap-2 hover:text-[#12863d]"><Phone className="size-4 text-[#159447]" />{catalog.phone}</a> : null}
+      {catalog.phone ? <a href={`tel:${catalog.phone}`} className="flex items-center gap-2 hover:text-[#12863d]"><Phone className="size-4 text-[#159447]" />{formatPhone(catalog.phone)}</a> : null}
       {catalog.email ? <a href={`mailto:${catalog.email}`} className="flex min-w-0 items-center gap-2 hover:text-[#12863d]"><Mail className="size-4 shrink-0 text-[#159447]" /><span className="truncate">{catalog.email}</span></a> : null}
     </div>
   )

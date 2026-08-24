@@ -2,13 +2,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
 import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
+import { formatPositiveArea } from '@/lib/structured-fields'
 import { cn } from '@/lib/utils'
 
 const rows: { label: string; get: (r: SearchResult) => React.ReactNode }[] = [
   { label: 'Valor', get: (r) => formatPrice(r.price) },
-  { label: 'Área', get: (r) => `${r.area} m²` },
-  { label: 'Quartos', get: (r) => r.bedrooms },
-  { label: 'Suíte', get: (r) => r.suites },
+  { label: 'Área', get: (r) => formatPositiveArea(r.area) || 'Não informado' },
+  { label: 'Quartos', get: (r) => r.bedrooms > 0 ? r.bedrooms : 'Não informado' },
+  { label: 'Suíte', get: (r) => r.suites > 0 ? r.suites : 'Não informado' },
   {
     label: 'Pátio',
     get: (r) =>

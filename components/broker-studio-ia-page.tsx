@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
+import { formatCountLabel } from "@/lib/structured-fields"
 
 type StudioStep = "selection" | "configuration" | "processing" | "result" | "approval"
 type StudioStyle = "Moderno" | "Minimalista" | "Alto padrao" | "Industrial" | "Classico"
@@ -316,7 +317,7 @@ export function BrokerStudioIaPage() {
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imóvel</p>
-                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponível(is)</span>
+                    <span className="text-xs text-[#7B8491]">{formatCountLabel(propertyOptions.length, "imóvel disponível", "imóveis disponíveis")}</span>
                   </div>
 
                   {isLoading ? (
@@ -324,6 +325,7 @@ export function BrokerStudioIaPage() {
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
+                        aria-label="Imóvel para preparação"
                         value={selectedPropertyId}
                         onChange={(event) => handlePropertyChange(event.target.value)}
                         className="h-11 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/25"

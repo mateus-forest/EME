@@ -41,7 +41,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
-import { normalizePhone } from "@/lib/structured-fields"
+import { formatPositiveCountLabel, normalizePhone } from "@/lib/structured-fields"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import {
@@ -579,6 +579,7 @@ export function PublicCatalogLanding({
               <div className="mt-5 grid gap-4 rounded-[1.4rem] border border-[#ece5dc] bg-[#fcfbf8] p-5 lg:grid-cols-4">
                 <FilterField label="Tipo">
                   <select
+                    aria-label="Tipo do imóvel"
                     value={advancedFilters.type}
                     onChange={(event) => setAdvancedFilters((current) => ({ ...current, type: event.target.value }))}
                     className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
@@ -591,6 +592,7 @@ export function PublicCatalogLanding({
                 </FilterField>
                 <FilterField label="Cidade">
                   <select
+                    aria-label="Cidade"
                     value={advancedFilters.city}
                     onChange={(event) => setAdvancedFilters((current) => ({ ...current, city: event.target.value }))}
                     className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
@@ -605,6 +607,7 @@ export function PublicCatalogLanding({
                 </FilterField>
                 <FilterField label="Bairro">
                   <select
+                    aria-label="Bairro"
                     value={advancedFilters.neighborhood}
                     onChange={(event) =>
                       setAdvancedFilters((current) => ({ ...current, neighborhood: event.target.value }))
@@ -727,7 +730,7 @@ export function PublicCatalogLanding({
                     <div className={kind === "broker" ? "relative aspect-[2.2/1] overflow-hidden bg-[#eef2f0]" : "relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]"}>
                       {property.images[0]?.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={property.images[0].trim()} alt={property.title} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
+                        <img src={property.images[0].trim()} alt={property.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none" }} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
                       ) : (
                         <CatalogImagePlaceholder />
                       )}
@@ -769,9 +772,9 @@ export function PublicCatalogLanding({
                     </div>
 
                     <div className={kind === "broker" ? "flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#626b66]" : "flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-[#545454]"}>
-                      {property.bedrooms > 0 ? <InlineSpec icon={Bed} value={`${property.bedrooms} quartos`} /> : null}
-                      {property.parking > 0 ? <InlineSpec icon={Car} value={`${property.parking} vagas`} /> : null}
-                      {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={`${property.bathrooms} banheiros`} /> : null}
+                      {property.bedrooms > 0 ? <InlineSpec icon={Bed} value={formatPositiveCountLabel(property.bedrooms, "quarto", "quartos")} /> : null}
+                      {property.parking > 0 ? <InlineSpec icon={Car} value={formatPositiveCountLabel(property.parking, "vaga", "vagas")} /> : null}
+                      {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={formatPositiveCountLabel(property.bathrooms, "banheiro", "banheiros")} /> : null}
                     </div>
 
                     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", kind === "broker" && "mt-auto")}>
@@ -846,7 +849,7 @@ export function PublicCatalogLanding({
                   <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.25rem] border border-white/80 bg-[#ecebe7]/70 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt={selectedProperty.title} className="aspect-[4/3] max-h-[78dvh] w-full object-cover" />
+                    <img src={image} alt={selectedProperty.title} loading="eager" fetchPriority="high" decoding="async" onError={(event) => { event.currentTarget.style.display = "none" }} className="aspect-[4/3] max-h-[78dvh] w-full object-cover" />
                   ) : (
                     <div className="aspect-[4/3] w-full">
                       <CatalogImagePlaceholder />
@@ -854,10 +857,10 @@ export function PublicCatalogLanding({
                   )}
                   {selectedProperty.images.length > 1 ? (
                     <>
-                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className={cn(CATALOG_ICON_SURFACE_CLASS, "absolute left-4 top-1/2 size-10 -translate-y-1/2 text-[#050505] hover:bg-white")}>
+                      <button type="button" aria-label="Imagem anterior" onClick={() => setCurrentImageIndex((current) => current === 0 ? selectedProperty.images.length - 1 : current - 1)} className={cn(CATALOG_ICON_SURFACE_CLASS, "absolute left-4 top-1/2 size-10 -translate-y-1/2 text-[#050505] hover:bg-white")}>
                         <ChevronLeft className="size-5" />
                       </button>
-                      <button type="button" onClick={() => setCurrentImageIndex((current) => current === selectedProperty.images.length - 1 ? 0 : current + 1)} className={cn(CATALOG_ICON_SURFACE_CLASS, "absolute right-4 top-1/2 size-10 -translate-y-1/2 text-[#050505] hover:bg-white")}>
+                      <button type="button" aria-label="Próxima imagem" onClick={() => setCurrentImageIndex((current) => current === selectedProperty.images.length - 1 ? 0 : current + 1)} className={cn(CATALOG_ICON_SURFACE_CLASS, "absolute right-4 top-1/2 size-10 -translate-y-1/2 text-[#050505] hover:bg-white")}>
                         <ChevronRight className="size-5" />
                       </button>
                     </>
@@ -883,7 +886,7 @@ export function PublicCatalogLanding({
                           )}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={propertyImage} alt="" className="h-full w-full object-cover" />
+                          <img src={propertyImage} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none" }} className="h-full w-full object-cover" />
                         </button>
                       ))}
                     </div>
@@ -894,9 +897,9 @@ export function PublicCatalogLanding({
                 <h3 className="mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
                 <p className="mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={`${selectedProperty.bedrooms} quartos`} /> : null}
-                  {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={`${selectedProperty.bathrooms} banheiros`} /> : null}
-                  {selectedProperty.parking > 0 ? <Feature icon={Car} label={`${selectedProperty.parking} vagas`} /> : null}
+                  {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={formatPositiveCountLabel(selectedProperty.bedrooms, "quarto", "quartos")} /> : null}
+                  {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={formatPositiveCountLabel(selectedProperty.bathrooms, "banheiro", "banheiros")} /> : null}
+                  {selectedProperty.parking > 0 ? <Feature icon={Car} label={formatPositiveCountLabel(selectedProperty.parking, "vaga", "vagas")} /> : null}
                 </div>
                 {selectedProperty.description ? (
                   <div className="mt-5">
@@ -913,12 +916,12 @@ export function PublicCatalogLanding({
                   <div id="catalog-financing-simulator" className={cn("grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out", financingOpen ? "mt-2.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0")}>
                     <div className="min-h-0 overflow-hidden">
                       <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-2 lg:gap-2">
-                        <FinancingField label="Valor do imóvel"><Input readOnly value={formatCurrencyFromCents(propertyValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Valor do imóvel"><Input aria-label="Valor do imóvel" readOnly value={formatCurrencyFromCents(propertyValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
                         <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
-                        <FinancingField label="Valor financiado"><Input readOnly value={formatCurrencyFromCents(financedValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
+                        <FinancingField label="Valor financiado"><Input aria-label="Valor financiado" readOnly value={formatCurrencyFromCents(financedValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
                         <FinancingField label="Parcelas"><StructuredInput kind="quantity" value={financingInstallments} onValueChange={(value) => setFinancingInstallments(value.replace(/\D/g, ""))} aria-label="Quantidade de parcelas" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
                         <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
-                        <FinancingField label="Parcela estimada"><Input readOnly value={formatCurrencyFromCents(estimatedInstallment)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-semibold text-[#0d7137]")} /></FinancingField>
+                        <FinancingField label="Parcela estimada"><Input aria-label="Parcela estimada" readOnly value={formatCurrencyFromCents(estimatedInstallment)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-semibold text-[#0d7137]")} /></FinancingField>
                       </div>
                       <p className="mt-2 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
                     </div>

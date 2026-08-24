@@ -674,7 +674,7 @@ export function BrokerClientsPage() {
                           <span className="truncate">{formatPhone(client.whatsApp || client.phone) || "Não informado"}</span>
                         </p>
                         <p className="truncate">
-                          <span className="font-medium text-[#344054]">CPF:</span> {formatCpfCnpj(client.identification.cpfCnpj) || "CPF pendente"}
+                          {formatCpfCnpj(client.identification.cpfCnpj) ? <><span className="font-medium text-[#344054]">CPF:</span> {formatCpfCnpj(client.identification.cpfCnpj)}</> : "CPF pendente"}
                         </p>
                         <p className="truncate">
                           <span className="font-medium text-[#344054]">Imóvel:</span> {client.propertyTitle || "Sem imóvel vinculado"}
@@ -1295,6 +1295,7 @@ function previewCompletion(form: ClientForm) {
 function formatLeadSource(source: string) {
   const normalized = source.toLowerCase()
   if (normalized.includes("catalog")) return "Catálogo"
+  if (normalized.includes("marketplace")) return "Marketplace"
   if (normalized.includes("assessor") || normalized === "cos") return "COS"
   if (normalized.includes("corretor_eme")) return "Corretor EME"
   if (normalized.includes("whatsapp")) return "WhatsApp"

@@ -32,6 +32,16 @@ export const contractTypeOptions = [
 
 export type ContractType = (typeof contractTypeOptions)[number]
 
+export function formatContractTypeLabel(value: ContractType | string) {
+  const labels: Partial<Record<ContractType, string>> = {
+    "Locacao residencial": "Locação residencial",
+    "Locacao comercial": "Locação comercial",
+    "Autorizacao de venda": "Autorização de venda",
+    "Modelo próprio": "Modelo próprio",
+  }
+  return labels[value as ContractType] ?? value
+}
+
 // Apenas estes 3 modelos ficam disponiveis para a criação de novos contratos gerados pelo EME.
 // Os demais modelos em contractTypeOptions continuam suportados (exibição, edição, filtro e anexo
 // de documentos externos) para não quebrar contratos já criados com eles.

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmeLoading } from "@/components/ui/eme-loading"
 import { studioCampaignsClient, type StudioCampaignRecord } from "@/lib/studio-campaigns-client"
+import { formatCountLabel } from "@/lib/structured-fields"
 import { getAssetPreviewSource } from "@/lib/studio-campaigns-ui"
 import {
   getStudioCapabilityProviders,
@@ -423,7 +424,7 @@ export function BrokerStudioIaInstagramPage() {
                   <div>
                     <p className="text-base font-semibold text-[#050505]">Criar campanha</p>
                     <p className="mt-1 text-sm leading-6 text-[#6B7280]">
-                      Monte uma campanha com pecas reais prontas para feed, story, carrossel, legenda, CTA e hashtags.
+                      Monte uma campanha com peças reais prontas para feed, story, carrossel, legenda, CTA e hashtags.
                     </p>
                   </div>
                 </div>
@@ -433,7 +434,7 @@ export function BrokerStudioIaInstagramPage() {
                 <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B95A1]">1. Selecionar imóvel</p>
-                    <span className="text-xs text-[#7B8491]">{propertyOptions.length} disponível(is)</span>
+                    <span className="text-xs text-[#7B8491]">{formatCountLabel(propertyOptions.length, "imóvel disponível", "imóveis disponíveis")}</span>
                   </div>
 
                   {isLoading ? (
@@ -441,6 +442,7 @@ export function BrokerStudioIaInstagramPage() {
                   ) : propertyOptions.length > 0 ? (
                     <div className="mt-3 grid gap-3">
                       <select
+                        aria-label="Imóvel para campanha"
                         value={selectedPropertyId}
                         onChange={(event) => handlePropertyChange(event.target.value)}
                         className="h-11 rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/25"

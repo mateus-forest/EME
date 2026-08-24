@@ -99,7 +99,7 @@ const PHOTO_JPEG_QUALITY = 0.85
 const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/svg+xml"]
 
 function formatMegabytes(bytes: number) {
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+  return `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB`
 }
 
 function readFileAsDataUrl(file: File) {
@@ -352,13 +352,14 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
             <div className="grid gap-3">
               <Label className="text-sm font-medium text-[#5F6B7A]">Foto do perfil</Label>
               <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
-                JPG ou PNG, até {formatMegabytes(MAX_PHOTO_SOURCE_BYTES)}, recomendado 500x500px.
+                JPG ou PNG, até {formatMegabytes(MAX_PHOTO_SOURCE_BYTES)}, recomendado 500 × 500 px.
               </p>
               <div className="flex items-center gap-4">
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  aria-label="Selecionar foto do perfil"
                   className="sr-only"
                   onChange={(event) => handlePhotoChange(event.target.files?.[0] ?? null)}
                 />
@@ -508,13 +509,14 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
                   ref={logoInputRef}
                   type="file"
                   accept={ALLOWED_LOGO_TYPES.join(",")}
+                  aria-label="Selecionar logo"
                   className="sr-only"
                   onChange={(event) => handleLogoChange(event.target.files?.[0] ?? null)}
                 />
                 <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-black/[0.06] bg-white/80 text-xs text-[#5F6B7A]">
                   {logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+                    <img src={logoUrl} alt="Logo" className="h-auto max-h-full w-auto max-w-full object-contain" />
                   ) : (
                     "—"
                   )}

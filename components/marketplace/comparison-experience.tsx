@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Bath, BedDouble, CarFront, Check, MapPin, Ruler, Sparkles } from 'lucide-react'
 import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
+import { formatLocation, formatPositiveArea, formatPositiveCountLabel } from '@/lib/structured-fields'
 import {
   comparisonInsights,
   comparisonRecommendations,
@@ -61,17 +62,17 @@ export function ComparisonExperience({ results }: { results: SearchResult[] }) {
                 <h2 className="mt-2 text-lg font-semibold leading-tight text-foreground">{property.title}</h2>
                 <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
-                  {property.city} · {property.state}
+                  {formatLocation(property.city, property.state, ' · ') || 'Localização não informada'}
                 </p>
                 <p className="mt-4 text-xl font-semibold text-foreground">{formatPrice(property.price)}</p>
 
                 <dl className="mt-5 grid grid-cols-2 gap-2 text-sm">
                   {[
-                    { icon: Ruler, label: `${property.area} m²` },
-                    { icon: BedDouble, label: `${property.bedrooms} quartos` },
-                    { icon: Bath, label: `${property.bathrooms} banheiros` },
-                    { icon: CarFront, label: `${property.parking} vagas` },
-                  ].map((item) => (
+                    { icon: Ruler, label: formatPositiveArea(property.area) },
+                    { icon: BedDouble, label: formatPositiveCountLabel(property.bedrooms, 'quarto', 'quartos') },
+                    { icon: Bath, label: formatPositiveCountLabel(property.bathrooms, 'banheiro', 'banheiros') },
+                    { icon: CarFront, label: formatPositiveCountLabel(property.parking, 'vaga', 'vagas') },
+                  ].filter((item) => item.label).map((item) => (
                     <div key={item.label} className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2.5 text-foreground">
                       <item.icon className="h-4 w-4 text-primary" aria-hidden="true" />
                       <dd>{item.label}</dd>
@@ -79,15 +80,15 @@ export function ComparisonExperience({ results }: { results: SearchResult[] }) {
                   ))}
                 </dl>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {property.area > 0 ? `${formatPrice(pricePerSquareMeter(property))}/m²` : 'Área não informada'} · {property.suites} {property.suites === 1 ? 'suíte' : 'suítes'}
+                  {[property.area > 0 ? `${formatPrice(pricePerSquareMeter(property))}/m²` : 'Área não informada', formatPositiveCountLabel(property.suites, 'suíte', 'suítes')].filter(Boolean).join(' · ')}
                 </p>
 
                 <div className="mt-5 border-t border-border/70 pt-5">
                   <p className="text-sm font-medium text-foreground">Pontos fortes</p>
                   <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    {property.area === maxArea && <Highlight>Mais espaço entre as opções</Highlight>}
+                    {property.area > 0 && property.area === maxArea && <Highlight>Mais espaço entre as opções</Highlight>}
                     {property.price === minPrice && <Highlight>Menor preço da comparação</Highlight>}
-                    {property.bedrooms === maxBedrooms && <Highlight>Maior número de quartos</Highlight>}
+                    {property.bedrooms > 0 && property.bedrooms === maxBedrooms && <Highlight>Maior número de quartos</Highlight>}
                     {property.isNew && <Highlight>Imóvel novo e pronto para morar</Highlight>}
                     {property.patio && <Highlight>Pátio disponível</Highlight>}
                   </ul>

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { CompatibilityBadge } from '@/components/marketplace/search/compatibility-badge'
 import { formatPrice, type Compatibility } from '@/lib/marketplace/search-data'
+import { formatLocation, formatPositiveArea, formatPositiveCountLabel } from '@/lib/structured-fields'
 import { cn } from '@/lib/utils'
 import { CATALOG_GLASS_SURFACE_CLASS } from '@/lib/catalog-visual-system'
 
@@ -163,7 +164,7 @@ export function PropertyCard({
             </h3>
             <p className={cn('flex min-w-0 items-center gap-1.5 text-muted-foreground', home ? 'mt-1 text-[11px]' : compact ? 'mt-1.5 text-xs' : 'mt-2 text-sm')}>
               <MapPin className={cn('shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} aria-hidden="true" />
-              <span className="truncate">{property.city} - {property.state}</span>
+              <span className="truncate">{formatLocation(property.city, property.state)}</span>
             </p>
           </div>
           <div className={cn('shrink-0 text-right', home ? 'max-w-[8rem]' : compact ? 'max-w-[9rem]' : 'max-w-[12rem]')}>
@@ -176,18 +177,19 @@ export function PropertyCard({
         </div>
 
         <div className={cn('grid grid-cols-3 items-center text-muted-foreground', home ? 'mt-1.5 min-h-7 gap-1.5 text-[11px]' : compact ? 'mt-3 min-h-9 gap-2 text-xs' : 'mt-5 min-h-12 gap-2 text-sm sm:gap-4')}>
-          <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+          {property.commercial || property.bedrooms > 0 ? <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
             {property.commercial ? <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : <BedDouble className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />}
-            <span className="truncate">{property.commercial ? 'Comercial' : `${property.bedrooms} ${property.bedrooms === 1 ? 'quarto' : 'quartos'}`}</span>
-          </span>
-          <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+            <span className="truncate">{property.commercial ? 'Comercial' : formatPositiveCountLabel(property.bedrooms, 'quarto', 'quartos')}</span>
+          </span> : null}
+          {property.area > 0 ? <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
             <Maximize className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <span className="truncate">{property.area} m²</span>
-          </span>
-          <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+            <span className="truncate">{formatPositiveArea(property.area)}</span>
+          </span> : null}
+          {property.parking > 0 ? <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
             <Car className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <span className="truncate">{property.parking} {property.parking === 1 ? 'vaga' : 'vagas'}</span>
-          </span>
+            <span className="truncate">{formatPositiveCountLabel(property.parking, 'vaga', 'vagas')}</span>
+          </span> : null}
+          {!property.commercial && property.bedrooms <= 0 && property.area <= 0 && property.parking <= 0 ? <span className="col-span-3">Não informado</span> : null}
         </div>
 
         <div className={cn('border-t border-border/70', home ? 'mt-1.5 pt-1.5' : compact ? 'mt-3 pt-3' : 'mt-5 pt-4')}>

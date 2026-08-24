@@ -6,16 +6,17 @@ import Link from 'next/link'
 import { ArrowRight, Check, Minus, Sparkles, X } from 'lucide-react'
 import { formatPrice, type SearchResult } from '@/lib/marketplace/search-data'
 import { comparisonInsights } from '@/lib/marketplace/comparison-analysis'
+import { formatLocation, formatPositiveArea } from '@/lib/structured-fields'
 import { cn } from '@/lib/utils'
 
 const rows: { label: string; get: (r: SearchResult) => string }[] = [
   { label: 'Valor', get: (r) => formatPrice(r.price) },
-  { label: 'Área', get: (r) => `${r.area} m²` },
-  { label: 'Quartos', get: (r) => String(r.bedrooms) },
-  { label: 'Suítes', get: (r) => String(r.suites) },
-  { label: 'Banheiros', get: (r) => String(r.bathrooms) },
-  { label: 'Vagas', get: (r) => String(r.parking) },
-  { label: 'Localização', get: (r) => `${r.city} · ${r.state}` },
+  { label: 'Área', get: (r) => formatPositiveArea(r.area) || 'Não informado' },
+  { label: 'Quartos', get: (r) => r.bedrooms > 0 ? String(r.bedrooms) : 'Não informado' },
+  { label: 'Suítes', get: (r) => r.suites > 0 ? String(r.suites) : 'Não informado' },
+  { label: 'Banheiros', get: (r) => r.bathrooms > 0 ? String(r.bathrooms) : 'Não informado' },
+  { label: 'Vagas', get: (r) => r.parking > 0 ? String(r.parking) : 'Não informado' },
+  { label: 'Localização', get: (r) => formatLocation(r.city, r.state, ' · ') || 'Não informado' },
 ]
 
 export function ComparisonPanel({

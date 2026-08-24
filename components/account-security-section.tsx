@@ -70,7 +70,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
   )
 
   const lastAccessLabel = security.lastAccessAt
-    ? format(new Date(security.lastAccessAt), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })
+    ? format(new Date(security.lastAccessAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
     : "Ainda sem autenticação neste dispositivo"
 
   async function handleTrustedDeviceToggle() {
@@ -292,7 +292,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
             description={
               security.trustedDeviceEnabled
                 ? "Usa Face ID, Touch ID, Android biométrico ou Windows Hello via WebAuthn."
-                : "Ative primeiro o dispositivo confiavel para usar biometria."
+                : "Ative primeiro o dispositivo confiável para usar biometria."
             }
             value={security.biometricEnabled ? "Ativada" : "Desativada"}
             action={
@@ -323,15 +323,14 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
             <div>
               <p className={cn("text-sm font-semibold", theme.text)}>Dispositivos conectados</p>
               <p className={cn("mt-1 text-sm", theme.subtitle)}>
-                Estrutura pronta para futuras ações remotas e gerenciamento detalhado.
+                Consulte os dispositivos confiáveis vinculados à sua conta.
               </p>
             </div>
-            <span className={cn("text-xs uppercase tracking-[0.18em]", theme.muted)}>Futuro</span>
           </div>
 
           <div className="grid gap-3">
             {security.devices.length === 0 ? (
-              <p className={cn("text-sm", theme.subtitle)}>Nenhum dispositivo confiavel registrado ainda.</p>
+              <p className={cn("text-sm", theme.subtitle)}>Nenhum dispositivo confiável registrado ainda.</p>
             ) : (
               security.devices.map((device) => (
                 <div key={device.id} className={cn("rounded-[1rem] border px-4 py-3", theme.row)}>
@@ -343,7 +342,7 @@ export function AccountSecuritySection({ variant = "light" }: SecuritySectionPro
                       </p>
                       <p className={cn("mt-1 text-xs", theme.subtitle)}>
                         {device.lastAccessAt
-                          ? `Último acesso em ${format(new Date(device.lastAccessAt), "dd/MM/yyyy 'as' HH:mm", {
+                          ? `Último acesso em ${format(new Date(device.lastAccessAt), "dd/MM/yyyy 'às' HH:mm", {
                               locale: ptBR,
                             })}`
                           : "Sem acessos registrados ainda"}

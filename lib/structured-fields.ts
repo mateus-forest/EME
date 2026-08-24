@@ -247,6 +247,30 @@ export function formatArea(value: unknown, options?: { suffix?: boolean }) {
   return options?.suffix === false ? formatted : `${formatted} m²`
 }
 
+export function formatPositiveArea(value: unknown) {
+  const parsed = parseDecimalInput(value)
+  return parsed !== null && parsed > 0 ? formatArea(parsed) : ""
+}
+
+export function formatCountLabel(value: unknown, singular: string, plural: string) {
+  const parsed = parseDecimalInput(value)
+  if (parsed === null || parsed < 0) return ""
+  const formatted = parsed.toLocaleString("pt-BR", { maximumFractionDigits: 2 })
+  return `${formatted} ${parsed === 1 ? singular : plural}`
+}
+
+export function formatPositiveCountLabel(value: unknown, singular: string, plural: string) {
+  const parsed = parseDecimalInput(value)
+  return parsed !== null && parsed > 0 ? formatCountLabel(parsed, singular, plural) : ""
+}
+
+export function formatLocation(city: unknown, state: unknown, separator = " - ") {
+  return [city, state]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(separator)
+}
+
 export function formatQuantityInput(value: unknown) {
   const digits = onlyDigits(value, 4)
   return digits ? String(Math.max(0, Number(digits))) : ""

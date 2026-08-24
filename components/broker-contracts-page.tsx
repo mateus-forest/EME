@@ -50,6 +50,7 @@ import {
   createContractContent,
   type ContractStatus,
   contractTypeOptions,
+  formatContractTypeLabel,
   creatableContractTypeOptions,
   type ContractType,
 } from "@/lib/contract-template"
@@ -2414,7 +2415,7 @@ export function BrokerContractsPage({
         },
         {
           label: "Tipo do documento",
-          detail: selectedContract.kind || "Tipo ainda não informado.",
+          detail: selectedContract.kind ? formatContractTypeLabel(selectedContract.kind) : "Tipo ainda não informado.",
           done: Boolean(selectedContract.kind),
         },
         {
@@ -3203,7 +3204,7 @@ export function BrokerContractsPage({
                     <p className="text-sm text-[#586270]">{contract.propertyTitle || "Imóvel não vinculado"}</p>
                     <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-[#8b95a4]">
                       <span>{contract.amountLabel || "Valor pendente"}</span>
-                      <span>Modelo: {contract.kind}</span>
+                      <span>Modelo: {formatContractTypeLabel(contract.kind)}</span>
                     </div>
                   </button>
                 ))}
@@ -3475,7 +3476,7 @@ export function BrokerContractsPage({
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B95A1]">Pendências</p>
                     <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#c58917]">
-                      {contractPendingHighlights.length} pendências{contractPendingHighlights.length === 1 ? "ia" : "ias"}
+                      {contractPendingHighlights.length} {contractPendingHighlights.length === 1 ? "pendência" : "pendências"}
                     </span>
                   </div>
                   <div className="mt-2 grid gap-1.5">
@@ -3601,7 +3602,7 @@ export function BrokerContractsPage({
                     >
                       {creatableContractTypeOptions.map((option) => (
                         <option key={option} value={option}>
-                          {option}
+                          {formatContractTypeLabel(option)}
                         </option>
                       ))}
                     </select>
@@ -3988,7 +3989,7 @@ export function BrokerContractsPage({
                 >
                   {contractTypeOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {formatContractTypeLabel(option)}
                     </option>
                   ))}
                 </select>
