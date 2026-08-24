@@ -47,6 +47,15 @@ export const studioInstagramResultSchema = z.object({
 export type StudioInstagramRequest = z.infer<typeof studioInstagramRequestSchema>
 export type StudioInstagramResult = z.infer<typeof studioInstagramResultSchema>
 
+const studioInstagramGoalLabels: Record<StudioInstagramRequest["goal"], string> = {
+  Venda: "Venda",
+  Captacao: "Captação",
+  Lancamento: "Lançamento",
+  "Alto padrao": "Alto padrão",
+  Investimento: "Investimento",
+  Aluguel: "Aluguel",
+}
+
 export type StudioInstagramPropertyContext = {
   id: string
   title: string
@@ -65,30 +74,30 @@ export type StudioInstagramPropertyContext = {
 
 export function buildInstagramPrompt(input: StudioInstagramRequest, property: StudioInstagramPropertyContext) {
   return [
-    "Crie uma campanha imobiliaria pronta para Instagram em portugues do Brasil.",
-    `Objetivo da campanha: ${input.goal}.`,
-    `Versao solicitada: ${input.version}. Gere uma abordagem nova e coerente com o contexto do imovel.`,
+    "Crie uma campanha imobiliária pronta para Instagram em português do Brasil.",
+    `Objetivo da campanha: ${studioInstagramGoalLabels[input.goal]}.`,
+    `Versão solicitada: ${input.version}. Gere uma abordagem nova e coerente com o contexto do imóvel.`,
     "",
-    "Contexto do imovel:",
-    `Titulo: ${property.title}`,
+    "Contexto do imóvel:",
+    `Título: ${property.title}`,
     `Tipo: ${property.type}`,
     `Finalidade: ${property.purpose}`,
-    `Localizacao: ${property.location || [property.neighborhood, property.city].filter(Boolean).join(", ")}`,
+    `Localização: ${property.location || [property.neighborhood, property.city].filter(Boolean).join(", ")}`,
     `Cidade: ${property.city}`,
     `Bairro: ${property.neighborhood}`,
-    `Preco: ${property.price}`,
+    `Preço: ${property.price}`,
     `Quartos: ${property.bedrooms}`,
     `Banheiros: ${property.bathrooms}`,
     `Vagas: ${property.parkingSpots}`,
     `Status: ${property.status}`,
-    `Descricao atual: ${property.description || "Nao informada"}`,
+    `Descrição atual: ${property.description || "Não informada"}`,
     "",
-    "Orientacoes:",
-    "Nao invente informacoes factuais que nao estejam no contexto do imovel.",
-    "Escreva com tom comercial, sofisticado, objetivo e conciso, apropriado para um corretor de imoveis no Brasil.",
-    "Gere apenas o conteudo editorial da campanha. O template oficial do Studio IA sera responsavel por toda a composicao visual.",
-    "Nao descreva layout, grid, tipografia, badge, logo, sombras, overlays ou posicionamento.",
-    "Priorize frases curtas, titulos fortes e leitura rapida.",
+    "Orientações:",
+    "Não invente informações factuais que não estejam no contexto do imóvel.",
+    "Escreva com tom comercial, sofisticado, objetivo e conciso, apropriado para um corretor de imóveis no Brasil.",
+    "Gere apenas o conteúdo editorial da campanha. O template oficial do Studio IA será responsável por toda a composição visual.",
+    "Não descreva layout, grid, tipografia, badge, logo, sombras, overlays ou posicionamento.",
+    "Priorize frases curtas, títulos fortes e leitura rápida.",
     "Evite palavras longas demais quando houver alternativa mais curta equivalente.",
     "Para o post feed, entregue titulo, subtitulo e apoio com estrutura enxuta, adequada para destaque sobre a imagem do imovel.",
     "Para o story, entregue leitura ainda mais rapida, com titulo forte e poucos elementos textuais.",

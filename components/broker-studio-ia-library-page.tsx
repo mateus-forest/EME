@@ -24,6 +24,7 @@ import {
 import {
   formatStudioCampaignDate,
   formatStudioCampaignKind,
+  formatStudioDisplayText,
   formatStudioCampaignStatus,
   formatStudioProvider,
   getCampaignPropertyLabel,
@@ -123,7 +124,7 @@ function CampaignCard({ campaign }: { campaign: StudioCampaignRecord }) {
       <Card className="min-w-0 overflow-hidden rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--broker-shadow-sm)]">
         <div className="relative aspect-[16/10] overflow-hidden border-b border-[var(--broker-border)] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)]">
           {coverUrl ? (
-            <img src={coverUrl} alt={campaign.title} className="h-full w-full object-cover" onError={handleCoverError} />
+            <img src={coverUrl} alt={formatStudioDisplayText(campaign.title)} className="h-full w-full object-cover" onError={handleCoverError} />
           ) : (
             <div className="flex h-full items-center justify-center">
               <div className="flex size-16 items-center justify-center rounded-[1.5rem] border border-[#009b3a]/12 bg-white/80 text-[#009b3a]">
@@ -145,7 +146,7 @@ function CampaignCard({ campaign }: { campaign: StudioCampaignRecord }) {
               <span>{campaign.assets.length} itens</span>
               {campaign.provider ? <><span className="h-1 w-1 shrink-0 rounded-full bg-[#c7d0db]" /><span className="truncate">{formatStudioProvider(campaign.provider)}</span></> : null}
             </div>
-            <h3 className="line-clamp-1 text-sm font-semibold leading-5 tracking-tight text-[var(--broker-ink)]">{campaign.title}</h3>
+            <h3 className="line-clamp-1 text-sm font-semibold leading-5 tracking-tight text-[var(--broker-ink)]">{formatStudioDisplayText(campaign.title)}</h3>
             <p className="line-clamp-1 text-[11px] leading-4 text-[var(--broker-muted)]">{getCampaignPropertyLabel(campaign)}</p>
           </div>
 

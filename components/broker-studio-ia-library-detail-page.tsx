@@ -54,6 +54,7 @@ import {
   getAssetPreviewSource,
   formatStudioCampaignAssetType,
   formatStudioCampaignDate,
+  formatStudioDisplayText,
   formatStudioCampaignKind,
   formatStudioCampaignStatus,
   formatStudioProvider,
@@ -158,7 +159,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
 
   const campaignPrompt = useMemo(() => {
     if (!campaign) return ""
-    return campaign.promptRevised || campaign.prompt || "Prompt não informado."
+    return formatStudioDisplayText(campaign.promptRevised || campaign.prompt || "Prompt não informado.")
   }, [campaign])
 
   const editableFields = useMemo(() => {
@@ -264,7 +265,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
       <div className="grid gap-5">
         <BrokerPageIntro
           eyebrow="Biblioteca"
-          title={isLoading ? "Carregando campanha..." : error ? "Campanha indisponível" : campaign?.title ?? "Campanha"}
+          title={isLoading ? "Carregando campanha..." : error ? "Campanha indisponível" : campaign ? formatStudioDisplayText(campaign.title) : "Campanha"}
           description={campaign
             ? `${formatStudioCampaignKind(campaign.kind)} · ${getCampaignPropertyLabel(campaign)}`
             : error ?? "Conteúdos, revisões e arquivos desta geração."}
@@ -306,10 +307,10 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
             <section className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
               <Card className="overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
                 <div className="relative aspect-[4/3] overflow-hidden border-b border-[var(--broker-border)] bg-[linear-gradient(135deg,#f7faf7,#eef6f1)] sm:aspect-[1.85/1]">
-                  <img src={getCampaignCoverUrl(campaign)} alt={campaign.title} className="h-full w-full object-cover" />
+                  <img src={getCampaignCoverUrl(campaign)} alt={formatStudioDisplayText(campaign.title)} className="h-full w-full object-cover" />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 py-4 text-white sm:px-5 sm:py-5">
                     <p className="text-[9px] uppercase tracking-[0.16em] text-white/78">{formatStudioCampaignKind(campaign.kind)}</p>
-                    <h3 className="mt-1.5 line-clamp-2 text-lg font-semibold tracking-tight sm:text-xl">{campaign.title}</h3>
+                    <h3 className="mt-1.5 line-clamp-2 text-lg font-semibold tracking-tight sm:text-xl">{formatStudioDisplayText(campaign.title)}</h3>
                     <p className="mt-1.5 line-clamp-1 text-xs text-white/82">{getCampaignPropertyLabel(campaign)}</p>
                   </div>
                 </div>

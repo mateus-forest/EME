@@ -323,8 +323,42 @@ export function getCampaignCoverUrl(campaign: StudioCampaignRecord) {
   return resolveStudioLibraryThumbnail(campaign).src
 }
 
+const studioDisplayTextReplacements: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\bLancamento\b/g, "Lançamento"],
+  [/\bCaptacao\b/g, "Captação"],
+  [/\bAlto padrao\b/g, "Alto padrão"],
+  [/\bApresentar o imovel\b/g, "Apresentar o imóvel"],
+  [/\bimoveis\b/g, "imóveis"],
+  [/\bimovel\b/g, "imóvel"],
+  [/\bimobiliaria\b/g, "imobiliária"],
+  [/\bportugues\b/g, "português"],
+  [/\bVersao\b/g, "Versão"],
+  [/\bversao\b/g, "versão"],
+  [/\bcoerencia\b/g, "coerência"],
+  [/\bTitulo\b/g, "Título"],
+  [/\bLocalizacao\b/g, "Localização"],
+  [/\bPreco\b/g, "Preço"],
+  [/\bDescricao\b/g, "Descrição"],
+  [/\bNao\b/g, "Não"],
+  [/\binformacoes\b/g, "informações"],
+  [/\bOrientacoes\b/g, "Orientações"],
+  [/\bconteudo\b/g, "conteúdo"],
+  [/\bsera\b/g, "será"],
+  [/\bresponsavel\b/g, "responsável"],
+  [/\bcomposicao\b/g, "composição"],
+  [/\btitulos\b/g, "títulos"],
+  [/\brapida\b/g, "rápida"],
+]
+
+export function formatStudioDisplayText(value: string) {
+  return studioDisplayTextReplacements.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    value,
+  )
+}
+
 export function getCampaignPropertyLabel(campaign: StudioCampaignRecord) {
-  if (!campaign.property) return "Sem imovel relacionado"
+  if (!campaign.property) return "Sem imóvel relacionado"
   return [campaign.property.title, campaign.property.neighborhood, campaign.property.city].filter(Boolean).join(" | ")
 }
 
