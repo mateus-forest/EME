@@ -22,6 +22,16 @@ const MODAL_AR: Record<string, number> = {
 }
 const DEFAULT_AR = 1480 / 962
 
+const MOBILE_MODULE_BANNERS: Record<string, string> = {
+  marketplace: "/eme/mobile-modals/marketplace.png",
+  contratos: "/eme/mobile-modals/contratos.png",
+  propostas: "/eme/mobile-modals/propostas.png",
+  "studio-ia": "/eme/mobile-modals/studio-ia.png",
+  catalogo: "/eme/mobile-modals/catalogo.png",
+  imoveis: "/eme/mobile-modals/imoveis.png",
+  clientes: "/eme/mobile-modals/clientes.png",
+}
+
 function computeTarget(aspectRatio: number): Rect {
   const visualViewport = window.visualViewport
   const viewportWidth = visualViewport?.width ?? window.innerWidth
@@ -140,6 +150,7 @@ export function ExpandedModulePanel({
 
   const geometry = closing ? start : target
   const isMobilePanel = target.height / target.width > 1.7
+  const mobileBanner = MOBILE_MODULE_BANNERS[module.id]
   const ModuleIcon = module.icon
 
   return (
@@ -222,14 +233,30 @@ export function ExpandedModulePanel({
             <X className="size-5" aria-hidden />
           </button>
 
-          <div
-            data-mobile-module-scroll
-            className="eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-5"
-            style={{
-              paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
-              paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))",
-            }}
-          >
+          {mobileBanner ? (
+            <div
+              data-mobile-module-scroll
+              className="eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white"
+            >
+              <Image
+                src={mobileBanner}
+                alt={`Apresentação do módulo ${module.name}`}
+                width={942}
+                height={1674}
+                sizes="calc(100vw - 16px)"
+                className="block h-auto w-full object-contain"
+                priority
+              />
+            </div>
+          ) : (
+            <div
+              data-mobile-module-scroll
+              className="eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-5"
+              style={{
+                paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
+                paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))",
+              }}
+            >
             <div className="flex items-center gap-2.5 text-eme-dark">
               <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
                 <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
@@ -292,7 +319,8 @@ export function ExpandedModulePanel({
                 {module.cta}
               </a>
             ) : null}
-          </div>
+            </div>
+          )}
         </motion.div>
 
         <motion.button
