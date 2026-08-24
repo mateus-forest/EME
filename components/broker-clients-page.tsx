@@ -783,7 +783,7 @@ export function BrokerClientsPage() {
                           </span>
                         </div>
                         <p className="mt-1 truncate text-xs text-[#7B8491]">
-                          {client.propertyTitle || "Catálogo"} · {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "—")}
+                          Origem {formatLeadSource(client.source)} · {formatDateBR(client.createdAt, "—")}
                         </p>
                       </div>
                     </div>

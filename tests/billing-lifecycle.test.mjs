@@ -124,4 +124,7 @@ test("constraints de banco protegem fulfillment e grants concorrentes", async ()
     /ExtraPackagePurchase_stripeCheckoutSessionId_key/,
   )
   assert.match(entitlementMigration, /AiCreditTransaction_grantKey_key/)
+  assert.match(entitlementMigration, /JOIN "Subscription" AS subscription/)
+  assert.match(entitlementMigration, /subscription\."nextBillingAt"/)
+  assert.doesNotMatch(entitlementMigration, /app_user\."nextBillingAt"/)
 })

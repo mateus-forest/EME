@@ -40,6 +40,25 @@ test("origem histórica assessor_eme é apresentada como COS", async ({ page }) 
   await page.goto("/corretor/clientes")
 
   await expect(page.getByText("Cliente cadastrado pelo COS", { exact: true }).filter({ visible: true })).toBeVisible()
-  await expect(page.getByText(/Catálogo · COS ·/).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(/Origem COS ·/).filter({ visible: true })).toBeVisible()
   await expect(page.getByText("Assessor EME", { exact: true })).toHaveCount(0)
+})
+
+test("lista usa uma única origem principal em registros históricos", async ({ page }) => {
+  await loginAsBroker(page)
+  await page.route("**/api/brokers/leads", (route) =>
+    route.fulfill({
+      json: {
+        leads: [
+          { ...cosClient, id: "lead-manual-1", name: "Cliente manual", source: "Manual" },
+          { ...cosClient, id: "lead-catalog-1", name: "Cliente histórico", source: "Catálogo · Manual" },
+        ],
+      },
+    }),
+  )
+  await page.goto("/corretor/clientes")
+
+  await expect(page.getByText(/Origem Manual ·/).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(/Origem Catálogo ·/).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(/Catálogo · Manual/).filter({ visible: true })).toHaveCount(0)
 })

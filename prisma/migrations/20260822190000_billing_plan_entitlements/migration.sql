@@ -25,14 +25,17 @@ SET
 UPDATE "BrokerPlanAccount" AS account
 SET
   "currentStripeSubscriptionId" = app_user."stripeSubscriptionId",
-  "currentStripePeriodStart" = app_user."nextBillingAt" - INTERVAL '1 month',
-  "currentStripePeriodEnd" = app_user."nextBillingAt"
+  "currentStripePeriodStart" = subscription."nextBillingAt" - INTERVAL '1 month',
+  "currentStripePeriodEnd" = subscription."nextBillingAt"
 FROM "Broker" AS broker
 JOIN "User" AS app_user ON app_user."id" = broker."userId"
+JOIN "Subscription" AS subscription
+  ON subscription."ownerType" = 'BROKER'
+  AND subscription."ownerId" = broker."id"
 WHERE account."brokerId" = broker."id"
   AND account."planKey" IN ('pro', 'scale')
   AND app_user."stripeSubscriptionId" IS NOT NULL
-  AND app_user."nextBillingAt" IS NOT NULL;
+  AND subscription."nextBillingAt" IS NOT NULL;
 
 ALTER TABLE "AiCreditTransaction"
 ADD COLUMN "grantKey" TEXT;

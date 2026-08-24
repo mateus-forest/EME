@@ -28,6 +28,11 @@ type BrokerBillingUser = {
 
 type BrokerPlanAccountRecord = Awaited<ReturnType<typeof prisma.brokerPlanAccount.findUniqueOrThrow>>
 
+const PLAN_SNAPSHOT_ACCOUNT_SELECT = {
+  planKey: true,
+  propertyExtraLimit: true,
+} satisfies Prisma.BrokerPlanAccountSelect
+
 const ACTIVE_PROPERTY_WHERE = {
   status: {
     in: [...EME_ACTIVE_PROPERTY_STATUSES],
@@ -512,8 +517,53 @@ export async function ensureBrokerPlanAccount(brokerId: string) {
 
   return account
 }
+
+async function ensureBrokerPlanSnapshotAccount(brokerId: string) {
+  const broker = await prisma.broker.findUnique({
+    where: { id: brokerId },
+    select: {
+      id: true,
+      user: {
+        select: {
+          plan: true,
+          subscriptionStatus: true,
+        },
+      },
+    },
+  })
+
+  if (!broker) throw new Error("BROKER_NOT_FOUND")
+
+  const defaultPlanKey = planFromLegacyBilling(broker.user)
+  let account = await prisma.brokerPlanAccount.upsert({
+    where: { brokerId },
+    create: {
+      brokerId,
+      planKey: defaultPlanKey,
+      initialCreditsGrantedAt: defaultPlanKey === "free" ? new Date() : null,
+      currentPeriodCreditsGrantedAt: defaultPlanKey === "free" ? new Date() : null,
+    },
+    update: {},
+    select: PLAN_SNAPSHOT_ACCOUNT_SELECT,
+  })
+
+  const normalizedPlanKey = normalizeEmePlanKey(account.planKey)
+  if (account.planKey !== normalizedPlanKey) {
+    account = await prisma.brokerPlanAccount.update({
+      where: { brokerId },
+      data: { planKey: normalizedPlanKey },
+      select: PLAN_SNAPSHOT_ACCOUNT_SELECT,
+    })
+  }
+
+  return account
+}
+
 export async function getBrokerPlanSnapshot(brokerId: string) {
-  const account = await ensureBrokerPlanAccount(brokerId)
+  // Plano e Faturamento só precisam dos campos-base da conta. Manter a seleção
+  // explícita evita que uma janela de deploy entre migrations faça o Prisma
+  // solicitar colunas de lifecycle antes de elas existirem no banco.
+  const account = await ensureBrokerPlanSnapshotAccount(brokerId)
   const planKey = normalizeEmePlanKey(account.planKey)
   const plan = EME_PLANS[planKey]
   const [activePropertyCount, broker, brokerAccount] = await Promise.all([
