@@ -252,7 +252,7 @@ test("referência ao item anterior usa o conjunto real do ConversationSnapshot",
   })
 
   expect(validated.payload.leadId).toBe(previousLead.id)
-  expect(validated.evidence).toContain("snapshot_reference:selection_ordinal")
+  expect(validated.evidence).toContain("snapshot_reference:previous_recent_ordinal")
 })
 
 test("consulta não pode transformar capability mutável em operação escondida", () => {

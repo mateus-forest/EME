@@ -53,6 +53,7 @@ const requiredFiles = new Map([
   ["09-financeiro.md", "financeiro"], ["10-desempenho.md", "desempenho"], ["11-studio.md", "studio"],
   ["12-planos-conta.md", "planos-conta"], ["13-regras-negocio.md", "regras-negocio"],
   ["14-glossario.md", "glossario"], ["15-capacidades-cos.md", "capacidades-cos"],
+  ["16-operacao-cos-v2.md", "operacao-cos-v2"],
 ])
 const knownDomains = new Set(["lead", "property", "proposal", "contract", "agenda", "catalog", "marketplace", "finance", "analytics", "studio", "help", "general"])
 const knownKnowledgeTypes = new Set(["module", "rule", "glossary", "procedure", "capability"])

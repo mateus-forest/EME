@@ -2,7 +2,7 @@
 id: studio
 title: Studio IA
 domains: [studio]
-aliases: [studio de conteudo, criacao com ia, campanhas de imoveis]
+aliases: [studio de conteudo, criacao com ia, campanhas de imoveis, biblioteca do studio, artes geradas]
 version: 1.0.0
 updated_at: 2026-08-14
 knowledge_type: [module, procedure]
@@ -17,6 +17,8 @@ Studio IA é o conjunto de fluxos de geração e transformação de conteúdo im
 ## Para que serve
 
 Criar textos e materiais para divulgação, campanhas, preparação visual de imóvel, visualização de obra/projeto e vídeo.
+
+As artes e os demais materiais gerados ficam na Biblioteca do Studio IA, onde podem ser consultados e reutilizados.
 
 ## Entidades relacionadas
 

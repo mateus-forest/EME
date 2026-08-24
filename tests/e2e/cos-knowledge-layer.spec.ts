@@ -89,7 +89,7 @@ function decide(message: string) {
 test.describe("COS — Knowledge Layer da Etapa 4", () => {
   test.beforeEach(() => clearCosKnowledgeIndexCacheForTests())
 
-  test("loader mantém os 16 capítulos, metadata e cache determinísticos", async () => {
+  test("loader mantém os 17 capítulos, metadata e cache determinísticos", async () => {
     const firstPromise = loadCosKnowledgeIndex()
     const secondPromise = loadCosKnowledgeIndex()
     expect(secondPromise).toBe(firstPromise)
@@ -112,6 +112,7 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
       "regras-negocio",
       "glossario",
       "capacidades-cos",
+      "operacao-cos-v2",
     ])
     expect(index.sourceVersion).toContain("catalogo@1.0.0")
     expect(index.sourceVersion).toContain("capacidades-cos@1.0.0")
@@ -131,7 +132,7 @@ test.describe("COS — Knowledge Layer da Etapa 4", () => {
     expect(index.documentIdsByDomain.get("catalog")).toEqual(expect.arrayContaining(["catalogo", "glossario"]))
     expect(index.documentIdsByDomain.get("catalog")).not.toContain("studio")
     expect(index.documentIdsByType.get("glossary")).toEqual(["glossario"])
-    expect(index.documentIdsByType.get("capability")).toEqual(["capacidades-cos"])
+    expect(index.documentIdsByType.get("capability")).toEqual(["capacidades-cos", "operacao-cos-v2"])
   })
 
   test("parser valida frontmatter, domínio e tipo sem ignorar fonte inválida", () => {

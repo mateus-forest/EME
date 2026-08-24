@@ -5,7 +5,7 @@ domains: [lead, property, proposal, contract, agenda, catalog, marketplace, anal
 aliases: [base operacional cos v2, conhecimento operacional eme, suporte operacional do corretor]
 version: 1.0.0
 updated_at: 2026-08-20
-knowledge_type: [module, rule, procedure, capability]
+knowledge_type: [rule, procedure, capability]
 ---
 
 # Base operacional canônica do COS V2

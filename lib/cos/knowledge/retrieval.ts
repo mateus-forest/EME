@@ -19,6 +19,7 @@ const RULE_SIGNAL = /\b(regra|regras|clausula|clausulas|assinatura digital|certi
 const COS_GUIDANCE_SIGNAL = /\b(?:(?:o que|quais? coisas?) (?:voce|o cos) (?:faz|consegue|pode fazer)|(?:voce|o cos) (?:consegue|pode) fazer|como (?:usar|utilizar|utilizo|uso) (?:o )?cos)\b/
 const DETAILED_ANSWER_SIGNAL = /\b(?:em detalhes|detalhadamente|passo a passo|lista completa|explique melhor|aprofund\w*|tudo sobre|resposta completa)\b/
 const INTERNAL_KNOWLEDGE_LANGUAGE = /\b(?:conversation\s*snapshot|dialogue\s*decision|schema\s*version|executor|payload|prisma)\b/i
+const EXPLICIT_ONLY_DOCUMENT_IDS = new Set(["operacao-cos-v2"])
 
 const DOMAIN_DOCUMENT_IDS: Partial<Record<CosConversationDomain, string>> = {
   lead: "clientes",
@@ -300,6 +301,7 @@ export async function retrieveCosKnowledge(input: {
     const explicitlyFiltered = Boolean(input.filters?.documentIds?.length || input.filters?.knowledgeTypes?.length)
     const cosGuidanceQuery = isCosGuidanceQuery(input.message, input.decision.objective.targetCapabilityId)
     const scored = index.documents
+      .filter((document) => !EXPLICIT_ONLY_DOCUMENT_IDS.has(document.id) || Boolean(input.filters?.documentIds?.includes(document.id)))
       .filter((document) => isCandidateDocument(document, input.decision, query, cosGuidanceQuery))
       .filter((document) => !input.filters?.documentIds?.length || input.filters.documentIds.includes(document.id))
       .filter((document) => !input.filters?.knowledgeTypes?.length || document.knowledgeTypes.some((type) => input.filters!.knowledgeTypes!.includes(type)))

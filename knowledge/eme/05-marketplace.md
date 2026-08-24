@@ -37,6 +37,7 @@ Descoberta → imóvel/corretor → conversa persistida → criação ou enrique
 ## Regras de negócio
 
 - Somente imóveis marcados para Marketplace compõem o inventário público agregado.
+- O corretor e o mesmo imóvel podem estar nos dois canais ao mesmo tempo; as publicações no Marketplace e no Catálogo são independentes.
 - Um corretor público precisa estar ativo e ter ao menos um imóvel publicado no Marketplace; CRECI ausente afeta o selo de verificação, não impede sozinho o perfil.
 - Conversa pode estar ligada a corretor, imóvel e lead.
 - No chat, anexos estruturados aceitos são imóvel publicado e proposta compatível; não é área documental.

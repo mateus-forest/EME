@@ -38,6 +38,7 @@ Configurar catálogo → publicar imóveis → compartilhar URL → receber visu
 
 - Catálogo = vitrine pública individual.
 - Marketplace = ambiente público agregado.
+- O corretor e o mesmo imóvel podem estar nos dois canais ao mesmo tempo; as publicações no Catálogo e no Marketplace são independentes.
 - Remover do catálogo não apaga o imóvel privado.
 - Publicar requer um imóvel resolvido e confirmação conforme Registry.
 
