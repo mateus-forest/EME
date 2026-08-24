@@ -26,7 +26,7 @@ export function toAbsoluteCatalogUrl(pathname: string) {
 
 function cleanSpecialty(value: string) {
   return value
-    .replace(/^[\s\u2705\u2713\u2714\u2022\-]+/u, "")
+    .replace(/^[\s\u2705\u2713\u2714\u2022-]+/u, "")
     .replace(/\s+/g, " ")
     .trim()
 }

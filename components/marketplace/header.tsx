@@ -161,6 +161,17 @@ export function Header() {
           </a>
         </div>
 
+        <AssistantLauncher
+          onBeforeOpen={() => setOpen(false)}
+          labelClassName="sr-only"
+          className={cn(
+            'ml-auto mr-2 !h-10 !w-10 !shrink-0 !justify-center !gap-1 !rounded-full !p-0 md:!hidden',
+            overHero
+              ? '!border-white/20 !bg-white/[0.08] !text-white !shadow-sm backdrop-blur-md hover:!border-white/30 hover:!bg-white/15'
+              : '!border-border/70 !bg-background/80 !text-foreground hover:!bg-secondary',
+          )}
+        />
+
         <button
           type="button"
           className={cn(
@@ -214,7 +225,6 @@ export function Header() {
                 </Link>
               )
             })}
-            <AssistantLauncher variant="menu" onBeforeOpen={() => setOpen(false)} />
             <a
               href={EME_OFFICIAL_URL}
               target="_blank"
