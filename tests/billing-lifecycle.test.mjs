@@ -100,16 +100,16 @@ test("publicar DRAFT já contabilizado não consome outra vaga", () => {
 
 test("constraints de banco protegem fulfillment e grants concorrentes", async () => {
   const [schema, lifecycleMigration, entitlementMigration] = await Promise.all([
-    readFile(new URL("../prisma/schema.prisma", import.meta.url), "utf8"),
+    readFile(new globalThis.URL("../prisma/schema.prisma", import.meta.url), "utf8"),
     readFile(
-      new URL(
+      new globalThis.URL(
         "../prisma/migrations/20260822180000_billing_stripe_lifecycle_integrity/migration.sql",
         import.meta.url,
       ),
       "utf8",
     ),
     readFile(
-      new URL(
+      new globalThis.URL(
         "../prisma/migrations/20260822190000_billing_plan_entitlements/migration.sql",
         import.meta.url,
       ),

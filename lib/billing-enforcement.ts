@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { BILLING_PLAN, BILLING_USER_SUBSCRIPTION_STATUS } from "@/lib/billing-types"
-import { isBillingBypassEnabled } from "@/lib/billing-config"
+import { isServerBillingBypassEnabled } from "@/lib/billing-config"
 import { canPlanAccessMarketplace } from "@/lib/billing-lifecycle-policy"
 import {
   canCreateBrokerProperties,
@@ -23,7 +23,7 @@ export const billingMessages = {
   brokerInactive:
     "Seu plano Corretor não está ativo para criar novos imóveis. Regularize sua assinatura para continuar.",
   brokerFreeLimit:
-    "Seu plano atual atingiu o limite permitido de 3 imóveis. Faça upgrade para continuar.",
+    "Seu plano atual atingiu o limite permitido de imóveis. Faça upgrade para continuar.",
   agencyInactive:
     "Seu plano da imobiliária não está ativo para executar essa ação. Ative ou regularize sua assinatura para continuar.",
 } as const
@@ -41,7 +41,7 @@ function createBillingBlockedResponse(error: string, ctaHref: string, ctaLabel: 
 }
 
 export async function enforceBrokerPropertyCreation(user: AuthenticatedUser, amount = 1) {
-  if (isBillingBypassEnabled()) {
+  if (isServerBillingBypassEnabled()) {
     return null
   }
 
@@ -62,7 +62,7 @@ export async function enforceBrokerPropertyPublication(
   user: AuthenticatedUser,
   options: { increasesActivePropertyCount?: boolean } = {},
 ) {
-  if (isBillingBypassEnabled()) {
+  if (isServerBillingBypassEnabled()) {
     return null
   }
 
@@ -83,7 +83,7 @@ export async function enforceBrokerPropertyPublication(
 }
 
 export async function enforceBrokerMarketplaceAccess(user: AuthenticatedUser) {
-  if (isBillingBypassEnabled()) return null
+  if (isServerBillingBypassEnabled()) return null
 
   if (user.broker) {
     const snapshot = await getBrokerPlanSnapshot(user.broker.id)
@@ -107,7 +107,7 @@ export async function enforceBrokerMarketplaceAccess(user: AuthenticatedUser) {
 }
 
 export function enforceAgencyOperationalAccess(user: User) {
-  if (isBillingBypassEnabled()) {
+  if (isServerBillingBypassEnabled()) {
     return null
   }
 
