@@ -344,14 +344,35 @@ export function BrokerPlanPage() {
 
     if (checkoutStatus === "success") {
       setUpgradeFeedback("Pagamento concluído. Atualizando seu plano e seus pacotes.")
-      void loadPlanSnapshot()
-        .catch((caughtError) => {
-          setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o plano.")
-        })
-        .finally(() => {
-          setIsPlanLoading(false)
-        })
-      return
+      let cancelled = false
+
+      const revalidateCheckout = async () => {
+        const attempts = 8
+
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          if (attempt > 0) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1_500))
+          }
+
+          if (cancelled) return
+
+          try {
+            await loadPlanSnapshot()
+          } catch (caughtError) {
+            if (attempt === attempts - 1 && !cancelled) {
+              setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível atualizar o plano.")
+            }
+          }
+        }
+
+        if (!cancelled) setIsPlanLoading(false)
+      }
+
+      void revalidateCheckout()
+
+      return () => {
+        cancelled = true
+      }
     }
 
     if (checkoutStatus === "cancel") {
