@@ -34,6 +34,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { useBrokerProperties } from "@/components/use-broker-properties"
 import { formatCep, lookupCep } from "@/lib/cep"
 import {
+  CLIENT_ORIGIN_OPTIONS,
+  getClientOriginLabel,
+  normalizeClientOrigin,
+  type ClientOrigin,
+} from "@/lib/client-origin"
+import {
   formatCpfCnpj,
   formatDateBR,
   formatPhone,
@@ -56,6 +62,8 @@ type ClientFilterId =
   | "sold"
   | "lost"
   | "archived"
+
+type ClientOriginFilter = "all" | ClientOrigin
 
 type ClientForm = {
   id?: string
@@ -208,6 +216,7 @@ export function BrokerClientsPage() {
   const [isToastVisible, setIsToastVisible] = useState(false)
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<ClientFilterId>("all")
+  const [originFilter, setOriginFilter] = useState<ClientOriginFilter>("all")
   const [selectedClient, setSelectedClient] = useState<LeadRecord | null>(null)
   const [selectedClientDraft, setSelectedClientDraft] = useState<ClientForm>(emptyClientForm)
   const [isCreateClientOpen, setIsCreateClientOpen] = useState(false)
@@ -335,8 +344,13 @@ export function BrokerClientsPage() {
   )
 
   const filteredClients = useMemo(
-    () => filteredBySearch.filter((client) => matchesClientFilter(client, activeFilter)),
-    [activeFilter, filteredBySearch],
+    () =>
+      filteredBySearch.filter(
+        (client) =>
+          matchesClientFilter(client, activeFilter) &&
+          (originFilter === "all" || normalizeClientOrigin(client.source) === originFilter),
+      ),
+    [activeFilter, filteredBySearch, originFilter],
   )
 
   const values = useMemo(
@@ -621,7 +635,23 @@ export function BrokerClientsPage() {
                 />
             </label>
 
-            <div className="min-w-0 w-full overflow-x-auto overflow-y-hidden pb-1.5 lg:w-auto lg:flex-1 lg:overflow-visible lg:pb-0 eme-hidden-scrollbar">
+            <label className="grid min-w-0 gap-1.5 lg:w-[11rem] lg:shrink-0">
+              <span className="sr-only">Filtrar clientes por origem</span>
+              <select
+                value={originFilter}
+                onChange={(event) => setOriginFilter(event.target.value as ClientOriginFilter)}
+                className="h-10 min-w-0 w-full rounded-xl border border-black/[0.07] bg-[#fcfcfb] px-3 text-sm font-medium text-[#344054] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#009b3a]/35"
+              >
+                <option value="all">Todas as origens</option>
+                {CLIENT_ORIGIN_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="eme-hidden-scrollbar flex min-w-0 w-full items-center gap-1 overflow-x-auto overflow-y-hidden pb-1.5 lg:w-auto lg:flex-1 lg:overflow-visible lg:pb-0">
               {clientFilters.map((filter) => (
                 <button
                   key={filter.id}
@@ -1293,15 +1323,7 @@ function previewCompletion(form: ClientForm) {
 }
 
 function formatLeadSource(source: string) {
-  const normalized = source.toLowerCase()
-  if (normalized.includes("catalog")) return "Catálogo"
-  if (normalized.includes("marketplace")) return "Marketplace"
-  if (normalized.includes("assessor") || normalized === "cos") return "COS"
-  if (normalized.includes("corretor_eme")) return "Corretor EME"
-  if (normalized.includes("whatsapp")) return "WhatsApp"
-  if (normalized.includes("manual")) return "Manual"
-  if (normalized.includes("landing")) return "Landing page"
-  return source || "Portal"
+  return getClientOriginLabel(source)
 }
 
 function matchesClientFilter(client: LeadRecord, filter: ClientFilterId) {

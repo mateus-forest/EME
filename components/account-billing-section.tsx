@@ -250,33 +250,35 @@ export function AccountBillingSection() {
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-2 border-t border-[var(--broker-border)] pt-4 sm:flex-row">
-            <Button
-              type="button"
-              onClick={() => void openCustomerPortal("payment_method")}
-              disabled={!billing.portalAvailable || portalAction !== null}
-              className="h-10 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]"
-            >
-              <CreditCard className="size-4" />
-              {portalAction === "payment_method" ? "Abrindo Stripe..." : "Alterar forma de pagamento"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => void openCustomerPortal("manage")}
-              disabled={!billing.portalAvailable || portalAction !== null}
-              className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-[#f8f8f5] hover:text-[#111111]"
-            >
-              <ExternalLink className="size-4" />
-              {portalAction === "manage" ? "Abrindo Stripe..." : "Gerenciar assinatura"}
-            </Button>
-          </div>
-
-          {!billing.portalAvailable ? (
-            <p className="text-xs text-[#7B8491]">
-              O gerenciamento pelo Stripe ficará disponível após a vinculação de uma assinatura à sua conta.
+          {billing.hasSubscription ? (
+            <div className="flex flex-col gap-2 border-t border-[var(--broker-border)] pt-4 sm:flex-row">
+              <Button
+                type="button"
+                onClick={() => void openCustomerPortal("payment_method")}
+                disabled={!billing.portalAvailable || portalAction !== null}
+                className="h-10 rounded-xl bg-[#009b3a] text-white hover:bg-[#008633]"
+              >
+                <CreditCard className="size-4" />
+                {portalAction === "payment_method" ? "Abrindo Stripe..." : "Alterar forma de pagamento"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void openCustomerPortal("manage")}
+                disabled={!billing.portalAvailable || portalAction !== null}
+                className="h-10 rounded-xl border border-black/[0.06] bg-white text-[#4B5563] hover:bg-[#f8f8f5] hover:text-[#111111]"
+              >
+                <ExternalLink className="size-4" />
+                {portalAction === "manage" ? "Abrindo Stripe..." : "Gerenciar assinatura"}
+              </Button>
+            </div>
+          ) : (
+            <p className="border-t border-[var(--broker-border)] pt-4 text-xs leading-5 text-[#7B8491]">
+              {billing.plan.amount === 0
+                ? "O Plano Free não possui cobrança recorrente nem exige forma de pagamento cadastrada."
+                : "Não há uma assinatura recorrente ativa vinculada a esta conta."}
             </p>
-          ) : null}
+          )}
         </CardContent>
       </Card>
 

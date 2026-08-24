@@ -240,14 +240,18 @@ export function BrokerPlanPage() {
   const propertyRemaining = propertyLimits?.remaining ?? 0
   const propertyLimitLabel = propertyLimits
     ? `${propertyUsed} usados / ${propertyTotal} disponíveis`
-    : "Carregando limite de imóveis"
+    : isPlanLoading
+      ? "Carregando limite de imóveis"
+      : "Limite indisponível"
   const expansionStatusMessage = propertyLimits
     ? propertyLimits.isExpansionActive
       ? `${propertyLimits.extraLimit} imóveis extras ativos neste plano.`
       : propertyLimits.suspendedExtraLimit > 0
         ? `${propertyLimits.suspendedExtraLimit} imóveis extras comprados aguardando um plano ativo.`
         : "Nenhuma expansão adicional ativa."
-    : "Carregando status da expansão"
+    : isPlanLoading
+      ? "Carregando status da expansão"
+      : "Status da expansão indisponível"
 
   const creditBalance = planSnapshot?.credits.balance ?? 0
   const creditUsed = planSnapshot?.credits.usedThisMonth ?? 0
@@ -258,21 +262,29 @@ export function BrokerPlanPage() {
   const creditTotal = creditMonthly + creditExtra
   const creditLimitLabel = planSnapshot
     ? `${creditUsed} utilizados / ${creditTotal} no total`
-    : "Carregando Créditos IA"
+    : isPlanLoading
+      ? "Carregando Créditos IA"
+      : "Créditos indisponíveis"
 
   const hasReachedPropertyLimit = Boolean(propertyLimits && propertyRemaining <= 0)
   const propertyUsageWidth = getUsageWidth(propertyUsed, propertyTotal)
   const creditUsageWidth = getUsageWidth(creditUsed, creditTotal || Math.max(creditUsed, 1))
 
-  const planDisplayName = currentPlan ? (getCommercialPlanCopy(currentPlan.key)?.name ?? currentPlan.name) : "Carregando plano"
-  const planStatus = currentPlan ? "Ativo na conta" : "Sincronizando"
+  const planDisplayName = currentPlan
+    ? (getCommercialPlanCopy(currentPlan.key)?.name ?? currentPlan.name)
+    : isPlanLoading
+      ? "Carregando plano"
+      : "Plano indisponível"
+  const planStatus = currentPlan ? "Ativo na conta" : isPlanLoading ? "Sincronizando" : "Consulta indisponível"
   const planPrice = currentPlan ? (getCommercialPlanCopy(currentPlan.key)?.price ?? currentPlan.price) : "-"
   const planDescription = propertyLimits && currentPlan
     ? `Limite de imóveis: ${propertyLimits.baseLimit} do plano + ${propertyLimits.extraLimit} extras ativos = ${propertyLimits.totalLimit} ativos disponíveis.`
-    : "Carregando dados reais do plano."
+    : isPlanLoading
+      ? "Carregando dados reais do plano."
+      : "Não foi possível consultar os dados do plano agora."
 
-  const propertyLimitMessage = getLimitMessage(propertyRemaining, "imóveis")
-  const creditLimitMessage = getLimitMessage(creditBalance, "Créditos IA")
+  const propertyLimitMessage = propertyLimits ? getLimitMessage(propertyRemaining, "imóveis") : ""
+  const creditLimitMessage = planSnapshot ? getLimitMessage(creditBalance, "Créditos IA") : ""
 
   const includedFeatures = useMemo(() => {
     const features = currentPlan?.features ?? []

@@ -51,7 +51,7 @@ export async function GET() {
 
   try {
     const snapshot = await getBrokerPlanSnapshot(user.broker.id)
-    const [creditHistory, packageHistory] = await Promise.all([
+    const [creditHistoryResult, packageHistoryResult] = await Promise.allSettled([
       prisma.aiCreditTransaction.findMany({
         where: { brokerId: user.broker.id },
         orderBy: { createdAt: "desc" },
@@ -81,6 +81,21 @@ export async function GET() {
         },
       }),
     ])
+    const creditHistory = creditHistoryResult.status === "fulfilled" ? creditHistoryResult.value : []
+    const packageHistory = packageHistoryResult.status === "fulfilled" ? packageHistoryResult.value : []
+
+    if (creditHistoryResult.status === "rejected") {
+      console.error("[api][brokers][plan][credit-history] unavailable", {
+        brokerId: user.broker.id,
+        message: creditHistoryResult.reason instanceof Error ? creditHistoryResult.reason.message : "unknown",
+      })
+    }
+    if (packageHistoryResult.status === "rejected") {
+      console.error("[api][brokers][plan][package-history] unavailable", {
+        brokerId: user.broker.id,
+        message: packageHistoryResult.reason instanceof Error ? packageHistoryResult.reason.message : "unknown",
+      })
+    }
 
     const currentPlan = serializePlan(snapshot.plan)
 

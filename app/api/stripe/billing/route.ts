@@ -443,6 +443,10 @@ export async function GET() {
 
   const stripeEnv = getStripeEnv()
   const stripe = getStripeClient()
+  const localSubscriptionStatus = localSubscription?.status.toLowerCase() ?? ""
+  const localStateRequiresStripe =
+    planSnapshot.plan.key !== "free" ||
+    MANAGEABLE_STATUSES.has(localSubscriptionStatus as Stripe.Subscription.Status)
 
   if (!stripe) {
     console.error("[api][stripe][billing][config] Stripe unavailable", {
@@ -453,7 +457,7 @@ export async function GET() {
       localSubscriptionStatus: localSubscription?.status ?? null,
     })
 
-    if (!user.stripeCustomerId && user.subscriptionStatus !== "ACTIVE") {
+    if (!localStateRequiresStripe) {
       return noSubscriptionResponse(planSnapshot.plan)
     }
     return NextResponse.json({ error: "O faturamento Stripe não está disponível neste ambiente." }, { status: 503 })
@@ -478,6 +482,7 @@ export async function GET() {
     }
 
     const subscription = selectSubscription(link.subscriptions, user.stripeSubscriptionId)
+    const hasManageableSubscription = Boolean(subscription && MANAGEABLE_STATUSES.has(subscription.status))
     const item = subscription?.items.data[0] ?? null
     const price = item?.price ?? null
     const quantity = item?.quantity ?? 1
@@ -497,12 +502,16 @@ export async function GET() {
           metadata: true,
         },
       }),
-      paymentMethodSummary(
-        stripe,
-        subscription?.default_payment_method ?? link.customer.invoice_settings.default_payment_method,
-        user.id,
-      ),
-      productName(stripe, price?.product, planSnapshot.plan.name, user.id),
+      hasManageableSubscription
+        ? paymentMethodSummary(
+            stripe,
+            subscription?.default_payment_method ?? link.customer.invoice_settings.default_payment_method,
+            user.id,
+          )
+        : Promise.resolve(null),
+      hasManageableSubscription
+        ? productName(stripe, price?.product, planSnapshot.plan.name, user.id)
+        : Promise.resolve(planSnapshot.plan.name),
     ])
     const billingCharges = consolidateCharges({
       invoices: stripeInvoices,
@@ -525,8 +534,8 @@ export async function GET() {
         },
         paymentMethod,
         invoices: billingCharges,
-        portalAvailable: true,
-        hasSubscription: Boolean(subscription && MANAGEABLE_STATUSES.has(subscription.status)),
+        portalAvailable: hasManageableSubscription,
+        hasSubscription: hasManageableSubscription,
       }),
     )
   } catch (error) {

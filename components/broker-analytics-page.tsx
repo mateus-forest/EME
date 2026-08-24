@@ -118,7 +118,7 @@ export function BrokerAnalyticsPage() {
         </BrokerStatStrip>
 
         <ResponsiveCollapsibleSection title="Período" defaultMobileOpen variant="broker">
-        <section className="grid gap-3 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3 md:grid-cols-3">
+        <section className="grid min-w-0 grid-cols-1 gap-3 rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3 sm:grid-cols-2 lg:grid-cols-3">
           <SelectFilter label="Período" value={period} onChange={(value) => setPeriod(value as (typeof periodOptions)[number]["value"])} options={periodOptions.map((item) => item)} />
           <SelectFilter
             label="Imóvel"
@@ -265,9 +265,9 @@ function SelectFilter({
   options: Array<{ label: string; value: string }>
 }) {
   return (
-    <label className="grid gap-2">
+    <label className="grid min-w-0 gap-2">
       <span className="text-sm text-[#6B7280]">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm font-semibold text-[#050505] outline-none focus:ring-2 focus:ring-[#009b3a]/35">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-0 w-full rounded-xl border border-black/[0.06] bg-white/80 px-3 text-sm font-semibold text-[#050505] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#009b3a]/35">
         {options.map((option) => (
           <option key={option.value} value={option.value} className="bg-white">
             {option.label}
