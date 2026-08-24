@@ -1,4 +1,5 @@
 import { compare, hash } from "bcryptjs"
+import { revalidatePath } from "next/cache"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUserWithSensitiveFields, isPrismaSchemaMismatch, isPrismaUnavailable } from "@/lib/auth-route"
@@ -289,6 +290,12 @@ export async function PATCH(request: NextRequest) {
         },
       })
     })
+
+    if (creciValidationRequired) {
+      revalidatePath("/catalogo/[slug]", "page")
+      revalidatePath("/imoveis/corretores/[slug]", "page")
+      revalidatePath("/imoveis", "layout")
+    }
 
     const response = NextResponse.json({
       profile: buildBrokerProfile(updated as BrokerProfileUser | null),

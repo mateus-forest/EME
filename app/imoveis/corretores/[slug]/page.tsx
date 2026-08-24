@@ -24,7 +24,7 @@ export async function generateMetadata({
   if (!broker) return { title: 'Corretor | EME Imóveis' }
   return {
     title: `${broker.name} | Corretores EME`,
-    description: `${broker.name} — ${broker.specialties.join(', ')} em ${broker.region}. Fale com um especialista verificado da rede EME.`,
+    description: `${broker.name} — ${broker.specialties.join(', ')} em ${broker.region}. Fale com um especialista${broker.verified ? ' verificado' : ''} da rede EME.`,
   }
 }
 
@@ -86,7 +86,7 @@ export default async function BrokerProfilePage({
                     <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                       {broker.name}
                     </h1>
-                    <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-label="Perfil verificado" />
+                    {broker.verified ? <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-label="Perfil verificado" /> : null}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{broker.creci}</p>
                   <div className="mt-3 flex flex-wrap gap-1.5">{broker.specialties.map((specialty) => <span key={specialty} className="rounded-full border border-primary/15 bg-eme-50 px-2.5 py-1 text-xs font-medium text-primary">{specialty}</span>)}</div>

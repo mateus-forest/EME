@@ -54,6 +54,25 @@ function isBillingSnapshot(value: BillingSnapshot | { error?: string }): value i
   return "plan" in value && "invoices" in value && Array.isArray(value.invoices)
 }
 
+let billingRequest: Promise<BillingSnapshot> | null = null
+
+function requestBillingSnapshot() {
+  if (!billingRequest) {
+    billingRequest = fetch("/api/stripe/billing", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as BillingSnapshot | { error?: string } | null
+        if (!response.ok || !data || !isBillingSnapshot(data)) {
+          throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o faturamento.")
+        }
+        return data
+      })
+      .finally(() => {
+        billingRequest = null
+      })
+  }
+  return billingRequest
+}
+
 const subscriptionStatusLabels: Record<string, string> = {
   active: "Ativa",
   trialing: "Período de teste",
@@ -125,14 +144,7 @@ export function AccountBillingSection() {
     setError(null)
 
     try {
-      const response = await fetch("/api/stripe/billing", { credentials: "include", cache: "no-store" })
-      const data = (await response.json().catch(() => null)) as BillingSnapshot | { error?: string } | null
-
-      if (!response.ok || !data || !isBillingSnapshot(data)) {
-        throw new Error(data && "error" in data ? data.error : "Não foi possível carregar o faturamento.")
-      }
-
-      setBilling(data)
+      setBilling(await requestBillingSnapshot())
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o faturamento.")
     } finally {

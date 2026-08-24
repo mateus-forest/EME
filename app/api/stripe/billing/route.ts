@@ -481,7 +481,7 @@ export async function GET() {
     const item = subscription?.items.data[0] ?? null
     const price = item?.price ?? null
     const quantity = item?.quantity ?? 1
-    const [stripeInvoices, checkoutSessions, internalPurchases] = await Promise.all([
+    const [stripeInvoices, checkoutSessions, internalPurchases, paymentMethod, resolvedPlanName] = await Promise.all([
       listAllInvoices(stripe, link.customer.id),
       listAllCheckoutSessions(stripe, link.customer.id),
       prisma.extraPackagePurchase.findMany({
@@ -497,13 +497,13 @@ export async function GET() {
           metadata: true,
         },
       }),
+      paymentMethodSummary(
+        stripe,
+        subscription?.default_payment_method ?? link.customer.invoice_settings.default_payment_method,
+        user.id,
+      ),
+      productName(stripe, price?.product, planSnapshot.plan.name, user.id),
     ])
-    const paymentMethod = await paymentMethodSummary(
-      stripe,
-      subscription?.default_payment_method ?? link.customer.invoice_settings.default_payment_method,
-      user.id,
-    )
-    const resolvedPlanName = await productName(stripe, price?.product, planSnapshot.plan.name, user.id)
     const billingCharges = consolidateCharges({
       invoices: stripeInvoices,
       sessions: checkoutSessions,

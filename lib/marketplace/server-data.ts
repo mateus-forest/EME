@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { CreciValidationStatus } from '@/lib/prisma-enums'
 import { parsePropertyLegalData } from '@/lib/legal-entities'
 import type { Property } from '@/lib/marketplace/data'
 import type { BrokerProfile, MarketplaceRegion } from '@/lib/marketplace/pages-data'
@@ -242,7 +243,7 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
       verified: review.verified,
     })),
     featured: record.marketplaceFeatured,
-    verified: Boolean(record.creci),
+    verified: record.creciValidationStatus === CreciValidationStatus.VERIFIED,
     transaction: brokerTransaction(record, record.properties.map((property) => property.purpose)),
     propertyTypes: [],
   }

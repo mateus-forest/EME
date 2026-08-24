@@ -53,6 +53,51 @@ function normalizeProfile(payload?: Partial<BrokerProfile>) {
   }
 }
 
+type BrokerProfileApiPayload = {
+  error?: string
+  profile?: {
+    id: string
+    brokerId: string
+    agencyId: string | null
+    agencyName?: string
+    accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY"
+    name: string
+    email: string
+    phone: string
+    photoUrl: string
+    creci: string
+    creciUf?: string
+    creciValidationStatus?: "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
+    description: string
+    brandColor?: string
+    logoUrl?: string
+    showAgencyWatermark?: boolean
+    pinConfigured?: boolean
+  }
+} | null
+
+type BrokerProfileRequestResult = { status: number; ok: boolean; data: BrokerProfileApiPayload }
+let brokerProfileRequest: Promise<BrokerProfileRequestResult> | null = null
+
+function requestBrokerProfile() {
+  if (!brokerProfileRequest) {
+    brokerProfileRequest = fetch("/api/brokers/me", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => ({
+        status: response.status,
+        ok: response.ok,
+        data: (await response.json().catch(() => null)) as BrokerProfileApiPayload,
+      }))
+      .finally(() => {
+        brokerProfileRequest = null
+      })
+  }
+  return brokerProfileRequest
+}
+
 export function useBrokerProfile() {
   const [profile, setProfileState] = useState<BrokerProfile>(defaultProfile)
   const [isLoading, setIsLoading] = useState(true)
@@ -61,41 +106,13 @@ export function useBrokerProfile() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/brokers/me", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      })
+      const { status, ok, data } = await requestBrokerProfile()
 
-      const data = (await response.json().catch(() => null)) as
-        | {
-            profile?: {
-              id: string
-              brokerId: string
-              agencyId: string | null
-              agencyName?: string
-              accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY"
-              name: string
-              email: string
-              phone: string
-              photoUrl: string
-              creci: string
-              creciUf?: string
-              creciValidationStatus?: "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
-              description: string
-              brandColor?: string
-              logoUrl?: string
-              showAgencyWatermark?: boolean
-              pinConfigured?: boolean
-            }
-          }
-        | null
-
-      if (response.status >= 500) {
+      if (status >= 500) {
         return
       }
 
-      if (!response.ok || !data?.profile) {
+      if (!ok || !data?.profile) {
         setProfileState(defaultProfile)
         return
       }
@@ -182,30 +199,7 @@ export function useBrokerProfile() {
       }),
     })
 
-    const data = (await response.json().catch(() => null)) as
-      | {
-          error?: string
-          profile?: {
-            id: string
-            brokerId: string
-            agencyId: string | null
-            agencyName?: string
-            accountType: "BROKER_INDEPENDENT" | "BROKER_AGENCY"
-            name: string
-            email: string
-            phone: string
-            creci: string
-            creciUf?: string
-            creciValidationStatus?: "VERIFIED" | "REJECTED" | "REVIEW_REQUIRED" | "PENDING"
-            description: string
-            photoUrl: string
-            brandColor?: string
-            logoUrl?: string
-            showAgencyWatermark?: boolean
-            pinConfigured?: boolean
-          }
-        }
-      | null
+    const data = (await response.json().catch(() => null)) as BrokerProfileApiPayload
 
     if (!response.ok || !data?.profile) {
       if (response.status === 413) {
@@ -237,6 +231,7 @@ export function useBrokerProfile() {
     })
 
     setProfileState(nextProfile)
+    brokerProfileRequest = null
     window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT, { detail: nextProfile }))
     dispatchEntitySync({ type: "broker", entityId: nextProfile.brokerId })
     return nextProfile

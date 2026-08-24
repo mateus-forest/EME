@@ -39,7 +39,7 @@ test.describe('Marketplace atendimento e avaliações V1 reais', () => {
     const brokerUser = await prisma.user.create({
       data: {
         name: 'Corretora V1 EME', email: BROKER_EMAIL, passwordHash, role: 'BROKER', phone: '5554999991234',
-        broker: { create: { phone: '5554999991234', catalogSlug: BROKER_SLUG, status: 'ACTIVE', creci: '98765-F', marketplaceSpecialty: 'Residencial', marketplaceRegion: 'Vacaria', marketplaceTransactions: 'BOTH' } },
+        broker: { create: { phone: '5554999991234', catalogSlug: BROKER_SLUG, status: 'ACTIVE', creci: '98765-F', marketplaceSpecialties: ['Residencial'], marketplaceRegion: 'Vacaria', marketplaceTransactions: 'BOTH' } },
       },
       include: { broker: true },
     })

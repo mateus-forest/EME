@@ -58,7 +58,7 @@ test.describe('Marketplace integrado ao EME', () => {
             creci: '99999-F',
             creciUf: 'RS',
             creciValidationStatus: 'VERIFIED',
-            marketplaceSpecialty: 'Casas e apartamentos',
+            marketplaceSpecialties: ['Casas e apartamentos'],
             marketplaceRegion: 'Vacaria e região',
             marketplaceTransactions: 'BOTH',
             marketplaceAbout: 'Atendimento consultivo para compra e locação.',

@@ -50,6 +50,30 @@ const defaultSubscription: BrokerSubscription = {
   paymentMethod: "Sincronizando",
 }
 
+type SubscriptionResponse = { subscription?: BrokerSubscription } | null
+type SubscriptionRequestResult = { status: number; ok: boolean; data: SubscriptionResponse }
+
+let subscriptionRequest: Promise<SubscriptionRequestResult> | null = null
+
+function requestBrokerSubscription() {
+  if (!subscriptionRequest) {
+    subscriptionRequest = fetch("/api/brokers/subscription", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => ({
+        status: response.status,
+        ok: response.ok,
+        data: (await response.json().catch(() => null)) as SubscriptionResponse,
+      }))
+      .finally(() => {
+        subscriptionRequest = null
+      })
+  }
+  return subscriptionRequest
+}
+
 export function useBrokerSubscription() {
   const [subscription, setSubscription] = useState<BrokerSubscription>(defaultSubscription)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,19 +82,13 @@ export function useBrokerSubscription() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/brokers/subscription", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      })
+      const { status, ok, data } = await requestBrokerSubscription()
 
-      const data = (await response.json().catch(() => null)) as { subscription?: BrokerSubscription } | null
-
-      if (response.status >= 500) {
+      if (status >= 500) {
         return
       }
 
-      if (!response.ok || !data?.subscription) {
+      if (!ok || !data?.subscription) {
         setSubscription(defaultSubscription)
         return
       }

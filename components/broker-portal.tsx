@@ -22,7 +22,6 @@ import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
-import { useBrokerProperties } from "@/components/use-broker-properties"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
@@ -32,30 +31,11 @@ import {
   useCosConversations,
 } from "@/components/use-cos-conversations"
 import { DEFAULT_COS_CONVERSATION_TITLE } from "@/lib/cos-conversations"
-import { isEmeActivePropertyLabel } from "@/lib/eme-plans"
-import type { ContractRecord } from "@/lib/contracts-client"
-import type { LeadRecord } from "@/lib/lead-contract"
-
-type AgendaEventItem = {
-  id: string
-  title: string
-  date: string
-  time: string
-  status: string
-}
 
 type AssistantBootstrapResponse = {
   credits?: AssistantCredits
   aiAssistantEnabled?: boolean
   error?: string
-}
-
-type DocumentItem = {
-  id: string
-  title: string
-  type: string
-  status: string
-  createdAt: string
 }
 
 type FinancialConfigResponse = {
@@ -64,28 +44,83 @@ type FinancialConfigResponse = {
   }
 }
 
+type OperationHealthSnapshot = {
+  score: number
+  scores: {
+    clients: number
+    properties: number
+    documents: number
+    contracts: number
+    agenda: number
+    leads: number
+  }
+  activePropertiesCount: number
+  pending: {
+    missingRegistry: number
+    missingPropertyDocuments: number
+    missingRg: number
+    missingLeadInformation: number
+    unattendedLeads: number
+    awaitingSignature: number
+    draftDocuments: number
+    draftContracts: number
+    pendingAgenda: number
+  }
+}
+
+let operationHealthRequest: Promise<OperationHealthSnapshot> | null = null
+let assistantBootstrapRequest: Promise<AssistantBootstrapResponse> | null = null
+
+function requestOperationHealth() {
+  if (!operationHealthRequest) {
+    operationHealthRequest = fetch("/api/brokers/operation-health", {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as OperationHealthSnapshot | { error?: string } | null
+        if (!response.ok || !data || !("scores" in data)) {
+          throw new Error(data && "error" in data ? data.error : "Não foi possível carregar a saúde da operação.")
+        }
+        return data
+      })
+      .finally(() => {
+        operationHealthRequest = null
+      })
+  }
+  return operationHealthRequest
+}
+
+function requestAssistantBootstrap() {
+  if (!assistantBootstrapRequest) {
+    assistantBootstrapRequest = fetch("/api/assistant/eme", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as AssistantBootstrapResponse | null
+        if (!response.ok || !data) throw new Error(data?.error || "Não foi possível carregar o COS.")
+        return data
+      })
+      .finally(() => {
+        assistantBootstrapRequest = null
+      })
+  }
+  return assistantBootstrapRequest
+}
+
 export function BrokerPortal() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedConversationId = searchParams.get("conversa")?.trim() || ""
-  const { properties, isLoading: isPropertiesLoading } = useBrokerProperties()
   const { profile, isLoading: isProfileLoading } = useBrokerProfile()
   const { subscription } = useBrokerSubscription()
   const [prompt, setPrompt] = useState("")
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
-  const [agendaEvents, setAgendaEvents] = useState<AgendaEventItem[]>([])
-  const [leads, setLeads] = useState<LeadRecord[]>([])
-  const [documents, setDocuments] = useState<DocumentItem[]>([])
-  const [contracts, setContracts] = useState<ContractRecord[]>([])
+  const [operationHealthSnapshot, setOperationHealthSnapshot] = useState<OperationHealthSnapshot | null>(null)
   const [commissionPercent, setCommissionPercent] = useState(6)
   const [isMobileOperationHealthOpen, setIsMobileOperationHealthOpen] = useState(false)
   const [isDesktopOperationHealthCollapsed, setIsDesktopOperationHealthCollapsed] = useState(false)
   const [assistantCredits, setAssistantCredits] = useState<AssistantCredits>({ balance: 0, usedThisMonth: 0 })
   const [assistantEnabled, setAssistantEnabled] = useState(true)
-  const [isAgendaLoaded, setIsAgendaLoaded] = useState(false)
-  const [isLeadsLoaded, setIsLeadsLoaded] = useState(false)
-  const [isDocumentsLoaded, setIsDocumentsLoaded] = useState(false)
-  const [isContractsLoaded, setIsContractsLoaded] = useState(false)
+  const [isAssistantCreditsLoaded, setIsAssistantCreditsLoaded] = useState(false)
   const chatViewportRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -137,10 +172,7 @@ export function BrokerPortal() {
     return () => window.removeEventListener(COS_CONVERSATIONS_REFRESH_EVENT, refreshConversations)
   }, [loadConversations])
 
-  const activePropertiesCount = useMemo(
-    () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
-    [properties],
-  )
+  const activePropertiesCount = operationHealthSnapshot?.activePropertiesCount ?? 0
   const hasReachedLimit =
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
@@ -149,45 +181,11 @@ export function BrokerPortal() {
   useEffect(() => {
     let ignore = false
 
-    fetch("/api/brokers/agenda?filter=all", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { events?: AgendaEventItem[] } | null
-        if (!ignore && response.ok) setAgendaEvents(data?.events ?? [])
+    requestOperationHealth()
+      .then((data) => {
+        if (!ignore) setOperationHealthSnapshot(data)
       })
       .catch(() => null)
-      .finally(() => {
-        if (!ignore) setIsAgendaLoaded(true)
-      })
-
-    fetch("/api/brokers/leads", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { leads?: LeadRecord[] } | null
-        if (!ignore && response.ok) setLeads(data?.leads ?? [])
-      })
-      .catch(() => null)
-      .finally(() => {
-        if (!ignore) setIsLeadsLoaded(true)
-      })
-
-    fetch("/api/brokers/documents?status=all", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { documents?: DocumentItem[] } | null
-        if (!ignore && response.ok) setDocuments(data?.documents ?? [])
-      })
-      .catch(() => null)
-      .finally(() => {
-        if (!ignore) setIsDocumentsLoaded(true)
-      })
-
-    fetch("/api/brokers/contracts", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as { contracts?: ContractRecord[] } | null
-        if (!ignore && response.ok) setContracts(data?.contracts ?? [])
-      })
-      .catch(() => null)
-      .finally(() => {
-        if (!ignore) setIsContractsLoaded(true)
-      })
 
     fetch("/api/brokers/financial", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -196,15 +194,17 @@ export function BrokerPortal() {
       })
       .catch(() => null)
 
-    fetch("/api/assistant/eme", { credentials: "include", cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as AssistantBootstrapResponse | null
-        if (!ignore && response.ok) {
+    requestAssistantBootstrap()
+      .then((data) => {
+        if (!ignore) {
           if (data?.credits) setAssistantCredits(data.credits)
           if (typeof data?.aiAssistantEnabled === "boolean") setAssistantEnabled(data.aiAssistantEnabled)
         }
       })
       .catch(() => null)
+      .finally(() => {
+        if (!ignore) setIsAssistantCreditsLoaded(true)
+      })
 
     return () => {
       ignore = true
@@ -366,16 +366,17 @@ export function BrokerPortal() {
   }
 
   async function handleOperationDetails() {
-    const missingRegistry = properties.filter((property) => !property.legal.registryNumber).length
-    const missingPropertyDocuments = properties.filter((property) => property.documents.length === 0).length
-    const draftDocuments = documents.filter((document) => document.status === "draft").length
-    const draftContracts = contracts.filter((contract) => contract.status === "draft").length
-    const awaitingSignature = contracts.filter((contract) => contract.status === "awaiting_signature").length
-    const missingLeadInfo = leads.filter(
-      (lead) => !lead.identification.rg || !lead.identification.cpfCnpj || !lead.address.city,
-    ).length
-    const unattendedLeads = leads.filter((lead) => lead.status === "NEW").length
-    const pendingAgenda = agendaEvents.filter((event) => event.status === "pending" && event.date <= todayKey).length
+    if (!operationHealthSnapshot) return
+    const {
+      missingRegistry,
+      missingPropertyDocuments,
+      draftDocuments,
+      draftContracts,
+      awaitingSignature,
+      missingLeadInformation,
+      unattendedLeads,
+      pendingAgenda,
+    } = operationHealthSnapshot.pending
 
     const operationalSummary = [
       `Imóveis sem matrícula: ${missingRegistry}`,
@@ -383,7 +384,7 @@ export function BrokerPortal() {
       `Propostas ou documentos em rascunho: ${draftDocuments}`,
       `Contratos em rascunho: ${draftContracts}`,
       `Contratos aguardando assinatura: ${awaitingSignature}`,
-      `Clientes com informações faltantes: ${missingLeadInfo}`,
+      `Clientes com informações faltantes: ${missingLeadInformation}`,
       `Leads sem atendimento: ${unattendedLeads}`,
       `Compromissos pendentes: ${pendingAgenda}`,
     ].join("\n")
@@ -402,75 +403,25 @@ export function BrokerPortal() {
     setPrompt("")
   }
 
-  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), [])
-  const operationHealthReady =
-    !isPropertiesLoading && isAgendaLoaded && isLeadsLoaded && isDocumentsLoaded && isContractsLoaded
-  const leadScore = useMemo(
-    () => (isLeadsLoaded ? averageScore(leads.map((lead) => lead.completion.score)) : null),
-    [isLeadsLoaded, leads],
-  )
-  const propertyScore = useMemo(
-    () => (!isPropertiesLoading ? averageScore(properties.map((property) => property.completion.score)) : null),
-    [isPropertiesLoading, properties],
-  )
-  const documentScore = useMemo(() => {
-    if (!isDocumentsLoaded) return null
-    if (documents.length === 0) return 100
-    const healthy = documents.filter((document) => document.status !== "draft").length
-    return Math.round((healthy / documents.length) * 100)
-  }, [documents, isDocumentsLoaded])
-  const contractScore = useMemo(() => {
-    if (!isContractsLoaded) return null
-    if (contracts.length === 0) return 100
-    const healthy = contracts.filter((contract) => contract.status !== "cancelled").length
-    return Math.round((healthy / contracts.length) * 100)
-  }, [contracts, isContractsLoaded])
-  const agendaScore = useMemo(() => {
-    if (!isAgendaLoaded) return null
-    if (agendaEvents.length === 0) return 100
-    const overdue = agendaEvents.filter((event) => event.status === "pending" && event.date < todayKey).length
-    return clampScore(100 - overdue * 12)
-  }, [agendaEvents, isAgendaLoaded, todayKey])
-  const leadsScore = useMemo(() => {
-    if (!isLeadsLoaded) return null
-    if (leads.length === 0) return 100
-    const unattended = leads.filter((lead) => lead.status === "NEW").length
-    return clampScore(Math.round(((leads.length - unattended) / leads.length) * 100))
-  }, [isLeadsLoaded, leads])
-
-  const operationHealth = useMemo(
-    () => {
-      const scores = [leadScore, propertyScore, documentScore, contractScore, agendaScore, leadsScore].filter(
-        (value): value is number => typeof value === "number",
-      )
-      if (!scores.length) return null
-      return clampScore(Math.round(scores.reduce((total, score) => total + score, 0) / scores.length))
-    },
-    [agendaScore, contractScore, documentScore, leadScore, leadsScore, propertyScore],
-  )
-  const displayedOperationHealth = operationHealth ?? 0
+  const operationHealthReady = operationHealthSnapshot !== null
+  const displayedOperationHealth = operationHealthSnapshot?.score ?? 0
 
   const operationIndicators = useMemo(
     () =>
       [
-        typeof leadScore === "number" ? { label: "Clientes", score: leadScore, icon: UsersRound } : null,
-        typeof propertyScore === "number" ? { label: "Imóveis", score: propertyScore, icon: Home } : null,
-        typeof documentScore === "number" ? { label: "Documentos", score: documentScore, icon: FileText } : null,
-        typeof contractScore === "number" ? { label: "Contratos", score: contractScore, icon: FileText } : null,
-        typeof agendaScore === "number" ? { label: "Agenda", score: agendaScore, icon: CalendarDays } : null,
-        typeof leadsScore === "number" ? { label: "Leads", score: leadsScore, icon: UsersRound } : null,
+        operationHealthSnapshot ? { label: "Clientes", score: operationHealthSnapshot.scores.clients, icon: UsersRound } : null,
+        operationHealthSnapshot ? { label: "Imóveis", score: operationHealthSnapshot.scores.properties, icon: Home } : null,
+        operationHealthSnapshot ? { label: "Documentos", score: operationHealthSnapshot.scores.documents, icon: FileText } : null,
+        operationHealthSnapshot ? { label: "Contratos", score: operationHealthSnapshot.scores.contracts, icon: FileText } : null,
+        operationHealthSnapshot ? { label: "Agenda", score: operationHealthSnapshot.scores.agenda, icon: CalendarDays } : null,
+        operationHealthSnapshot ? { label: "Leads", score: operationHealthSnapshot.scores.leads, icon: UsersRound } : null,
       ].filter((item): item is { label: string; score: number; icon: typeof UsersRound } => Boolean(item)),
-    [agendaScore, contractScore, documentScore, leadScore, leadsScore, propertyScore],
+    [operationHealthSnapshot],
   )
 
   const operationPendingItems = useMemo(() => {
-    const missingRegistry = properties.filter((property) => !property.legal.registryNumber).length
-    const missingPropertyDocuments = properties.filter((property) => property.documents.length === 0).length
-    const missingRg = leads.filter((lead) => !lead.identification.rg).length
-    const unattendedLeads = leads.filter((lead) => lead.status === "NEW").length
-    const awaitingSignature = contracts.filter((contract) => contract.status === "awaiting_signature").length
-    const draftDocuments = documents.filter((document) => document.status === "draft").length
-    const pendingAgenda = agendaEvents.filter((event) => event.status === "pending" && event.date <= todayKey).length
+    if (!operationHealthSnapshot) return []
+    const { missingRegistry, missingPropertyDocuments, missingRg, unattendedLeads, awaitingSignature, draftDocuments, pendingAgenda } = operationHealthSnapshot.pending
 
     return [
       missingRegistry > 0 ? `${missingRegistry} ${pluralize("imóvel", "imóveis", missingRegistry)} sem matrícula` : null,
@@ -485,7 +436,7 @@ export function BrokerPortal() {
       draftDocuments > 0 ? `${draftDocuments} ${pluralize("documento", "documentos", draftDocuments)} em rascunho` : null,
       pendingAgenda > 0 ? `${pendingAgenda} ${pluralize("compromisso", "compromissos", pendingAgenda)} pendente${pendingAgenda > 1 ? "s" : ""}` : null,
     ].filter((item): item is string => Boolean(item))
-  }, [agendaEvents, contracts, documents, leads, properties, todayKey])
+  }, [operationHealthSnapshot])
 
   const visiblePendingCount = operationPendingItems.length
 
@@ -517,7 +468,7 @@ export function BrokerPortal() {
                           {assistantEnabled ? "COS ativo" : "COS pausado"}
                         </span>
                         <span className="rounded-full border border-black/[0.06] bg-white/78 px-3 py-1.5 text-[11px] font-medium text-[#667085]">
-                          {assistantCredits.balance} créditos
+                          {isAssistantCreditsLoaded ? `${assistantCredits.balance} créditos` : "— créditos"}
                         </span>
                       </div>
                     </div>
@@ -562,7 +513,7 @@ export function BrokerPortal() {
                         {assistantEnabled ? "COS ativo" : "COS pausado"}
                       </span>
                       <span className="rounded-full border border-black/[0.06] bg-white/84 px-3 py-1.5">
-                        {assistantCredits.balance} créditos
+                        {isAssistantCreditsLoaded ? `${assistantCredits.balance} créditos` : "— créditos"}
                       </span>
                     </div>
                   </div>
@@ -766,11 +717,6 @@ export function BrokerPortal() {
   )
 }
 
-
-function averageScore(scores: number[]) {
-  if (scores.length === 0) return 100
-  return clampScore(Math.round(scores.reduce((total, score) => total + score, 0) / scores.length))
-}
 
 function clampScore(score: number) {
   return Math.max(0, Math.min(100, score))

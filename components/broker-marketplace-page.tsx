@@ -77,7 +77,10 @@ export function BrokerMarketplacePage() {
     event.preventDefault()
     setFeedback('')
     const specialties = draft.specialties.map((value) => value.trim()).filter(Boolean)
-    if (specialties.some((value) => value.length > 40)) {
+    const preservedLegacySpecialties = new Set(
+      (data?.settings.specialties ?? []).filter((value) => value.length > 40),
+    )
+    if (specialties.some((value) => value.length > 40 && !preservedLegacySpecialties.has(value))) {
       setFeedback('Cada especialidade deve ter no máximo 40 caracteres.')
       return
     }
@@ -153,7 +156,7 @@ export function BrokerMarketplacePage() {
                 <div className="mt-3 grid gap-2">
                   {draft.specialties.map((specialty, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <div className="min-w-0 flex-1"><input maxLength={40} value={specialty} onChange={(event) => setDraft({ ...draft, specialties: draft.specialties.map((value, currentIndex) => currentIndex === index ? event.target.value : value) })} placeholder="Ex.: Lançamentos imobiliários" className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /><p className="mt-1 text-right text-[11px] text-[#7b8491]">{specialty.length}/40</p></div>
+                      <div className="min-w-0 flex-1"><input value={specialty} onChange={(event) => setDraft({ ...draft, specialties: draft.specialties.map((value, currentIndex) => currentIndex === index ? event.target.value : value) })} placeholder="Ex.: Lançamentos imobiliários" className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10" /><p className={`mt-1 text-right text-[11px] ${specialty.length > 40 && !(data?.settings.specialties ?? []).includes(specialty) ? 'text-red-600' : 'text-[#7b8491]'}`}>{specialty.length}/40</p></div>
                       <button type="button" aria-label={`Remover especialidade ${index + 1}`} onClick={() => setDraft({ ...draft, specialties: draft.specialties.length === 1 ? [''] : draft.specialties.filter((_, currentIndex) => currentIndex !== index) })} className="mb-4 flex size-9 shrink-0 items-center justify-center rounded-lg border border-black/[0.07] text-[#667085] hover:border-red-200 hover:bg-red-50 hover:text-red-600"><X className="size-4" /></button>
                     </div>
                   ))}

@@ -80,7 +80,7 @@ export function PropertyContact({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-pretty font-semibold leading-tight text-foreground">{broker.name}</p>
-                <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" />
+                {broker.verified ? <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-label="Perfil verificado" /> : null}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">{creci}</p>
               <p className="mt-1 text-xs text-muted-foreground">{broker.specialties.join(' · ')}</p>

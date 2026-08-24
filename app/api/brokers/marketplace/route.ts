@@ -44,7 +44,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Informe no máximo 4 especialidades.' }, { status: 400 })
   }
   const specialties = rawSpecialties.map((value) => value.trim()).filter(Boolean)
-  if (specialties.some((value) => value.length > 40)) {
+  const preservedLegacySpecialties = new Set(
+    user.broker.marketplaceSpecialties.filter((value) => value.length > 40),
+  )
+  if (specialties.some((value) => value.length > 40 && !preservedLegacySpecialties.has(value))) {
     return NextResponse.json({ error: 'Cada especialidade deve ter no máximo 40 caracteres.' }, { status: 400 })
   }
   const specialtyKeys = specialties.map((value) => value.toLocaleLowerCase('pt-BR'))
