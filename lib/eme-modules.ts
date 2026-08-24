@@ -97,7 +97,7 @@ export const emeModules: EmeModule[] = [
       { title: "Ensina e orienta no uso do sistema", description: "Pergunte qualquer coisa sobre o EME a qualquer momento." },
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/cos.png",
+    mockup: "/modals/cos-2026.png",
     mockupFit: "cover",
   },
   {
@@ -156,7 +156,7 @@ export const emeModules: EmeModule[] = [
       { title: "Mais profissionalismo e credibilidade", description: "Sua marca apresentada com o padrão que você merece." },
     ],
     cta: "Conhecer módulo",
-    mockup: "/modals/catalogo-2026.png",
+      mockup: "/modals/catalogo-2026-final.png",
     demoLabel: "Ver um exemplo de catálogo",
     demoHref: "/catalogo/mateusforest",
   },

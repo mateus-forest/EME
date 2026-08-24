@@ -193,7 +193,10 @@ export function EmeMobileExperience({
       </div>
 
       {!selected && !authOpen ? (
-        <LandingUpcomingFeatures className="!bottom-[max(4.25rem,calc(env(safe-area-inset-bottom)+3.5rem))] !left-3 z-[55] origin-bottom-left scale-[0.76]" />
+        <LandingUpcomingFeatures
+          compact
+          className="!bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.5rem))] !left-2 z-[50]"
+        />
       ) : null}
 
       <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">

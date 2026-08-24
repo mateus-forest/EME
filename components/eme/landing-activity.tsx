@@ -82,7 +82,7 @@ export function LandingActivity({
       data-testid="landing-activity"
       data-active-metric={metric.id}
     >
-      <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md">
+      <div className="eme-landing-glass-chip inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md">
         <span className="relative flex size-2" aria-hidden>
           <span className="absolute inline-flex size-full rounded-full bg-eme/35 motion-safe:animate-ping" />
           <span className="relative inline-flex size-2 rounded-full bg-eme" />

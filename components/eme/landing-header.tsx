@@ -25,7 +25,7 @@ export function LandingHeader({
             type="button"
             onClick={onEntrar}
             tabIndex={authOpen ? -1 : undefined}
-            className="rounded-full border border-eme/25 bg-white/60 px-4 py-1.5 text-[13px] font-medium tracking-tight text-eme-dark backdrop-blur-sm transition-colors hover:bg-eme/10 sm:px-5 sm:py-2 sm:text-[13.5px]"
+            className="eme-landing-glass-control rounded-full border border-eme/25 bg-white/60 px-4 py-1.5 text-[13px] font-medium tracking-tight text-eme-dark backdrop-blur-sm transition-colors hover:bg-eme/10 sm:px-5 sm:py-2 sm:text-[13.5px]"
           >
             Entrar
           </button>
@@ -33,7 +33,7 @@ export function LandingHeader({
             type="button"
             onClick={onComecar}
             tabIndex={authOpen ? -1 : undefined}
-            className="eme-gradient hidden whitespace-nowrap rounded-full px-5 py-2 text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_10px_24px_-12px_rgba(28,120,60,0.6)] transition-[transform,filter] hover:-translate-y-0.5 sm:inline-block"
+            className="eme-gradient eme-landing-glass-control eme-landing-glass-control--primary hidden whitespace-nowrap rounded-full px-5 py-2 text-[13.5px] font-medium tracking-tight text-primary-foreground shadow-[0_10px_24px_-12px_rgba(28,120,60,0.6)] transition-[transform,filter] hover:-translate-y-0.5 sm:inline-block"
           >
             Começar agora
           </button>

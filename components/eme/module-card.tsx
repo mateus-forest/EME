@@ -25,14 +25,14 @@ export function ModuleCard({
   return (
     <div
       data-module-card={mobile ? "mobile" : "desktop"}
-      className={`relative select-none ${frameClass}`}
+      className={`eme-landing-glass-card relative select-none ${frameClass}`}
       style={{
         backfaceVisibility: mobile ? "hidden" : undefined,
         WebkitBackfaceVisibility: mobile ? "hidden" : undefined,
         transform: mobile ? "translateZ(0)" : undefined,
         boxShadow: mobile
-          ? "0 18px 38px -22px rgba(28,52,40,0.38), 0 8px 18px -14px rgba(28,52,40,0.2), inset 0 1px 0 rgba(255,255,255,0.94)"
-          : "0 30px 64px -26px rgba(28,52,40,0.34), 0 12px 28px -18px rgba(28,52,40,0.2), inset 0 1px 0 rgba(255,255,255,0.95)",
+          ? "0 20px 42px -24px rgba(20,45,32,0.38), 0 8px 20px -15px rgba(20,45,32,0.2), inset 0 1px 0 rgba(255,255,255,0.92)"
+          : "0 34px 72px -30px rgba(20,45,32,0.34), 0 13px 30px -20px rgba(20,45,32,0.2), inset 0 1px 0 rgba(255,255,255,0.94)",
       }}
     >
       {/* True glass fill — translucent (not opaque white) so the busy skyline/pedestal behind
@@ -40,13 +40,15 @@ export function ModuleCard({
       <div
         aria-hidden
         data-mobile-glass={mobile ? "static" : undefined}
-        className={`absolute inset-0 overflow-hidden ${mobile ? "" : "backdrop-blur-[12px] sm:backdrop-blur-[18px]"} ${radiusClass}`}
+        className={`eme-landing-glass-card__surface absolute inset-0 overflow-hidden ${radiusClass}`}
         style={{
           background:
             mobile
-              ? "linear-gradient(155deg, rgba(255,255,255,0.94) 0%, rgba(247,250,248,0.86) 58%, rgba(235,244,239,0.8) 100%)"
-              : "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(247,250,248,0.8) 100%)",
-          border: "1px solid rgba(174,192,183,0.34)",
+              ? "linear-gradient(150deg, rgba(255,255,255,0.76) 0%, rgba(247,251,248,0.6) 58%, rgba(225,239,231,0.48) 100%)"
+              : "linear-gradient(150deg, rgba(255,255,255,0.7) 0%, rgba(247,251,248,0.52) 62%, rgba(225,239,231,0.42) 100%)",
+          border: "1px solid rgba(255,255,255,0.7)",
+          WebkitBackdropFilter: mobile ? "blur(12px) saturate(112%)" : "blur(20px) saturate(116%)",
+          backdropFilter: mobile ? "blur(12px) saturate(112%)" : "blur(20px) saturate(116%)",
         }}
       />
       <div
@@ -54,7 +56,7 @@ export function ModuleCard({
         className={`absolute inset-0 ${radiusClass}`}
         style={{
           background:
-            "radial-gradient(ellipse at 50% 24%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 54%, rgba(214,227,220,0.1) 100%)",
+            "radial-gradient(ellipse at 48% 12%, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.14) 48%, rgba(205,226,215,0.08) 100%)",
         }}
       />
 
@@ -68,7 +70,7 @@ export function ModuleCard({
       >
         {badge ? (
           <span
-            className={`absolute left-1/2 -translate-x-1/2 rounded-full border border-eme/10 bg-eme/12 font-semibold uppercase text-eme-dark ${mobile ? "top-2.5 px-2.5 py-px text-[7px] tracking-[0.12em]" : "top-3.5 px-3 py-0.5 text-[9px] tracking-[0.14em]"}`}
+            className={`eme-landing-glass-badge absolute left-1/2 -translate-x-1/2 rounded-full border border-eme/10 bg-eme/12 font-semibold uppercase text-eme-dark ${mobile ? "top-2.5 px-2.5 py-px text-[7px] tracking-[0.12em]" : "top-3.5 px-3 py-0.5 text-[9px] tracking-[0.14em]"}`}
           >
             {badge}
           </span>

@@ -280,6 +280,104 @@
     filter: brightness(0.96);
   }
 
+  .eme-landing-glass-card {
+    isolation: isolate;
+    transition: filter 240ms ease, box-shadow 240ms ease;
+  }
+
+  .eme-landing-glass-card::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    z-index: 4;
+    pointer-events: none;
+    border-radius: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 1px 0 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(116, 151, 132, 0.08);
+  }
+
+  .eme-card:hover .eme-landing-glass-card,
+  .eme-card:focus-visible .eme-landing-glass-card {
+    filter: brightness(1.035) saturate(1.04);
+  }
+
+  .eme-landing-glass-badge,
+  .eme-landing-glass-chip,
+  .eme-landing-glass-control {
+    background-color: rgba(255, 255, 255, 0.54) !important;
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.52), rgba(240, 248, 243, 0.18));
+    border-color: rgba(255, 255, 255, 0.72) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 22px -14px rgba(24, 57, 38, 0.28);
+    -webkit-backdrop-filter: blur(14px) saturate(112%);
+    backdrop-filter: blur(14px) saturate(112%);
+  }
+
+  .eme-landing-glass-control:hover {
+    background-color: rgba(255, 255, 255, 0.68) !important;
+    border-color: rgba(255, 255, 255, 0.88) !important;
+  }
+
+  .eme-landing-glass-control--primary {
+    background-color: rgba(10, 138, 63, 0.78) !important;
+    background-image: linear-gradient(145deg, rgba(8, 151, 66, 0.88), rgba(0, 103, 53, 0.76));
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.36),
+      0 12px 26px -15px rgba(5, 91, 43, 0.58);
+  }
+
+  #landing-upcoming-title + div article {
+    background-color: rgba(255, 255, 255, 0.48) !important;
+    background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.48), rgba(236, 246, 240, 0.16));
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 14px 28px -22px rgba(24, 57, 38, 0.28) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(112%);
+    backdrop-filter: blur(14px) saturate(112%);
+  }
+
+  [data-module-dialog] > div.md\:block::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    border-radius: clamp(24px, 2.5vw, 44px);
+    border: 1px solid rgba(255, 255, 255, 0.66);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), transparent 28%, rgba(221, 239, 230, 0.05));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      inset 1px 0 0 rgba(255, 255, 255, 0.24);
+  }
+
+  [data-module-dialog] button[aria-label="Fechar"] > span,
+  [data-module-dialog] > div.md\:hidden > button[aria-label="Fechar"] {
+    background-color: rgba(255, 255, 255, 0.66) !important;
+    border-color: rgba(255, 255, 255, 0.76) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 10px 26px -16px rgba(24, 42, 32, 0.32);
+    -webkit-backdrop-filter: blur(16px) saturate(112%);
+    backdrop-filter: blur(16px) saturate(112%);
+  }
+
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .eme-landing-glass-card__surface,
+    .eme-landing-glass-badge,
+    .eme-landing-glass-chip,
+    .eme-landing-glass-control,
+    #landing-upcoming-title + div article,
+    [data-module-dialog] > div.md\:hidden > button[aria-label="Fechar"] {
+      background-color: rgba(249, 251, 249, 0.94) !important;
+    }
+  }
+
   .eme-swipe-hint {
     animation: eme-swipe-hint 2.2s ease-in-out infinite;
   }
@@ -683,5 +781,103 @@
 
   .eme-swipe-hint {
     animation: none;
+  }
+}
+
+/* Landing module modals: shared premium glass surface */
+.eme-module-modal-backdrop {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.17), transparent 38%),
+    linear-gradient(145deg, rgba(16, 33, 25, 0.42), rgba(12, 24, 19, 0.58)) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(118%);
+  backdrop-filter: blur(20px) saturate(118%);
+  overscroll-behavior: contain;
+}
+
+.eme-module-modal-shell {
+  box-sizing: border-box;
+  isolation: isolate;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: clamp(28px, 2.5vw, 44px) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.28), rgba(238, 247, 242, 0.12)),
+    rgba(244, 248, 246, 0.1) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(125%);
+  backdrop-filter: blur(28px) saturate(125%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 1px 0 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+    0 30px 80px -34px rgba(5, 20, 13, 0.58),
+    0 10px 30px -20px rgba(4, 18, 11, 0.44) !important;
+}
+
+.eme-module-modal-desktop,
+.eme-module-modal-mobile,
+.eme-module-modal-scroll {
+  border-radius: inherit;
+}
+
+.eme-module-modal-media {
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: rgba(248, 251, 249, 0.22);
+  -webkit-backdrop-filter: blur(18px) saturate(116%);
+  backdrop-filter: blur(18px) saturate(116%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 1px 0 0 rgba(255, 255, 255, 0.4),
+    0 22px 58px -34px rgba(8, 30, 18, 0.5);
+}
+
+.eme-module-modal-media > img {
+  border-radius: inherit;
+}
+
+.eme-module-modal-close {
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
+  backdrop-filter: blur(18px) saturate(118%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 12px 30px -18px rgba(7, 24, 15, 0.5) !important;
+}
+
+@media (max-width: 767px) {
+  .eme-module-modal-backdrop {
+    background:
+      radial-gradient(circle at 50% 4%, rgba(255, 255, 255, 0.2), transparent 34%),
+      linear-gradient(155deg, rgba(18, 36, 27, 0.46), rgba(9, 21, 15, 0.64)) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(122%);
+    backdrop-filter: blur(18px) saturate(122%);
+  }
+
+  .eme-module-modal-shell {
+    max-width: calc(100vw - 16px) !important;
+    border-radius: 28px !important;
+    background:
+      linear-gradient(150deg, rgba(255, 255, 255, 0.34), rgba(235, 245, 239, 0.14)),
+      rgba(244, 249, 246, 0.12) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(128%);
+    backdrop-filter: blur(24px) saturate(128%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.94),
+      inset 1px 0 0 rgba(255, 255, 255, 0.4),
+      0 22px 58px -30px rgba(4, 20, 12, 0.66) !important;
+  }
+
+  .eme-module-modal-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .eme-module-modal-media {
+    max-width: 100%;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      inset 1px 0 0 rgba(255, 255, 255, 0.44),
+      0 18px 44px -28px rgba(5, 24, 14, 0.58);
   }
 }
