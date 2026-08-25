@@ -223,6 +223,7 @@ model UserPasskeyCredential {
 }
 
 model Broker {
+  propertyCapacityEvents BrokerPropertyCapacityEvent[]
   id                        String                     @id @default(cuid())
   userId                    String                     @unique
   agencyId                  String?
@@ -726,6 +727,25 @@ model BrokerPropertyCapacityAddon {
 
   @@index([stripeSubscriptionId])
   @@index([status])
+}
+
+model BrokerPropertyCapacityEvent {
+  id                       String   @id @default(cuid())
+  brokerId                 String
+  action                   String
+  previousQuantity         Int?
+  quantity                 Int?
+  previousStripePriceId    String?
+  stripePriceId            String?
+  stripeSubscriptionId     String
+  stripeSubscriptionItemId String?
+  effectiveAt              DateTime
+  createdAt                DateTime @default(now())
+  broker                   Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([brokerId, effectiveAt])
+  @@index([stripeSubscriptionId])
+  @@index([action])
 }
 
 model AiCreditTransaction {

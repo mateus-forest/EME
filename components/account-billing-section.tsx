@@ -54,6 +54,10 @@ type BillingSnapshot = {
     intervalCount: number
     nextBillingAt: number | null
   } | null
+  totalMonthly: {
+    amount: number
+    currency: string
+  }
   invoices: BillingInvoice[]
   portalAvailable: boolean
   hasSubscription: boolean
@@ -234,10 +238,10 @@ export function AccountBillingSection() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 p-4 sm:p-5">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <BillingDetail
               icon={<ReceiptText className="size-4" />}
-              label="Valor"
+              label="Plano"
               value={formatCurrency(billing.plan.amount, billing.plan.currency)}
             />
             <BillingDetail
@@ -251,6 +255,11 @@ export function AccountBillingSection() {
               value={formatDate(billing.plan.nextBillingAt)}
             />
             <BillingDetail icon={<CreditCard className="size-4" />} label="Forma de pagamento" value={paymentMethodLabel} />
+            <BillingDetail
+              icon={<ReceiptText className="size-4" />}
+              label="Total mensal"
+              value={formatCurrency(billing.totalMonthly.amount, billing.totalMonthly.currency)}
+            />
           </div>
 
           {billing.capacityAddon ? (

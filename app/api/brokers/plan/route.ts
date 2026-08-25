@@ -51,7 +51,7 @@ export async function GET() {
 
   try {
     const snapshot = await getBrokerPlanSnapshot(user.broker.id)
-    const [creditHistoryResult, packageHistoryResult] = await Promise.allSettled([
+    const [creditHistoryResult, packageHistoryResult, capacityHistoryResult] = await Promise.allSettled([
       prisma.aiCreditTransaction.findMany({
         where: { brokerId: user.broker.id },
         orderBy: { createdAt: "desc" },
@@ -80,9 +80,22 @@ export async function GET() {
           createdAt: true,
         },
       }),
+      prisma.brokerPropertyCapacityEvent.findMany({
+        where: { brokerId: user.broker.id },
+        orderBy: { effectiveAt: "desc" },
+        take: 24,
+        select: {
+          id: true,
+          action: true,
+          previousQuantity: true,
+          quantity: true,
+          effectiveAt: true,
+        },
+      }),
     ])
     const creditHistory = creditHistoryResult.status === "fulfilled" ? creditHistoryResult.value : []
     const packageHistory = packageHistoryResult.status === "fulfilled" ? packageHistoryResult.value : []
+    const capacityHistory = capacityHistoryResult.status === "fulfilled" ? capacityHistoryResult.value : []
 
     if (creditHistoryResult.status === "rejected") {
       console.error("[api][brokers][plan][credit-history] unavailable", {
@@ -94,6 +107,12 @@ export async function GET() {
       console.error("[api][brokers][plan][package-history] unavailable", {
         brokerId: user.broker.id,
         message: packageHistoryResult.reason instanceof Error ? packageHistoryResult.reason.message : "unknown",
+      })
+    }
+    if (capacityHistoryResult.status === "rejected") {
+      console.error("[api][brokers][plan][capacity-history] unavailable", {
+        brokerId: user.broker.id,
+        message: capacityHistoryResult.reason instanceof Error ? capacityHistoryResult.reason.message : "unknown",
       })
     }
 
@@ -146,6 +165,26 @@ export async function GET() {
                 snapshot.propertyCapacityAddon.currentPeriodEnd?.toISOString() ?? null,
             }
           : null,
+      capacityHistory: capacityHistory.map((item) => {
+        const quantity =
+          item.action === "REMOVED" || item.action === "SUSPENDED"
+            ? item.previousQuantity ?? item.quantity
+            : item.quantity
+        const capacityPackage = Object.values(EME_EXTRA_PACKAGES).find(
+          (pack) => pack.type === "property" && pack.quantity === quantity,
+        )
+
+        return {
+          id: item.id,
+          action: item.action,
+          previousQuantity: item.previousQuantity,
+          quantity,
+          price: capacityPackage
+            ? `${formatBRLFromCents(capacityPackage.priceCents)}/mês`
+            : null,
+          effectiveAt: item.effectiveAt.toISOString(),
+        }
+      }),
       packageHistory: packageHistory.map((item) => ({
         ...item,
         billingMode: item.packageType === "property" ? "legacy_one_time" : "one_time",

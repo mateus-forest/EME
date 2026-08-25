@@ -1,5 +1,6 @@
 import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
+import type Stripe from "stripe"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
 import {
@@ -43,6 +44,41 @@ function parseCheckoutPayload(body: unknown): CheckoutPayload {
 
 function isExtraPackageKey(value: string): value is EmeExtraPackageKey {
   return value in EME_EXTRA_PACKAGES
+}
+
+function getStripeHostedChangeUrl(subscription: Stripe.Subscription, fallbackUrl: string) {
+  const invoice = subscription.latest_invoice
+  if (
+    invoice &&
+    typeof invoice !== "string" &&
+    "hosted_invoice_url" in invoice &&
+    typeof invoice.hosted_invoice_url === "string"
+  ) {
+    return invoice.hosted_invoice_url
+  }
+
+  return fallbackUrl
+}
+
+function getCapacityMutationIdempotencyKey(
+  subscription: Stripe.Subscription,
+  targetPriceId: string | null,
+) {
+  const latestInvoice = subscription.latest_invoice
+  const latestInvoiceId =
+    typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id ?? "none"
+  const currentItems = getStripePropertyCapacityItems(subscription)
+    .map((item) => `${item.id}:${item.price.id}`)
+    .sort()
+    .join(",") || "none"
+
+  return [
+    "eme-capacity",
+    subscription.id,
+    latestInvoiceId,
+    currentItems,
+    targetPriceId ?? "remove",
+  ].join(":").slice(0, 255)
 }
 
 export async function POST(request: NextRequest) {
@@ -100,11 +136,18 @@ export async function POST(request: NextRequest) {
           null,
         ),
         payment_behavior: "pending_if_incomplete",
-        proration_behavior: "create_prorations",
+        proration_behavior: "always_invoice",
+        expand: ["latest_invoice"],
+      }, {
+        idempotencyKey: getCapacityMutationIdempotencyKey(subscription, null),
       })
-      await syncBillingFromStripeSubscription(updatedSubscription)
 
-      return NextResponse.json({ url: `${origin}${portalPath}?checkout=success` })
+      return NextResponse.json({
+        url: getStripeHostedChangeUrl(
+          updatedSubscription,
+          `${origin}${portalPath}?checkout=success`,
+        ),
+      })
     }
 
     if (payload.packageKey) {
@@ -207,12 +250,18 @@ export async function POST(request: NextRequest) {
         const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
           items,
           payment_behavior: "pending_if_incomplete",
-          proration_behavior: "create_prorations",
+          proration_behavior: "always_invoice",
+          expand: ["latest_invoice"],
+        }, {
+          idempotencyKey: getCapacityMutationIdempotencyKey(subscription, priceId),
         })
 
-        await syncBillingFromStripeSubscription(updatedSubscription)
-
-        return NextResponse.json({ url: `${origin}${portalPath}?checkout=success` })
+        return NextResponse.json({
+          url: getStripeHostedChangeUrl(
+            updatedSubscription,
+            `${origin}${portalPath}?checkout=success`,
+          ),
+        })
       }
 
       const session = await stripe.checkout.sessions.create({

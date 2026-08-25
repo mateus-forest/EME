@@ -124,8 +124,11 @@ export async function syncBrokerPropertyCapacityAddon({
   currentPeriodStart?: Date | null
   currentPeriodEnd?: Date | null
 }) {
+  const normalizedStatus =
+    status === "CANCELED" || !stripeSubscriptionItemId ? "CANCELED" : status
+
   if (
-    status === "ACTIVE" &&
+    normalizedStatus === "ACTIVE" &&
     stripeSubscriptionItemId &&
     stripePriceId &&
     quantity &&
@@ -139,7 +142,7 @@ export async function syncBrokerPropertyCapacityAddon({
         stripePriceId,
         stripeSubscriptionId,
         stripeSubscriptionItemId,
-        status,
+        status: normalizedStatus,
         currentPeriodStart: currentPeriodStart ?? null,
         currentPeriodEnd: currentPeriodEnd ?? null,
       },
@@ -148,7 +151,7 @@ export async function syncBrokerPropertyCapacityAddon({
         stripePriceId,
         stripeSubscriptionId,
         stripeSubscriptionItemId,
-        status,
+        status: normalizedStatus,
         currentPeriodStart: currentPeriodStart ?? null,
         currentPeriodEnd: currentPeriodEnd ?? null,
         endedAt: null,
@@ -159,7 +162,7 @@ export async function syncBrokerPropertyCapacityAddon({
   return prisma.brokerPropertyCapacityAddon.updateMany({
     where: { brokerId, status: "ACTIVE" },
     data: {
-      status,
+      status: normalizedStatus,
       currentPeriodEnd: currentPeriodEnd ?? undefined,
       endedAt: new Date(),
     },

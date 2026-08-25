@@ -78,6 +78,15 @@ type PackagePurchaseHistoryItem = {
   billingMode?: "legacy_one_time" | "one_time"
 }
 
+type CapacityHistoryItem = {
+  id: string
+  action: "ACTIVATED" | "CHANGED" | "REMOVED" | "SUSPENDED" | string
+  previousQuantity: number | null
+  quantity: number | null
+  price: string | null
+  effectiveAt: string
+}
+
 type BrokerPlanSnapshot = {
   currentPlan: PlanItem
   plans: PlanItem[]
@@ -107,6 +116,7 @@ type BrokerPlanSnapshot = {
     startedAt: string
     currentPeriodEnd: string | null
   } | null
+  capacityHistory: CapacityHistoryItem[]
   packageHistory: PackagePurchaseHistoryItem[]
 }
 
@@ -326,11 +336,15 @@ export function BrokerPlanPage() {
     () => (planSnapshot?.packageHistory ?? []).filter((item) => item.packageType === "property"),
     [planSnapshot?.packageHistory],
   )
+  const capacityHistory = planSnapshot?.capacityHistory ?? []
   const creditHistory = planSnapshot?.credits.history ?? []
   const visibleCreditHistory = isCreditHistoryExpanded ? creditHistory : creditHistory.slice(0, 3)
   const visiblePropertyHistory = isPropertyHistoryExpanded
     ? propertyPackageHistory
     : propertyPackageHistory.slice(0, 3)
+  const visibleCapacityHistory = isPropertyHistoryExpanded
+    ? capacityHistory
+    : capacityHistory.slice(0, 3)
   const isFreePlan = currentPlan?.key === "free"
   const nextPlanKey = currentPlan ? getNextEmePlanKey(currentPlan.key) : null
   const visiblePlans = useMemo(
@@ -895,6 +909,43 @@ export function BrokerPlanPage() {
                   </div>
                 </div>
               ) : null}
+              {capacityHistory.length ? (
+                <div className="mb-3">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#8A94A6]">
+                    Histórico do complemento mensal
+                  </p>
+                  <div className="divide-y divide-[var(--broker-border)]">
+                    {visibleCapacityHistory.map((item) => {
+                      const quantity = item.quantity ?? item.previousQuantity
+                      const actionLabel =
+                        item.action === "ACTIVATED"
+                          ? "Ativada"
+                          : item.action === "CHANGED"
+                            ? "Alterada"
+                            : item.action === "REMOVED"
+                              ? "Removida"
+                              : item.action === "SUSPENDED"
+                                ? "Suspensa"
+                                : item.action
+
+                      return (
+                        <div key={item.id} data-testid="capacity-history-item" className="py-3 first:pt-0 last:pb-0">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm font-medium text-[#050505]">
+                              {item.action === "CHANGED" ? "Alterada para " : ""}
+                              {quantity ? `+${quantity} imóveis` : "Capacidade adicional"}
+                            </p>
+                            {item.price ? <span className="text-sm font-semibold text-[#009b3a]">{item.price}</span> : null}
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-[#6B7280]">
+                            {formatHistoryDate(item.effectiveAt)} · Status: {actionLabel}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
               {propertyPackageHistory.length ? (
                 <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#8A94A6]">
                   Histórico legado de compras únicas
@@ -916,13 +967,13 @@ export function BrokerPlanPage() {
               ) : (
                 <div className="rounded-[var(--broker-radius-md)] border border-black/[0.06] bg-[#fbfbf8] p-3">
                   <p className="text-sm text-[#6B7280]">
-                    {planSnapshot?.capacityAddon
+                    {planSnapshot?.capacityAddon || capacityHistory.length
                       ? "Nenhuma compra antiga de capacidade registrada."
                       : "Nenhuma capacidade adicional ativa ou compra antiga registrada."}
                   </p>
                 </div>
               )}
-              {propertyPackageHistory.length > 3 ? (
+              {propertyPackageHistory.length > 3 || capacityHistory.length > 3 ? (
                 <Button
                   type="button"
                   variant="ghost"

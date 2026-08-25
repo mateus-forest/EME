@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import {
   getStripePlanItem,
   getStripePropertyCapacityItems,
+  mapStripePriceIdToEmePlanKey,
   mapStripePriceIdToPropertyCapacity,
   syncBillingFromStripeSubscription,
 } from "@/lib/billing"
@@ -50,7 +51,7 @@ type BillingCharge = {
   id: string
   number: string | null
   description: string
-  type: "Assinatura" | "Créditos IA" | "Expansão da Carteira" | "Pacote extra"
+  type: "Assinatura" | "Capacidade adicional" | "Créditos IA" | "Expansão da Carteira" | "Pacote extra"
   createdAt: number
   amount: number
   currency: string
@@ -97,6 +98,10 @@ function noSubscriptionResponse(plan: { name: string; priceCents: number }) {
       },
       paymentMethod: null,
       capacityAddon: null,
+      totalMonthly: {
+        amount: plan.priceCents,
+        currency: "brl",
+      },
       invoices: [],
       portalAvailable: false,
       hasSubscription: false,
@@ -136,13 +141,65 @@ function metadataString(metadata: unknown, key: string) {
   return typeof value === "string" ? value : null
 }
 
-function invoiceDescription(invoice: Stripe.Invoice) {
+function invoiceLinePriceId(line: Stripe.InvoiceLineItem) {
+  const record = line as unknown as Record<string, unknown>
+  const legacyPrice = record.price
+  if (typeof legacyPrice === "string") return legacyPrice
+  if (
+    legacyPrice &&
+    typeof legacyPrice === "object" &&
+    "id" in legacyPrice &&
+    typeof legacyPrice.id === "string"
+  ) {
+    return legacyPrice.id
+  }
+
+  const pricing = record.pricing
+  if (!pricing || typeof pricing !== "object" || !("price_details" in pricing)) return null
+  const priceDetails = pricing.price_details
+  if (!priceDetails || typeof priceDetails !== "object" || !("price" in priceDetails)) return null
+  const price = priceDetails.price
+  if (typeof price === "string") return price
+  if (price && typeof price === "object" && "id" in price && typeof price.id === "string") {
+    return price.id
+  }
+
+  return null
+}
+
+function invoicePresentation(invoice: Stripe.Invoice) {
+  const priceIds = invoice.lines.data.map(invoiceLinePriceId).filter((priceId): priceId is string => Boolean(priceId))
+  const capacityQuantities = priceIds
+    .map(mapStripePriceIdToPropertyCapacity)
+    .filter(
+      (quantity): quantity is NonNullable<ReturnType<typeof mapStripePriceIdToPropertyCapacity>> =>
+        quantity !== null,
+    )
+  const hasPlanItem = priceIds.some((priceId) => mapStripePriceIdToEmePlanKey(priceId) !== null)
+  const latestCapacityQuantity = capacityQuantities.at(-1) ?? null
+
+  if (capacityQuantities.length > 0 && !hasPlanItem) {
+    return {
+      description: latestCapacityQuantity
+        ? `Capacidade adicional +${new Intl.NumberFormat("pt-BR").format(latestCapacityQuantity)} imóveis — cobrança/prorrata`
+        : "Alteração de capacidade adicional — cobrança/prorrata",
+      type: "Capacidade adicional" as const,
+    }
+  }
+
   const rawDescription = invoice.lines.data[0]?.description?.trim() ?? "Assinatura EME"
   const planName = rawDescription
     .replace(/^\d+\s*[×x]\s*/i, "")
     .replace(/\s+\(.*\)\s*$/, "")
     .trim()
-  return `${planName || "Assinatura EME"} — mensalidade`
+  const capacitySuffix = latestCapacityQuantity
+    ? ` + capacidade adicional +${new Intl.NumberFormat("pt-BR").format(latestCapacityQuantity)} imóveis`
+    : ""
+
+  return {
+    description: `${planName || "Assinatura EME"}${capacitySuffix} — mensalidade`,
+    type: "Assinatura" as const,
+  }
 }
 
 function checkoutReceiptUrl(session: Stripe.Checkout.Session) {
@@ -198,18 +255,21 @@ function consolidateCharges({
 
   const charges: BillingCharge[] = invoices
     .filter((invoice) => invoice.amount_due > 0 || invoice.amount_paid > 0)
-    .map((invoice) => ({
-      id: invoice.id,
-      number: invoice.number,
-      description: invoiceDescription(invoice),
-      type: "Assinatura",
-      createdAt: invoice.created,
-      amount: invoice.amount_paid || invoice.amount_due,
-      currency: invoice.currency,
-      status: invoice.status,
-      receiptUrl: invoice.hosted_invoice_url ?? invoice.invoice_pdf ?? null,
-      documentLabel: "Abrir fatura",
-    }))
+    .map((invoice) => {
+      const presentation = invoicePresentation(invoice)
+      return {
+        id: invoice.id,
+        number: invoice.number,
+        description: presentation.description,
+        type: presentation.type,
+        createdAt: invoice.created,
+        amount: invoice.amount_paid || invoice.amount_due,
+        currency: invoice.currency,
+        status: invoice.status,
+        receiptUrl: invoice.hosted_invoice_url ?? invoice.invoice_pdf ?? null,
+        documentLabel: "Abrir fatura" as const,
+      }
+    })
   const seenPaymentIntents = new Set<string>()
 
   for (const session of sessions) {
@@ -494,6 +554,9 @@ export async function GET() {
     const quantity = item?.quantity ?? 1
     const capacityItem = subscription ? (getStripePropertyCapacityItems(subscription)[0] ?? null) : null
     const capacityQuantity = mapStripePriceIdToPropertyCapacity(capacityItem?.price.id)
+    const planMonthlyAmount =
+      typeof price?.unit_amount === "number" ? price.unit_amount * quantity : planSnapshot.plan.priceCents
+    const capacityMonthlyAmount = capacityItem?.price.unit_amount ?? 0
     const [stripeInvoices, checkoutSessions, internalPurchases, paymentMethod, resolvedPlanName] = await Promise.all([
       listAllInvoices(stripe, link.customer.id),
       listAllCheckoutSessions(stripe, link.customer.id),
@@ -532,8 +595,7 @@ export async function GET() {
         plan: {
           name: resolvedPlanName,
           status: subscription?.status ?? "inactive",
-          amount:
-            typeof price?.unit_amount === "number" ? price.unit_amount * quantity : planSnapshot.plan.priceCents,
+          amount: planMonthlyAmount,
           currency: price?.currency ?? "brl",
           interval: price?.recurring?.interval ?? null,
           intervalCount: price?.recurring?.interval_count ?? 1,
@@ -553,6 +615,10 @@ export async function GET() {
                 nextBillingAt: capacityItem.current_period_end ?? null,
               }
             : null,
+        totalMonthly: {
+          amount: planMonthlyAmount + capacityMonthlyAmount,
+          currency: price?.currency ?? capacityItem?.price.currency ?? "brl",
+        },
         invoices: billingCharges,
         portalAvailable: hasManageableSubscription,
         hasSubscription: hasManageableSubscription,
