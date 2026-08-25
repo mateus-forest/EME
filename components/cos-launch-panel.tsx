@@ -125,22 +125,22 @@ export function CosLaunchPanel() {
     >
       <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
         <CosLaunchOperationHealth />
-        <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 py-4 sm:px-6 lg:pr-[260px]">
-          <header className="mb-2 shrink-0">
-            <h1 className="text-xl font-medium tracking-[-0.025em] text-slate-950 sm:text-2xl">
+        <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 pb-3 pt-2 sm:px-6 lg:py-4 lg:pr-[260px]">
+          <header className="mb-3 shrink-0 lg:mb-2">
+            <h1 className="text-[2rem] font-medium leading-[1.05] tracking-[-0.035em] text-slate-950 sm:text-[2.15rem] lg:text-2xl lg:tracking-[-0.025em]">
               Olá, {firstName}.
             </h1>
           </header>
-          <div className="mb-3 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+          <div className="mb-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:gap-1.5">
             {quickActions.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 disabled={busy}
                 onClick={() => void runAction(item.id, item.label)}
-                className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-slate-200/70 bg-white/75 px-3 text-[11px] font-semibold text-slate-600 shadow-[0_4px_14px_rgba(15,23,42,.04)] backdrop-blur-xl transition hover:border-emerald-200 hover:bg-white hover:text-emerald-800 disabled:opacity-50"
+                className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-slate-200/65 bg-white/70 px-2.5 text-[10px] font-medium text-slate-600 shadow-[0_3px_10px_rgba(15,23,42,.035)] backdrop-blur-xl transition hover:border-emerald-200 hover:bg-white hover:text-emerald-800 disabled:opacity-50 lg:min-h-9 lg:bg-white/75 lg:px-3 lg:text-[11px] lg:font-semibold lg:shadow-[0_4px_14px_rgba(15,23,42,.04)]"
               >
-                <item.icon className="size-3.5 text-emerald-700" />
+                <item.icon className="size-3 text-emerald-700 lg:size-3.5" />
                 {item.label}
               </button>
             ))}
@@ -153,7 +153,9 @@ export function CosLaunchPanel() {
                   <section key={message.id} className={message.role === "user" ? "ml-auto max-w-2xl" : "max-w-4xl"}>
                     <div
                       className={
-                        message.role === "user"
+                        message.id === "welcome"
+                          ? "w-full bg-transparent px-1 py-1 text-sm italic leading-6 text-slate-500 shadow-none lg:w-fit lg:max-w-2xl lg:rounded-[6px_20px_20px_20px] lg:border lg:border-slate-100/80 lg:bg-white/80 lg:px-3.5 lg:py-2.5 lg:not-italic lg:text-slate-700 lg:shadow-[0_5px_18px_rgba(15,23,42,.04)] lg:backdrop-blur-xl"
+                          : message.role === "user"
                           ? "ml-auto w-fit rounded-[20px_20px_6px_20px] bg-emerald-950 px-3.5 py-2.5 text-sm text-white shadow-sm"
                           : "w-fit max-w-2xl rounded-[6px_20px_20px_20px] border border-slate-100/80 bg-white/80 px-3.5 py-2.5 text-sm leading-6 text-slate-700 shadow-[0_5px_18px_rgba(15,23,42,.04)] backdrop-blur-xl"
                       }

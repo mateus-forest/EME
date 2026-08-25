@@ -48,7 +48,40 @@ export function CosLaunchOperationHealth() {
   )
 
   return (
-    <aside className="mx-3 mt-2 rounded-2xl border border-white/90 bg-white/72 p-2.5 shadow-[0_10px_28px_rgba(15,23,42,.06)] backdrop-blur-2xl sm:mx-5 lg:absolute lg:right-5 lg:top-4 lg:z-10 lg:m-0 lg:w-56 lg:rounded-3xl lg:p-3.5 lg:shadow-[0_16px_40px_rgba(15,23,42,.07)]">
+    <>
+      <aside className="absolute bottom-[5.5rem] right-4 z-20 lg:hidden">
+        {expanded && health ? (
+          <div className="absolute bottom-[calc(100%+8px)] right-0 w-48 rounded-2xl border border-white/90 bg-white/92 p-3 shadow-[0_16px_40px_rgba(15,23,42,.10)] backdrop-blur-2xl">
+            <div className="grid gap-1.5">
+              {(Object.entries(health.scores) as Array<[keyof OperationHealth["scores"], number]>).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>{scoreLabels[key]}</span>
+                  <span className="font-semibold text-slate-700">{value}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <button
+          type="button"
+          disabled={!health}
+          onClick={() => setExpanded((current) => !current)}
+          className="flex min-h-11 items-center gap-2 rounded-full border border-white/90 bg-white/90 px-3.5 shadow-[0_12px_32px_rgba(15,23,42,.09)] backdrop-blur-2xl disabled:cursor-not-allowed disabled:opacity-70"
+          aria-expanded={expanded}
+          aria-label={expanded ? "Ocultar detalhes da saúde da operação" : "Ver detalhes da saúde da operação"}
+        >
+          <span className="size-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          <span className="text-sm font-medium text-slate-900">Saúde</span>
+          <strong className="text-base font-semibold tracking-tight text-slate-950">
+            {loading ? "—" : health ? `${health.score}%` : "—"}
+          </strong>
+          <span className="grid min-w-8 place-items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+            {loading ? "—" : health ? pendingCount : "!"}
+          </span>
+        </button>
+      </aside>
+
+      <aside className="hidden rounded-3xl border border-white/90 bg-white/72 p-3.5 shadow-[0_16px_40px_rgba(15,23,42,.07)] backdrop-blur-2xl lg:absolute lg:right-5 lg:top-4 lg:z-10 lg:block lg:w-56">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700 lg:size-8 lg:rounded-xl">
@@ -88,6 +121,7 @@ export function CosLaunchOperationHealth() {
         {expanded ? "Ocultar detalhes" : "Ver detalhes"}
         {health ? <ChevronDown className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`} /> : null}
       </button>
-    </aside>
+      </aside>
+    </>
   )
 }
