@@ -1,14 +1,17 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AnimatePresence, useMotionValue, useSpring } from "motion/react"
+import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react"
 
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
+import {
+  AcceleratorHero,
+  LandingAcceleratorTeaser,
+} from "@/components/eme/landing-accelerator"
 import { LandingActivity } from "@/components/eme/landing-activity"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
-import { LandingUpcomingFeatures } from "@/components/eme/landing-upcoming-features"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 /**
@@ -31,9 +34,11 @@ export function EmeMobileExperience({
   const authOpenRef = useRef(false)
   const interactingRef = useRef(false)
   const resumeAutoAtRef = useRef(0)
+  const acceleratorOpenRef = useRef(false)
   const orbitTarget = useMotionValue(0)
   const orbitAngle = useSpring(orbitTarget, { stiffness: 82, damping: 24, mass: 0.82 })
   const [activeIndex, setActiveIndex] = useState(0)
+  const [acceleratorOpen, setAcceleratorOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   const [selected, setSelected] = useState<{ id: string; el: HTMLElement } | null>(null)
@@ -45,7 +50,8 @@ export function EmeMobileExperience({
   const authOpen = authMode != null
   selectedRef.current = selected?.id ?? null
   authOpenRef.current = authOpen
-  const sceneBlocking = authOpen || selected != null
+  acceleratorOpenRef.current = acceleratorOpen
+  const sceneBlocking = authOpen || selected != null || acceleratorOpen
 
   useEffect(() => {
     setMounted(true)
@@ -76,7 +82,7 @@ export function EmeMobileExperience({
     let velocityX = 0
 
     const handleStart = (event: PointerEvent) => {
-      if (selectedRef.current || authOpenRef.current || !event.isPrimary) return
+      if (selectedRef.current || authOpenRef.current || acceleratorOpenRef.current || !event.isPrimary) return
       dragging = true
       interactingRef.current = true
       pointerId = event.pointerId
@@ -150,6 +156,7 @@ export function EmeMobileExperience({
         !document.hidden &&
         !selectedRef.current &&
         !authOpenRef.current &&
+        !acceleratorOpenRef.current &&
         !interactingRef.current &&
         now >= resumeAutoAtRef.current
       ) {
@@ -166,86 +173,117 @@ export function EmeMobileExperience({
     <main
       className={`fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background${sceneBlocking ? " eme-landing-scene is-paused" : ""}`}
     >
-      <CoastalCityBackground />
-
-      <MobileHeader
-        authOpen={authOpen}
-        onEntrar={() => openAuth("login")}
-        onComecar={() => openAuth("signup")}
-      />
-      <LandingActivity
-        authOpen={authOpen}
-        compact
-        className="fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[60]"
-      />
-
-      <div
-        ref={stageRef}
-        className="absolute inset-0 flex touch-none translate-y-[10px] items-center justify-center transition-opacity duration-700 ease-out"
-        style={{ opacity: mounted ? 1 : 0 }}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        initial={false}
+        animate={{ x: acceleratorOpen ? "-10vw" : "0vw", scale: acceleratorOpen ? 1.05 : 1 }}
+        transition={{ duration: 0.92, ease: [0.22, 1, 0.36, 1] }}
+        style={{ willChange: "transform" }}
       >
-        {mounted ? (
-          <MobileOrbitStage
-            orbitAngle={orbitAngle}
-            selectedId={selected?.id ?? null}
-            onSelect={handleSelect}
-            onActiveIndexChange={setActiveIndex}
-            authOpen={authOpen}
-          />
-        ) : null}
-      </div>
+        <CoastalCityBackground />
+      </motion.div>
 
-      {!selected && !authOpen ? (
-        <LandingUpcomingFeatures
+      <motion.div
+        className="absolute inset-0"
+        initial={false}
+        animate={{ x: acceleratorOpen ? "-55vw" : "0vw", opacity: acceleratorOpen ? 0 : 1 }}
+        transition={{ duration: acceleratorOpen ? 0.82 : 0.74, ease: [0.22, 1, 0.36, 1] }}
+        style={{ pointerEvents: acceleratorOpen ? "none" : "auto", willChange: "transform, opacity" }}
+        aria-hidden={acceleratorOpen}
+      >
+        <MobileHeader
+          authOpen={authOpen}
+          onEntrar={() => openAuth("login")}
+          onComecar={() => openAuth("signup")}
+        />
+        <LandingActivity
+          authOpen={authOpen}
           compact
-          className="!bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.5rem))] !left-2 z-[50]"
+          className="fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[60]"
         />
-      ) : null}
 
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
         <div
-          className="eme-ambient-light absolute left-1/2 top-[40%] h-[76vh] w-[86vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0) 64%)",
-            mixBlendMode: "soft-light",
-          }}
-        />
-      </div>
-
-      {!selected && !authOpen ? (
-        <div
-          className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-2"
-          style={{ marginBottom: "calc(env(safe-area-inset-bottom) + 22px)" }}
+          ref={stageRef}
+          className="absolute inset-0 flex touch-none translate-y-[10px] items-center justify-center transition-opacity duration-700 ease-out"
+          style={{ opacity: mounted ? 1 : 0 }}
         >
-          {emeModules.map((module, index) => {
-            const active = index === activeIndex
-            return (
-              <span
-                key={module.id}
-                className="block rounded-full transition-[width,background-color] duration-500 ease-out"
-                style={{
-                  width: active ? 22 : 6,
-                  height: 6,
-                  backgroundColor: active
-                    ? "var(--eme)"
-                    : "color-mix(in oklab, var(--graphite) 40%, transparent)",
-                }}
-              />
-            )
-          })}
+          {mounted ? (
+            <MobileOrbitStage
+              orbitAngle={orbitAngle}
+              selectedId={selected?.id ?? null}
+              onSelect={handleSelect}
+              onActiveIndexChange={setActiveIndex}
+              authOpen={authOpen}
+            />
+          ) : null}
         </div>
-      ) : null}
 
-      {!selected && !authOpen ? (
-        <div
-          className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
-          aria-hidden
-        >
-          <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/45">
-            <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
+        {!selected && !authOpen ? (
+          <LandingAcceleratorTeaser compact onOpen={() => setAcceleratorOpen(true)} />
+        ) : null}
+
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
+          <div
+            className="eme-ambient-light absolute left-1/2 top-[40%] h-[76vh] w-[86vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              background: "radial-gradient(circle, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0) 64%)",
+              mixBlendMode: "soft-light",
+            }}
+          />
+        </div>
+
+        {!selected && !authOpen ? (
+          <div
+            className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-2"
+            style={{ marginBottom: "calc(env(safe-area-inset-bottom) + 22px)" }}
+          >
+            {emeModules.map((module, index) => {
+              const active = index === activeIndex
+              return (
+                <span
+                  key={module.id}
+                  className="block rounded-full transition-[width,background-color] duration-500 ease-out"
+                  style={{
+                    width: active ? 22 : 6,
+                    height: 6,
+                    backgroundColor: active
+                      ? "var(--eme)"
+                      : "color-mix(in oklab, var(--graphite) 40%, transparent)",
+                  }}
+                />
+              )
+            })}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {!selected && !authOpen ? (
+          <div
+            className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
+            aria-hidden
+          >
+            <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/45">
+              <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
+            </div>
+          </div>
+        ) : null}
+      </motion.div>
+
+      <AnimatePresence initial={false}>
+        {acceleratorOpen ? (
+          <motion.div
+            key="accelerator-mobile"
+            className="absolute inset-0 z-[70]"
+            initial={{ x: "100%", opacity: 0.72 }}
+            animate={{ x: "0%", opacity: 1 }}
+            exit={{ x: "100%", opacity: 0.72 }}
+            transition={{ duration: 0.86, ease: [0.22, 1, 0.36, 1] }}
+            style={{ willChange: "transform, opacity" }}
+          >
+            <AcceleratorHero compact onBack={() => setAcceleratorOpen(false)} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {selected && selectedModule ? (

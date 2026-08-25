@@ -1,13 +1,16 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AnimatePresence, useMotionValue, useSpring } from "motion/react"
+import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react"
 
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
+import {
+  AcceleratorHero,
+  LandingAcceleratorTeaser,
+} from "@/components/eme/landing-accelerator"
 import { LandingActivity } from "@/components/eme/landing-activity"
-import { LandingUpcomingFeatures } from "@/components/eme/landing-upcoming-features"
 import { LandingHeader } from "@/components/eme/landing-header"
 import { OrbitStage } from "@/components/eme/orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
@@ -24,6 +27,7 @@ export function EmeLandingScene({
   const mainRef = useRef<HTMLElement>(null)
   const cursorRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [acceleratorOpen, setAcceleratorOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -43,6 +47,8 @@ export function EmeLandingScene({
 
   const authOpenRef = useRef(false)
   authOpenRef.current = authMode != null
+  const acceleratorOpenRef = useRef(false)
+  acceleratorOpenRef.current = acceleratorOpen
 
   const openAuth = (mode: AuthMode) => {
     setSelected(null)
@@ -52,7 +58,7 @@ export function EmeLandingScene({
 
   const orbitTarget = useMotionValue(0)
   const orbitAngle = useSpring(orbitTarget, { stiffness: 55, damping: 18, mass: 1.1 })
-  const sceneBlocking = authMode != null || selected != null
+  const sceneBlocking = authMode != null || selected != null || acceleratorOpen
 
   useEffect(() => {
     const THRESHOLD = 1.5
@@ -60,7 +66,7 @@ export function EmeLandingScene({
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      if (selectedRef.current || authOpenRef.current) return
+      if (selectedRef.current || authOpenRef.current || acceleratorOpenRef.current) return
       if (Math.abs(e.deltaY) < THRESHOLD) return
       orbitTarget.set(orbitTarget.get() + e.deltaY * SENSITIVITY)
     }
@@ -78,7 +84,7 @@ export function EmeLandingScene({
     const advanceOrbit = (now: number) => {
       const elapsed = Math.min(now - previous, 64)
       previous = now
-      if (!selectedRef.current && !authOpenRef.current) {
+      if (!selectedRef.current && !authOpenRef.current && !acceleratorOpenRef.current) {
         orbitTarget.set(orbitTarget.get() + elapsed * 0.002)
       }
       raf = requestAnimationFrame(advanceOrbit)
@@ -102,7 +108,7 @@ export function EmeLandingScene({
     let seeded = false
 
     const onMove = (e: PointerEvent) => {
-      if (selectedRef.current || authOpenRef.current) return
+      if (selectedRef.current || authOpenRef.current || acceleratorOpenRef.current) return
       target.x = (e.clientX / window.innerWidth - 0.5) * 2
       target.y = (e.clientY / window.innerHeight - 0.5) * 2
       cursorTarget.x = e.clientX
@@ -142,45 +148,91 @@ export function EmeLandingScene({
       ref={mainRef}
       className={`eme-landing-scene relative h-[100svh] w-full overflow-hidden bg-background${sceneBlocking ? " is-paused" : ""}`}
     >
-      <CoastalCityBackground />
-      <LandingHeader
-        onEntrar={() => openAuth("login")}
-        onComecar={() => openAuth("signup")}
-        authOpen={authMode != null}
-      />
-      <LandingActivity
-        authOpen={authMode != null}
-        className="absolute left-6 top-9 z-[60] hidden sm:block sm:left-12"
-      />
-
-      <LandingUpcomingFeatures />
-
-      <div
-        className="absolute inset-0 flex items-center justify-center -translate-y-[72px] pt-4 transition-opacity duration-700 ease-out sm:pt-2"
-        style={{ opacity: mounted ? 1 : 0 }}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        initial={false}
+        animate={{ x: acceleratorOpen ? "-7vw" : "0vw", scale: acceleratorOpen ? 1.035 : 1 }}
+        transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
+        style={{ willChange: "transform" }}
       >
-        {mounted && (
-          <OrbitStage
-            orbitAngle={orbitAngle}
-            activeId={activeId}
-            onHover={setActiveId}
-            selectedId={selected?.id ?? null}
-            onSelect={handleSelect}
-            authOpen={authMode != null}
-          />
-        )}
-      </div>
+        <CoastalCityBackground />
+      </motion.div>
 
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
-        <div
-          className="eme-ambient-light absolute left-1/2 top-[40%] h-[80vh] w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 62%)",
-            mixBlendMode: "soft-light",
+      <motion.div
+        className="absolute inset-0"
+        initial={false}
+        animate={{ x: acceleratorOpen ? "-42vw" : "0vw", opacity: acceleratorOpen ? 0 : 1 }}
+        transition={{ duration: acceleratorOpen ? 0.9 : 0.82, ease: [0.22, 1, 0.36, 1] }}
+        style={{ pointerEvents: acceleratorOpen ? "none" : "auto", willChange: "transform, opacity" }}
+        aria-hidden={acceleratorOpen}
+      >
+        <LandingHeader
+          onEntrar={() => openAuth("login")}
+          onComecar={() => openAuth("signup")}
+          authOpen={authMode != null}
+        />
+        <LandingActivity
+          authOpen={authMode != null}
+          className="absolute left-6 top-9 z-[60] hidden sm:block sm:left-12"
+        />
+
+        <LandingAcceleratorTeaser
+          onOpen={() => {
+            setActiveId(null)
+            setAcceleratorOpen(true)
           }}
         />
-      </div>
+
+        <div
+          className="absolute inset-0 flex items-center justify-center -translate-y-[72px] pt-4 transition-opacity duration-700 ease-out sm:pt-2"
+          style={{ opacity: mounted ? 1 : 0 }}
+        >
+          {mounted && (
+            <OrbitStage
+              orbitAngle={orbitAngle}
+              activeId={activeId}
+              onHover={setActiveId}
+              selectedId={selected?.id ?? null}
+              onSelect={handleSelect}
+              authOpen={authMode != null}
+            />
+          )}
+        </div>
+
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
+          <div
+            className="eme-ambient-light absolute left-1/2 top-[40%] h-[80vh] w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 62%)",
+              mixBlendMode: "soft-light",
+            }}
+          />
+        </div>
+
+        <div className="pointer-events-none absolute bottom-8 left-6 z-40 hidden sm:block sm:left-12">
+          <div className="flex h-9 w-[22px] justify-center rounded-full border border-graphite/30 pt-1.5">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-graphite/50" />
+          </div>
+        </div>
+      </motion.div>
+
+      <AnimatePresence initial={false}>
+        {acceleratorOpen ? (
+          <motion.div
+            key="accelerator"
+            className="absolute inset-0 z-[70]"
+            initial={{ x: "100%", opacity: 0.7 }}
+            animate={{ x: "0%", opacity: 1 }}
+            exit={{ x: "100%", opacity: 0.7 }}
+            transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
+            style={{ willChange: "transform, opacity" }}
+          >
+            <AcceleratorHero onBack={() => setAcceleratorOpen(false)} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {selected && selectedModule && (
@@ -213,11 +265,6 @@ export function EmeLandingScene({
         />
       </div>
 
-      <div className="pointer-events-none absolute bottom-8 left-6 z-40 hidden sm:block sm:left-12">
-        <div className="flex h-9 w-[22px] justify-center rounded-full border border-graphite/30 pt-1.5">
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-graphite/50" />
-        </div>
-      </div>
     </main>
   )
 }
