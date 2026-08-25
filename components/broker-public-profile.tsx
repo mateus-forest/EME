@@ -202,28 +202,29 @@ export function BrokerProfileHero({
       </div>
 
       {metrics.length ? (
-        <div className="relative z-10 mx-auto mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {metrics.map(({ icon: Icon, value, label, wideMobile }) => (
+        <div className={cn("relative z-10 mx-auto mt-3 grid w-full grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5", metrics.length === 5 && "grid-cols-6")}>
+          {metrics.map(({ icon: Icon, value, label, wideMobile }, index) => (
             <div
               key={label}
               className={cn(
-                "relative grid min-h-[132px] items-center overflow-hidden rounded-[1rem] border border-white/80 bg-white/70 px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_20px_rgba(57,50,41,.07)] backdrop-blur-[18px]",
-                wideMobile && "col-span-2 py-2.5 sm:col-span-2 lg:col-span-1 lg:py-2.5",
+                "relative grid min-h-[82px] items-center overflow-hidden rounded-[0.85rem] border border-white/80 bg-white/70 px-2 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_6px_16px_rgba(57,50,41,.06)] backdrop-blur-[18px] sm:col-span-1 sm:min-h-[132px] sm:rounded-[1rem] sm:px-3 sm:py-4 sm:shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_20px_rgba(57,50,41,.07)]",
+                metrics.length === 5 ? (index < 3 ? "col-span-2" : "col-span-3") : wideMobile ? "col-span-2" : "col-span-1",
+                wideMobile && "sm:col-span-2 sm:py-2.5 lg:col-span-1 lg:py-2.5",
               )}
             >
               <div className={cn(
                 "flex items-center justify-center text-center",
-                wideMobile ? "flex-col gap-1" : "flex-col gap-1.5",
+                "flex-col gap-1 sm:gap-1.5",
               )}>
-                <span className="relative flex size-8 items-center justify-center rounded-full border border-[#e6eee8] bg-white/72 text-[#128b41] shadow-[0_3px_9px_rgba(40,75,52,.07)]">
-                  <Icon className="size-3.5" />
+                <span className="relative flex size-7 items-center justify-center rounded-full border border-[#e6eee8] bg-white/72 text-[#128b41] shadow-[0_3px_8px_rgba(40,75,52,.06)] sm:size-8 sm:shadow-[0_3px_9px_rgba(40,75,52,.07)]">
+                  <Icon className="size-3 sm:size-3.5" />
                 </span>
                 <span className="flex min-w-0 flex-col items-center text-center">
                   <strong className={cn(
-                    "text-sm font-semibold leading-snug text-[#151b17] sm:text-[15px]",
+                    "text-[11px] font-semibold leading-tight text-[#151b17] sm:text-[15px] sm:leading-snug",
                     wideMobile ? "max-w-full whitespace-nowrap tracking-[-0.02em]" : "line-clamp-2",
                   )}>{value}</strong>
-                  <span className={cn("mt-1 text-xs leading-4 text-[#777b78]", wideMobile && "mt-1")}>{label}</span>
+                  <span className="mt-0.5 text-[10px] leading-3 text-[#777b78] sm:mt-1 sm:text-xs sm:leading-4">{label}</span>
                 </span>
               </div>
             </div>
