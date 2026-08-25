@@ -202,7 +202,8 @@ export async function createPropertyDraftRecord(input: {
     }
   }
 
-  if (!draft.price) {
+  const allowIncompleteDraft = input.payload?.allowIncompleteDraft === true
+  if (!draft.price && !allowIncompleteDraft) {
     return {
       response: "Qual o valor do imóvel?",
       metadata: createPendingInputMetadata({
@@ -228,6 +229,7 @@ export async function createPropertyDraftRecord(input: {
   }
 
   const missingFields = [
+    draft.price ? "" : "preço",
     draft.city && draft.city !== "Não informada" ? "" : "cidade",
     draft.neighborhood ? "" : "bairro",
     draft.area ? "" : "metragem",

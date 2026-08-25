@@ -48,21 +48,21 @@ export function CosLaunchOperationHealth() {
   )
 
   return (
-    <aside className="mx-4 mt-4 rounded-3xl border border-white/90 bg-white/72 p-3.5 shadow-[0_16px_40px_rgba(15,23,42,.07)] backdrop-blur-2xl sm:mx-6 lg:absolute lg:right-5 lg:top-4 lg:z-10 lg:m-0 lg:w-56">
+    <aside className="mx-3 mt-2 rounded-2xl border border-white/90 bg-white/72 p-2.5 shadow-[0_10px_28px_rgba(15,23,42,.06)] backdrop-blur-2xl sm:mx-5 lg:absolute lg:right-5 lg:top-4 lg:z-10 lg:m-0 lg:w-56 lg:rounded-3xl lg:p-3.5 lg:shadow-[0_16px_40px_rgba(15,23,42,.07)]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-            <Activity className="size-4" />
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700 lg:size-8 lg:rounded-xl">
+            <Activity className="size-3.5 lg:size-4" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Saúde da operação</p>
-            <p className="mt-0.5 text-xs text-slate-500">{loading ? "Consultando..." : health ? `${pendingCount} pendência${pendingCount === 1 ? "" : "s"}` : "Resumo indisponível"}</p>
+            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 lg:text-[11px] lg:tracking-[0.14em]">Saúde da operação</p>
+            <p className="text-[11px] text-slate-500 lg:mt-0.5 lg:text-xs">{loading ? "Consultando..." : health ? `${pendingCount} pendência${pendingCount === 1 ? "" : "s"}` : "Resumo indisponível"}</p>
           </div>
         </div>
-        <strong className="text-xl font-semibold tracking-tight text-slate-900">{loading ? "—" : health ? `${health.score}%` : "—"}</strong>
+        <strong className="text-lg font-semibold tracking-tight text-slate-900 lg:text-xl">{loading ? "—" : health ? `${health.score}%` : "—"}</strong>
       </div>
 
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100 lg:mt-3 lg:h-1.5" aria-hidden="true">
         <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${health?.score ?? 0}%` }} />
       </div>
 
@@ -81,7 +81,7 @@ export function CosLaunchOperationHealth() {
         type="button"
         disabled={!health}
         onClick={() => setExpanded((current) => !current)}
-        className="mt-3 flex min-h-8 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-white/70 px-3 text-[11px] font-semibold text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-2 flex min-h-7 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-100 bg-white/70 px-3 text-[10px] font-semibold text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 lg:mt-3 lg:min-h-8 lg:rounded-xl lg:text-[11px]"
         aria-expanded={expanded}
       >
         {!health && !loading ? <RefreshCw className="size-3" /> : null}

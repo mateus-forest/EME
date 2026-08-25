@@ -9,6 +9,7 @@ import { CosLaunchCards } from "@/components/cos-launch-cards"
 import { CosLaunchInlineForm } from "@/components/cos-launch-inline-form"
 import { CosLaunchOperationHealth } from "@/components/cos-launch-operation-health"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
+import { useBrokerProfile } from "@/components/use-broker-profile"
 import { cosLaunchMenuGroups } from "@/lib/cos-launch/menu"
 import type { CosLaunchAction, CosLaunchCard, CosLaunchForm, CosLaunchResponse } from "@/lib/cos-launch/types"
 
@@ -25,7 +26,7 @@ type Message = {
 const welcome: Message = {
   id: "welcome",
   role: "assistant",
-  text: "Olá. Consulte seus dados ou escolha uma ação para começar.",
+  text: "Consulte seus dados ou escolha uma ação para começar.",
 }
 const quickActions = [
   { id: "query:properties", label: "Meus imóveis", icon: Home },
@@ -41,6 +42,8 @@ export function CosLaunchPanel() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const { profile } = useBrokerProfile()
+  const firstName = profile.fullName.trim().split(/\s+/)[0] || "corretor"
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
@@ -123,6 +126,11 @@ export function CosLaunchPanel() {
       <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
         <CosLaunchOperationHealth />
         <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 py-4 sm:px-6 lg:pr-[260px]">
+          <header className="mb-2 shrink-0">
+            <h1 className="text-xl font-medium tracking-[-0.025em] text-slate-950 sm:text-2xl">
+              Olá, {firstName}.
+            </h1>
+          </header>
           <div className="mb-3 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
             {quickActions.map((item) => (
               <button
