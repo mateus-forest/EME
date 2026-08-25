@@ -138,7 +138,7 @@ export function CosLaunchPanel() {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-[30px] border border-white/80 bg-white/28 px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,.8)] sm:px-5">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-white/80 bg-white/28 px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,.8)] sm:px-5">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                 {messages.map((message) => (
@@ -210,7 +210,7 @@ export function CosLaunchPanel() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-white/70 bg-white/68 px-2 py-2 backdrop-blur-2xl sm:px-3">
+            <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/70 bg-white/68 px-2 py-2 backdrop-blur-2xl sm:px-3">
               <div className="mx-auto max-w-4xl">
                 <CosPromptComposer
                   prompt={prompt}
@@ -233,4 +233,3 @@ export function CosLaunchPanel() {
     </BrokerPageShell>
   )
 }
-
