@@ -45,6 +45,15 @@ type BillingSnapshot = {
     expMonth: number
     expYear: number
   } | null
+  capacityAddon: {
+    quantity: number
+    status: string
+    amount: number
+    currency: string
+    interval: string
+    intervalCount: number
+    nextBillingAt: number | null
+  } | null
   invoices: BillingInvoice[]
   portalAvailable: boolean
   hasSubscription: boolean
@@ -243,6 +252,23 @@ export function AccountBillingSection() {
             />
             <BillingDetail icon={<CreditCard className="size-4" />} label="Forma de pagamento" value={paymentMethodLabel} />
           </div>
+
+          {billing.capacityAddon ? (
+            <div className="rounded-[var(--broker-radius-md)] border border-[#009b3a]/15 bg-[#f2fbf5] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#008832]">Capacidade adicional mensal</p>
+              <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <p className="text-base font-semibold text-[#050505]">+{billing.capacityAddon.quantity} imóveis</p>
+                <p className="text-sm font-semibold text-[#009b3a]">
+                  {formatCurrency(billing.capacityAddon.amount, billing.capacityAddon.currency)}/mês
+                </p>
+              </div>
+              <p className="mt-1 text-xs text-[#55705f]">
+                {billing.capacityAddon.status === "active" || billing.capacityAddon.status === "trialing"
+                  ? "Ativa na mesma assinatura do seu plano."
+                  : "Status sincronizado com sua assinatura Stripe."}
+              </p>
+            </div>
+          ) : null}
 
           {billing.plan.cancelAtPeriodEnd ? (
             <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

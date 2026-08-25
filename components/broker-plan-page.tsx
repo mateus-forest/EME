@@ -75,6 +75,7 @@ type PackagePurchaseHistoryItem = {
   price: string
   status: string
   createdAt: string
+  billingMode?: "legacy_one_time" | "one_time"
 }
 
 type BrokerPlanSnapshot = {
@@ -98,6 +99,14 @@ type BrokerPlanSnapshot = {
     history: CreditHistoryItem[]
   }
   packages: PlanPackage[]
+  capacityAddon: {
+    quantity: number
+    status: string
+    priceCents: number
+    price: string | null
+    startedAt: string
+    currentPeriodEnd: string | null
+  } | null
   packageHistory: PackagePurchaseHistoryItem[]
 }
 
@@ -849,9 +858,49 @@ export function BrokerPlanPage() {
           <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
             <CardHeader className="border-b border-[var(--broker-border)] px-4 py-3">
               <CardTitle className="text-lg text-[#050505]">Histórico de Capacidade de Carteira</CardTitle>
-              <p className="text-xs text-[#6B7280]">Compras de imóveis extras aplicadas ao limite da sua carteira.</p>
+              <p className="text-xs text-[#6B7280]">Complemento mensal ativo e registros históricos da sua carteira.</p>
             </CardHeader>
-            <CardContent className="divide-y divide-[var(--broker-border)] p-3">
+            <CardContent className="p-3">
+              {planSnapshot?.capacityAddon ? (
+                <div className="mb-3 rounded-[var(--broker-radius-md)] border border-[#009b3a]/15 bg-[#f2fbf5] p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#008832]">Capacidade adicional ativa</p>
+                      <p className="mt-1 text-base font-semibold text-[#050505]">
+                        +{planSnapshot.capacityAddon.quantity} imóveis
+                      </p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-sm font-semibold text-[#009b3a]">
+                        {planSnapshot.capacityAddon.price ?? "Mensal"}
+                      </p>
+                      <p className="mt-1 text-xs text-[#55705f]">Ativa</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          void startStripeCheckout({ capacityAction: "remove" }).catch((caughtError) => {
+                            setUpgradeFeedback(
+                              caughtError instanceof Error
+                                ? caughtError.message
+                                : "Não foi possível remover a capacidade adicional.",
+                            )
+                          })
+                        }}
+                        className="mt-2 h-8 rounded-lg px-2 text-xs font-semibold text-[#55705f] hover:bg-white hover:text-[#111111]"
+                      >
+                        Remover capacidade
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              {propertyPackageHistory.length ? (
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#8A94A6]">
+                  Histórico legado de compras únicas
+                </p>
+              ) : null}
+              <div className="divide-y divide-[var(--broker-border)]">
               {propertyPackageHistory.length ? (
                 visiblePropertyHistory.map((item) => (
                   <div key={item.id} data-testid="property-history-item" className="py-3 first:pt-0 last:pb-0">
@@ -866,7 +915,11 @@ export function BrokerPlanPage() {
                 ))
               ) : (
                 <div className="rounded-[var(--broker-radius-md)] border border-black/[0.06] bg-[#fbfbf8] p-3">
-                  <p className="text-sm text-[#6B7280]">Nenhuma compra de capacidade de imóveis registrada ainda.</p>
+                  <p className="text-sm text-[#6B7280]">
+                    {planSnapshot?.capacityAddon
+                      ? "Nenhuma compra antiga de capacidade registrada."
+                      : "Nenhuma capacidade adicional ativa ou compra antiga registrada."}
+                  </p>
                 </div>
               )}
               {propertyPackageHistory.length > 3 ? (
@@ -881,6 +934,7 @@ export function BrokerPlanPage() {
                   {isPropertyHistoryExpanded ? "Recolher histórico" : "Mostrar mais"}
                 </Button>
               ) : null}
+              </div>
             </CardContent>
           </Card>
         </ResponsiveCollapsibleSection>

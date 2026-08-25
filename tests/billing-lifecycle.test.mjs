@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 import {
+  buildRecurringCapacityItemChanges,
   buildStripePeriodGrantKey,
   canPlanAccessMarketplace,
   isConfirmedStripePayment,
   publicationIncreasesActivePropertyCount,
+  resolvePropertyCapacityQuantity,
   resolveStrictStripePlanKey,
   resolveSubscriptionChangeMode,
   shouldGrantStripePaidPeriod,
@@ -91,6 +93,64 @@ test("Price ID desconhecido nunca recebe fallback para Pro", () => {
   assert.equal(resolveStrictStripePlanKey(null, prices), null)
 })
 
+test("Prices recorrentes de capacidade mapeiam estritamente um Ãºnico entitlement", () => {
+  const prices = {
+    capacity100: "price_capacity_100",
+    capacity250: "price_capacity_250",
+    capacity500: "price_capacity_500",
+  }
+
+  assert.equal(resolvePropertyCapacityQuantity("price_capacity_100", prices), 100)
+  assert.equal(resolvePropertyCapacityQuantity("price_capacity_250", prices), 250)
+  assert.equal(resolvePropertyCapacityQuantity("price_capacity_500", prices), 500)
+  assert.equal(resolvePropertyCapacityQuantity("price_unknown", prices), null)
+  assert.equal(resolvePropertyCapacityQuantity(null, prices), null)
+})
+
+test("troca de capacidade preserva um Ãºnico item e remove duplicatas", () => {
+  assert.deepEqual(buildRecurringCapacityItemChanges([], "price_capacity_100"), [
+    { price: "price_capacity_100", quantity: 1 },
+  ])
+  assert.deepEqual(
+    buildRecurringCapacityItemChanges(
+      [{ id: "si_capacity", priceId: "price_capacity_100" }],
+      "price_capacity_250",
+    ),
+    [{ id: "si_capacity", price: "price_capacity_250", quantity: 1 }],
+  )
+  assert.deepEqual(
+    buildRecurringCapacityItemChanges(
+      [
+        { id: "si_capacity", priceId: "price_capacity_250" },
+        { id: "si_duplicate", priceId: "price_capacity_100" },
+      ],
+      "price_capacity_500",
+    ),
+    [
+      { id: "si_capacity", price: "price_capacity_500", quantity: 1 },
+      { id: "si_duplicate", deleted: true },
+    ],
+  )
+})
+
+test("remoÃ§Ã£o da capacidade exclui todos os itens recorrentes sem alterar o plano", () => {
+  assert.deepEqual(
+    buildRecurringCapacityItemChanges(
+      [{ id: "si_capacity", priceId: "price_capacity_500" }],
+      null,
+    ),
+    [{ id: "si_capacity", deleted: true }],
+  )
+})
+
+test("limites finais usam base Pro ou Scale mais um Ãºnico add-on ativo", () => {
+  assert.equal(EME_PLANS.pro.propertyLimit + 100, 250)
+  assert.equal(EME_PLANS.pro.propertyLimit + 250, 400)
+  assert.equal(EME_PLANS.pro.propertyLimit + 500, 650)
+  assert.equal(EME_PLANS.scale.propertyLimit + 500, 1500)
+  assert.equal(EME_PLANS.scale.propertyLimit + 250, 1250)
+})
+
 test("publicar DRAFT já contabilizado não consome outra vaga", () => {
   assert.equal(publicationIncreasesActivePropertyCount("DRAFT"), false)
   assert.equal(publicationIncreasesActivePropertyCount("PUBLISHED"), false)
@@ -98,8 +158,8 @@ test("publicar DRAFT já contabilizado não consome outra vaga", () => {
   assert.equal(publicationIncreasesActivePropertyCount("ARCHIVED"), true)
 })
 
-test("constraints de banco protegem fulfillment e grants concorrentes", async () => {
-  const [schema, lifecycleMigration, entitlementMigration] = await Promise.all([
+test("constraints de banco protegem fulfillment, grants e capacidade recorrente", async () => {
+  const [schema, lifecycleMigration, entitlementMigration, capacityMigration, checkoutRoute, webhookRoute] = await Promise.all([
     readFile(new globalThis.URL("../prisma/schema.prisma", import.meta.url), "utf8"),
     readFile(
       new globalThis.URL(
@@ -115,6 +175,15 @@ test("constraints de banco protegem fulfillment e grants concorrentes", async ()
       ),
       "utf8",
     ),
+    readFile(
+      new globalThis.URL(
+        "../prisma/migrations/20260825090000_recurring_property_capacity_addons/migration.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(new globalThis.URL("../app/api/stripe/create-checkout/route.ts", import.meta.url), "utf8"),
+    readFile(new globalThis.URL("../app/api/stripe/webhook/route.ts", import.meta.url), "utf8"),
   ])
 
   assert.match(schema, /stripeCheckoutSessionId\s+String\?\s+@unique/)
@@ -127,4 +196,13 @@ test("constraints de banco protegem fulfillment e grants concorrentes", async ()
   assert.match(entitlementMigration, /JOIN "Subscription" AS subscription/)
   assert.match(entitlementMigration, /subscription\."nextBillingAt"/)
   assert.doesNotMatch(entitlementMigration, /app_user\."nextBillingAt"/)
+  assert.match(schema, /model BrokerPropertyCapacityAddon/)
+  assert.match(schema, /stripeSubscriptionItemId\s+String\s+@unique/)
+  assert.match(capacityMigration, /CREATE TABLE "BrokerPropertyCapacityAddon"/)
+  assert.match(capacityMigration, /BrokerPropertyCapacityAddon_brokerId_key/)
+  assert.match(capacityMigration, /BrokerPropertyCapacityAddon_stripeSubscriptionItemId_key/)
+  assert.match(checkoutRoute, /stripe\.subscriptions\.update/)
+  assert.match(checkoutRoute, /getStripePropertyCapacityItems/)
+  assert.match(checkoutRoute, /capacityPrice\.recurring\?\.interval !== "month"/)
+  assert.match(webhookRoute, /recurring_capacity_managed_by_subscription/)
 })

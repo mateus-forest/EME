@@ -2,6 +2,7 @@ import type Stripe from "stripe"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
+  getStripePlanItem,
   mapStripePriceIdToEmePlanKey,
   syncBillingFromStripeSubscription,
 } from "@/lib/billing"
@@ -60,7 +61,8 @@ async function syncInvoiceSubscription(
     return syncedUser
   }
 
-  const priceId = subscription.items.data[0]?.price?.id ?? null
+  const subscriptionItem = getStripePlanItem(subscription)
+  const priceId = subscriptionItem?.price.id ?? null
   const planKey = mapStripePriceIdToEmePlanKey(priceId)
   if (planKey !== "pro" && planKey !== "scale") {
     console.error("[api][stripe][webhook][invoice] unmapped paid Price ID", {
@@ -82,7 +84,6 @@ async function syncInvoiceSubscription(
     return syncedUser
   }
 
-  const subscriptionItem = subscription.items.data[0]
   if (!subscriptionItem?.current_period_start || !subscriptionItem.current_period_end) {
     throw new Error("STRIPE_SUBSCRIPTION_PERIOD_MISSING")
   }
@@ -128,6 +129,15 @@ async function fulfillPackageCheckout(eventId: string, session: Stripe.Checkout.
   const metadata = session.metadata ?? {}
   if (metadata.checkoutType !== "package" || !isExtraPackageKey(metadata.packageKey) || !metadata.userId) {
     throw new Error("INVALID_PACKAGE_CHECKOUT_METADATA")
+  }
+
+  if (EME_EXTRA_PACKAGES[metadata.packageKey].type === "property") {
+    console.info("[api][stripe][webhook][capacity] legacy one-time checkout ignored", {
+      eventId,
+      checkoutSessionId: session.id,
+      packageKey: metadata.packageKey,
+    })
+    return { applied: false, reason: "recurring_capacity_managed_by_subscription" as const }
   }
 
   const user = await prisma.user.findUnique({

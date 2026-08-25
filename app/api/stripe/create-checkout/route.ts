@@ -7,11 +7,18 @@ import {
   getCheckoutPriceIdForPackage,
   getCheckoutPriceIdForPlan,
   getPlanLabel,
+  getStripePlanItem,
+  getStripePropertyCapacityItems,
+  mapStripePriceIdToPropertyCapacity,
   resolveBrokerUpgradeCheckoutPlanKey,
+  syncBillingFromStripeSubscription,
   type BrokerCheckoutPlanKey,
 } from "@/lib/billing"
 import { getStripeEnv } from "@/lib/env.server"
-import { resolveSubscriptionChangeMode } from "@/lib/billing-lifecycle-policy"
+import {
+  buildRecurringCapacityItemChanges,
+  resolveSubscriptionChangeMode,
+} from "@/lib/billing-lifecycle-policy"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
 import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
 import { getStripeClient } from "@/lib/stripe-server"
@@ -19,6 +26,7 @@ import { getStripeClient } from "@/lib/stripe-server"
 export const runtime = "nodejs"
 
 type CheckoutPayload = {
+  capacityAction?: "remove"
   packageKey?: string
   plan?: string
 }
@@ -27,6 +35,7 @@ function parseCheckoutPayload(body: unknown): CheckoutPayload {
   const data = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
 
   return {
+    capacityAction: data.capacityAction === "remove" ? "remove" : undefined,
     packageKey: typeof data.packageKey === "string" ? data.packageKey.trim() : undefined,
     plan: typeof data.plan === "string" ? data.plan.trim() : undefined,
   }
@@ -61,6 +70,43 @@ export async function POST(request: NextRequest) {
   const portalPath = user.role === UserRole.BROKER ? "/corretor/plano" : "/imobiliaria/plano"
 
   try {
+    if (payload.capacityAction === "remove") {
+      if (user.role !== UserRole.BROKER || !user.broker) {
+        return NextResponse.json({ error: "Ação disponível apenas para contas de corretor." }, { status: 403 })
+      }
+      if (!user.stripeCustomerId || !user.stripeSubscriptionId) {
+        return NextResponse.json({ error: "Nenhuma assinatura Stripe ativa foi encontrada." }, { status: 409 })
+      }
+
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId)
+      const subscriptionCustomerId =
+        typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id
+      if (subscriptionCustomerId !== user.stripeCustomerId) {
+        return NextResponse.json(
+          { error: "A assinatura atual não pertence ao Customer Stripe vinculado à conta." },
+          { status: 409 },
+        )
+      }
+
+      const capacityItems = getStripePropertyCapacityItems(subscription)
+      if (capacityItems.length === 0) {
+        await syncBillingFromStripeSubscription(subscription)
+        return NextResponse.json({ url: `${origin}${portalPath}?checkout=success` })
+      }
+
+      const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+        items: buildRecurringCapacityItemChanges(
+          capacityItems.map((item) => ({ id: item.id, priceId: item.price.id })),
+          null,
+        ),
+        payment_behavior: "pending_if_incomplete",
+        proration_behavior: "create_prorations",
+      })
+      await syncBillingFromStripeSubscription(updatedSubscription)
+
+      return NextResponse.json({ url: `${origin}${portalPath}?checkout=success` })
+    }
+
     if (payload.packageKey) {
       if (user.role !== UserRole.BROKER || !user.broker) {
         return NextResponse.json(
@@ -96,6 +142,77 @@ export async function POST(request: NextRequest) {
           { error: `Price ID do pacote não configurado (${variableName}).` },
           { status: 500 },
         )
+      }
+
+      if (pack.type === "property") {
+        const currentPlan = await getBrokerPlanSnapshot(user.broker.id)
+        if (currentPlan.planKey === "free") {
+          return NextResponse.json(
+            { error: "A capacidade adicional está disponível nos planos Pro e Scale. Faça upgrade para continuar." },
+            { status: 403 },
+          )
+        }
+
+        if (!user.stripeCustomerId || !user.stripeSubscriptionId) {
+          return NextResponse.json(
+            { error: "Sua assinatura paga precisa ser reconciliada com o Stripe antes de adicionar capacidade." },
+            { status: 409 },
+          )
+        }
+
+        const [subscription, capacityPrice] = await Promise.all([
+          stripe.subscriptions.retrieve(user.stripeSubscriptionId),
+          stripe.prices.retrieve(priceId),
+        ])
+        const subscriptionCustomerId =
+          typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id
+
+        if (subscriptionCustomerId !== user.stripeCustomerId) {
+          return NextResponse.json(
+            { error: "A assinatura atual não pertence ao Customer Stripe vinculado à conta." },
+            { status: 409 },
+          )
+        }
+
+        if (!new Set(["active", "trialing"]).has(subscription.status)) {
+          return NextResponse.json(
+            { error: "A assinatura atual não está ativa para receber capacidade adicional." },
+            { status: 409 },
+          )
+        }
+
+        const desiredCapacity = mapStripePriceIdToPropertyCapacity(priceId)
+        if (
+          !desiredCapacity ||
+          capacityPrice.type !== "recurring" ||
+          capacityPrice.recurring?.interval !== "month"
+        ) {
+          return NextResponse.json(
+            { error: "O Price configurado para capacidade adicional não é mensal ou não está mapeado." },
+            { status: 500 },
+          )
+        }
+
+        const currentCapacityItems = getStripePropertyCapacityItems(subscription)
+        if (currentCapacityItems.length === 1 && currentCapacityItems[0]?.price.id === priceId) {
+          await syncBillingFromStripeSubscription(subscription)
+          return NextResponse.json({ url: `${origin}${portalPath}?checkout=success` })
+        }
+
+        const items = buildRecurringCapacityItemChanges(
+          currentCapacityItems.map((item) => ({ id: item.id, priceId: item.price.id })),
+          priceId,
+        )
+
+        const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+          items,
+          payment_behavior: "pending_if_incomplete",
+          proration_behavior: "create_prorations",
+        })
+
+        await syncBillingFromStripeSubscription(updatedSubscription)
+
+        return NextResponse.json({ url: `${origin}${portalPath}?checkout=success` })
       }
 
       const session = await stripe.checkout.sessions.create({
@@ -195,36 +312,21 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        if (subscription.items.data.length !== 1) {
-          return NextResponse.json(
-            { error: "A assinatura possui uma composição que exige reconciliação administrativa." },
-            { status: 409 },
-          )
-        }
-
-        const item = subscription.items.data[0]
+        const item = getStripePlanItem(subscription)
         if (!item || item.price.id === priceId) {
           return NextResponse.json({ error: "O plano selecionado já está ativo." }, { status: 409 })
         }
 
         const returnUrl = `${origin}/corretor/conta?tab=faturamento&checkout=success`
-        const portalSession = await stripe.billingPortal.sessions.create({
-          customer: user.stripeCustomerId,
-          return_url: returnUrl,
-          flow_data: {
-            type: "subscription_update_confirm",
-            after_completion: {
-              type: "redirect",
-              redirect: { return_url: returnUrl },
-            },
-            subscription_update_confirm: {
-              subscription: subscription.id,
-              items: [{ id: item.id, price: priceId, quantity: item.quantity ?? 1 }],
-            },
-          },
+        const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+          items: [{ id: item.id, price: priceId, quantity: item.quantity ?? 1 }],
+          payment_behavior: "pending_if_incomplete",
+          proration_behavior: "create_prorations",
         })
 
-        return NextResponse.json({ url: portalSession.url })
+        await syncBillingFromStripeSubscription(updatedSubscription)
+
+        return NextResponse.json({ url: returnUrl })
       }
     }
 

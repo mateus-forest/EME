@@ -98,6 +98,14 @@ export async function GET() {
     }
 
     const currentPlan = serializePlan(snapshot.plan)
+    const activeCapacityPackage =
+      snapshot.propertyCapacityAddon?.status === "ACTIVE"
+        ? Object.values(EME_EXTRA_PACKAGES).find(
+            (pack) =>
+              pack.type === "property" &&
+              pack.quantity === snapshot.propertyCapacityAddon?.quantity,
+          ) ?? null
+        : null
 
     const response = NextResponse.json({
       plan: currentPlan,
@@ -124,8 +132,23 @@ export async function GET() {
         })),
       },
       packages: Object.values(EME_EXTRA_PACKAGES).map(serializePackage),
+      capacityAddon:
+        snapshot.propertyCapacityAddon?.status === "ACTIVE"
+          ? {
+              quantity: snapshot.propertyCapacityAddon.quantity,
+              status: snapshot.propertyCapacityAddon.status,
+              priceCents: activeCapacityPackage?.priceCents ?? 0,
+              price: activeCapacityPackage
+                ? `${formatBRLFromCents(activeCapacityPackage.priceCents)}/mês`
+                : null,
+              startedAt: snapshot.propertyCapacityAddon.startedAt.toISOString(),
+              currentPeriodEnd:
+                snapshot.propertyCapacityAddon.currentPeriodEnd?.toISOString() ?? null,
+            }
+          : null,
       packageHistory: packageHistory.map((item) => ({
         ...item,
+        billingMode: item.packageType === "property" ? "legacy_one_time" : "one_time",
         price: formatBRLFromCents(item.amountCents),
         createdAt: item.createdAt.toISOString(),
       })),

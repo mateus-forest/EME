@@ -2,7 +2,12 @@ import Stripe from "stripe"
 import { SubscriptionOwnerType, UserRole } from "@/lib/prisma-enums"
 import { NextResponse } from "next/server"
 
-import { syncBillingFromStripeSubscription } from "@/lib/billing"
+import {
+  getStripePlanItem,
+  getStripePropertyCapacityItems,
+  mapStripePriceIdToPropertyCapacity,
+  syncBillingFromStripeSubscription,
+} from "@/lib/billing"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { getStripeEnv } from "@/lib/env.server"
 import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
@@ -91,6 +96,7 @@ function noSubscriptionResponse(plan: { name: string; priceCents: number }) {
         cancelAtPeriodEnd: false,
       },
       paymentMethod: null,
+      capacityAddon: null,
       invoices: [],
       portalAvailable: false,
       hasSubscription: false,
@@ -483,9 +489,11 @@ export async function GET() {
 
     const subscription = selectSubscription(link.subscriptions, user.stripeSubscriptionId)
     const hasManageableSubscription = Boolean(subscription && MANAGEABLE_STATUSES.has(subscription.status))
-    const item = subscription?.items.data[0] ?? null
+    const item = subscription ? getStripePlanItem(subscription) : null
     const price = item?.price ?? null
     const quantity = item?.quantity ?? 1
+    const capacityItem = subscription ? (getStripePropertyCapacityItems(subscription)[0] ?? null) : null
+    const capacityQuantity = mapStripePriceIdToPropertyCapacity(capacityItem?.price.id)
     const [stripeInvoices, checkoutSessions, internalPurchases, paymentMethod, resolvedPlanName] = await Promise.all([
       listAllInvoices(stripe, link.customer.id),
       listAllCheckoutSessions(stripe, link.customer.id),
@@ -533,6 +541,18 @@ export async function GET() {
           cancelAtPeriodEnd: subscription?.cancel_at_period_end ?? false,
         },
         paymentMethod,
+        capacityAddon:
+          capacityItem && capacityQuantity
+            ? {
+                quantity: capacityQuantity,
+                status: subscription?.status ?? "inactive",
+                amount: capacityItem.price.unit_amount ?? 0,
+                currency: capacityItem.price.currency,
+                interval: capacityItem.price.recurring?.interval ?? "month",
+                intervalCount: capacityItem.price.recurring?.interval_count ?? 1,
+                nextBillingAt: capacityItem.current_period_end ?? null,
+              }
+            : null,
         invoices: billingCharges,
         portalAvailable: hasManageableSubscription,
         hasSubscription: hasManageableSubscription,

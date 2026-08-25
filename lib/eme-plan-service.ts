@@ -105,6 +105,67 @@ function resolveActivePropertyExpansion({
   }
 }
 
+export async function syncBrokerPropertyCapacityAddon({
+  brokerId,
+  stripeSubscriptionId,
+  stripeSubscriptionItemId,
+  stripePriceId,
+  quantity,
+  status,
+  currentPeriodStart,
+  currentPeriodEnd,
+}: {
+  brokerId: string
+  stripeSubscriptionId: string
+  stripeSubscriptionItemId?: string | null
+  stripePriceId?: string | null
+  quantity?: number | null
+  status: "ACTIVE" | "INACTIVE" | "CANCELED"
+  currentPeriodStart?: Date | null
+  currentPeriodEnd?: Date | null
+}) {
+  if (
+    status === "ACTIVE" &&
+    stripeSubscriptionItemId &&
+    stripePriceId &&
+    quantity &&
+    quantity > 0
+  ) {
+    return prisma.brokerPropertyCapacityAddon.upsert({
+      where: { brokerId },
+      create: {
+        brokerId,
+        quantity,
+        stripePriceId,
+        stripeSubscriptionId,
+        stripeSubscriptionItemId,
+        status,
+        currentPeriodStart: currentPeriodStart ?? null,
+        currentPeriodEnd: currentPeriodEnd ?? null,
+      },
+      update: {
+        quantity,
+        stripePriceId,
+        stripeSubscriptionId,
+        stripeSubscriptionItemId,
+        status,
+        currentPeriodStart: currentPeriodStart ?? null,
+        currentPeriodEnd: currentPeriodEnd ?? null,
+        endedAt: null,
+      },
+    })
+  }
+
+  return prisma.brokerPropertyCapacityAddon.updateMany({
+    where: { brokerId, status: "ACTIVE" },
+    data: {
+      status,
+      currentPeriodEnd: currentPeriodEnd ?? undefined,
+      endedAt: new Date(),
+    },
+  })
+}
+
 function resolveCreditBuckets({
   balance,
   usedThisMonth,
@@ -566,7 +627,7 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
   const account = await ensureBrokerPlanSnapshotAccount(brokerId)
   const planKey = normalizeEmePlanKey(account.planKey)
   const plan = EME_PLANS[planKey]
-  const [activePropertyCount, broker, brokerAccount] = await Promise.all([
+  const [activePropertyCount, broker, brokerAccount, capacityAddon, adminPropertyBonuses] = await Promise.all([
     countBrokerActiveProperties(brokerId),
     prisma.broker.findUnique({
       where: { id: brokerId },
@@ -585,13 +646,27 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
         },
       },
     }),
+    prisma.brokerPropertyCapacityAddon.findUnique({
+      where: { brokerId },
+    }),
+    prisma.extraPackagePurchase.aggregate({
+      where: {
+        brokerId,
+        packageType: "property",
+        status: "completed",
+        packageKey: { startsWith: "admin_property_bonus_" },
+      },
+      _sum: { quantity: true },
+    }),
   ])
   // Expansão da Carteira é um complemento do plano ativo.
   // O volume comprado continua registrado em `propertyExtraLimit`,
   // mas só entra no limite efetivo enquanto a assinatura elegível estiver ativa.
   const expansion = resolveActivePropertyExpansion({
     planKey,
-    purchasedExtraLimit: account.propertyExtraLimit,
+    purchasedExtraLimit:
+      (capacityAddon?.status === "ACTIVE" ? capacityAddon.quantity : 0) +
+      (adminPropertyBonuses._sum.quantity ?? 0),
     user: brokerAccount?.user,
   })
   const propertyLimit = plan.propertyLimit + expansion.activeExtraLimit
@@ -609,9 +684,11 @@ export async function getBrokerPlanSnapshot(brokerId: string) {
     activePropertyCount,
     propertyLimit,
     propertyExtraLimit: expansion.activeExtraLimit,
-    propertyPurchasedExtraLimit: expansion.purchasedExtraLimit,
+    propertyPurchasedExtraLimit: account.propertyExtraLimit,
     propertySuspendedExtraLimit: expansion.suspendedExtraLimit,
     isPropertyExpansionActive: expansion.isExpansionActive,
+    propertyCapacityAddon: capacityAddon,
+    propertyAdminBonusExtraLimit: adminPropertyBonuses._sum.quantity ?? 0,
     remainingProperties: Math.max(0, propertyLimit - activePropertyCount),
     aiCreditsBalance: broker?.aiCreditsBalance ?? 0,
     aiCreditsUsedThisMonth: broker?.aiCreditsUsedThisMonth ?? 0,
@@ -843,6 +920,7 @@ export async function registerExtraPackagePurchase({
 }) {
   const pack = EME_EXTRA_PACKAGES[packageKey]
   if (!pack) throw new Error("INVALID_EXTRA_PACKAGE")
+  if (pack.type === "property") throw new Error("RECURRING_CAPACITY_REQUIRES_SUBSCRIPTION_ITEM")
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -893,22 +971,6 @@ export async function registerExtraPackagePurchase({
             userId,
             title: "Créditos IA adquiridos",
             message: `Você adquiriu +${pack.quantity} Créditos IA.`,
-            read: false,
-          },
-        })
-      } else {
-        await tx.brokerPlanAccount.update({
-          where: { brokerId },
-          data: {
-            propertyExtraLimit: { increment: pack.quantity },
-          },
-        })
-
-        await tx.notification.create({
-          data: {
-            userId,
-            title: "Capacidade de imóveis adquirida",
-            message: `Você adquiriu +${pack.quantity} imóveis ativos.`,
             read: false,
           },
         })

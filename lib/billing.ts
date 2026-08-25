@@ -9,13 +9,19 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { getStripeEnv } from "@/lib/env.server"
-import { resolveStrictStripePlanKey } from "@/lib/billing-lifecycle-policy"
+import {
+  resolvePropertyCapacityQuantity,
+  resolveStrictStripePlanKey,
+} from "@/lib/billing-lifecycle-policy"
 import {
   resolveEmePlanUpgradeTarget,
   type EmeExtraPackageKey,
   type EmePlanKey,
 } from "@/lib/eme-plans"
-import { syncBrokerPlanAccountFromStripe } from "@/lib/eme-plan-service"
+import {
+  syncBrokerPlanAccountFromStripe,
+  syncBrokerPropertyCapacityAddon,
+} from "@/lib/eme-plan-service"
 import { prisma } from "@/lib/prisma"
 
 export function getBillingPlanFromRole(role: UserRole) {
@@ -58,6 +64,29 @@ export function mapStripePriceIdToEmePlanKey(priceId: string | null | undefined)
     pro: stripeEnv.proPriceId,
     scale: stripeEnv.scalePriceId,
   })
+}
+
+export function mapStripePriceIdToPropertyCapacity(priceId: string | null | undefined) {
+  const stripeEnv = getStripeEnv()
+
+  return resolvePropertyCapacityQuantity(priceId, {
+    capacity100: stripeEnv.property50PriceId,
+    capacity250: stripeEnv.property100PriceId,
+    capacity500: stripeEnv.property200PriceId,
+  })
+}
+
+export function getStripePlanItem(subscription: Stripe.Subscription) {
+  return (
+    subscription.items.data.find((item) => mapStripePriceIdToEmePlanKey(item.price.id) !== null) ??
+    null
+  )
+}
+
+export function getStripePropertyCapacityItems(subscription: Stripe.Subscription) {
+  return subscription.items.data.filter(
+    (item) => mapStripePriceIdToPropertyCapacity(item.price.id) !== null,
+  )
 }
 
 export function getCheckoutPriceIdForPackage(packageKey: EmeExtraPackageKey) {
@@ -212,13 +241,13 @@ export async function syncBillingForUser(input: {
 }
 
 export function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
-  const periodEnd = subscription.items.data[0]?.current_period_end
+  const periodEnd = getStripePlanItem(subscription)?.current_period_end
   return periodEnd ? new Date(periodEnd * 1000) : null
 }
 
 export async function syncBillingFromStripeSubscription(subscription: Stripe.Subscription) {
   const userId = typeof subscription.metadata.userId === "string" ? subscription.metadata.userId : ""
-  const priceId = subscription.items.data[0]?.price?.id ?? null
+  const priceId = getStripePlanItem(subscription)?.price.id ?? null
   const plan = mapStripePriceIdToPlan(priceId)
   const emePlanKey = mapStripePriceIdToEmePlanKey(priceId)
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null
@@ -232,6 +261,8 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
     return null
   }
 
+  let syncedUser: Awaited<ReturnType<typeof syncBillingForUser>> | null = null
+
   if (!userId) {
     const user = await prisma.user.findFirst({
       where: { stripeSubscriptionId: subscription.id },
@@ -239,7 +270,7 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
 
     if (!user) return null
 
-    return syncBillingForUser({
+    syncedUser = await syncBillingForUser({
       userId: user.id,
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
@@ -248,17 +279,46 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
       nextBillingAt: getSubscriptionPeriodEnd(subscription),
       emePlanKey,
     })
+  } else {
+    syncedUser = await syncBillingForUser({
+      userId,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      plan,
+      subscriptionStatus: status,
+      nextBillingAt: getSubscriptionPeriodEnd(subscription),
+      emePlanKey,
+    })
   }
 
-  return syncBillingForUser({
-    userId,
-    stripeCustomerId: customerId,
-    stripeSubscriptionId: subscription.id,
-    plan,
-    subscriptionStatus: status,
-    nextBillingAt: getSubscriptionPeriodEnd(subscription),
-    emePlanKey,
-  })
+  if (syncedUser.broker) {
+    const capacityItem = getStripePropertyCapacityItems(subscription)[0] ?? null
+    const capacityQuantity = mapStripePriceIdToPropertyCapacity(capacityItem?.price.id)
+    const subscriptionIsActive =
+      subscription.status === "active" || subscription.status === "trialing"
+
+    await syncBrokerPropertyCapacityAddon({
+      brokerId: syncedUser.broker.id,
+      status:
+        subscription.status === "canceled"
+          ? "CANCELED"
+          : subscriptionIsActive && capacityItem && capacityQuantity
+            ? "ACTIVE"
+            : "INACTIVE",
+      quantity: capacityQuantity,
+      stripePriceId: capacityItem?.price.id ?? null,
+      stripeSubscriptionId: subscription.id,
+      stripeSubscriptionItemId: capacityItem?.id ?? null,
+      currentPeriodStart: capacityItem?.current_period_start
+        ? new Date(capacityItem.current_period_start * 1000)
+        : null,
+      currentPeriodEnd: capacityItem?.current_period_end
+        ? new Date(capacityItem.current_period_end * 1000)
+        : null,
+    })
+  }
+
+  return syncedUser
 }
 
 export function mapStripePlan(value: string | null | undefined) {

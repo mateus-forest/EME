@@ -1,4 +1,34 @@
 export type BillingLifecyclePlanKey = "free" | "pro" | "scale"
+export type PropertyCapacityQuantity = 100 | 250 | 500
+
+export type RecurringCapacitySubscriptionItem = {
+  id: string
+  priceId: string
+}
+
+export type RecurringCapacitySubscriptionItemChange = {
+  id?: string
+  price?: string
+  quantity?: number
+  deleted?: true
+}
+
+export function buildRecurringCapacityItemChanges(
+  existingItems: RecurringCapacitySubscriptionItem[],
+  desiredPriceId: string | null,
+): RecurringCapacitySubscriptionItemChange[] {
+  if (!desiredPriceId) {
+    return existingItems.map((item) => ({ id: item.id, deleted: true }))
+  }
+
+  const [primaryItem, ...duplicateItems] = existingItems
+  const changes: RecurringCapacitySubscriptionItemChange[] = primaryItem
+    ? [{ id: primaryItem.id, price: desiredPriceId, quantity: 1 }]
+    : [{ price: desiredPriceId, quantity: 1 }]
+
+  changes.push(...duplicateItems.map((item) => ({ id: item.id, deleted: true as const })))
+  return changes
+}
 
 export type SubscriptionChangeMode =
   | "checkout"
@@ -38,6 +68,21 @@ export function resolveStrictStripePlanKey(
   if (!priceId) return null
   if (prices.pro && priceId === prices.pro) return "pro"
   if (prices.scale && priceId === prices.scale) return "scale"
+  return null
+}
+
+export function resolvePropertyCapacityQuantity(
+  priceId: string | null | undefined,
+  prices: {
+    capacity100: string | null | undefined
+    capacity250: string | null | undefined
+    capacity500: string | null | undefined
+  },
+): PropertyCapacityQuantity | null {
+  if (!priceId) return null
+  if (prices.capacity100 && priceId === prices.capacity100) return 100
+  if (prices.capacity250 && priceId === prices.capacity250) return 250
+  if (prices.capacity500 && priceId === prices.capacity500) return 500
   return null
 }
 

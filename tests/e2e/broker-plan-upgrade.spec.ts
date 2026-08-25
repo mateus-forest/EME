@@ -43,6 +43,7 @@ function planSnapshot(currentPlanKey: PlanKey) {
       })),
     },
     packages: [],
+    capacityAddon: null,
     packageHistory: Array.from({ length: 5 }, (_, index) => ({
       id: `property-${index}`,
       packageKey: "property_250",
@@ -111,6 +112,19 @@ test.describe("Plano do corretor", () => {
     await expect(includedSummary.getByText("Marketplace", { exact: true })).toBeVisible()
     await page.getByRole("button", { name: "Fazer upgrade", exact: true }).click()
     await expect.poll(() => checkoutBodies).toEqual([{ plan: "scale" }])
+  })
+
+  test("capacidade adicional bloqueia Free e usa o fluxo recorrente em Pro", async ({ page }) => {
+    const freeCheckoutBodies: Array<Record<string, unknown>> = []
+    await setupPlanPage(page, "free", freeCheckoutBodies)
+    await expect(page.getByText("Faça upgrade para expandir o limite da sua carteira de imóveis.", { exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Adicionar capacidade" })).toHaveCount(0)
+    expect(freeCheckoutBodies).toEqual([])
+
+    const proCheckoutBodies: Array<Record<string, unknown>> = []
+    await setupPlanPage(page, "pro", proCheckoutBodies)
+    await page.getByRole("button", { name: "Adicionar capacidade" }).first().click()
+    await expect.poll(() => proCheckoutBodies).toEqual([{ packageKey: "property_250" }])
   })
 
   test("Scale bloqueia plano inferior, leva aos pacotes e compacta os históricos", async ({ page }) => {

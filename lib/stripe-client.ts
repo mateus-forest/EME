@@ -1,4 +1,5 @@
 type StripeCheckoutInput = {
+  capacityAction?: "remove"
   packageKey?: string
   plan?: string
 }

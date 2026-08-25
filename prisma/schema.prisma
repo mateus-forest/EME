@@ -276,6 +276,7 @@ model Broker {
   documents                 BrokerDocument[]
   aiAssistantInteractions   AiAssistantInteraction[]
   planAccount               BrokerPlanAccount?
+  propertyCapacityAddon     BrokerPropertyCapacityAddon?
   aiCreditTransactions      AiCreditTransaction[]
   extraPackagePurchases     ExtraPackagePurchase[]
   corretorEmeConfig         BrokerEmeConfig?
@@ -705,6 +706,26 @@ model BrokerPlanAccount {
   broker                        Broker    @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 
   @@index([planKey])
+}
+
+model BrokerPropertyCapacityAddon {
+  id                       String   @id @default(cuid())
+  brokerId                 String   @unique
+  quantity                 Int
+  stripePriceId            String
+  stripeSubscriptionId     String
+  stripeSubscriptionItemId String   @unique
+  status                   String   @default("ACTIVE")
+  currentPeriodStart       DateTime?
+  currentPeriodEnd         DateTime?
+  startedAt                DateTime @default(now())
+  endedAt                  DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  broker                   Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  @@index([stripeSubscriptionId])
+  @@index([status])
 }
 
 model AiCreditTransaction {

@@ -185,25 +185,25 @@ export const EME_EXTRA_PACKAGES = {
     key: "property_250",
     type: "property",
     // Mantemos a chave por compatibilidade com a camada de checkout legada.
-    label: "+50 imoveis ativos",
-    quantity: 50,
-    priceCents: 4900,
+    label: "+100 imoveis",
+    quantity: 100,
+    priceCents: 5900,
   },
   property_500: {
     key: "property_500",
     type: "property",
     // Mantemos a chave por compatibilidade com a camada de checkout legada.
-    label: "+100 imoveis ativos",
-    quantity: 100,
-    priceCents: 8900,
+    label: "+250 imoveis",
+    quantity: 250,
+    priceCents: 11900,
   },
   property_1000: {
     key: "property_1000",
     type: "property",
     // Mantemos a chave por compatibilidade com a camada de checkout legada.
-    label: "+200 imoveis ativos",
-    quantity: 200,
-    priceCents: 15900,
+    label: "+500 imoveis",
+    quantity: 500,
+    priceCents: 19900,
   },
 } as const satisfies Record<
   EmeExtraPackageKey,
