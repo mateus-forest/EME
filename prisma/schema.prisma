@@ -288,6 +288,7 @@ model Broker {
   contractTemplateInstances ContractTemplateInstance[]
   marketplaceConversations  MarketplaceConversation[]
   marketplaceReviews        MarketplaceReview[]
+  propertyRentals            PropertyRental[]
 }
 
 model Agency {
@@ -324,6 +325,7 @@ model Property {
   parkingSpots              Int                        @default(0)
   type                      PropertyType               @default(APARTMENT)
   purpose                   String                     @default("SALE")
+  rentalAvailable           Boolean                    @default(true)
   status                    PropertyStatus             @default(DRAFT)
   published                 Boolean                    @default(false)
   marketplacePublished      Boolean                    @default(false)
@@ -348,6 +350,7 @@ model Property {
   studioCampaigns           StudioCampaign[]
   contractTemplateInstances ContractTemplateInstance[]
   marketplaceConversations  MarketplaceConversation[]
+  rentals                   PropertyRental[]
 
   @@unique([brokerId, publicCode])
   @@index([marketplacePublished, marketplacePublishedAt])
@@ -507,6 +510,7 @@ model BrokerDocument {
   lead             Lead?                     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   property         Property?                 @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   templateInstance ContractTemplateInstance?
+  rentals          PropertyRental[]
 
   @@index([brokerId, createdAt])
   @@index([brokerId, status])
@@ -874,6 +878,8 @@ model Lead {
   contractTemplateInstances ContractTemplateInstance[]
   marketplaceConversations  MarketplaceConversation[]
   marketplaceReviews        MarketplaceReview[]
+  rentalsAsTenant           PropertyRental[]           @relation("RentalTenant")
+  rentalsAsOwner            PropertyRental[]           @relation("RentalOwner")
 
   @@index([propertyId])
   @@index([brokerId])
@@ -881,6 +887,95 @@ model Lead {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model PropertyRental {
+  id                 String             @id @default(cuid())
+  brokerId           String
+  propertyId         String
+  tenantLeadId       String
+  ownerLeadId        String?
+  ownerName          String?
+  contractDocumentId String?
+  monthlyRent        Int
+  dueDay             Int
+  startDate          DateTime
+  endDate            DateTime?
+  adjustmentIndex    String
+  adjustmentOther    String?
+  guaranteeType      String
+  guaranteeOther     String?
+  notes              String?
+  status             String             @default("ACTIVE")
+  nextAdjustmentDate DateTime?
+  endedAt            DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  broker             Broker             @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  property           Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenant             Lead               @relation("RentalTenant", fields: [tenantLeadId], references: [id], onDelete: Restrict)
+  owner              Lead?              @relation("RentalOwner", fields: [ownerLeadId], references: [id], onDelete: SetNull)
+  contractDocument   BrokerDocument?     @relation(fields: [contractDocumentId], references: [id], onDelete: SetNull)
+  payments           RentalPayment[]
+  adjustments        RentalAdjustment[]
+  issues             RentalIssue[]
+
+  @@index([brokerId, status])
+  @@index([propertyId, createdAt])
+  @@index([tenantLeadId])
+  @@index([ownerLeadId])
+  @@index([contractDocumentId])
+}
+
+model RentalPayment {
+  id          String         @id @default(cuid())
+  rentalId    String
+  competence  String
+  amount      Int
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      String         @default("PENDING")
+  receiptData Json?
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  rental      PropertyRental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  @@unique([rentalId, competence])
+  @@index([rentalId, dueDate])
+  @@index([status, dueDate])
+}
+
+model RentalAdjustment {
+  id             String         @id @default(cuid())
+  rentalId       String
+  previousAmount Int
+  percentage     Decimal?       @db.Decimal(8, 4)
+  indexLabel     String?
+  newAmount      Int
+  effectiveDate  DateTime
+  createdAt      DateTime       @default(now())
+  rental         PropertyRental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  @@index([rentalId, effectiveDate])
+}
+
+model RentalIssue {
+  id              String         @id @default(cuid())
+  rentalId        String
+  type            String
+  title           String
+  description     String?
+  priority        String         @default("MEDIUM")
+  status          String         @default("OPEN")
+  eventDate       DateTime
+  attachmentsData Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  rental          PropertyRental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  @@index([rentalId, status])
+  @@index([rentalId, eventDate])
 }
 
 model MarketplaceConversation {

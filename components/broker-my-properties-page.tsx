@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
-import { Bath, BedDouble, BookOpenCheck, CarFront, CircleAlert, FileText, Filter, ImagePlus, MapPin, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
+import { Bath, BedDouble, BookOpenCheck, CarFront, CircleAlert, FileText, Filter, ImagePlus, KeyRound, MapPin, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import {
@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { BrokerPropertyRentalPanel, BrokerRentalStartDialog, RentalStatusBadge, useBrokerRentals } from "@/components/broker-property-rentals"
 
 type EditableProperty = {
   id: string
@@ -101,6 +102,9 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
   const allPropertyTypes: Array<Property["type"]> = ["Casa", "Apartamento", "Comercial", "Terreno", "Sala comercial", "Loja", "Cobertura"]
   const [typeFilters, setTypeFilters] = useState<Array<Property["type"]>>(allPropertyTypes)
   const [priceFilters, setPriceFilters] = useState<string[]>(["low", "mid", "high"])
+  const [rentalView, setRentalView] = useState<"all" | "sale" | "rent" | "active">("all")
+  const [rentalStartProperty, setRentalStartProperty] = useState<Property | null>(null)
+  const rentalManagement = useBrokerRentals()
   const [editingProperty, setEditingProperty] = useState<EditableProperty | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
@@ -141,13 +145,20 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
             if (filter === "mid") return numericPrice > 800000 && numericPrice <= 2000000
             return numericPrice > 2000000
           })
-        return matchesSearch && matchesType && matchesPrice
+        const activeRental = Boolean(rentalManagement.activeByProperty[property.id])
+        const matchesRentalView = rentalView === "all" || (rentalView === "sale" && property.purpose === "Venda") || (rentalView === "rent" && property.purpose === "Locação") || (rentalView === "active" && activeRental)
+        return matchesSearch && matchesType && matchesPrice && matchesRentalView
       }),
-    [properties, normalizedSearch, typeFilters, priceFilters],
+    [properties, normalizedSearch, typeFilters, priceFilters, rentalManagement.activeByProperty, rentalView],
   )
   const hasProperties = filteredProperties.length > 0
   const hasActiveFilters =
-    normalizedSearch.length > 0 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3
+    normalizedSearch.length > 0 || typeFilters.length < allPropertyTypes.length || priceFilters.length < 3 || rentalView !== "all"
+  const rentalSummary = useMemo(() => ({
+    sale: properties.filter((property) => property.purpose === "Venda").length,
+    available: properties.filter((property) => property.purpose === "Locação" && !rentalManagement.activeByProperty[property.id] && rentalManagement.availability[property.id] !== false).length,
+    active: Object.keys(rentalManagement.activeByProperty).length,
+  }), [properties, rentalManagement.activeByProperty, rentalManagement.availability])
 
   const openEditModal = useCallback((property: Property) => {
     dismissedRoutePropertyIdRef.current = null
@@ -213,6 +224,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     setSearch("")
     setTypeFilters(allPropertyTypes)
     setPriceFilters(["low", "mid", "high"])
+    setRentalView("all")
   }
 
   function toggleFilter<T extends string>(value: T, current: T[], onChange: (next: T[]) => void) {
@@ -507,6 +519,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
               <DropdownMenuCheckboxItem checked={priceFilters.includes("mid")} onCheckedChange={() => toggleFilter("mid", priceFilters, setPriceFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">R$ 800 mil a R$ 2 mi</DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem checked={priceFilters.includes("high")} onCheckedChange={() => toggleFilter("high", priceFilters, setPriceFilters)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">Acima de R$ 2 mi</DropdownMenuCheckboxItem>
               <DropdownMenuSeparator className="bg-white" />
+              <DropdownMenuLabel className="text-[#6B7280]">Finalidade e locações</DropdownMenuLabel>
+              {[{ value: "all", label: "Todos" }, { value: "sale", label: "Venda" }, { value: "rent", label: "Aluguel" }, { value: "active", label: "Locações ativas" }].map((option) => (
+                <DropdownMenuCheckboxItem key={option.value} checked={rentalView === option.value} onCheckedChange={() => setRentalView(option.value as typeof rentalView)} className="rounded-xl text-[#050505]/80 focus:bg-[#f6f7f4]">{option.label}</DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator className="bg-white" />
               <Button type="button" variant="ghost" onClick={clearFilters} className="mt-2 h-9 w-full rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]">
                 Limpar filtros
               </Button>
@@ -549,6 +566,11 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
           </div>
         )}
 
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[1.15rem] border border-black/[0.06] bg-white/80 px-4 py-3 text-sm text-[#667085]">
+          <span><strong className="text-[#111827]">{rentalSummary.sale}</strong> à venda</span><span>·</span><span><strong className="text-[#111827]">{rentalSummary.available}</strong> disponíveis para aluguel</span><span>·</span><span><strong className="text-[#111827]">{rentalSummary.active}</strong> locações ativas</span>
+        </div>
+        {rentalManagement.error ? <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{rentalManagement.error}</div> : null}
+
         {hasProperties ? (
           <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1380px]:grid-cols-4">
             {filteredProperties.map((property) => (
@@ -581,6 +603,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                           <Store className="size-3" /> Marketplace
                         </span>
                       ) : null}
+                      <RentalStatusBadge purpose={property.purpose} active={Boolean(rentalManagement.activeByProperty[property.id])} available={rentalManagement.availability[property.id] !== false} hasHistory={Boolean(rentalManagement.byProperty[property.id]?.length)} />
                     </div>
                   </div>
 
@@ -627,6 +650,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 rounded-xl border-black/[0.07] bg-white p-1.5 text-[#344054]">
                           <DropdownMenuItem onSelect={() => openEditModal(property)} className="rounded-lg"><PencilLine className="size-4" />Editar imóvel</DropdownMenuItem>
+                          {property.purpose === "Locação" && !rentalManagement.activeByProperty[property.id] && rentalManagement.availability[property.id] !== false ? <DropdownMenuItem onSelect={() => setRentalStartProperty(property)} className="rounded-lg"><KeyRound className="size-4" />Iniciar locação</DropdownMenuItem> : null}
                           <DropdownMenuSeparator className="bg-black/[0.06]" />
                           <DropdownMenuItem onSelect={() => void toggleCatalog(property)} className="rounded-lg"><BookOpenCheck className="size-4" />{property.published ? "Despublicar do Catálogo" : "Publicar no Catálogo"}</DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => void toggleMarketplace(property)} className="rounded-lg"><Store className="size-4" />{property.marketplacePublished ? "Despublicar do Marketplace" : "Publicar no Marketplace"}</DropdownMenuItem>
@@ -843,6 +867,8 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       ) : null}
                     </section>
 
+                    <BrokerPropertyRentalPanel property={editingProperty} rentals={rentalManagement.byProperty[editingProperty.id] ?? []} available={rentalManagement.availability[editingProperty.id] !== false} onStart={() => setRentalStartProperty(properties.find((item) => item.id === editingProperty.id) ?? null)} onChanged={() => void rentalManagement.refresh()} />
+
                     <section className="grid gap-3">
                       <div className="rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4">
                         <h3 className="text-lg font-semibold text-[#050505]">Áudio</h3>
@@ -892,6 +918,8 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
             )}
           </DialogContent>
         </Dialog>
+
+        <BrokerRentalStartDialog property={rentalStartProperty} open={Boolean(rentalStartProperty)} onOpenChange={(open) => !open && setRentalStartProperty(null)} onCreated={() => { setRentalStartProperty(null); void rentalManagement.refresh(); setListFeedback("Locação iniciada com sucesso.") }} />
 
         <Dialog open={Boolean(publicationBlock)} onOpenChange={(open) => !open && setPublicationBlock(null)}>
           <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.35rem] border-black/[0.07] bg-white p-0 text-[#111827] shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:max-w-lg">
