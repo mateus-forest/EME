@@ -11,7 +11,7 @@ const barlow = Barlow({
 
 export const metadata: Metadata = {
   applicationName: 'EME',
-  title: 'EME - Poste imóveis em 30 segundos',
+  title: 'EME',
   description:
     'Capture, crie anúncios com IA e publique imóveis em segundos. A forma mais rápida de vender imóveis.',
   generator: 'v0.app',
