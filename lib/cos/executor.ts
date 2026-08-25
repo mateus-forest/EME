@@ -1,4 +1,9 @@
 import { normalizeCosActionResult } from "@/lib/cos/action-result"
+import {
+  canInvokeCosLaunchCapability,
+  COS_LAUNCH_NOT_AVAILABLE_MESSAGE,
+  getCosLaunchCapabilityStatus,
+} from "@/lib/cos/launch-capabilities"
 import type { CosRuntimeActionResult, CosCapabilityPlan, CosExecutionPlan, CosExecutionPlanResult, CosExecutionStep } from "@/lib/cos/types"
 
 function isValidActionResult(value: unknown): value is CosRuntimeActionResult {
@@ -15,9 +20,25 @@ export async function executeCosCapability(input: {
   confirm?: boolean
   payload?: Record<string, unknown>
 }): Promise<CosRuntimeActionResult> {
+  const launchCapabilityStatus = getCosLaunchCapabilityStatus(input.plan.capabilityId)
   const mergedPayload = {
     ...(input.payload ?? {}),
     ...input.plan.payload,
+  }
+
+  if (!canInvokeCosLaunchCapability(input.plan.capabilityId)) {
+    return normalizeCosActionResult({
+      result: {
+        response: COS_LAUNCH_NOT_AVAILABLE_MESSAGE,
+        metadata: {
+          launchCapabilityStatus,
+          noCharge: true,
+          operationExecuted: false,
+        },
+      },
+      action: input.plan.action,
+      entity: input.plan.entity,
+    })
   }
 
   if (input.plan.capability.handler) {
@@ -31,11 +52,18 @@ export async function executeCosCapability(input: {
       pendingInput: input.plan.pendingInput ?? null,
       context: input.plan.context,
     })
-    return normalizeCosActionResult({
+    const normalized = normalizeCosActionResult({
       result,
       action: input.plan.action,
       entity: input.plan.entity,
     })
+    return {
+      ...normalized,
+      metadata: {
+        ...normalized.metadata,
+        launchCapabilityStatus,
+      },
+    }
   }
 
   throw new Error(`COS_HANDLER_NOT_IMPLEMENTED:${input.plan.capabilityId}`)

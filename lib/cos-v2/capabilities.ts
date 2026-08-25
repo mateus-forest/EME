@@ -5,6 +5,7 @@ import {
   getCosCapabilityDescriptorById,
   listCosCapabilityCatalog,
 } from "@/lib/cos/capability-catalog"
+import { getCosLaunchCapabilityStatus } from "@/lib/cos/launch-capabilities"
 import type { CosCapabilityDescriptor, CosCapabilityId, CosConversationSnapshot, CosWorkspaceContext } from "@/lib/cos/types"
 import { COS_V2_CREATED_ENTITY_TYPES, type CosV2EntityType, type CosV2Interpretation, type CosV2Validation } from "@/lib/cos-v2/types"
 
@@ -308,6 +309,9 @@ export function validateCosV2Interpretation(input: {
 
   const referencedDescriptor = resolveCosV2Capability(interpretation.intendedAction, input.surface) ?? continuationDescriptor
   const validDescriptors = descriptors.filter((item): item is CosCapabilityDescriptor => Boolean(item))
+  if (validDescriptors.some((descriptor) => getCosLaunchCapabilityStatus(descriptor.id) === "NOT_AVAILABLE")) {
+    errors.push("capability_not_available_at_launch")
+  }
   const isOperationalObjective = interpretation.objective.kind === "query" || interpretation.objective.kind === "execute"
   const isOperationalTurn = ["execution", "correction", "selection", "confirmation"].includes(interpretation.turnType)
   const canExecuteTurn = isOperationalTurn && interpretation.objective.kind !== "answer" && (isOperationalObjective || validDescriptors.length > 0)

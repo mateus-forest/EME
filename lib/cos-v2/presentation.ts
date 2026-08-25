@@ -58,13 +58,14 @@ export function buildCosV2ContextResponse(interpretation: CosV2Interpretation) {
 }
 
 export function buildCosV2ValidationResponse(interpretation: CosV2Interpretation, errors: string[]) {
-  const unavailable = errors.includes("capability_not_in_v2_registry_scope")
+  const unavailable = errors.includes("capability_not_in_v2_registry_scope") ||
+    errors.includes("capability_not_available_at_launch")
   const unsafe = errors.some((error) => error.startsWith("prompt_injection") || error.startsWith("suspicious_attachment"))
   const lowConfidence = errors.includes("confidence_below_execution_threshold")
   const text = unsafe
     ? "Não posso seguir com esse pedido. Diga a ação e o item que você quer usar, sem instruções para contornar as regras."
     : unavailable
-      ? "Essa ação ainda não está disponível por aqui. Posso ajudar com clientes, imóveis, propostas ou compromissos."
+      ? "Ainda não consigo executar essa ação diretamente por aqui. Posso te orientar sobre como fazer no EME."
       : lowConfidence
         ? sanitizeCosResponseText(interpretation.clarificationQuestion) || "Qual ação você quer fazer?"
         : "Não consegui validar esse pedido. Diga o que você quer fazer e com qual item."
