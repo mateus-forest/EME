@@ -27,6 +27,8 @@ import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsibl
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { fetchCurrentUser } from "@/lib/auth-client"
 import { getNextEmePlanKey, isEmePlanUpgrade } from "@/lib/eme-plans"
 import { startStripeCheckout } from "@/lib/stripe-client"
 
@@ -46,6 +48,13 @@ type PlanPackage = {
   label: string
   quantity: number
   price: string
+}
+
+type PackageCustomCard = {
+  title: string
+  description: string
+  actionLabel: string
+  onRequest: () => void
 }
 
 type CreditHistoryItem = {
@@ -167,6 +176,12 @@ const propertyPackageItems: PlanPackage[] = [
   { key: "property_1000", type: "property", label: "+200 imóveis", quantity: 200, price: "R$ 159" },
 ]
 
+const capacityPackageItems: PlanPackage[] = [
+  { key: "property_250", type: "property", label: "+100 imóveis", quantity: 100, price: "R$ 59/mês" },
+  { key: "property_500", type: "property", label: "+250 imóveis", quantity: 250, price: "R$ 119/mês" },
+  { key: "property_1000", type: "property", label: "+500 imóveis", quantity: 500, price: "R$ 199/mês" },
+]
+
 function getCommercialPlanCopy(planKey: string) {
   if (planKey === "free" || planKey === "pro" || planKey === "scale") {
     return commercialPlanContent[planKey]
@@ -231,6 +246,11 @@ export function BrokerPlanPage() {
   const [isPlanLoading, setIsPlanLoading] = useState(true)
   const [isCreditHistoryExpanded, setIsCreditHistoryExpanded] = useState(false)
   const [isPropertyHistoryExpanded, setIsPropertyHistoryExpanded] = useState(false)
+  const [isCapacityRequestOpen, setIsCapacityRequestOpen] = useState(false)
+  const [capacityPreset, setCapacityPreset] = useState("1000")
+  const [capacityAmount, setCapacityAmount] = useState("1000")
+  const [capacityNotes, setCapacityNotes] = useState("")
+  const [brokerName, setBrokerName] = useState("")
   const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
 
   const propertyLimits = planSnapshot?.propertyLimits
@@ -292,7 +312,7 @@ export function BrokerPlanPage() {
   }, [currentPlan?.features])
 
   const creditPackages = useMemo(() => creditPackageItems, [])
-  const propertyPackages = useMemo(() => propertyPackageItems, [])
+  const propertyPackages = useMemo(() => capacityPackageItems, [])
   const propertyPackageHistory = useMemo(
     () => (planSnapshot?.packageHistory ?? []).filter((item) => item.packageType === "property"),
     [planSnapshot?.packageHistory],
@@ -337,6 +357,21 @@ export function BrokerPlanPage() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!isCapacityRequestOpen || brokerName) return
+
+    let ignore = false
+    void fetchCurrentUser()
+      .then((user) => {
+        if (!ignore && user) setBrokerName(user.name)
+      })
+      .catch(() => null)
+
+    return () => {
+      ignore = true
+    }
+  }, [brokerName, isCapacityRequestOpen])
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout")
@@ -442,6 +477,27 @@ export function BrokerPlanPage() {
     }
 
     focusPackagesSection()
+  }
+
+  function handleCapacityPresetChange(value: string) {
+    setCapacityPreset(value)
+    setCapacityAmount(value === "other" ? "" : value)
+  }
+
+  function openCapacityWhatsApp() {
+    const requestedAmount = Number(capacityAmount)
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) return
+
+    const formattedAmount = new Intl.NumberFormat("pt-BR").format(requestedAmount)
+    const planName = currentPlan
+      ? (getCommercialPlanCopy(currentPlan.key)?.name ?? currentPlan.name).replace(/^Plano\s+/i, "")
+      : "não identificado"
+    const introduction = brokerName.trim() ? `Olá, meu nome é ${brokerName.trim()} e gostaria` : "Olá, gostaria"
+    const observation = capacityNotes.trim() ? ` Observação: ${capacityNotes.trim()}` : ""
+    const message = `${introduction} de solicitar uma capacidade personalizada no EME. Meu plano atual é ${planName} e preciso de aproximadamente +${formattedAmount} imóveis adicionais.${observation}`
+
+    window.open(`https://wa.me/5554999902688?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
+    setIsCapacityRequestOpen(false)
   }
 
   return (
@@ -692,12 +748,20 @@ export function BrokerPlanPage() {
                 lockedMessage="Faça upgrade para adquirir créditos IA e utilizar todos os recursos inteligentes do EME."
               />
               <PackageCategory
-                title="Expansão da Carteira"
-                description="Aumente o limite de imóveis do plano atual. A expansão fica vinculada ao plano ativo da conta."
+                title="Capacidade adicional"
+                description="Amplie o limite de imóveis do seu plano quando precisar. A capacidade adicional é cobrada mensalmente e permanece ativa enquanto você utilizar o complemento."
                 items={propertyPackages}
                 onRequest={handlePackageCheckout}
                 isLocked={isFreePlan}
                 lockedMessage="Faça upgrade para expandir o limite da sua carteira de imóveis."
+                actionLabel="Adicionar capacidade"
+                note="Disponível nos planos Pro e Scale. O complemento pode ser cancelado separadamente da assinatura principal."
+                customCard={{
+                  title: "Preciso de mais",
+                  description: "Fale com a EME para montar uma capacidade personalizada para sua operação.",
+                  actionLabel: "Solicitar capacidade",
+                  onRequest: () => setIsCapacityRequestOpen(true),
+                }}
               />
             </CardContent>
           </Card>
@@ -821,6 +885,68 @@ export function BrokerPlanPage() {
           </Card>
         </ResponsiveCollapsibleSection>
         </section>
+
+        <Dialog open={isCapacityRequestOpen} onOpenChange={setIsCapacityRequestOpen}>
+          <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-black/[0.06] bg-white/95 p-0 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.14)] backdrop-blur-xl sm:max-w-lg">
+            <DialogHeader className="border-b border-black/[0.06] px-6 py-5 text-left">
+              <DialogTitle className="text-xl font-semibold tracking-tight">Solicitar capacidade personalizada</DialogTitle>
+              <DialogDescription className="mt-1.5 text-sm leading-6 text-[#6B7280]">
+                Conte o volume necessário para sua operação e fale diretamente com a equipe EME.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 px-6 py-5">
+              <label className="grid gap-2 text-sm font-medium text-[#374151]">
+                Necessidade aproximada
+                <select
+                  value={capacityPreset}
+                  onChange={(event) => handleCapacityPresetChange(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#050505] outline-none transition focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10"
+                >
+                  <option value="750">+750 imóveis</option>
+                  <option value="1000">+1.000 imóveis</option>
+                  <option value="2000">+2.000 imóveis</option>
+                  <option value="other">Outro</option>
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-[#374151]">
+                Quantos imóveis adicionais você precisa?
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={capacityAmount}
+                  onChange={(event) => {
+                    setCapacityAmount(event.target.value.replace(/\D/g, ""))
+                    setCapacityPreset("other")
+                  }}
+                  placeholder="Ex.: 1500"
+                  className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#050505] outline-none transition placeholder:text-[#98A2B3] focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-[#374151]">
+                Conte um pouco sobre sua operação <span className="font-normal text-[#98A2B3]">(opcional)</span>
+                <textarea
+                  value={capacityNotes}
+                  onChange={(event) => setCapacityNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Ex.: equipe, volume atual e previsão de crescimento."
+                  className="w-full resize-none rounded-xl border border-black/[0.08] bg-white px-3 py-2.5 text-sm leading-6 text-[#050505] outline-none transition placeholder:text-[#98A2B3] focus:border-[#009b3a]/45 focus:ring-2 focus:ring-[#009b3a]/10"
+                />
+              </label>
+
+              <Button
+                type="button"
+                onClick={openCapacityWhatsApp}
+                disabled={!capacityAmount || Number(capacityAmount) <= 0}
+                className="mt-1 h-11 w-full rounded-xl bg-[#009b3a] text-sm font-semibold text-white shadow-lg shadow-[#009b3a]/20 hover:bg-[#008633] disabled:bg-[#e7e9e5] disabled:text-[#98A2B3] disabled:shadow-none"
+              >
+                Falar com a EME
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </BrokerPageShell>
   )
@@ -863,6 +989,9 @@ function PackageCategory({
   onRequest,
   isLocked = false,
   lockedMessage,
+  actionLabel = "Comprar",
+  note,
+  customCard,
 }: {
   title: string
   description: string
@@ -870,6 +999,9 @@ function PackageCategory({
   onRequest: (packageKey: string) => Promise<void>
   isLocked?: boolean
   lockedMessage?: string
+  actionLabel?: string
+  note?: string
+  customCard?: PackageCustomCard
 }) {
   return (
     <div
@@ -930,12 +1062,33 @@ function PackageCategory({
                 disabled={isLocked}
                 className="mt-2.5 h-8 w-full rounded-xl border border-black/[0.06] bg-white/80 text-xs text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:cursor-not-allowed disabled:border-black/[0.05] disabled:bg-[#f3f4f1] disabled:text-[#9CA3AF]"
               >
-                {isLocked ? "Disponível no Pro+" : "Comprar"}
+                {isLocked ? "Disponível no Pro+" : actionLabel}
               </Button>
             </div>
           )
         })}
+        {customCard ? (
+          <div className={`flex flex-col justify-between rounded-[1.1rem] border p-3 ${isLocked ? "border-black/[0.05] bg-white/75" : "border-black/[0.06] bg-white/90"}`}>
+            <div>
+              <div className="flex size-8 items-center justify-center rounded-xl border border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]">
+                <Headphones className="size-4" />
+              </div>
+              <h4 className="mt-3 text-sm font-semibold text-[#050505]">{customCard.title}</h4>
+              <p className="mt-1 text-xs leading-5 text-[#6B7280]">{customCard.description}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={customCard.onRequest}
+              disabled={isLocked}
+              className="mt-2.5 h-8 w-full rounded-xl border border-black/[0.06] bg-white/80 text-xs text-[#4B5563] hover:bg-white hover:text-[#050505] disabled:cursor-not-allowed disabled:border-black/[0.05] disabled:bg-[#f3f4f1] disabled:text-[#9CA3AF]"
+            >
+              {isLocked ? "Disponível no Pro+" : customCard.actionLabel}
+            </Button>
+          </div>
+        ) : null}
       </div>
+      {note ? <p className="mt-3 text-[11px] leading-5 text-[#7B8491]">{note}</p> : null}
     </div>
   )
 }
