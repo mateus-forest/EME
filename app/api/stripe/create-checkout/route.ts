@@ -22,12 +22,14 @@ import {
 } from "@/lib/billing-lifecycle-policy"
 import { EME_EXTRA_PACKAGES, type EmeExtraPackageKey } from "@/lib/eme-plans"
 import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
+import { verifyCapacityChangeToken } from "@/lib/stripe-capacity-preview-token"
 import { getStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
 
 type CheckoutPayload = {
   capacityAction?: "remove"
+  capacityPreviewToken?: string
   packageKey?: string
   plan?: string
 }
@@ -37,6 +39,8 @@ function parseCheckoutPayload(body: unknown): CheckoutPayload {
 
   return {
     capacityAction: data.capacityAction === "remove" ? "remove" : undefined,
+    capacityPreviewToken:
+      typeof data.capacityPreviewToken === "string" ? data.capacityPreviewToken : undefined,
     packageKey: typeof data.packageKey === "string" ? data.packageKey.trim() : undefined,
     plan: typeof data.plan === "string" ? data.plan.trim() : undefined,
   }
@@ -63,6 +67,7 @@ function getStripeHostedChangeUrl(subscription: Stripe.Subscription, fallbackUrl
 function getCapacityMutationIdempotencyKey(
   subscription: Stripe.Subscription,
   targetPriceId: string | null,
+  prorationDate?: number,
 ) {
   const latestInvoice = subscription.latest_invoice
   const latestInvoiceId =
@@ -78,6 +83,7 @@ function getCapacityMutationIdempotencyKey(
     latestInvoiceId,
     currentItems,
     targetPriceId ?? "remove",
+    prorationDate ?? "direct",
   ].join(":").slice(0, 255)
 }
 
@@ -102,6 +108,7 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = parseCheckoutPayload(await request.json().catch(() => null))
+  const capacityPreviewSecret = process.env.STRIPE_SECRET_KEY?.trim() ?? ""
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
   const portalPath = user.role === UserRole.BROKER ? "/corretor/plano" : "/imobiliaria/plano"
 
@@ -124,6 +131,24 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      const capacityPreview = verifyCapacityChangeToken(
+        payload.capacityPreviewToken ?? "",
+        capacityPreviewSecret,
+      )
+      if (
+        !capacityPreview ||
+        capacityPreview.brokerId !== user.broker.id ||
+        capacityPreview.subscriptionId !== subscription.id ||
+        capacityPreview.operation !== "remove" ||
+        capacityPreview.packageKey !== null ||
+        capacityPreview.targetPriceId !== null
+      ) {
+        return NextResponse.json(
+          { error: "A confirmação da capacidade expirou. Solicite uma nova prévia." },
+          { status: 409 },
+        )
+      }
+
       const capacityItems = getStripePropertyCapacityItems(subscription)
       if (capacityItems.length === 0) {
         await syncBillingFromStripeSubscription(subscription)
@@ -136,10 +161,15 @@ export async function POST(request: NextRequest) {
           null,
         ),
         payment_behavior: "pending_if_incomplete",
+        proration_date: capacityPreview.prorationDate,
         proration_behavior: "always_invoice",
         expand: ["latest_invoice"],
       }, {
-        idempotencyKey: getCapacityMutationIdempotencyKey(subscription, null),
+        idempotencyKey: getCapacityMutationIdempotencyKey(
+          subscription,
+          null,
+          capacityPreview.prorationDate,
+        ),
       })
 
       return NextResponse.json({
@@ -217,6 +247,24 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        const capacityPreview = verifyCapacityChangeToken(
+          payload.capacityPreviewToken ?? "",
+          capacityPreviewSecret,
+        )
+        if (
+          !capacityPreview ||
+          capacityPreview.brokerId !== user.broker.id ||
+          capacityPreview.subscriptionId !== subscription.id ||
+          capacityPreview.operation !== "set" ||
+          capacityPreview.packageKey !== payload.packageKey ||
+          capacityPreview.targetPriceId !== priceId
+        ) {
+          return NextResponse.json(
+            { error: "A confirmação da capacidade expirou. Solicite uma nova prévia." },
+            { status: 409 },
+          )
+        }
+
         if (!new Set(["active", "trialing"]).has(subscription.status)) {
           return NextResponse.json(
             { error: "A assinatura atual não está ativa para receber capacidade adicional." },
@@ -250,10 +298,15 @@ export async function POST(request: NextRequest) {
         const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
           items,
           payment_behavior: "pending_if_incomplete",
+          proration_date: capacityPreview.prorationDate,
           proration_behavior: "always_invoice",
           expand: ["latest_invoice"],
         }, {
-          idempotencyKey: getCapacityMutationIdempotencyKey(subscription, priceId),
+          idempotencyKey: getCapacityMutationIdempotencyKey(
+            subscription,
+            priceId,
+            capacityPreview.prorationDate,
+          ),
         })
 
         return NextResponse.json({

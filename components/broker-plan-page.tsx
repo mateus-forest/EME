@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
+import { CapacityChangeConfirmationDialog } from "@/components/capacity-change-confirmation-dialog"
 import { NotificationCenter } from "@/components/notification-center"
 import { ResponsiveCollapsibleSection } from "@/components/responsive-collapsible-section"
 import { useBrokerPaymentNotifications } from "@/components/use-broker-payment-notifications"
@@ -30,6 +31,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { fetchCurrentUser } from "@/lib/auth-client"
 import { getNextEmePlanKey, isEmePlanUpgrade } from "@/lib/eme-plans"
+import {
+  confirmCapacityChange,
+  requestCapacityChangePreview,
+  type CapacityChangePreview,
+} from "@/lib/stripe-capacity-client"
 import { startStripeCheckout } from "@/lib/stripe-client"
 
 type PlanItem = {
@@ -270,6 +276,11 @@ export function BrokerPlanPage() {
   const [capacityAmount, setCapacityAmount] = useState("1000")
   const [capacityNotes, setCapacityNotes] = useState("")
   const [brokerName, setBrokerName] = useState("")
+  const [capacityPreview, setCapacityPreview] = useState<CapacityChangePreview | null>(null)
+  const [capacityPreviewError, setCapacityPreviewError] = useState<string | null>(null)
+  const [isCapacityConfirmationOpen, setIsCapacityConfirmationOpen] = useState(false)
+  const [isCapacityPreviewLoading, setIsCapacityPreviewLoading] = useState(false)
+  const [isCapacityConfirming, setIsCapacityConfirming] = useState(false)
   const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
 
   const propertyLimits = planSnapshot?.propertyLimits
@@ -481,6 +492,42 @@ export function BrokerPlanPage() {
       await startStripeCheckout({ packageKey })
     } catch (caughtError) {
       setUpgradeFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível iniciar o checkout.")
+    }
+  }
+
+  async function openCapacityConfirmation(input: { action: "remove" } | { packageKey: string }) {
+    setCapacityPreview(null)
+    setCapacityPreviewError(null)
+    setIsCapacityConfirmationOpen(true)
+    setIsCapacityPreviewLoading(true)
+
+    try {
+      setCapacityPreview(await requestCapacityChangePreview(input))
+    } catch (caughtError) {
+      setCapacityPreviewError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Não foi possível preparar a alteração.",
+      )
+    } finally {
+      setIsCapacityPreviewLoading(false)
+    }
+  }
+
+  async function handleCapacityConfirmation() {
+    if (!capacityPreview) return
+    setIsCapacityConfirming(true)
+    setCapacityPreviewError(null)
+
+    try {
+      await confirmCapacityChange(capacityPreview)
+    } catch (caughtError) {
+      setCapacityPreviewError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Não foi possível confirmar a alteração.",
+      )
+      setIsCapacityConfirming(false)
     }
   }
 
@@ -774,7 +821,9 @@ export function BrokerPlanPage() {
                 title="Capacidade adicional"
                 description="Amplie o limite de imóveis do seu plano quando precisar. A capacidade adicional é cobrada mensalmente e permanece ativa enquanto você utilizar o complemento."
                 items={propertyPackages}
-                onRequest={handlePackageCheckout}
+                onRequest={async (packageKey) => {
+                  await openCapacityConfirmation({ packageKey })
+                }}
                 isLocked={isFreePlan}
                 lockedMessage="Faça upgrade para expandir o limite da sua carteira de imóveis."
                 actionLabel="Adicionar capacidade"
@@ -892,15 +941,7 @@ export function BrokerPlanPage() {
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => {
-                          void startStripeCheckout({ capacityAction: "remove" }).catch((caughtError) => {
-                            setUpgradeFeedback(
-                              caughtError instanceof Error
-                                ? caughtError.message
-                                : "Não foi possível remover a capacidade adicional.",
-                            )
-                          })
-                        }}
+                        onClick={() => void openCapacityConfirmation({ action: "remove" })}
                         className="mt-2 h-8 rounded-lg px-2 text-xs font-semibold text-[#55705f] hover:bg-white hover:text-[#111111]"
                       >
                         Remover capacidade
@@ -990,6 +1031,23 @@ export function BrokerPlanPage() {
           </Card>
         </ResponsiveCollapsibleSection>
         </section>
+
+        <CapacityChangeConfirmationDialog
+          error={capacityPreviewError}
+          isConfirming={isCapacityConfirming}
+          isLoading={isCapacityPreviewLoading}
+          onConfirm={() => void handleCapacityConfirmation()}
+          onOpenChange={(open) => {
+            setIsCapacityConfirmationOpen(open)
+            if (!open) {
+              setCapacityPreview(null)
+              setCapacityPreviewError(null)
+              setIsCapacityConfirming(false)
+            }
+          }}
+          open={isCapacityConfirmationOpen}
+          preview={capacityPreview}
+        />
 
         <Dialog open={isCapacityRequestOpen} onOpenChange={setIsCapacityRequestOpen}>
           <DialogContent className="max-w-[calc(100%-1.5rem)] rounded-[1.75rem] border-black/[0.06] bg-white/95 p-0 text-[#050505] shadow-[0_30px_80px_rgba(15,23,42,0.14)] backdrop-blur-xl sm:max-w-lg">
