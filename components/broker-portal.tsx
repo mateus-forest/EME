@@ -19,6 +19,7 @@ import {
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
+import { CosLaunchPanel } from "@/components/cos-launch-panel"
 import type { CosPromptComposerMenuAction } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
@@ -111,7 +112,12 @@ function requestAssistantBootstrap() {
   return assistantBootstrapRequest
 }
 
-export function BrokerPortal() {
+export function BrokerPortal({ launchMode = "simple" }: { launchMode?: "simple" | "legacy" }) {
+  if (launchMode === "simple") return <CosLaunchPanel />
+  return <BrokerPortalLegacy />
+}
+
+function BrokerPortalLegacy() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedConversationId = searchParams.get("conversa")?.trim() || ""

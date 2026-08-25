@@ -1,0 +1,22 @@
+import "server-only"
+import { executeCosLaunchAction } from "@/lib/cos-launch/actions"
+import { buildCosLaunchForm } from "@/lib/cos-launch/forms"
+import { getCosLaunchHelp } from "@/lib/cos-launch/help"
+import { resolveCosLaunchIntent } from "@/lib/cos-launch/intent"
+import { listClientCards, listDocumentCards, listPropertyCards, listTodayAgendaCards } from "@/lib/cos-launch/queries"
+import type { CosLaunchFormKind, CosLaunchIntent, CosLaunchRequest, CosLaunchResponse } from "@/lib/cos-launch/types"
+
+const formByIntent: Partial<Record<CosLaunchIntent, CosLaunchFormKind>> = { create_property: "property", create_client: "client", create_contract: "contract", create_proposal: "proposal", create_agenda: "agenda", attach_document: "document" }
+const empty = (noun: string) => `Nenhum ${noun} foi encontrado na sua conta.`
+async function query(intent: CosLaunchIntent, brokerId: string): Promise<CosLaunchResponse | null> { if (intent === "list_properties") { const cards = await listPropertyCards(brokerId); return { message: cards.length ? `Encontrei ${cards.length} ${cards.length === 1 ? "imóvel" : "imóveis"} recente${cards.length === 1 ? "" : "s"}.` : empty("imóvel"), cards } } if (intent === "list_clients") { const cards = await listClientCards(brokerId); return { message: cards.length ? `Encontrei ${cards.length} cliente${cards.length === 1 ? "" : "s"} recente${cards.length === 1 ? "" : "s"}.` : empty("cliente"), cards } } if (intent === "list_contracts") { const cards = await listDocumentCards(brokerId, "contract"); return { message: cards.length ? "Estes são seus contratos mais recentes." : empty("contrato"), cards } } if (intent === "list_proposals") { const cards = await listDocumentCards(brokerId, "proposal"); return { message: cards.length ? "Estas são suas propostas mais recentes." : empty("proposta"), cards } } if (intent === "list_documents") { const cards = await listDocumentCards(brokerId); return { message: cards.length ? "Estes são seus documentos mais recentes." : empty("documento"), cards } } if (intent === "agenda_today") { const cards = await listTodayAgendaCards(brokerId); return { message: cards.length ? "Estes são seus compromissos de hoje." : "Você não possui compromissos para hoje.", cards } } return null }
+function intentFromAction(action: string): CosLaunchIntent | null { const map: Record<string, CosLaunchIntent> = { "query:properties": "list_properties", "query:clients": "list_clients", "query:contracts": "list_contracts", "query:proposals": "list_proposals", "query:documents": "list_documents", "query:agenda": "agenda_today", "form:property": "create_property", "form:client": "create_client", "form:contract": "create_contract", "form:proposal": "create_proposal", "form:agenda": "create_agenda", "form:document": "attach_document", "help:properties": "help_properties", "help:clients": "help_clients", "help:contracts": "help_contracts", "help:proposals": "help_proposals", "help:studio": "help_studio", "help:catalog": "help_catalog", "help:marketplace": "help_marketplace", "help:cos": "help_cos", "conversation:new": "new_conversation" }; return map[action] ?? null }
+
+export async function routeCosLaunch(input: { brokerId: string; userId: string; request: CosLaunchRequest }): Promise<CosLaunchResponse> {
+  const startedAt = Date.now(); const action = input.request.action?.trim() ?? ""
+  if (action.startsWith("submit:")) { const kind = action.slice(7) as CosLaunchFormKind; const allowed: CosLaunchFormKind[] = ["property", "client", "proposal", "contract", "agenda", "document"]; if (!allowed.includes(kind)) return { message: "Esta ação não está disponível." }; const response = await executeCosLaunchAction({ kind, brokerId: input.brokerId, userId: input.userId, payload: input.request.payload ?? {} }); return { ...response, elapsedMs: Date.now() - startedAt } }
+  const intent = intentFromAction(action) ?? resolveCosLaunchIntent(input.request.message ?? "")
+  if (intent === "new_conversation") return { message: "Nova conversa iniciada.", elapsedMs: Date.now() - startedAt }
+  const found = await query(intent, input.brokerId); if (found) return { ...found, elapsedMs: Date.now() - startedAt }
+  const kind = formByIntent[intent]; if (kind) return { message: "Preencha os campos abaixo para continuar.", form: await buildCosLaunchForm(input.brokerId, kind), elapsedMs: Date.now() - startedAt }
+  return { ...getCosLaunchHelp(intent), elapsedMs: Date.now() - startedAt }
+}
