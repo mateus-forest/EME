@@ -329,7 +329,7 @@ async function renderInstagramFeedTemplate(
     computeMetricPanelBox(measure, {
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
-      metricValueFontSize: 36,
+      metricValueFontSize: metricPanelBox.metricValueFontSize,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
       catalog: catalogConfig,
@@ -381,7 +381,7 @@ async function renderInstagramFeedTemplate(
     renderMultilineText(textRuns, titleLayout.lines, 70, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(70, dividerY, 96, payload.accentColor),
     renderBadge(textRuns, payload.purposeLabel, 70, purposeY, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
-    renderFeatureRow(textRuns, featureItems, 70, featureY, 170, payload.accentColor),
+      renderFeatureRow(textRuns, featureItems, 68, featureY, panelWidth, "feed", payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 68,
       y: panelY,
@@ -448,7 +448,7 @@ async function renderInstagramStoryTemplate(
     computeMetricPanelBox(measure, {
       metricLabel: payload.metricLabel,
       metricValue: payload.price,
-      metricValueFontSize: 40,
+      metricValueFontSize: metricPanelBox.metricValueFontSize,
       metricSupport: payload.metricSupport,
       cta: ctaConfig,
       catalog: catalogConfig,
@@ -500,7 +500,7 @@ async function renderInstagramStoryTemplate(
     renderMultilineText(textRuns, titleLayout.lines, 82, titleY, titleLayout.fontSize, "700", "#ffffff", titleLayout.lineHeight, 0),
     renderDivider(82, dividerY, 104, payload.accentColor),
     renderBadge(textRuns, payload.purposeLabel, 82, purposeY, badgeBox.width, badgeBox.height, badgeBox.labelInkHeight, payload.accentColor),
-    renderFeatureRow(textRuns, featureItems, 82, featureY, 205, payload.accentColor),
+      renderFeatureRow(textRuns, featureItems, 80, featureY, panelWidth, "story", payload.accentColor),
     renderMetricPanel(textRuns, {
       x: 80,
       y: panelY,
@@ -623,19 +623,29 @@ async function computeMetricPanelBox(
   const supportFontSize = 15
   const stackGap = 9
 
-  const [labelBox, valueBox, supportBox] = await Promise.all([
-    measure(input.metricLabel, labelFontSize, "500", 0.01),
-    measure(input.metricValue, input.metricValueFontSize, "700", 0),
-    measure(input.metricSupport, supportFontSize, "400", 0),
-  ])
-  const stackColumnWidth = Math.ceil(Math.max(labelBox.width, valueBox.width, supportBox.width))
+  const metricColumnWidth = 240
+  const valueBox = await measure(input.metricValue, input.metricValueFontSize, "700", 0)
+  let metricValueFontSize = input.metricValueFontSize
+
+  if (valueBox.width > metricColumnWidth) {
+    metricValueFontSize = Math.max(20, Math.floor(input.metricValueFontSize * (metricColumnWidth / valueBox.width)))
+    const fittedValueBox = await measure(input.metricValue, metricValueFontSize, "700", 0)
+
+    if (fittedValueBox.width > metricColumnWidth && metricValueFontSize > 20) {
+      metricValueFontSize -= 1
+    }
+  }
+
+  // Keep the CTA and catalog anchors stable regardless of the monetary value length. Only the
+  // value typography adapts to this fixed budget; the surrounding columns never shift.
+  const stackColumnWidth = metricColumnWidth
 
   const relativeLabelY = Math.round(labelFontSize * STUDIO_FONT_ASCENT_RATIO)
-  const relativeValueY = stackTextBlockY(relativeLabelY, 0, labelFontSize, stackGap, input.metricValueFontSize)
+  const relativeValueY = stackTextBlockY(relativeLabelY, 0, labelFontSize, stackGap, metricValueFontSize)
   const relativeSupportY = input.metricSupport
-    ? stackTextBlockY(relativeValueY, 0, input.metricValueFontSize, stackGap - 4, supportFontSize)
+    ? stackTextBlockY(relativeValueY, 0, metricValueFontSize, stackGap - 4, supportFontSize)
     : null
-  const stackBottomFontSize = relativeSupportY !== null ? supportFontSize : input.metricValueFontSize
+  const stackBottomFontSize = relativeSupportY !== null ? supportFontSize : metricValueFontSize
   const stackHeight = (relativeSupportY ?? relativeValueY) + stackBottomFontSize * STUDIO_FONT_DESCENT_RATIO
 
   let ctaColumnWidth = 0
@@ -675,7 +685,7 @@ async function computeMetricPanelBox(
     ? ctaWidth - PANEL_PADDING_X + PANEL_DIVIDER_GAP * 2 + catalogColumnWidth + PANEL_PADDING_X
     : ctaWidth
 
-  return { width: Math.round(width), height, stackColumnWidth, ctaColumnWidth }
+  return { width: Math.round(width), height, stackColumnWidth, ctaColumnWidth, metricValueFontSize }
 }
 
 // The badge's pill height is driven by BADGE_ICON_HEIGHT (see computeBadgeBox), not by the
@@ -888,31 +898,34 @@ function renderDivider(x: number, y: number, width: number, accentColor: string)
   return `<rect x="${x}" y="${y}" width="${width}" height="4" rx="2" fill="${accentColor}" />`
 }
 
-// Scaled down from the icons' native 1:1 art size (~46-56 units) for a more delicate look in the
-// attribute row/stack — everything else here (divider height, icon-to-text gaps) is sized relative
-// to this so the whole group shrinks together instead of just the glyph.
-const FEATURE_ICON_SCALE = 0.7
-
-// columnWidth is a fixed per-item budget, not a total row width divided by item count: with a
-// fixed total, fewer items (e.g. 3 instead of 4 when the property has no area on file) stretched
-// each column wider, leaving uneven leftover space after each item's actual (shorter) text before
-// hitting the next divider — items *looked* unevenly spaced even though the column boundaries
-// were mathematically even. A constant column width keeps the same visual rhythm regardless of
-// how many items are actually present; the row is simply shorter with fewer of them.
-function renderFeatureRow(runs: StudioTextRun[], items: StudioFeatureItem[], x: number, y: number, columnWidth: number, accentColor: string) {
-  const isStory = columnWidth >= 200
-  const cardWidth = columnWidth - 12
-  const cardHeight = isStory ? 144 : 140
-  const iconScale = isStory ? 0.72 : FEATURE_ICON_SCALE
+// Attribute cards keep a compact fixed geometry while the complete row is centered inside the
+// investment panel width. This preserves an even rhythm with one to four real property features
+// without stretching cards or leaving the row visually anchored to one side.
+function renderFeatureRow(
+  runs: StudioTextRun[],
+  items: StudioFeatureItem[],
+  x: number,
+  y: number,
+  rowWidth: number,
+  variant: "feed" | "story",
+  accentColor: string,
+) {
+  const isStory = variant === "story"
+  const cardWidth = isStory ? 172 : 148
+  const cardHeight = isStory ? 116 : 110
+  const cardGap = isStory ? 18 : 16
+  const contentWidth = items.length * cardWidth + Math.max(0, items.length - 1) * cardGap
+  const rowX = x + Math.max(0, (rowWidth - contentWidth) / 2)
+  const iconScale = isStory ? 0.61 : 0.58
   const iconWidth = 56 * iconScale
-  const iconY = isStory ? 22 : 18
-  const textTop = isStory ? 91 : 88
+  const iconY = isStory ? 16 : 15
+  const textTop = isStory ? 74 : 69
 
   return items
     .map((item, index) => {
-      const originX = x + index * columnWidth
+      const originX = rowX + index * (cardWidth + cardGap)
       const lines = [item.line1, item.line2].filter(Boolean) as string[]
-      const textLayout = fitMultilineText(lines.join("\n"), cardWidth - 24, isStory ? 17 : 15, isStory ? 14 : 12, 2)
+      const textLayout = fitMultilineText(lines.join("\n"), cardWidth - 20, isStory ? 15 : 14, isStory ? 12 : 11, 2)
       const firstBaselineY = y + textTop + Math.round(textLayout.fontSize * STUDIO_FONT_ASCENT_RATIO)
 
       return [
