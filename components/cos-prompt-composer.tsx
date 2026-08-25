@@ -331,7 +331,7 @@ export function CosPromptComposer({
           </div>
         ) : null}
 
-        <div className="flex min-w-0 items-end gap-2 rounded-[1.2rem] border border-black/[0.06] bg-white/94 px-2 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:rounded-[1.35rem] sm:border-black/[0.07] sm:bg-white sm:shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2.5 sm:px-2.5">
+        <div className="flex min-w-0 items-end gap-2 rounded-[1.05rem] border border-black/[0.06] bg-white/94 px-2 py-1.5 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:rounded-[1.2rem] sm:border-black/[0.07] sm:bg-white sm:shadow-[0_10px_22px_rgba(15,23,42,0.06)] sm:gap-2 sm:px-2.5">
           <DropdownMenu
             open={isMenuOpen}
             onOpenChange={(nextOpen) => {
@@ -426,7 +426,7 @@ export function CosPromptComposer({
               }, 120)
             }}
             placeholder="Fale com o COS..."
-            className="min-h-0 max-h-36 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-[15px] leading-6 text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
+            className="min-h-0 max-h-28 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-1 py-1 text-[15px] leading-6 text-[#111111] shadow-none outline-none placeholder:text-[#7a8798] focus-visible:ring-0"
           />
 
           <Button
@@ -447,7 +447,7 @@ export function CosPromptComposer({
             type="submit"
             size="icon"
             disabled={disabled || isPreparingAttachments}
-            className="size-10 shrink-0 rounded-full bg-[#111111] text-white shadow-none hover:bg-[#050505] disabled:opacity-60"
+            className="size-9 shrink-0 rounded-full bg-[#111111] text-white shadow-none hover:bg-[#050505] disabled:opacity-60"
             aria-label="Enviar mensagem ao COS"
           >
             <Send className="size-4" />
