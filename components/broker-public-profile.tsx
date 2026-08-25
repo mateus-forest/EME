@@ -143,11 +143,11 @@ export function BrokerProfileHero({
     catalog.soldProperties && catalog.soldProperties > 0
       ? { icon: TrendingUp, value: catalog.soldProperties.toLocaleString("pt-BR"), label: "Imóveis vendidos" }
       : null,
-    catalog.serviceArea
-      ? { icon: Map, value: catalog.serviceArea, label: "Área de atuação" }
-      : null,
     catalog.cities.length
       ? { icon: MapPin, value: `${catalog.cities.length} ${catalog.cities.length === 1 ? "cidade" : "cidades"}`, label: "Cidades atendidas" }
+      : null,
+    catalog.serviceArea
+      ? { icon: Map, value: catalog.serviceArea, label: "Área de atuação" }
       : null,
     priceRange && priceRange !== "Consulte"
       ? { icon: CircleDollarSign, value: priceRange, label: "Faixa de preço", wideMobile: true }
