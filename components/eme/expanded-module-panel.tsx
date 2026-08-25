@@ -169,8 +169,8 @@ export function ExpandedModulePanel({
   const [closing, setClosing] = useState(false)
   const closingRef = useRef(false)
   const closeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const openTransition = { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
-  const closeTransition = { duration: 0.22, ease: [0.22, 1, 0.36, 1] }
+  const openTransition = { duration: 0.3, ease: [0.22, 1, 0.36, 1] } as const
+  const closeTransition = { duration: 0.22, ease: [0.22, 1, 0.36, 1] } as const
 
   useModalScrollLock()
 

@@ -6,7 +6,9 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Files,
   HelpCircle,
+  ImageIcon,
   Mic,
   MessageSquarePlus,
   Paperclip,
@@ -14,6 +16,7 @@ import {
   Send,
   Sparkles,
   Square,
+  Video,
   X,
 } from "lucide-react"
 

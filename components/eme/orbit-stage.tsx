@@ -138,7 +138,7 @@ export function OrbitStage({
         element.style.pointerEvents = frozen ? "none" : "auto"
         element.style.willChange = frozen ? "transform, opacity" : "transform"
         element.style.backfaceVisibility = "hidden"
-        element.style.WebkitBackfaceVisibility = "hidden"
+        element.style.webkitBackfaceVisibility = "hidden"
         element.style.transformStyle = "preserve-3d"
       }
     },

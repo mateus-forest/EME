@@ -36,7 +36,7 @@ export function AuthPanel({
   const [error, setError] = useState("")
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const sheetTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+  const sheetTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] } as const
 
   const {
     trustedDevice,
