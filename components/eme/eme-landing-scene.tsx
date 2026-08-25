@@ -152,9 +152,14 @@ export function EmeLandingScene({
         aria-hidden
         className="pointer-events-none absolute inset-0"
         initial={false}
-        animate={{ x: acceleratorOpen ? "-7vw" : "0vw", scale: acceleratorOpen ? 1.035 : 1 }}
+        animate={{
+          x: acceleratorOpen ? "9vw" : "0vw",
+          rotateY: acceleratorOpen ? -3.2 : 0,
+          rotateZ: acceleratorOpen ? -0.35 : 0,
+          scale: acceleratorOpen ? 1.13 : 1,
+        }}
         transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-        style={{ willChange: "transform" }}
+        style={{ perspective: 1600, transformOrigin: "34% 50%", willChange: "transform" }}
       >
         <CoastalCityBackground />
       </motion.div>
@@ -162,8 +167,17 @@ export function EmeLandingScene({
       <motion.div
         className="absolute inset-0"
         initial={false}
-        animate={{ x: acceleratorOpen ? "-42vw" : "0vw", opacity: acceleratorOpen ? 0 : 1 }}
-        transition={{ duration: acceleratorOpen ? 0.9 : 0.82, ease: [0.22, 1, 0.36, 1] }}
+        animate={{
+          x: acceleratorOpen ? "-18vw" : "0vw",
+          rotateY: acceleratorOpen ? -5 : 0,
+          scale: acceleratorOpen ? 0.985 : 1,
+          opacity: acceleratorOpen ? 0 : 1,
+        }}
+        transition={{
+          duration: acceleratorOpen ? 0.82 : 0.76,
+          delay: acceleratorOpen ? 0 : 0.14,
+          ease: [0.22, 1, 0.36, 1],
+        }}
         style={{ pointerEvents: acceleratorOpen ? "none" : "auto", willChange: "transform, opacity" }}
         aria-hidden={acceleratorOpen}
       >
@@ -223,13 +237,22 @@ export function EmeLandingScene({
           <motion.div
             key="accelerator"
             className="absolute inset-0 z-[70]"
-            initial={{ x: "100%", opacity: 0.7 }}
-            animate={{ x: "0%", opacity: 1 }}
-            exit={{ x: "100%", opacity: 0.7 }}
-            transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ x: "5vw", scale: 0.985, opacity: 0 }}
+            animate={{ x: "0vw", scale: 1, opacity: 1 }}
+            exit={{
+              x: "5vw",
+              scale: 0.985,
+              opacity: 0,
+              transition: { duration: 0.48, ease: [0.4, 0, 0.2, 1] },
+            }}
+            transition={{ duration: 0.78, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             style={{ willChange: "transform, opacity" }}
           >
-            <AcceleratorHero onBack={() => setAcceleratorOpen(false)} />
+            <AcceleratorHero
+              onBack={() => setAcceleratorOpen(false)}
+              onEntrar={() => openAuth("login")}
+              onComecar={() => openAuth("signup")}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>

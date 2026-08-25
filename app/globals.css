@@ -199,7 +199,7 @@
 }
 
 .eme-accelerator__back,
-.eme-accelerator__notify {
+.eme-accelerator__auth-action {
   display: flex;
   height: 44px;
   align-items: center;
@@ -212,6 +212,10 @@
 }
 
 .eme-accelerator__back {
+  position: absolute;
+  right: clamp(48px, 5.6vw, 94px);
+  bottom: clamp(18px, 2.4vh, 26px);
+  z-index: 6;
   border: 1px solid rgba(255, 255, 255, 0.66);
   background: rgba(255, 255, 255, 0.66);
   color: #404c59;
@@ -234,16 +238,67 @@
 }
 
 .eme-accelerator__notify {
+  position: relative;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #15232b;
+  -webkit-backdrop-filter: blur(12px) saturate(110%);
+  backdrop-filter: blur(12px) saturate(110%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 26px -18px rgba(20, 52, 36, 0.42);
+}
+
+.eme-accelerator__notify-dot {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: #078f43;
+}
+
+.eme-accelerator__auth-action {
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.76);
+  color: #18242e;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(12px) saturate(110%);
+  backdrop-filter: blur(12px) saturate(110%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 28px -20px rgba(20, 52, 36, 0.42);
+  transition: transform 260ms ease, background-color 260ms ease;
+}
+
+.eme-accelerator__auth-action:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.eme-accelerator__auth-action.is-primary {
+  min-width: 138px;
+  border-color: rgba(4, 122, 54, 0.6);
   background: linear-gradient(135deg, #078d40, #006e31);
   color: #fff;
   box-shadow: 0 14px 28px -16px rgba(20, 110, 55, 0.75);
+}
+
+.eme-accelerator__auth-action.is-primary:hover {
+  background: linear-gradient(135deg, #079b46, #007537);
 }
 
 .eme-accelerator__body {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.08fr);
   gap: clamp(26px, 3.2vw, 54px);
   flex: 1 1 auto;
   min-height: 0;
@@ -403,7 +458,7 @@
   display: grid;
   grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
   gap: 14px;
-  height: clamp(156px, 21.5vh, 220px);
+  height: clamp(154px, 21vh, 208px);
   flex: 0 0 auto;
   margin-top: clamp(12px, 1.8vh, 18px);
 }
@@ -660,6 +715,11 @@
   }
 
   .eme-accelerator__back.is-compact {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    align-self: flex-end;
+    margin-top: 14px;
     height: 36px;
     gap: 6px;
     padding: 0 12px;
@@ -669,6 +729,31 @@
   .eme-accelerator__back.is-compact svg {
     width: 14px;
     height: 14px;
+  }
+
+  .eme-accelerator__controls {
+    gap: 6px;
+  }
+
+  .eme-accelerator__notify {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .eme-accelerator__notify svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .eme-accelerator__auth-action {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 9px;
+  }
+
+  .eme-accelerator__auth-action.is-primary {
+    min-width: 0;
   }
 
   .eme-accelerator__intro.is-compact {

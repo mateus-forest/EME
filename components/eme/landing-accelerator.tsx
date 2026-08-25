@@ -110,17 +110,29 @@ export function LandingAcceleratorTeaser({
 
 export function AcceleratorHero({
   onBack,
+  onEntrar,
+  onComecar,
   compact = false,
 }: {
   onBack: () => void
+  onEntrar: () => void
+  onComecar: () => void
   compact?: boolean
 }) {
-  if (compact) return <AcceleratorMobileHero onBack={onBack} />
+  if (compact) {
+    return (
+      <AcceleratorMobileHero
+        onBack={onBack}
+        onEntrar={onEntrar}
+        onComecar={onComecar}
+      />
+    )
+  }
 
   return (
     <section aria-label="Acelerador EME" className="eme-accelerator eme-accelerator--desktop">
       <div aria-hidden className="eme-accelerator__wash" />
-      <AcceleratorTopbar onBack={onBack} />
+      <AcceleratorTopbar onEntrar={onEntrar} onComecar={onComecar} />
 
       <div className="eme-accelerator__body">
         <AcceleratorIntro />
@@ -131,15 +143,25 @@ export function AcceleratorHero({
         <ImpactPanel />
         <OfferPanel />
       </div>
+
+      <BackButton onBack={onBack} />
     </section>
   )
 }
 
-function AcceleratorMobileHero({ onBack }: { onBack: () => void }) {
+function AcceleratorMobileHero({
+  onBack,
+  onEntrar,
+  onComecar,
+}: {
+  onBack: () => void
+  onEntrar: () => void
+  onComecar: () => void
+}) {
   return (
     <section aria-label="Acelerador EME" className="eme-accelerator eme-accelerator--mobile">
       <div aria-hidden className="eme-accelerator__wash" />
-      <AcceleratorTopbar onBack={onBack} compact />
+      <AcceleratorTopbar onEntrar={onEntrar} onComecar={onComecar} compact />
       <AcceleratorIntro compact />
       <FeatureGrid compact />
 
@@ -147,28 +169,39 @@ function AcceleratorMobileHero({ onBack }: { onBack: () => void }) {
         <ImpactPanel compact />
         <OfferPanel compact />
       </div>
+
+      <BackButton onBack={onBack} compact />
     </section>
   )
 }
 
 function AcceleratorTopbar({
-  onBack,
+  onEntrar,
+  onComecar,
   compact = false,
 }: {
-  onBack: () => void
+  onEntrar: () => void
+  onComecar: () => void
   compact?: boolean
 }) {
   return (
     <div className={`eme-accelerator__topbar${compact ? " is-compact" : ""}`}>
       <ProductBadge compact={compact} />
       <div className="eme-accelerator__controls">
-        <BackButton onBack={onBack} compact={compact} />
-        {!compact ? (
-          <span className="eme-accelerator__notify">
-            <Bell aria-hidden strokeWidth={1.7} />
-            Quero ser avisado
-          </span>
-        ) : null}
+        <span className="eme-accelerator__notify" aria-label="Notificações">
+          <Bell aria-hidden strokeWidth={1.7} />
+          <span aria-hidden className="eme-accelerator__notify-dot" />
+        </span>
+        <button type="button" onClick={onEntrar} className="eme-accelerator__auth-action">
+          Entrar
+        </button>
+        <button
+          type="button"
+          onClick={onComecar}
+          className="eme-accelerator__auth-action is-primary"
+        >
+          Começar agora
+        </button>
       </div>
     </div>
   )
