@@ -892,7 +892,7 @@ export function PublicCatalogLanding({
                     </div>
                   ) : null}
                 </div>
-              <div className="flex w-full min-w-0 max-w-full flex-col overflow-x-hidden p-4 sm:p-5 lg:p-6">
+              <div className="flex w-full min-w-0 max-w-full flex-col overflow-x-clip p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5 lg:p-6">
                 <p className="break-words text-sm text-[#6B7280]">{selectedProperty.location}</p>
                 <h3 className="mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
                 <p className="mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
@@ -907,7 +907,7 @@ export function PublicCatalogLanding({
                     <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
-                <section className={cn(CATALOG_GLASS_SURFACE_CLASS, "mt-5 w-full min-w-0 max-w-full rounded-2xl p-2.5 lg:p-3")}>
+                <section className={cn(CATALOG_GLASS_SURFACE_CLASS, "mt-5 w-full min-w-0 max-w-full shrink-0 rounded-2xl p-2.5 lg:p-3")}>
                   <button type="button" onClick={() => setFinancingOpen((current) => !current)} aria-expanded={financingOpen} aria-controls="catalog-financing-simulator" className="flex w-full items-center gap-2 text-left">
                     <span className={cn(CATALOG_ICON_SURFACE_CLASS, "size-8")}><CircleDollarSign className="size-4" /></span>
                     <h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4>
@@ -927,7 +927,7 @@ export function PublicCatalogLanding({
                     </div>
                   </div>
                 </section>
-                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-5 flex shrink-0 flex-col gap-2 sm:flex-row">
                   <Button type="button" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "h-11 flex-1 text-base font-semibold")}>
                     <MessageCircle className="size-4" />
                     Tenho interesse

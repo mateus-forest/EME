@@ -23,13 +23,13 @@ export function LandingUpcomingFeatures({ className, compact = false }: { classN
         3 novidades a caminho
       </h2>
 
-      <div className={compact ? "flex gap-1" : "flex gap-1.5"}>
+      <div className={compact ? "flex gap-0.5" : "flex gap-1.5"}>
         {upcomingFeatures.map((lines) => (
           <article
             key={lines[0]}
             className={
               compact
-                ? "flex h-[58px] w-[54px] flex-col items-center rounded-[10px] border border-white/45 bg-white/40 px-1 pb-1.5 pt-1.5 text-center shadow-[0_8px_20px_-16px_rgba(35,43,47,0.24)] backdrop-blur-md"
+                ? "flex h-[51px] w-[45px] flex-col items-center rounded-[9px] border border-white/45 bg-white/40 px-0.5 pb-1 pt-1 text-center shadow-[0_8px_20px_-16px_rgba(35,43,47,0.24)] backdrop-blur-md"
                 : "flex h-[110px] w-[74px] flex-col items-center rounded-[13px] border border-white/60 bg-white/55 px-1.5 pb-3.5 pt-2.5 text-center shadow-[0_14px_35px_-24px_rgba(35,43,47,0.3)] backdrop-blur-md"
             }
           >
@@ -48,7 +48,7 @@ export function LandingUpcomingFeatures({ className, compact = false }: { classN
             <p
               className={
                 compact
-                  ? "mt-auto text-[6px] font-medium leading-[1.08] tracking-[-0.02em] text-[#242b2f]"
+                  ? "mt-auto text-[6px] font-semibold leading-[1.05] tracking-[-0.025em] text-[#171d20]"
                   : "mt-auto text-[9px] font-medium leading-[1.15] tracking-[-0.02em] text-[#242b2f]"
               }
             >
