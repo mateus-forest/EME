@@ -36,6 +36,7 @@ export function AuthPanel({
   const [error, setError] = useState("")
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const sheetTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
 
   const {
     trustedDevice,
@@ -166,14 +167,15 @@ export function AuthPanel({
   }
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[90]">
+    <div className="eme-auth-modal-shell pointer-events-none fixed inset-0 z-[90]">
       <motion.button
         type="button"
         aria-label="Fechar autenticação"
-        className="pointer-events-auto absolute inset-0 z-0 cursor-default"
+        className="eme-auth-modal-backdrop pointer-events-auto absolute inset-0 z-0 cursor-default"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={sheetTransition}
         onClick={onClose}
       />
 
@@ -187,17 +189,18 @@ export function AuthPanel({
         }}
       >
         <motion.div
-          className="pointer-events-auto w-full max-w-[420px] sm:w-[88vw]"
-          initial={{ x: 72, opacity: 0 }}
+          className="eme-auth-modal-sheet pointer-events-auto w-full max-w-[420px] sm:w-[88vw]"
+          initial={{ x: 56, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 72, opacity: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          exit={{ x: 56, opacity: 0 }}
+          transition={sheetTransition}
+          style={{ willChange: "transform, opacity" }}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-label={isLogin ? "Entrar no EME" : "Criar conta no EME"}
-            className="relative flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.96)] shadow-[0_26px_70px_-40px_rgba(20,52,36,0.46)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[30px] sm:bg-[rgba(255,255,255,0.92)] sm:backdrop-blur-xl"
+            className="relative flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-[28px] border border-[rgba(17,24,39,0.08)] bg-[rgba(255,255,255,0.96)] shadow-[0_26px_70px_-40px_rgba(20,52,36,0.46)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[30px] sm:bg-[rgba(255,255,255,0.92)]"
           >
             <button
               ref={closeButtonRef}

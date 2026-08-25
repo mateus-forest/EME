@@ -7,7 +7,7 @@ export function CoastalCityBackground() {
         className="absolute inset-0"
         style={{
           transform: "translate3d(calc(var(--px,0) * 1px), calc(var(--py,0) * 1px), 0)",
-          transition: "transform 0.5s ease-out",
+          willChange: "transform",
         }}
       >
         <Image

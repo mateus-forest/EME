@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
+import { type MotionValue, useMotionValueEvent } from "motion/react"
+
 import { ModuleCard } from "@/components/eme/module-card"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
@@ -32,6 +34,7 @@ function useStageConfig(): StageConfig {
         setConfig({ radiusX: 560, radiusZ: 178, archLift: 146, baseScale: 0.82, onlyPriority: false })
       }
     }
+
     compute()
     window.addEventListener("resize", compute)
     return () => window.removeEventListener("resize", compute)
@@ -64,58 +67,89 @@ function LogoSilhouetteLayer({ layer, style }: { layer: string; style: CSSProper
   ))
 }
 
-export function OrbitStage({
-  orbitAngle = 0,
-  activeId = null,
-  onHover,
-  selectedId = null,
-  onSelect,
-  authOpen = false,
-}: {
-  orbitAngle?: number
+type OrbitStageProps = {
+  orbitAngle: MotionValue<number>
   activeId?: string | null
   onHover?: (id: string | null) => void
   selectedId?: string | null
   onSelect?: (id: string, el: HTMLElement) => void
   authOpen?: boolean
-}) {
+}
+
+export function OrbitStage({
+  orbitAngle,
+  activeId = null,
+  onHover,
+  selectedId = null,
+  onSelect,
+  authOpen = false,
+}: OrbitStageProps) {
   const cfg = useStageConfig()
   const frozen = selectedId != null || authOpen
+  const cardRefs = useRef<Array<HTMLDivElement | null>>([])
 
-  const placed = useMemo(() => {
-    return emeModules.map((m) => {
-      const rad = ((m.angle + orbitAngle) * Math.PI) / 180
-      const sin = Math.sin(rad)
-      const cos = Math.cos(rad)
-      const front = -cos
-      const x = sin * cfg.radiusX
-      // Front-facing half (cos < 0) is pushed further down than before (0.9 -> 1.55) so the
-      // card whose angle lands nearest the viewer never sits high enough to cover the logo —
-      // it now settles in front of the pedestal instead of across the "EME" lettering.
-      const y = front * cfg.archLift + Math.abs(sin) * 18 * cfg.baseScale
-      const z = front * cfg.radiusZ
-      const depth = clamp((front + 1) / 2, 0, 1)
+  const applyCardLayout = useCallback(
+    (angle: number) => {
+      for (let index = 0; index < emeModules.length; index += 1) {
+        const module = emeModules[index]
+        const element = cardRefs.current[index]
+        if (!element) continue
 
-      const scale = cfg.baseScale * map(depth, 0, 1, 0.62, 1.06)
-      const opacity = map(depth, 0, 1, 0.34, 1)
-      const blur = map(depth, 0, 1, 5.2, 0)
-      const rotateY = -sin * 9
-      const zIndex = Math.round(front * 100)
-      const r = (n: number, d = 2) => Number(n.toFixed(d))
+        const rad = ((module.angle + angle) * Math.PI) / 180
+        const sin = Math.sin(rad)
+        const cos = Math.cos(rad)
+        const front = -cos
+        const x = sin * cfg.radiusX
+        const y = front * cfg.archLift + Math.abs(sin) * 18 * cfg.baseScale
+        const z = front * cfg.radiusZ
+        const depth = clamp((front + 1) / 2, 0, 1)
 
-      return {
-        module: m,
-        x: r(x),
-        y: r(y),
-        z: r(z),
-        scale: r(scale, 4),
-        opacity: r(opacity, 4),
-        blur: r(blur, 3),
-        rotateY: r(rotateY, 3),
-        zIndex,
+        const scale = cfg.baseScale * map(depth, 0, 1, 0.62, 1.06)
+        const opacity = map(depth, 0, 1, 0.34, 1)
+        const rotateY = -sin * 9
+        const zIndex = Math.round(front * 100)
+
+        const isSelected = selectedId === module.id
+        const dimmedByHover = activeId != null && activeId !== module.id
+
+        let effectiveOpacity = opacity
+        let authScale = 1
+
+        if (authOpen) {
+          effectiveOpacity = opacity * 0.3
+          authScale = 0.95
+        } else if (selectedId != null) {
+          effectiveOpacity = isSelected ? 0 : opacity * 0.3
+          authScale = isSelected ? 0.92 : 0.97
+        } else if (dimmedByHover) {
+          effectiveOpacity = opacity * 0.87
+          authScale = 0.985
+        }
+
+        const tx = Number(x.toFixed(3))
+        const ty = Number(y.toFixed(3))
+        const tz = Number(z.toFixed(3))
+        const tRotateY = Number(rotateY.toFixed(3))
+        const tScale = Number((scale * authScale).toFixed(4))
+
+        element.style.transform = `translate(-50%, -50%) translate3d(${tx}px, ${ty}px, ${tz}px) rotateY(${tRotateY}deg) scale(${tScale})`
+        element.style.opacity = String(Number(effectiveOpacity.toFixed(4)))
+        element.style.zIndex = String(zIndex)
+        element.style.pointerEvents = frozen ? "none" : "auto"
+        element.style.willChange = frozen ? "transform, opacity" : "transform"
+        element.style.backfaceVisibility = "hidden"
+        element.style.WebkitBackfaceVisibility = "hidden"
+        element.style.transformStyle = "preserve-3d"
       }
-    })
-  }, [cfg, orbitAngle])
+    },
+    [activeId, authOpen, cfg, selectedId],
+  )
+
+  useMotionValueEvent(orbitAngle, "change", applyCardLayout)
+
+  useLayoutEffect(() => {
+    applyCardLayout(orbitAngle.get())
+  }, [applyCardLayout, cfg, orbitAngle])
 
   return (
     <div
@@ -164,7 +198,7 @@ export function OrbitStage({
                 onMouseLeave={() => onHover?.(null)}
                 onClick={(event) => onSelect?.(marketplaceModule.id, event.currentTarget)}
               >
-                <ModuleCard module={marketplaceModule} badge="Novo" />
+                <ModuleCard module={marketplaceModule} badge="Novo" animated />
               </button>
             </div>
           </div>
@@ -184,110 +218,95 @@ export function OrbitStage({
           }}
         >
           <div className="relative aspect-[5/2] w-[195px] sm:w-[368px] lg:w-[445px]">
-                {/* The three grounding layers reuse the logo alpha itself, so each letter casts
-                    its own footprint instead of creating a uniform dark strip beneath the word. */}
-                <LogoSilhouetteLayer
-                  layer="cast-shadow"
-                  style={{
-                    zIndex: 0,
-                    opacity: 0.085,
-                    filter: "brightness(0) blur(5px)",
-                    mixBlendMode: "multiply",
-                    transform: "translateY(7%) scaleY(-0.16)",
-                    transformOrigin: "50% 100%",
-                    maskImage: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 48%, transparent 100%)",
-                    WebkitMaskImage:
-                      "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 48%, transparent 100%)",
-                  }}
-                />
-                <LogoSilhouetteLayer
-                  layer="contact-shadow"
-                  style={{
-                    zIndex: 1,
-                    opacity: 0.16,
-                    filter: "brightness(0) blur(1.2px)",
-                    mixBlendMode: "multiply",
-                    transform: "translateY(0.4%) scaleY(0.016)",
-                    transformOrigin: "50% 100%",
-                  }}
-                />
-                <LogoSilhouetteLayer
-                  layer="ambient-occlusion"
-                  style={{
-                    zIndex: 1,
-                    opacity: 0.14,
-                    filter: "brightness(0) blur(0.5px)",
-                    mixBlendMode: "multiply",
-                    transform: "translateY(0.15%) scaleY(0.008)",
-                    transformOrigin: "50% 100%",
-                  }}
-                />
+            {/* The three grounding layers reuse the logo alpha itself, so each letter casts
+                its own footprint instead of creating a uniform dark strip beneath the word. */}
+            <LogoSilhouetteLayer
+              layer="cast-shadow"
+              style={{
+                zIndex: 0,
+                opacity: 0.085,
+                filter: "brightness(0) blur(5px)",
+                mixBlendMode: "multiply",
+                transform: "translateY(7%) scaleY(-0.16)",
+                transformOrigin: "50% 100%",
+                maskImage:
+                  "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 48%, transparent 100%)",
+                WebkitMaskImage:
+                  "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 48%, transparent 100%)",
+              }}
+            />
+            <LogoSilhouetteLayer
+              layer="contact-shadow"
+              style={{
+                zIndex: 1,
+                opacity: 0.16,
+                filter: "brightness(0) blur(1.2px)",
+                mixBlendMode: "multiply",
+                transform: "translateY(0.4%) scaleY(0.016)",
+                transformOrigin: "50% 100%",
+              }}
+            />
+            <LogoSilhouetteLayer
+              layer="ambient-occlusion"
+              style={{
+                zIndex: 1,
+                opacity: 0.14,
+                filter: "brightness(0) blur(0.5px)",
+                mixBlendMode: "multiply",
+                transform: "translateY(0.15%) scaleY(0.008)",
+                transformOrigin: "50% 100%",
+              }}
+            />
 
-                {/* A short, diffuse vertical reflection stays attached to the same per-letter
-                    silhouette and fades into the glossy pedestal instead of mirroring as a band. */}
-                <LogoSilhouetteLayer
-                  layer="reflection"
-                  style={{
-                    zIndex: 1,
-                    opacity: 0.13,
-                    filter: "blur(2.4px) saturate(1.05) brightness(1.08)",
-                    transform: "translateY(2%) scaleY(-0.28)",
-                    transformOrigin: "50% 100%",
-                    maskImage:
-                      "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.24) 32%, transparent 82%)",
-                    WebkitMaskImage:
-                      "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.24) 32%, transparent 82%)",
-                  }}
-                />
+            {/* A short, diffuse vertical reflection stays attached to the same per-letter
+                silhouette and fades into the glossy pedestal instead of mirroring as a band. */}
+            <LogoSilhouetteLayer
+              layer="reflection"
+              style={{
+                zIndex: 1,
+                opacity: 0.13,
+                filter: "blur(2.4px) saturate(1.05) brightness(1.08)",
+                transform: "translateY(2%) scaleY(-0.28)",
+                transformOrigin: "50% 100%",
+                maskImage:
+                  "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.24) 32%, transparent 82%)",
+                WebkitMaskImage:
+                  "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.24) 32%, transparent 82%)",
+              }}
+            />
 
-                <img
-                  src="/images/eme-logo-3d-premium.webp"
-                  alt="EME"
-                  draggable={false}
-                  className="pointer-events-none relative z-[2] h-full w-full max-w-none select-none"
-                />
+            <img
+              src="/images/eme-logo-3d-premium.webp"
+              alt="EME"
+              draggable={false}
+              className="pointer-events-none relative z-[2] h-full w-full max-w-none select-none"
+            />
           </div>
         </div>
 
-        {placed.map(({ module, x, y, z, scale, opacity, blur, rotateY, zIndex }) => {
-          const isSelected = selectedId === module.id
-          const dimmedByHover = activeId != null && activeId !== module.id
-          let effectiveOpacity = opacity
-          let effectiveBlur = blur
-          let authScale = 1
-
-          if (authOpen) {
-            effectiveOpacity = opacity * 0.3
-            effectiveBlur = Math.max(blur, 2.5)
-            authScale = 0.95
-          } else if (selectedId != null) {
-            effectiveOpacity = isSelected ? 0 : opacity * 0.3
-            authScale = isSelected ? 0.92 : 0.97
-          } else if (dimmedByHover) {
-            effectiveOpacity = opacity * 0.87
-            authScale = 0.985
-          }
-
+        {emeModules.map((module, index) => {
           return (
             <div
               key={module.id}
+              ref={(element) => {
+                cardRefs.current[index] = element
+              }}
               className={cfg.onlyPriority && !module.priorityMobile ? "hidden" : "absolute left-1/2 top-1/2"}
               style={{
-                zIndex,
-                opacity: effectiveOpacity,
-                filter: effectiveBlur ? `blur(${effectiveBlur}px)` : undefined,
-                transform: `translate(-50%,-50%) translate3d(${x}px, ${y}px, ${z}px) rotateY(${rotateY}deg) scale(${scale})`,
+                transition: "opacity 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+                opacity: 0,
+                transform: "translate(-50%, -50%)",
                 transformStyle: "preserve-3d",
-                transition: "opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
-                pointerEvents: frozen ? "none" : undefined,
+                pointerEvents: frozen ? "none" : "auto",
               }}
             >
               <div style={{ transformStyle: "preserve-3d" }}>
                 <div
+                  className="will-change-transform"
                   style={{
-                    transform: `scale(${authScale})`,
-                    transition: "transform 0.6s cubic-bezier(0.22,1,0.36,1)",
+                    transition: "transform 280ms cubic-bezier(0.22,1,0.36,1)",
                     transformStyle: "preserve-3d",
+                    transform: "scale(1)",
                   }}
                 >
                   <div>
@@ -300,7 +319,7 @@ export function OrbitStage({
                       onMouseLeave={() => onHover?.(null)}
                       onClick={(e) => onSelect?.(module.id, e.currentTarget)}
                     >
-                      <ModuleCard module={module} />
+                      <ModuleCard module={module} animated />
                     </button>
                   </div>
                 </div>

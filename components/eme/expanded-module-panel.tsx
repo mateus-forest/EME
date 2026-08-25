@@ -58,12 +58,14 @@ function CroppedModuleImage({
   crop,
   sizes,
   className = "",
+  imageClassName = "",
 }: {
   src: string
   alt: string
   crop: ModuleImageCrop
   sizes: string
   className?: string
+  imageClassName?: string
 }) {
   return (
     <div
@@ -76,12 +78,13 @@ function CroppedModuleImage({
         width={crop.sourceWidth}
         height={crop.sourceHeight}
         sizes={sizes}
-        className="absolute max-w-none"
+        className={`absolute inset-0 h-full w-full max-w-none ${imageClassName}`}
         style={{
-          width: `${(crop.sourceWidth / crop.width) * 100}%`,
-          height: "auto",
           left: `${-(crop.x / crop.width) * 100}%`,
           top: `${-(crop.y / crop.height) * 100}%`,
+          width: `${(crop.sourceWidth / crop.width) * 100}%`,
+          height: `${(crop.sourceHeight / crop.height) * 100}%`,
+          objectFit: "cover",
         }}
         priority
       />
@@ -120,6 +123,17 @@ function computeTarget(aspectRatio: number): Rect {
   }
 }
 
+function buildTransform(from: Rect, to: Rect) {
+  const safeWidth = Math.max(to.width, 1)
+  const safeHeight = Math.max(to.height, 1)
+  return {
+    x: from.left - to.left,
+    y: from.top - to.top,
+    scaleX: from.width / safeWidth,
+    scaleY: from.height / safeHeight,
+  }
+}
+
 function useModalScrollLock() {
   useEffect(() => {
     const html = document.documentElement
@@ -155,6 +169,8 @@ export function ExpandedModulePanel({
   const [closing, setClosing] = useState(false)
   const closingRef = useRef(false)
   const closeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openTransition = { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+  const closeTransition = { duration: 0.22, ease: [0.22, 1, 0.36, 1] }
 
   useModalScrollLock()
 
@@ -179,13 +195,13 @@ export function ExpandedModulePanel({
   }, [aspectRatio])
 
   const handleClose = useCallback(() => {
-    if (closingRef.current) return
+    if (closingRef.current || !originEl) return
     closingRef.current = true
 
     const rect = originEl.getBoundingClientRect()
     setStart({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
     setClosing(true)
-    closeFallbackRef.current = setTimeout(onClose, 750)
+    closeFallbackRef.current = setTimeout(onClose, 280)
   }, [onClose, originEl])
 
   useEffect(() => {
@@ -205,12 +221,12 @@ export function ExpandedModulePanel({
 
   if (!start || !target) return null
 
-  const geometry = closing ? start : target
-  const isMobilePanel = target.height / target.width > 1.7
   const mobileBanner = MOBILE_MODULE_BANNERS[module.id]
   const mobileCrop = MOBILE_MODULE_CROPS[module.id]
   const desktopCrop = DESKTOP_MODULE_CROPS[module.id]
   const ModuleIcon = module.icon
+  const fromStart = buildTransform(start, target)
+  const transform = closing ? fromStart : { x: 0, y: 0, scaleX: 1, scaleY: 1 }
 
   return (
     <>
@@ -228,22 +244,28 @@ export function ExpandedModulePanel({
         data-module-dialog={module.id}
         className="eme-module-modal-shell fixed z-[82] cursor-default overflow-hidden rounded-[26px] border border-white/70 bg-white text-foreground shadow-[0_26px_70px_-36px_rgba(20,52,36,0.48)] md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:[filter:drop-shadow(0_40px_80px_rgba(28,52,40,0.34))]"
         initial={{
-          left: isMobilePanel ? target.left : start.left,
-          top: isMobilePanel ? target.top : start.top,
-          width: isMobilePanel ? target.width : start.width,
-          height: isMobilePanel ? target.height : start.height,
+          x: fromStart.x,
+          y: fromStart.y,
+          scaleX: fromStart.scaleX,
+          scaleY: fromStart.scaleY,
+          opacity: 0.98,
         }}
         animate={{
-          left: geometry.left,
-          top: geometry.top,
-          width: geometry.width,
-          height: geometry.height,
+          x: transform.x,
+          y: transform.y,
+          scaleX: transform.scaleX,
+          scaleY: transform.scaleY,
+          opacity: closing ? 0.98 : 1,
         }}
-        transition={
-          isMobilePanel
-            ? { duration: 0.34, ease: [0.22, 1, 0.36, 1] }
-            : { type: "spring", stiffness: 200, damping: 30, mass: 0.9 }
-        }
+        transition={closing ? closeTransition : openTransition}
+        style={{
+          left: target.left,
+          top: target.top,
+          width: target.width,
+          height: target.height,
+          transformOrigin: "center",
+          willChange: "transform, opacity",
+        }}
         onAnimationComplete={() => {
           if (closing && closingRef.current) {
             if (closeFallbackRef.current) clearTimeout(closeFallbackRef.current)
@@ -272,9 +294,10 @@ export function ExpandedModulePanel({
               alt={`Módulo ${module.name}`}
               crop={desktopCrop}
               sizes="90vw"
-                className={`absolute inset-0 border border-white/75 shadow-[0_28px_72px_-38px_rgba(20,52,36,0.38)] ${
-                  module.id === "catalogo" ? "rounded-[30px]" : "rounded-[44px]"
-                }`}
+              imageClassName="object-contain"
+              className={`absolute inset-0 border border-white/75 shadow-[0_28px_72px_-38px_rgba(20,52,36,0.38)] ${
+                module.id === "catalogo" ? "rounded-[30px]" : "rounded-[44px]"
+              }`}
             />
           ) : null}
 
@@ -290,7 +313,7 @@ export function ExpandedModulePanel({
         </motion.div>
 
         <motion.div
-          className="eme-module-modal-mobile absolute inset-0 isolate flex flex-col overflow-hidden bg-white md:hidden"
+          className="eme-module-modal-mobile absolute inset-0 isolate flex flex-col overflow-hidden bg-transparent md:hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: closing ? 0 : 1 }}
           transition={{ duration: closing ? 0.16 : 0.32, delay: closing ? 0 : 0.12 }}
@@ -307,101 +330,88 @@ export function ExpandedModulePanel({
           {mobileBanner ? (
             <div
               data-mobile-module-scroll
-              className="eme-module-modal-scroll eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white"
+              className="eme-module-modal-scroll eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-transparent"
             >
-              <Image
+              <CroppedModuleImage
                 src={mobileBanner}
                 alt={`Apresentação do módulo ${module.name}`}
-                width={942}
-                height={1674}
+                crop={mobileCrop || { sourceWidth: 941, sourceHeight: 1672, x: 0, y: 0, width: 941, height: 1672 }}
                 sizes="calc(100vw - 16px)"
-                className={mobileCrop ? "hidden" : "block h-auto w-full object-contain"}
-                priority
+                imageClassName="object-cover"
+                className="w-full rounded-[28px] border border-white/75 shadow-[0_22px_52px_-34px_rgba(20,52,36,0.42)]"
               />
-
-              {mobileCrop ? (
-                <div className="p-1.5">
-                  <CroppedModuleImage
-                    src={mobileBanner}
-                    alt={`Apresentação do módulo ${module.name}`}
-                    crop={mobileCrop}
-                    sizes="calc(100vw - 28px)"
-                    className="w-full rounded-[28px] border border-white/75 shadow-[0_22px_52px_-34px_rgba(20,52,36,0.42)]"
-                  />
-                </div>
-              ) : null}
             </div>
           ) : (
             <div
               data-mobile-module-scroll
-              className="eme-module-modal-scroll eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-5"
+              className="eme-module-modal-scroll eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-transparent px-5"
               style={{
                 paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
-                paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))",
+                paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
               }}
             >
-            <div className="flex items-center gap-2.5 text-eme-dark">
-              <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
-                <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
-              </span>
-              <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">{module.name}</span>
-            </div>
+              <div className="flex items-center gap-2.5 text-eme-dark">
+                <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
+                  <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
+                </span>
+                <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">{module.name}</span>
+              </div>
 
-            <h2 className="mt-5 text-balance text-[27px] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
-              {module.tagline}
-            </h2>
-            <p className="mt-3 text-pretty text-[14px] leading-relaxed text-foreground/68">
-              {module.longDescription}
-            </p>
+              <h2 className="mt-5 text-balance text-[27px] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
+                {module.tagline}
+              </h2>
+              <p className="mt-3 text-pretty text-[14px] leading-relaxed text-foreground/68">
+                {module.longDescription}
+              </p>
 
-            <div
-              data-mobile-module-mockup
-              className="eme-module-modal-media relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
-              style={{ aspectRatio }}
-            >
-              <Image
-                src={module.mockup || "/placeholder.svg"}
-                alt={`Prévia visual do módulo ${module.name}`}
-                fill
-                sizes="(max-width: 767px) calc(100vw - 58px), 680px"
-                className="object-contain p-2"
-                priority
-              />
-            </div>
-
-            <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>
-              {module.benefits.map((benefit) => {
-                const title = typeof benefit === "string" ? benefit : benefit.title
-                const description = typeof benefit === "string" ? null : benefit.description
-
-                return (
-                  <li key={title} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-eme/12 text-eme-dark">
-                      <Check className="size-3.5" strokeWidth={2.2} aria-hidden />
-                    </span>
-                    <span className="min-w-0 text-[13px] leading-snug text-foreground/82">
-                      <span className="font-medium">{title}</span>
-                      {description ? (
-                        <span className="mt-0.5 block text-[12.5px] leading-snug text-foreground/55">
-                          {description}
-                        </span>
-                      ) : null}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-
-            {module.id === "marketplace" && module.demoHref ? (
-              <a
-                href={module.demoHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="eme-gradient mt-6 flex min-h-12 w-full items-center justify-center rounded-full px-5 text-center text-[14px] font-medium text-primary-foreground shadow-[0_14px_28px_-16px_rgba(28,120,60,0.58)]"
+              <div
+                data-mobile-module-mockup
+                className="eme-module-modal-media relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
+                style={{ aspectRatio }}
               >
-                {module.cta}
-              </a>
-            ) : null}
+                <Image
+                  src={module.mockup || "/placeholder.svg"}
+                  alt={`Prévia visual do módulo ${module.name}`}
+                  fill
+                  sizes="(max-width: 767px) calc(100vw - 58px), 680px"
+                  className="object-cover p-2"
+                  priority
+                />
+              </div>
+
+              <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>
+                {module.benefits.map((benefit) => {
+                  const title = typeof benefit === "string" ? benefit : benefit.title
+                  const description = typeof benefit === "string" ? null : benefit.description
+
+                  return (
+                    <li key={title} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-eme/12 text-eme-dark">
+                        <Check className="size-3.5" strokeWidth={2.2} aria-hidden />
+                      </span>
+                      <span className="min-w-0 text-[13px] leading-snug text-foreground/82">
+                        <span className="font-medium">{title}</span>
+                        {description ? (
+                          <span className="mt-0.5 block text-[12.5px] leading-snug text-foreground/55">
+                            {description}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              {module.id === "marketplace" && module.demoHref ? (
+                <a
+                  href={module.demoHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="eme-gradient mt-6 flex min-h-12 w-full items-center justify-center rounded-full px-5 text-[14px] font-medium text-primary-foreground shadow-[0_14px_28px_-16px_rgba(28,120,60,0.58)]"
+                >
+                  {module.cta}
+                </a>
+              ) : null}
             </div>
           )}
         </motion.div>

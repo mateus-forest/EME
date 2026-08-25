@@ -7,13 +7,23 @@ export function ModuleCard({
   compact = false,
   mobile = false,
   badge,
+  animated = false,
 }: {
   module: ModuleCardContent
   compact?: boolean
   mobile?: boolean
   badge?: string
+  animated?: boolean
 }) {
   const Icon = module.icon
+
+  const glassFilter = animated
+    ? mobile
+      ? "blur(10px) saturate(108%)"
+      : "blur(14px) saturate(114%)"
+    : mobile
+      ? "blur(12px) saturate(112%)"
+      : "blur(20px) saturate(116%)"
 
   const frameClass = mobile
     ? "h-[160px] w-[118px] rounded-[20px]"
@@ -47,8 +57,8 @@ export function ModuleCard({
               ? "linear-gradient(150deg, rgba(255,255,255,0.76) 0%, rgba(247,251,248,0.6) 58%, rgba(225,239,231,0.48) 100%)"
               : "linear-gradient(150deg, rgba(255,255,255,0.7) 0%, rgba(247,251,248,0.52) 62%, rgba(225,239,231,0.42) 100%)",
           border: "1px solid rgba(255,255,255,0.7)",
-          WebkitBackdropFilter: mobile ? "blur(12px) saturate(112%)" : "blur(20px) saturate(116%)",
-          backdropFilter: mobile ? "blur(12px) saturate(112%)" : "blur(20px) saturate(116%)",
+          WebkitBackdropFilter: glassFilter,
+          backdropFilter: glassFilter,
         }}
       />
       <div

@@ -145,7 +145,7 @@ export function MobileOrbitStage({
               className="block rounded-[22px] text-left"
               onClick={(event) => onSelect?.(marketplaceModule.id, event.currentTarget)}
             >
-              <ModuleCard module={marketplaceModule} badge="Novo" mobile />
+              <ModuleCard module={marketplaceModule} badge="Novo" mobile animated />
             </button>
           </div>
         </div>
@@ -196,7 +196,7 @@ export function MobileOrbitStage({
               className="block rounded-[22px] text-left"
               onClick={(event) => onSelect?.(module.id, event.currentTarget)}
             >
-              <ModuleCard module={module} mobile />
+              <ModuleCard module={module} mobile animated />
             </button>
           </div>
         ))}

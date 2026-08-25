@@ -45,6 +45,7 @@ export function EmeMobileExperience({
   const authOpen = authMode != null
   selectedRef.current = selected?.id ?? null
   authOpenRef.current = authOpen
+  const sceneBlocking = authOpen || selected != null
 
   useEffect(() => {
     setMounted(true)
@@ -162,7 +163,9 @@ export function EmeMobileExperience({
   }, [orbitTarget])
 
   return (
-    <main className="fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background">
+    <main
+      className={`fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background${sceneBlocking ? " eme-landing-scene is-paused" : ""}`}
+    >
       <CoastalCityBackground />
 
       <MobileHeader

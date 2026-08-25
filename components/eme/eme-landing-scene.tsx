@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AnimatePresence, useMotionValue, useMotionValueEvent, useSpring } from "motion/react"
+import { AnimatePresence, useMotionValue, useSpring } from "motion/react"
 
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
@@ -52,8 +52,7 @@ export function EmeLandingScene({
 
   const orbitTarget = useMotionValue(0)
   const orbitAngle = useSpring(orbitTarget, { stiffness: 55, damping: 18, mass: 1.1 })
-  const [angle, setAngle] = useState(0)
-  useMotionValueEvent(orbitAngle, "change", (v) => setAngle(v))
+  const sceneBlocking = authMode != null || selected != null
 
   useEffect(() => {
     const THRESHOLD = 1.5
@@ -139,7 +138,10 @@ export function EmeLandingScene({
   }, [])
 
   return (
-    <main ref={mainRef} className="relative h-[100svh] w-full overflow-hidden bg-background">
+    <main
+      ref={mainRef}
+      className={`eme-landing-scene relative h-[100svh] w-full overflow-hidden bg-background${sceneBlocking ? " is-paused" : ""}`}
+    >
       <CoastalCityBackground />
       <LandingHeader
         onEntrar={() => openAuth("login")}
@@ -159,7 +161,7 @@ export function EmeLandingScene({
       >
         {mounted && (
           <OrbitStage
-            orbitAngle={angle}
+            orbitAngle={orbitAngle}
             activeId={activeId}
             onHover={setActiveId}
             selectedId={selected?.id ?? null}
