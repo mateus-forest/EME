@@ -95,6 +95,7 @@ function noSubscriptionResponse(plan: { name: string; priceCents: number }) {
         intervalCount: 1,
         nextBillingAt: null,
         cancelAtPeriodEnd: false,
+        endsAt: null,
       },
       paymentMethod: null,
       capacityAddon: null,
@@ -599,8 +600,13 @@ export async function GET() {
           currency: price?.currency ?? "brl",
           interval: price?.recurring?.interval ?? null,
           intervalCount: price?.recurring?.interval_count ?? 1,
-          nextBillingAt: item?.current_period_end ?? null,
+          nextBillingAt: subscription?.cancel_at_period_end
+            ? null
+            : (item?.current_period_end ?? null),
           cancelAtPeriodEnd: subscription?.cancel_at_period_end ?? false,
+          endsAt: subscription?.cancel_at_period_end
+            ? (subscription.cancel_at ?? item?.current_period_end ?? null)
+            : null,
         },
         paymentMethod,
         capacityAddon:

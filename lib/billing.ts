@@ -11,6 +11,7 @@ import {
 import { getStripeEnv } from "@/lib/env.server"
 import {
   resolvePropertyCapacityQuantity,
+  resolveStripeSubscriptionCancellationState,
   resolveStrictStripePlanKey,
 } from "@/lib/billing-lifecycle-policy"
 import {
@@ -166,6 +167,8 @@ async function upsertOwnerSubscription(input: {
   ownerId: string
   status: SubscriptionStatus
   nextBillingAt?: Date | null
+  cancelAtPeriodEnd?: boolean
+  cancelAt?: Date | null
 }) {
   return prisma.subscription.upsert({
     where: {
@@ -177,12 +180,16 @@ async function upsertOwnerSubscription(input: {
     update: {
       status: input.status,
       nextBillingAt: input.nextBillingAt ?? undefined,
+      cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+      cancelAt: input.cancelAt,
     },
     create: {
       ownerType: input.ownerType,
       ownerId: input.ownerId,
       status: input.status,
       nextBillingAt: input.nextBillingAt ?? undefined,
+      cancelAtPeriodEnd: input.cancelAtPeriodEnd ?? false,
+      cancelAt: input.cancelAt ?? null,
     },
   })
 }
@@ -194,6 +201,8 @@ export async function syncBillingForUser(input: {
   plan: BillingPlan
   subscriptionStatus: SubscriptionStatus
   nextBillingAt?: Date | null
+  cancelAtPeriodEnd?: boolean
+  cancelAt?: Date | null
   emePlanKey?: BrokerCheckoutPlanKey | null
 }) {
   const user = await prisma.user.update({
@@ -216,6 +225,8 @@ export async function syncBillingForUser(input: {
       ownerId: user.broker.id,
       status: input.subscriptionStatus,
       nextBillingAt: input.nextBillingAt,
+      cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+      cancelAt: input.cancelAt,
     })
 
     // BrokerPlanAccount.planKey é a fonte real lida pela tela de Plano e pelos
@@ -234,6 +245,8 @@ export async function syncBillingForUser(input: {
       ownerId: user.ownedAgency.id,
       status: input.subscriptionStatus,
       nextBillingAt: input.nextBillingAt,
+      cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+      cancelAt: input.cancelAt,
     })
   }
 
@@ -252,6 +265,19 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
   const emePlanKey = mapStripePriceIdToEmePlanKey(priceId)
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null
   const status = mapStripeStatusToSubscriptionStatus(subscription.status)
+  const periodEnd = getSubscriptionPeriodEnd(subscription)
+  const cancellationState = resolveStripeSubscriptionCancellationState({
+    status: subscription.status,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    cancelAtUnix: subscription.cancel_at,
+    periodEndUnix: periodEnd ? Math.floor(periodEnd.getTime() / 1_000) : null,
+  })
+  const nextBillingAt = cancellationState.nextBillingAtUnix
+    ? new Date(cancellationState.nextBillingAtUnix * 1_000)
+    : null
+  const cancelAt = cancellationState.cancelAtUnix
+    ? new Date(cancellationState.cancelAtUnix * 1_000)
+    : null
 
   if (plan === BILLING_PLAN.NONE || emePlanKey === null) {
     console.error("[billing] Stripe subscription has an unmapped Price ID", {
@@ -276,7 +302,9 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
       stripeSubscriptionId: subscription.id,
       plan: user.plan,
       subscriptionStatus: status,
-      nextBillingAt: getSubscriptionPeriodEnd(subscription),
+      nextBillingAt,
+      cancelAtPeriodEnd: cancellationState.cancelAtPeriodEnd,
+      cancelAt,
       emePlanKey,
     })
   } else {
@@ -286,7 +314,9 @@ export async function syncBillingFromStripeSubscription(subscription: Stripe.Sub
       stripeSubscriptionId: subscription.id,
       plan,
       subscriptionStatus: status,
-      nextBillingAt: getSubscriptionPeriodEnd(subscription),
+      nextBillingAt,
+      cancelAtPeriodEnd: cancellationState.cancelAtPeriodEnd,
+      cancelAt,
       emePlanKey,
     })
   }

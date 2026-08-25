@@ -971,9 +971,23 @@ export async function registerExtraPackagePurchase({
 
         await tx.notification.create({
           data: {
+            id: `billing:credits_added:${stripeCheckoutSessionId}`,
             userId,
-            title: "Créditos IA adquiridos",
-            message: `Você adquiriu +${pack.quantity} Créditos IA.`,
+            title: "Créditos adicionados",
+            message: `+${pack.quantity} Créditos IA foram adicionados à sua conta.`,
+            read: false,
+          },
+        })
+
+        await tx.notification.create({
+          data: {
+            id: `billing:payment_approved:${stripeCheckoutSessionId}`,
+            userId,
+            title: "Pagamento aprovado",
+            message: `${pack.label} — pagamento de ${new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format((amountCents ?? pack.priceCents) / 100)} confirmado.`,
             read: false,
           },
         })

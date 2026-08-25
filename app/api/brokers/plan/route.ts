@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { EME_EXTRA_PACKAGES, EME_PLANS } from "@/lib/eme-plans"
 import { getBrokerPlanSnapshot } from "@/lib/eme-plan-service"
-import { UserRole } from "@/lib/prisma-enums"
+import { SubscriptionOwnerType, UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
@@ -51,7 +51,7 @@ export async function GET() {
 
   try {
     const snapshot = await getBrokerPlanSnapshot(user.broker.id)
-    const [creditHistoryResult, packageHistoryResult, capacityHistoryResult] = await Promise.allSettled([
+    const [creditHistoryResult, packageHistoryResult, capacityHistoryResult, subscriptionResult] = await Promise.allSettled([
       prisma.aiCreditTransaction.findMany({
         where: { brokerId: user.broker.id },
         orderBy: { createdAt: "desc" },
@@ -92,10 +92,25 @@ export async function GET() {
           effectiveAt: true,
         },
       }),
+      prisma.subscription.findUnique({
+        where: {
+          ownerType_ownerId: {
+            ownerType: SubscriptionOwnerType.BROKER,
+            ownerId: user.broker.id,
+          },
+        },
+        select: {
+          status: true,
+          nextBillingAt: true,
+          cancelAtPeriodEnd: true,
+          cancelAt: true,
+        },
+      }),
     ])
     const creditHistory = creditHistoryResult.status === "fulfilled" ? creditHistoryResult.value : []
     const packageHistory = packageHistoryResult.status === "fulfilled" ? packageHistoryResult.value : []
     const capacityHistory = capacityHistoryResult.status === "fulfilled" ? capacityHistoryResult.value : []
+    const subscription = subscriptionResult.status === "fulfilled" ? subscriptionResult.value : null
 
     if (creditHistoryResult.status === "rejected") {
       console.error("[api][brokers][plan][credit-history] unavailable", {
@@ -115,6 +130,12 @@ export async function GET() {
         message: capacityHistoryResult.reason instanceof Error ? capacityHistoryResult.reason.message : "unknown",
       })
     }
+    if (subscriptionResult.status === "rejected") {
+      console.error("[api][brokers][plan][subscription] unavailable", {
+        brokerId: user.broker.id,
+        message: subscriptionResult.reason instanceof Error ? subscriptionResult.reason.message : "unknown",
+      })
+    }
 
     const currentPlan = serializePlan(snapshot.plan)
     const activeCapacityPackage =
@@ -129,6 +150,14 @@ export async function GET() {
     const response = NextResponse.json({
       plan: currentPlan,
       currentPlan,
+      subscription: subscription
+        ? {
+            status: subscription.status,
+            nextBillingAt: subscription.nextBillingAt?.toISOString() ?? null,
+            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+            cancelAt: subscription.cancelAt?.toISOString() ?? null,
+          }
+        : null,
       plans: Object.values(EME_PLANS).map(serializePlan),
       propertyLimits: {
         baseLimit: snapshot.plan.propertyLimit,

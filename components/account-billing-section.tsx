@@ -38,6 +38,7 @@ type BillingSnapshot = {
     intervalCount: number
     nextBillingAt: number | null
     cancelAtPeriodEnd: boolean
+    endsAt: number | null
   }
   paymentMethod: {
     brand: string
@@ -169,7 +170,7 @@ export function AccountBillingSection() {
     void loadBilling()
   }, [loadBilling])
 
-  async function openCustomerPortal(action: "payment_method" | "manage" | "cancel") {
+  async function openCustomerPortal(action: "payment_method" | "manage" | "cancel" | "resume") {
     setPortalAction(action)
     setError(null)
 
@@ -180,7 +181,12 @@ export function AccountBillingSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       })
-      const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null
+      const data = (await response.json().catch(() => null)) as { url?: string; resumed?: boolean; error?: string } | null
+
+      if (response.ok && data?.resumed) {
+        await loadBilling()
+        return
+      }
 
       if (!response.ok || !data?.url) {
         throw new Error(data?.error ?? "Não foi possível abrir o portal de faturamento.")
@@ -251,8 +257,8 @@ export function AccountBillingSection() {
             />
             <BillingDetail
               icon={<CalendarClock className="size-4" />}
-              label="Próxima cobrança"
-              value={formatDate(billing.plan.nextBillingAt)}
+              label={billing.plan.cancelAtPeriodEnd ? "Encerramento" : "Próxima cobrança"}
+              value={formatDate(billing.plan.cancelAtPeriodEnd ? billing.plan.endsAt : billing.plan.nextBillingAt)}
             />
             <BillingDetail icon={<CreditCard className="size-4" />} label="Forma de pagamento" value={paymentMethodLabel} />
             <BillingDetail
@@ -279,9 +285,10 @@ export function AccountBillingSection() {
             </div>
           ) : null}
 
-          {billing.plan.cancelAtPeriodEnd ? (
+          {billing.plan.cancelAtPeriodEnd && billing.plan.endsAt ? (
             <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              O cancelamento está agendado. O acesso permanece ativo até o fim do período contratado.
+              <p className="font-semibold">Cancelamento agendado</p>
+              <p className="mt-1">Seu plano permanecerá ativo até {formatDate(billing.plan.endsAt)}.</p>
             </div>
           ) : null}
 
@@ -376,11 +383,13 @@ export function AccountBillingSection() {
           </div>
           <button
             type="button"
-            onClick={() => void openCustomerPortal("cancel")}
+            onClick={() => void openCustomerPortal(billing.plan.cancelAtPeriodEnd ? "resume" : "cancel")}
             disabled={!billing.portalAvailable || portalAction !== null}
             className="w-fit shrink-0 text-xs font-medium text-[#7B8491] underline-offset-4 hover:text-red-600 hover:underline disabled:opacity-50"
           >
-            {portalAction === "cancel" ? "Abrindo Stripe..." : "Cancelar assinatura"}
+            {billing.plan.cancelAtPeriodEnd
+              ? (portalAction === "resume" ? "Mantendo assinatura..." : "Manter assinatura")
+              : (portalAction === "cancel" ? "Abrindo Stripe..." : "Cancelar assinatura")}
           </button>
         </div>
       ) : null}

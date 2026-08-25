@@ -3,12 +3,14 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 import {
+  buildBillingNotificationId,
   buildRecurringCapacityItemChanges,
   buildStripePeriodGrantKey,
   canPlanAccessMarketplace,
   isConfirmedStripePayment,
   publicationIncreasesActivePropertyCount,
   resolvePropertyCapacityQuantity,
+  resolveStripeSubscriptionCancellationState,
   resolveStrictStripePlanKey,
   resolveSubscriptionChangeMode,
   shouldGrantStripePaidPeriod,
@@ -67,6 +69,43 @@ test("invoice paga concede o período e falha/past_due não concede", () => {
       planKey: "pro",
     }),
     false,
+  )
+})
+
+test("cancelamento agendado mantém o período pago e remove a próxima renovação", () => {
+  const scheduled = resolveStripeSubscriptionCancellationState({
+    status: "active",
+    cancelAtPeriodEnd: true,
+    cancelAtUnix: null,
+    periodEndUnix: 1_788_134_400,
+  })
+  assert.deepEqual(scheduled, {
+    cancelAtPeriodEnd: true,
+    cancelAtUnix: 1_788_134_400,
+    nextBillingAtUnix: null,
+  })
+
+  const reverted = resolveStripeSubscriptionCancellationState({
+    status: "active",
+    cancelAtPeriodEnd: false,
+    cancelAtUnix: null,
+    periodEndUnix: 1_788_134_400,
+  })
+  assert.deepEqual(reverted, {
+    cancelAtPeriodEnd: false,
+    cancelAtUnix: null,
+    nextBillingAtUnix: 1_788_134_400,
+  })
+})
+
+test("notificações de billing usam chave idempotente por evento", () => {
+  assert.equal(
+    buildBillingNotificationId("payment_approved", "in_123"),
+    buildBillingNotificationId("payment_approved", "in_123"),
+  )
+  assert.notEqual(
+    buildBillingNotificationId("payment_approved", "in_123"),
+    buildBillingNotificationId("payment_failed", "in_123"),
   )
 })
 

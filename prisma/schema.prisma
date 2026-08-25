@@ -684,6 +684,8 @@ model Subscription {
   ownerId       String
   status        SubscriptionStatus    @default(TRIALING)
   nextBillingAt DateTime?
+  cancelAtPeriodEnd Boolean            @default(false)
+  cancelAt          DateTime?
   createdAt     DateTime              @default(now())
 
   @@unique([ownerType, ownerId])

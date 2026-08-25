@@ -95,6 +95,12 @@ type CapacityHistoryItem = {
 
 type BrokerPlanSnapshot = {
   currentPlan: PlanItem
+  subscription: {
+    status: string
+    nextBillingAt: string | null
+    cancelAtPeriodEnd: boolean
+    cancelAt: string | null
+  } | null
   plans: PlanItem[]
   propertyLimits: {
     baseLimit: number
@@ -241,6 +247,14 @@ function formatHistoryDate(value: string) {
   }).format(new Date(value))
 }
 
+function formatPlanDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value))
+}
+
 function getPackagePurchaseLabel(item: PackagePurchaseHistoryItem) {
   const known = [...creditPackageItems, ...propertyPackageItems].find((pack) => pack.key === item.packageKey)
   if (known) return known.label
@@ -285,6 +299,12 @@ export function BrokerPlanPage() {
 
   const propertyLimits = planSnapshot?.propertyLimits
   const currentPlan = planSnapshot?.currentPlan
+  const cancellationDate = planSnapshot?.subscription?.cancelAt
+  const isCancellationScheduled = Boolean(
+    currentPlan?.key !== "free" &&
+    planSnapshot?.subscription?.cancelAtPeriodEnd &&
+    cancellationDate,
+  )
   const propertyUsed = propertyLimits?.used ?? 0
   const propertyTotal = propertyLimits?.totalLimit ?? 0
   const propertyRemaining = propertyLimits?.remaining ?? 0
@@ -598,8 +618,12 @@ export function BrokerPlanPage() {
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="max-w-[34rem]">
-                  <div className="inline-flex rounded-full border border-[#009b3a]/20 bg-[#009b3a]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-[#009b3a]">
-                    Plano ativo
+                  <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] ${
+                    isCancellationScheduled
+                      ? "border-amber-300/60 bg-amber-50 text-amber-800"
+                      : "border-[#009b3a]/20 bg-[#009b3a]/10 text-[#009b3a]"
+                  }`}>
+                    {isCancellationScheduled ? "Cancelamento agendado" : "Plano ativo"}
                   </div>
                   <div className="mt-2 flex flex-wrap items-end gap-2">
                     <h2 className="text-[1.65rem] font-semibold tracking-tight text-[#050505]">{planDisplayName}</h2>
@@ -608,6 +632,11 @@ export function BrokerPlanPage() {
                     </span>
                   </div>
                   <p className="mt-1.5 text-sm leading-5 text-[#6B7280]">{planDescription}</p>
+                  {isCancellationScheduled && cancellationDate ? (
+                    <p className="mt-2 text-sm font-medium text-amber-800">
+                      Seu plano permanecerá ativo até {formatPlanDate(cancellationDate)}.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">

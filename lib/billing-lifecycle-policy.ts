@@ -115,3 +115,42 @@ export function shouldGrantStripePaidPeriod(input: {
     (input.planKey === "pro" || input.planKey === "scale")
   )
 }
+
+export function resolveStripeSubscriptionCancellationState(input: {
+  status: string
+  cancelAtPeriodEnd: boolean
+  cancelAtUnix: number | null
+  periodEndUnix: number | null
+}) {
+  const subscriptionIsCurrent = input.status !== "canceled" && input.status !== "incomplete_expired"
+  const cancelAtPeriodEnd = subscriptionIsCurrent && input.cancelAtPeriodEnd
+  const cancelAtUnix = cancelAtPeriodEnd
+    ? (input.cancelAtUnix ?? input.periodEndUnix)
+    : null
+
+  return {
+    cancelAtPeriodEnd,
+    cancelAtUnix,
+    nextBillingAtUnix: subscriptionIsCurrent && !cancelAtPeriodEnd ? input.periodEndUnix : null,
+  }
+}
+
+export type BillingNotificationKind =
+  | "plan_activated"
+  | "plan_upgraded"
+  | "credits_added"
+  | "capacity_activated"
+  | "capacity_changed"
+  | "capacity_removed"
+  | "payment_approved"
+  | "payment_failed"
+  | "cancellation_scheduled"
+  | "cancellation_reverted"
+  | "subscription_ended"
+
+export function buildBillingNotificationId(
+  kind: BillingNotificationKind,
+  sourceId: string,
+) {
+  return `billing:${kind}:${sourceId}`
+}

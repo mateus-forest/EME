@@ -2,11 +2,12 @@ import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
+import { syncBillingFromStripeSubscription } from "@/lib/billing"
 import { getStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
 
-const PORTAL_ACTIONS = new Set(["payment_method", "manage", "cancel"])
+const PORTAL_ACTIONS = new Set(["payment_method", "manage", "cancel", "resume"])
 
 export async function POST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
@@ -32,6 +33,30 @@ export async function POST(request: NextRequest) {
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
 
   try {
+    if (payload.action === "resume") {
+      if (!user.stripeSubscriptionId) {
+        return NextResponse.json({ error: "Nenhuma assinatura Stripe foi encontrada." }, { status: 409 })
+      }
+
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId)
+      const subscriptionCustomerId =
+        typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id
+      if (subscriptionCustomerId !== user.stripeCustomerId) {
+        return NextResponse.json({ error: "A assinatura não pertence à conta autenticada." }, { status: 409 })
+      }
+
+      if (!subscription.cancel_at_period_end) {
+        await syncBillingFromStripeSubscription(subscription)
+        return NextResponse.json({ resumed: true })
+      }
+
+      const resumedSubscription = await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: false,
+      })
+      await syncBillingFromStripeSubscription(resumedSubscription)
+      return NextResponse.json({ resumed: true })
+    }
+
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${origin}/corretor/conta?tab=faturamento`,
