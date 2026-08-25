@@ -153,13 +153,12 @@ export function EmeLandingScene({
         className="pointer-events-none absolute inset-0"
         initial={false}
         animate={{
-          x: acceleratorOpen ? "9vw" : "0vw",
-          rotateY: acceleratorOpen ? -3.2 : 0,
-          rotateZ: acceleratorOpen ? -0.35 : 0,
-          scale: acceleratorOpen ? 1.13 : 1,
+          x: acceleratorOpen ? "-4.5vw" : "0vw",
+          rotateY: acceleratorOpen ? -2.2 : 0,
+          scale: acceleratorOpen ? 1.12 : 1,
         }}
-        transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-        style={{ perspective: 1600, transformOrigin: "34% 50%", willChange: "transform" }}
+        transition={{ duration: 1.14, ease: [0.16, 1, 0.3, 1] }}
+        style={{ perspective: 1600, transformOrigin: "38% 50%", willChange: "transform" }}
       >
         <CoastalCityBackground />
       </motion.div>
@@ -168,15 +167,15 @@ export function EmeLandingScene({
         className="absolute inset-0"
         initial={false}
         animate={{
-          x: acceleratorOpen ? "-18vw" : "0vw",
-          rotateY: acceleratorOpen ? -5 : 0,
-          scale: acceleratorOpen ? 0.985 : 1,
+          x: acceleratorOpen ? "-10vw" : "0vw",
+          rotateY: acceleratorOpen ? -2.6 : 0,
+          scale: acceleratorOpen ? 0.992 : 1,
           opacity: acceleratorOpen ? 0 : 1,
         }}
         transition={{
-          duration: acceleratorOpen ? 0.82 : 0.76,
-          delay: acceleratorOpen ? 0 : 0.14,
-          ease: [0.22, 1, 0.36, 1],
+          duration: acceleratorOpen ? 0.94 : 0.86,
+          delay: acceleratorOpen ? 0 : 0.16,
+          ease: [0.16, 1, 0.3, 1],
         }}
         style={{ pointerEvents: acceleratorOpen ? "none" : "auto", willChange: "transform, opacity" }}
         aria-hidden={acceleratorOpen}
@@ -237,15 +236,15 @@ export function EmeLandingScene({
           <motion.div
             key="accelerator"
             className="absolute inset-0 z-[70]"
-            initial={{ x: "5vw", scale: 0.985, opacity: 0 }}
+            initial={{ x: "2.5vw", scale: 0.992, opacity: 0 }}
             animate={{ x: "0vw", scale: 1, opacity: 1 }}
             exit={{
-              x: "5vw",
-              scale: 0.985,
+              x: "2.5vw",
+              scale: 0.992,
               opacity: 0,
-              transition: { duration: 0.48, ease: [0.4, 0, 0.2, 1] },
+              transition: { duration: 0.58, ease: [0.4, 0, 0.2, 1] },
             }}
-            transition={{ duration: 0.78, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.88, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
             style={{ willChange: "transform, opacity" }}
           >
             <AcceleratorHero
