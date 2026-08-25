@@ -353,7 +353,13 @@ export function CosPromptComposer({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="w-64 rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl"
+              sideOffset={8}
+              collisionPadding={12}
+              onEscapeKeyDown={() => {
+                setIsMenuOpen(false)
+                setExpandedMenuGroup(null)
+              }}
+              className="w-[min(16rem,calc(100vw-1.5rem))] rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl"
             >
               {onNewConversation ? (
                 <>
