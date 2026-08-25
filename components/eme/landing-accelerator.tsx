@@ -70,17 +70,22 @@ export function LandingAcceleratorTeaser({
 }) {
   return (
     <aside
-      className={`absolute z-[55] ${
-        compact
-          ? "bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.5rem))] right-2"
-          : "bottom-[clamp(2rem,5vh,3.75rem)] right-[clamp(1.5rem,4vw,4rem)]"
-      } ${className || ""}`}
+      className={`pointer-events-auto absolute ${className || ""}`}
+      style={{
+        bottom: compact
+          ? "max(0.75rem, calc(env(safe-area-inset-bottom) + 0.5rem))"
+          : "clamp(2rem, 5vh, 3.75rem)",
+        right: compact ? "0.5rem" : "clamp(1.5rem, 4vw, 4rem)",
+        left: "auto",
+        top: "auto",
+        zIndex: 80,
+      }}
     >
       <button
         type="button"
         onClick={onOpen}
         aria-label="Conheça o Acelerador EME"
-        className={`group flex items-center justify-between border border-white/60 bg-white/42 text-left text-foreground shadow-[0_18px_44px_-25px_rgba(15,38,27,0.55),inset_0_1px_0_rgba(255,255,255,0.75)] backdrop-blur-[14px] transition-[transform,background-color,box-shadow] duration-500 ease-out hover:-translate-y-1 hover:bg-white/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 ${
+        className={`group relative z-10 flex items-center justify-between border border-white/60 bg-white/42 text-left text-foreground shadow-[0_18px_44px_-25px_rgba(15,38,27,0.55),inset_0_1px_0_rgba(255,255,255,0.75)] backdrop-blur-[14px] transition-[transform,background-color,box-shadow] duration-500 ease-out hover:-translate-y-1 hover:bg-white/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 ${
           compact
             ? "h-[54px] w-[168px] rounded-[16px] px-3"
             : "h-[78px] w-[292px] rounded-[22px] px-5"
