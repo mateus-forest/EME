@@ -120,7 +120,7 @@ export function CosLaunchPanel() {
       variant="cos"
       contentClassName="!p-0"
     >
-      <div className="relative flex h-[calc(100dvh-108px)] min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
         <CosLaunchOperationHealth />
         <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 py-4 sm:px-6 lg:pr-[260px]">
           <div className="mb-3 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
