@@ -96,7 +96,7 @@ type PublicCatalogLandingProps = {
 }
 
 type LeadDraft = {
-  property: CatalogProperty
+  property: CatalogProperty | null
   name: string
   phone: string
   message: string
@@ -327,6 +327,16 @@ export function PublicCatalogLanding({
     })
   }
 
+  function openCatalogLeadModal() {
+    setLeadFeedback("")
+    setLeadDraft({
+      property: null,
+      name: "",
+      phone: "",
+      message: `Olá, conheci seu catálogo no EME e quero falar com o corretor: ${catalogUrl}`,
+    })
+  }
+
   function openCatalogWhatsApp() {
     if (!catalog.whatsApp) {
       showFeedback("Contato indisponível no momento")
@@ -370,12 +380,14 @@ export function PublicCatalogLanding({
     setIsSavingLead(true)
     setLeadFeedback("")
 
-    const propertyUrl = `${catalogUrl}#imovel-${leadDraft.property.id}`
-    const whatsappMessage = `Olá, tenho interesse no imóvel ${leadDraft.property.title}: ${propertyUrl}. Meu nome é ${name}.`
+    const propertyUrl = leadDraft.property ? `${catalogUrl}#imovel-${leadDraft.property.id}` : catalogUrl
+    const whatsappMessage = leadDraft.property
+      ? `Olá, tenho interesse no imóvel ${leadDraft.property.title}: ${propertyUrl}. Meu nome é ${name}.`
+      : `${leadDraft.message.trim() || `Olá, conheci seu catálogo no EME e quero falar com o corretor: ${catalogUrl}`} Meu nome é ${name}.`
 
     try {
       await createPublicLead({
-        propertyId: leadDraft.property.id,
+        propertyId: leadDraft.property?.id,
         catalogSlug: catalog.slug || slug,
         catalogType: kind,
         source: "catalog",
@@ -397,7 +409,7 @@ export function PublicCatalogLanding({
         eventType: "whatsapp_click",
         catalogSlug: catalog.slug || slug,
         catalogType: kind,
-        propertyId: leadDraft.property.id,
+        propertyId: leadDraft.property?.id,
       })
       setLeadDraft(null)
     } catch (caughtError) {
@@ -796,7 +808,7 @@ export function PublicCatalogLanding({
             </section>
 
             {!listingOnly ? (brokerCatalog ? (
-              <div><BrokerCatalogFooterContact catalog={brokerCatalog} onContact={() => setContactOpen(true)} /></div>
+              <div><BrokerCatalogFooterContact catalog={brokerCatalog} onContact={openCatalogLeadModal} /></div>
             ) : (
             <section className="rounded-[1.9rem] border border-[#ece5dc] bg-white px-6 py-7 shadow-[0_16px_38px_rgba(15,23,42,0.045)] sm:px-8 sm:py-8">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -947,9 +959,13 @@ export function PublicCatalogLanding({
         <DialogContent className={cn("max-w-[calc(100%-1.5rem)] rounded-[1.75rem] sm:max-w-lg", CATALOG_DIALOG_SURFACE_CLASS)}>
           {leadDraft ? (
             <>
-              <DialogTitle className="text-2xl text-[#050505]">Gostou deste imóvel?</DialogTitle>
+              <DialogTitle className="text-2xl text-[#050505]">
+                {leadDraft.property ? "Gostou deste imóvel?" : `Fale com ${catalog.displayName}`}
+              </DialogTitle>
               <DialogDescription className="text-[#6B7280]">
-                Para falar com o corretor, me diga seu nome.
+                {leadDraft.property
+                  ? "Para falar com o corretor, me diga seu nome."
+                  : "Preencha seus dados para iniciar o atendimento com o corretor."}
               </DialogDescription>
               <div className="grid gap-4 py-2">
                 <label className="grid gap-2">
