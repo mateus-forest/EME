@@ -19,11 +19,16 @@ import {
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
-import type { CosPromptComposerMenuAction, CosPromptComposerMenuGroup } from "@/components/cos-prompt-composer"
+import type { CosPromptComposerMenuAction } from "@/components/cos-prompt-composer"
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { useBrokerSubscription } from "@/components/use-broker-subscription"
 import { Button } from "@/components/ui/button"
+import {
+  getCosLaunchAttachmentOptions,
+  getCosLaunchMenuGroups,
+  getCosLaunchMenuSelection,
+} from "@/lib/cos/launch-menu"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import {
   AssistantCredits,
@@ -226,47 +231,8 @@ export function BrokerPortal() {
 
   const hasVisibleConversation = conversation.length > 0
   const isConversationEmpty = !isBootstrappingConversation && !isConversationLoading && !hasVisibleConversation
-  const composerMenuGroups = useMemo<CosPromptComposerMenuGroup[]>(
-    () =>
-      [
-      {
-        id: "skills",
-        label: "Habilidades",
-        items: [
-          { id: "register_client", label: "Cadastrar cliente" },
-          { id: "create_property", label: "Criar imóvel" },
-          { id: "attach_contract", label: "Anexar contrato" },
-          { id: "create_campaign", label: "Criar campanha" },
-          { id: "generate_proposal", label: "Gerar proposta" },
-        ],
-      },
-      {
-        id: "queries",
-        label: "Consultas",
-        items: [
-          { id: "search_property", label: "Buscar imóvel" },
-          { id: "my_clients", label: "Meus clientes" },
-          { id: "today_agenda", label: "Agenda de hoje" },
-          { id: "latest_leads", label: "Últimos leads" },
-          { id: "latest_properties", label: "Últimos imóveis" },
-        ],
-      },
-      {
-        id: "help",
-        label: "Ajuda",
-        items: [
-          { id: "help_first_steps", label: "Primeiros passos" },
-          { id: "help_use_cos", label: "Como usar o COS" },
-          { id: "help_register_properties", label: "Como cadastrar imóveis" },
-          { id: "help_manage_clients", label: "Como gerenciar clientes" },
-          { id: "help_contracts_proposals", label: "Contratos e propostas" },
-          { id: "help_marketing_studio", label: "Marketing e Studio IA" },
-          { id: "help_general_question", label: "Tirar uma dúvida" },
-        ],
-      },
-    ],
-    [],
-  )
+  const composerMenuGroups = useMemo(() => getCosLaunchMenuGroups(), [])
+  const composerAttachmentOptions = useMemo(() => getCosLaunchAttachmentOptions(), [])
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
@@ -301,66 +267,7 @@ export function BrokerPortal() {
   }
 
   async function handleMenuAction(action: CosPromptComposerMenuAction) {
-    const actionMap: Record<string, { label: string; message: string; action?: string; creditCostPreview?: number }> = {
-      register_client: { label: "Cadastrar cliente", message: "Quero cadastrar um cliente.", action: "createLead", creditCostPreview: 1 },
-      create_property: { label: "Criar imóvel", message: "Quero criar um imóvel.", action: "createPropertyDraft", creditCostPreview: 3 },
-      attach_contract: { label: "Anexar contrato", message: "Quero anexar um contrato.", creditCostPreview: 2 },
-      create_campaign: { label: "Criar campanha", message: "Quero criar uma campanha para Instagram.", action: "STUDIO_GENERATE_INSTAGRAM", creditCostPreview: 10 },
-      generate_proposal: { label: "Gerar proposta", message: "Quero gerar uma proposta.", action: "CREATE_PROPOSAL", creditCostPreview: 2 },
-      search_property: { label: "Buscar imóvel", message: "Quero buscar um imóvel.", action: "searchProperties", creditCostPreview: 1 },
-      my_clients: { label: "Meus clientes", message: "Mostre meus clientes.", action: "getLeadsSummary", creditCostPreview: 1 },
-      today_agenda: { label: "Agenda de hoje", message: "Mostre minha agenda de hoje.", action: "LIST_AGENDA_TODAY", creditCostPreview: 1 },
-      latest_leads: { label: "Últimos leads", message: "Mostre meus últimos leads.", action: "summarizeLead", creditCostPreview: 1 },
-      latest_properties: { label: "Últimos imóveis", message: "Mostre meus últimos imóveis cadastrados.", action: "searchProperties", creditCostPreview: 1 },
-      // As 7 entradas de ajuda passam `action` com o próprio id do botão — isso deixa a
-      // classificação no backend determinística (casa direto contra o Capability Registry,
-      // sem depender da cadeia de regex de inferAssessorAction) e conecta cada botão à sua
-      // capability dedicada de ajuda, que responde usando o manual oficial do sistema.
-      help_first_steps: {
-        label: "Primeiros passos",
-        message: "Quais são os primeiros passos para começar a usar o EME?",
-        action: "help_first_steps",
-        creditCostPreview: 0,
-      },
-      help_use_cos: {
-        label: "Como usar o COS",
-        message: "Como posso usar melhor o COS no dia a dia?",
-        action: "help_use_cos",
-        creditCostPreview: 0,
-      },
-      help_register_properties: {
-        label: "Como cadastrar imóveis",
-        message: "Como cadastrar imóveis no EME?",
-        action: "help_register_properties",
-        creditCostPreview: 0,
-      },
-      help_manage_clients: {
-        label: "Como gerenciar clientes",
-        message: "Como gerenciar meus clientes no EME?",
-        action: "help_manage_clients",
-        creditCostPreview: 0,
-      },
-      help_contracts_proposals: {
-        label: "Contratos e propostas",
-        message: "Como funcionam contratos e propostas no EME?",
-        action: "help_contracts_proposals",
-        creditCostPreview: 0,
-      },
-      help_marketing_studio: {
-        label: "Marketing e Studio IA",
-        message: "Como usar o Studio IA e o marketing do EME?",
-        action: "help_marketing_studio",
-        creditCostPreview: 0,
-      },
-      help_general_question: {
-        label: "Tirar uma dúvida",
-        message: "Preciso de ajuda para entender uma funcionalidade do EME.",
-        action: "help_general_question",
-        creditCostPreview: 0,
-      },
-    }
-
-    const selection = actionMap[action.id]
+    const selection = getCosLaunchMenuSelection(action.id)
     if (!selection) return
     await handleConversationSuggestion(selection)
   }
@@ -590,6 +497,7 @@ export function BrokerPortal() {
                     feedback={chatFeedback}
                     sticky={false}
                     menuGroups={composerMenuGroups}
+                    attachmentOptions={composerAttachmentOptions}
                     onMenuAction={handleMenuAction}
                   />
                 </div>

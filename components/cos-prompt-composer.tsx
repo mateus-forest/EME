@@ -6,9 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  Files,
   HelpCircle,
-  ImageIcon,
   Mic,
   MessageSquarePlus,
   Paperclip,
@@ -16,7 +14,6 @@ import {
   Send,
   Sparkles,
   Square,
-  Video,
   X,
 } from "lucide-react"
 
@@ -52,6 +49,13 @@ export type CosPromptComposerMenuGroup = {
   items: CosPromptComposerMenuAction[]
 }
 
+export type CosPromptComposerAttachmentOption = {
+  id: CosComposerAttachment["category"]
+  label: string
+  accept: string
+  multiple: boolean
+}
+
 type CosPromptComposerProps = {
   prompt: string
   setPrompt: (value: string) => void
@@ -63,6 +67,7 @@ type CosPromptComposerProps = {
   sticky?: boolean
   containerClassName?: string
   menuGroups?: CosPromptComposerMenuGroup[]
+  attachmentOptions?: CosPromptComposerAttachmentOption[]
   onMenuAction?: (action: CosPromptComposerMenuAction) => Promise<void> | void
 }
 
@@ -91,13 +96,6 @@ type SpeechRecognitionEventLike = {
 
 type AttachmentPickerMode = "image" | "document" | "video" | "files"
 
-const ACCEPT_MAP: Record<AttachmentPickerMode, string> = {
-  image: "image/*",
-  document: ".pdf,.doc,.docx,.xml,.txt,.csv,.json",
-  video: "video/*",
-  files: "*",
-}
-
 export function CosPromptComposer({
   prompt,
   setPrompt,
@@ -109,12 +107,13 @@ export function CosPromptComposer({
   sticky = true,
   containerClassName,
   menuGroups,
+  attachmentOptions = [],
   onMenuAction,
 }: CosPromptComposerProps) {
   const [micState, setMicState] = useState<"idle" | "recording" | "processing" | "error">("idle")
   const [micError, setMicError] = useState("")
   const [attachments, setAttachments] = useState<CosComposerAttachment[]>([])
-  const [pickerMode, setPickerMode] = useState<AttachmentPickerMode>("files")
+  const [pickerMode, setPickerMode] = useState<AttachmentPickerMode>("document")
   const [isPreparingAttachments, setIsPreparingAttachments] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [expandedMenuGroup, setExpandedMenuGroup] = useState<string | null>(null)
@@ -124,6 +123,7 @@ export function CosPromptComposer({
   const micHadErrorRef = useRef(false)
   const transcriptRef = useRef("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const activeAttachmentOption = attachmentOptions.find((option) => option.id === pickerMode) ?? attachmentOptions[0]
 
   function updateMicState(nextState: "idle" | "recording" | "processing" | "error") {
     micStateRef.current = nextState
@@ -294,8 +294,8 @@ export function CosPromptComposer({
         ref={fileInputRef}
         type="file"
         hidden
-        accept={ACCEPT_MAP[pickerMode]}
-        multiple
+        accept={activeAttachmentOption?.accept}
+        multiple={activeAttachmentOption?.multiple ?? false}
         onChange={(event) => void handleAttachmentSelection(event)}
       />
 
@@ -364,33 +364,23 @@ export function CosPromptComposer({
                   <DropdownMenuSeparator className="my-1 bg-black/[0.06]" />
                 </>
               ) : null}
-              <MenuGroup
-                icon={<Paperclip className="size-4 text-[#7B8491]" />}
-                label="Anexar"
-                isExpanded={expandedMenuGroup === "attach"}
-                onToggle={() => toggleMenuGroup("attach")}
-              >
-                <MenuLeaf
-                  icon={<ImageIcon className="size-4 text-[#7B8491]" />}
-                  label="Imagem"
-                  onSelect={() => void handlePickerSelection("image")}
-                />
-                <MenuLeaf
-                  icon={<FileText className="size-4 text-[#7B8491]" />}
-                  label="Documento"
-                  onSelect={() => void handlePickerSelection("document")}
-                />
-                <MenuLeaf
-                  icon={<Video className="size-4 text-[#7B8491]" />}
-                  label="Vídeo"
-                  onSelect={() => void handlePickerSelection("video")}
-                />
-                <MenuLeaf
-                  icon={<Files className="size-4 text-[#7B8491]" />}
-                  label="Múltiplos arquivos"
-                  onSelect={() => void handlePickerSelection("files")}
-                />
-              </MenuGroup>
+              {attachmentOptions.length > 0 ? (
+                <MenuGroup
+                  icon={<Paperclip className="size-4 text-[#7B8491]" />}
+                  label="Anexar"
+                  isExpanded={expandedMenuGroup === "attach"}
+                  onToggle={() => toggleMenuGroup("attach")}
+                >
+                  {attachmentOptions.map((option) => (
+                    <MenuLeaf
+                      key={option.id}
+                      icon={<FileText className="size-4 text-[#7B8491]" />}
+                      label={option.label}
+                      onSelect={() => void handlePickerSelection(option.id)}
+                    />
+                  ))}
+                </MenuGroup>
+              ) : null}
 
               {menuGroups?.map((group) => (
                 <MenuGroup
