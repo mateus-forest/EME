@@ -156,28 +156,28 @@ export const EME_EXTRA_PACKAGES = {
   credit_250: {
     key: "credit_250",
     type: "credit",
-    label: "+250 Creditos IA",
+    label: "+250 Créditos IA",
     quantity: 250,
     priceCents: 2900,
   },
   credit_750: {
     key: "credit_750",
     type: "credit",
-    label: "+750 Creditos IA",
+    label: "+750 Créditos IA",
     quantity: 750,
     priceCents: 7900,
   },
   credit_1500: {
     key: "credit_1500",
     type: "credit",
-    label: "+1.500 Creditos IA",
+    label: "+1.500 Créditos IA",
     quantity: 1500,
     priceCents: 13900,
   },
   credit_3000: {
     key: "credit_3000",
     type: "credit",
-    label: "+3.000 Creditos IA",
+    label: "+3.000 Créditos IA",
     quantity: 3000,
     priceCents: 24900,
   },
@@ -185,7 +185,7 @@ export const EME_EXTRA_PACKAGES = {
     key: "property_250",
     type: "property",
     // Mantemos a chave por compatibilidade com a camada de checkout legada.
-    label: "+100 imoveis",
+    label: "+100 imóveis",
     quantity: 100,
     priceCents: 5900,
   },
@@ -193,7 +193,7 @@ export const EME_EXTRA_PACKAGES = {
     key: "property_500",
     type: "property",
     // Mantemos a chave por compatibilidade com a camada de checkout legada.
-    label: "+250 imoveis",
+    label: "+250 imóveis",
     quantity: 250,
     priceCents: 11900,
   },
@@ -201,7 +201,7 @@ export const EME_EXTRA_PACKAGES = {
     key: "property_1000",
     type: "property",
     // Mantemos a chave por compatibilidade com a camada de checkout legada.
-    label: "+500 imoveis",
+    label: "+500 imóveis",
     quantity: 500,
     priceCents: 19900,
   },
@@ -340,10 +340,10 @@ export const EME_CREDIT_COSTS = {
 } as const satisfies Record<EmeCreditActionKey, number>
 
 export const EME_PROPERTY_LIMIT_MESSAGE =
-  "Voce atingiu o limite de imoveis do seu plano. Faca upgrade ou compre um pacote de imoveis extras para continuar publicando."
+  "Você atingiu o limite de imóveis do seu plano. Faça upgrade ou adicione capacidade para continuar cadastrando."
 
 export const EME_INSUFFICIENT_CREDITS_MESSAGE =
-  "Creditos IA insuficientes. Compre um pacote de creditos ou aguarde a renovacao do seu plano."
+  "Créditos IA insuficientes. Compre um pacote de créditos ou aguarde a renovação do seu plano."
 
 export const EME_FREE_COS_ACTIONS = new Set<EmeCreditActionKey>([
   "general",

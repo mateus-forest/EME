@@ -439,9 +439,14 @@ export async function POST(request: NextRequest) {
     const plan = getBillingPlanFromRole(user.role)
     const planLabel = getPlanLabel(plan)
 
+    const subscriptionSuccessUrl =
+      user.role === UserRole.BROKER
+        ? `${origin}/corretor/conta?tab=faturamento&checkout=success`
+        : `${origin}${portalPath}?checkout=success`
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      success_url: `${origin}${portalPath}?checkout=success`,
+      success_url: subscriptionSuccessUrl,
       cancel_url: `${origin}${portalPath}?checkout=cancel`,
       line_items: [{ price: priceId, quantity: 1 }],
       customer: user.stripeCustomerId ?? undefined,

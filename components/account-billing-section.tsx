@@ -19,7 +19,7 @@ type BillingInvoice = {
   id: string
   number: string | null
   description: string
-  type: "Assinatura" | "Créditos IA" | "Expansão da Carteira" | "Pacote extra"
+  type: "Assinatura" | "Capacidade adicional" | "Créditos IA" | "Pacote extra"
   createdAt: number
   amount: number
   currency: string

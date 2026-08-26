@@ -178,6 +178,7 @@ const commercialPlanContent = {
       "Até 150 imóveis ativos",
       "500 Créditos IA por mês",
       "Sistema Operacional EME completo",
+      "Gestão de locação",
       "Mais capacidade para campanhas, vídeos e automações",
     ],
   },
@@ -189,6 +190,7 @@ const commercialPlanContent = {
       "Até 1000 imóveis ativos",
       "2000 Créditos IA por mês",
       "Sistema Operacional EME completo",
+      "Gestão de locação",
       "Ideal para equipes e alto volume operacional",
     ],
   },
@@ -197,8 +199,8 @@ const commercialPlanContent = {
 const creditPackageItems: PlanPackage[] = [
   { key: "credit_250", type: "credit", label: "+250 Créditos IA", quantity: 250, price: "R$ 29" },
   { key: "credit_750", type: "credit", label: "+750 Créditos IA", quantity: 750, price: "R$ 79" },
-  { key: "credit_1500", type: "credit", label: "+1500 Créditos IA", quantity: 1500, price: "R$ 139" },
-  { key: "credit_3000", type: "credit", label: "+3000 Créditos IA", quantity: 3000, price: "R$ 249" },
+  { key: "credit_1500", type: "credit", label: "+1.500 Créditos IA", quantity: 1500, price: "R$ 139" },
+  { key: "credit_3000", type: "credit", label: "+3.000 Créditos IA", quantity: 3000, price: "R$ 249" },
 ]
 
 const propertyPackageItems: PlanPackage[] = [

@@ -51,7 +51,7 @@ type BillingCharge = {
   id: string
   number: string | null
   description: string
-  type: "Assinatura" | "Capacidade adicional" | "Créditos IA" | "Expansão da Carteira" | "Pacote extra"
+  type: "Assinatura" | "Capacidade adicional" | "Créditos IA" | "Pacote extra"
   createdAt: number
   amount: number
   currency: string
@@ -227,8 +227,8 @@ function packagePresentation(session: Stripe.Checkout.Session, internalPurchase:
   }
   if (packageType === "property" && formattedQuantity) {
     return {
-      description: `+${formattedQuantity} imóveis — Expansão da Carteira`,
-      type: "Expansão da Carteira" as const,
+      description: `+${formattedQuantity} imóveis — Capacidade adicional`,
+      type: "Capacidade adicional" as const,
     }
   }
   return { description: "Pacote extra EME", type: "Pacote extra" as const }

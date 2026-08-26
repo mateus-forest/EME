@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test"
 
-import { EME_PLANS, getNextEmePlanKey, resolveEmePlanUpgradeTarget } from "@/lib/eme-plans"
+import { EME_EXTRA_PACKAGES, EME_PLANS, getNextEmePlanKey, resolveEmePlanUpgradeTarget } from "@/lib/eme-plans"
 
 type PlanKey = "free" | "pro" | "scale"
 
@@ -56,7 +56,12 @@ function planSnapshot(currentPlanKey: PlanKey) {
   }
 }
 
-async function setupPlanPage(page: Page, currentPlanKey: PlanKey, checkoutBodies: Array<Record<string, unknown>>) {
+async function setupPlanPage(
+  page: Page,
+  currentPlanKey: PlanKey,
+  checkoutBodies: Array<Record<string, unknown>>,
+  capacityPreviewBodies: Array<Record<string, unknown>> = [],
+) {
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { id: "user-1", name: "Corretor Teste", email: "teste@eme.com", role: "BROKER", accountType: "BROKER_INDEPENDENT", plan: currentPlanKey === "free" ? "NONE" : "BROKER", subscriptionStatus: currentPlanKey === "free" ? "INACTIVE" : "ACTIVE", brokerId: "broker-1", agencyId: null } } }))
   await page.route("**/api/brokers/plan", (route) => route.fulfill({ json: planSnapshot(currentPlanKey) }))
   await page.route("**/api/brokers/me", (route) => route.fulfill({ json: { profile: null } }))
@@ -68,6 +73,32 @@ async function setupPlanPage(page: Page, currentPlanKey: PlanKey, checkoutBodies
   await page.route("**/api/stripe/create-checkout", async (route: Route) => {
     checkoutBodies.push(route.request().postDataJSON() as Record<string, unknown>)
     await route.fulfill({ json: { url: "#stripe-checkout" } })
+  })
+  await page.route("**/api/stripe/capacity-preview", async (route: Route) => {
+    const requestBody = route.request().postDataJSON() as Record<string, unknown>
+    capacityPreviewBodies.push(requestBody)
+    await route.fulfill({
+      json: {
+        operation: "add",
+        packageKey: requestBody.packageKey,
+        token: "capacity-preview-token",
+        currentLimit: 150,
+        newLimit: 250,
+        currentCapacity: null,
+        targetCapacity: { amount: 5900, currency: "brl", quantity: 100 },
+        proration: {
+          creditAmount: 0,
+          currency: "brl",
+          debitAmount: 1700,
+          netAmount: 1700,
+          netCreditAmount: 0,
+          periodEnd: 1_788_739_200,
+        },
+        plan: { amount: 12900, currency: "brl", name: "Pro" },
+        nextMonthly: { amount: 18800, currency: "brl", date: 1_788_739_200 },
+        effective: "immediate",
+      },
+    })
   })
 
   await page.goto("/corretor/plano", { waitUntil: "domcontentloaded" })
@@ -81,6 +112,21 @@ test.describe("Plano do corretor", () => {
     expect(EME_PLANS.free.features).not.toContain("marketplace")
     expect(EME_PLANS.pro.features).toContain("marketplace")
     expect(EME_PLANS.scale.features).toContain("marketplace")
+  })
+
+  test("mantém preços, limites, créditos e pacotes do lançamento", () => {
+    expect(EME_PLANS.free).toMatchObject({ priceCents: 0, propertyLimit: 5, monthlyAiCredits: 30 })
+    expect(EME_PLANS.pro).toMatchObject({ priceCents: 12900, propertyLimit: 150, monthlyAiCredits: 500 })
+    expect(EME_PLANS.scale).toMatchObject({ priceCents: 38900, propertyLimit: 1000, monthlyAiCredits: 2000 })
+    expect(Object.values(EME_EXTRA_PACKAGES).map(({ quantity, priceCents }) => [quantity, priceCents])).toEqual([
+      [250, 2900],
+      [750, 7900],
+      [1500, 13900],
+      [3000, 24900],
+      [100, 5900],
+      [250, 11900],
+      [500, 19900],
+    ])
   })
 
   test("resolve somente upgrades válidos na ordem comercial", () => {
@@ -110,6 +156,7 @@ test.describe("Plano do corretor", () => {
 
     const includedSummary = page.getByTestId("included-plan-features")
     await expect(includedSummary.getByText("Marketplace", { exact: true })).toBeVisible()
+    await expect(page.getByText("Gestão de locação", { exact: true })).toHaveCount(2)
     await page.getByRole("button", { name: "Fazer upgrade", exact: true }).click()
     await expect.poll(() => checkoutBodies).toEqual([{ plan: "scale" }])
   })
@@ -122,9 +169,17 @@ test.describe("Plano do corretor", () => {
     expect(freeCheckoutBodies).toEqual([])
 
     const proCheckoutBodies: Array<Record<string, unknown>> = []
-    await setupPlanPage(page, "pro", proCheckoutBodies)
+    const capacityPreviewBodies: Array<Record<string, unknown>> = []
+    await setupPlanPage(page, "pro", proCheckoutBodies, capacityPreviewBodies)
     await page.getByRole("button", { name: "Adicionar capacidade" }).first().click()
-    await expect.poll(() => proCheckoutBodies).toEqual([{ packageKey: "property_250" }])
+    await expect.poll(() => capacityPreviewBodies).toEqual([{ packageKey: "property_250" }])
+    await expect(page.getByRole("heading", { name: "Confirmar capacidade adicional" })).toBeVisible()
+    await expect(page.getByText("R$ 188,00", { exact: true })).toBeVisible()
+    expect(proCheckoutBodies).toEqual([])
+    await page.getByRole("button", { name: "Confirmar e adicionar" }).click()
+    await expect.poll(() => proCheckoutBodies).toEqual([
+      { capacityPreviewToken: "capacity-preview-token", packageKey: "property_250" },
+    ])
   })
 
   test("Scale bloqueia plano inferior, leva aos pacotes e compacta os históricos", async ({ page }) => {
