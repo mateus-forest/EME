@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Activity, ChevronDown, RefreshCw } from "lucide-react"
+import { Activity, CalendarDays, ChevronDown, CircleAlert, FileText, House, RefreshCw, Users } from "lucide-react"
 
 type OperationHealth = {
   score: number
@@ -9,16 +9,25 @@ type OperationHealth = {
   pending: Record<string, number>
 }
 
-const pendingLabels: Record<string, string> = {
-  missingLeadInformation: "Clientes sem dados",
-  missingRg: "Clientes sem RG",
-  missingRegistry: "Imóveis sem matrícula",
-  missingPropertyDocuments: "Imóveis sem documentos",
-  draftDocuments: "Documentos em rascunho",
-  draftContracts: "Contratos em rascunho",
-  awaitingSignature: "Contratos aguardando assinatura",
-  pendingAgenda: "Compromissos pendentes",
-  unattendedLeads: "Leads sem atendimento",
+const scoreLabels: Record<keyof OperationHealth["scores"], string> = {
+  clients: "Clientes",
+  properties: "Imóveis",
+  documents: "Documentos",
+  contracts: "Contratos",
+  agenda: "Agenda",
+  leads: "Leads",
+}
+
+const pendingLabels: Record<string, { singular: string; plural: string }> = {
+  missingLeadInformation: { singular: "cliente sem dados", plural: "clientes sem dados" },
+  missingRg: { singular: "cliente sem RG", plural: "clientes sem RG" },
+  missingRegistry: { singular: "imóvel sem matrícula", plural: "imóveis sem matrícula" },
+  missingPropertyDocuments: { singular: "imóvel sem documentos", plural: "imóveis sem documentos" },
+  draftDocuments: { singular: "documento em rascunho", plural: "documentos em rascunho" },
+  draftContracts: { singular: "contrato em rascunho", plural: "contratos em rascunho" },
+  awaitingSignature: { singular: "contrato aguardando assinatura", plural: "contratos aguardando assinatura" },
+  pendingAgenda: { singular: "compromisso pendente", plural: "compromissos pendentes" },
+  unattendedLeads: { singular: "lead sem atendimento", plural: "leads sem atendimento" },
 }
 
 type PendingItem = { key: string; label: string; count: number }
@@ -26,23 +35,63 @@ type PendingItem = { key: string; label: string; count: number }
 function PendingBreakdown({ items, showAll, onToggleAll }: { items: PendingItem[]; showAll: boolean; onToggleAll: () => void }) {
   const visibleItems = showAll ? items : items.slice(0, 6)
 
-  if (items.length === 0) return <p className="text-[11px] text-slate-500">Nenhuma pendência encontrada.</p>
-
   return (
-    <div className="space-y-2">
-      <div className="space-y-1.5">
-        {visibleItems.map((item) => (
-          <div key={item.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-500">
-            <span className="min-w-0 truncate">{item.label}</span>
-            <span className="shrink-0 font-semibold text-slate-700">{item.count}</span>
-          </div>
-        ))}
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-800">
+        <CircleAlert className="size-3.5 text-amber-600" />
+        <span>Pendências</span>
       </div>
+      {items.length === 0 ? (
+        <p className="text-[11px] text-slate-500">Nenhuma pendência encontrada.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {visibleItems.map((item) => (
+            <div key={item.key} className="flex min-w-0 items-start gap-2 text-[11px] leading-4 text-slate-500">
+              <span className="mt-1.5 size-1 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+              <span>{item.count} {item.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {items.length > 6 ? (
         <button type="button" onClick={onToggleAll} className="text-[11px] font-medium text-emerald-700 transition hover:text-emerald-800">
           {showAll ? "Mostrar principais" : "Ver todas as pendências"}
         </button>
       ) : null}
+    </div>
+  )
+}
+
+function ScoreIcon({ section }: { section: keyof OperationHealth["scores"] }) {
+  const className = "size-3.5"
+  if (section === "clients" || section === "leads") return <Users className={className} />
+  if (section === "properties") return <House className={className} />
+  if (section === "agenda") return <CalendarDays className={className} />
+  return <FileText className={className} />
+}
+
+function HealthDetails({ scores, pendingItems, showAllPending, onToggleAllPending }: {
+  scores: OperationHealth["scores"]
+  pendingItems: PendingItem[]
+  showAllPending: boolean
+  onToggleAllPending: () => void
+}) {
+  return (
+    <div>
+      <div className="grid gap-1.5">
+        {(Object.entries(scores) as Array<[keyof OperationHealth["scores"], number]>).map(([section, value]) => (
+          <div key={section} className="flex min-h-8 items-center gap-2 rounded-xl bg-white/58 px-2 text-[11px] text-slate-700">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+              <ScoreIcon section={section} />
+            </span>
+            <span className="min-w-0 flex-1 truncate">{scoreLabels[section]}</span>
+            <span className="shrink-0 font-semibold text-slate-900">{value}%</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <PendingBreakdown items={pendingItems} showAll={showAllPending} onToggleAll={onToggleAllPending} />
+      </div>
     </div>
   )
 }
@@ -77,7 +126,10 @@ export function CosLaunchOperationHealth() {
     [health],
   )
   const pendingItems = useMemo<PendingItem[]>(
-    () => Object.entries(health?.pending ?? {}).filter(([, count]) => count > 0).map(([key, count]) => ({ key, count, label: pendingLabels[key] ?? key })).sort((left, right) => right.count - left.count),
+    () => Object.entries(health?.pending ?? {}).filter(([, count]) => count > 0).map(([key, count]) => {
+      const labels = pendingLabels[key]
+      return { key, count, label: labels ? (count === 1 ? labels.singular : labels.plural) : key }
+    }).sort((left, right) => right.count - left.count),
     [health],
   )
 
@@ -85,8 +137,8 @@ export function CosLaunchOperationHealth() {
     <>
       <aside className="absolute bottom-[5.5rem] right-4 z-20 lg:hidden">
         {expanded && health ? (
-          <div className="absolute bottom-[calc(100%+8px)] right-0 w-48 rounded-2xl border border-white/90 bg-white/92 p-3 shadow-[0_16px_40px_rgba(15,23,42,.10)] backdrop-blur-2xl">
-            <PendingBreakdown items={pendingItems} showAll={showAllPending} onToggleAll={() => setShowAllPending((current) => !current)} />
+          <div className="absolute bottom-[calc(100%+8px)] right-0 max-h-[min(31rem,calc(100dvh-9rem))] w-60 overflow-y-auto rounded-2xl border border-white/90 bg-white/92 p-3 shadow-[0_16px_40px_rgba(15,23,42,.10)] backdrop-blur-2xl [scrollbar-width:thin]">
+            <HealthDetails scores={health.scores} pendingItems={pendingItems} showAllPending={showAllPending} onToggleAllPending={() => setShowAllPending((current) => !current)} />
           </div>
         ) : null}
         <button
@@ -108,7 +160,7 @@ export function CosLaunchOperationHealth() {
         </button>
       </aside>
 
-      <aside className="hidden rounded-3xl border border-white/90 bg-white/72 p-3.5 shadow-[0_16px_40px_rgba(15,23,42,.07)] backdrop-blur-2xl lg:absolute lg:right-5 lg:top-4 lg:z-10 lg:block lg:w-56">
+      <aside className="hidden max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-white/90 bg-white/72 p-3.5 shadow-[0_16px_40px_rgba(15,23,42,.07)] backdrop-blur-2xl [scrollbar-width:thin] lg:absolute lg:right-5 lg:top-4 lg:z-10 lg:block lg:w-56">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700 lg:size-8 lg:rounded-xl">
@@ -128,7 +180,7 @@ export function CosLaunchOperationHealth() {
 
       {expanded && health ? (
         <div className="mt-3 border-t border-slate-100 pt-3">
-          <PendingBreakdown items={pendingItems} showAll={showAllPending} onToggleAll={() => setShowAllPending((current) => !current)} />
+          <HealthDetails scores={health.scores} pendingItems={pendingItems} showAllPending={showAllPending} onToggleAllPending={() => setShowAllPending((current) => !current)} />
         </div>
       ) : null}
 
