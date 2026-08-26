@@ -255,7 +255,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
 
     const dialog = page.getByRole("dialog")
     await expect(dialog.getByText(client.name, { exact: true })).toBeVisible()
-    await dialog.getByRole("button", { name: "Close" }).click()
+    await dialog.getByRole("button", { name: "Fechar" }).first().click()
     await expect(page).toHaveURL(/\/corretor\/clientes$/)
     await expect(dialog).toHaveCount(0)
 

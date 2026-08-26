@@ -171,7 +171,7 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
       return
     }
 
-    const speechWindow = window as typeof window & {
+    const speechWindow = window as unknown as {
       SpeechRecognition?: SpeechRecognitionConstructor
       webkitSpeechRecognition?: SpeechRecognitionConstructor
     }
@@ -187,7 +187,7 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
     recognition.lang = "pt-BR"
     recognition.continuous = true
     recognition.interimResults = false
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       let transcript = ""
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
         transcript += event.results[index]?.[0]?.transcript ?? ""

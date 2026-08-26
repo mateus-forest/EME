@@ -14,17 +14,19 @@ const CROSSFADE_SECONDS = 2.4
 
 export function HeroVideoBackground() {
   const [reduced, setReduced] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [outgoingIndex, setOutgoingIndex] = useState<number | null>(null)
-  const videoRefs = useRef<Array<HTMLVideoElement | null>>([])
-  const activeIndexRef = useRef(0)
-  const outgoingIndexRef = useRef<number | null>(null)
+  const [slotSources, setSlotSources] = useState<[number, number]>([0, 1])
+  const [activeSlot, setActiveSlot] = useState<0 | 1>(0)
+  const [outgoingSlot, setOutgoingSlot] = useState<0 | 1 | null>(null)
+  const videoRefs = useRef<[HTMLVideoElement | null, HTMLVideoElement | null]>([null, null])
+  const slotSourcesRef = useRef<[number, number]>([0, 1])
+  const activeSlotRef = useRef<0 | 1>(0)
+  const outgoingSlotRef = useRef<0 | 1 | null>(null)
   const transitioningRef = useRef(false)
   const cleanupTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
-    activeIndexRef.current = activeIndex
-  }, [activeIndex])
+    activeSlotRef.current = activeSlot
+  }, [activeSlot])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -48,26 +50,34 @@ export function HeroVideoBackground() {
     }
   }, [])
 
-  const preloadVideo = useCallback((index: number) => {
-    const video = videoRefs.current[index]
+  const preloadVideo = useCallback((slot: 0 | 1) => {
+    const video = videoRefs.current[slot]
     if (!video || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return
     video.preload = 'auto'
     if (video.networkState === HTMLMediaElement.NETWORK_EMPTY) video.load()
   }, [])
 
-  const finishCrossfade = useCallback((index: number) => {
-    if (outgoingIndexRef.current !== index) return
-    const outgoing = videoRefs.current[index]
+  const finishCrossfade = useCallback((slot: 0 | 1) => {
+    if (outgoingSlotRef.current !== slot) return
+    const outgoing = videoRefs.current[slot]
     outgoing?.pause()
     if (outgoing) {
       try {
         outgoing.currentTime = 0
       } catch {
-        // The stable source stays mounted and will be ready for the next cycle.
+        // The slot receives the next source immediately after the transition.
       }
     }
-    outgoingIndexRef.current = null
-    setOutgoingIndex(null)
+
+    const currentSources = slotSourcesRef.current
+    const activeSource = currentSources[activeSlotRef.current]
+    const nextSources: [number, number] = [...currentSources]
+    nextSources[slot] = (activeSource + 1) % SOURCES.length
+    slotSourcesRef.current = nextSources
+    setSlotSources(nextSources)
+
+    outgoingSlotRef.current = null
+    setOutgoingSlot(null)
     transitioningRef.current = false
     if (cleanupTimerRef.current !== null) {
       window.clearTimeout(cleanupTimerRef.current)
@@ -75,15 +85,15 @@ export function HeroVideoBackground() {
     }
   }, [])
 
-  const beginCrossfade = useCallback(async (fromIndex: number) => {
-    if (reduced || fromIndex !== activeIndexRef.current || transitioningRef.current) return
+  const beginCrossfade = useCallback(async (fromSlot: 0 | 1) => {
+    if (reduced || fromSlot !== activeSlotRef.current || transitioningRef.current) return
 
-    const nextIndex = (fromIndex + 1) % SOURCES.length
-    const outgoing = videoRefs.current[fromIndex]
-    const incoming = videoRefs.current[nextIndex]
+    const nextSlot = (fromSlot === 0 ? 1 : 0) as 0 | 1
+    const outgoing = videoRefs.current[fromSlot]
+    const incoming = videoRefs.current[nextSlot]
     if (!outgoing || !incoming) return
 
-    preloadVideo(nextIndex)
+    preloadVideo(nextSlot)
     if (incoming.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
 
     transitioningRef.current = true
@@ -101,14 +111,13 @@ export function HeroVideoBackground() {
       return
     }
 
-    activeIndexRef.current = nextIndex
-    outgoingIndexRef.current = fromIndex
-    setOutgoingIndex(fromIndex)
-    setActiveIndex(nextIndex)
-    preloadVideo((nextIndex + 1) % SOURCES.length)
+    activeSlotRef.current = nextSlot
+    outgoingSlotRef.current = fromSlot
+    setOutgoingSlot(fromSlot)
+    setActiveSlot(nextSlot)
 
     cleanupTimerRef.current = window.setTimeout(
-      () => finishCrossfade(fromIndex),
+      () => finishCrossfade(fromSlot),
       CROSSFADE_SECONDS * 1000 + 250,
     )
   }, [finishCrossfade, playVideo, preloadVideo, reduced])
@@ -119,15 +128,15 @@ export function HeroVideoBackground() {
       return
     }
 
-    const current = videoRefs.current[activeIndex]
-    const nextIndex = (activeIndex + 1) % SOURCES.length
-    videoRefs.current.forEach((video, index) => {
-      if (index !== activeIndex) video?.pause()
+    const current = videoRefs.current[activeSlot]
+    const nextSlot = (activeSlot === 0 ? 1 : 0) as 0 | 1
+    videoRefs.current.forEach((video, slot) => {
+      if (slot !== activeSlot) video?.pause()
     })
-    preloadVideo(activeIndex)
-    preloadVideo(nextIndex)
+    preloadVideo(activeSlot)
+    preloadVideo(nextSlot)
     void playVideo(current)
-  }, [activeIndex, playVideo, preloadVideo, reduced])
+  }, [activeSlot, playVideo, preloadVideo, reduced])
 
   useEffect(() => {
     if (reduced) return
@@ -137,10 +146,10 @@ export function HeroVideoBackground() {
         videoRefs.current.forEach((video) => video?.pause())
         return
       }
-      videoRefs.current.forEach((video, index) => {
-        if (index !== activeIndexRef.current) video?.pause()
+      videoRefs.current.forEach((video, slot) => {
+        if (slot !== activeSlotRef.current) video?.pause()
       })
-      void playVideo(videoRefs.current[activeIndexRef.current])
+      void playVideo(videoRefs.current[activeSlotRef.current])
     }
 
     document.addEventListener('visibilitychange', resumeActive)
@@ -155,7 +164,7 @@ export function HeroVideoBackground() {
 
   useEffect(() => () => {
     videoRefs.current.forEach((video) => video?.pause())
-    outgoingIndexRef.current = null
+    outgoingSlotRef.current = null
     if (cleanupTimerRef.current !== null) window.clearTimeout(cleanupTimerRef.current)
   }, [])
 
@@ -180,18 +189,18 @@ export function HeroVideoBackground() {
     )
   }
 
-  const nextIndex = (activeIndex + 1) % SOURCES.length
-
   return (
     <div aria-hidden="true" className="absolute inset-0 bg-[#0d1512]">
-      {SOURCES.map((source, index) => {
-        const isActive = index === activeIndex
-        const isOutgoing = index === outgoingIndex
+      {slotSources.map((sourceIndex, slotIndex) => {
+        const slot = slotIndex as 0 | 1
+        const source = SOURCES[sourceIndex]
+        const isActive = slot === activeSlot
+        const isOutgoing = slot === outgoingSlot
         return (
           <video
-            key={source}
+            key={`hero-video-slot-${slot}`}
             ref={(node) => {
-              videoRefs.current[index] = node
+              videoRefs.current[slot] = node
               if (node) {
                 node.muted = true
                 node.defaultMuted = true
@@ -205,26 +214,26 @@ export function HeroVideoBackground() {
             playsInline
             controls={false}
             disablePictureInPicture
-            preload={isActive || index === nextIndex ? 'auto' : 'none'}
+            preload="auto"
             onTimeUpdate={(event) => {
               if (!isActive || transitioningRef.current) return
               const video = event.currentTarget
               if (!Number.isFinite(video.duration) || video.duration <= 0) return
-              if (video.duration - video.currentTime <= CROSSFADE_SECONDS) void beginCrossfade(index)
+              if (video.duration - video.currentTime <= CROSSFADE_SECONDS) void beginCrossfade(slot)
             }}
-            onEnded={isActive ? () => void beginCrossfade(index) : undefined}
+            onEnded={isActive ? () => void beginCrossfade(slot) : undefined}
             onCanPlay={() => {
               if (isActive) {
-                void playVideo(videoRefs.current[index])
+                void playVideo(videoRefs.current[slot])
                 return
               }
-              const current = videoRefs.current[activeIndexRef.current]
-              if (index === (activeIndexRef.current + 1) % SOURCES.length && current?.ended) {
-                void beginCrossfade(activeIndexRef.current)
+              const current = videoRefs.current[activeSlotRef.current]
+              if (current?.ended) {
+                void beginCrossfade(activeSlotRef.current)
               }
             }}
             onTransitionEnd={(event) => {
-              if (event.propertyName === 'opacity' && isOutgoing) finishCrossfade(index)
+              if (event.propertyName === 'opacity' && isOutgoing) finishCrossfade(slot)
             }}
             onContextMenu={(event) => event.preventDefault()}
             style={{ willChange: 'opacity' }}
