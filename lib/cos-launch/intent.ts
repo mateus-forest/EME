@@ -17,6 +17,7 @@ export function resolveCosLaunchIntent(message: string): CosLaunchIntent {
   if (wantsCreate && value.includes("contrato")) return "create_contract"
   if (wantsCreate && includesAny(value, ["compromisso", "agenda", "visita", "reuniao"])) return "create_agenda"
   const wantsHelp = includesAny(value, ["ajuda", "como funciona", "como usar", "como faco", "duvida", "explique"])
+  if (wantsHelp && includesAny(value, ["plano", "conta", "faturamento", "assinatura", "credito", "capacidade", "pagamento", "cancelamento"])) return "help_plan_account"
   if (wantsHelp && value.includes("imovel")) return "help_properties"
   if (wantsHelp && includesAny(value, ["cliente", "lead"])) return "help_clients"
   if (wantsHelp && value.includes("contrato")) return "help_contracts"

@@ -359,13 +359,13 @@ export function CosPromptComposer({
                 setIsMenuOpen(false)
                 setExpandedMenuGroup(null)
               }}
-              className="w-[min(16rem,calc(100vw-1.5rem))] rounded-2xl border-black/[0.06] bg-white/95 p-2 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl"
+              className="max-h-[min(24rem,calc(100dvh-6rem))] w-[min(16rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl border-black/[0.06] bg-white/95 p-1.5 text-[#050505] shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl [scrollbar-color:rgba(100,116,139,0.28)_transparent] [scrollbar-width:thin]"
             >
               {onNewConversation ? (
                 <>
                   <DropdownMenuItem
                     onSelect={() => void handleNewConversation()}
-                    className="rounded-xl text-[#050505] focus:bg-[#f6f7f4]"
+                    className="min-h-8 rounded-lg px-2 py-1.5 text-[13px] text-[#050505] focus:bg-[#f6f7f4]"
                   >
                     <MessageSquarePlus className="mr-2 size-4 text-[#7B8491]" />
                     Nova conversa
@@ -493,18 +493,18 @@ function MenuGroup({
   children: ReactNode
 }) {
   return (
-    <div className="mt-1">
+    <div className="mt-0.5">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm text-[#050505] transition-colors hover:bg-[#f6f7f4]"
+        className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#050505] transition-colors hover:bg-[#f6f7f4]"
         aria-expanded={isExpanded}
       >
         {icon}
         <span className="flex-1">{label}</span>
         {isExpanded ? <ChevronDown className="size-4 text-[#7B8491]" /> : <ChevronRight className="size-4 text-[#7B8491]" />}
       </button>
-      {isExpanded ? <div className="mt-1 grid gap-1 pl-3">{children}</div> : null}
+      {isExpanded ? <div className="mt-0.5 grid gap-0.5 pl-2.5">{children}</div> : null}
     </div>
   )
 }
@@ -522,7 +522,7 @@ function MenuLeaf({
     <button
       type="button"
       onClick={onSelect}
-      className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm text-[#273444] transition-colors hover:bg-[#f6f7f4]"
+      className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#273444] transition-colors hover:bg-[#f6f7f4]"
     >
       {icon ? icon : <span className="size-4" />}
       <span>{label}</span>

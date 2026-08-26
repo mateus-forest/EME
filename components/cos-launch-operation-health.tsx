@@ -9,19 +9,49 @@ type OperationHealth = {
   pending: Record<string, number>
 }
 
-const scoreLabels: Record<keyof OperationHealth["scores"], string> = {
-  clients: "Clientes",
-  properties: "Imóveis",
-  documents: "Documentos",
-  contracts: "Contratos",
-  agenda: "Agenda",
-  leads: "Leads",
+const pendingLabels: Record<string, string> = {
+  missingLeadInformation: "Clientes sem dados",
+  missingRg: "Clientes sem RG",
+  missingRegistry: "Imóveis sem matrícula",
+  missingPropertyDocuments: "Imóveis sem documentos",
+  draftDocuments: "Documentos em rascunho",
+  draftContracts: "Contratos em rascunho",
+  awaitingSignature: "Contratos aguardando assinatura",
+  pendingAgenda: "Compromissos pendentes",
+  unattendedLeads: "Leads sem atendimento",
+}
+
+type PendingItem = { key: string; label: string; count: number }
+
+function PendingBreakdown({ items, showAll, onToggleAll }: { items: PendingItem[]; showAll: boolean; onToggleAll: () => void }) {
+  const visibleItems = showAll ? items : items.slice(0, 6)
+
+  if (items.length === 0) return <p className="text-[11px] text-slate-500">Nenhuma pendência encontrada.</p>
+
+  return (
+    <div className="space-y-2">
+      <div className="space-y-1.5">
+        {visibleItems.map((item) => (
+          <div key={item.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-500">
+            <span className="min-w-0 truncate">{item.label}</span>
+            <span className="shrink-0 font-semibold text-slate-700">{item.count}</span>
+          </div>
+        ))}
+      </div>
+      {items.length > 6 ? (
+        <button type="button" onClick={onToggleAll} className="text-[11px] font-medium text-emerald-700 transition hover:text-emerald-800">
+          {showAll ? "Mostrar principais" : "Ver todas as pendências"}
+        </button>
+      ) : null}
+    </div>
+  )
 }
 
 export function CosLaunchOperationHealth() {
   const [health, setHealth] = useState<OperationHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
+  const [showAllPending, setShowAllPending] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -46,20 +76,17 @@ export function CosLaunchOperationHealth() {
     () => Object.values(health?.pending ?? {}).reduce((total, value) => total + value, 0),
     [health],
   )
+  const pendingItems = useMemo<PendingItem[]>(
+    () => Object.entries(health?.pending ?? {}).filter(([, count]) => count > 0).map(([key, count]) => ({ key, count, label: pendingLabels[key] ?? key })).sort((left, right) => right.count - left.count),
+    [health],
+  )
 
   return (
     <>
       <aside className="absolute bottom-[5.5rem] right-4 z-20 lg:hidden">
         {expanded && health ? (
           <div className="absolute bottom-[calc(100%+8px)] right-0 w-48 rounded-2xl border border-white/90 bg-white/92 p-3 shadow-[0_16px_40px_rgba(15,23,42,.10)] backdrop-blur-2xl">
-            <div className="grid gap-1.5">
-              {(Object.entries(health.scores) as Array<[keyof OperationHealth["scores"], number]>).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{scoreLabels[key]}</span>
-                  <span className="font-semibold text-slate-700">{value}%</span>
-                </div>
-              ))}
-            </div>
+            <PendingBreakdown items={pendingItems} showAll={showAllPending} onToggleAll={() => setShowAllPending((current) => !current)} />
           </div>
         ) : null}
         <button
@@ -100,13 +127,8 @@ export function CosLaunchOperationHealth() {
       </div>
 
       {expanded && health ? (
-        <div className="mt-3 grid gap-1.5 border-t border-slate-100 pt-3">
-          {(Object.entries(health.scores) as Array<[keyof OperationHealth["scores"], number]>).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between text-[11px] text-slate-500">
-              <span>{scoreLabels[key]}</span>
-              <span className="font-semibold text-slate-700">{value}%</span>
-            </div>
-          ))}
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <PendingBreakdown items={pendingItems} showAll={showAllPending} onToggleAll={() => setShowAllPending((current) => !current)} />
         </div>
       ) : null}
 

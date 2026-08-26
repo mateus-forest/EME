@@ -2,7 +2,7 @@ export type CosLaunchIntent =
   | "list_properties" | "list_clients" | "list_contracts" | "list_proposals" | "list_documents" | "agenda_today"
   | "create_property" | "create_client" | "create_contract" | "create_proposal" | "create_agenda" | "attach_document"
   | "help_properties" | "help_clients" | "help_contracts" | "help_proposals" | "help_studio" | "help_catalog"
-  | "help_marketplace" | "help_cos" | "new_conversation" | "unknown"
+  | "help_marketplace" | "help_plan_account" | "help_cos" | "new_conversation" | "unknown"
 
 export type CosLaunchCardKind = "property" | "client" | "contract" | "proposal" | "document" | "agenda"
 export type CosLaunchCard = {
