@@ -35,4 +35,4 @@ export type CosLaunchResponse = {
   elapsedMs?: number
   credits?: { balance: number; usedThisMonth: number }
 }
-export type CosLaunchRequest = { message?: string; action?: string; payload?: Record<string, unknown> }
+export type CosLaunchRequest = { conversationId?: string; message?: string; action?: string; payload?: Record<string, unknown> }

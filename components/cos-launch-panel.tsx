@@ -1,14 +1,16 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { CalendarDays, Home, Plus, UserRound } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { BrokerPageShell } from "@/components/broker-page-shell"
 import { CosLaunchCards } from "@/components/cos-launch-cards"
 import { CosLaunchInlineForm } from "@/components/cos-launch-inline-form"
 import { CosLaunchOperationHealth } from "@/components/cos-launch-operation-health"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
+import { COS_CONVERSATIONS_REFRESH_EVENT } from "@/components/use-cos-conversations"
 import { useBrokerProfile } from "@/components/use-broker-profile"
 import { cosLaunchMenuGroups } from "@/lib/cos-launch/menu"
 import type { CosLaunchAction, CosLaunchCard, CosLaunchForm, CosLaunchResponse } from "@/lib/cos-launch/types"
@@ -21,6 +23,23 @@ type Message = {
   form?: CosLaunchForm
   actions?: CosLaunchAction[]
   elapsedMs?: number
+}
+
+type PersistedConversationMessage = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+}
+
+type ConversationDetailResponse = {
+  messages?: PersistedConversationMessage[]
+  error?: string
+  code?: string
+}
+
+type ConversationCreateResponse = {
+  conversation?: { id: string }
+  error?: string
 }
 
 const welcome: Message = {
@@ -36,43 +55,152 @@ const quickActions = [
 ]
 
 export function CosLaunchPanel() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedConversationId = searchParams.get("conversa")?.trim() || ""
   const [messages, setMessages] = useState<Message[]>([welcome])
   const [prompt, setPrompt] = useState("")
   const [busy, setBusy] = useState(false)
+  const [isConversationLoading, setIsConversationLoading] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const activeConversationIdRef = useRef("")
+  const createConversationPromiseRef = useRef<Promise<string> | null>(null)
+  const conversationLoadRequestRef = useRef(0)
+  const bootstrapStartedRef = useRef(false)
+  const skipNextLoadConversationIdRef = useRef("")
   const { profile } = useBrokerProfile()
   const firstName = profile.fullName.trim().split(/\s+/)[0] || "corretor"
 
+  const notifyConversationRefresh = useCallback(() => {
+    window.dispatchEvent(new Event(COS_CONVERSATIONS_REFRESH_EVENT))
+  }, [])
+
+  const createConversation = useCallback(async () => {
+    if (createConversationPromiseRef.current) return createConversationPromiseRef.current
+
+    const creation = (async () => {
+      conversationLoadRequestRef.current += 1
+      setIsConversationLoading(true)
+      const response = await fetch("/api/assistant/eme/conversations", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      })
+      const data = (await response.json().catch(() => null)) as ConversationCreateResponse | null
+      if (!response.ok || !data?.conversation?.id) {
+        throw new Error(data?.error || "Não foi possível criar a conversa.")
+      }
+
+      const conversationId = data.conversation.id
+      activeConversationIdRef.current = conversationId
+      skipNextLoadConversationIdRef.current = conversationId
+      setMessages([{ ...welcome, id: crypto.randomUUID() }])
+      setFeedback(null)
+      router.replace(`/corretor?conversa=${encodeURIComponent(conversationId)}`, { scroll: false })
+      notifyConversationRefresh()
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+      return conversationId
+    })()
+
+    createConversationPromiseRef.current = creation
+    try {
+      return await creation
+    } finally {
+      if (createConversationPromiseRef.current === creation) createConversationPromiseRef.current = null
+      setIsConversationLoading(false)
+    }
+  }, [notifyConversationRefresh, router])
+
+  const loadConversation = useCallback(async (conversationId: string) => {
+    const requestId = ++conversationLoadRequestRef.current
+    setIsConversationLoading(true)
+    setFeedback(null)
+    setMessages([])
+
+    try {
+      const response = await fetch(`/api/assistant/eme/conversations/${encodeURIComponent(conversationId)}`, {
+        credentials: "include",
+        cache: "no-store",
+      })
+      const data = (await response.json().catch(() => null)) as ConversationDetailResponse | null
+      if (!response.ok) {
+        if (response.status === 404 && data?.code === "COS_CONVERSATION_NOT_FOUND") {
+          activeConversationIdRef.current = ""
+          await createConversation()
+          return
+        }
+        throw new Error(data?.error || "Não foi possível abrir a conversa.")
+      }
+      if (requestId !== conversationLoadRequestRef.current || activeConversationIdRef.current !== conversationId) return
+
+      const restored = (data?.messages ?? []).map<Message>((message) => ({
+        id: message.id,
+        role: message.role,
+        text: message.content,
+      }))
+      setMessages(restored.length > 0 ? restored : [{ ...welcome, id: crypto.randomUUID() }])
+    } catch (error) {
+      if (requestId !== conversationLoadRequestRef.current) return
+      const message = error instanceof Error ? error.message : "Não foi possível abrir a conversa."
+      setMessages([{ ...welcome, id: crypto.randomUUID() }])
+      setFeedback(message)
+    } finally {
+      if (requestId === conversationLoadRequestRef.current) setIsConversationLoading(false)
+    }
+  }, [createConversation])
+
+  useEffect(() => {
+    if (requestedConversationId) {
+      activeConversationIdRef.current = requestedConversationId
+      if (skipNextLoadConversationIdRef.current === requestedConversationId) {
+        skipNextLoadConversationIdRef.current = ""
+        return
+      }
+      void loadConversation(requestedConversationId)
+      return
+    }
+
+    if (bootstrapStartedRef.current) return
+    bootstrapStartedRef.current = true
+    void createConversation().catch((error: unknown) => {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível criar a conversa.")
+    })
+  }, [createConversation, loadConversation, requestedConversationId])
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-  }, [messages, busy])
+  }, [messages, busy, isConversationLoading])
 
   async function request(body: { message?: string; action?: string; payload?: Record<string, unknown> }) {
     setBusy(true)
     setFeedback(null)
     try {
+      const conversationId = activeConversationIdRef.current || await createConversation()
       const response = await fetch("/api/cos-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, conversationId }),
       })
       const data = (await response.json()) as CosLaunchResponse & { error?: string }
       if (!response.ok) throw new Error(data.error || "Não foi possível concluir a solicitação.")
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          text: data.message,
-          cards: data.cards,
-          form: data.form,
-          actions: data.actions,
-          elapsedMs: data.elapsedMs,
-        },
-      ])
+      if (activeConversationIdRef.current === conversationId) {
+        setMessages((current) => [
+          ...current,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            text: data.message,
+            cards: data.cards,
+            form: data.form,
+            actions: data.actions,
+            elapsedMs: data.elapsedMs,
+          },
+        ])
+      }
+      notifyConversationRefresh()
       return true
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir a solicitação."
@@ -95,19 +223,22 @@ export function CosLaunchPanel() {
 
   async function runAction(action: string, label?: string) {
     if (action === "conversation:new") {
-      setMessages([{ ...welcome, id: crypto.randomUUID(), text: "Nova conversa iniciada. O que você deseja fazer?" }])
-      setFeedback(null)
+      try {
+        await createConversation()
+      } catch (error) {
+        setFeedback(error instanceof Error ? error.message : "Não foi possível criar a conversa.")
+      }
       return
     }
 
     if (label) {
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", text: label }])
     }
-    await request({ action })
+    await request({ action, message: label })
   }
 
   async function submitForm(messageId: string, form: CosLaunchForm, payload: Record<string, unknown>) {
-    const success = await request({ action: `submit:${form.kind}`, payload })
+    const success = await request({ action: `submit:${form.kind}`, message: form.submitLabel, payload })
     if (success) {
       setMessages((current) =>
         current.map((message) => (message.id === messageId ? { ...message, form: undefined } : message)),
@@ -149,7 +280,12 @@ export function CosLaunchPanel() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-white/80 bg-white/28 px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,.8)] sm:px-5">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-                {messages.map((message) => (
+                {isConversationLoading ? (
+                  <div className="flex w-fit items-center gap-2 rounded-full bg-white/80 px-3.5 py-2 text-xs text-slate-500 shadow-sm">
+                    <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+                    Carregando conversa...
+                  </div>
+                ) : messages.map((message) => (
                   <section key={message.id} className={message.role === "user" ? "ml-auto max-w-2xl" : "max-w-4xl"}>
                     <div
                       className={
@@ -227,7 +363,7 @@ export function CosLaunchPanel() {
                   setPrompt={setPrompt}
                   onSubmit={submitMessage}
                   onNewConversation={() => runAction("conversation:new")}
-                  disabled={busy}
+                  disabled={busy || isConversationLoading}
                   inputRef={inputRef}
                   feedback={feedback ?? undefined}
                   sticky={false}

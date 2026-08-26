@@ -167,7 +167,7 @@ export function CosLaunchOperationHealth() {
             <Activity className="size-3.5 lg:size-4" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 lg:text-[11px] lg:tracking-[0.14em]">Saúde da operação</p>
+            <p className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.07em] text-slate-500 lg:text-[9px] lg:tracking-[0.09em]">Saúde da operação</p>
             <p className="text-[11px] text-slate-500 lg:mt-0.5 lg:text-xs">{loading ? "Consultando..." : health ? `${pendingCount} pendência${pendingCount === 1 ? "" : "s"}` : "Resumo indisponível"}</p>
           </div>
         </div>

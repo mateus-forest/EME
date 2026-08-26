@@ -101,6 +101,14 @@ export function BrokerSidebarConversations({
     return () => window.removeEventListener(COS_CONVERSATIONS_SYNC_EVENT, handleSync)
   }, [])
 
+  useEffect(() => {
+    function handleRefresh() {
+      void loadConversations()
+    }
+    window.addEventListener(COS_CONVERSATIONS_REFRESH_EVENT, handleRefresh)
+    return () => window.removeEventListener(COS_CONVERSATIONS_REFRESH_EVENT, handleRefresh)
+  }, [loadConversations])
+
   const groupedConversations = useMemo(() => {
     const normalizedSearch = normalizeSearch(search)
     const filtered = conversations.filter((item) => !normalizedSearch || normalizeSearch(item.title).includes(normalizedSearch))
