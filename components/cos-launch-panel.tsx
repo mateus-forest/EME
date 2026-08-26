@@ -125,9 +125,9 @@ export function CosLaunchPanel() {
     >
       <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
         <CosLaunchOperationHealth />
-        <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 pb-3 pt-2 sm:px-6 lg:py-4 lg:pr-[260px]">
+        <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 pb-3 pt-3 sm:px-6 lg:pb-4 lg:pt-7 lg:pr-[260px]">
           <header className="mb-3 shrink-0 lg:mb-2">
-            <h1 className="text-[2rem] font-medium leading-[1.05] tracking-[-0.035em] text-slate-950 sm:text-[2.15rem] lg:text-2xl lg:tracking-[-0.025em]">
+            <h1 className="text-[2.1rem] font-medium leading-[1.05] tracking-[-0.035em] text-slate-950 sm:text-[2.2rem] lg:text-[2rem] lg:tracking-[-0.025em]">
               Olá, {firstName}.
             </h1>
           </header>
@@ -154,7 +154,7 @@ export function CosLaunchPanel() {
                     <div
                       className={
                         message.id === "welcome"
-                          ? "w-full bg-transparent px-1 py-1 text-sm italic leading-6 text-slate-500 shadow-none lg:w-fit lg:max-w-2xl lg:rounded-[6px_20px_20px_20px] lg:border lg:border-slate-100/80 lg:bg-white/80 lg:px-3.5 lg:py-2.5 lg:not-italic lg:text-slate-700 lg:shadow-[0_5px_18px_rgba(15,23,42,.04)] lg:backdrop-blur-xl"
+                          ? "w-full bg-transparent px-1 py-0.5 text-xs italic leading-5 text-slate-400 shadow-none sm:text-[13px]"
                           : message.role === "user"
                           ? "ml-auto w-fit rounded-[20px_20px_6px_20px] bg-emerald-950 px-3.5 py-2.5 text-sm text-white shadow-sm"
                           : "w-fit max-w-2xl rounded-[6px_20px_20px_20px] border border-slate-100/80 bg-white/80 px-3.5 py-2.5 text-sm leading-6 text-slate-700 shadow-[0_5px_18px_rgba(15,23,42,.04)] backdrop-blur-xl"
