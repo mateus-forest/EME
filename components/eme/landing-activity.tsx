@@ -82,14 +82,23 @@ export function LandingActivity({
       data-testid="landing-activity"
       data-active-metric={metric.id}
     >
-      <div className="eme-landing-glass-chip inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md">
-        <span className="relative flex size-2" aria-hidden>
-          <span className="absolute inline-flex size-full rounded-full bg-eme/35 motion-safe:animate-ping" />
-          <span className="relative inline-flex size-2 rounded-full bg-eme" />
-        </span>
-        <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-graphite/80 sm:text-[10px]">
-          Agora no EME
-        </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="eme-landing-glass-chip inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md">
+          <span className="relative flex size-2" aria-hidden>
+            <span className="absolute inline-flex size-full rounded-full bg-eme/35 motion-safe:animate-ping" />
+            <span className="relative inline-flex size-2 rounded-full bg-eme" />
+          </span>
+          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-graphite/80 sm:text-[10px]">
+            Agora no EME
+          </span>
+        </div>
+        <a
+          href="https://www.meueme.com/imoveis"
+          aria-label="Abrir Marketplace EME"
+          className="eme-landing-glass-chip inline-flex items-center rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-graphite/80 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md transition-colors hover:text-eme focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/50 sm:text-[10px]"
+        >
+          Marketplace &gt;
+        </a>
       </div>
 
       <div className={compact ? "mt-2.5 min-h-[54px] max-w-[250px]" : "mt-4 min-h-[72px] max-w-[370px]"}>
