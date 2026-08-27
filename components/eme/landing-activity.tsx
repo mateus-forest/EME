@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
+import { ArrowUpRight } from "lucide-react"
 
 import type { LandingActivityMetric, LandingActivityResponse } from "@/lib/landing-activity"
 
@@ -95,9 +96,14 @@ export function LandingActivity({
         <a
           href="https://www.meueme.com/imoveis"
           aria-label="Abrir Marketplace EME"
-          className="eme-landing-glass-chip inline-flex items-center rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-graphite/80 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md transition-colors hover:text-eme focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/50 sm:text-[10px]"
+          onClick={(event) => {
+            event.stopPropagation()
+            window.location.assign("https://www.meueme.com/imoveis")
+          }}
+          className="eme-landing-glass-chip pointer-events-auto relative z-[70] inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-graphite/80 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md transition-colors hover:text-eme focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/50 sm:text-[10px]"
         >
-          Marketplace &gt;
+          Marketplace
+          <ArrowUpRight className="size-3" strokeWidth={1.8} aria-hidden />
         </a>
       </div>
 
