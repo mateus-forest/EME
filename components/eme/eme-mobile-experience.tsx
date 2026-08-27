@@ -213,7 +213,7 @@ export function EmeMobileExperience({
         <LandingActivity
           authOpen={authOpen}
           compact
-          className="fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[60]"
+          className="fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[140]"
         />
 
         <div
