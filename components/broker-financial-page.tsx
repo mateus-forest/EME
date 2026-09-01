@@ -386,19 +386,22 @@ export function BrokerFinancialPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-white sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Novo lançamento</DialogTitle>
-            <DialogDescription>Registre somente a movimentação operacional do corretor.</DialogDescription>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-[var(--broker-radius-lg)] border-[#d0d5dd] bg-white text-[#101828] sm:max-w-2xl [&_[data-slot=dialog-close]]:text-[#475467] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]:hover]:bg-[#f2f4f7] [&_[data-slot=dialog-close]:hover]:text-[#101828] [&_[data-slot=dialog-close]:focus-visible]:ring-[#08783e]/25">
+          <DialogHeader className="gap-1.5 pr-8">
+            <DialogTitle className="text-xl font-semibold leading-tight tracking-[-0.02em] text-[#101828]">Novo lançamento</DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-[#475467]">Registre somente a movimentação operacional do corretor.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={saveEntry} className="grid gap-4">
-            <div className="grid grid-cols-3 gap-2 rounded-[var(--broker-radius-md)] bg-[var(--broker-surface-inset)] p-1.5">
+          <form
+            onSubmit={saveEntry}
+            className="grid gap-4 text-[#101828] [&_[data-slot=input]]:border-[#d0d5dd] [&_[data-slot=input]]:bg-white [&_[data-slot=input]]:text-[#101828] [&_[data-slot=input]]:placeholder:text-[#667085] [&_[data-slot=input]:disabled]:border-[#e4e7ec] [&_[data-slot=input]:disabled]:bg-[#f2f4f7] [&_[data-slot=input]:disabled]:text-[#667085] [&_[data-slot=input]:disabled]:opacity-100 [&_[data-slot=input]:focus-visible]:border-[#08783e] [&_[data-slot=input]:focus-visible]:ring-[#08783e]/15 [&_[data-slot=textarea]]:border-[#d0d5dd] [&_[data-slot=textarea]]:bg-white [&_[data-slot=textarea]]:text-[#101828] [&_[data-slot=textarea]]:placeholder:text-[#667085] [&_[data-slot=textarea]:disabled]:border-[#e4e7ec] [&_[data-slot=textarea]:disabled]:bg-[#f2f4f7] [&_[data-slot=textarea]:disabled]:text-[#667085] [&_[data-slot=textarea]:disabled]:opacity-100 [&_[data-slot=textarea]:focus-visible]:border-[#08783e] [&_[data-slot=textarea]:focus-visible]:ring-[#08783e]/15"
+          >
+            <div className="grid grid-cols-3 gap-2 rounded-[var(--broker-radius-md)] border border-[#e4e7ec] bg-[#f2f4f7] p-1.5">
               {(["income", "expense", "commission"] as EntryType[]).map((entryType) => (
                 <button
                   key={entryType}
                   type="button"
                   onClick={() => changeEntryType(entryType)}
-                  className={`rounded-xl px-2 py-2 text-sm font-medium transition-colors ${draft.entryType === entryType ? "bg-white text-[var(--broker-ink)] shadow-sm" : "text-[var(--broker-muted)] hover:text-[var(--broker-ink)]"}`}
+                  className={`rounded-xl px-2 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#08783e]/25 ${draft.entryType === entryType ? "bg-white text-[#101828] shadow-sm ring-1 ring-black/[0.05]" : "text-[#475467] hover:bg-white/70 hover:text-[#101828]"}`}
                 >
                   {entryType === "income" ? "Recebimento" : entryType === "expense" ? "Despesa" : "Comissão"}
                 </button>
@@ -424,13 +427,13 @@ export function BrokerFinancialPage() {
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label={`Cliente${isCommission ? " *" : " (opcional)"}`}>
+              <FormField label={isCommission ? "Cliente" : "Cliente (opcional)"} required={isCommission}>
                 <NativeSelect value={draft.leadId} onChange={(value) => updateDraft("leadId", value)} required={isCommission}>
                   <option value="">Selecione um cliente</option>
                   {data?.references.clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
                 </NativeSelect>
               </FormField>
-              <FormField label={`Imóvel${isCommission ? " *" : " (opcional)"}`}>
+              <FormField label={isCommission ? "Imóvel" : "Imóvel (opcional)"} required={isCommission}>
                 <NativeSelect value={draft.propertyId} onChange={(value) => updateDraft("propertyId", value)} required={isCommission}>
                   <option value="">Selecione um imóvel</option>
                   {data?.references.properties.map((property) => <option key={property.id} value={property.id}>{property.title}</option>)}
@@ -460,19 +463,19 @@ export function BrokerFinancialPage() {
                     <StructuredInput kind="percent" value={draft.commissionPercent} onValueChange={(formatted) => updateDraft("commissionPercent", formatted)} placeholder="6%" />
                   </FormField>
                 </div>
-                <div className="flex items-center justify-between gap-4 rounded-[var(--broker-radius-md)] border border-[var(--broker-accent-border)] bg-[var(--broker-accent-soft)] p-4">
+                <div className="flex items-center justify-between gap-4 rounded-[var(--broker-radius-md)] border border-[#a6e3b8] bg-[#f0fdf4] p-4">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--broker-accent-strong)]">Comissão calculada</p>
-                    <p className="mt-1 text-xl font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(calculatedCommission)}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#08783e]">Comissão calculada</p>
+                    <p className="mt-1 text-xl font-semibold text-[#101828]">{formatCurrencyBRLFromCents(calculatedCommission)}</p>
                   </div>
-                  <HandCoins className="size-6 text-[var(--broker-accent)]" />
+                  <HandCoins className="size-6 text-[#08783e]" />
                 </div>
               </div>
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label={draft.entryType === "expense" ? "Data" : "Data prevista"} required>
-                <Input type="date" value={draft.dueDate} onChange={(event) => updateDraft("dueDate", event.target.value)} />
+                <Input type="date" value={draft.dueDate} onChange={(event) => updateDraft("dueDate", event.target.value)} className="[color-scheme:light]" />
               </FormField>
               <FormField label="Status" required>
                 <NativeSelect value={draft.status} onChange={(value) => updateDraft("status", value)}>
@@ -487,7 +490,7 @@ export function BrokerFinancialPage() {
 
             {draft.status === "RECEIVED" || draft.status === "PAID" ? (
               <FormField label={draft.status === "PAID" ? "Pago em" : "Recebido em"} required>
-                <Input type="date" value={draft.occurredAt} onChange={(event) => updateDraft("occurredAt", event.target.value)} />
+                <Input type="date" value={draft.occurredAt} onChange={(event) => updateDraft("occurredAt", event.target.value)} className="[color-scheme:light]" />
               </FormField>
             ) : null}
 
@@ -495,10 +498,10 @@ export function BrokerFinancialPage() {
               <Textarea value={draft.notes} onChange={(event) => updateDraft("notes", event.target.value)} maxLength={2000} placeholder="Informações úteis para acompanhar este lançamento." />
             </FormField>
 
-            {feedback ? <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{feedback}</p> : null}
+            {feedback ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">{feedback}</p> : null}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isSaving} className="bg-[var(--broker-accent)] text-white hover:bg-[#008633]">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-[#d0d5dd] bg-white font-semibold text-[#344054] shadow-sm hover:border-[#98a2b3] hover:bg-[#f9fafb] hover:text-[#101828] disabled:bg-[#f2f4f7] disabled:text-[#667085] disabled:opacity-100">Cancelar</Button>
+              <Button type="submit" disabled={isSaving} className="bg-[#08783e] font-semibold text-white shadow-sm hover:bg-[#056332] disabled:bg-[#d1fadf] disabled:text-[#667085] disabled:opacity-100">
                 {isSaving ? "Salvando..." : "Registrar lançamento"}
               </Button>
             </DialogFooter>
@@ -720,12 +723,12 @@ function SectionHeader({ title, description, action, onAction }: { title: string
 }
 
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <div className="grid gap-1.5"><Label>{label}{required ? <span className="text-red-600">*</span> : null}</Label>{children}</div>
+  return <div className="grid gap-1.5"><Label className="text-[13px] font-semibold leading-5 text-[#344054]">{label}{required ? <span aria-hidden="true" className="ml-0.5 text-red-700">*</span> : null}</Label>{children}</div>
 }
 
 function NativeSelect({ value, onChange, required, children }: { value: string; onChange: (value: string) => void; required?: boolean; children: React.ReactNode }) {
   return (
-    <select value={value} onChange={(event) => onChange(event.target.value)} required={required} className="h-9 w-full rounded-xl border border-black/[0.06] bg-white px-3 text-sm text-[#050505] shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none focus:border-[#009b3a]/30 focus:ring-[3px] focus:ring-[#009b3a]/12">
+    <select value={value} onChange={(event) => onChange(event.target.value)} required={required} className={`h-9 w-full rounded-xl border border-[#d0d5dd] bg-white px-3 text-sm font-medium shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none [color-scheme:light] focus:border-[#08783e] focus:ring-[3px] focus:ring-[#08783e]/15 disabled:border-[#e4e7ec] disabled:bg-[#f2f4f7] disabled:text-[#667085] disabled:opacity-100 ${value ? "text-[#101828]" : "text-[#667085]"}`}>
       {children}
     </select>
   )
