@@ -27,6 +27,7 @@ const MODAL_AR: Record<string, number> = {
   contratos: 1536 / 1024,
   agenda: 1452 / 941,
   marketplace: 1522 / 1033,
+  financeiro: 1077 / 846,
 }
 const DEFAULT_AR = 1480 / 962
 
@@ -47,9 +48,14 @@ const MOBILE_MODULE_CROPS: Record<string, ModuleImageCrop> = {
   cos: { sourceWidth: 941, sourceHeight: 1672, x: 83, y: 48, width: 773, height: 1576 },
 }
 
+const MOBILE_MODULE_MOCKUP_CROPS: Record<string, ModuleImageCrop> = {
+  financeiro: { sourceWidth: 1672, sourceHeight: 941, x: 315, y: 165, width: 635, height: 525 },
+}
+
 const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
   cos: { sourceWidth: 1672, sourceHeight: 941, x: 129, y: 51, width: 1408, height: 833 },
   catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 284, y: 30, width: 1223, height: 816 },
+  financeiro: { sourceWidth: 1672, sourceHeight: 941, x: 312, y: 49, width: 1077, height: 846 },
 }
 
 function CroppedModuleImage({
@@ -223,6 +229,7 @@ export function ExpandedModulePanel({
 
   const mobileBanner = MOBILE_MODULE_BANNERS[module.id]
   const mobileCrop = MOBILE_MODULE_CROPS[module.id]
+  const mobileMockupCrop = MOBILE_MODULE_MOCKUP_CROPS[module.id]
   const desktopCrop = DESKTOP_MODULE_CROPS[module.id]
   const ModuleIcon = module.icon
   const fromStart = buildTransform(start, target)
@@ -296,8 +303,16 @@ export function ExpandedModulePanel({
               sizes="90vw"
               imageClassName="object-contain"
               className={`absolute inset-0 border border-white/75 shadow-[0_28px_72px_-38px_rgba(20,52,36,0.38)] ${
-                module.id === "catalogo" ? "rounded-[30px]" : "rounded-[44px]"
+                module.id === "catalogo" ? "rounded-[30px]" : module.id === "financeiro" ? "rounded-[22px]" : "rounded-[44px]"
               }`}
+            />
+          ) : null}
+
+          {module.id === "financeiro" ? (
+            <div
+              data-finance-demo-mask
+              className="absolute left-[57.8%] top-[81.8%] h-[13.8%] w-[30.2%] rounded-[20px] bg-[linear-gradient(145deg,#f0f3f1,#e7ece9)]"
+              aria-hidden="true"
             />
           ) : null}
 
@@ -369,14 +384,25 @@ export function ExpandedModulePanel({
                 className="eme-module-modal-media relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
                 style={{ aspectRatio }}
               >
-                <Image
-                  src={module.mockup || "/placeholder.svg"}
-                  alt={`Prévia visual do módulo ${module.name}`}
-                  fill
-                  sizes="(max-width: 767px) calc(100vw - 58px), 680px"
-                  className="object-cover p-2"
-                  priority
-                />
+                {mobileMockupCrop ? (
+                  <CroppedModuleImage
+                    src={module.mockup || "/placeholder.svg"}
+                    alt={`Prévia visual do módulo ${module.name}`}
+                    crop={mobileMockupCrop}
+                    sizes="(max-width: 767px) calc(100vw - 58px), 680px"
+                    imageClassName="object-cover"
+                    className="absolute inset-2 rounded-[16px]"
+                  />
+                ) : (
+                  <Image
+                    src={module.mockup || "/placeholder.svg"}
+                    alt={`Prévia visual do módulo ${module.name}`}
+                    fill
+                    sizes="(max-width: 767px) calc(100vw - 58px), 680px"
+                    className="object-cover p-2"
+                    priority
+                  />
+                )}
               </div>
 
               <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>

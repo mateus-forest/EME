@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   CalendarDays,
   Store,
+  WalletCards,
 } from "lucide-react"
 
 export type EmeModule = {
@@ -17,7 +18,7 @@ export type EmeModule = {
   description: string
   icon: LucideIcon
   /** Base angle (degrees) on the orbit. 0 = front-center, grows clockwise.
-   *  All eight modules are spaced by a uniform 45° step (no manual offsets) so
+   *  All nine modules are spaced by a uniform 40° step (no manual offsets) so
    *  the ring keeps a perfectly continuous rhythm — every card is placed by the
    *  exact same orbital formula and none can drift or read as isolated. */
   angle: number
@@ -73,7 +74,7 @@ export const marketplaceModule = {
 } satisfies EmeModule
 
 /**
- * The eight modules that orbit the EME logo.
+ * The nine modules that orbit the EME logo.
  * `angle` places each card around an elliptical orbit and is the single value
  * that scroll interaction offsets to rotate the whole universe.
  */
@@ -83,7 +84,7 @@ export const emeModules: EmeModule[] = [
     name: "COS",
     description: "Seu assistente inteligente",
     icon: Sparkles,
-    angle: 270,
+    angle: 280,
     priorityMobile: false,
     tagline: "Seu sistema conversacional operacional, sempre ao seu lado.",
     longDescription:
@@ -105,7 +106,7 @@ export const emeModules: EmeModule[] = [
     name: "Clientes",
     description: "Relacionamentos organizados",
     icon: Users,
-    angle: 315,
+    angle: 320,
     priorityMobile: true,
     tagline: "Todo relacionamento, organizado em um só lugar.",
     longDescription:
@@ -143,7 +144,7 @@ export const emeModules: EmeModule[] = [
     name: "Catálogo",
     description: "Apresente e compartilhe",
     icon: BookOpen,
-    angle: 45,
+    angle: 40,
     priorityMobile: true,
     tagline: "Catálogo de imóveis que impressiona e converte.",
     longDescription:
@@ -165,7 +166,7 @@ export const emeModules: EmeModule[] = [
     name: "Studio IA",
     description: "Crie campanhas com IA",
     icon: WandSparkles,
-    angle: 90,
+    angle: 80,
     priorityMobile: false,
     tagline: "Sua central de criação com Inteligência Artificial.",
     longDescription:
@@ -186,7 +187,7 @@ export const emeModules: EmeModule[] = [
     name: "Propostas",
     description: "Negociações mais simples",
     icon: FileText,
-    angle: 135,
+    angle: 120,
     priorityMobile: false,
     tagline: "Propostas profissionais, prontas para impressionar.",
     longDescription:
@@ -206,7 +207,7 @@ export const emeModules: EmeModule[] = [
     description: "Documentos em poucos passos",
     icon: ShieldCheck,
     // Front-centre of the ring, on the uniform 45° grid — no manual offset.
-    angle: 180,
+    angle: 160,
     priorityMobile: false,
     tagline: "Contratos inteligentes, sem burocracia.",
     longDescription:
@@ -227,7 +228,7 @@ export const emeModules: EmeModule[] = [
     name: "Compromissos",
     description: "Sua rotina organizada",
     icon: CalendarDays,
-    angle: 225,
+    angle: 200,
     priorityMobile: false,
     tagline: "Sua rotina de compromissos, sempre sob controle.",
     longDescription:
@@ -240,5 +241,26 @@ export const emeModules: EmeModule[] = [
     ],
     cta: "Conhecer módulo",
     mockup: "/modals/agenda.png",
+  },
+  {
+    id: "financeiro",
+    name: "Financeiro",
+    description: "Carteira, recebimentos, despesas e comissões.",
+    icon: WalletCards,
+    angle: 240,
+    priorityMobile: true,
+    tagline: "Sua operação financeira, organizada em um só lugar.",
+    longDescription:
+      "Acompanhe o valor da sua carteira, recebimentos, despesas, comissões, rendimentos de locação e fluxo de caixa operacional — tudo em um só lugar.",
+    benefits: [
+      { title: "Acompanhe o valor da sua carteira em tempo real", description: "Tenha uma visão atualizada da sua carteira de imóveis." },
+      { title: "Controle recebimentos, despesas e comissões", description: "Registre e gerencie entradas, saídas e comissões com praticidade." },
+      { title: "Visualize próximos recebimentos e atrasos", description: "Saiba o que está por vir e o que precisa de atenção." },
+      { title: "Registre lançamentos operacionais com rapidez", description: "Inclua lançamentos de forma simples e organizada." },
+      { title: "Organize locações, contratos e valores mensais", description: "Acompanhe locações ativas e valores de cada contrato." },
+      { title: "Tenha mais clareza para decidir e crescer", description: "Com dados completos, suas decisões são mais seguras." },
+    ],
+    cta: "Financeiro",
+    mockup: "/modals/financeiro-approved-reference.png",
   },
 ]
