@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { FileCode2, ImagePlus, LinkIcon, Sparkles, Upload } from "lucide-react"
 
 import { confirmPropertyAdImport, extractPropertyAd, getPropertyImportCapabilities } from "@/lib/property-ad-import-client"
-import { propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import-shared"
+import { formatPropertyImportBatchFeedback, propertyImportTypeOptions, type AdImportDraft } from "@/lib/property-ad-import-shared"
 import { previewPropertyXml } from "@/lib/property-xml-import-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -234,23 +234,32 @@ export function AdImportPanel({ onImported }: { onImported: () => void | Promise
     setFeedback("")
 
     try {
+      const createdIds: string[] = []
+      const failures: Array<{ id: string; title: string; message: string }> = []
+
       for (const entry of selectedEntries) {
-        await confirmPropertyAdImport(entry.draft)
+        try {
+          await confirmPropertyAdImport(entry.draft)
+          createdIds.push(entry.id)
+        } catch (caughtError) {
+          failures.push({
+            id: entry.id,
+            title: entry.draft.title || "Imóvel sem título",
+            message: caughtError instanceof Error ? caughtError.message : "Falha ao criar o rascunho.",
+          })
+        }
       }
 
-      const remainingEntries = draftEntries.filter((entry) => !selectedDraftIds.includes(entry.id))
+      const remainingEntries = draftEntries.filter((entry) => !createdIds.includes(entry.id))
+      const nextSelectedIds = failures.length > 0 ? failures.map((failure) => failure.id) : remainingEntries.map((entry) => entry.id)
       setDraftEntries(remainingEntries)
-      setSelectedDraftId(remainingEntries[0]?.id ?? "")
-      setSelectedDraftIds(remainingEntries.map((entry) => entry.id))
-      setFeedback(
-        remainingEntries.length > 0
-          ? "Imóveis selecionados salvos. Revise os demais antes de confirmar."
-          : "Imóveis selecionados criados como rascunho.",
-      )
+      setSelectedDraftId(nextSelectedIds[0] ?? remainingEntries[0]?.id ?? "")
+      setSelectedDraftIds(nextSelectedIds)
+      setFeedback(formatPropertyImportBatchFeedback(createdIds.length, failures))
       if (remainingEntries.length === 0) {
         resetInputs()
       }
-      await onImported()
+      if (createdIds.length > 0) await onImported()
     } catch (caughtError) {
       setFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível criar os imóveis selecionados.")
     } finally {

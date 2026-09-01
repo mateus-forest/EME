@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { enforceAgencyOperationalAccess, enforceBrokerPropertyCreation } from "@/lib/billing-enforcement"
-import { adImportDraftSchema, type AdImportDraft } from "@/lib/property-ad-import-shared"
+import { adImportDraftSchema, buildImportedDraftPersistence, type AdImportDraft } from "@/lib/property-ad-import-shared"
 import { mapPropertyType, parsePriceInput, serializeProperty } from "@/lib/property-contract"
 import { getNextPropertyPublicCode } from "@/lib/property-public-code"
 import { UserRole } from "@/lib/prisma-enums"
@@ -53,13 +53,7 @@ export async function POST(request: NextRequest) {
     const draft = adImportDraftSchema.parse(body?.draft)
     const price = parsePriceInput(draft.price)
     const propertyType = mapPropertyType(draft.type)
-
-    if (!draft.title || !draft.city || !draft.neighborhood || price === null || !propertyType) {
-      return NextResponse.json(
-        { error: "Revise titulo, cidade, bairro, preco e tipo antes de criar o imovel." },
-        { status: 400 },
-      )
-    }
+    const persistence = buildImportedDraftPersistence(draft, { price, propertyType })
 
     const broker =
       user.role === UserRole.BROKER
@@ -100,17 +94,11 @@ export async function POST(request: NextRequest) {
     const created = await prisma.property.create({
       data: {
         publicCode,
-        title: draft.title,
+        ...persistence,
         description: buildDescription(draft) || null,
-        price,
-        city: draft.city,
-        neighborhood: draft.neighborhood,
         bedrooms: draft.bedrooms,
         bathrooms: draft.bathrooms,
         parkingSpots: draft.parking,
-        type: propertyType,
-        status: "DRAFT",
-        published: false,
         imageUrls: draft.images.slice(0, 6),
         brokerId: broker.id,
         agencyId,

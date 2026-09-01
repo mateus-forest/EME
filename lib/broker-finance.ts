@@ -1,5 +1,6 @@
 import "server-only"
 
+import { calculateFinancialAccountBalance } from "@/lib/broker-financial-account-balance"
 import { calculateBrokerPortfolio } from "@/lib/broker-portfolio"
 import { prisma } from "@/lib/prisma"
 
@@ -7,6 +8,7 @@ export const FINANCIAL_INCOME_CATEGORIES = ["COMMISSION", "FEES", "RENT", "DEPOS
 export const FINANCIAL_EXPENSE_CATEGORIES = ["ADS", "PHOTOGRAPHY", "TRAVEL", "DOCUMENTATION", "TOOLS", "OTHER"] as const
 export const FINANCIAL_INCOME_STATUSES = ["EXPECTED", "RECEIVED", "OVERDUE"] as const
 export const FINANCIAL_EXPENSE_STATUSES = ["PENDING", "PAID"] as const
+export const FINANCIAL_ACCOUNT_TYPES = ["CHECKING", "SAVINGS", "DIGITAL", "OTHER"] as const
 
 export type FinancialIncomeStatus = (typeof FINANCIAL_INCOME_STATUSES)[number]
 export type FinancialExpenseStatus = (typeof FINANCIAL_EXPENSE_STATUSES)[number]
@@ -18,6 +20,7 @@ type FinancialReceiptItem = {
   category: string
   client: { id: string; name: string } | null
   property: { id: string; title: string } | null
+  account: { id: string; bank: string; name: string } | null
   amount: number
   dueDate: string
   occurredAt: string | null
@@ -69,7 +72,7 @@ function leadName(lead: { name: string | null; phone: string | null; email: stri
 
 export async function getBrokerFinancialSnapshot(brokerId: string, now = new Date()) {
   const { today, monthStart, monthEnd, inSevenDays, inThirtyDays } = getFinancialDateRange(now)
-  const [config, entries, commissions, properties, rentals, clients, documents] = await Promise.all([
+  const [config, entries, commissions, accounts, properties, rentals, clients, documents] = await Promise.all([
     prisma.brokerFinancialConfig.findUnique({
       where: { brokerId },
       select: { commissionPercent: true, calculationType: true, statusFilter: true, typeFilter: true, viewMode: true },
@@ -80,6 +83,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
       include: {
         lead: { select: { id: true, name: true, phone: true, email: true } },
         property: { select: { id: true, title: true } },
+        account: { select: { id: true, bank: true, name: true } },
       },
     }),
     prisma.brokerFinancialCommission.findMany({
@@ -89,6 +93,11 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
         lead: { select: { id: true, name: true, phone: true, email: true } },
         property: { select: { id: true, title: true } },
       },
+    }),
+    prisma.brokerFinancialAccount.findMany({
+      where: { brokerId },
+      orderBy: [{ createdAt: "asc" }, { bank: "asc" }],
+      select: { id: true, bank: true, name: true, type: true, initialBalance: true, notes: true },
     }),
     prisma.property.findMany({
       where: { brokerId },
@@ -129,6 +138,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
       category: entry.category,
       client: entry.lead ? { id: entry.lead.id, name: leadName(entry.lead) } : null,
       property: entry.property,
+      account: entry.account,
       amount: entry.amount,
       dueDate: entry.dueDate.toISOString(),
       occurredAt: entry.occurredAt?.toISOString() ?? null,
@@ -144,6 +154,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
     category: "COMMISSION",
     client: commission.lead ? { id: commission.lead.id, name: leadName(commission.lead) } : null,
     property: commission.property,
+    account: null,
     amount: commission.commissionAmount,
     dueDate: commission.dueDate.toISOString(),
     occurredAt: commission.receivedAt?.toISOString() ?? null,
@@ -160,6 +171,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
       category: "RENT",
       client: { id: rental.tenant.id, name: leadName(rental.tenant) },
       property: rental.property,
+      account: null,
       amount: payment.amount,
       dueDate: payment.dueDate.toISOString(),
       occurredAt: payment.paidAt?.toISOString() ?? null,
@@ -180,6 +192,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
       category: entry.category,
       client: entry.lead ? { id: entry.lead.id, name: leadName(entry.lead) } : null,
       property: entry.property,
+      account: entry.account,
       amount: entry.amount,
       date: entry.dueDate.toISOString(),
       occurredAt: entry.occurredAt?.toISOString() ?? null,
@@ -199,6 +212,12 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
     status: normalizeIncomeStatus(commission.status, commission.dueDate, commission.receivedAt, today),
     notes: commission.notes,
   }))
+
+  const serializedAccounts = accounts.map((account) => {
+    const balance = calculateFinancialAccountBalance(account.id, account.initialBalance, entries)
+
+    return { ...account, balance }
+  })
 
   const receivedThisMonth = receipts
     .filter((item) => item.status === "RECEIVED" && isInside(item.occurredAt ? new Date(item.occurredAt) : null, monthStart, monthEnd))
@@ -235,6 +254,10 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
       overdue: overdueReceipts.reduce((total, item) => total + item.amount, 0),
     },
     portfolio,
+    accounts: {
+      items: serializedAccounts,
+      totalBalance: serializedAccounts.reduce((sum, account) => sum + account.balance, 0),
+    },
     receipts,
     expenses,
     commissions: serializedCommissions,
@@ -260,6 +283,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
         leadId: rental.tenantLeadId,
         status: rental.status,
       })),
+      accounts: serializedAccounts.map((account) => ({ id: account.id, bank: account.bank, name: account.name })),
     },
   }
 }

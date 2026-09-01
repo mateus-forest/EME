@@ -282,6 +282,7 @@ model Broker {
   extraPackagePurchases     ExtraPackagePurchase[]
   corretorEmeConfig         BrokerEmeConfig?
   financialConfig           BrokerFinancialConfig?
+  financialAccounts         BrokerFinancialAccount[]
   financialEntries          BrokerFinancialEntry[]
   financialCommissions      BrokerFinancialCommission[]
   emeMessages               EmeMessage[]
@@ -409,6 +410,22 @@ model BrokerFinancialConfig {
   broker            Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
 }
 
+model BrokerFinancialAccount {
+  id             String                   @id @default(cuid())
+  brokerId       String
+  bank           String
+  name           String
+  type           String
+  initialBalance Int                      @default(0)
+  notes          String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  broker         Broker                   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  entries        BrokerFinancialEntry[]
+
+  @@index([brokerId, createdAt])
+}
+
 model BrokerFinancialEntry {
   id               String          @id @default(cuid())
   brokerId         String
@@ -419,6 +436,7 @@ model BrokerFinancialEntry {
   propertyId       String?
   brokerDocumentId String?
   propertyRentalId String?
+  accountId        String?
   amount           Int
   dueDate          DateTime
   occurredAt       DateTime?
@@ -431,6 +449,7 @@ model BrokerFinancialEntry {
   property         Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   brokerDocument   BrokerDocument? @relation(fields: [brokerDocumentId], references: [id], onDelete: SetNull)
   propertyRental   PropertyRental? @relation(fields: [propertyRentalId], references: [id], onDelete: SetNull)
+  account          BrokerFinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
   @@index([brokerId, direction, dueDate])
   @@index([brokerId, status, dueDate])
@@ -438,6 +457,7 @@ model BrokerFinancialEntry {
   @@index([propertyId])
   @@index([brokerDocumentId])
   @@index([propertyRentalId])
+  @@index([accountId])
 }
 
 model BrokerFinancialCommission {

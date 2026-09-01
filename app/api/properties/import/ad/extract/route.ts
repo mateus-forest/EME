@@ -10,6 +10,7 @@ import {
 import { runWithAiOperationContext } from "@/lib/ai-operation-context"
 import { getEmeCreditCost } from "@/lib/eme-plans"
 import { AD_IMPORT_MAX_IMAGE_BYTES, AD_IMPORT_MAX_TEXT_LENGTH, extractPropertyFromAd } from "@/lib/property-ad-import"
+import { buildAdImportCreditKeys } from "@/lib/property-ad-import-shared"
 import { UserRole } from "@/lib/prisma-enums"
 
 export const dynamic = "force-dynamic"
@@ -33,12 +34,15 @@ export async function POST(request: NextRequest) {
   let creditsConsumed = false
   let creditsUsed = 0
   let actionType = "smart_import_text"
+  let operationId = crypto.randomUUID()
 
   try {
     const formData = await request.formData()
     const adText = typeof formData.get("adText") === "string" ? String(formData.get("adText")).trim() : ""
     const sourceUrl = typeof formData.get("sourceUrl") === "string" ? String(formData.get("sourceUrl")).trim() : ""
     const notes = typeof formData.get("notes") === "string" ? String(formData.get("notes")).trim() : ""
+    const requestedOperationId = typeof formData.get("operationId") === "string" ? String(formData.get("operationId")).trim() : ""
+    if (/^[a-zA-Z0-9:_-]{8,120}$/.test(requestedOperationId)) operationId = requestedOperationId
     const workflow = formData.get("workflow") === "new_property" ? "new_property" : "import"
     const image = formData.get("image")
     const hasImage = image instanceof File && image.size > 0
@@ -94,21 +98,28 @@ export async function POST(request: NextRequest) {
         }),
     )
 
+    if (!Array.isArray(drafts) || drafts.length === 0) {
+      throw new Error("AD_IMPORT_PREVIEW_EMPTY")
+    }
+
     if (user.role === UserRole.BROKER && user.broker) {
-      await consumeBrokerAiCredits({
+      const creditKeys = buildAdImportCreditKeys(user.broker.id, operationId)
+      const charge = await consumeBrokerAiCredits({
         brokerId: user.broker.id,
         amount: creditsUsed,
         actionType,
+        idempotencyKey: creditKeys.usage,
         description: hasImage ? "Importacao inteligente por imagem" : "Importacao inteligente por anuncio",
         metadata: {
           source: "api/properties/import/ad/extract",
+          operationId,
           hasImage,
           hasSourceUrl: Boolean(sourceUrl),
           hasNotes: Boolean(notes),
           workflow,
         },
       })
-      creditsConsumed = true
+      creditsConsumed = charge.applied
     }
 
     const response = NextResponse.json({ drafts })
@@ -117,13 +128,16 @@ export async function POST(request: NextRequest) {
   } catch (caughtError) {
     if (creditsConsumed && user.role === UserRole.BROKER && user.broker) {
       try {
+        const creditKeys = buildAdImportCreditKeys(user.broker.id, operationId)
         await refundBrokerAiCredits({
           brokerId: user.broker.id,
           amount: creditsUsed,
           actionType,
+          idempotencyKey: creditKeys.refund,
           description: "Estorno automatico por falha na importacao inteligente",
           metadata: {
             source: "api/properties/import/ad/extract",
+            operationId,
           },
         })
       } catch (refundError) {

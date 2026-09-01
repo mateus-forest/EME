@@ -42,7 +42,17 @@ import { formatCurrencyBRLFromCents, parseCurrencyInputToCents, parseDecimalInpu
 type IncomeStatus = "EXPECTED" | "RECEIVED" | "OVERDUE"
 type ExpenseStatus = "PENDING" | "PAID"
 type EntryType = "income" | "expense" | "commission"
-type FinancialTab = "summary" | "receipts" | "expenses" | "commissions"
+type FinancialTab = "summary" | "receipts" | "expenses" | "commissions" | "accounts"
+
+type FinancialAccount = {
+  id: string
+  bank: string
+  name: string
+  type: "CHECKING" | "SAVINGS" | "DIGITAL" | "OTHER"
+  initialBalance: number
+  balance: number
+  notes: string | null
+}
 
 type ReceiptItem = {
   id: string
@@ -51,6 +61,7 @@ type ReceiptItem = {
   category: string
   client: { id: string; name: string } | null
   property: { id: string; title: string } | null
+  account: { id: string; bank: string; name: string } | null
   amount: number
   dueDate: string
   occurredAt: string | null
@@ -65,6 +76,7 @@ type ExpenseItem = {
   category: string
   client: { id: string; name: string } | null
   property: { id: string; title: string } | null
+  account: { id: string; bank: string; name: string } | null
   amount: number
   date: string
   occurredAt: string | null
@@ -104,6 +116,10 @@ type FinancialSnapshot = {
     forRent: { count: number; value: number; unpricedCount: number }
     activeRentals: { count: number; value: number; unpricedCount: number }
   }
+  accounts: {
+    items: FinancialAccount[]
+    totalBalance: number
+  }
   receipts: ReceiptItem[]
   expenses: ExpenseItem[]
   commissions: CommissionItem[]
@@ -117,6 +133,7 @@ type FinancialSnapshot = {
     properties: Array<{ id: string; title: string; purpose: string; price: number }>
     documents: Array<{ id: string; title: string; type: string; leadId: string | null; propertyId: string | null }>
     rentals: Array<{ id: string; label: string; propertyId: string; leadId: string; status: string }>
+    accounts: Array<{ id: string; bank: string; name: string }>
   }
 }
 
@@ -133,6 +150,15 @@ type Draft = {
   dueDate: string
   occurredAt: string
   status: string
+  notes: string
+  accountId: string
+}
+
+type AccountDraft = {
+  bank: string
+  name: string
+  type: FinancialAccount["type"]
+  initialBalance: string
   notes: string
 }
 
@@ -162,6 +188,13 @@ const statusLabels: Record<string, string> = {
   PAID: "Paga",
 }
 
+const accountTypeLabels: Record<FinancialAccount["type"], string> = {
+  CHECKING: "Corrente",
+  SAVINGS: "Poupança",
+  DIGITAL: "Digital",
+  OTHER: "Outro",
+}
+
 function todayInput() {
   const now = new Date()
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
@@ -183,7 +216,12 @@ function createDraft(entryType: EntryType, commissionPercent = 6): Draft {
     occurredAt: todayInput(),
     status: entryType === "expense" ? "PENDING" : "EXPECTED",
     notes: "",
+    accountId: "",
   }
+}
+
+function createAccountDraft(): AccountDraft {
+  return { bank: "", name: "", type: "CHECKING", initialBalance: "", notes: "" }
 }
 
 function formatDate(value: string | null) {
@@ -205,6 +243,10 @@ export function BrokerFinancialPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [feedback, setFeedback] = useState("")
   const [updatingId, setUpdatingId] = useState("")
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false)
+  const [accountDraft, setAccountDraft] = useState<AccountDraft>(createAccountDraft)
+  const [accountFeedback, setAccountFeedback] = useState("")
+  const [isSavingAccount, setIsSavingAccount] = useState(false)
 
   const loadData = useCallback(async () => {
     setError("")
@@ -261,6 +303,39 @@ export function BrokerFinancialPage() {
       }
     }
     setDraft((current) => ({ ...current, ...next }))
+  }
+
+  function openNewAccount() {
+    setAccountDraft(createAccountDraft())
+    setAccountFeedback("")
+    setAccountDialogOpen(true)
+  }
+
+  function updateAccountDraft(field: keyof AccountDraft, value: string) {
+    setAccountDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  async function saveAccount(event: React.FormEvent) {
+    event.preventDefault()
+    setIsSavingAccount(true)
+    setAccountFeedback("")
+    try {
+      const response = await fetch("/api/brokers/financial/accounts", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(accountDraft),
+      })
+      const body = (await response.json().catch(() => null)) as { error?: string } | null
+      if (!response.ok) throw new Error(body?.error || "Não foi possível cadastrar a conta.")
+      setAccountDialogOpen(false)
+      await loadData()
+      setActiveTab("accounts")
+    } catch (caughtError) {
+      setAccountFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível cadastrar a conta.")
+    } finally {
+      setIsSavingAccount(false)
+    }
   }
 
   async function saveEntry(event: React.FormEvent) {
@@ -337,6 +412,7 @@ export function BrokerFinancialPage() {
               <TabsTrigger value="receipts" className="px-3.5">Recebimentos</TabsTrigger>
               <TabsTrigger value="expenses" className="px-3.5">Despesas</TabsTrigger>
               <TabsTrigger value="commissions" className="px-3.5">Comissões</TabsTrigger>
+              <TabsTrigger value="accounts" className="px-3.5">Contas</TabsTrigger>
             </TabsList>
           </div>
 
@@ -381,6 +457,16 @@ export function BrokerFinancialPage() {
             {isLoading || !data ? <FinancialLoading /> : (
               <CommissionList items={data.commissions} updatingId={updatingId} onReceive={(item) => void updateStatus(item.id, "COMMISSION", "RECEIVED")} />
             )}
+          </TabsContent>
+
+          <TabsContent value="accounts" className="grid gap-4">
+            <SectionHeader
+              title="Contas"
+              description="Saldos operacionais calculados sem conexão bancária ou conciliação automática."
+              action="Nova conta"
+              onAction={openNewAccount}
+            />
+            {isLoading || !data ? <FinancialLoading /> : <AccountsCard accounts={data.accounts} />}
           </TabsContent>
         </Tabs>
       </div>
@@ -453,6 +539,17 @@ export function BrokerFinancialPage() {
               </NativeSelect>
             </FormField>
 
+            {!isCommission ? (
+              <FormField label="Conta (opcional)">
+                <NativeSelect value={draft.accountId} onChange={(value) => updateDraft("accountId", value)}>
+                  <option value="">Sem conta vinculada</option>
+                  {data?.references.accounts.map((account) => (
+                    <option key={account.id} value={account.id}>{account.bank} · {account.name}</option>
+                  ))}
+                </NativeSelect>
+              </FormField>
+            ) : null}
+
             {isCommission ? (
               <div className="grid gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -508,6 +605,45 @@ export function BrokerFinancialPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen}>
+        <DialogContent className="rounded-[var(--broker-radius-lg)] border-[#d0d5dd] bg-white text-[#101828] sm:max-w-lg [&_[data-slot=dialog-close]]:text-[#475467] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]:hover]:bg-[#f2f4f7] [&_[data-slot=dialog-close]:hover]:text-[#101828]">
+          <DialogHeader className="gap-1.5 pr-8">
+            <DialogTitle className="text-xl font-semibold leading-tight tracking-[-0.02em] text-[#101828]">Nova conta</DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-[#475467]">Cadastre apenas uma referência operacional. Nenhum dado bancário será conectado.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={saveAccount} className="grid gap-4 text-[#101828] [&_[data-slot=input]]:border-[#d0d5dd] [&_[data-slot=input]]:bg-white [&_[data-slot=input]]:text-[#101828] [&_[data-slot=input]]:placeholder:text-[#667085] [&_[data-slot=input]:focus-visible]:border-[#08783e] [&_[data-slot=input]:focus-visible]:ring-[#08783e]/15 [&_[data-slot=textarea]]:border-[#d0d5dd] [&_[data-slot=textarea]]:bg-white [&_[data-slot=textarea]]:text-[#101828] [&_[data-slot=textarea]]:placeholder:text-[#667085] [&_[data-slot=textarea]:focus-visible]:border-[#08783e] [&_[data-slot=textarea]:focus-visible]:ring-[#08783e]/15">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Banco" required>
+                <Input value={accountDraft.bank} onChange={(event) => updateAccountDraft("bank", event.target.value)} maxLength={80} placeholder="Ex.: Nubank" />
+              </FormField>
+              <FormField label="Nome/apelido" required>
+                <Input value={accountDraft.name} onChange={(event) => updateAccountDraft("name", event.target.value)} maxLength={100} placeholder="Ex.: Conta principal" />
+              </FormField>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Tipo" required>
+                <NativeSelect value={accountDraft.type} onChange={(value) => updateAccountDraft("type", value)} required>
+                  {Object.entries(accountTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </NativeSelect>
+              </FormField>
+              <FormField label="Saldo inicial">
+                <StructuredInput kind="currency" value={accountDraft.initialBalance} onValueChange={(formatted) => updateAccountDraft("initialBalance", formatted)} placeholder="R$ 0,00" />
+              </FormField>
+            </div>
+            <FormField label="Observação (opcional)">
+              <Textarea value={accountDraft.notes} onChange={(event) => updateAccountDraft("notes", event.target.value)} maxLength={1000} placeholder="Informações úteis sobre esta conta." />
+            </FormField>
+            {accountFeedback ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">{accountFeedback}</p> : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAccountDialogOpen(false)} className="border-[#d0d5dd] bg-white font-semibold text-[#344054] hover:bg-[#f9fafb] hover:text-[#101828]">Cancelar</Button>
+              <Button type="submit" disabled={isSavingAccount} className="bg-[#08783e] font-semibold text-white hover:bg-[#056332] disabled:bg-[#d1fadf] disabled:text-[#667085] disabled:opacity-100">
+                {isSavingAccount ? "Salvando..." : "Cadastrar conta"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </BrokerPageShell>
   )
 }
@@ -552,6 +688,38 @@ function SummaryView({ data }: { data: FinancialSnapshot }) {
         </CardContent>
       </Card>
     </>
+  )
+}
+
+function AccountsCard({ accounts }: { accounts: FinancialSnapshot["accounts"] }) {
+  return (
+    <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
+      <CardHeader className="px-4 py-4 sm:px-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base"><WalletCards className="size-4 text-[var(--broker-accent)]" />Contas</CardTitle>
+            <p className="mt-1 text-xs leading-5 text-[var(--broker-muted)]">Saldo inicial + recebimentos recebidos − despesas pagas.</p>
+          </div>
+          <Badge variant="outline" className="border-[var(--broker-border)] bg-white text-[var(--broker-muted)]">{accounts.items.length}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-2 px-4 pb-4 sm:px-5">
+        {accounts.items.map((account) => (
+          <div key={account.id} className="flex items-center justify-between gap-4 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3.5 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{account.bank}</p>
+              <p className="mt-0.5 truncate text-xs text-[var(--broker-muted)]">{account.name} · {accountTypeLabels[account.type]}</p>
+            </div>
+            <span className={`shrink-0 text-sm font-semibold ${account.balance < 0 ? "text-rose-700" : "text-[var(--broker-ink)]"}`}>{formatCurrencyBRLFromCents(account.balance)}</span>
+          </div>
+        ))}
+        {accounts.items.length === 0 ? <EmptyState message="Nenhuma conta cadastrada. Os lançamentos continuam funcionando sem conta vinculada." /> : null}
+        <div className="mt-1 flex items-center justify-between gap-4 border-t border-[var(--broker-border)] px-1 pt-3">
+          <span className="text-sm font-medium text-[var(--broker-muted)]">Total em contas</span>
+          <span className={`text-base font-semibold ${accounts.totalBalance < 0 ? "text-rose-700" : "text-[var(--broker-ink)]"}`}>{formatCurrencyBRLFromCents(accounts.totalBalance)}</span>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -648,7 +816,7 @@ function ReceiptList({ items, updatingId, onReceive }: { items: ReceiptItem[]; u
           <CardContent className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] lg:items-center">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.description}</p><StatusBadge status={item.status} /></div>
-              <p className="mt-1 text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.source === "RENTAL_PAYMENT" ? " · Integrado da locação" : ""}</p>
+              <p className="mt-1 text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.source === "RENTAL_PAYMENT" ? " · Integrado da locação" : ""}{item.account ? ` · Conta: ${item.account.bank} · ${item.account.name}` : ""}</p>
             </div>
             <div className="min-w-0 text-xs text-[var(--broker-muted)]"><p className="truncate">{item.client?.name ?? "Sem cliente"}</p><p className="mt-1 truncate">{item.property?.title ?? "Sem imóvel"}</p></div>
             <div className="text-left lg:text-right"><p className="text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(item.amount)}</p><p className="mt-1 text-xs text-[var(--broker-muted)]">Previsto {formatDate(item.dueDate)}</p></div>
@@ -669,7 +837,7 @@ function ExpenseList({ items, updatingId, onPay }: { items: ExpenseItem[]; updat
       {items.map((item) => (
         <Card key={item.id} className="rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
           <CardContent className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] lg:items-center">
-            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.description}</p><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}</p></div>
+            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.description}</p><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.account ? ` · Conta: ${item.account.bank} · ${item.account.name}` : ""}</p></div>
             <div className="min-w-0 text-xs text-[var(--broker-muted)]"><p className="truncate">{item.client?.name ?? "Sem cliente vinculado"}</p><p className="mt-1 truncate">{item.property?.title ?? "Sem imóvel vinculado"}</p></div>
             <div className="text-left lg:text-right"><p className="text-sm font-semibold text-rose-700">{formatCurrencyBRLFromCents(item.amount)}</p><p className="mt-1 text-xs text-[var(--broker-muted)]">{formatDate(item.date)}</p></div>
             {item.status !== "PAID" ? (

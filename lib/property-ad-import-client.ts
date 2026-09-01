@@ -22,8 +22,10 @@ export async function extractPropertyAd(input: {
   notes?: string
   workflow?: "import" | "new_property"
   image: File | null
+  operationId?: string
 }) {
   const formData = new FormData()
+  formData.append("operationId", input.operationId ?? crypto.randomUUID())
   if (input.adText) formData.append("adText", input.adText)
   if (input.sourceUrl) formData.append("sourceUrl", input.sourceUrl)
   if (input.notes) formData.append("notes", input.notes)

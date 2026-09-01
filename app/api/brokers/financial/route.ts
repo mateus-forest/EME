@@ -189,10 +189,18 @@ export async function POST(request: NextRequest) {
     const category = cleanText(body.category, 40).toUpperCase()
     const validCategories = entryType === "income" ? FINANCIAL_INCOME_CATEGORIES : FINANCIAL_EXPENSE_CATEGORIES
     const description = cleanText(body.description, 180)
+    const accountId = cleanText(body.accountId, 120) || null
     const amount = parseCurrencyInputToCents(body.amount)
     if (!description) return NextResponse.json({ error: "Informe a descrição do lançamento." }, { status: 400 })
     if (!isOneOf(category, validCategories)) return NextResponse.json({ error: "Categoria inválida." }, { status: 400 })
     if (!amount || amount <= 0) return NextResponse.json({ error: "Informe um valor maior que zero." }, { status: 400 })
+    if (accountId) {
+      const account = await prisma.brokerFinancialAccount.findFirst({
+        where: { id: accountId, brokerId: auth.broker!.id },
+        select: { id: true },
+      })
+      if (!account) return NextResponse.json({ error: "Conta financeira não encontrada para este corretor." }, { status: 400 })
+    }
 
     const allowedStatuses = entryType === "income" ? FINANCIAL_INCOME_STATUSES : FINANCIAL_EXPENSE_STATUSES
     const defaultStatus = entryType === "income" ? "EXPECTED" : "PENDING"
@@ -212,6 +220,7 @@ export async function POST(request: NextRequest) {
         occurredAt,
         status,
         notes,
+        accountId,
       },
       select: { id: true },
     })

@@ -38,3 +38,36 @@ export const adImportDraftSchema = z.object({
 })
 
 export type AdImportDraft = z.infer<typeof adImportDraftSchema>
+
+type PersistedPropertyType = "APARTMENT" | "HOUSE" | "COMMERCIAL" | "LAND" | "OFFICE" | "STORE" | "PENTHOUSE"
+
+export function buildImportedDraftPersistence(
+  draft: AdImportDraft,
+  parsed: { price: number | null; propertyType: PersistedPropertyType | null },
+) {
+  return {
+    title: draft.title || "Imóvel importado em revisão",
+    price: parsed.price ?? 0,
+    city: draft.city,
+    neighborhood: draft.neighborhood || null,
+    type: parsed.propertyType ?? ("APARTMENT" as const),
+    status: "DRAFT" as const,
+    published: false,
+  }
+}
+
+export type PropertyImportBatchFailure = { title: string; message: string }
+
+export function formatPropertyImportBatchFeedback(createdCount: number, failures: PropertyImportBatchFailure[]) {
+  const createdLabel = `${createdCount} ${createdCount === 1 ? "rascunho criado" : "rascunhos criados"}`
+  if (failures.length === 0) return `${createdLabel}.`
+  const failureLabel = `${failures.length} ${failures.length === 1 ? "falhou" : "falharam"}`
+  return `${createdLabel}. ${failureLabel}: ${failures.map((failure) => `${failure.title} — ${failure.message}`).join("; ")}`
+}
+
+export function buildAdImportCreditKeys(brokerId: string, operationId: string) {
+  return {
+    usage: `ad_import_usage:${brokerId}:${operationId}`,
+    refund: `ad_import_refund:${brokerId}:${operationId}`,
+  }
+}

@@ -763,75 +763,95 @@ export async function consumeBrokerAiCredits({
   actionType,
   description,
   metadata,
+  idempotencyKey,
 }: {
   brokerId: string
   amount: number
   actionType: string
   description: string
   metadata?: Prisma.InputJsonObject
+  idempotencyKey?: string
 }) {
   const credits = normalizeCredits(amount)
   if (credits === 0) {
-    return getBrokerAiCreditBalance(brokerId)
+    return { ...(await getBrokerAiCreditBalance(brokerId)), applied: false }
   }
 
   await ensureFreePlanCreditsForCurrentPeriod(brokerId)
+  const grantKey = idempotencyKey?.trim().slice(0, 240) || null
 
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.broker.updateMany({
-      where: {
-        id: brokerId,
-        aiCreditsBalance: { gte: credits },
-      },
-      data: {
-        aiCreditsBalance: { decrement: credits },
-        aiCreditsUsedThisMonth: { increment: credits },
-        aiMonthlyUsage: { increment: credits },
-        aiLastInteractionAt: new Date(),
-      },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.broker.updateMany({
+        where: {
+          id: brokerId,
+          aiCreditsBalance: { gte: credits },
+        },
+        data: {
+          aiCreditsBalance: { decrement: credits },
+          aiCreditsUsedThisMonth: { increment: credits },
+          aiMonthlyUsage: { increment: credits },
+          aiLastInteractionAt: new Date(),
+        },
+      })
+
+      if (updated.count === 0) {
+        throw new Error("INSUFFICIENT_AI_CREDITS")
+      }
+
+      const broker = await tx.broker.findUniqueOrThrow({
+        where: { id: brokerId },
+        select: {
+          aiCreditsBalance: true,
+          aiCreditsUsedThisMonth: true,
+        },
+      })
+
+      const planAccount = await tx.brokerPlanAccount.findUniqueOrThrow({
+        where: { brokerId },
+        select: { planKey: true },
+      })
+      const creditBuckets = resolveCreditBuckets({
+        balance: broker.aiCreditsBalance,
+        usedThisMonth: broker.aiCreditsUsedThisMonth,
+        monthlyCredits: EME_PLANS[normalizeEmePlanKey(planAccount.planKey)].monthlyAiCredits,
+      })
+
+      await tx.aiCreditTransaction.create({
+        data: {
+          brokerId,
+          grantKey,
+          type: "usage",
+          amount: -credits,
+          balanceAfter: broker.aiCreditsBalance,
+          actionType,
+          description,
+          metadata,
+        },
+      })
+
+      return {
+        balance: broker.aiCreditsBalance,
+        usedThisMonth: broker.aiCreditsUsedThisMonth,
+        monthlyCredits: creditBuckets.monthlyRemaining,
+        extraCredits: creditBuckets.extraCredits,
+        applied: true,
+      }
     })
-
-    if (updated.count === 0) {
-      throw new Error("INSUFFICIENT_AI_CREDITS")
+  } catch (error) {
+    if (!grantKey || !isPrismaUniqueConstraintError(error)) throw error
+    const existing = await prisma.aiCreditTransaction.findUnique({ where: { grantKey } })
+    if (
+      !existing ||
+      existing.brokerId !== brokerId ||
+      existing.type !== "usage" ||
+      existing.actionType !== actionType ||
+      existing.amount !== -credits
+    ) {
+      throw error
     }
-
-    const broker = await tx.broker.findUniqueOrThrow({
-      where: { id: brokerId },
-      select: {
-        aiCreditsBalance: true,
-        aiCreditsUsedThisMonth: true,
-      },
-    })
-
-    const planAccount = await tx.brokerPlanAccount.findUniqueOrThrow({
-      where: { brokerId },
-      select: { planKey: true },
-    })
-    const creditBuckets = resolveCreditBuckets({
-      balance: broker.aiCreditsBalance,
-      usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: EME_PLANS[normalizeEmePlanKey(planAccount.planKey)].monthlyAiCredits,
-    })
-
-    await tx.aiCreditTransaction.create({
-      data: {
-        brokerId,
-        type: "usage",
-        amount: -credits,
-        balanceAfter: broker.aiCreditsBalance,
-        actionType,
-        description,
-        metadata,
-      },
-    })
-
-    return {
-      balance: broker.aiCreditsBalance,
-      usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: creditBuckets.monthlyRemaining,
-      extraCredits: creditBuckets.extraCredits,
-    }
-  })
+    return { ...(await getBrokerAiCreditBalance(brokerId)), applied: false }
+  }
 }
 
 export async function refundBrokerAiCredits({
@@ -840,64 +860,84 @@ export async function refundBrokerAiCredits({
   actionType,
   description,
   metadata,
+  idempotencyKey,
 }: {
   brokerId: string
   amount: number
   actionType: string
   description: string
   metadata?: Prisma.InputJsonObject
+  idempotencyKey?: string
 }) {
   const credits = normalizeCredits(amount)
   if (credits === 0) {
-    return getBrokerAiCreditBalance(brokerId)
+    return { ...(await getBrokerAiCreditBalance(brokerId)), applied: false }
   }
 
   await ensureBrokerPlanAccount(brokerId)
+  const grantKey = idempotencyKey?.trim().slice(0, 240) || null
 
-  return prisma.$transaction(async (tx) => {
-    const broker = await tx.broker.update({
-      where: { id: brokerId },
-      data: {
-        aiCreditsBalance: { increment: credits },
-        aiCreditsUsedThisMonth: { decrement: credits },
-        aiMonthlyUsage: { decrement: credits },
-        aiLastInteractionAt: new Date(),
-      },
-      select: {
-        aiCreditsBalance: true,
-        aiCreditsUsedThisMonth: true,
-      },
-    })
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const broker = await tx.broker.update({
+        where: { id: brokerId },
+        data: {
+          aiCreditsBalance: { increment: credits },
+          aiCreditsUsedThisMonth: { decrement: credits },
+          aiMonthlyUsage: { decrement: credits },
+          aiLastInteractionAt: new Date(),
+        },
+        select: {
+          aiCreditsBalance: true,
+          aiCreditsUsedThisMonth: true,
+        },
+      })
 
-    const planAccount = await tx.brokerPlanAccount.findUniqueOrThrow({
-      where: { brokerId },
-      select: { planKey: true },
-    })
-    const creditBuckets = resolveCreditBuckets({
-      balance: broker.aiCreditsBalance,
-      usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: EME_PLANS[normalizeEmePlanKey(planAccount.planKey)].monthlyAiCredits,
-    })
+      const planAccount = await tx.brokerPlanAccount.findUniqueOrThrow({
+        where: { brokerId },
+        select: { planKey: true },
+      })
+      const creditBuckets = resolveCreditBuckets({
+        balance: broker.aiCreditsBalance,
+        usedThisMonth: broker.aiCreditsUsedThisMonth,
+        monthlyCredits: EME_PLANS[normalizeEmePlanKey(planAccount.planKey)].monthlyAiCredits,
+      })
 
-    await tx.aiCreditTransaction.create({
-      data: {
-        brokerId,
-        type: "refund",
-        amount: credits,
-        balanceAfter: broker.aiCreditsBalance,
-        actionType,
-        description,
-        metadata,
-      },
-    })
+      await tx.aiCreditTransaction.create({
+        data: {
+          brokerId,
+          grantKey,
+          type: "refund",
+          amount: credits,
+          balanceAfter: broker.aiCreditsBalance,
+          actionType,
+          description,
+          metadata,
+        },
+      })
 
-    return {
-      balance: broker.aiCreditsBalance,
-      usedThisMonth: broker.aiCreditsUsedThisMonth,
-      monthlyCredits: creditBuckets.monthlyRemaining,
-      extraCredits: creditBuckets.extraCredits,
+      return {
+        balance: broker.aiCreditsBalance,
+        usedThisMonth: broker.aiCreditsUsedThisMonth,
+        monthlyCredits: creditBuckets.monthlyRemaining,
+        extraCredits: creditBuckets.extraCredits,
+        applied: true,
+      }
+    })
+  } catch (error) {
+    if (!grantKey || !isPrismaUniqueConstraintError(error)) throw error
+    const existing = await prisma.aiCreditTransaction.findUnique({ where: { grantKey } })
+    if (
+      !existing ||
+      existing.brokerId !== brokerId ||
+      existing.type !== "refund" ||
+      existing.actionType !== actionType ||
+      existing.amount !== credits
+    ) {
+      throw error
     }
-  })
+    return { ...(await getBrokerAiCreditBalance(brokerId)), applied: false }
+  }
 }
 
 export async function registerExtraPackagePurchase({
