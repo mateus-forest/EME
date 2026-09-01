@@ -99,9 +99,10 @@ type FinancialSnapshot = {
     totalValue: number
     totalProperties: number
     activeProperties: number
-    forSale: { count: number; value: number }
-    forRent: { count: number; value: number }
-    activeRentals: { count: number; value: number }
+    unpricedProperties: number
+    forSale: { count: number; value: number; unpricedCount: number }
+    forRent: { count: number; value: number; unpricedCount: number }
+    activeRentals: { count: number; value: number; unpricedCount: number }
   }
   receipts: ReceiptItem[]
   expenses: ExpenseItem[]
@@ -586,20 +587,21 @@ function PortfolioCard({ portfolio }: { portfolio: FinancialSnapshot["portfolio"
             <CardTitle className="flex items-center gap-2 text-base"><Building2 className="size-4 text-[var(--broker-accent)]" />Carteira ativa</CardTitle>
             <p className="mt-1 text-xs leading-5 text-[var(--broker-muted)]">Indicador operacional. Não compõe receita nem resultado.</p>
           </div>
-          <Badge variant="outline" className="border-[var(--broker-border)] bg-white text-[var(--broker-muted)]">{portfolio.totalProperties} imóveis</Badge>
+          <Badge variant="outline" className="border-[var(--broker-border)] bg-white text-[var(--broker-muted)]">{portfolio.totalProperties} {portfolio.totalProperties === 1 ? "imóvel" : "imóveis"}</Badge>
         </div>
       </CardHeader>
       <CardContent className="grid gap-3 px-4 pb-4 sm:px-5">
         <div>
           <p className="text-2xl font-semibold tracking-[-0.035em] text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(portfolio.totalValue)}</p>
           <p className="mt-1 text-xs text-[var(--broker-muted)]">{portfolio.activeProperties} imóveis em carteira ativa</p>
+          {portfolio.unpricedProperties > 0 ? <p className="mt-1 text-xs text-amber-700">{portfolio.unpricedProperties} {portfolio.unpricedProperties === 1 ? "imóvel sem valor informado" : "imóveis sem valor informado"}; não incluído na soma.</p> : null}
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
           {groups.map(({ label, icon: Icon, data }) => (
             <div key={label} className="rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3">
               <div className="flex items-center gap-2 text-xs text-[var(--broker-muted)]"><Icon className="size-3.5" />{label}</div>
               <p className="mt-2 text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(data.value)}</p>
-              <p className="mt-0.5 text-xs text-[var(--broker-muted-soft)]">{data.count} {data.count === 1 ? "item" : "itens"}</p>
+              <p className="mt-0.5 text-xs text-[var(--broker-muted-soft)]">{data.count} {data.count === 1 ? "imóvel" : "imóveis"}{data.unpricedCount > 0 ? ` · ${data.unpricedCount} sem valor` : ""}</p>
             </div>
           ))}
         </div>

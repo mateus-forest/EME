@@ -1,6 +1,6 @@
 import "server-only"
 
-import { PropertyStatus } from "@/lib/prisma-enums"
+import { calculateBrokerPortfolio } from "@/lib/broker-portfolio"
 import { prisma } from "@/lib/prisma"
 
 export const FINANCIAL_INCOME_CATEGORIES = ["COMMISSION", "FEES", "RENT", "DEPOSIT", "OTHER"] as const
@@ -118,17 +118,7 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
     }),
   ])
 
-  const activeRentals = rentals.filter((rental) => rental.status === "ACTIVE")
-  const activeRentalPropertyIds = new Set(activeRentals.map((rental) => rental.propertyId))
-  const publishedProperties = properties.filter((property) => property.published || property.status === PropertyStatus.PUBLISHED)
-  const forSale = publishedProperties.filter((property) => property.purpose !== "RENT")
-  const forRent = publishedProperties.filter(
-    (property) => property.purpose === "RENT" && property.rentalAvailable && !activeRentalPropertyIds.has(property.id),
-  )
-  const saleValue = forSale.reduce((total, property) => total + Math.max(0, property.price), 0)
-  const rentalListingValue = forRent.reduce((total, property) => total + Math.max(0, property.price), 0)
-  const activeRentalValue = activeRentals.reduce((total, rental) => total + Math.max(0, rental.monthlyRent), 0)
-  const activePropertyIds = new Set([...publishedProperties.map((property) => property.id), ...activeRentalPropertyIds])
+  const portfolio = calculateBrokerPortfolio(properties, rentals)
 
   const directReceipts: FinancialReceiptItem[] = entries
     .filter((entry) => entry.direction === "INCOME")
@@ -237,21 +227,14 @@ export async function getBrokerFinancialSnapshot(brokerId: string, now = new Dat
       viewMode: "Geral",
     },
     summary: {
-      portfolioValue: saleValue + rentalListingValue + activeRentalValue,
+      portfolioValue: portfolio.totalValue,
       receivedThisMonth,
       expensesThisMonth,
       monthResult: receivedThisMonth - expensesThisMonth,
       receivable: expectedReceipts.reduce((total, item) => total + item.amount, 0),
       overdue: overdueReceipts.reduce((total, item) => total + item.amount, 0),
     },
-    portfolio: {
-      totalValue: saleValue + rentalListingValue + activeRentalValue,
-      totalProperties: properties.length,
-      activeProperties: activePropertyIds.size,
-      forSale: { count: forSale.length, value: saleValue },
-      forRent: { count: forRent.length, value: rentalListingValue },
-      activeRentals: { count: activeRentals.length, value: activeRentalValue },
-    },
+    portfolio,
     receipts,
     expenses,
     commissions: serializedCommissions,

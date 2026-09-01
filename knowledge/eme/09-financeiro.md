@@ -37,6 +37,9 @@ Registrar lançamento na tela → vincular entidades do EME quando aplicável �
 ## Regras de negócio
 
 - Valor da carteira soma os imóveis ativos, imóveis disponíveis para locação e valores mensais das locações ativas.
+- Imóveis `DRAFT` e `PUBLISHED` permanecem na carteira operacional; somente `PAUSED` fica fora do valuation.
+- Uma locação `ACTIVE` prevalece sobre venda/locação disponível para que o mesmo imóvel não seja contado duas vezes.
+- Imóveis sem valor informado permanecem nas contagens, mas não acrescentam zero artificial à soma.
 - Valor da carteira é indicador operacional e nunca entra no cálculo de receita ou resultado.
 - Entradas do mês consideram somente recebimentos com data de liquidação no mês.
 - Saídas do mês consideram somente despesas pagas no mês.
