@@ -1,13 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useSyncExternalStore } from "react"
 import Image from "next/image"
-import { motion } from "motion/react"
-import { Check, X } from "lucide-react"
+import { Check } from "lucide-react"
 
+import { LandingModalShell } from "@/components/eme/landing-modal-shell"
 import type { EmeModule } from "@/lib/eme-modules"
 
-type Rect = { left: number; top: number; width: number; height: number }
 type ModuleImageCrop = {
   sourceWidth: number
   sourceHeight: number
@@ -17,7 +16,7 @@ type ModuleImageCrop = {
   height: number
 }
 
-const MODAL_AR: Record<string, number> = {
+const MODULE_ASPECT_RATIOS: Record<string, number> = {
   cos: 1408 / 833,
   clientes: 1551 / 1014,
   imoveis: 1536 / 1024,
@@ -29,7 +28,10 @@ const MODAL_AR: Record<string, number> = {
   marketplace: 1522 / 1033,
   financeiro: 1077 / 846,
 }
-const DEFAULT_AR = 1480 / 962
+const DEFAULT_ASPECT_RATIO = 1480 / 962
+const COMPACT_MODAL_QUERY = "(max-width: 1023px)"
+const IMAGE_PLACEHOLDER =
+  "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
 
 const MOBILE_MODULE_BANNERS: Record<string, string> = {
   cos: "/eme/mobile-modals/cos.png",
@@ -58,20 +60,32 @@ const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
   financeiro: { sourceWidth: 1672, sourceHeight: 941, x: 312, y: 49, width: 1077, height: 846 },
 }
 
+function subscribeToCompactModal(onStoreChange: () => void) {
+  const mediaQuery = window.matchMedia(COMPACT_MODAL_QUERY)
+  mediaQuery.addEventListener("change", onStoreChange)
+  return () => mediaQuery.removeEventListener("change", onStoreChange)
+}
+
+function useCompactModal() {
+  return useSyncExternalStore(
+    subscribeToCompactModal,
+    () => window.matchMedia(COMPACT_MODAL_QUERY).matches,
+    () => false,
+  )
+}
+
 function CroppedModuleImage({
   src,
   alt,
   crop,
   sizes,
   className = "",
-  imageClassName = "",
 }: {
   src: string
   alt: string
   crop: ModuleImageCrop
   sizes: string
   className?: string
-  imageClassName?: string
 }) {
   return (
     <div
@@ -84,7 +98,10 @@ function CroppedModuleImage({
         width={crop.sourceWidth}
         height={crop.sourceHeight}
         sizes={sizes}
-        className={`absolute inset-0 h-full w-full max-w-none ${imageClassName}`}
+        quality={88}
+        placeholder="blur"
+        blurDataURL={IMAGE_PLACEHOLDER}
+        className="absolute inset-0 h-full w-full max-w-none"
         style={{
           left: `${-(crop.x / crop.width) * 100}%`,
           top: `${-(crop.y / crop.height) * 100}%`,
@@ -92,72 +109,159 @@ function CroppedModuleImage({
           height: `${(crop.sourceHeight / crop.height) * 100}%`,
           objectFit: "cover",
         }}
-        priority
       />
     </div>
   )
 }
 
-function computeTarget(aspectRatio: number): Rect {
-  const visualViewport = window.visualViewport
-  const viewportWidth = visualViewport?.width ?? window.innerWidth
-  const viewportHeight = visualViewport?.height ?? window.innerHeight
-  const viewportLeft = visualViewport?.offsetLeft ?? 0
-  const viewportTop = visualViewport?.offsetTop ?? 0
-  const isNarrow = viewportWidth < 768
+function DesktopModuleArtwork({ module }: { module: EmeModule }) {
+  const crop = DESKTOP_MODULE_CROPS[module.id]
 
-  if (isNarrow) {
-    const gutter = 8
-    return {
-      left: viewportLeft + gutter,
-      top: viewportTop + gutter,
-      width: viewportWidth - gutter * 2,
-      height: viewportHeight - gutter * 2,
-    }
-  }
+  return (
+    <div data-desktop-module-artwork className="eme-module-modal-artwork relative h-full w-full overflow-hidden">
+      {crop ? (
+        <CroppedModuleImage
+          src={module.mockup || "/placeholder.svg"}
+          alt={`Módulo ${module.name}`}
+          crop={crop}
+          sizes="min(92vw, 1350px)"
+          className="h-full w-full"
+        />
+      ) : (
+        <Image
+          src={module.mockup || "/placeholder.svg"}
+          alt={`Módulo ${module.name}`}
+          fill
+          sizes="min(92vw, 1350px)"
+          quality={88}
+          placeholder="blur"
+          blurDataURL={IMAGE_PLACEHOLDER}
+          className="object-cover"
+        />
+      )}
 
-  const maxWidth = viewportWidth * 0.9
-  const maxHeight = viewportHeight * 0.92
-  const width = Math.min(maxWidth, maxHeight * aspectRatio)
-  const height = width / aspectRatio
+      {module.id === "financeiro" ? (
+        <div
+          data-finance-demo-mask
+          className="absolute left-[57.8%] top-[81.8%] h-[13.8%] w-[30.2%] rounded-[20px] bg-[linear-gradient(145deg,#f0f3f1,#e7ece9)]"
+          aria-hidden="true"
+        />
+      ) : null}
 
-  return {
-    left: viewportLeft + (viewportWidth - width) / 2,
-    top: viewportTop + (viewportHeight - height) / 2,
-    width,
-    height,
-  }
+      {module.id === "marketplace" && module.demoHref ? (
+        <a
+          href={module.demoHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Ver exemplo no Marketplace — Abrir demonstração"
+          className="absolute bottom-[3.2%] left-[64.1%] h-[10.7%] w-[23.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
+        />
+      ) : null}
+    </div>
+  )
 }
 
-function buildTransform(from: Rect, to: Rect) {
-  const safeWidth = Math.max(to.width, 1)
-  const safeHeight = Math.max(to.height, 1)
-  return {
-    x: from.left - to.left,
-    y: from.top - to.top,
-    scaleX: from.width / safeWidth,
-    scaleY: from.height / safeHeight,
+function MobileModuleArtwork({ module }: { module: EmeModule }) {
+  const mobileBanner = MOBILE_MODULE_BANNERS[module.id]
+  const mobileCrop = MOBILE_MODULE_CROPS[module.id]
+  const mobileMockupCrop = MOBILE_MODULE_MOCKUP_CROPS[module.id]
+
+  if (mobileBanner) {
+    return (
+      <div
+        data-mobile-module-scroll
+        className="eme-module-modal-scroll eme-hidden-scrollbar h-full min-h-0 w-full overflow-x-hidden overflow-y-auto overscroll-contain"
+      >
+        <CroppedModuleImage
+          src={mobileBanner}
+          alt={`Apresentação do módulo ${module.name}`}
+          crop={mobileCrop || { sourceWidth: 941, sourceHeight: 1672, x: 0, y: 0, width: 941, height: 1672 }}
+          sizes="calc(100vw - 16px)"
+          className="w-full"
+        />
+      </div>
+    )
   }
-}
 
-function useModalScrollLock() {
-  useEffect(() => {
-    const html = document.documentElement
-    const body = document.body
-    const previousHtmlOverflow = html.style.overflow
-    const previousBodyOverflow = body.style.overflow
-    const previousBodyOverscroll = body.style.overscrollBehavior
+  const ModuleIcon = module.icon
+  return (
+    <div
+      data-mobile-module-scroll
+      className="eme-module-modal-scroll eme-hidden-scrollbar h-full min-h-0 w-full overflow-x-hidden overflow-y-auto overscroll-contain px-5"
+      style={{
+        paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
+        paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+      }}
+    >
+      <div className="flex items-center gap-2.5 text-eme-dark">
+        <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
+          <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
+        </span>
+        <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">{module.name}</span>
+      </div>
 
-    html.style.overflow = "hidden"
-    body.style.overflow = "hidden"
-    body.style.overscrollBehavior = "none"
+      <h2 className="mt-5 text-balance text-[27px] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
+        {module.tagline}
+      </h2>
+      <p className="mt-3 text-pretty text-[14px] leading-relaxed text-foreground/68">
+        {module.longDescription}
+      </p>
 
-    return () => {
-      html.style.overflow = previousHtmlOverflow
-      body.style.overflow = previousBodyOverflow
-      body.style.overscrollBehavior = previousBodyOverscroll
-    }
-  }, [])
+      <div
+        data-mobile-module-mockup
+        className="eme-module-modal-media relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2"
+        style={{
+          aspectRatio: mobileMockupCrop
+            ? `${mobileMockupCrop.width} / ${mobileMockupCrop.height}`
+            : MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO,
+        }}
+      >
+        {mobileMockupCrop ? (
+          <CroppedModuleImage
+            src={module.mockup || "/placeholder.svg"}
+            alt={`Prévia visual do módulo ${module.name}`}
+            crop={mobileMockupCrop}
+            sizes="calc(100vw - 58px)"
+            className="absolute inset-2 rounded-[16px]"
+          />
+        ) : (
+          <Image
+            src={module.mockup || "/placeholder.svg"}
+            alt={`Prévia visual do módulo ${module.name}`}
+            fill
+            sizes="calc(100vw - 58px)"
+            quality={88}
+            placeholder="blur"
+            blurDataURL={IMAGE_PLACEHOLDER}
+            className="object-cover p-2"
+          />
+        )}
+      </div>
+
+      <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>
+        {module.benefits.map((benefit) => {
+          const title = typeof benefit === "string" ? benefit : benefit.title
+          const description = typeof benefit === "string" ? null : benefit.description
+
+          return (
+            <li key={title} className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-eme/12 text-eme-dark">
+                <Check className="size-3.5" strokeWidth={2.2} aria-hidden />
+              </span>
+              <span className="min-w-0 text-[13px] leading-snug text-foreground/82">
+                <span className="font-medium">{title}</span>
+                {description ? (
+                  <span className="mt-0.5 block text-[12.5px] leading-snug text-foreground/55">
+                    {description}
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }
 
 export function ExpandedModulePanel({
@@ -169,295 +273,18 @@ export function ExpandedModulePanel({
   originEl: HTMLElement
   onClose: () => void
 }) {
-  const aspectRatio = MODAL_AR[module.id] ?? DEFAULT_AR
-  const [start, setStart] = useState<Rect | null>(null)
-  const [target, setTarget] = useState<Rect | null>(null)
-  const [closing, setClosing] = useState(false)
-  const closingRef = useRef(false)
-  const closeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const openTransition = { duration: 0.3, ease: [0.22, 1, 0.36, 1] } as const
-  const closeTransition = { duration: 0.22, ease: [0.22, 1, 0.36, 1] } as const
-
-  useModalScrollLock()
-
-  useLayoutEffect(() => {
-    const rect = originEl.getBoundingClientRect()
-    setStart({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
-    setTarget(computeTarget(aspectRatio))
-  }, [aspectRatio, originEl])
-
-  useEffect(() => {
-    const updateTarget = () => setTarget(computeTarget(aspectRatio))
-    const visualViewport = window.visualViewport
-
-    window.addEventListener("resize", updateTarget)
-    visualViewport?.addEventListener("resize", updateTarget)
-    visualViewport?.addEventListener("scroll", updateTarget)
-    return () => {
-      window.removeEventListener("resize", updateTarget)
-      visualViewport?.removeEventListener("resize", updateTarget)
-      visualViewport?.removeEventListener("scroll", updateTarget)
-    }
-  }, [aspectRatio])
-
-  const handleClose = useCallback(() => {
-    if (closingRef.current || !originEl) return
-    closingRef.current = true
-
-    const rect = originEl.getBoundingClientRect()
-    setStart({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
-    setClosing(true)
-    closeFallbackRef.current = setTimeout(onClose, 280)
-  }, [onClose, originEl])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") handleClose()
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [handleClose])
-
-  useEffect(
-    () => () => {
-      if (closeFallbackRef.current) clearTimeout(closeFallbackRef.current)
-    },
-    [],
-  )
-
-  if (!start || !target) return null
-
-  const mobileBanner = MOBILE_MODULE_BANNERS[module.id]
-  const mobileCrop = MOBILE_MODULE_CROPS[module.id]
-  const mobileMockupCrop = MOBILE_MODULE_MOCKUP_CROPS[module.id]
-  const desktopCrop = DESKTOP_MODULE_CROPS[module.id]
-  const ModuleIcon = module.icon
-  const fromStart = buildTransform(start, target)
-  const transform = closing ? fromStart : { x: 0, y: 0, scaleX: 1, scaleY: 1 }
+  const compact = useCompactModal()
+  const aspectRatio = MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Fechar módulo"
-        className="eme-module-modal-backdrop fixed inset-0 z-[80] cursor-default bg-graphite/10 md:bg-transparent"
-        onClick={handleClose}
-      />
-
-      <motion.section
-        role="dialog"
-        aria-label={module.name}
-        aria-modal="true"
-        data-module-dialog={module.id}
-        className="eme-module-modal-shell fixed z-[82] cursor-default overflow-hidden rounded-[26px] border border-white/70 bg-white text-foreground shadow-[0_26px_70px_-36px_rgba(20,52,36,0.48)] md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:[filter:drop-shadow(0_40px_80px_rgba(28,52,40,0.34))]"
-        initial={{
-          x: fromStart.x,
-          y: fromStart.y,
-          scaleX: fromStart.scaleX,
-          scaleY: fromStart.scaleY,
-          opacity: 0.98,
-        }}
-        animate={{
-          x: transform.x,
-          y: transform.y,
-          scaleX: transform.scaleX,
-          scaleY: transform.scaleY,
-          opacity: closing ? 0.98 : 1,
-        }}
-        transition={closing ? closeTransition : openTransition}
-        style={{
-          left: target.left,
-          top: target.top,
-          width: target.width,
-          height: target.height,
-          transformOrigin: "center",
-          willChange: "transform, opacity",
-        }}
-        onAnimationComplete={() => {
-          if (closing && closingRef.current) {
-            if (closeFallbackRef.current) clearTimeout(closeFallbackRef.current)
-            onClose()
-          }
-        }}
-      >
-        <motion.div
-          className="eme-module-modal-desktop absolute inset-0 hidden md:block"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: closing ? 0 : 1 }}
-          transition={{ duration: closing ? 0.18 : 0.4, delay: closing ? 0 : 0.16 }}
-        >
-          <Image
-            src={module.mockup || "/placeholder.svg"}
-            alt={`Módulo ${module.name}`}
-            fill
-            sizes="90vw"
-            className={desktopCrop ? "hidden" : "object-contain"}
-            priority
-          />
-
-          {desktopCrop ? (
-            <CroppedModuleImage
-              src={module.mockup || "/placeholder.svg"}
-              alt={`Módulo ${module.name}`}
-              crop={desktopCrop}
-              sizes="90vw"
-              imageClassName="object-contain"
-              className={`absolute inset-0 border border-white/75 shadow-[0_28px_72px_-38px_rgba(20,52,36,0.38)] ${
-                module.id === "catalogo" ? "rounded-[30px]" : module.id === "financeiro" ? "rounded-[22px]" : "rounded-[44px]"
-              }`}
-            />
-          ) : null}
-
-          {module.id === "financeiro" ? (
-            <div
-              data-finance-demo-mask
-              className="absolute left-[57.8%] top-[81.8%] h-[13.8%] w-[30.2%] rounded-[20px] bg-[linear-gradient(145deg,#f0f3f1,#e7ece9)]"
-              aria-hidden="true"
-            />
-          ) : null}
-
-          {module.id === "marketplace" && module.demoHref ? (
-            <a
-              href={module.demoHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Ver exemplo no Marketplace — Abrir demonstração"
-              className="absolute bottom-[3.2%] left-[64.1%] h-[10.7%] w-[23.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
-            />
-          ) : null}
-        </motion.div>
-
-        <motion.div
-          className="eme-module-modal-mobile absolute inset-0 isolate flex flex-col overflow-hidden bg-transparent md:hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: closing ? 0 : 1 }}
-          transition={{ duration: closing ? 0.16 : 0.32, delay: closing ? 0 : 0.12 }}
-        >
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Fechar"
-            className="eme-module-modal-close absolute right-[max(12px,env(safe-area-inset-right))] top-[max(12px,env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full border border-foreground/10 bg-white/95 text-foreground/75 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/50"
-          >
-            <X className="size-5" aria-hidden />
-          </button>
-
-          {mobileBanner ? (
-            <div
-              data-mobile-module-scroll
-              className="eme-module-modal-scroll eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-transparent"
-            >
-              <CroppedModuleImage
-                src={mobileBanner}
-                alt={`Apresentação do módulo ${module.name}`}
-                crop={mobileCrop || { sourceWidth: 941, sourceHeight: 1672, x: 0, y: 0, width: 941, height: 1672 }}
-                sizes="calc(100vw - 16px)"
-                imageClassName="object-cover"
-                className="w-full rounded-[28px] border border-white/75 shadow-[0_22px_52px_-34px_rgba(20,52,36,0.42)]"
-              />
-            </div>
-          ) : (
-            <div
-              data-mobile-module-scroll
-              className="eme-module-modal-scroll eme-hidden-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-transparent px-5"
-              style={{
-                paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
-                paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
-              }}
-            >
-              <div className="flex items-center gap-2.5 text-eme-dark">
-                <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
-                  <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
-                </span>
-                <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">{module.name}</span>
-              </div>
-
-              <h2 className="mt-5 text-balance text-[27px] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
-                {module.tagline}
-              </h2>
-              <p className="mt-3 text-pretty text-[14px] leading-relaxed text-foreground/68">
-                {module.longDescription}
-              </p>
-
-              <div
-                data-mobile-module-mockup
-                className="eme-module-modal-media relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2 shadow-[0_18px_42px_-32px_rgba(20,52,36,0.42)]"
-                style={{ aspectRatio }}
-              >
-                {mobileMockupCrop ? (
-                  <CroppedModuleImage
-                    src={module.mockup || "/placeholder.svg"}
-                    alt={`Prévia visual do módulo ${module.name}`}
-                    crop={mobileMockupCrop}
-                    sizes="(max-width: 767px) calc(100vw - 58px), 680px"
-                    imageClassName="object-cover"
-                    className="absolute inset-2 rounded-[16px]"
-                  />
-                ) : (
-                  <Image
-                    src={module.mockup || "/placeholder.svg"}
-                    alt={`Prévia visual do módulo ${module.name}`}
-                    fill
-                    sizes="(max-width: 767px) calc(100vw - 58px), 680px"
-                    className="object-cover p-2"
-                    priority
-                  />
-                )}
-              </div>
-
-              <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>
-                {module.benefits.map((benefit) => {
-                  const title = typeof benefit === "string" ? benefit : benefit.title
-                  const description = typeof benefit === "string" ? null : benefit.description
-
-                  return (
-                    <li key={title} className="flex items-start gap-3">
-                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-eme/12 text-eme-dark">
-                        <Check className="size-3.5" strokeWidth={2.2} aria-hidden />
-                      </span>
-                      <span className="min-w-0 text-[13px] leading-snug text-foreground/82">
-                        <span className="font-medium">{title}</span>
-                        {description ? (
-                          <span className="mt-0.5 block text-[12.5px] leading-snug text-foreground/55">
-                            {description}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-
-              {module.id === "marketplace" && module.demoHref ? (
-                <a
-                  href={module.demoHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="eme-gradient mt-6 flex min-h-12 w-full items-center justify-center rounded-full px-5 text-[14px] font-medium text-primary-foreground shadow-[0_14px_28px_-16px_rgba(28,120,60,0.58)]"
-                >
-                  {module.cta}
-                </a>
-              ) : null}
-            </div>
-          )}
-        </motion.div>
-
-        <motion.button
-          type="button"
-          onClick={handleClose}
-          aria-label="Fechar"
-          className="absolute right-0 top-0 z-10 hidden h-[14%] w-[12%] cursor-pointer items-start justify-end p-[10%] md:flex"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: closing ? 0 : 1 }}
-          transition={{ duration: 0.2, delay: closing ? 0 : 0.15 }}
-        >
-          {module.id === "contratos" || module.id === "propostas" || module.id === "cos" ? (
-            <span className="eme-module-modal-close flex size-11 items-center justify-center rounded-full border border-foreground/8 bg-white/95 text-foreground shadow-[0_10px_28px_rgba(22,34,27,0.12)]">
-              <X className="size-5" aria-hidden />
-            </span>
-          ) : null}
-        </motion.button>
-      </motion.section>
-    </>
+    <LandingModalShell
+      label={module.name}
+      moduleId={module.id}
+      aspectRatio={aspectRatio}
+      originEl={originEl}
+      onClose={onClose}
+    >
+      {compact ? <MobileModuleArtwork module={module} /> : <DesktopModuleArtwork module={module} />}
+    </LandingModalShell>
   )
 }
