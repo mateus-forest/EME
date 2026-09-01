@@ -1,8 +1,13 @@
 export type CosLaunchIntent =
   | "list_properties" | "list_clients" | "list_contracts" | "list_proposals" | "list_documents" | "agenda_today"
+  | "financial_summary" | "financial_receipts" | "financial_expenses" | "financial_commissions"
+  | "financial_accounts" | "financial_upcoming" | "financial_portfolio"
   | "create_property" | "create_client" | "create_contract" | "create_proposal" | "create_agenda" | "attach_document"
+  | "create_financial_income" | "create_financial_expense" | "create_financial_commission"
   | "help_properties" | "help_clients" | "help_contracts" | "help_proposals" | "help_studio" | "help_catalog"
-  | "help_marketplace" | "help_plan_account" | "help_cos" | "new_conversation" | "unknown"
+  | "help_marketplace" | "help_plan_account" | "help_cos" | "help_finance" | "help_finance_portfolio"
+  | "help_finance_entries" | "help_finance_commissions" | "help_finance_accounts" | "help_finance_rentals"
+  | "new_conversation" | "unknown"
 
 export type CosLaunchCardKind = "property" | "client" | "contract" | "proposal" | "document" | "agenda"
 export type CosLaunchCard = {
@@ -17,7 +22,16 @@ export type CosLaunchCard = {
   ctaLabel: string
 }
 export type CosLaunchOption = { id: string; label: string; subtitle?: string }
-export type CosLaunchFormKind = "property" | "client" | "proposal" | "contract" | "agenda" | "document"
+export type CosLaunchFormKind =
+  | "property"
+  | "client"
+  | "proposal"
+  | "contract"
+  | "agenda"
+  | "document"
+  | "financial_income"
+  | "financial_expense"
+  | "financial_commission"
 export type CosLaunchForm = {
   kind: CosLaunchFormKind
   title: string
@@ -25,6 +39,8 @@ export type CosLaunchForm = {
   submitLabel: string
   clients?: CosLaunchOption[]
   properties?: CosLaunchOption[]
+  accounts?: CosLaunchOption[]
+  defaults?: Record<string, string>
 }
 export type CosLaunchAction = { id: string; label: string; href?: string }
 export type CosLaunchResponse = {

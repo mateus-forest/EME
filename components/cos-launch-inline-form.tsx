@@ -60,11 +60,39 @@ const initialValues = {
   agendaType: "Compromisso",
 }
 
+const incomeCategories = [
+  { id: "COMMISSION", label: "Comissão" },
+  { id: "FEES", label: "Honorários" },
+  { id: "RENT", label: "Locação" },
+  { id: "DEPOSIT", label: "Sinal" },
+  { id: "OTHER", label: "Outro" },
+]
+
+const expenseCategories = [
+  { id: "ADS", label: "Tráfego/anúncios" },
+  { id: "PHOTOGRAPHY", label: "Fotografia" },
+  { id: "TRAVEL", label: "Deslocamento" },
+  { id: "DOCUMENTATION", label: "Documentação" },
+  { id: "TOOLS", label: "Ferramentas" },
+  { id: "OTHER", label: "Outros" },
+]
+
+const incomeStatuses = [
+  { id: "EXPECTED", label: "Previsto" },
+  { id: "RECEIVED", label: "Recebido" },
+  { id: "OVERDUE", label: "Atrasado" },
+]
+
+const expenseStatuses = [
+  { id: "PENDING", label: "Pendente" },
+  { id: "PAID", label: "Pago" },
+]
+
 const inputClass =
   "min-h-10 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
 
 export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
-  const [values, setValues] = useState<Record<string, string>>(initialValues)
+  const [values, setValues] = useState<Record<string, string>>({ ...initialValues, ...form.defaults })
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [fileError, setFileError] = useState("")
   const [isRecording, setIsRecording] = useState(false)
@@ -73,7 +101,7 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
   useEffect(() => {
     recognitionRef.current?.stop()
     recognitionRef.current = null
-    setValues(initialValues)
+    setValues({ ...initialValues, ...form.defaults })
     setAttachments([])
     setFileError("")
     setIsRecording(false)
@@ -82,7 +110,7 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
       recognitionRef.current?.stop()
       recognitionRef.current = null
     }
-  }, [form.kind])
+  }, [form])
 
   const set = (key: string, value: string) =>
     setValues((current) => ({ ...current, [key]: value }))
@@ -110,6 +138,7 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
     key: string,
     options: Array<{ id: string; label: string }>,
     required = false,
+    emptyLabel = "Selecione",
   ) => (
     <label className="grid gap-1 text-xs font-medium text-slate-600">
       {label}
@@ -119,7 +148,7 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
         value={values[key] ?? ""}
         onChange={(event) => set(key, event.target.value)}
       >
-        <option value="">Selecione</option>
+        <option value="">{emptyLabel}</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
             {option.label}
@@ -337,6 +366,58 @@ export function CosLaunchInlineForm({ form, busy, onCancel, onSubmit }: Props) {
             <>
               {select("Cliente", "leadId", form.clients ?? [], true)}
               {field("Nome do documento", "documentName", { required: true })}
+            </>
+          ) : null}
+
+          {form.kind === "financial_income" ? (
+            <>
+              {field("Descrição", "description", { required: true })}
+              {select("Categoria", "category", incomeCategories, true)}
+              {select("Cliente (opcional)", "leadId", form.clients ?? [])}
+              {select("Imóvel (opcional)", "propertyId", form.properties ?? [])}
+              {field("Valor", "amount", { required: true, placeholder: "R$ 0,00" })}
+              {field("Data prevista", "dueDate", { type: "date", required: true })}
+              {select("Status", "status", incomeStatuses, true)}
+              {field("Data recebida (opcional)", "occurredAt", { type: "date" })}
+              {select("Conta (opcional)", "accountId", form.accounts ?? [], false, "Sem conta vinculada")}
+              <label className="grid gap-1 text-xs font-medium text-slate-600 sm:col-span-2">
+                Observação (opcional)
+                <textarea className={`${inputClass} min-h-20 resize-none py-2.5`} value={values.notes ?? ""} onChange={(event) => set("notes", event.target.value)} />
+              </label>
+            </>
+          ) : null}
+
+          {form.kind === "financial_expense" ? (
+            <>
+              {field("Descrição", "description", { required: true })}
+              {select("Categoria", "category", expenseCategories, true)}
+              {select("Cliente (opcional)", "leadId", form.clients ?? [])}
+              {select("Imóvel (opcional)", "propertyId", form.properties ?? [])}
+              {field("Valor", "amount", { required: true, placeholder: "R$ 0,00" })}
+              {field("Data", "dueDate", { type: "date", required: true })}
+              {select("Status", "status", expenseStatuses, true)}
+              {field("Data do pagamento (opcional)", "occurredAt", { type: "date" })}
+              {select("Conta (opcional)", "accountId", form.accounts ?? [], false, "Sem conta vinculada")}
+              <label className="grid gap-1 text-xs font-medium text-slate-600 sm:col-span-2">
+                Observação (opcional)
+                <textarea className={`${inputClass} min-h-20 resize-none py-2.5`} value={values.notes ?? ""} onChange={(event) => set("notes", event.target.value)} />
+              </label>
+            </>
+          ) : null}
+
+          {form.kind === "financial_commission" ? (
+            <>
+              {select("Cliente", "leadId", form.clients ?? [], true)}
+              {select("Imóvel", "propertyId", form.properties ?? [], true)}
+              {field("Valor da operação", "operationAmount", { required: true, placeholder: "R$ 0,00" })}
+              {field("Percentual de comissão", "commissionPercent", { required: true, placeholder: "Ex.: 6" })}
+              {field("Previsão de recebimento", "dueDate", { type: "date", required: true })}
+              {select("Status", "status", incomeStatuses, true)}
+              {field("Recebido em (opcional)", "occurredAt", { type: "date" })}
+              <label className="grid gap-1 text-xs font-medium text-slate-600 sm:col-span-2">
+                Observação (opcional)
+                <textarea className={`${inputClass} min-h-20 resize-none py-2.5`} value={values.notes ?? ""} onChange={(event) => set("notes", event.target.value)} />
+              </label>
             </>
           ) : null}
         </div>

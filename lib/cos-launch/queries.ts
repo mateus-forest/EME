@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { addDays, endOfDay, startOfDay, subDays } from "date-fns"
 
 import { agendaCard, clientCard, documentCard, propertyCard } from "@/lib/cos-launch/cards"
+import { routeCosLaunchFinancialQuery } from "@/lib/cos-launch/finance"
 import type {
   CosLaunchAction,
   CosLaunchCard,
@@ -948,6 +949,9 @@ export async function routeGuidedCosLaunchQuery(
   actionId: string,
   brokerId: string,
 ): Promise<CosLaunchResponse | null> {
+  const financial = await routeCosLaunchFinancialQuery(actionId, brokerId)
+  if (financial) return financial
+
   if (actionId === "query:properties") return propertySummary(brokerId)
   if (actionId.startsWith("query:properties:")) {
     return propertyFiltered(brokerId, actionId.slice("query:properties:".length))

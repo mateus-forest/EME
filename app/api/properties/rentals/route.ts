@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
+import { ensureRentalPaymentSchedule } from "@/lib/rental-payment-schedule"
 
 export const dynamic = "force-dynamic"
 
@@ -146,6 +147,13 @@ export async function POST(request: NextRequest) {
     const rentalId = await prisma.$transaction(async (tx) => {
       const rental = await tx.propertyRental.create({
         data: { brokerId: auth.broker!.id, propertyId, tenantLeadId, ownerLeadId, ownerName: resolvedOwnerName, contractDocumentId, monthlyRent, dueDay, startDate, endDate, adjustmentIndex, adjustmentOther: adjustmentIndex === "OUTRO" ? adjustmentOther || null : null, guaranteeType, guaranteeOther: guaranteeType === "OUTRO" ? guaranteeOther || null : null, notes: notes || null, nextAdjustmentDate },
+      })
+      await ensureRentalPaymentSchedule(tx, {
+        rentalId: rental.id,
+        monthlyRent,
+        dueDay,
+        startDate,
+        endDate,
       })
       await tx.property.update({ where: { id: propertyId }, data: { rentalAvailable: false, ...(resolvedOwnerName ? { ownerName: resolvedOwnerName } : {}) } })
       await tx.agendaEvent.create({ data: { brokerId: auth.broker!.id, propertyId, leadId: tenantLeadId, title: `Reajuste da locação - ${property.title}`, type: "rental_adjustment", date: nextAdjustmentDate, notes: `Revisar reajuste pelo índice ${adjustmentIndex}.` } })

@@ -17,9 +17,9 @@ test.describe("COS launch capability boundaries", () => {
     expect(new Set(classifiedIds).size).toBe(classifiedIds.length)
     expect(classifiedIds).toEqual(registeredIds)
     expect(COS_LAUNCH_CAPABILITY_IDS.SUPPORTED).toHaveLength(22)
-    expect(COS_LAUNCH_CAPABILITY_IDS.READ_ONLY).toHaveLength(31)
+    expect(COS_LAUNCH_CAPABILITY_IDS.READ_ONLY).toHaveLength(37)
     expect(COS_LAUNCH_CAPABILITY_IDS.GUIDANCE_ONLY).toHaveLength(8)
-    expect(COS_LAUNCH_CAPABILITY_IDS.NOT_AVAILABLE).toHaveLength(13)
+    expect(COS_LAUNCH_CAPABILITY_IDS.NOT_AVAILABLE).toHaveLength(7)
   })
 
   test("keeps unclassified and incomplete operations unavailable", () => {

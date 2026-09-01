@@ -28,6 +28,30 @@ const help: Partial<Record<CosLaunchIntent, CosLaunchResponse>> = {
     message: "O Marketplace amplia a exposição dos imóveis publicados e conecta sua operação a novos interessados. Você pode acompanhar publicações, leads, conversas, avaliações e pendências. Use para revisar a presença pública e o desempenho dos anúncios elegíveis.",
     actions: [{ id: "open:marketplace", label: "Abrir Marketplace", href: "/corretor/marketplace" }],
   },
+  help_finance: {
+    message: "O Financeiro é uma visão operacional da sua carteira. Ele reúne recebimentos, despesas, comissões, contas opcionais, próximos vencimentos e os valores reais dos imóveis e locações. Não substitui contabilidade, banco ou faturamento da assinatura do EME.",
+    actions: [{ id: "query:finance", label: "Ver resumo" }, { id: "open:finance", label: "Abrir Financeiro", href: "/corretor/financeiro" }],
+  },
+  help_finance_portfolio: {
+    message: "O valor da carteira soma os valores dos imóveis ativos do corretor e separa venda, imóveis disponíveis para locação e locações ativas. É um indicador operacional: não entra como receita, entrada ou resultado do mês.",
+    actions: [{ id: "query:finance:portfolio", label: "Consultar carteira" }, { id: "open:finance", label: "Abrir Financeiro", href: "/corretor/financeiro" }],
+  },
+  help_finance_entries: {
+    message: "Recebimentos registram entradas previstas, recebidas ou atrasadas. Despesas registram custos pendentes ou pagos. Cliente, imóvel e conta são vínculos opcionais; somente valores efetivamente recebidos ou pagos entram no resultado do mês.",
+    actions: [{ id: "form:financial_income", label: "Novo recebimento" }, { id: "form:financial_expense", label: "Nova despesa" }, { id: "query:finance:receipts", label: "Ver recebimentos" }],
+  },
+  help_finance_commissions: {
+    message: "Comissões relacionam cliente e imóvel ao valor da operação e ao percentual combinado. O EME calcula o valor da comissão automaticamente e acompanha previsão, atraso e recebimento.",
+    actions: [{ id: "form:financial_commission", label: "Nova comissão" }, { id: "query:finance:commissions", label: "Ver comissões" }],
+  },
+  help_finance_accounts: {
+    message: "Contas são opcionais e servem para organizar saldos operacionais. O saldo considera o saldo inicial, recebimentos recebidos vinculados e despesas pagas vinculadas. Não há conexão bancária, Open Finance ou conciliação automática.",
+    actions: [{ id: "query:finance:accounts", label: "Consultar contas" }, { id: "open:finance", label: "Abrir Financeiro", href: "/corretor/financeiro" }],
+  },
+  help_finance_rentals: {
+    message: "Ao iniciar uma locação, o EME cria competências mensais previstas usando o valor, o vencimento e o período do contrato. Elas aparecem em recebimentos e próximos vencimentos. Ao registrar o pagamento na locação, a mesma competência passa para recebido e atualiza as entradas e o resultado do mês.",
+    actions: [{ id: "query:finance:upcoming", label: "Próximos recebimentos" }, { id: "open:properties", label: "Abrir Locações", href: "/corretor/imoveis" }],
+  },
   help_plan_account: {
     message: "Plano mostra Free, Pro ou Scale, limites de imóveis, Créditos IA, pacotes, capacidade adicional e opções de upgrade. Conta reúne perfil, segurança e Faturamento, onde ficam assinatura, forma de pagamento, cobranças e cancelamento pelo Stripe. O COS orienta e abre essas áreas, mas não executa alterações de billing pela conversa.",
     actions: [{ id: "open:plan", label: "Abrir Plano", href: "/corretor/plano" }, { id: "open:billing", label: "Abrir Faturamento", href: "/corretor/conta?tab=faturamento" }, { id: "open:account", label: "Abrir Conta", href: "/corretor/conta" }],
