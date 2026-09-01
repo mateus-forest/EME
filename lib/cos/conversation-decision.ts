@@ -240,7 +240,7 @@ function detectMentionedDomains(message: string): CosConversationDomain[] {
   add("plan", /\b(plano|planos|assinatura atual|capacidade da carteira|creditos?)\b/.test(message))
   add("library", /\b(biblioteca|arte|artes|material|materiais|asset|assets)\b/.test(message))
   add("history", /\b(historico de conversa|conversa antiga|retomar conversa)\b/.test(message) || /\b(?:volt\w*|retom\w*)\b.*\bconversa\b/.test(message))
-  add("finance", /\b(financeiro|financeira|comissao|comissoes|recebiveis|despesas|pagamentos|caixa|cashflow|forecast)\b/.test(message))
+  add("finance", /\b(financeiro|financeira|comissao|comissoes|recebiveis|recebimentos|receber|recebi|despesas|gastei|gasto|gastos|pagamentos|caixa|cashflow|forecast)\b/.test(message) || /\bvalor (?:da )?(?:minha )?carteira\b/.test(message))
   add("analytics", /\b(analytics|desempenho|performance|perform\w*|metricas|estatisticas|conversao|ranking|visualiz\w*|operacao)\b/.test(message) || /\b(?:teve mais procura|pessoas estao procurando|gente buscando|resolver primeiro)\b/.test(message))
   add("studio", /\b(studio|campanha|campanhas|instagram|facebook|story|stories|reel|reels|video|videos)\b/.test(message) || /\b(?:divulg\w*|promov\w*)\b.*\bimove(?:l|is)\b/.test(message))
   add("help", /\b(sistema|modulo|modulos|funcionalidade|funcionalidades)\b/.test(message))

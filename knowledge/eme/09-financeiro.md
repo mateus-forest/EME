@@ -3,8 +3,8 @@ id: financeiro
 title: Financeiro
 domains: [finance]
 aliases: [visao financeira, comissoes, fluxo de caixa]
-version: 1.0.0
-updated_at: 2026-08-14
+version: 2.0.0
+updated_at: 2026-08-31
 knowledge_type: [module, rule]
 ---
 
@@ -12,54 +12,61 @@ knowledge_type: [module, rule]
 
 ## O que é
 
-Financeiro é uma visão operacional calculada a partir da carteira, documentos e configuração de comissão do corretor; não é escrituração contábil.
+Financeiro é o controle operacional básico da carteira, recebimentos, despesas e comissões do corretor; não é escrituração contábil.
 
 ## Para que serve
 
-Apresentar resumos de recebíveis, pagamentos, previsão, comissão e fluxo de caixa conforme os dados disponíveis.
+Registrar lançamentos essenciais e apresentar recebidos, despesas, resultado do mês, valores a receber, atrasados e próximos recebimentos.
 
 ## Entidades relacionadas
 
-`BrokerFinancialConfig`, imóveis, clientes e documentos. A configuração registra percentual de comissão e filtros de cálculo/visualização.
+`BrokerFinancialConfig`, `BrokerFinancialEntry`, `BrokerFinancialCommission`, imóveis, clientes, propostas, contratos, locações e pagamentos de locação. As relações reutilizam as entidades já existentes no EME.
 
 ## O que o usuário pode fazer
 
-Consultar indicadores e configurar parâmetros de comissão e filtros na tela financeira.
+Registrar recebimentos, despesas e comissões, vincular cliente/imóvel/origem existentes, atualizar liquidação e consultar os indicadores.
 
 ## O que o COS pode fazer
 
-Gerar resumo/análise financeira e consultar recebíveis, pagamentos, previsão, comissão e fluxo de caixa pelas capabilities atuais.
+Somente consultar resumo, carteira, recebidos, despesas, resultado, recebíveis, comissões e próximos vencimentos. O COS não cria nem altera lançamentos nesta etapa.
 
 ## Fluxos principais
 
-Configurar percentual/filtros → consultar dados elegíveis → apresentar valores calculados e seu contexto.
+Registrar lançamento na tela → vincular entidades do EME quando aplicável → atualizar status → consultar resumo e próximos vencimentos.
 
 ## Regras de negócio
 
-- Previsão e comissão calculada são estimativas operacionais.
-- Não apresentar estimativa como valor contábil, liquidado ou garantido.
-- A fonte e o filtro do cálculo precisam permanecer identificáveis.
+- Valor da carteira soma os imóveis ativos, imóveis disponíveis para locação e valores mensais das locações ativas.
+- Valor da carteira é indicador operacional e nunca entra no cálculo de receita ou resultado.
+- Entradas do mês consideram somente recebimentos com data de liquidação no mês.
+- Saídas do mês consideram somente despesas pagas no mês.
+- Comissões são calculadas automaticamente por `valor da operação × percentual`.
+- Pagamentos de locação existentes aparecem como fonte integrada somente leitura no Financeiro.
 
 ## Estados e status
 
-Não há ledger financeiro formal nem enum de liquidação no schema atual; os handlers derivam agrupamentos de documentos/status e configuração. “A pagar” e “fluxo de caixa” do COS usam custos fixos heurísticos por contrato, não despesas persistidas.
+Recebimentos e comissões usam `EXPECTED`, `RECEIVED` e `OVERDUE`; despesas usam `PENDING` e `PAID`. Um título não recebido com data anterior ao dia atual é apresentado como atrasado.
 
 ## Relação com outros módulos
 
-Usa imóveis, clientes/documentos e alimenta análises de [Desempenho](10-desempenho.md).
+Usa imóveis, clientes, propostas, contratos e locações sem duplicar essas entidades e alimenta análises de [Desempenho](10-desempenho.md).
 
 ## Limitações atuais
 
-Não substitui sistema contábil, conciliação bancária ou controle fiscal. A precisão depende da atualização dos dados operacionais. O resumo do COS não aplica todos os filtros financeiros salvos; recebível, previsão e caixa são projeções ad hoc sobre imóveis/leads/contratos, e não títulos financeiros reais.
+Não substitui sistema contábil, conciliação bancária ou controle fiscal. Não integra bancos, PIX, boleto, nota fiscal ou DRE. Não se mistura ao faturamento da assinatura EME. A precisão depende da atualização dos lançamentos operacionais.
 
 ## Termos oficiais
 
-Estimativa; comissão prevista; recebível; pagamento; previsão; fluxo de caixa operacional.
+Recebimento; despesa; comissão; previsto; recebido; atrasado; pago; valor da carteira; fluxo de caixa operacional.
 
 ## Exemplos de perguntas
 
-- “Quanto tenho de comissão prevista?”
-- “Qual é meu fluxo de caixa operacional?”
+- “Quanto recebi este mês?”
+- “Quanto tenho a receber?”
+- “Quais comissões estão atrasadas?”
+- “Quanto gastei este mês?”
+- “Qual o valor da minha carteira?”
+- “Quais são meus próximos recebimentos?”
 
 ## Exemplos de pedidos operacionais
 

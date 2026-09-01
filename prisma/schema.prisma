@@ -282,6 +282,8 @@ model Broker {
   extraPackagePurchases     ExtraPackagePurchase[]
   corretorEmeConfig         BrokerEmeConfig?
   financialConfig           BrokerFinancialConfig?
+  financialEntries          BrokerFinancialEntry[]
+  financialCommissions      BrokerFinancialCommission[]
   emeMessages               EmeMessage[]
   studioCampaigns           StudioCampaign[]
   contractTemplates         ContractTemplate[]
@@ -351,6 +353,8 @@ model Property {
   contractTemplateInstances ContractTemplateInstance[]
   marketplaceConversations  MarketplaceConversation[]
   rentals                   PropertyRental[]
+  financialEntries          BrokerFinancialEntry[]
+  financialCommissions      BrokerFinancialCommission[]
 
   @@unique([brokerId, publicCode])
   @@index([marketplacePublished, marketplacePublishedAt])
@@ -403,6 +407,66 @@ model BrokerFinancialConfig {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   broker            Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+}
+
+model BrokerFinancialEntry {
+  id               String          @id @default(cuid())
+  brokerId         String
+  direction        String
+  category         String
+  description      String
+  leadId           String?
+  propertyId       String?
+  brokerDocumentId String?
+  propertyRentalId String?
+  amount           Int
+  dueDate          DateTime
+  occurredAt       DateTime?
+  status           String          @default("PENDING")
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  broker           Broker          @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead             Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property         Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  brokerDocument   BrokerDocument? @relation(fields: [brokerDocumentId], references: [id], onDelete: SetNull)
+  propertyRental   PropertyRental? @relation(fields: [propertyRentalId], references: [id], onDelete: SetNull)
+
+  @@index([brokerId, direction, dueDate])
+  @@index([brokerId, status, dueDate])
+  @@index([leadId])
+  @@index([propertyId])
+  @@index([brokerDocumentId])
+  @@index([propertyRentalId])
+}
+
+model BrokerFinancialCommission {
+  id                String          @id @default(cuid())
+  brokerId          String
+  leadId            String?
+  propertyId        String?
+  brokerDocumentId  String?
+  propertyRentalId  String?
+  operationAmount   Int
+  commissionPercent Decimal         @db.Decimal(7, 4)
+  commissionAmount  Int
+  dueDate            DateTime
+  receivedAt         DateTime?
+  status             String          @default("EXPECTED")
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  broker             Broker          @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  lead               Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property           Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  brokerDocument     BrokerDocument? @relation(fields: [brokerDocumentId], references: [id], onDelete: SetNull)
+  propertyRental     PropertyRental? @relation(fields: [propertyRentalId], references: [id], onDelete: SetNull)
+
+  @@index([brokerId, status, dueDate])
+  @@index([leadId])
+  @@index([propertyId])
+  @@index([brokerDocumentId])
+  @@index([propertyRentalId])
 }
 
 model EmeMessage {
@@ -511,6 +575,8 @@ model BrokerDocument {
   property         Property?                 @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   templateInstance ContractTemplateInstance?
   rentals          PropertyRental[]
+  financialEntries BrokerFinancialEntry[]
+  financialCommissions BrokerFinancialCommission[]
 
   @@index([brokerId, createdAt])
   @@index([brokerId, status])
@@ -880,6 +946,8 @@ model Lead {
   marketplaceReviews        MarketplaceReview[]
   rentalsAsTenant           PropertyRental[]           @relation("RentalTenant")
   rentalsAsOwner            PropertyRental[]           @relation("RentalOwner")
+  financialEntries          BrokerFinancialEntry[]
+  financialCommissions      BrokerFinancialCommission[]
 
   @@index([propertyId])
   @@index([brokerId])
@@ -919,6 +987,8 @@ model PropertyRental {
   payments           RentalPayment[]
   adjustments        RentalAdjustment[]
   issues             RentalIssue[]
+  financialEntries   BrokerFinancialEntry[]
+  financialCommissions BrokerFinancialCommission[]
 
   @@index([brokerId, status])
   @@index([propertyId, createdAt])

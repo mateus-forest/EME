@@ -510,9 +510,12 @@ export const cosGoldenConversations: CosGoldenConversation[] = [
     description: "Consultas financeiras não são mutações nem contabilidade prometida",
     tags: ["query", "finance"],
     turns: [
-      { message: "Qual minha comissão estimada?", expected: { act: "query", domain: "finance", capabilityId: "finance.commission", shouldMutate: false } },
-      { message: "E a previsão?", expected: { act: "query", domain: "finance", capabilityId: "finance.forecast", shouldMutate: false } },
-      { message: "Mostre o fluxo de caixa estimado.", expected: { act: "query", domain: "finance", capabilityId: "finance.cashflow", shouldMutate: false } },
+      { message: "Quanto recebi este mês?", expected: { act: "query", domain: "finance", capabilityId: "finance.cashflow", shouldMutate: false } },
+      { message: "Quanto tenho a receber?", expected: { act: "query", domain: "finance", capabilityId: "finance.receivable", shouldMutate: false } },
+      { message: "Quais comissões estão atrasadas?", expected: { act: "query", domain: "finance", capabilityId: "finance.commission", shouldMutate: false } },
+      { message: "Quanto gastei este mês?", expected: { act: "query", domain: "finance", capabilityId: "finance.payable", shouldMutate: false } },
+      { message: "Qual o valor da minha carteira?", expected: { act: "query", domain: "finance", capabilityId: "finance.summary", shouldMutate: false } },
+      { message: "Quais são meus próximos recebimentos?", expected: { act: "query", domain: "finance", capabilityId: "finance.forecast", shouldMutate: false } },
     ],
   },
   {

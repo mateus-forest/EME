@@ -2,6 +2,7 @@ import "server-only"
 
 import { LeadStatus, PropertyStatus } from "@/lib/prisma-enums"
 
+import { getBrokerFinancialSnapshot, getFinancialDateRange } from "@/lib/broker-finance"
 import { getBrokerWorkspaceSummary, getEntityIdFromPayload, getPayloadRecord, requiredSelectionResponse } from "@/lib/cos/capabilities/shared"
 import { formatAssessorPropertyPrice } from "@/lib/eme-backend"
 import { prisma } from "@/lib/prisma"
@@ -12,93 +13,80 @@ function sumEventCount(events: Array<{ eventType: string; _count: { _all: number
   return events.reduce((sum, event) => sum + (eventTypes.includes(event.eventType) ? event._count._all : 0), 0)
 }
 
-function estimateCommissionTotal(totalPortfolioValue: number, commissionPercent: number) {
-  return Math.round(totalPortfolioValue * (commissionPercent / 100))
-}
-
 export const financeReceivableCapability: CosCapabilityHandler = async ({ brokerId }) => {
-  const summary = await getBrokerWorkspaceSummary(brokerId)
-  const published = summary.properties.filter((item) => item.published || item.status === PropertyStatus.PUBLISHED)
-  const totalPublishedValue = published.reduce((sum, item) => sum + Math.max(0, item.price), 0)
-  const commissionPercent = summary.broker?.financialConfig?.commissionPercent ?? 6
-  const estimatedReceivable = estimateCommissionTotal(totalPublishedValue, commissionPercent)
+  const snapshot = await getBrokerFinancialSnapshot(brokerId)
 
   return {
-    response: `Recebíveis previstos:\n\n- Imóveis publicados: ${published.length}\n- Carteira publicada: ${formatAssessorPropertyPrice(totalPublishedValue)}\n- Comissão potencial: ${formatAssessorPropertyPrice(estimatedReceivable)}`,
+    response: `Recebíveis operacionais:\n\n- A receber: ${formatAssessorPropertyPrice(snapshot.summary.receivable)}\n- Atrasado: ${formatAssessorPropertyPrice(snapshot.summary.overdue)}\n- Próximos 7 dias: ${formatAssessorPropertyPrice(snapshot.upcoming.next7Days.reduce((sum, item) => sum + item.amount, 0))}`,
     metadata: {
-      publishedProperties: published.length,
-      totalPublishedValue,
-      estimatedReceivable,
-      commissionPercent,
+      receivable: snapshot.summary.receivable,
+      overdue: snapshot.summary.overdue,
+      next7Days: snapshot.upcoming.next7Days,
     },
   }
 }
 
 export const financePayableCapability: CosCapabilityHandler = async ({ brokerId }) => {
-  const summary = await getBrokerWorkspaceSummary(brokerId)
-  const pendingContracts = summary.contracts.filter((item) => item.status === "awaiting_signature").length
-  const payableEstimate = pendingContracts * 15000
+  const snapshot = await getBrokerFinancialSnapshot(brokerId)
+  const pendingExpenses = snapshot.expenses.filter((item) => item.status === "PENDING")
+  const pendingTotal = pendingExpenses.reduce((sum, item) => sum + item.amount, 0)
 
   return {
-    response: `Contas a pagar conhecidas:\n\n- Contratos em andamento: ${pendingContracts}\n- Provisão operacional estimada: ${formatAssessorPropertyPrice(payableEstimate)}\n- Observação: ainda não há um contas a pagar estruturado, então a leitura usa os compromissos contratuais conhecidos.`,
+    response: `Despesas operacionais:\n\n- Gasto neste mês: ${formatAssessorPropertyPrice(snapshot.summary.expensesThisMonth)}\n- Despesas previstas: ${formatAssessorPropertyPrice(pendingTotal)} (${pendingExpenses.length} lançamentos)`,
     metadata: {
-      pendingContracts,
-      payableEstimate,
-      source: "operational-estimate",
+      expensesThisMonth: snapshot.summary.expensesThisMonth,
+      pendingExpenses: pendingExpenses.length,
+      pendingTotal,
     },
   }
 }
 
 export const financeForecastCapability: CosCapabilityHandler = async ({ brokerId }) => {
-  const summary = await getBrokerWorkspaceSummary(brokerId)
-  const activeLeads = summary.leads.filter((lead) => lead.status === LeadStatus.CONTACTED || lead.status === LeadStatus.NEGOTIATING).length
-  const activeProperties = summary.properties.filter((item) => item.published || item.status === PropertyStatus.PUBLISHED)
-  const commissionPercent = summary.broker?.financialConfig?.commissionPercent ?? 6
-  const totalPublishedValue = activeProperties.reduce((sum, item) => sum + Math.max(0, item.price), 0)
-  const projectedRevenue = Math.round(estimateCommissionTotal(totalPublishedValue, commissionPercent) * Math.min(1, activeLeads / Math.max(1, activeProperties.length)))
+  const snapshot = await getBrokerFinancialSnapshot(brokerId)
+  const next7Days = snapshot.upcoming.next7Days.reduce((sum, item) => sum + item.amount, 0)
+  const next30Days = snapshot.upcoming.next30Days.reduce((sum, item) => sum + item.amount, 0)
+  const overdue = snapshot.upcoming.overdue.reduce((sum, item) => sum + item.amount, 0)
 
   return {
-    response: `Previsão financeira:\n\n- Leads em andamento: ${activeLeads}\n- Imóveis ativos: ${activeProperties.length}\n- Receita potencial projetada: ${formatAssessorPropertyPrice(projectedRevenue)}`,
+    response: `Próximos recebimentos:\n\n- Próximos 7 dias: ${formatAssessorPropertyPrice(next7Days)} (${snapshot.upcoming.next7Days.length})\n- Próximos 30 dias: ${formatAssessorPropertyPrice(next30Days)} (${snapshot.upcoming.next30Days.length})\n- Atrasados: ${formatAssessorPropertyPrice(overdue)} (${snapshot.upcoming.overdue.length})`,
     metadata: {
-      activeLeads,
-      activeProperties: activeProperties.length,
-      projectedRevenue,
-      commissionPercent,
+      next7Days: snapshot.upcoming.next7Days,
+      next30Days: snapshot.upcoming.next30Days,
+      overdue: snapshot.upcoming.overdue,
     },
   }
 }
 
 export const financeCommissionCapability: CosCapabilityHandler = async ({ brokerId }) => {
-  const summary = await getBrokerWorkspaceSummary(brokerId)
-  const commissionPercent = summary.broker?.financialConfig?.commissionPercent ?? 6
-  const totalPortfolioValue = summary.properties.reduce((sum, item) => sum + Math.max(0, item.price), 0)
-  const commissionEstimate = estimateCommissionTotal(totalPortfolioValue, commissionPercent)
+  const snapshot = await getBrokerFinancialSnapshot(brokerId)
+  const { monthStart, monthEnd } = getFinancialDateRange()
+  const pending = snapshot.commissions.filter((item) => item.status === "EXPECTED")
+  const overdue = snapshot.commissions.filter((item) => item.status === "OVERDUE")
+  const receivedThisMonth = snapshot.commissions.filter((item) => {
+    if (!item.receivedAt || item.status !== "RECEIVED") return false
+    const date = new Date(item.receivedAt)
+    return date >= monthStart && date < monthEnd
+  })
 
   return {
-    response: `Comissão prevista da carteira:\n\n- Percentual de referência: ${commissionPercent}%\n- Volume em carteira: ${formatAssessorPropertyPrice(totalPortfolioValue)}\n- Comissão potencial: ${formatAssessorPropertyPrice(commissionEstimate)}`,
+    response: `Comissões operacionais:\n\n- Previstas: ${formatAssessorPropertyPrice(pending.reduce((sum, item) => sum + item.commissionAmount, 0))}\n- Atrasadas: ${formatAssessorPropertyPrice(overdue.reduce((sum, item) => sum + item.commissionAmount, 0))} (${overdue.length})\n- Recebidas neste mês: ${formatAssessorPropertyPrice(receivedThisMonth.reduce((sum, item) => sum + item.commissionAmount, 0))}`,
     metadata: {
-      commissionPercent,
-      totalPortfolioValue,
-      commissionEstimate,
+      pending,
+      overdue,
+      receivedThisMonth,
     },
   }
 }
 
 export const financeCashflowCapability: CosCapabilityHandler = async ({ brokerId }) => {
-  const summary = await getBrokerWorkspaceSummary(brokerId)
-  const publishedValue = summary.properties
-    .filter((item) => item.published || item.status === PropertyStatus.PUBLISHED)
-    .reduce((sum, item) => sum + Math.max(0, item.price), 0)
-  const commissionPercent = summary.broker?.financialConfig?.commissionPercent ?? 6
-  const inflow = estimateCommissionTotal(publishedValue, commissionPercent)
-  const outflow = summary.contracts.filter((item) => item.status === "draft").length * 7000
+  const snapshot = await getBrokerFinancialSnapshot(brokerId)
 
   return {
-    response: `Fluxo de caixa operacional:\n\n- Entradas potenciais: ${formatAssessorPropertyPrice(inflow)}\n- Saídas estimadas: ${formatAssessorPropertyPrice(outflow)}\n- Saldo operacional: ${formatAssessorPropertyPrice(inflow - outflow)}`,
+    response: `Fluxo de caixa operacional deste mês:\n\n- Recebido: ${formatAssessorPropertyPrice(snapshot.summary.receivedThisMonth)}\n- Gasto: ${formatAssessorPropertyPrice(snapshot.summary.expensesThisMonth)}\n- Resultado: ${formatAssessorPropertyPrice(snapshot.summary.monthResult)}\n\nO valor da carteira não entra neste cálculo.`,
     metadata: {
-      inflow,
-      outflow,
-      balance: inflow - outflow,
+      receivedThisMonth: snapshot.summary.receivedThisMonth,
+      expensesThisMonth: snapshot.summary.expensesThisMonth,
+      result: snapshot.summary.monthResult,
     },
   }
 }
@@ -248,4 +236,3 @@ export const catalogStatsCapability: CosCapabilityHandler = async ({ brokerId })
     },
   }
 }
-

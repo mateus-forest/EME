@@ -215,6 +215,25 @@ test.describe("COS — Decision Layer da Etapa 2C", () => {
     expect(result.selectedAction).toBe("CREATE_AGENDA_EVENT")
   })
 
+  for (const [message, capabilityId] of [
+    ["Quanto recebi este mês?", "finance.cashflow"],
+    ["Quanto tenho a receber?", "finance.receivable"],
+    ["Quais comissões estão atrasadas?", "finance.commission"],
+    ["Quanto gastei este mês?", "finance.payable"],
+    ["Qual o valor da minha carteira?", "finance.summary"],
+    ["Quais são meus próximos recebimentos?", "finance.forecast"],
+  ] as const) {
+    test(`financeiro somente leitura: ${message}`, () => {
+      const result = decide(message)
+      expect(result.dialogueAct).toBe("query")
+      expect(result.primaryDomain).toBe("finance")
+      expect(result.objective.targetCapabilityId).toBe(capabilityId)
+      const descriptor = listCosRoutableCapabilityDescriptors("portal").find((item) => item.id === capabilityId)
+      expect(descriptor?.mutatesData).toBe(false)
+      expect(descriptor?.requiresConfirmation).toBe(false)
+    })
+  }
+
   test("E — correção preserva a proposta atual", () => {
     const active = proposalWorkflow()
     const result = decide("Na verdade coloca 850 mil.", { workflow: active, snapshot: snapshot({ activeWorkflow: active, pendingInput: active.pendingInput }) })
