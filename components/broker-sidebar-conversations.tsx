@@ -62,7 +62,7 @@ export function BrokerSidebarConversations({
   const router = useRouter()
   const searchParams = useSearchParams()
   const activeConversationId = searchParams.get("conversa")?.trim() || ""
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [search, setSearch] = useState("")
   const [conversations, setConversations] = useState<CosConversationSummary[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -216,26 +216,26 @@ export function BrokerSidebarConversations({
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-[var(--broker-radius-sm)] px-2 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--broker-muted-soft)] transition-colors hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)]"
+          className="flex h-5.5 min-w-0 flex-1 items-center justify-between rounded-lg px-2.5 text-left text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--broker-muted-soft)] transition-colors hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)]"
           aria-expanded={expanded}
+          aria-controls="cos-sidebar-conversation-history"
         >
-          <MessageSquareText className="size-3.5 shrink-0" />
           <span className="min-w-0 flex-1 truncate">Conversas</span>
-          <ChevronDown className={`size-3.5 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          <ChevronDown className={`size-3 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
         </button>
         <button
           type="button"
           onClick={() => void createConversation()}
-          className="flex size-8 shrink-0 items-center justify-center rounded-[var(--broker-radius-sm)] text-[var(--broker-muted)] transition-colors hover:bg-[var(--broker-accent-soft)] hover:text-[var(--broker-accent-strong)]"
+          className="flex size-6 shrink-0 items-center justify-center rounded-lg text-[var(--broker-muted)] transition-colors hover:bg-[var(--broker-accent-soft)] hover:text-[var(--broker-accent-strong)]"
           title="Nova conversa"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-3" />
           <span className="sr-only">Nova conversa</span>
         </button>
       </div>
 
       {expanded ? (
-        <div className="mt-1.5 flex min-h-0 flex-col">
+        <div id="cos-sidebar-conversation-history" className="mt-1.5 flex min-h-0 flex-col">
           <label className="relative mx-1 block">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--broker-muted-soft)]" />
             <input

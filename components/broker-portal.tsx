@@ -12,6 +12,7 @@ import {
   Grip,
   FileText,
   Home,
+  WalletCards,
   X,
   UsersRound,
 } from "lucide-react"
@@ -59,6 +60,7 @@ type OperationHealthSnapshot = {
     contracts: number
     agenda: number
     leads: number
+    finance: number
   }
   activePropertiesCount: number
   pending: {
@@ -71,6 +73,16 @@ type OperationHealthSnapshot = {
     draftDocuments: number
     draftContracts: number
     pendingAgenda: number
+    overdueFinancialReceipts: number
+    pendingFinancialExpenses: number
+    incompleteFinancialRecords: number
+  }
+  financial: {
+    trackedRecords: number
+    expectedReceipts: number
+    overdueReceipts: number
+    pendingExpenses: number
+    incompleteRecords: number
   }
 }
 
@@ -328,13 +340,25 @@ function BrokerPortalLegacy() {
         operationHealthSnapshot ? { label: "Contratos", score: operationHealthSnapshot.scores.contracts, icon: FileText } : null,
         operationHealthSnapshot ? { label: "Agenda", score: operationHealthSnapshot.scores.agenda, icon: CalendarDays } : null,
         operationHealthSnapshot ? { label: "Leads", score: operationHealthSnapshot.scores.leads, icon: UsersRound } : null,
+        operationHealthSnapshot ? { label: "Financeiro", score: operationHealthSnapshot.scores.finance, icon: WalletCards } : null,
       ].filter((item): item is { label: string; score: number; icon: typeof UsersRound } => Boolean(item)),
     [operationHealthSnapshot],
   )
 
   const operationPendingItems = useMemo(() => {
     if (!operationHealthSnapshot) return []
-    const { missingRegistry, missingPropertyDocuments, missingRg, unattendedLeads, awaitingSignature, draftDocuments, pendingAgenda } = operationHealthSnapshot.pending
+    const {
+      missingRegistry,
+      missingPropertyDocuments,
+      missingRg,
+      unattendedLeads,
+      awaitingSignature,
+      draftDocuments,
+      pendingAgenda,
+      overdueFinancialReceipts,
+      pendingFinancialExpenses,
+      incompleteFinancialRecords,
+    } = operationHealthSnapshot.pending
 
     return [
       missingRegistry > 0 ? `${missingRegistry} ${pluralize("imóvel", "imóveis", missingRegistry)} sem matrícula` : null,
@@ -348,6 +372,15 @@ function BrokerPortalLegacy() {
         : null,
       draftDocuments > 0 ? `${draftDocuments} ${pluralize("documento", "documentos", draftDocuments)} em rascunho` : null,
       pendingAgenda > 0 ? `${pendingAgenda} ${pluralize("compromisso", "compromissos", pendingAgenda)} pendente${pendingAgenda > 1 ? "s" : ""}` : null,
+      overdueFinancialReceipts > 0
+        ? `${overdueFinancialReceipts} ${pluralize("recebimento", "recebimentos", overdueFinancialReceipts)} atrasado${overdueFinancialReceipts > 1 ? "s" : ""}`
+        : null,
+      pendingFinancialExpenses > 0
+        ? `${pendingFinancialExpenses} ${pluralize("despesa", "despesas", pendingFinancialExpenses)} pendente${pendingFinancialExpenses > 1 ? "s" : ""}`
+        : null,
+      incompleteFinancialRecords > 0
+        ? `${incompleteFinancialRecords} ${pluralize("registro financeiro", "registros financeiros", incompleteFinancialRecords)} incompleto${incompleteFinancialRecords > 1 ? "s" : ""}`
+        : null,
     ].filter((item): item is string => Boolean(item))
   }, [operationHealthSnapshot])
 

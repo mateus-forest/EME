@@ -1,12 +1,19 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Activity, CalendarDays, ChevronDown, CircleAlert, FileText, House, RefreshCw, Users } from "lucide-react"
+import { Activity, CalendarDays, ChevronDown, CircleAlert, FileText, House, RefreshCw, Users, WalletCards } from "lucide-react"
 
 type OperationHealth = {
   score: number
-  scores: Record<"clients" | "properties" | "documents" | "contracts" | "agenda" | "leads", number>
+  scores: Record<"clients" | "properties" | "documents" | "contracts" | "agenda" | "leads" | "finance", number>
   pending: Record<string, number>
+  financial: {
+    trackedRecords: number
+    expectedReceipts: number
+    overdueReceipts: number
+    pendingExpenses: number
+    incompleteRecords: number
+  }
 }
 
 const scoreLabels: Record<keyof OperationHealth["scores"], string> = {
@@ -16,6 +23,7 @@ const scoreLabels: Record<keyof OperationHealth["scores"], string> = {
   contracts: "Contratos",
   agenda: "Agenda",
   leads: "Leads",
+  finance: "Financeiro",
 }
 
 const pendingLabels: Record<string, { singular: string; plural: string }> = {
@@ -28,6 +36,9 @@ const pendingLabels: Record<string, { singular: string; plural: string }> = {
   awaitingSignature: { singular: "contrato aguardando assinatura", plural: "contratos aguardando assinatura" },
   pendingAgenda: { singular: "compromisso pendente", plural: "compromissos pendentes" },
   unattendedLeads: { singular: "lead sem atendimento", plural: "leads sem atendimento" },
+  overdueFinancialReceipts: { singular: "recebimento atrasado", plural: "recebimentos atrasados" },
+  pendingFinancialExpenses: { singular: "despesa pendente", plural: "despesas pendentes" },
+  incompleteFinancialRecords: { singular: "registro financeiro incompleto", plural: "registros financeiros incompletos" },
 }
 
 type PendingItem = { key: string; label: string; count: number }
@@ -67,11 +78,13 @@ function ScoreIcon({ section }: { section: keyof OperationHealth["scores"] }) {
   if (section === "clients" || section === "leads") return <Users className={className} />
   if (section === "properties") return <House className={className} />
   if (section === "agenda") return <CalendarDays className={className} />
+  if (section === "finance") return <WalletCards className={className} />
   return <FileText className={className} />
 }
 
-function HealthDetails({ scores, pendingItems, showAllPending, onToggleAllPending }: {
+function HealthDetails({ scores, financial, pendingItems, showAllPending, onToggleAllPending }: {
   scores: OperationHealth["scores"]
+  financial: OperationHealth["financial"]
   pendingItems: PendingItem[]
   showAllPending: boolean
   onToggleAllPending: () => void
@@ -84,7 +97,14 @@ function HealthDetails({ scores, pendingItems, showAllPending, onToggleAllPendin
             <span className="grid size-6 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
               <ScoreIcon section={section} />
             </span>
-            <span className="min-w-0 flex-1 truncate">{scoreLabels[section]}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{scoreLabels[section]}</span>
+              {section === "finance" ? (
+                <span className="block truncate text-[9px] text-slate-400">
+                  {financial.expectedReceipts} previsto{financial.expectedReceipts === 1 ? "" : "s"}
+                </span>
+              ) : null}
+            </span>
             <span className="shrink-0 font-semibold text-slate-900">{value}%</span>
           </div>
         ))}
@@ -138,7 +158,7 @@ export function CosLaunchOperationHealth() {
       <aside className="absolute bottom-[5.5rem] right-4 z-20 lg:hidden">
         {expanded && health ? (
           <div className="absolute bottom-[calc(100%+8px)] right-0 max-h-[min(31rem,calc(100dvh-9rem))] w-60 overflow-y-auto rounded-2xl border border-white/90 bg-white/92 p-3 shadow-[0_16px_40px_rgba(15,23,42,.10)] backdrop-blur-2xl [scrollbar-width:thin]">
-            <HealthDetails scores={health.scores} pendingItems={pendingItems} showAllPending={showAllPending} onToggleAllPending={() => setShowAllPending((current) => !current)} />
+            <HealthDetails scores={health.scores} financial={health.financial} pendingItems={pendingItems} showAllPending={showAllPending} onToggleAllPending={() => setShowAllPending((current) => !current)} />
           </div>
         ) : null}
         <button
@@ -180,7 +200,7 @@ export function CosLaunchOperationHealth() {
 
       {expanded && health ? (
         <div className="mt-3 border-t border-slate-100 pt-3">
-          <HealthDetails scores={health.scores} pendingItems={pendingItems} showAllPending={showAllPending} onToggleAllPending={() => setShowAllPending((current) => !current)} />
+          <HealthDetails scores={health.scores} financial={health.financial} pendingItems={pendingItems} showAllPending={showAllPending} onToggleAllPending={() => setShowAllPending((current) => !current)} />
         </div>
       ) : null}
 

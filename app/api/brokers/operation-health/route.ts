@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
+import { getBrokerFinancialSnapshot } from "@/lib/broker-finance"
 import { formatCurrencyBRLFromCents } from "@/lib/currency"
 import {
   computeLeadCompletion,
@@ -11,6 +12,7 @@ import {
   parsePropertyLegalData,
 } from "@/lib/legal-entities"
 import { isEmeActivePropertyStatus } from "@/lib/eme-plans"
+import { calculateFinancialOperationHealth } from "@/lib/operation-health"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
@@ -51,7 +53,16 @@ export async function GET() {
   tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1)
 
   try {
-    const [properties, leads, documentGroups, agendaTotal, overdueAgenda, pendingAgenda] = await Promise.all([
+    const [
+      properties,
+      leads,
+      documentGroups,
+      agendaTotal,
+      overdueAgenda,
+      pendingAgenda,
+      financialSnapshot,
+      activeRentals,
+    ] = await Promise.all([
       prisma.property.findMany({
         where: { brokerId },
         select: {
@@ -83,6 +94,11 @@ export async function GET() {
       prisma.agendaEvent.count({ where: { brokerId } }),
       prisma.agendaEvent.count({ where: { brokerId, status: "pending", date: { lt: todayStart } } }),
       prisma.agendaEvent.count({ where: { brokerId, status: "pending", date: { lt: tomorrowStart } } }),
+      getBrokerFinancialSnapshot(brokerId),
+      prisma.propertyRental.findMany({
+        where: { brokerId, status: "ACTIVE" },
+        select: { id: true, _count: { select: { payments: true } } },
+      }),
     ])
 
     const propertyScores = properties.map((property) =>
@@ -125,6 +141,15 @@ export async function GET() {
       .filter((group) => group.status === "awaiting_signature" || group.status === "generated")
       .reduce((total, group) => total + group._count._all, 0)
     const unattendedLeads = leads.filter((lead) => lead.status === "NEW").length
+    const financial = calculateFinancialOperationHealth({
+      receipts: financialSnapshot.receipts,
+      expenses: financialSnapshot.expenses,
+      commissions: financialSnapshot.commissions,
+      activeRentals: activeRentals.map((rental) => ({
+        id: rental.id,
+        paymentCount: rental._count.payments,
+      })),
+    })
 
     const scores = {
       clients: averageScore(leadDetails.map((lead) => lead.score)),
@@ -133,6 +158,7 @@ export async function GET() {
       contracts: healthyRatio(contractTotal, cancelledContracts),
       agenda: agendaTotal === 0 ? 100 : clampScore(100 - overdueAgenda * 12),
       leads: healthyRatio(leads.length, unattendedLeads),
+      finance: financial.score,
     }
 
     const response = NextResponse.json({
@@ -151,6 +177,16 @@ export async function GET() {
         draftDocuments,
         draftContracts,
         pendingAgenda,
+        overdueFinancialReceipts: financial.overdueReceipts,
+        pendingFinancialExpenses: financial.pendingExpenses,
+        incompleteFinancialRecords: financial.incompleteRecords,
+      },
+      financial: {
+        trackedRecords: financial.trackedRecords,
+        expectedReceipts: financial.expectedReceipts,
+        overdueReceipts: financial.overdueReceipts,
+        pendingExpenses: financial.pendingExpenses,
+        incompleteRecords: financial.incompleteRecords,
       },
     })
     response.headers.set("Cache-Control", "no-store, max-age=0")

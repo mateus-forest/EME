@@ -15,13 +15,32 @@ test.describe("COS Launch — layout", () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await loginAsBroker(page)
 
-    await expect(page.getByText("Olá. Consulte seus dados ou escolha uma ação para começar.")).toBeVisible()
+    await expect(page.getByRole("heading", { name: /Olá,/ })).toBeVisible()
+    await expect(page.getByText("Consulte seus dados ou escolha uma ação para começar.")).toBeVisible()
     await expect(page.getByText("Saúde da operação")).toBeVisible()
     await expect(page.getByRole("button", { name: "Meus imóveis", exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: "Cadastrar cliente", exact: true })).toBeVisible()
 
     const healthBox = await page.getByText("Saúde da operação").locator("../..").boundingBox()
     expect(healthBox?.width ?? 999).toBeLessThanOrEqual(250)
+
+    const conversationHistory = page.getByRole("button", { name: "Conversas", exact: true })
+    await expect(conversationHistory).toHaveAttribute("aria-expanded", "false")
+    await conversationHistory.click()
+    await expect(page.getByPlaceholder("Buscar conversas")).toBeVisible()
+    await conversationHistory.click()
+    await expect(page.getByPlaceholder("Buscar conversas")).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Ver detalhes", exact: true }).click()
+    await expect(page.getByText("Financeiro", { exact: true })).toBeVisible()
+    await page.getByRole("button", { name: "Ocultar detalhes", exact: true }).click()
+
+    const composerDockStyle = await page.getByTestId("cos-composer-dock").evaluate((element) => ({
+      backgroundColor: getComputedStyle(element).backgroundColor,
+      borderTopWidth: getComputedStyle(element).borderTopWidth,
+    }))
+    expect(composerDockStyle.backgroundColor).toBe("rgba(0, 0, 0, 0)")
+    expect(composerDockStyle.borderTopWidth).toBe("0px")
 
     await page.getByRole("button", { name: "Abrir menu de ações do COS" }).click()
     await expect(page.getByText("Nova conversa", { exact: true }).last()).toBeVisible()
@@ -35,7 +54,7 @@ test.describe("COS Launch — layout", () => {
 
     await page.keyboard.press("Escape")
     await page.setViewportSize({ width: 390, height: 844 })
-    await expect(page.getByText("Saúde da operação")).toBeVisible()
+    await expect(page.getByRole("button", { name: "Ver detalhes da saúde da operação" })).toBeVisible()
     await expect(page.getByPlaceholder("Fale com o COS...")).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     await page.screenshot({ path: "test-results/cos-launch-layout-mobile.png", fullPage: true })

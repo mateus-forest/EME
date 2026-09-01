@@ -356,7 +356,7 @@ export function CosLaunchPanel() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/70 bg-white/68 px-2 py-2 backdrop-blur-2xl sm:px-3">
+            <div data-testid="cos-composer-dock" className="sticky bottom-0 z-10 shrink-0 px-0 py-2 sm:px-1">
               <div className="mx-auto max-w-4xl">
                 <CosPromptComposer
                   prompt={prompt}
