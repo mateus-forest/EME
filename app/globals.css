@@ -1784,6 +1784,8 @@
   width: 48px;
   height: 48px;
   border: 1px solid rgba(255, 255, 255, 0.86);
+  color: var(--eme-dark);
+  line-height: 0;
   background: rgba(250, 252, 251, 0.9);
   -webkit-backdrop-filter: blur(10px) saturate(106%);
   backdrop-filter: blur(10px) saturate(106%);

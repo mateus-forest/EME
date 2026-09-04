@@ -33,8 +33,8 @@ export type EmeModule = {
   /** Key benefits, shown as a checklist. A plain string renders as a single line; an object
    *  with a description renders as a bold title plus a lighter supporting line beneath it. */
   benefits: (string | { title: string; description: string })[]
-  /** Call-to-action label. */
-  cta: string
+  /** Optional call-to-action label. */
+  cta?: string
   /** Premium device mockup for the panel's left side. */
   mockup: string
   /** How the mockup fills the panel's left column.
@@ -260,7 +260,6 @@ export const emeModules: EmeModule[] = [
       { title: "Organize locações, contratos e valores mensais", description: "Acompanhe locações ativas e valores de cada contrato." },
       { title: "Tenha mais clareza para decidir e crescer", description: "Com dados completos, suas decisões são mais seguras." },
     ],
-    cta: "Financeiro",
     mockup: "/modals/financeiro-approved-reference.png",
   },
 ]

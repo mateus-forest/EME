@@ -191,7 +191,7 @@ export function LandingModalShell({
           data-landing-modal-close
           className="eme-landing-modal-close absolute z-30 flex items-center justify-center rounded-full text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"
         >
-          <X className="size-5" strokeWidth={1.8} aria-hidden />
+          <X className="size-5 shrink-0" stroke="currentColor" strokeWidth={2.25} aria-hidden />
         </button>
       </motion.section>
     </div>,
