@@ -9,25 +9,44 @@ import type {
 } from "@/components/use-payment-notifications"
 import { isFinancialNotification } from "@/lib/notification-contract"
 
-export function useBrokerPaymentNotifications(options?: { includeArchived?: boolean }) {
+const notificationRequests = new Map<string, Promise<PaymentNotification[] | null>>()
+
+function requestNotifications(includeArchived: boolean) {
+  const key = includeArchived ? "history" : "active"
+  const existing = notificationRequests.get(key)
+  if (existing) return existing
+
+  const request = fetch(includeArchived ? "/api/notifications?history=1" : "/api/notifications", {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  })
+    .then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { notifications?: PaymentNotification[] } | null
+      return response.ok && data?.notifications ? data.notifications : null
+    })
+    .finally(() => {
+      notificationRequests.delete(key)
+    })
+
+  notificationRequests.set(key, request)
+  return request
+}
+
+export function useBrokerPaymentNotifications(options?: { includeArchived?: boolean; enabled?: boolean }) {
+  const enabled = options?.enabled ?? true
+  const includeArchived = options?.includeArchived ?? false
   const [notifications, setNotifications] = useState<PaymentNotification[]>([])
 
   const loadNotifications = useCallback(async () => {
-    const response = await fetch(options?.includeArchived ? "/api/notifications?history=1" : "/api/notifications", {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-    })
-    const data = (await response.json().catch(() => null)) as { notifications?: PaymentNotification[] } | null
-
-    if (response.ok && data?.notifications) {
-      setNotifications(data.notifications)
-    }
-  }, [options?.includeArchived])
+    const nextNotifications = await requestNotifications(includeArchived)
+    if (nextNotifications) setNotifications(nextNotifications)
+  }, [includeArchived])
 
   useEffect(() => {
+    if (!enabled) return
     loadNotifications().catch(() => setNotifications([]))
-  }, [loadNotifications])
+  }, [enabled, loadNotifications])
 
   const historyNotifications = useMemo(
     () => notifications.filter((notification) => !notification.archived),

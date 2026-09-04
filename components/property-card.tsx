@@ -88,6 +88,8 @@ export function PropertyCard({
           <img
             src={currentImage}
             alt={title}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover"
             onError={() => setCurrentImage("")}
           />

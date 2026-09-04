@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils"
 import { EmeLoaderMark } from "@/components/ui/eme-loader-mark"
+import type { ReactNode } from "react"
 
 type EmeLoadingProps = {
   className?: string
@@ -7,6 +8,7 @@ type EmeLoadingProps = {
   description?: string
   message: string
   logoClassName?: string
+  action?: ReactNode
 }
 
 export function EmeLoading({
@@ -15,6 +17,7 @@ export function EmeLoading({
   description,
   message,
   logoClassName,
+  action,
 }: EmeLoadingProps) {
   if (compact) {
     return (
@@ -31,6 +34,7 @@ export function EmeLoading({
           <div aria-hidden className="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-[#dfe9e2]">
             <span className="eme-loading-bar block h-full w-[42%] rounded-full bg-[linear-gradient(90deg,#16924a_0%,#63d191_100%)] motion-reduce:animate-none" />
           </div>
+          {action ? <div className="mt-3">{action}</div> : null}
         </div>
       </div>
     )
@@ -57,6 +61,7 @@ export function EmeLoading({
         <div aria-hidden className="mt-7 h-1.5 w-full max-w-[14rem] overflow-hidden rounded-full bg-[#dde8e0]">
           <span className="eme-loading-bar block h-full w-[38%] rounded-full bg-[linear-gradient(90deg,#17964c_0%,#76d59e_60%,#17964c_100%)] motion-reduce:animate-none" />
         </div>
+        {action ? <div className="mt-5">{action}</div> : null}
       </div>
     </div>
   )

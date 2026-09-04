@@ -73,13 +73,13 @@ export function AuthV0Experience() {
 
   return (
     <main
-      className="grid min-h-screen grid-cols-1 overflow-hidden bg-[var(--background)] text-[var(--foreground)] md:h-[100svh] md:grid-cols-[3fr_2fr]"
+      className="grid min-h-[100dvh] grid-cols-1 bg-[var(--background)] text-[var(--foreground)] md:h-[100dvh] md:min-h-0 md:grid-cols-[3fr_2fr] md:overflow-hidden"
       style={AUTH_THEME}
     >
       <section className="hidden md:block">
         <AuthShowcase />
       </section>
-      <section className="relative bg-[var(--background)]">
+      <section className="relative min-h-0 bg-[var(--background)] md:overflow-y-auto">
         <Link href="/" aria-label="EME - início" className="absolute left-6 top-6 z-10 flex w-fit items-center md:hidden">
           <Image src="/eme-logo.png" alt="EME" width={92} height={40} priority className="h-7 w-auto" />
         </Link>
@@ -237,7 +237,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
 
   return (
     <>
-      <div className="flex h-full items-center justify-center px-6 py-10 sm:px-10">
+      <div className="flex min-h-[100dvh] items-center justify-center px-6 py-10 sm:px-10 md:min-h-full">
         <div className="w-full max-w-sm">
           <div className="relative mb-8 flex rounded-full border border-[color:var(--border)] bg-[color:rgba(242,244,238,0.82)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
             {(["login", "signup"] as AuthMode[]).map((item) => {

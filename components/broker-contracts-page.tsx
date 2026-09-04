@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -43,6 +43,7 @@ import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { parseCurrencyInputToCents } from "@/lib/currency"
 import { formatDateBR, formatPercentInput, parseBrazilianDate, parsePercentInput } from "@/lib/structured-fields"
 import { subscribeEntitySync } from "@/lib/entity-sync"
@@ -1718,6 +1719,9 @@ export function BrokerContractsPage({
   const [amendmentReferenceCustomized, setAmendmentReferenceCustomized] = useState(false)
   const [previewScale, setPreviewScale] = useState(100)
   const [previewPage, setPreviewPage] = useState(1)
+  const contractsRequestRef = useRef<{ id: number; controller: AbortController } | null>(null)
+  const debouncedQuery = useDebouncedValue(query, 280)
+  const debouncedDraft = useDebouncedValue(draft, 160)
 
   const loadEntitySources = useCallback(async () => {
     const [leadsResponse, propertiesResponse, brokerResponse, financialResponse] = await Promise.all([
@@ -1774,14 +1778,22 @@ export function BrokerContractsPage({
 
   const loadContracts = useCallback(
     async (preferredId?: string | null) => {
+      contractsRequestRef.current?.controller.abort()
+      const request = {
+        id: (contractsRequestRef.current?.id ?? 0) + 1,
+        controller: new AbortController(),
+      }
+      contractsRequestRef.current = request
       setIsLoading(true)
       setFeedback("")
       try {
         const { contracts: nextContracts, contractTypes: nextContractTypes } = await contracts.list({
-          query,
+          query: debouncedQuery,
           status,
           kind: kindFilter,
+          signal: request.controller.signal,
         })
+        if (contractsRequestRef.current?.id !== request.id) return
         setContractsList(nextContracts)
         if (nextContractTypes.length > 0) setAvailableKindFilters(nextContractTypes)
         setSelectedId((current) => {
@@ -1792,16 +1804,18 @@ export function BrokerContractsPage({
           return nextContracts[0]?.id ?? null
         })
       } catch (error) {
+        if (request.controller.signal.aborted || contractsRequestRef.current?.id !== request.id) return
         setFeedback(error instanceof Error ? error.message : "Não foi possível carregar contratos.")
       } finally {
-        setIsLoading(false)
+        if (contractsRequestRef.current?.id === request.id) setIsLoading(false)
       }
     },
-    [kindFilter, query, status],
+    [debouncedQuery, kindFilter, status],
   )
 
   useEffect(() => {
     void loadContracts()
+    return () => contractsRequestRef.current?.controller.abort()
   }, [loadContracts])
 
   useEffect(() => {
@@ -1869,12 +1883,12 @@ export function BrokerContractsPage({
   const previewHtml = useMemo(
     () =>
       buildPreviewHtml({
-        draft,
+        draft: debouncedDraft,
         lead: selectedLead,
         property: selectedProperty,
         broker: brokerProfile,
       }),
-    [brokerProfile, draft, selectedLead, selectedProperty],
+    [brokerProfile, debouncedDraft, selectedLead, selectedProperty],
   )
 
   const valueSourceLabel = amountCustomized

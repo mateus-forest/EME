@@ -33,6 +33,8 @@ const LEGACY_AUTH_KEYS = [
   "authMode",
 ] as const
 
+let currentUserRequest: Promise<AuthenticatedUser | null> | null = null
+
 export function getDefaultRouteByRole(role: AuthRole) {
   if (role === "ADMIN") return "/admin"
   if (role === "AGENCY") return "/"
@@ -48,27 +50,38 @@ export function clearLegacyAuthState() {
 }
 
 export async function fetchCurrentUser() {
-  const response = await fetch("/api/auth/me", {
-    method: "GET",
-    credentials: "include",
-    cache: "no-store",
-  }).catch((error: unknown) => {
-    throw new AuthSessionRequestError(
-      "Não foi possível conectar ao serviço de autenticação.",
-      null,
-      { cause: error },
-    )
-  })
+  if (currentUserRequest) return currentUserRequest
 
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) return null
+  const request = (async () => {
+    const response = await fetch("/api/auth/me", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    }).catch((error: unknown) => {
+      throw new AuthSessionRequestError(
+        "Não foi possível conectar ao serviço de autenticação.",
+        null,
+        { cause: error },
+      )
+    })
 
-    throw new AuthSessionRequestError(
-      "Não foi possível validar sua sessão agora. Tente recarregar a página.",
-      response.status,
-    )
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) return null
+
+      throw new AuthSessionRequestError(
+        "Não foi possível validar sua sessão agora. Tente recarregar a página.",
+        response.status,
+      )
+    }
+
+    const data = (await response.json()) as { user: AuthenticatedUser }
+    return data.user
+  })()
+
+  currentUserRequest = request
+  try {
+    return await request
+  } finally {
+    if (currentUserRequest === request) currentUserRequest = null
   }
-
-  const data = (await response.json()) as { user: AuthenticatedUser }
-  return data.user
 }

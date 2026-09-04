@@ -33,10 +33,11 @@ export function PropertyGallery({
       if (e.key === 'ArrowLeft') step(-1)
     }
     document.addEventListener('keydown', onKey)
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousOverflow
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightbox, photos.length])

@@ -74,9 +74,10 @@ function requestBrokerSubscription() {
   return subscriptionRequest
 }
 
-export function useBrokerSubscription() {
+export function useBrokerSubscription(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true
   const [subscription, setSubscription] = useState<BrokerSubscription>(defaultSubscription)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(enabled)
 
   const refreshSubscription = useCallback(async () => {
     setIsLoading(true)
@@ -101,10 +102,12 @@ export function useBrokerSubscription() {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return
+
     refreshSubscription().catch(() => {
       setIsLoading(false)
     })
-  }, [refreshSubscription])
+  }, [enabled, refreshSubscription])
 
   return {
     subscription,

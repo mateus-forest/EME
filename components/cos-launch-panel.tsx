@@ -68,6 +68,7 @@ export function CosLaunchPanel() {
   const activeConversationIdRef = useRef("")
   const createConversationPromiseRef = useRef<Promise<string> | null>(null)
   const conversationLoadRequestRef = useRef(0)
+  const requestInFlightRef = useRef(false)
   const bootstrapStartedRef = useRef(false)
   const skipNextLoadConversationIdRef = useRef("")
   const { profile } = useBrokerProfile()
@@ -174,10 +175,13 @@ export function CosLaunchPanel() {
   }, [messages, busy, isConversationLoading])
 
   async function request(body: { message?: string; action?: string; payload?: Record<string, unknown> }) {
+    if (requestInFlightRef.current) return false
+    requestInFlightRef.current = true
     setBusy(true)
     setFeedback(null)
+    let conversationId = activeConversationIdRef.current
     try {
-      const conversationId = activeConversationIdRef.current || await createConversation()
+      conversationId = conversationId || await createConversation()
       const response = await fetch("/api/cos-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -204,17 +208,20 @@ export function CosLaunchPanel() {
       return true
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir a solicitação."
-      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: message }])
-      setFeedback(message)
+      if (!conversationId || activeConversationIdRef.current === conversationId) {
+        setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: message }])
+        setFeedback(message)
+      }
       return false
     } finally {
+      requestInFlightRef.current = false
       setBusy(false)
     }
   }
 
   async function submitMessage() {
     const message = prompt.trim()
-    if (!message || busy) return
+    if (!message || busy || requestInFlightRef.current) return
 
     setPrompt("")
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", text: message }])
@@ -222,6 +229,8 @@ export function CosLaunchPanel() {
   }
 
   async function runAction(action: string, label?: string) {
+    if (busy || requestInFlightRef.current) return
+
     if (action === "conversation:new") {
       try {
         await createConversation()
@@ -238,6 +247,7 @@ export function CosLaunchPanel() {
   }
 
   async function submitForm(messageId: string, form: CosLaunchForm, payload: Record<string, unknown>) {
+    if (busy || requestInFlightRef.current) return
     const success = await request({ action: `submit:${form.kind}`, message: form.submitLabel, payload })
     if (success) {
       setMessages((current) =>

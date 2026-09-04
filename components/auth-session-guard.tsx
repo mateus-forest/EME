@@ -23,6 +23,7 @@ export function AuthSessionGuard({
   const pathname = usePathname()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [sessionError, setSessionError] = useState("")
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -70,13 +71,25 @@ export function AuthSessionGuard({
     return () => {
       cancelled = true
     }
-  }, [allowedRole, pathname, router])
+  }, [allowedRole, pathname, retryCount, router])
 
   if (!isAuthorized) {
     return (
       <EmeLoading
         message="Preparando seu EME"
         description={sessionError || "Verificando seu acesso..."}
+        action={sessionError ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSessionError("")
+              setRetryCount((current) => current + 1)
+            }}
+            className="min-h-11 rounded-full border border-[#cbdccf] bg-white px-5 text-sm font-semibold text-[#173222] shadow-sm transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17964c]/30"
+          >
+            Tentar novamente
+          </button>
+        ) : undefined}
       />
     )
   }

@@ -33,42 +33,33 @@ function normalizeProfile(payload?: Partial<AgencyProfile>) {
   }
 }
 
-export function useAgencyProfile() {
-  const [profile, setProfileState] = useState<AgencyProfile>(defaultProfile)
-  const [isLoading, setIsLoading] = useState(true)
+type AgencyProfileResponse = {
+  profile?: {
+    id: string
+    companyName: string
+    ownerName: string
+    email: string
+    phone: string
+    cnpj: string
+    logoUrl: string
+    brandColor?: string
+  }
+  error?: string
+} | null
 
-  const refreshProfile = useCallback(async () => {
-    setIsLoading(true)
+let agencyProfileRequest: Promise<AgencyProfile> | null = null
 
-    try {
-      const response = await fetch("/api/agencies/me", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      })
-
-      const data = (await response.json().catch(() => null)) as
-        | {
-            profile?: {
-              id: string
-              companyName: string
-              ownerName: string
-              email: string
-              phone: string
-              cnpj: string
-              logoUrl: string
-              brandColor?: string
-            }
-          }
-        | null
-
-      if (!response.ok || !data?.profile) {
-        setProfileState(defaultProfile)
-        return
-      }
-
-      setProfileState(
-        normalizeProfile({
+function requestAgencyProfile() {
+  if (!agencyProfileRequest) {
+    agencyProfileRequest = fetch("/api/agencies/me", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as AgencyProfileResponse
+        if (!response.ok || !data?.profile) return defaultProfile
+        return normalizeProfile({
           id: data.profile.id,
           companyName: data.profile.companyName,
           ownerName: data.profile.ownerName,
@@ -77,8 +68,24 @@ export function useAgencyProfile() {
           whatsApp: data.profile.phone,
           logoUrl: data.profile.logoUrl,
           brandColor: data.profile.brandColor ?? "",
-        }),
-      )
+        })
+      })
+      .finally(() => {
+        agencyProfileRequest = null
+      })
+  }
+  return agencyProfileRequest
+}
+
+export function useAgencyProfile() {
+  const [profile, setProfileState] = useState<AgencyProfile>(defaultProfile)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const refreshProfile = useCallback(async () => {
+    setIsLoading(true)
+
+    try {
+      setProfileState(await requestAgencyProfile())
     } finally {
       setIsLoading(false)
     }
@@ -124,21 +131,7 @@ export function useAgencyProfile() {
       }),
     })
 
-    const data = (await response.json().catch(() => null)) as
-      | {
-          error?: string
-          profile?: {
-            id: string
-            companyName: string
-            ownerName: string
-            email: string
-            phone: string
-            cnpj: string
-            logoUrl: string
-            brandColor?: string
-          }
-        }
-      | null
+    const data = (await response.json().catch(() => null)) as AgencyProfileResponse
 
     if (!response.ok || !data?.profile) {
       throw new Error(data?.error || "Não foi possível salvar a conta da imobiliária.")

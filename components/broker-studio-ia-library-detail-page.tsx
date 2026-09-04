@@ -393,7 +393,7 @@ export function BrokerStudioIaLibraryDetailPage({ campaignId }: { campaignId: st
 
               {campaign && getAssetPreviewSource(campaign, previewAsset) ? (
                 previewAsset.type === "VIDEO" && previewAsset.fileUrl ? (
-                  <video src={previewAsset.fileUrl} controls className="max-h-[60vh] w-full rounded-[1.25rem] bg-black" />
+                  <video src={previewAsset.fileUrl} controls preload="metadata" className="max-h-[60vh] w-full rounded-[1.25rem] bg-black" />
                 ) : (
                   <img
                     src={getAssetPreviewSource(campaign, previewAsset) || ""}

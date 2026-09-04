@@ -145,7 +145,12 @@ export function getContractStatusTone(status: ContractStatus) {
 }
 
 export const contracts = {
-  async list(params?: { query?: string; status?: ContractFilterStatus; kind?: "all" | ContractType }) {
+  async list(params?: {
+    query?: string
+    status?: ContractFilterStatus
+    kind?: "all" | ContractType
+    signal?: AbortSignal
+  }) {
     const searchParams = new URLSearchParams()
     if (params?.query) searchParams.set("q", params.query)
     if (params?.status) searchParams.set("status", params.status)
@@ -155,6 +160,7 @@ export const contracts = {
     const response = await fetch(`/api/brokers/contracts${query ? `?${query}` : ""}`, {
       credentials: "include",
       cache: "no-store",
+      signal: params?.signal,
     })
     const data = await parseContractResponse(response)
     return { contracts: data.contracts ?? [], contractTypes: data.contractTypes ?? [] }

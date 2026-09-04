@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Building2, ChevronLeft, ExternalLink, FileText, MessageCircle, PencilLine, Plus, Send, Star, Users, X } from 'lucide-react'
@@ -15,6 +15,7 @@ import {
 } from '@/components/broker-portal-ui'
 import { MarketplaceMessageCard } from '@/components/marketplace/chat/marketplace-message-card'
 import { BrokerSpecialtyChips } from '@/components/marketplace/broker-specialty-chips'
+import { EmeLoading } from '@/components/ui/eme-loading'
 import { formatCurrencyBRLFromCents } from '@/lib/structured-fields'
 import type { BrokerProfile } from '@/lib/marketplace/pages-data'
 import { cn } from '@/lib/utils'
@@ -52,23 +53,64 @@ export function BrokerMarketplacePage() {
   const [draft, setDraft] = useState({ specialties: [''], region: '', transactions: 'BOTH', bio: '' })
   const [reply, setReply] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const pageLoadRequestRef = useRef(0)
+  const conversationLoadRequestRef = useRef(0)
+
+  const applyConversations = useCallback((nextConversations: Conversation[]) => {
+    setConversations(nextConversations)
+    setSelectedId((current) => (
+      nextConversations.some((conversation) => conversation.id === current)
+        ? current
+        : nextConversations[0]?.id || ''
+    ))
+  }, [])
+
+  const reloadConversations = useCallback(async () => {
+    const requestId = ++conversationLoadRequestRef.current
+    const response = await fetch('/api/brokers/marketplace/conversations', { cache: 'no-store' })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) throw new Error(payload?.error || 'Não foi possível carregar as conversas.')
+    if (requestId === conversationLoadRequestRef.current) {
+      applyConversations(payload?.conversations ?? [])
+    }
+  }, [applyConversations])
 
   const load = useCallback(async () => {
-    const [dashboardResponse, conversationResponse] = await Promise.all([
-      fetch('/api/brokers/marketplace', { cache: 'no-store' }),
-      fetch('/api/brokers/marketplace/conversations', { cache: 'no-store' }),
-    ])
-    if (dashboardResponse.ok) {
-      const payload = await dashboardResponse.json()
+    const requestId = ++pageLoadRequestRef.current
+    setIsLoading(true)
+    setLoadError('')
+    try {
+      const [dashboardResponse, conversationResponse] = await Promise.all([
+        fetch('/api/brokers/marketplace', { cache: 'no-store' }),
+        fetch('/api/brokers/marketplace/conversations', { cache: 'no-store' }),
+      ])
+      const [dashboardPayload, conversationPayload] = await Promise.all([
+        dashboardResponse.json().catch(() => null),
+        conversationResponse.json().catch(() => null),
+      ])
+      if (!dashboardResponse.ok) {
+        throw new Error(dashboardPayload?.error || 'Não foi possível carregar o Marketplace.')
+      }
+      if (requestId !== pageLoadRequestRef.current) return
+
+      const payload = dashboardPayload as Dashboard
       setData(payload)
       setDraft({ specialties: payload.settings.specialties.length ? payload.settings.specialties : [''], region: payload.settings.region, transactions: payload.settings.transactions, bio: payload.settings.bio })
+      if (conversationResponse.ok) {
+        applyConversations(conversationPayload?.conversations ?? [])
+      } else {
+        setFeedback(conversationPayload?.error || 'Não foi possível carregar as conversas.')
+      }
+    } catch (caught) {
+      if (requestId === pageLoadRequestRef.current) {
+        setLoadError(caught instanceof Error ? caught.message : 'Não foi possível carregar o Marketplace.')
+      }
+    } finally {
+      if (requestId === pageLoadRequestRef.current) setIsLoading(false)
     }
-    if (conversationResponse.ok) {
-      const payload = await conversationResponse.json()
-      setConversations(payload.conversations)
-      setSelectedId((current) => current || payload.conversations[0]?.id || '')
-    }
-  }, [])
+  }, [applyConversations])
 
   useEffect(() => { void load() }, [load])
   const selected = conversations.find((conversation) => conversation.id === selectedId)
@@ -104,17 +146,34 @@ export function BrokerMarketplacePage() {
     const response = await fetch(`/api/brokers/marketplace/conversations/${selected.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: reply }) })
     if (response.ok) {
       setReply('')
-      await load()
+      await reloadConversations()
     }
   }
 
   async function closeConversation() {
     if (!selected) return
     const response = await fetch(`/api/brokers/marketplace/conversations/${selected.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'close', requestReview: true }) })
-    if (response.ok) await load()
+    if (response.ok) await reloadConversations()
   }
 
-  if (!data) return <BrokerPageShell title="Marketplace"><div className="p-8 text-sm text-[#6b7280]">Carregando Marketplace...</div></BrokerPageShell>
+  if (!data) {
+    return (
+      <BrokerPageShell title="Marketplace">
+        <div className="p-4 sm:p-8">
+          {isLoading ? (
+            <EmeLoading compact message="Carregando Marketplace" />
+          ) : (
+            <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
+              <p>{loadError || 'Não foi possível carregar o Marketplace.'}</p>
+              <button type="button" onClick={() => void load()} className="mt-3 rounded-lg bg-white px-3 py-2 font-semibold text-red-700 shadow-sm">
+                Tentar novamente
+              </button>
+            </div>
+          )}
+        </div>
+      </BrokerPageShell>
+    )
+  }
   const profile = data.profile
 
   return (
@@ -179,7 +238,7 @@ export function BrokerMarketplacePage() {
               </div>
             ) : <BrokerEmptyState className="mt-4 min-h-36" title="Perfil público ainda indisponível" description="O perfil será ativado quando houver ao menos um imóvel publicado no Marketplace." />}
           </BrokerSurface>
-          <ConversationPanel conversations={conversations} selected={selected} selectedId={selectedId} reply={reply} setReply={setReply} setSelectedId={setSelectedId} sendReply={sendReply} closeConversation={closeConversation} reload={load} />
+          <ConversationPanel conversations={conversations} selected={selected} selectedId={selectedId} reply={reply} setReply={setReply} setSelectedId={setSelectedId} sendReply={sendReply} closeConversation={closeConversation} reload={reloadConversations} />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
@@ -284,7 +343,7 @@ function ConversationPanel({ conversations, selected, selectedId, reply, setRepl
   }
 
   const items = shareMode === 'PROPERTY' ? shareOptions?.properties : shareOptions?.proposals
-  return <div className="flex h-[min(42rem,calc(100dvh-7rem))] min-h-[26rem] min-w-0 flex-col overflow-hidden rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] shadow-[var(--broker-shadow-xs)] md:h-[30rem] md:min-h-0">
+  return <div className="flex h-[min(42rem,calc(100dvh-7rem))] min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] shadow-[var(--broker-shadow-xs)] md:h-[30rem]">
     <div className="border-b border-[var(--broker-border)] px-4 py-3.5"><h3 className="font-semibold text-[#111827]">Conversas</h3><p className="mt-0.5 text-xs text-[#667085]">Atendimento persistido dentro do EME.</p></div>
     <div className="grid min-h-0 flex-1 md:grid-cols-[12rem_minmax(0,1fr)]">
       <aside className="min-h-0 overflow-hidden border-b border-black/[0.06] md:border-r md:border-b-0"><div className="eme-subtle-scrollbar max-h-36 overflow-y-auto overscroll-contain p-1.5 md:h-full md:max-h-none">{conversations.length ? conversations.map((conversation) => <button key={conversation.id} onClick={() => setSelectedId(conversation.id)} className={cn('w-full rounded-lg px-2.5 py-2.5 text-left', selectedId === conversation.id ? 'bg-[#f2fbf5]' : 'hover:bg-[#f7f8f5]')}><span className="flex min-w-0 items-center justify-between gap-2"><span className="truncate text-sm font-semibold">{conversation.customerName}</span><BrokerStatusPill tone={marketplaceConversationStatusTone(conversation.status)} className="shrink-0 px-2 py-0 text-[10px]">{formatMarketplaceLeadStatus(conversation.status)}</BrokerStatusPill></span><span className="mt-0.5 block truncate text-xs text-[#667085]">{conversation.property?.title || conversation.messages.at(-1)?.body}</span></button>) : <p className="p-4 text-sm text-[#667085]">Nenhuma conversa ainda.</p>}</div></aside>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -247,23 +247,37 @@ export function BrokerFinancialPage() {
   const [accountDraft, setAccountDraft] = useState<AccountDraft>(createAccountDraft)
   const [accountFeedback, setAccountFeedback] = useState("")
   const [isSavingAccount, setIsSavingAccount] = useState(false)
+  const dataRequestRef = useRef<{ id: number; controller: AbortController } | null>(null)
 
   const loadData = useCallback(async () => {
+    dataRequestRef.current?.controller.abort()
+    const request = {
+      id: (dataRequestRef.current?.id ?? 0) + 1,
+      controller: new AbortController(),
+    }
+    dataRequestRef.current = request
     setError("")
     try {
-      const response = await fetch("/api/brokers/financial", { credentials: "include", cache: "no-store" })
+      const response = await fetch("/api/brokers/financial", {
+        credentials: "include",
+        cache: "no-store",
+        signal: request.controller.signal,
+      })
       const body = (await response.json().catch(() => null)) as FinancialSnapshot & { error?: string }
       if (!response.ok) throw new Error(body?.error || "Não foi possível carregar o financeiro.")
+      if (dataRequestRef.current?.id !== request.id) return
       setData(body)
     } catch (caughtError) {
+      if (request.controller.signal.aborted || dataRequestRef.current?.id !== request.id) return
       setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar o financeiro.")
     } finally {
-      setIsLoading(false)
+      if (dataRequestRef.current?.id === request.id) setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void loadData()
+    return () => dataRequestRef.current?.controller.abort()
   }, [loadData])
 
   const isCommission = draft.entryType === "commission" || (draft.entryType === "income" && draft.category === "COMMISSION")

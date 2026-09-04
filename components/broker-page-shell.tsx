@@ -51,9 +51,11 @@ export function BrokerPageShell({
   const isCosVariant = variant === "cos"
   const hasSearchArea = searchPlaceholder || headerControls
   const hasPrimaryAction = Boolean(primaryActionLabel)
-  const { profile } = useBrokerProfile()
-  const { subscription } = useBrokerSubscription()
-  const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications()
+  const { profile } = useBrokerProfile({ enabled: !isCosVariant })
+  const { subscription } = useBrokerSubscription({ enabled: !isCosVariant })
+  const { historyNotifications, unreadCount, markAsRead, archive } = useBrokerPaymentNotifications({
+    enabled: !isCosVariant,
+  })
   const resolvedNotificationCenter = useMemo(
     () =>
       notificationCenter ?? (

@@ -28,6 +28,42 @@ function normalizeProfile(payload?: Partial<AdminProfile>) {
   }
 }
 
+type AdminProfileResponse = {
+  profile?: {
+    id: string
+    name: string
+    email: string
+    phone: string
+  }
+  error?: string
+} | null
+
+let adminProfileRequest: Promise<AdminProfile> | null = null
+
+function requestAdminProfile() {
+  if (!adminProfileRequest) {
+    adminProfileRequest = fetch("/api/admin/me", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as AdminProfileResponse
+        if (!response.ok || !data?.profile) return defaultAdminProfile
+        return normalizeProfile({
+          id: data.profile.id,
+          name: data.profile.name,
+          email: data.profile.email,
+          whatsApp: data.profile.phone,
+        })
+      })
+      .finally(() => {
+        adminProfileRequest = null
+      })
+  }
+  return adminProfileRequest
+}
+
 export function useAdminProfile() {
   const [profile, setProfile] = useState<AdminProfile>(defaultAdminProfile)
   const [isLoading, setIsLoading] = useState(true)
@@ -36,36 +72,7 @@ export function useAdminProfile() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/admin/me", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      })
-
-      const data = (await response.json().catch(() => null)) as
-        | {
-            profile?: {
-              id: string
-              name: string
-              email: string
-              phone: string
-            }
-          }
-        | null
-
-      if (!response.ok || !data?.profile) {
-        setProfile(defaultAdminProfile)
-        return
-      }
-
-      setProfile(
-        normalizeProfile({
-          id: data.profile.id,
-          name: data.profile.name,
-          email: data.profile.email,
-          whatsApp: data.profile.phone,
-        }),
-      )
+      setProfile(await requestAdminProfile())
     } finally {
       setIsLoading(false)
     }
@@ -107,9 +114,7 @@ export function useAdminProfile() {
       }),
     })
 
-    const data = (await response.json().catch(() => null)) as
-      | { error?: string; profile?: { id: string; name: string; email: string; phone: string } }
-      | null
+    const data = (await response.json().catch(() => null)) as AdminProfileResponse
 
     if (!response.ok || !data?.profile) {
       throw new Error(data?.error || "Não foi possível salvar a conta administrativa.")

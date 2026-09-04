@@ -42,6 +42,8 @@ const SearchLoadingContext = createContext<SearchLoadingContextValue>({
 })
 
 const MESSAGE_INTERVAL_MS = 1_800
+const RESULTS_READY_GRACE_MS = 3_200
+const SCENE_FAILSAFE_MS = 15_000
 const MOBILE_VIDEO: SearchVideoSource = {
   src: '/marketplace/videos/search-loading-mobile.mp4',
   poster: '/marketplace/videos/search-loading-mobile-poster.svg',
@@ -104,7 +106,15 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
   }, [])
 
   useEffect(() => {
-    if (phase !== 'idle' && phase !== 'exiting' && resultsReady && videoEnded) setPhase('exiting')
+    if (phase === 'idle' || phase === 'exiting' || !resultsReady) return
+    if (videoEnded) {
+      setPhase('exiting')
+      return
+    }
+
+    const graceMs = phase === 'preparing' ? 1_200 : RESULTS_READY_GRACE_MS
+    const timer = window.setTimeout(() => setPhase('exiting'), graceMs)
+    return () => window.clearTimeout(timer)
   }, [phase, resultsReady, videoEnded])
 
   useEffect(() => {
@@ -148,6 +158,12 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
   const sceneMounted = phase !== 'idle'
   useEffect(() => {
     if (!sceneMounted) return
+    const timer = window.setTimeout(() => setPhase('exiting'), SCENE_FAILSAFE_MS)
+    return () => window.clearTimeout(timer)
+  }, [sceneMounted])
+
+  useEffect(() => {
+    if (!sceneMounted) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
@@ -168,6 +184,12 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
     setPhase((current) => current === 'idle' || current === 'exiting' ? current : 'holding')
   }
 
+  function handleVideoError() {
+    playbackStartedRef.current = false
+    setVideoEnded(true)
+    setPhase((current) => current === 'idle' || current === 'exiting' ? current : 'holding')
+  }
+
   function handleSceneTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
     if (event.target === event.currentTarget && event.propertyName === 'opacity' && phase === 'exiting') {
       setPhase('idle')
@@ -176,8 +198,6 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
 
   return (
     <SearchLoadingContext.Provider value={{ startSearchLoading, finishSearchLoading }}>
-      <link rel="preload" as="video" href={MOBILE_VIDEO.src} type="video/mp4" media="(max-width: 767px)" />
-      <link rel="preload" as="video" href={DESKTOP_VIDEO.src} type="video/mp4" media="(min-width: 768px)" />
       <link rel="preload" as="image" href={MOBILE_VIDEO.poster} media="(max-width: 767px)" />
       <link rel="preload" as="image" href={DESKTOP_VIDEO.poster} media="(min-width: 768px)" />
       {children}
@@ -222,6 +242,7 @@ export function CinematicSearchLoadingProvider({ children }: { children: ReactNo
             onCanPlay={handleVideoCanPlay}
             onCanPlayThrough={handleVideoCanPlay}
             onEnded={handleVideoEnded}
+            onError={handleVideoError}
             className={cn(
               'absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-350',
               videoCanPlay ? 'opacity-100' : 'opacity-0',

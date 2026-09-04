@@ -630,6 +630,7 @@ export function BrokerDocumentsPage() {
                   {isVideoDocument(selectedDocument) ? (
                     <video
                       controls
+                      preload="metadata"
                       src={parseVideoDocumentContent(selectedDocument.content)}
                       className="block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-black object-contain"
                     />

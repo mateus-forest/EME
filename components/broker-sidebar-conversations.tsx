@@ -103,11 +103,11 @@ export function BrokerSidebarConversations({
 
   useEffect(() => {
     function handleRefresh() {
-      void loadConversations()
+      if (expanded) void loadConversations()
     }
     window.addEventListener(COS_CONVERSATIONS_REFRESH_EVENT, handleRefresh)
     return () => window.removeEventListener(COS_CONVERSATIONS_REFRESH_EVENT, handleRefresh)
-  }, [loadConversations])
+  }, [expanded, loadConversations])
 
   const groupedConversations = useMemo(() => {
     const normalizedSearch = normalizeSearch(search)

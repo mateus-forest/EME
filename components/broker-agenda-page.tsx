@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CalendarDays,
   CheckCircle2,
@@ -78,22 +78,32 @@ export function BrokerAgendaPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<AppointmentDraft>(createEmptyDraft())
+  const eventsRequestRef = useRef<{ id: number; controller: AbortController } | null>(null)
 
   const loadEvents = useCallback(async (nextFilter: AppointmentFilter) => {
+    eventsRequestRef.current?.controller.abort()
+    const request = {
+      id: (eventsRequestRef.current?.id ?? 0) + 1,
+      controller: new AbortController(),
+    }
+    eventsRequestRef.current = request
     setIsLoading(true)
     setFeedback("")
     try {
-      const loadedEvents = await appointments.list(nextFilter)
+      const loadedEvents = await appointments.list(nextFilter, request.controller.signal)
+      if (eventsRequestRef.current?.id !== request.id) return
       setEvents(loadedEvents)
     } catch (error) {
+      if (request.controller.signal.aborted || eventsRequestRef.current?.id !== request.id) return
       setFeedback(error instanceof Error ? error.message : "Não foi possível carregar os compromissos.")
     } finally {
-      setIsLoading(false)
+      if (eventsRequestRef.current?.id === request.id) setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    loadEvents(filter)
+    void loadEvents(filter)
+    return () => eventsRequestRef.current?.controller.abort()
   }, [filter, loadEvents])
 
   const metrics = useMemo(() => {

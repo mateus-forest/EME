@@ -98,9 +98,10 @@ function requestBrokerProfile() {
   return brokerProfileRequest
 }
 
-export function useBrokerProfile() {
+export function useBrokerProfile(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true
   const [profile, setProfileState] = useState<BrokerProfile>(defaultProfile)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(enabled)
 
   const refreshProfile = useCallback(async () => {
     setIsLoading(true)
@@ -144,6 +145,8 @@ export function useBrokerProfile() {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return
+
     refreshProfile()
 
     function syncProfile() {
@@ -162,7 +165,7 @@ export function useBrokerProfile() {
       window.removeEventListener(PROFILE_UPDATED_EVENT, syncProfile)
       unsubscribeEntitySync()
     }
-  }, [refreshProfile])
+  }, [enabled, refreshProfile])
 
   async function saveProfile(
     updates: Partial<BrokerProfile> & {

@@ -45,10 +45,11 @@ async function parseAppointmentResponse(response: Response) {
 }
 
 export const appointments = {
-  async list(filter: AppointmentFilter) {
+  async list(filter: AppointmentFilter, signal?: AbortSignal) {
     const response = await fetch(`/api/brokers/agenda?filter=${filter}`, {
       credentials: "include",
       cache: "no-store",
+      signal,
     })
     const data = await parseAppointmentResponse(response)
     return data.events ?? []

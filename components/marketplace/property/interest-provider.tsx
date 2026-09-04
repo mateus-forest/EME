@@ -60,10 +60,11 @@ export function InterestProvider({
     if (!isOpen) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setIsOpen(false)
     document.addEventListener('keydown', onKey)
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousOverflow
     }
   }, [isOpen])
 

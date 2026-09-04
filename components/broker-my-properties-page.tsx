@@ -582,7 +582,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                   <div className={`relative min-h-0 w-full overflow-hidden rounded-[0.9rem] border border-black/[0.055] ${getPropertyImage(property.images?.[0] ?? null, property.id) ? "aspect-[16/9] bg-[#fbfbf8]" : "aspect-[16/9] bg-[linear-gradient(180deg,#f8faf8_0%,#f3f5f2_100%)]"}`}>
                     {getPropertyImage(property.images?.[0] ?? null, property.id) ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={getPropertyImage(property.images?.[0] ?? null, property.id)} alt={property.title} className="h-full w-full object-cover" />
+                      <img src={getPropertyImage(property.images?.[0] ?? null, property.id)} alt={property.title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center px-4 text-center">
                         <div className="flex size-12 items-center justify-center rounded-2xl border border-black/[0.05] bg-white/70">

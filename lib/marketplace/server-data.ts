@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { cache } from 'react'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CreciValidationStatus } from '@/lib/prisma-enums'
@@ -133,23 +134,20 @@ function marketplacePropertyWhere(): Prisma.PropertyWhereInput {
   }
 }
 
-export async function getMarketplaceProperties() {
+export const getMarketplaceProperties = cache(async function getMarketplaceProperties() {
   const records = await prisma.property.findMany({
     where: marketplacePropertyWhere(),
     include: marketplacePropertyInclude,
     orderBy: [{ marketplacePublishedAt: 'desc' }, { updatedAt: 'desc' }],
   })
   return records.map(mapMarketplaceProperty)
-}
+})
 
 export async function getMarketplacePropertyCards(limit?: number, purpose?: 'SALE' | 'RENT'): Promise<Property[]> {
-  const records = await prisma.property.findMany({
-    where: { ...marketplacePropertyWhere(), ...(purpose ? { purpose } : {}) },
-    include: marketplacePropertyInclude,
-    orderBy: [{ marketplacePublishedAt: 'desc' }, { updatedAt: 'desc' }],
-    ...(limit ? { take: limit } : {}),
-  })
-  const properties = records.map(mapMarketplaceProperty)
+  const expectedPurpose = purpose === 'RENT' ? 'aluguel' : purpose === 'SALE' ? 'compra' : null
+  const properties = (await getMarketplaceProperties()).filter(
+    (property) => !expectedPurpose || property.purpose === expectedPurpose,
+  )
   return (limit ? properties.slice(0, limit) : properties).map((property) => ({
     slug: property.slug,
     title: property.title,
@@ -166,14 +164,8 @@ export async function getMarketplacePropertyCards(limit?: number, purpose?: 'SAL
 }
 
 export async function getMarketplaceRentals(limit?: number): Promise<Property[]> {
-  const records = await prisma.property.findMany({
-    where: { ...marketplacePropertyWhere(), purpose: 'RENT' },
-    include: marketplacePropertyInclude,
-    orderBy: [{ marketplacePublishedAt: 'desc' }, { updatedAt: 'desc' }],
-    ...(limit ? { take: limit } : {}),
-  })
-  return records.map((record) => {
-    const mapped = mapMarketplaceProperty(record)
+  const rentals = (await getMarketplaceProperties()).filter((property) => property.purpose === 'aluguel')
+  return (limit ? rentals.slice(0, limit) : rentals).map((mapped) => {
     return {
       slug: mapped.slug,
       title: mapped.title,
@@ -249,7 +241,7 @@ export function mapMarketplaceBroker(record: BrokerWithMarketplaceCount): Broker
   }
 }
 
-export async function getMarketplaceBrokers() {
+export const getMarketplaceBrokers = cache(async function getMarketplaceBrokers() {
   const records = await prisma.broker.findMany({
     where: {
       status: 'ACTIVE',
@@ -259,7 +251,7 @@ export async function getMarketplaceBrokers() {
     orderBy: [{ marketplaceFeatured: 'desc' }, { createdAt: 'asc' }],
   })
   return records.map(mapMarketplaceBroker)
-}
+})
 
 export async function getMarketplaceBroker(slug: string) {
   const record = await prisma.broker.findFirst({
@@ -398,7 +390,7 @@ export function marketplaceRegionSlug(value: string) {
   return buildMarketplaceRegionSlug(value)
 }
 
-export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
+export const getMarketplaceRegions = cache(async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
   const [properties, events] = await Promise.all([
     getMarketplaceProperties(),
     prisma.searchEvent.findMany({
@@ -473,4 +465,4 @@ export async function getMarketplaceRegions(): Promise<MarketplaceRegion[]> {
       areas: region.areas.sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 12),
     }))
     .sort((a, b) => b.properties - a.properties || a.name.localeCompare(b.name, 'pt-BR'))
-}
+})

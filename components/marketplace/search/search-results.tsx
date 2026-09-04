@@ -316,7 +316,7 @@ export function SearchResults({
                   >
                     <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image || '/marketplace/placeholder.svg'} alt="" className="h-full w-full object-cover" />
+                      <img src={item.image || '/marketplace/placeholder.svg'} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
