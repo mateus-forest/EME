@@ -175,7 +175,8 @@
     padding: 20px;
   }
 
-  .surface.surface {
+  .surface.surface,
+  .surface.surface[data-eme-modal-preferred-aspect='true'] {
     --eme-modal-padding: 24px;
 
     width: calc(100vw - 40px);
@@ -192,7 +193,8 @@
     padding-left: max(12px, env(safe-area-inset-left));
   }
 
-  .surface.surface {
+  .surface.surface,
+  .surface.surface[data-eme-modal-preferred-aspect='true'] {
     --eme-modal-padding: 18px;
 
     width: min(calc(100vw - 24px), 100%);

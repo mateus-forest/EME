@@ -32,6 +32,24 @@ test("define a geometria responsiva do shell sem altura universal fixa", () => {
   assert.match(styles, /--eme-modal-padding:\s*18px/)
 })
 
+test("desativa a proporcao preferencial dos modais nos breakpoints compactos", () => {
+  const tabletStart = styles.indexOf("@media (min-width: 641px) and (max-width: 1023px)")
+  const mobileStart = styles.indexOf("@media (max-width: 640px)")
+  const supportStart = styles.indexOf("@supports not", mobileStart)
+  const tabletStyles = styles.slice(tabletStart, mobileStart)
+  const mobileStyles = styles.slice(mobileStart, supportStart)
+  const preferredAspectSelector = /\.surface\.surface\[data-eme-modal-preferred-aspect='true'\]/
+
+  assert.match(tabletStyles, preferredAspectSelector)
+  assert.match(tabletStyles, /width:\s*calc\(100vw - 40px\)/)
+  assert.match(tabletStyles, /aspect-ratio:\s*auto/)
+
+  assert.match(mobileStyles, preferredAspectSelector)
+  assert.match(mobileStyles, /width:\s*min\(calc\(100vw - 24px\), 100%\)/)
+  assert.match(mobileStyles, /max-height:\s*min\(calc\(100dvh - 24px\), 100%\)/)
+  assert.match(mobileStyles, /aspect-ratio:\s*auto/)
+})
+
 test("respeita safe areas, scroll interno e alvo de fechar de 44 pixels", () => {
   assert.match(styles, /env\(safe-area-inset-top\)/)
   assert.match(styles, /env\(safe-area-inset-right\)/)
