@@ -5,12 +5,19 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
 import { motion, useReducedMotion } from "motion/react"
 import { X } from "lucide-react"
+
+import {
+  EmeModalBackdrop,
+  EmeModalCloseTarget,
+  EmeModalContent,
+  EmeModalSurface,
+  EmeModalViewport,
+} from "@/components/ui/eme-modal-foundation"
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -28,12 +35,6 @@ type LandingModalShellProps = {
   originEl?: HTMLElement | null
   onClose: () => void
   children: ReactNode
-}
-
-type ModalShellStyle = CSSProperties & {
-  "--eme-modal-aspect": number
-  "--eme-modal-viewport-width": string
-  "--eme-modal-max-width": string
 }
 
 function useLandingModalScrollLock() {
@@ -134,67 +135,70 @@ export function LandingModalShell({
 
   const openDuration = reduceMotion ? 0.01 : 0.26
   const closeDuration = reduceMotion ? 0.01 : 0.18
-  const shellStyle: ModalShellStyle = {
-    "--eme-modal-aspect": aspectRatio,
-    "--eme-modal-viewport-width": `${aspectRatio * 90}dvh`,
-    "--eme-modal-max-width": `${aspectRatio * 900}px`,
-  }
-
   return createPortal(
-    <div
-      data-landing-modal-layer
-      className="eme-landing-modal-layer fixed inset-0 z-[200] grid place-items-center"
-    >
-      <motion.button
-        type="button"
-        tabIndex={-1}
-        aria-label={`Fechar ${label}`}
-        className="eme-landing-modal-backdrop absolute inset-0 cursor-default"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: closing ? 0 : 1 }}
-        transition={{ duration: closing ? closeDuration * 0.78 : openDuration * 0.78, ease: "easeOut" }}
-        onClick={handleClose}
-      />
-
-      <motion.section
-        ref={shellRef}
-        role="dialog"
-        aria-label={label}
-        aria-modal="true"
-        data-module-dialog={moduleId}
-        data-landing-modal-shell
-        className="eme-landing-modal-shell relative z-[1] cursor-default overflow-hidden text-foreground"
-        initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
-        animate={{
-          opacity: closing ? 0 : 1,
-          y: closing && !reduceMotion ? 8 : 0,
-          scale: closing && !reduceMotion ? 0.988 : 1,
-        }}
-        transition={{
-          duration: closing ? closeDuration : openDuration,
-          ease: closing ? [0.4, 0, 1, 1] : [0.22, 1, 0.36, 1],
-        }}
-        style={shellStyle}
-        onAnimationComplete={() => {
-          if (closing) finishClose()
-        }}
+    <EmeModalViewport asChild>
+      <div
+        data-landing-modal-layer
+        className="eme-landing-modal-layer"
       >
-        <div className="eme-landing-modal-content absolute inset-0 min-h-0 min-w-0 overflow-hidden">
-          {children}
-        </div>
+        <EmeModalBackdrop asChild>
+          <motion.button
+            type="button"
+            tabIndex={-1}
+            aria-label={`Fechar ${label}`}
+            className="eme-landing-modal-backdrop cursor-default"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: closing ? 0 : 1 }}
+            transition={{ duration: closing ? closeDuration * 0.78 : openDuration * 0.78, ease: "easeOut" }}
+            onClick={handleClose}
+          />
+        </EmeModalBackdrop>
 
-        <button
-          ref={closeButtonRef}
-          type="button"
-          onClick={handleClose}
-          aria-label="Fechar"
-          data-landing-modal-close
-          className="eme-landing-modal-close absolute z-30 flex items-center justify-center rounded-full text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"
-        >
-          <X className="size-5" strokeWidth={1.8} aria-hidden />
-        </button>
-      </motion.section>
-    </div>,
+        <EmeModalSurface asChild preferredAspectRatio={aspectRatio}>
+          <motion.section
+            ref={shellRef}
+            role="dialog"
+            aria-label={label}
+            aria-modal="true"
+            data-module-dialog={moduleId}
+            data-landing-modal-shell
+            className="eme-landing-modal-shell cursor-default text-foreground"
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
+            animate={{
+              opacity: closing ? 0 : 1,
+              y: closing && !reduceMotion ? 8 : 0,
+              scale: closing && !reduceMotion ? 0.988 : 1,
+            }}
+            transition={{
+              duration: closing ? closeDuration : openDuration,
+              ease: closing ? [0.4, 0, 1, 1] : [0.22, 1, 0.36, 1],
+            }}
+            onAnimationComplete={() => {
+              if (closing) finishClose()
+            }}
+          >
+            <EmeModalContent asChild flush>
+              <div className="eme-landing-modal-content min-h-0 min-w-0">
+                {children}
+              </div>
+            </EmeModalContent>
+
+            <EmeModalCloseTarget asChild>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={handleClose}
+                aria-label="Fechar"
+                data-landing-modal-close
+                className="eme-landing-modal-close text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"
+              >
+                <X className="size-5" strokeWidth={1.8} aria-hidden />
+              </button>
+            </EmeModalCloseTarget>
+          </motion.section>
+        </EmeModalSurface>
+      </div>
+    </EmeModalViewport>,
     document.body,
   )
 }
