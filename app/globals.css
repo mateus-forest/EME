@@ -1722,7 +1722,7 @@
 /* Landing module modals: one restrained, responsive Liquid Glass system. */
 .eme-landing-modal-layer {
   isolation: isolate;
-  padding: 24px;
+  padding: 24px 32px;
   overscroll-behavior: contain;
 }
 
@@ -1736,7 +1736,7 @@
 
 .eme-landing-modal-shell {
   width: min(1120px, calc(100vw - 64px));
-  min-height: min(640px, calc(100dvh - 48px));
+  height: min(calc(100dvh - 48px), 720px);
   max-height: calc(100dvh - 48px);
   isolation: isolate;
   contain: layout paint style;
@@ -1745,9 +1745,7 @@
   background: rgba(247, 250, 248, 0.3);
   -webkit-backdrop-filter: blur(16px) saturate(110%);
   backdrop-filter: blur(16px) saturate(110%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.84),
-    0 28px 70px -34px rgba(4, 18, 11, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 28px 70px -34px rgba(4, 18, 11, 0.58);
   backface-visibility: hidden;
   transform: translateZ(0);
   will-change: transform, opacity;
@@ -1769,15 +1767,10 @@
 }
 
 .eme-module-modal-artwork,
-.eme-module-modal-media {
-  background: #f4f7f5;
-}
+.eme-module-modal-media { background: #f4f7f5; }
 
 .eme-module-modal-artwork > img,
-.eme-module-modal-media > img {
-  display: block;
-  border-radius: inherit;
-}
+.eme-module-modal-media > img { display: block; border-radius: inherit; }
 
 .eme-module-modal-scroll {
   background: rgba(250, 252, 251, 0.98);
@@ -1812,12 +1805,12 @@
 
 @media (max-width: 1023px) {
   .eme-landing-modal-layer {
-    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   }
 
   .eme-landing-modal-shell {
     width: calc(100vw - 40px);
-    height: min(820px, calc(100dvh - 40px));
+    height: calc(100dvh - 40px);
     max-height: calc(100dvh - 40px);
     border-radius: 22px;
   }
@@ -1834,6 +1827,7 @@
 
   .eme-landing-modal-shell {
     width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
     max-height: calc(100dvh - 24px);
   }
 }

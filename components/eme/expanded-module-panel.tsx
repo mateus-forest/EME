@@ -140,14 +140,6 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
         />
       )}
 
-      {module.id === "financeiro" ? (
-        <div
-          data-finance-demo-mask
-          className="absolute left-[57.8%] top-[81.8%] h-[13.8%] w-[30.2%] rounded-[20px] bg-[linear-gradient(145deg,#f0f3f1,#e7ece9)]"
-          aria-hidden="true"
-        />
-      ) : null}
-
       {module.id === "marketplace" && module.demoHref ? (
         <a
           href={module.demoHref}
