@@ -188,10 +188,12 @@ function AcceleratorTopbar({
     <div className={`eme-accelerator__topbar${compact ? " is-compact" : ""}`}>
       <ProductBadge compact={compact} />
       <div className="eme-accelerator__controls">
-        <span className="eme-accelerator__notify" aria-label="Notificações">
-          <Bell aria-hidden strokeWidth={1.7} />
-          <span aria-hidden className="eme-accelerator__notify-dot" />
-        </span>
+        {!compact ? (
+          <span className="eme-accelerator__notify" aria-label="Notificações">
+            <Bell aria-hidden strokeWidth={1.7} />
+            <span aria-hidden className="eme-accelerator__notify-dot" />
+          </span>
+        ) : null}
         <button type="button" onClick={onEntrar} className="eme-accelerator__auth-action">
           Entrar
         </button>

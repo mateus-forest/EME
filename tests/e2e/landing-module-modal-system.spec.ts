@@ -16,7 +16,9 @@ const modules = [
 const viewports = [
   { label: "desktop", width: 1440, height: 900, compact: false },
   { label: "tablet", width: 820, height: 1180, compact: true },
-  { label: "mobile", width: 390, height: 844, compact: true },
+  { label: "mobile-390", width: 390, height: 844, compact: true },
+  { label: "mobile-393", width: 393, height: 852, compact: true },
+  { label: "mobile-430", width: 430, height: 932, compact: true },
 ] as const
 
 async function assertModalFitsViewport(page: Page, width: number, height: number) {
@@ -27,6 +29,12 @@ async function assertModalFitsViewport(page: Page, width: number, height: number
   expect(box!.y).toBeGreaterThanOrEqual(0)
   expect(box!.x + box!.width).toBeLessThanOrEqual(width + 0.5)
   expect(box!.y + box!.height).toBeLessThanOrEqual(height + 0.5)
+
+  if (width <= 640) {
+    expect(box!.width).toBeCloseTo(width - 24, 0)
+    expect(box!.x).toBeCloseTo(12, 0)
+    expect(box!.height).toBeLessThanOrEqual(height - 24 + 0.5)
+  }
 
   const hasHorizontalOverflow = await dialog.evaluate(
     (element) => element.scrollWidth > element.clientWidth + 1,
@@ -57,8 +65,37 @@ test.describe("Landing — sistema único dos modais de módulos", () => {
         await assertModalFitsViewport(page, viewport.width, viewport.height)
 
         if (viewport.compact) {
-          await expect(dialog.locator("[data-mobile-module-scroll]")).toBeVisible()
+          const scrollArea = dialog.locator("[data-mobile-module-scroll]")
+          await expect(scrollArea).toBeVisible()
+          await expect(scrollArea).toHaveCSS("overflow-y", "auto")
           await expect(dialog.locator("[data-desktop-module-artwork]")).toHaveCount(0)
+          await expect(dialog.locator("[data-mobile-module-title]")).toHaveCount(1)
+          await expect(dialog.locator("[data-mobile-module-description]")).toHaveCount(1)
+          await expect(dialog.locator("[data-mobile-module-mockup]")).toHaveCount(1)
+          await expect(dialog.locator("[data-mobile-module-benefits]")).toHaveCount(1)
+
+          const hasOverlap = await scrollArea.evaluate((element) => {
+            const selectors = [
+              "[data-mobile-module-label]",
+              "[data-mobile-module-title]",
+              "[data-mobile-module-description]",
+              "[data-mobile-module-mockup]",
+              "[data-mobile-module-benefits]",
+              "[data-mobile-module-complement]",
+            ]
+            const boxes = selectors
+              .map((selector) => element.querySelector(selector)?.getBoundingClientRect())
+              .filter((box): box is DOMRect => box != null)
+            return boxes.some((box, itemIndex) => itemIndex > 0 && box.top < boxes[itemIndex - 1].bottom - 1)
+          })
+          expect(hasOverlap).toBe(false)
+
+          await scrollArea.evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
+          const finalContent = scrollArea.locator(
+            "[data-mobile-module-complement], [data-mobile-module-benefits] li:last-child",
+          ).last()
+          await expect(finalContent).toBeInViewport({ ratio: 0.1 })
+          await expect(dialog.locator("[data-landing-modal-close]")).toBeInViewport()
         } else {
           await expect(dialog.locator("[data-desktop-module-artwork]")).toBeVisible()
           await expect(dialog.locator("[data-mobile-module-scroll]")).toHaveCount(0)

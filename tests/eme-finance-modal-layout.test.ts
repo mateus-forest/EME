@@ -10,6 +10,10 @@ const styles = readFileSync(
   new URL("../components/eme/finance-module-artwork.module.css", import.meta.url),
   "utf8",
 )
+const mobileStyles = readFileSync(
+  new URL("../components/eme/mobile-module-artwork.module.css", import.meta.url),
+  "utf8",
+)
 const financeArtworkSource = panelSource.slice(
   panelSource.indexOf("function FinanceModuleArtwork"),
   panelSource.indexOf("function MobileModuleArtwork"),
@@ -18,8 +22,7 @@ const financeArtworkSource = panelSource.slice(
 test("Financeiro usa composição própria sem máscara ou CTA vazio", () => {
   assert.match(financeArtworkSource, /function FinanceModuleArtwork/)
   assert.match(financeArtworkSource, /data-finance-modal-layout/)
-  assert.match(financeArtworkSource, /data-mobile-module-scroll=\{compact/)
-  assert.match(financeArtworkSource, /data-desktop-module-artwork=\{compact/)
+  assert.match(financeArtworkSource, /data-desktop-module-artwork/)
   assert.doesNotMatch(panelSource, /data-finance-demo-mask/)
   assert.doesNotMatch(financeArtworkSource, /Abrir demonstração/)
   assert.match(financeArtworkSource, /FINANCE_MOCKUP_CROP/)
@@ -32,12 +35,12 @@ test("composição desktop mantém mockup e conteúdo em 58 por 42", () => {
   assert.match(styles, /padding:\s*32px/)
 })
 
-test("composição compacta empilha todo o conteúdo sem corte horizontal", () => {
-  assert.match(styles, /@media \(max-width: 1023px\)/)
-  assert.match(styles, /grid-template-columns:\s*minmax\(0, 1fr\)/)
-  assert.match(styles, /"mockup"[\s\S]*?"benefits"[\s\S]*?"control"/)
-  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?padding:\s*18px/)
-  assert.doesNotMatch(styles, /overflow:\s*hidden/)
+test("Financeiro compacto usa a composição mobile compartilhada em fluxo vertical", () => {
+  assert.match(panelSource, /\{compact \? \([\s\S]*?<MobileModuleArtwork module=\{module\} \/>/)
+  assert.match(mobileStyles, /flex-direction:\s*column/)
+  assert.match(mobileStyles, /overflow-y:\s*auto/)
+  assert.match(mobileStyles, /object-fit:\s*contain/)
+  assert.match(panelSource, /financeiro:\s*\{[\s\S]*?title:\s*"Controle e previsibilidade"/)
 })
 
 test("texto e benefícios continuam vindo do conteúdo aprovado do módulo", () => {

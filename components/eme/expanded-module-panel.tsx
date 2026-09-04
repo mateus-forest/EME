@@ -2,11 +2,12 @@
 
 import { useSyncExternalStore } from "react"
 import Image from "next/image"
-import { Check, ShieldCheck } from "lucide-react"
+import { Calculator, Check, ShieldCheck } from "lucide-react"
 
 import { LandingModalShell } from "@/components/eme/landing-modal-shell"
 import type { EmeModule } from "@/lib/eme-modules"
 import financeStyles from "./finance-module-artwork.module.css"
+import mobileStyles from "./mobile-module-artwork.module.css"
 
 type ModuleImageCrop = {
   sourceWidth: number
@@ -42,25 +43,44 @@ const FINANCE_MOCKUP_CROP: ModuleImageCrop = {
   height: 525,
 }
 
-const MOBILE_MODULE_BANNERS: Record<string, string> = {
-  cos: "/eme/mobile-modals/cos.png",
-  agenda: "/eme/mobile-modals/agenda.png",
-  marketplace: "/eme/mobile-modals/marketplace.png",
-  contratos: "/eme/mobile-modals/contratos.png",
-  propostas: "/eme/mobile-modals/propostas.png",
-  "studio-ia": "/eme/mobile-modals/studio-ia.png",
-  catalogo: "/eme/mobile-modals/catalogo.png",
-  imoveis: "/eme/mobile-modals/imoveis.png",
-  clientes: "/eme/mobile-modals/clientes.png",
-}
-
-const MOBILE_MODULE_CROPS: Record<string, ModuleImageCrop> = {
-  agenda: { sourceWidth: 941, sourceHeight: 1672, x: 57, y: 56, width: 826, height: 1582 },
-  cos: { sourceWidth: 941, sourceHeight: 1672, x: 83, y: 48, width: 773, height: 1576 },
-}
-
-const MOBILE_MODULE_MOCKUP_CROPS: Record<string, ModuleImageCrop> = {
+const MOBILE_MODULE_ARTWORK_CROPS: Record<string, ModuleImageCrop> = {
+  marketplace: { sourceWidth: 1522, sourceHeight: 1033, x: 55, y: 185, width: 860, height: 650 },
+  cos: { sourceWidth: 1672, sourceHeight: 941, x: 155, y: 170, width: 900, height: 640 },
+  clientes: { sourceWidth: 1551, sourceHeight: 1014, x: 50, y: 95, width: 1175, height: 860 },
+  imoveis: { sourceWidth: 1536, sourceHeight: 1024, x: 15, y: 135, width: 930, height: 780 },
+  catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 300, y: 185, width: 690, height: 620 },
+  "studio-ia": { sourceWidth: 1535, sourceHeight: 1024, x: 480, y: 98, width: 1035, height: 865 },
+  propostas: { sourceWidth: 1536, sourceHeight: 1024, x: 325, y: 30, width: 1210, height: 960 },
+  contratos: { sourceWidth: 1536, sourceHeight: 1024, x: 520, y: 135, width: 950, height: 570 },
+  agenda: { sourceWidth: 1452, sourceHeight: 941, x: 60, y: 145, width: 740, height: 660 },
   financeiro: FINANCE_MOCKUP_CROP,
+}
+
+const MOBILE_MODULE_COMPLEMENTS: Partial<Record<string, {
+  title: string
+  description: string
+  icon: EmeModule["icon"]
+}>> = {
+  marketplace: {
+    title: "Segurança e credibilidade",
+    description: "Ambiente seguro, verificado e feito para gerar confiança para você e para o seu cliente.",
+    icon: ShieldCheck,
+  },
+  propostas: {
+    title: "Cálculo automático de financiamento",
+    description: "Simule diferentes cenários de entrada, prazo e taxas para oferecer a melhor opção ao seu cliente com total confiança.",
+    icon: Calculator,
+  },
+  contratos: {
+    title: "Mais segurança",
+    description: "Contratos revisados, claros e prontos para você fechar negócios com tranquilidade.",
+    icon: ShieldCheck,
+  },
+  financeiro: {
+    title: "Controle e previsibilidade",
+    description: "Recebimentos, despesas e comissões organizados para uma operação mais clara e segura.",
+    icon: ShieldCheck,
+  },
 }
 
 const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
@@ -88,15 +108,20 @@ function CroppedModuleImage({
   crop,
   sizes,
   className = "",
+  mobileMockup = false,
+  fit = "cover",
 }: {
   src: string
   alt: string
   crop: ModuleImageCrop
   sizes: string
   className?: string
+  mobileMockup?: boolean
+  fit?: "cover" | "contain"
 }) {
   return (
     <div
+      data-mobile-module-mockup={mobileMockup ? "" : undefined}
       className={`eme-module-modal-media relative overflow-hidden ${className}`}
       style={{ aspectRatio: `${crop.width} / ${crop.height}` }}
     >
@@ -115,7 +140,7 @@ function CroppedModuleImage({
           top: `${-(crop.y / crop.height) * 100}%`,
           width: `${(crop.sourceWidth / crop.width) * 100}%`,
           height: `${(crop.sourceHeight / crop.height) * 100}%`,
-          objectFit: "cover",
+          objectFit: fit,
         }}
       />
     </div>
@@ -161,15 +186,14 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
   )
 }
 
-function FinanceModuleArtwork({ module, compact }: { module: EmeModule; compact: boolean }) {
+function FinanceModuleArtwork({ module }: { module: EmeModule }) {
   const ModuleIcon = module.icon
   const [titleLead, titleAccent] = module.tagline.split(/ (?=organizada)/)
 
   return (
     <article
       data-finance-modal-layout
-      data-mobile-module-scroll={compact ? "" : undefined}
-      data-desktop-module-artwork={compact ? undefined : ""}
+      data-desktop-module-artwork
       className={financeStyles.layout}
     >
       <div className={financeStyles.eyebrow}>
@@ -231,105 +255,79 @@ function FinanceModuleArtwork({ module, compact }: { module: EmeModule; compact:
 }
 
 function MobileModuleArtwork({ module }: { module: EmeModule }) {
-  const mobileBanner = MOBILE_MODULE_BANNERS[module.id]
-  const mobileCrop = MOBILE_MODULE_CROPS[module.id]
-  const mobileMockupCrop = MOBILE_MODULE_MOCKUP_CROPS[module.id]
-
-  if (mobileBanner) {
-    return (
-      <div
-        data-mobile-module-scroll
-        className="eme-module-modal-scroll eme-hidden-scrollbar h-full min-h-0 w-full overflow-x-hidden overflow-y-auto overscroll-contain"
-      >
-        <CroppedModuleImage
-          src={mobileBanner}
-          alt={`Apresentação do módulo ${module.name}`}
-          crop={mobileCrop || { sourceWidth: 941, sourceHeight: 1672, x: 0, y: 0, width: 941, height: 1672 }}
-          sizes="calc(100vw - 16px)"
-          className="w-full"
-        />
-      </div>
-    )
-  }
-
   const ModuleIcon = module.icon
+  const artworkCrop = MOBILE_MODULE_ARTWORK_CROPS[module.id]
+  const complement = MOBILE_MODULE_COMPLEMENTS[module.id]
+  const ComplementIcon = complement?.icon
+  const moduleLabel = module.id === "financeiro" || module.id === "marketplace"
+    ? `${module.name} EME`
+    : module.name
+
   return (
-    <div
+    <article
       data-mobile-module-scroll
-      className="eme-module-modal-scroll eme-hidden-scrollbar h-full min-h-0 w-full overflow-x-hidden overflow-y-auto overscroll-contain px-5"
-      style={{
-        paddingTop: "max(4.75rem, calc(env(safe-area-inset-top) + 3.5rem))",
-        paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
-      }}
+      data-mobile-module-layout
+      className={`${mobileStyles.layout} eme-hidden-scrollbar`}
     >
-      <div className="flex items-center gap-2.5 text-eme-dark">
-        <span className="flex size-9 items-center justify-center rounded-2xl bg-eme/10">
-          <ModuleIcon className="size-5 text-eme" strokeWidth={1.7} aria-hidden />
+      <div data-mobile-module-label className={mobileStyles.eyebrow}>
+        <span className={mobileStyles.eyebrowIcon} aria-hidden="true">
+          <ModuleIcon className="size-5" strokeWidth={1.7} />
         </span>
-        <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">{module.name}</span>
+        <span>{moduleLabel}</span>
       </div>
 
-      <h2 className="mt-5 text-balance text-[27px] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
-        {module.tagline}
-      </h2>
-      <p className="mt-3 text-pretty text-[14px] leading-relaxed text-foreground/68">
-        {module.longDescription}
-      </p>
+      <h2 data-mobile-module-title className={mobileStyles.title}>{module.tagline}</h2>
+      <p data-mobile-module-description className={mobileStyles.description}>{module.longDescription}</p>
 
-      <div
-        data-mobile-module-mockup
-        className="eme-module-modal-media relative mt-5 w-full shrink-0 overflow-hidden rounded-[22px] border border-foreground/8 bg-[#f6f3ef] p-2"
-        style={{
-          aspectRatio: mobileMockupCrop
-            ? `${mobileMockupCrop.width} / ${mobileMockupCrop.height}`
-            : MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO,
-        }}
+      {artworkCrop ? (
+        <CroppedModuleImage
+          src={module.mockup || "/placeholder.svg"}
+          alt={`Prévia visual do módulo ${module.name}`}
+          crop={artworkCrop}
+          sizes="calc(100vw - 60px)"
+          className={mobileStyles.mockup}
+          mobileMockup
+          fit="contain"
+        />
+      ) : null}
+
+      <ul
+        data-mobile-module-benefits
+        className={mobileStyles.benefits}
+        aria-label={`Benefícios de ${module.name}`}
       >
-        {mobileMockupCrop ? (
-          <CroppedModuleImage
-            src={module.mockup || "/placeholder.svg"}
-            alt={`Prévia visual do módulo ${module.name}`}
-            crop={mobileMockupCrop}
-            sizes="calc(100vw - 58px)"
-            className="absolute inset-2 rounded-[16px]"
-          />
-        ) : (
-          <Image
-            src={module.mockup || "/placeholder.svg"}
-            alt={`Prévia visual do módulo ${module.name}`}
-            fill
-            sizes="calc(100vw - 58px)"
-            quality={88}
-            placeholder="blur"
-            blurDataURL={IMAGE_PLACEHOLDER}
-            className="object-cover p-2"
-          />
-        )}
-      </div>
-
-      <ul className="mt-5 grid gap-3" aria-label={`Benefícios de ${module.name}`}>
         {module.benefits.map((benefit) => {
           const title = typeof benefit === "string" ? benefit : benefit.title
           const description = typeof benefit === "string" ? null : benefit.description
 
           return (
-            <li key={title} className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-eme/12 text-eme-dark">
-                <Check className="size-3.5" strokeWidth={2.2} aria-hidden />
+            <li key={title} className={mobileStyles.benefit}>
+              <span className={mobileStyles.benefitIcon} aria-hidden="true">
+                <Check className="size-3.5" strokeWidth={2.2} />
               </span>
-              <span className="min-w-0 text-[13px] leading-snug text-foreground/82">
-                <span className="font-medium">{title}</span>
+              <span className={mobileStyles.benefitCopy}>
+                <span className={mobileStyles.benefitTitle}>{title}</span>
                 {description ? (
-                  <span className="mt-0.5 block text-[12.5px] leading-snug text-foreground/55">
-                    {description}
-                  </span>
+                  <span className={mobileStyles.benefitDescription}>{description}</span>
                 ) : null}
               </span>
             </li>
           )
         })}
       </ul>
-    </div>
+
+      {complement && ComplementIcon ? (
+        <div className={mobileStyles.complement} data-mobile-module-complement>
+          <span className={mobileStyles.complementIcon} aria-hidden="true">
+            <ComplementIcon className="size-8" strokeWidth={1.6} />
+          </span>
+          <div>
+            <p className={mobileStyles.complementTitle}>{complement.title}</p>
+            <p className={mobileStyles.complementDescription}>{complement.description}</p>
+          </div>
+        </div>
+      ) : null}
+    </article>
   )
 }
 
@@ -354,10 +352,10 @@ export function ExpandedModulePanel({
       originEl={originEl}
       onClose={onClose}
     >
-      {isFinance ? (
-        <FinanceModuleArtwork module={module} compact={compact} />
-      ) : compact ? (
+      {compact ? (
         <MobileModuleArtwork module={module} />
+      ) : isFinance ? (
+        <FinanceModuleArtwork module={module} />
       ) : (
         <DesktopModuleArtwork module={module} />
       )}
