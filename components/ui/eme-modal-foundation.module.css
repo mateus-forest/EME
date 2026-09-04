@@ -138,14 +138,30 @@
   min-height: 44px;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, .82);
   border-radius: 999px;
   background: rgba(250, 252, 251, .92);
+  color: #16231b;
   -webkit-backdrop-filter: blur(8px) saturate(106%);
   backdrop-filter: blur(8px) saturate(106%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .96),
     0 12px 28px -18px rgba(7, 24, 15, .46);
+  line-height: 0;
+  opacity: 1;
+}
+
+.closeTarget.closeTarget [data-eme-modal-close-icon] {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: #16231b;
+  stroke: currentColor;
+  opacity: 1;
+  visibility: visible;
 }
 
 @media (min-width: 1024px) {

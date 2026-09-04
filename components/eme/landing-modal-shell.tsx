@@ -31,7 +31,7 @@ const FOCUSABLE_SELECTOR = [
 type LandingModalShellProps = {
   label: string
   moduleId: string
-  aspectRatio: number
+  aspectRatio?: number
   originEl?: HTMLElement | null
   onClose: () => void
   children: ReactNode
@@ -142,10 +142,8 @@ export function LandingModalShell({
         className="eme-landing-modal-layer"
       >
         <EmeModalBackdrop asChild>
-          <motion.button
-            type="button"
-            tabIndex={-1}
-            aria-label={`Fechar ${label}`}
+          <motion.div
+            aria-hidden="true"
             className="eme-landing-modal-backdrop cursor-default"
             initial={{ opacity: 0 }}
             animate={{ opacity: closing ? 0 : 1 }}
@@ -192,7 +190,13 @@ export function LandingModalShell({
                 data-landing-modal-close
                 className="eme-landing-modal-close text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"
               >
-                <X className="size-5" strokeWidth={1.8} aria-hidden />
+                <X
+                  data-eme-modal-close-icon
+                  className="pointer-events-none block size-5 shrink-0"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  focusable="false"
+                />
               </button>
             </EmeModalCloseTarget>
           </motion.section>

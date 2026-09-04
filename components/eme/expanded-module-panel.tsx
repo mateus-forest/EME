@@ -2,10 +2,11 @@
 
 import { useSyncExternalStore } from "react"
 import Image from "next/image"
-import { Check } from "lucide-react"
+import { Check, ShieldCheck } from "lucide-react"
 
 import { LandingModalShell } from "@/components/eme/landing-modal-shell"
 import type { EmeModule } from "@/lib/eme-modules"
+import financeStyles from "./finance-module-artwork.module.css"
 
 type ModuleImageCrop = {
   sourceWidth: number
@@ -32,6 +33,14 @@ const DEFAULT_ASPECT_RATIO = 1480 / 962
 const COMPACT_MODAL_QUERY = "(max-width: 1023px)"
 const IMAGE_PLACEHOLDER =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+const FINANCE_MOCKUP_CROP: ModuleImageCrop = {
+  sourceWidth: 1672,
+  sourceHeight: 941,
+  x: 315,
+  y: 165,
+  width: 635,
+  height: 525,
+}
 
 const MOBILE_MODULE_BANNERS: Record<string, string> = {
   cos: "/eme/mobile-modals/cos.png",
@@ -51,13 +60,12 @@ const MOBILE_MODULE_CROPS: Record<string, ModuleImageCrop> = {
 }
 
 const MOBILE_MODULE_MOCKUP_CROPS: Record<string, ModuleImageCrop> = {
-  financeiro: { sourceWidth: 1672, sourceHeight: 941, x: 315, y: 165, width: 635, height: 525 },
+  financeiro: FINANCE_MOCKUP_CROP,
 }
 
 const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
   cos: { sourceWidth: 1672, sourceHeight: 941, x: 129, y: 51, width: 1408, height: 833 },
   catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 284, y: 30, width: 1223, height: 816 },
-  financeiro: { sourceWidth: 1672, sourceHeight: 941, x: 312, y: 49, width: 1077, height: 846 },
 }
 
 function subscribeToCompactModal(onStoreChange: () => void) {
@@ -140,14 +148,6 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
         />
       )}
 
-      {module.id === "financeiro" ? (
-        <div
-          data-finance-demo-mask
-          className="absolute left-[57.8%] top-[81.8%] h-[13.8%] w-[30.2%] rounded-[20px] bg-[linear-gradient(145deg,#f0f3f1,#e7ece9)]"
-          aria-hidden="true"
-        />
-      ) : null}
-
       {module.id === "marketplace" && module.demoHref ? (
         <a
           href={module.demoHref}
@@ -158,6 +158,75 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
         />
       ) : null}
     </div>
+  )
+}
+
+function FinanceModuleArtwork({ module, compact }: { module: EmeModule; compact: boolean }) {
+  const ModuleIcon = module.icon
+  const [titleLead, titleAccent] = module.tagline.split(/ (?=organizada)/)
+
+  return (
+    <article
+      data-finance-modal-layout
+      data-mobile-module-scroll={compact ? "" : undefined}
+      data-desktop-module-artwork={compact ? undefined : ""}
+      className={financeStyles.layout}
+    >
+      <div className={financeStyles.eyebrow}>
+        <span className={financeStyles.eyebrowIcon} aria-hidden="true">
+          <ModuleIcon className="size-5" strokeWidth={1.8} />
+        </span>
+        <span>{module.name} EME</span>
+      </div>
+
+      <h2 className={financeStyles.title}>
+        <span>{titleLead}</span>
+        <span className={financeStyles.titleAccent}> {titleAccent}</span>
+      </h2>
+
+      <p className={financeStyles.description}>{module.longDescription}</p>
+
+      <CroppedModuleImage
+        src={module.mockup || "/placeholder.svg"}
+        alt={`Prévia visual do módulo ${module.name}`}
+        crop={FINANCE_MOCKUP_CROP}
+        sizes="(min-width: 1024px) 58vw, calc(100vw - 60px)"
+        className={financeStyles.mockup}
+      />
+
+      <ul className={financeStyles.benefits} aria-label={`Benefícios de ${module.name}`}>
+        {module.benefits.map((benefit) => {
+          const title = typeof benefit === "string" ? benefit : benefit.title
+          const description = typeof benefit === "string" ? null : benefit.description
+
+          return (
+            <li key={title} className={financeStyles.benefit}>
+              <span className={financeStyles.benefitIcon} aria-hidden="true">
+                <Check className="size-3.5" strokeWidth={2.25} />
+              </span>
+              <span className={financeStyles.benefitCopy}>
+                <span className={financeStyles.benefitTitle}>{title}</span>
+                {description ? (
+                  <span className={financeStyles.benefitDescription}>{description}</span>
+                ) : null}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className={financeStyles.control}>
+        <span className={financeStyles.controlIcon} aria-hidden="true">
+          <ShieldCheck className="size-10" strokeWidth={1.55} />
+        </span>
+        <div>
+          <p className={financeStyles.controlTitle}>Controle e previsibilidade</p>
+          <p className={financeStyles.controlDescription}>
+            Recebimentos, despesas e comissões organizados para uma operação mais clara e segura.
+          </p>
+        </div>
+      </div>
+    </article>
   )
 }
 
@@ -275,16 +344,23 @@ export function ExpandedModulePanel({
 }) {
   const compact = useCompactModal()
   const aspectRatio = MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO
+  const isFinance = module.id === "financeiro"
 
   return (
     <LandingModalShell
       label={module.name}
       moduleId={module.id}
-      aspectRatio={aspectRatio}
+      aspectRatio={isFinance ? undefined : aspectRatio}
       originEl={originEl}
       onClose={onClose}
     >
-      {compact ? <MobileModuleArtwork module={module} /> : <DesktopModuleArtwork module={module} />}
+      {isFinance ? (
+        <FinanceModuleArtwork module={module} compact={compact} />
+      ) : compact ? (
+        <MobileModuleArtwork module={module} />
+      ) : (
+        <DesktopModuleArtwork module={module} />
+      )}
     </LandingModalShell>
   )
 }

@@ -22,14 +22,23 @@ test.describe("Landing — módulo Financeiro", () => {
       expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(viewport.width)
       expect(dialogBox!.y + dialogBox!.height).toBeLessThanOrEqual(viewport.height)
 
-      if (viewport.width >= 768) {
-        await expect(dialog.locator("[data-finance-demo-mask]")).toBeVisible()
-      } else {
-        await expect(dialog.getByText("Sua operação financeira, organizada em um só lugar.")).toBeVisible()
-        await expect(dialog.getByText("Controle recebimentos, despesas e comissões")).toBeVisible()
-      }
+      const layout = dialog.locator("[data-finance-modal-layout]")
+      await expect(layout).toBeVisible()
+      await expect(dialog.locator("[data-finance-demo-mask]")).toHaveCount(0)
+      await expect(dialog.getByText("Sua operação financeira, organizada em um só lugar.")).toBeVisible()
+      await expect(dialog.getByText("Controle recebimentos, despesas e comissões")).toBeVisible()
+      await expect(dialog.getByRole("img", { name: "Prévia visual do módulo Financeiro" })).toBeVisible()
 
-      await dialog.getByRole("button", { name: "Fechar" }).click()
+      const gridColumnCount = await layout.evaluate((element) => {
+        const columns = getComputedStyle(element).gridTemplateColumns
+        return columns.split(" ").filter(Boolean).length
+      })
+      expect(gridColumnCount).toBe(viewport.width >= 1024 ? 2 : 1)
+
+      const closeButton = dialog.getByRole("button", { name: "Fechar", exact: true })
+      await expect(closeButton.locator("[data-eme-modal-close-icon]")).toBeVisible()
+      await expect(dialog.locator("[data-eme-modal-close-icon]")).toHaveCount(1)
+      await closeButton.click()
       await expect(dialog).toHaveCount(0)
     }
   })

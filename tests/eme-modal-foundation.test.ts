@@ -41,6 +41,9 @@ test("respeita safe areas, scroll interno e alvo de fechar de 44 pixels", () => 
   assert.match(styles, /overscroll-behavior:\s*contain/)
   assert.match(styles, /width:\s*44px/)
   assert.match(styles, /height:\s*44px/)
+  assert.match(styles, /color:\s*#16231b/)
+  assert.match(styles, /\[data-eme-modal-close-icon\]/)
+  assert.match(styles, /visibility:\s*visible/)
 })
 
 test("expõe header, body, footer e split opcional 58 por 42", () => {
@@ -73,6 +76,8 @@ test("landing reutiliza a fundação sem perder seus contratos de interação", 
 
   assert.match(landingShellSource, /data-landing-modal-shell/)
   assert.match(landingShellSource, /data-landing-modal-close/)
+  assert.match(landingShellSource, /<motion\.div[\s\S]*?aria-hidden="true"[\s\S]*?eme-landing-modal-backdrop/)
+  assert.equal((landingShellSource.match(/data-eme-modal-close-icon/g) ?? []).length, 1)
   assert.match(landingShellSource, /event\.key === "Escape"/)
   assert.match(landingShellSource, /body\.style\.overflow = "hidden"/)
 })
